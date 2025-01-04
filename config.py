@@ -62,6 +62,7 @@ class _FoulPlayConfig:
     password: str
     bot_mode: str
     pokemon_mode: str = ""
+    smogon_stats: str = None
     search_time_ms: int
     parallelism: int
     run_count: int
@@ -82,6 +83,7 @@ class _FoulPlayConfig:
         self.password = env("PS_PASSWORD")
         self.bot_mode = env("BOT_MODE")
         self.pokemon_mode = env("POKEMON_MODE")
+        self.smogon_stats = env("SMOGON_STATS", None)
 
         self.search_time_ms = env.int("SEARCH_TIME_MS", 100)
         self.parallelism = env.int("MCTS_PARALLELISM", 1)

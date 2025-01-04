@@ -184,7 +184,9 @@ async def start_standard_battle(
             [p.name for p in (battle.opponent.reserve + battle.user.reserve)]
             + [battle.user.active.name, battle.opponent.active.name]
         )
-        SmogonSets.initialize(pokemon_battle_type, unique_pkmn_names)
+        SmogonSets.initialize(
+            FoulPlayConfig.smogon_stats or pokemon_battle_type, unique_pkmn_names
+        )
         TeamDatasets.initialize(pokemon_battle_type, unique_pkmn_names)
 
         # first move needs to be picked here
@@ -226,7 +228,9 @@ async def start_standard_battle(
                 battle_factory_tier_name=tier_name,
             )
         else:
-            SmogonSets.initialize(pokemon_battle_type, unique_pkmn_names)
+            SmogonSets.initialize(
+                FoulPlayConfig.smogon_stats or pokemon_battle_type, unique_pkmn_names
+            )
             TeamDatasets.initialize(pokemon_battle_type, unique_pkmn_names)
 
         await handle_team_preview(battle, ps_websocket_client)
