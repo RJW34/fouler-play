@@ -3228,6 +3228,29 @@ class TestCheckSpeedRanges(unittest.TestCase):
             },
         }
 
+    def test_suckerpunch_and_thunderclap_sets_speed_ranges(self):
+        # opponent should have min speed equal to the bot's speed
+        self.battle.user.active.stats[constants.SPEED] = 150
+        self.battle.opponent.active.stats[constants.SPEED] = 175
+
+        messages = [
+            "|move|p2a: Raging Bolt|Thunderclap|p1a: Kingambit"
+            "|-damage|p1a: Kingambit|46/100",
+            "|-enditem|p1a: Kingambit|Air Balloon",
+            "|move|p1a: Kingambit|Sucker Punch||[still]",
+            "|-fail|p1a: Kingambit",
+            "|",
+            "|upkeep",
+            "|turn|7",
+        ]
+
+        check_speed_ranges(self.battle, messages)
+
+        self.assertEqual(
+            150,
+            self.battle.opponent.active.speed_range.min,
+        )
+
     def test_sets_minspeed_when_opponent_goes_first(self):
         # opponent should have min speed equal to the bot's speed
         self.battle.user.active.stats[constants.SPEED] = 150
