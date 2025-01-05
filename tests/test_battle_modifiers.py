@@ -1305,6 +1305,24 @@ class TestMove(unittest.TestCase):
 
         self.assertEqual([], self.battle.opponent.active.volatile_statuses)
 
+    def test_removes_destinybond_if_it_exists_in_volatiles_when_using_destinybond(self):
+        self.battle.opponent.active.volatile_statuses = ["destinybond"]
+        split_msg = ["", "move", "p2a: Caterpie", "Destiny Bond"]
+
+        move(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+
+    def test_removes_destinybond_if_it_exists_in_volatiles_when_not_using_destinybond(
+        self,
+    ):
+        self.battle.opponent.active.volatile_statuses = ["destinybond"]
+        split_msg = ["", "move", "p2a: Caterpie", "Tackle"]
+
+        move(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+
     def test_sets_can_have_choice_item_to_false_if_two_different_moves_are_used_when_the_pkmn_has_an_unknown_item(
         self,
     ):

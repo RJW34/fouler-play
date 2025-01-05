@@ -616,6 +616,10 @@ def move(battle, split_msg):
     elif "[from]" in split_msg[-1] and split_msg[-1] != "[from]lockedmove":
         return
 
+    if "destinybond" in pkmn.volatile_statuses:
+        logger.info("Removing destinybond from {}".format(pkmn.name))
+        remove_volatile(pkmn, "destinybond")
+
     # remove volatile status if they have it
     # this is for preparation moves like Phantom Force
     if move_name in pkmn.volatile_statuses:
