@@ -582,6 +582,27 @@ def move(battle, split_msg):
     elif move_name != "sleeptalk":
         pkmn.gen_3_consecutive_sleep_talks = 0
 
+    # gen1 stat modification glitches.
+    # swordsdance and agility nullify the effects of burn and paralysis respectively
+    # This is implemented by setting a custom volatile
+    if battle.generation == "gen1":
+        if (
+            move_name == "swordsdance" or move_name == "meditate"
+        ) and pkmn.status == constants.BURN:
+            logger.info(
+                "{} used swordsdance with burn, nullifying the effects of burn".format(
+                    pkmn.name
+                )
+            )
+            pkmn.volatile_statuses.append("gen1burnnullify")
+        elif move_name == "agility" and pkmn.status == constants.PARALYZED:
+            logger.info(
+                "{} used agility while paralyzed, nullifying the effects of paralysis".format(
+                    pkmn.name
+                )
+            )
+            pkmn.volatile_statuses.append("gen1paralysisnullify")
+
     if split_msg[-1] == "[from]Sleep Talk" or split_msg[-1] == "[from]move: Sleep Talk":
         move_object = pkmn.get_move(move_name)
         if move_object is None:

@@ -1075,6 +1075,35 @@ class TestMove(unittest.TestCase):
 
         self.battle.user.active = Pokemon("clefable", 100)
 
+    def test_swordsdance_sets_burn_nullify_volatile_when_burned(self):
+        self.battle.generation = "gen1"
+        split_msg = ["", "move", "p2a: Caterpie", "Swords Dance"]
+        self.battle.opponent.active.status = constants.BURN
+
+        move(self.battle, split_msg)
+
+        self.assertIn("gen1burnnullify", self.battle.opponent.active.volatile_statuses)
+
+    def test_meditate_sets_burn_nullify_volatile_when_burned(self):
+        self.battle.generation = "gen1"
+        split_msg = ["", "move", "p2a: Caterpie", "Meditate"]
+        self.battle.opponent.active.status = constants.BURN
+
+        move(self.battle, split_msg)
+
+        self.assertIn("gen1burnnullify", self.battle.opponent.active.volatile_statuses)
+
+    def test_agility_sets_paralysis_nullify_when_paralyzed(self):
+        self.battle.generation = "gen1"
+        split_msg = ["", "move", "p2a: Caterpie", "Agility"]
+        self.battle.opponent.active.status = constants.PARALYZED
+
+        move(self.battle, split_msg)
+
+        self.assertIn(
+            "gen1paralysisnullify", self.battle.opponent.active.volatile_statuses
+        )
+
     def test_adds_move_to_opponent(self):
         split_msg = ["", "move", "p2a: Caterpie", "String Shot"]
 
