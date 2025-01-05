@@ -420,16 +420,14 @@ class Battler:
             nickname = pkmn_dict[constants.IDENT]
             pkmn_details = pkmn_dict[constants.DETAILS]
             pkmn_item = pkmn_dict[constants.ITEM] if pkmn_dict[constants.ITEM] else None
+            pkmn = Pokemon.from_switch_string(pkmn_details, nickname=nickname)
 
             # For some reason PS sends "zacian" during team preview
             # when you have a zacian with a rusted sword
-            if (
-                normalize_name(pkmn_details).startswith("zacian")
-                and pkmn_item == "rustedsword"
-            ):
-                pkmn_details = "zaciancrowned"
+            if pkmn.name.startswith("zacian") and pkmn_item == "rustedsword":
+                pkmn = Pokemon("zaciancrowned", pkmn.level)
+                pkmn.nickname = nickname
 
-            pkmn = Pokemon.from_switch_string(pkmn_details, nickname=nickname)
             pkmn.ability = pkmn_dict[constants.REQUEST_DICT_ABILITY]
             pkmn.index = index + 1
             pkmn.reviving = pkmn_dict.get(constants.REVIVING, False)
