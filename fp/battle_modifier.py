@@ -1026,7 +1026,12 @@ def end_volatile_status(battle, split_msg):
         logger.info("Substitute ended for {}".format(pkmn.name))
         pkmn.substitute_hit = False
 
-    if volatile_status not in pkmn.volatile_statuses:
+    if volatile_status == "protosynthesis" or volatile_status == "quarkdrive":
+        for vs in pkmn.volatile_statuses:
+            if vs.startswith(volatile_status):
+                logger.info("Removing {} from {}".format(vs, pkmn.name))
+                pkmn.volatile_statuses.remove(vs)
+    elif volatile_status not in pkmn.volatile_statuses:
         logger.warning(
             "Pokemon '{}' does not have the volatile status '{}'".format(
                 pkmn.to_dict(), volatile_status

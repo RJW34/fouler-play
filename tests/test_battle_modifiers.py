@@ -2220,6 +2220,28 @@ class TestEndVolatileStatus(unittest.TestCase):
             expected_volatile_statuses, self.battle.opponent.active.volatile_statuses
         )
 
+    def test_removes_protosynthesisspa_when_protocol_says_protosynthesis(self):
+        self.battle.opponent.active.volatile_statuses = ["protosynthesisspa"]
+        split_msg = ["", "-end", "p2a: Caterpie", "Protosynthesis"]
+        end_volatile_status(self.battle, split_msg)
+
+        expected_volatile_statuses = []
+
+        self.assertEqual(
+            expected_volatile_statuses, self.battle.opponent.active.volatile_statuses
+        )
+
+    def test_removes_quarkdriveatk_when_protocol_says_quark_drive(self):
+        self.battle.opponent.active.volatile_statuses = ["quarkdriveatk"]
+        split_msg = ["", "-end", "p2a: Caterpie", "Quark Drive"]
+        end_volatile_status(self.battle, split_msg)
+
+        expected_volatile_statuses = []
+
+        self.assertEqual(
+            expected_volatile_statuses, self.battle.opponent.active.volatile_statuses
+        )
+
     def test_removes_volatile_status_from_user(self):
         self.battle.user.active.volatile_statuses = ["encore"]
         split_msg = ["", "-end", "p1a: Weedle", "Encore"]
