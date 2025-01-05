@@ -33,7 +33,7 @@ def select_move_from_mcts_results(mcts_results: list[(MctsResult, float, int)]) 
                 index,
                 this_policy.move_choice,
                 round(100 * this_policy.visits / mcts_result.total_visits, 2),
-                this_policy.total_score / this_policy.visits,
+                round(this_policy.total_score / this_policy.visits, 3),
                 round(sample_chance, 3),
             )
         )
