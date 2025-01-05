@@ -31,7 +31,7 @@ from fp.battle import boost_multiplier_lookup
 logger = logging.getLogger(__name__)
 
 
-MOVE_END_STRINGS = {"move", "switch", "upkeep", ""}
+MOVE_END_STRINGS = {"move", "switch", "upkeep", "-miss", ""}
 
 
 def can_have_priority_modified(battle, pokemon, move_name):
