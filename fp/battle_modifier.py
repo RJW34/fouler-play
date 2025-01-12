@@ -12,12 +12,12 @@ from data.pkmn_sets import (
     TeamDatasets,
     PredictedPokemonSet,
 )
-from fp.battle import Pokemon
+from fp.battle import Pokemon, Battler
 from fp.battle import LastUsedMove
 from fp.battle import DamageDealt
 from fp.battle import StatRange
 from fp.battle_bots.poke_engine_helpers import poke_engine_get_damage_rolls
-from fp.helpers import normalize_name
+from fp.helpers import normalize_name, type_effectiveness_modifier
 from fp.helpers import get_pokemon_info_from_condition
 from fp.helpers import calculate_stats
 from fp.helpers import (
@@ -569,50 +569,26 @@ def move(battle, split_msg):
 
     move_name = normalize_name(split_msg[3].strip().lower())
 
+    zoroark_from_reserves = side.find_pokemon_in_reserves(
+        "zoroark"
+    ) or side.find_pokemon_in_reserves("zoroarkhisui")
+
     # in formats with known movesets we can deduce that there is a zoroark in front of us
     # if we see a move that is not in the known moveset and a zoroark is in the reserves
     if (
         is_opponent(battle, split_msg)
-        and any(p.name.startswith("zoroark") for p in side.reserve)
+        and zoroark_from_reserves is not None
         and battle.battle_type in [constants.BATTLE_FACTORY]
         and move_name not in TeamDatasets.get_all_possible_moves(pkmn)
+        and move_name in TeamDatasets.get_all_possible_moves(zoroark_from_reserves)
         and "from" not in split_msg[-1]
     ):
-        zoroark_from_reserves = side.find_pokemon_in_reserves(
-            "zoroark"
-        ) or side.find_pokemon_in_reserves("zoroarkhisui")
         logger.info(
             "{} using {} means it is {}".format(
                 pkmn.name, move_name, zoroark_from_reserves.name
             )
         )
-        for mv in pkmn.moves_used_since_switch_in:
-            logger.info(
-                "Removing {} from {}'s moves because it is {}".format(
-                    mv, pkmn.name, zoroark_from_reserves.name
-                )
-            )
-            pkmn.remove_move(mv)
-            if zoroark_from_reserves.get_move(mv) is None:
-                zoroark_from_reserves.add_move(mv)
-
-        # set attributes on zoroark that were on the pokemon that we thought was zoroark
-        # and clear those attributes from the pokemon that we thought was zoroark
-        pkmn_hp_percent = float(pkmn.hp) / pkmn.max_hp
-        zoroark_from_reserves.hp = zoroark_from_reserves.max_hp * pkmn_hp_percent
-        zoroark_from_reserves.boosts = copy(pkmn.boosts)
-        zoroark_from_reserves.status = pkmn.status
-        zoroark_from_reserves.volatile_statuses = copy(pkmn.volatile_statuses)
-        pkmn.boosts.clear()
-        pkmn.status = None
-        pkmn.volatile_statuses.clear()
-
-        zoroark_from_reserves.zoroark_disguised_as = pkmn.name
-
-        # swap the pkmn places
-        side.reserve.append(pkmn)
-        side.active = zoroark_from_reserves
-        side.reserve.remove(zoroark_from_reserves)
+        _switch_active_with_zoroark_from_reserves(side, zoroark_from_reserves)
 
         # the rest of this function uses `pkmn`, so we need to set it to the correct pkmn
         pkmn = zoroark_from_reserves
@@ -1348,14 +1324,106 @@ def remove_item(battle, split_msg):
 def immune(battle, split_msg):
     if is_opponent(battle, split_msg):
         side = battle.opponent
+        pkmn = side.active
     else:
         side = battle.user
+        pkmn = side.active
 
     for msg in split_msg:
         if constants.ABILITY in normalize_name(msg):
             ability = normalize_name(msg.split(":")[-1])
             logger.info("Setting {}'s ability to {}".format(side.active.name, ability))
             side.active.ability = ability
+
+    zoroark_from_reserves = side.find_pokemon_in_reserves(
+        "zoroark"
+    ) or side.find_pokemon_in_reserves("zoroarkhisui")
+    if (
+        is_opponent(battle, split_msg)
+        and zoroark_from_reserves is not None
+        and not side.active.name.startswith("zoroark")
+        and battle.battle_type in [constants.BATTLE_FACTORY]
+        and all_move_json[battle.user.last_used_move.move][constants.CATEGORY]
+        != constants.STATUS
+        and type_effectiveness_modifier(
+            all_move_json[battle.user.last_used_move.move][constants.TYPE],
+            side.active.types,
+        )
+        != 0
+        and type_effectiveness_modifier(
+            all_move_json[battle.user.last_used_move.move][constants.TYPE],
+            zoroark_from_reserves.types,
+        )
+        == 0
+        and "from" not in split_msg[-1]
+    ):
+        # check if pkmn has terastallized and gained immunity
+        # exit if it has
+        if (
+            side.active.terastallized
+            and type_effectiveness_modifier(
+                all_move_json[battle.user.last_used_move.move][constants.TYPE],
+                [side.active.tera_type],
+            )
+            == 0
+        ):
+            return
+
+        logger.info(
+            "{} was immune to {} when it shouldn't be - it is {}".format(
+                pkmn.name, battle.user.last_used_move.move, zoroark_from_reserves.name
+            )
+        )
+        _switch_active_with_zoroark_from_reserves(side, zoroark_from_reserves)
+
+
+def _switch_active_with_zoroark_from_reserves(
+    opponent_side: Battler, zoroark_from_reserves: Pokemon
+):
+    """
+    This is called when we are 100% sure that the opponent's active pkmn is a zoroark
+    This swaps the active pkmn with the zoroark from the reserves
+
+    Assumptions:
+        - The `zoroark_from_reserves` MUST be in `opponent_side.reserve`
+    """
+    pkmn = opponent_side.active
+
+    # any moves used by this pkmn since switching in need to be removed because we cannot guarantee that they
+    # belong to this pkmn
+    for mv in pkmn.moves_used_since_switch_in:
+        logger.info(
+            "Removing {} from {}'s moves because it is {}".format(
+                mv, pkmn.name, zoroark_from_reserves.name
+            )
+        )
+        pkmn.remove_move(mv)
+        if zoroark_from_reserves.get_move(mv) is None:
+            zoroark_from_reserves.add_move(mv)
+
+    # set attributes on zoroark that were on the pokemon that we thought was zoroark
+    # and clear those attributes from the pokemon that we thought was zoroark
+    pkmn_hp_percent = float(pkmn.hp) / pkmn.max_hp
+    zoroark_from_reserves.hp = zoroark_from_reserves.max_hp * pkmn_hp_percent
+    zoroark_from_reserves.boosts = copy(pkmn.boosts)
+    zoroark_from_reserves.status = pkmn.status
+    zoroark_from_reserves.volatile_statuses = copy(pkmn.volatile_statuses)
+    zoroark_from_reserves.terastallized = pkmn.terastallized
+    zoroark_from_reserves.tera_type = pkmn.tera_type
+    pkmn.boosts.clear()
+    pkmn.status = None
+    pkmn.volatile_statuses.clear()
+
+    if pkmn.terastallized:
+        pkmn.terastallized = False
+        pkmn.tera_type = None
+
+    zoroark_from_reserves.zoroark_disguised_as = pkmn.name
+
+    # swap the pkmn places
+    opponent_side.reserve.append(pkmn)
+    opponent_side.active = zoroark_from_reserves
+    opponent_side.reserve.remove(zoroark_from_reserves)
 
 
 def set_opponent_ability_from_ability_tag(battle, split_msg):
@@ -2202,6 +2270,7 @@ def update_dataset_possibilities(
             "lashout",
             "ragefist",
             "shellsidearm",
+            "futuresight",
         ]
     ):
         return

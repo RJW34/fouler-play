@@ -1120,6 +1120,28 @@ class TestMove(unittest.TestCase):
         self.assertEqual([], self.battle.opponent.reserve[0].moves)
         self.assertEqual({}, dict(self.battle.opponent.reserve[0].boosts))
 
+    def test_does_not_infer_from_struggle(self):
+        self.battle.battle_type = constants.BATTLE_FACTORY
+        self.battle.generation = "gen9"
+        TeamDatasets.initialize(
+            "gen9battlefactory", ["zoroarkhisui", "gyarados"], "ru"
+        )  # gen9 RU should always have these pokemon
+
+        self.battle.opponent.reserve = [Pokemon("zoroarkhisui", 100)]
+        self.battle.opponent.active = Pokemon("gyarados", 100)
+
+        split_msg = [
+            "",
+            "move",
+            "p2a: Gyarados",
+            "Struggle",
+        ]
+        move(self.battle, split_msg)
+
+        # nothing changes
+        self.assertEqual("gyarados", self.battle.opponent.active.name)
+        self.assertEqual("zoroarkhisui", self.battle.opponent.reserve[0].name)
+
     def test_swordsdance_sets_burn_nullify_volatile_when_burned(self):
         self.battle.generation = "gen1"
         split_msg = ["", "move", "p2a: Caterpie", "Swords Dance"]
@@ -4683,6 +4705,139 @@ class TestImmune(unittest.TestCase):
 
         self.battle.username = self.username
 
+    def test_infers_zoroark_from_immunity_that_pkmn_does_not_have(self):
+        self.battle.battle_type = constants.BATTLE_FACTORY
+        self.battle.generation = "gen9"
+        TeamDatasets.initialize(
+            "gen9battlefactory", ["zoroarkhisui", "gyarados"], "ru"
+        )  # gen9 RU should always have these pokemon
+
+        self.battle.opponent.reserve = [Pokemon("zoroarkhisui", 100)]
+        self.battle.opponent.reserve[0].add_move("nastyplot")
+
+        self.battle.opponent.active = Pokemon("gyarados", 100)
+        self.battle.opponent.active.add_move("terablast")
+        self.battle.opponent.active.moves_used_since_switch_in.add("terablast")
+        self.battle.opponent.active.boosts[constants.SPECIAL_ATTACK] = 2
+
+        self.battle.user.last_used_move = LastUsedMove("weedle", "shadowball", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Gyarados",
+        ]  # Gyarados is not immune to shadowball
+        immune(self.battle, split_msg)
+
+        self.assertEqual("zoroarkhisui", self.battle.opponent.active.name)
+
+        # nastyplot was previously revealed on zoroarkhisui
+        # terablast was used by gyarados since switching in, but should be re-associated with zoroarkhisui
+        self.assertEqual(
+            [Move("nastyplot"), Move("terablast")],
+            self.battle.opponent.active.moves,
+        )
+        # the boosts that existed on gyarados should be on the active zoroarkhisui now
+        self.assertEqual(
+            {constants.SPECIAL_ATTACK: 2}, dict(self.battle.opponent.active.boosts)
+        )
+
+        self.assertEqual("gyarados", self.battle.opponent.reserve[0].name)
+        # terablast was used by gyarados since switching in so it should be dis-associated with gyarados
+        self.assertEqual([], self.battle.opponent.reserve[0].moves)
+        self.assertEqual({}, dict(self.battle.opponent.reserve[0].boosts))
+
+    def test_does_not_infer_zoroark_when_tera_type_renders_it_immune(self):
+        self.battle.battle_type = constants.BATTLE_FACTORY
+        self.battle.generation = "gen9"
+        TeamDatasets.initialize(
+            "gen9battlefactory", ["zoroarkhisui", "gyarados"], "ru"
+        )  # gen9 RU should always have these pokemon
+
+        self.battle.opponent.reserve = [Pokemon("zoroarkhisui", 100)]
+
+        self.battle.opponent.active = Pokemon("gyarados", 100)
+        self.battle.opponent.active.tera_type = "ghost"
+        self.battle.opponent.active.terastallized = True
+
+        self.battle.user.last_used_move = LastUsedMove("weedle", "rapidspin", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Gyarados",
+        ]  # Gyarados is immune to rapidspin when terastallized into a ghost type
+        immune(self.battle, split_msg)
+
+        # nothing changed
+        self.assertEqual("gyarados", self.battle.opponent.active.name)
+        self.assertEqual("zoroarkhisui", self.battle.opponent.reserve[0].name)
+
+    def test_does_not_infer_zoroark_when_pkmn_is_actually_immune(self):
+        self.battle.battle_type = constants.BATTLE_FACTORY
+        self.battle.generation = "gen9"
+        TeamDatasets.initialize(
+            "gen9battlefactory", ["zoroarkhisui", "maushold"], "ru"
+        )  # gen9 RU should always have these pokemon
+
+        self.battle.opponent.reserve = [Pokemon("zoroarkhisui", 100)]
+        self.battle.opponent.active = Pokemon("maushold", 100)
+
+        self.battle.user.last_used_move = LastUsedMove("weedle", "shadowball", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Maushold",
+        ]  # Maushold is immune to shadowball - no inferring zoroarkhisui
+        immune(self.battle, split_msg)
+
+        # did not change
+        self.assertEqual("maushold", self.battle.opponent.active.name)
+        self.assertEqual("zoroarkhisui", self.battle.opponent.reserve[0].name)
+
+    def test_does_not_infer_zoroark_when_the_zoroark_is_not_immune(self):
+        self.battle.battle_type = constants.BATTLE_FACTORY
+        self.battle.generation = "gen9"
+        TeamDatasets.initialize(
+            "gen9battlefactory", ["zoroarkhisui", "salamence"], "ru"
+        )  # gen9 RU should always have these pokemon
+
+        self.battle.opponent.reserve = [Pokemon("zoroarkhisui", 100)]
+        self.battle.opponent.active = Pokemon("salamence", 100)
+
+        self.battle.user.last_used_move = LastUsedMove("weedle", "earthquake", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Salamence",
+        ]  # Salamence is immune to earthquake - no inferring zoroarkhisui
+        immune(self.battle, split_msg)
+
+        # did not change
+        self.assertEqual("salamence", self.battle.opponent.active.name)
+        self.assertEqual("zoroarkhisui", self.battle.opponent.reserve[0].name)
+
+    def test_does_not_infer_zoroark_when_ability_renders_immune(self):
+        self.battle.battle_type = constants.BATTLE_FACTORY
+        self.battle.generation = "gen9"
+        TeamDatasets.initialize(
+            "gen9battlefactory", ["zoroarkhisui", "rotomheat"], "ru"
+        )  # gen9 RU should always have these pokemon
+
+        self.battle.opponent.reserve = [Pokemon("zoroarkhisui", 100)]
+        self.battle.opponent.active = Pokemon("rotomheat", 100)
+
+        self.battle.user.last_used_move = LastUsedMove("weedle", "earthquake", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Rotom",
+            "[from] ability: Levitate",
+        ]  # rotomheat is immune to earthquake via levitate - no inferring zoroarkhisui
+        immune(self.battle, split_msg)
+
+        # did not change
+        self.assertEqual("rotomheat", self.battle.opponent.active.name)
+        self.assertEqual("zoroarkhisui", self.battle.opponent.reserve[0].name)
+
     def test_sets_ability_for_opponent(self):
         split_msg = ["", "-immune", "p2a: Caterpie", "[from] ability: Volt Absorb"]
         immune(self.battle, split_msg)
@@ -4698,22 +4853,6 @@ class TestImmune(unittest.TestCase):
         expected_ability = "voltabsorb"
 
         self.assertEqual(expected_ability, self.battle.user.active.ability)
-
-    def test_immune_when_shouldnt_be_sets_potential_zoroark(self):
-        """
-        Zoroark disguised as Furret
-        |
-        |t:|1731185949
-        |switch|p2a: Furret|Furret, L94, F|238/238
-        |move|p1a: Chimecho|Psychic Noise|p2a: Furret
-        |-immune|p2a: Furret
-        |
-        |-heal|p1a: Chimecho|73/100 brn|[from] item: Leftovers
-        |-damage|p1a: Chimecho|67/100 brn|[from] brn
-        |upkeep
-        |turn|22
-        """
-        pass
 
 
 class TestInactive(unittest.TestCase):
