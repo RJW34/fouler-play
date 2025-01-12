@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import constants
 from fp.battle import Battle, Pokemon
-from data.pkmn_sets import RandomBattleTeamDatasets, PredictedPokemonSet
+from data.pkmn_sets import RandomBattleTeamDatasets, PredictedPokemonSet, TeamDatasets
 from fp.helpers import (
     POKEMON_TYPE_INDICES,
     is_super_effective,
@@ -28,6 +28,13 @@ def log_pkmn_set(pkmn: Pokemon):
 
 
 def get_all_remaining_sets_for_revealed_pkmn(battle: Battle) -> dict:
+    if battle.battle_type == constants.RANDOM_BATTLE:
+        datasets = RandomBattleTeamDatasets
+    elif battle.battle_type == constants.BATTLE_FACTORY:
+        datasets = TeamDatasets
+    else:
+        raise ValueError("Only random battles are supported")
+
     revealed_pkmn = []
     for pkmn in battle.opponent.reserve:
         revealed_pkmn.append(pkmn)
@@ -36,9 +43,9 @@ def get_all_remaining_sets_for_revealed_pkmn(battle: Battle) -> dict:
 
     ret = {}
     for pkmn in revealed_pkmn:
-        sets = RandomBattleTeamDatasets.get_all_remaining_sets(
-            pkmn
-        ) or RandomBattleTeamDatasets.get_all_remaining_sets(pkmn, match_traits=False)
+        sets = datasets.get_all_remaining_sets(pkmn) or datasets.get_all_remaining_sets(
+            pkmn, match_traits=False
+        )
         random.shuffle(sets)
         ret[pkmn.name] = sets
 

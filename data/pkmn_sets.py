@@ -423,6 +423,25 @@ class _TeamDatasets(PokemonSets):
             if pkmn_sets[i].pkmn_set.ability == ability:
                 pkmn_sets.pop(i)
 
+    def get_all_remaining_sets(
+        self, pkmn: Pokemon, match_traits=True
+    ) -> list[PredictedPokemonSet]:
+        if not self.pkmn_sets:
+            logger.warning("Called `predict_set` when pkmn_sets was empty")
+            return []
+
+        remaining_sets = []
+        for pkmn_set in self.get_pkmn_sets_from_pkmn_name(pkmn.name, pkmn.base_name):
+            if pkmn_set.full_set_pkmn_can_have_set(
+                pkmn,
+                match_ability=match_traits,
+                match_item=match_traits,
+                speed_check=True,
+            ):
+                remaining_sets.append(pkmn_set)
+
+        return remaining_sets
+
     def get_all_possible_moves(self, pkmn: Pokemon):
         if not self.pkmn_sets:
             logger.warning("Called `predict_set` when pkmn_sets was empty")
