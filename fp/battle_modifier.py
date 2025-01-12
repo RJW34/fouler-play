@@ -1,6 +1,6 @@
 import re
 import json
-from copy import deepcopy
+from copy import deepcopy, copy
 import logging
 
 import constants
@@ -568,6 +568,54 @@ def move(battle, split_msg):
         opposing_pkmn = battle.opponent.active
 
     move_name = normalize_name(split_msg[3].strip().lower())
+
+    # in formats with known movesets we can deduce that there is a zoroark in front of us
+    # if we see a move that is not in the known moveset and a zoroark is in the reserves
+    if (
+        is_opponent(battle, split_msg)
+        and any(p.name.startswith("zoroark") for p in side.reserve)
+        and battle.battle_type in [constants.BATTLE_FACTORY]
+        and move_name not in TeamDatasets.get_all_possible_moves(pkmn)
+        and "from" not in split_msg[-1]
+    ):
+        zoroark_from_reserves = side.find_pokemon_in_reserves(
+            "zoroark"
+        ) or side.find_pokemon_in_reserves("zoroarkhisui")
+        logger.info(
+            "{} using {} means it is {}".format(
+                pkmn.name, move_name, zoroark_from_reserves.name
+            )
+        )
+        for mv in pkmn.moves_used_since_switch_in:
+            logger.info(
+                "Removing {} from {}'s moves because it is {}".format(
+                    mv, pkmn.name, zoroark_from_reserves.name
+                )
+            )
+            pkmn.remove_move(mv)
+            if zoroark_from_reserves.get_move(mv) is None:
+                zoroark_from_reserves.add_move(mv)
+
+        # set attributes on zoroark that were on the pokemon that we thought was zoroark
+        # and clear those attributes from the pokemon that we thought was zoroark
+        pkmn_hp_percent = float(pkmn.hp) / pkmn.max_hp
+        zoroark_from_reserves.hp = zoroark_from_reserves.max_hp * pkmn_hp_percent
+        zoroark_from_reserves.boosts = copy(pkmn.boosts)
+        zoroark_from_reserves.status = pkmn.status
+        zoroark_from_reserves.volatile_statuses = copy(pkmn.volatile_statuses)
+        pkmn.boosts.clear()
+        pkmn.status = None
+        pkmn.volatile_statuses.clear()
+
+        zoroark_from_reserves.zoroark_disguised_as = pkmn.name
+
+        # swap the pkmn places
+        side.reserve.append(pkmn)
+        side.active = zoroark_from_reserves
+        side.reserve.remove(zoroark_from_reserves)
+
+        # the rest of this function uses `pkmn`, so we need to set it to the correct pkmn
+        pkmn = zoroark_from_reserves
 
     if (
         any(msg == "[from]Sleep Talk" for msg in split_msg)
@@ -1366,7 +1414,8 @@ def illusion_end(battle, split_msg):
         side.active.boosts = previous_boosts
         side.active.status = previous_status
         side.active.item = previous_item
-        side.active.zoroark_disguised_as = None
+
+    side.active.zoroark_disguised_as = None
 
 
 def form_change(battle, split_msg):

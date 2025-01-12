@@ -3,6 +3,7 @@ import json
 from collections import defaultdict
 
 import constants
+from data.pkmn_sets import TeamDatasets
 from fp.helpers import calculate_stats
 
 from fp.battle import Battle
@@ -1074,6 +1075,50 @@ class TestMove(unittest.TestCase):
         self.battle.opponent.active = self.opponent_active
 
         self.battle.user.active = Pokemon("clefable", 100)
+
+        TeamDatasets.pkmn_sets = {}
+
+    def test_infer_zoroark_from_move_not_possible_on_pkmn(self):
+        self.battle.battle_type = constants.BATTLE_FACTORY
+        self.battle.generation = "gen9"
+        TeamDatasets.initialize(
+            "gen9battlefactory", ["zoroarkhisui", "gyarados"], "ru"
+        )  # gen9 RU should always have these pokemon
+
+        self.battle.opponent.reserve = [Pokemon("zoroarkhisui", 100)]
+        self.battle.opponent.reserve[0].add_move("nastyplot")
+
+        self.battle.opponent.active = Pokemon("gyarados", 100)
+        self.battle.opponent.active.add_move("terablast")
+        self.battle.opponent.active.moves_used_since_switch_in.add("terablast")
+        self.battle.opponent.active.boosts[constants.SPECIAL_ATTACK] = 2
+
+        split_msg = [
+            "",
+            "move",
+            "p2a: Gyarados",
+            "Shadow Ball",
+        ]  # Gyarados does not get shadowball in gen9 battle factory
+        move(self.battle, split_msg)
+
+        self.assertEqual("zoroarkhisui", self.battle.opponent.active.name)
+
+        # nastyplot was previously revealed on zoroarkhisui
+        # terablast was used by gyarados since switching in, but should be re-associated with zoroarkhisui
+        # shadowball is the move used to deduce it was a zoroarkhisui and should be added to zoroarkhisui's moves
+        self.assertEqual(
+            [Move("nastyplot"), Move("terablast"), Move("shadowball")],
+            self.battle.opponent.active.moves,
+        )
+        # the boosts that existed on gyarados should be on the active zoroarkhisui now
+        self.assertEqual(
+            {constants.SPECIAL_ATTACK: 2}, dict(self.battle.opponent.active.boosts)
+        )
+
+        self.assertEqual("gyarados", self.battle.opponent.reserve[0].name)
+        # terablast was used by gyarados since switching in so it should be dis-associated with gyarados
+        self.assertEqual([], self.battle.opponent.reserve[0].moves)
+        self.assertEqual({}, dict(self.battle.opponent.reserve[0].boosts))
 
     def test_swordsdance_sets_burn_nullify_volatile_when_burned(self):
         self.battle.generation = "gen1"
@@ -2551,7 +2596,7 @@ class TestIllusionEnd(unittest.TestCase):
         illusion_end(self.battle, split_msg)
 
         self.assertEqual("zoroark", self.battle.opponent.active.base_name)
-        self.assertEqual("meloetta", self.battle.opponent.active.zoroark_disguised_as)
+        self.assertEqual(None, self.battle.opponent.active.zoroark_disguised_as)
         self.assertEqual("meloetta", self.battle.opponent.reserve[0].name)
         self.assertEqual(4, len(self.battle.opponent.active.moves))
 
