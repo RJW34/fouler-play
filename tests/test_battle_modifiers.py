@@ -4982,6 +4982,26 @@ class TestImmune(unittest.TestCase):
         self.assertEqual("urshifu", self.battle.opponent.active.name)
         self.assertEqual(0, len(self.battle.opponent.reserve))
 
+    def test_does_not_infer_zoroark_if_futuresight_ending(self):
+        self.battle.battle_type = constants.RANDOM_BATTLE
+        self.battle.generation = "gen9"
+        RandomBattleTeamDatasets.initialize("gen9")
+        self.battle.opponent.reserve = []
+
+        self.battle.opponent.active = Pokemon("Urshifu", 100)
+        self.battle.user.future_sight = (1, "weedle")
+
+        self.battle.user.last_used_move = LastUsedMove("weedle", "tackle", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Urshifu",
+        ]
+        immune(self.battle, split_msg)
+
+        self.assertEqual("urshifu", self.battle.opponent.active.name)
+        self.assertEqual(0, len(self.battle.opponent.reserve))
+
     def test_infers_zoroark_from_immunity_that_pkmn_does_not_have(self):
         self.battle.battle_type = constants.BATTLE_FACTORY
         self.battle.generation = "gen9"

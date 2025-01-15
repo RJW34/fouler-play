@@ -1408,6 +1408,7 @@ def immune(battle, split_msg):
         )
         == 0
         and "from" not in split_msg[-1]
+        and battle.user.future_sight[0] != 1
     ):
         # check if pkmn has terastallized and gained immunity
         # exit if it has
@@ -1440,6 +1441,7 @@ def immune(battle, split_msg):
         )
         != 0
         and "from" not in split_msg[-1]
+        and battle.user.future_sight[0] != 1
     ):
         # check if pkmn has terastallized and gained immunity
         # exit if it has
