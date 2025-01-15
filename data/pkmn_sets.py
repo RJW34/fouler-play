@@ -335,6 +335,18 @@ class _RandomBattleSets(PokemonSets):
 
         return remaining_sets
 
+    def get_all_possible_moves(self, pkmn: Pokemon):
+        if not self.pkmn_sets:
+            logger.warning("Called `predict_set` when pkmn_sets was empty")
+            return []
+
+        possible_moves = set()
+        for pkmn_set in self.get_pkmn_sets_from_pkmn_name(pkmn.name, pkmn.base_name):
+            for mv in pkmn_set.pkmn_moveset.moves:
+                possible_moves.add(mv)
+
+        return list(possible_moves)
+
 
 class _TeamDatasets(PokemonSets):
     def __init__(self):

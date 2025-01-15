@@ -573,12 +573,12 @@ def move(battle, split_msg):
         "zoroark"
     ) or side.find_pokemon_in_reserves("zoroarkhisui")
 
-    # in formats with known movesets we can deduce that there is a zoroark in front of us
+    # in battle factory we can deduce that there is a zoroark in front of us
     # if we see a move that is not in the known moveset and a zoroark is in the reserves
     if (
         is_opponent(battle, split_msg)
         and zoroark_from_reserves is not None
-        and battle.battle_type in [constants.BATTLE_FACTORY]
+        and battle.battle_type == constants.BATTLE_FACTORY
         and move_name not in TeamDatasets.get_all_possible_moves(pkmn)
         and move_name in TeamDatasets.get_all_possible_moves(zoroark_from_reserves)
         and "from" not in split_msg[-1]
@@ -592,6 +592,58 @@ def move(battle, split_msg):
 
         # the rest of this function uses `pkmn`, so we need to set it to the correct pkmn
         pkmn = zoroark_from_reserves
+
+    # in randombattles we can deduce that there is a zoroark in front of us
+    # if we see a move that is not in the known moveset, even if there is no
+    # zoroark is in the reserves
+    if (
+        is_opponent(battle, split_msg)
+        and battle.battle_type == constants.RANDOM_BATTLE
+        and move_name not in RandomBattleTeamDatasets.get_all_possible_moves(pkmn)
+        and "from" not in split_msg[-1]
+    ):
+        actual_zoroark = None
+        zoroark_hisui = Pokemon("zoroarkhisui", 100)
+        zoroark_regular = Pokemon("zoroark", 100)
+        if (
+            zoroark_from_reserves is not None
+            and move_name
+            in RandomBattleTeamDatasets.get_all_possible_moves(zoroark_from_reserves)
+        ):
+            actual_zoroark = zoroark_from_reserves
+
+        elif (
+            zoroark_from_reserves is None
+            and move_name
+            in RandomBattleTeamDatasets.get_all_possible_moves(zoroark_hisui)
+        ):
+            actual_zoroark = zoroark_hisui
+            actual_zoroark.level = RandomBattleTeamDatasets.predict_set(
+                actual_zoroark
+            ).pkmn_set.level
+            side.reserve.append(actual_zoroark)
+
+        elif (
+            zoroark_from_reserves is None
+            and move_name
+            in RandomBattleTeamDatasets.get_all_possible_moves(zoroark_regular)
+        ):
+            actual_zoroark = zoroark_regular
+            actual_zoroark.level = RandomBattleTeamDatasets.predict_set(
+                actual_zoroark
+            ).pkmn_set.level
+            side.reserve.append(actual_zoroark)
+
+        if actual_zoroark is not None:
+            logger.info(
+                "{} using {} means it is {}".format(
+                    pkmn.name, move_name, actual_zoroark.name
+                )
+            )
+            _switch_active_with_zoroark_from_reserves(side, actual_zoroark)
+
+            # the rest of this function uses `pkmn`, so we need to set it to the correct pkmn
+            pkmn = actual_zoroark
 
     if (
         any(msg == "[from]Sleep Talk" for msg in split_msg)
@@ -1342,7 +1394,7 @@ def immune(battle, split_msg):
         is_opponent(battle, split_msg)
         and zoroark_from_reserves is not None
         and not side.active.name.startswith("zoroark")
-        and battle.battle_type in [constants.BATTLE_FACTORY]
+        and battle.battle_type == constants.BATTLE_FACTORY
         and all_move_json[battle.user.last_used_move.move][constants.CATEGORY]
         != constants.STATUS
         and type_effectiveness_modifier(
@@ -1375,6 +1427,82 @@ def immune(battle, split_msg):
             )
         )
         _switch_active_with_zoroark_from_reserves(side, zoroark_from_reserves)
+
+    elif (
+        is_opponent(battle, split_msg)
+        and not side.active.name.startswith("zoroark")
+        and battle.battle_type == constants.RANDOM_BATTLE
+        and all_move_json[battle.user.last_used_move.move][constants.CATEGORY]
+        != constants.STATUS
+        and type_effectiveness_modifier(
+            all_move_json[battle.user.last_used_move.move][constants.TYPE],
+            side.active.types,
+        )
+        != 0
+        and "from" not in split_msg[-1]
+    ):
+        # check if pkmn has terastallized and gained immunity
+        # exit if it has
+        if (
+            side.active.terastallized
+            and type_effectiveness_modifier(
+                all_move_json[battle.user.last_used_move.move][constants.TYPE],
+                [side.active.tera_type],
+            )
+            == 0
+        ):
+            return
+
+        actual_zoroark = None
+        zoroark_hisui = Pokemon("zoroarkhisui", 100)
+        zoroark_regular = Pokemon("zoroark", 100)
+        if (
+            zoroark_from_reserves is not None
+            and type_effectiveness_modifier(
+                all_move_json[battle.user.last_used_move.move][constants.TYPE],
+                zoroark_from_reserves.types,
+            )
+            == 0
+        ):
+            actual_zoroark = zoroark_from_reserves
+
+        elif (
+            zoroark_from_reserves is None
+            and type_effectiveness_modifier(
+                all_move_json[battle.user.last_used_move.move][constants.TYPE],
+                zoroark_hisui.types,
+            )
+            == 0
+        ):
+            actual_zoroark = zoroark_hisui
+            actual_zoroark.level = RandomBattleTeamDatasets.predict_set(
+                actual_zoroark
+            ).pkmn_set.level
+            side.reserve.append(actual_zoroark)
+
+        elif (
+            zoroark_from_reserves is None
+            and type_effectiveness_modifier(
+                all_move_json[battle.user.last_used_move.move][constants.TYPE],
+                zoroark_regular.types,
+            )
+            == 0
+        ):
+            actual_zoroark = zoroark_regular
+            actual_zoroark.level = RandomBattleTeamDatasets.predict_set(
+                actual_zoroark
+            ).pkmn_set.level
+            side.reserve.append(actual_zoroark)
+
+        if actual_zoroark is not None:
+            logger.info(
+                "{} was immune to {} when it shouldn't be - it is {}".format(
+                    pkmn.name,
+                    battle.user.last_used_move.move,
+                    actual_zoroark.name,
+                )
+            )
+            _switch_active_with_zoroark_from_reserves(side, actual_zoroark)
 
 
 def _switch_active_with_zoroark_from_reserves(
