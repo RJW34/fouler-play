@@ -20,8 +20,9 @@ from ..poke_engine_helpers import battle_to_poke_engine_state
 
 logger = logging.getLogger(__name__)
 
-# number of revealed pokemon -> number of teams to sample
-NUM_TEAM_MAP = {6: 2, 5: 4, 4: 8, 3: 16, 2: 16, 1: 16, 0: 16}
+# the number of revealed pkmn on the opponent's team determines the number of battles to sample
+# fewer revealed pokemon means more battles are sampled and a shallower search
+PARALLELISM_MULTIPLIER = {6: 1, 5: 1, 4: 2, 3: 4, 2: 4, 1: 4, 0: 4}
 
 
 def select_move_from_mcts_results(mcts_results: list[(MctsResult, float, int)]) -> str:
@@ -71,7 +72,9 @@ class BattleBot(Battle):
         if self.opponent.active is not None:
             revealed_pkmn += 1
 
-        num_battles = max(NUM_TEAM_MAP[revealed_pkmn], FoulPlayConfig.parallelism)
+        num_battles = int(
+            FoulPlayConfig.parallelism * PARALLELISM_MULTIPLIER[revealed_pkmn]
+        )
         battles = prepare_random_battles(self, num_battles)
         for b, _ in battles:
             fill_in_opponent_unrevealed_pkmn(b)
