@@ -1475,6 +1475,7 @@ def immune(battle, split_msg):
                 zoroark_hisui.types,
             )
             == 0
+            and zoroark_hisui.name in RandomBattleTeamDatasets.pkmn_sets
         ):
             actual_zoroark = zoroark_hisui
             actual_zoroark.level = RandomBattleTeamDatasets.predict_set(
@@ -1489,6 +1490,7 @@ def immune(battle, split_msg):
                 zoroark_regular.types,
             )
             == 0
+            and zoroark_regular.name in RandomBattleTeamDatasets.pkmn_sets
         ):
             actual_zoroark = zoroark_regular
             actual_zoroark.level = RandomBattleTeamDatasets.predict_set(

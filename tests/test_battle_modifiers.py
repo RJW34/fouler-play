@@ -4942,6 +4942,50 @@ class TestImmune(unittest.TestCase):
         self.assertEqual([], self.battle.opponent.reserve[0].moves)
         self.assertEqual({}, dict(self.battle.opponent.reserve[0].boosts))
 
+    def test_gen4_does_not_infer_zoroark(self):
+        self.battle.battle_type = constants.RANDOM_BATTLE
+        self.battle.generation = "gen4"
+        RandomBattleTeamDatasets.initialize("gen4")
+        self.battle.opponent.reserve = []
+
+        self.battle.opponent.active = Pokemon("gyarados", 100)
+        self.battle.opponent.active.add_move("terablast")
+        self.battle.opponent.active.moves_used_since_switch_in.add("terablast")
+        self.battle.opponent.active.boosts[constants.SPECIAL_ATTACK] = 2
+
+        self.battle.user.last_used_move = LastUsedMove("weedle", "psychic", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Gyarados",
+        ]
+        immune(self.battle, split_msg)
+
+        self.assertEqual("gyarados", self.battle.opponent.active.name)
+        self.assertEqual(0, len(self.battle.opponent.reserve))
+
+    def test_gen5_does_not_infer_zoroark_hisui(self):
+        self.battle.battle_type = constants.RANDOM_BATTLE
+        self.battle.generation = "gen5"
+        RandomBattleTeamDatasets.initialize("gen5")
+        self.battle.opponent.reserve = []
+
+        self.battle.opponent.active = Pokemon("gyarados", 100)
+        self.battle.opponent.active.add_move("terablast")
+        self.battle.opponent.active.moves_used_since_switch_in.add("terablast")
+        self.battle.opponent.active.boosts[constants.SPECIAL_ATTACK] = 2
+
+        self.battle.user.last_used_move = LastUsedMove("weedle", "tackle", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Gyarados",
+        ]
+        immune(self.battle, split_msg)
+
+        self.assertEqual("gyarados", self.battle.opponent.active.name)
+        self.assertEqual(0, len(self.battle.opponent.reserve))
+
     def test_does_not_infer_zoroark_if_pkmn_terastallized_to_gain_immunity(self):
         self.battle.battle_type = constants.RANDOM_BATTLE
         self.battle.generation = "gen9"
