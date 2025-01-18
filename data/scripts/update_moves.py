@@ -259,7 +259,7 @@ moves_dict["recharge"] = {
     "basePower": 0,
     "category": "status",
     "flags": {},
-    "id": "nothing",
+    "id": "recharge",
     "name": "Recharge",
     "pp": 40,
     "priority": 0,
