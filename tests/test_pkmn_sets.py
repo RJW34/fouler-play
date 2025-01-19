@@ -1,6 +1,7 @@
 import unittest
 
 from data.pkmn_sets import TeamDatasets, SmogonSets
+from fp.battle import Pokemon
 
 
 class TestTeamDatasets(unittest.TestCase):
@@ -95,3 +96,57 @@ class TestSmogonDatasets(unittest.TestCase):
         self.assertNotEqual(initial_len, len_after_pop)
         SmogonSets.add_new_pokemon("azelf")
         self.assertEqual(len_after_pop, len(SmogonSets.pkmn_sets["dragonite"]))
+
+
+class TestPredictSet(unittest.TestCase):
+    def setUp(self):
+        TeamDatasets.__init__()
+
+    def test_uses_removed_item_when_predicting_set(self):
+        TeamDatasets.initialize(
+            "gen9battlefactory", {"gholdengo"}, battle_factory_tier_name="ou"
+        )
+
+        pkmn = Pokemon("gholdengo", 100)
+
+        all_sets = TeamDatasets.get_all_remaining_sets(pkmn)
+        all_sets_have_airballoon = all(
+            set_.pkmn_set.item == "airballoon" for set_ in all_sets
+        )
+        self.assertFalse(all_sets_have_airballoon)
+
+        pkmn.item = None
+        pkmn.removed_item = "airballoon"
+
+        sets_after_removed_item = TeamDatasets.get_all_remaining_sets(pkmn)
+
+        all_sets_have_airballoon = all(
+            set_.pkmn_set.item == "airballoon" for set_ in sets_after_removed_item
+        )
+        self.assertTrue(all_sets_have_airballoon)
+
+    def test_does_not_predict_set_when_there_is_no_removed_item(self):
+        TeamDatasets.initialize(
+            "gen9battlefactory", {"gholdengo"}, battle_factory_tier_name="ou"
+        )
+
+        pkmn = Pokemon("gholdengo", 100)
+        pkmn.item = None
+
+        sets_after_removed_item = TeamDatasets.get_all_remaining_sets(pkmn)
+        self.assertEqual(0, len(sets_after_removed_item))
+
+    def test_does_predict_set_when_there_is_no_removed_item_but_match_traits_is_off(
+        self,
+    ):
+        TeamDatasets.initialize(
+            "gen9battlefactory", {"gholdengo"}, battle_factory_tier_name="ou"
+        )
+
+        pkmn = Pokemon("gholdengo", 100)
+        pkmn.item = None
+
+        sets_after_removed_item = TeamDatasets.get_all_remaining_sets(
+            pkmn, match_traits=False
+        )
+        self.assertNotEqual(0, len(sets_after_removed_item))

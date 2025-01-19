@@ -499,6 +499,7 @@ class Pokemon:
         self.ability = None
         self.types = pokedex[self.name][constants.TYPES]
         self.item = constants.UNKNOWN_ITEM
+        self.removed_item = None
         self.unknown_forme = False
 
         self.moves_used_since_switch_in = set()

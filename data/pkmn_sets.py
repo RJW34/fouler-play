@@ -77,6 +77,10 @@ class PredictedPokemonSet:
     def item_check(self, pkmn: Pokemon) -> bool:
         if pkmn.item == self.pkmn_set.item:
             return True
+        elif pkmn.item is None and pkmn.removed_item == self.pkmn_set.item:
+            return True
+        elif pkmn.item is None and pkmn.removed_item is None:
+            return False
         if self.pkmn_set.item in pkmn.impossible_items:
             return False
         elif (
@@ -85,7 +89,7 @@ class PredictedPokemonSet:
         ):
             return False
         else:
-            return pkmn.item is None or pkmn.item == constants.UNKNOWN_ITEM
+            return pkmn.item == constants.UNKNOWN_ITEM
 
     def moveset_makes_sense(self):
         has_hiddenpower = False

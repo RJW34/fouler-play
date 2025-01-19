@@ -21,6 +21,7 @@ from fp.battle_modifier import (
     drag,
     switch,
     clearboost,
+    remove_item,
 )
 from fp.battle_modifier import terastallize
 from fp.battle_modifier import activate
@@ -4861,6 +4862,38 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
 
         self.assertNotEqual("heavydutyboots", self.battle.opponent.active.item)
         self.assertNotIn("heavydutyboots", self.battle.opponent.active.impossible_items)
+
+
+class TestRemoveItem(unittest.TestCase):
+    def setUp(self):
+        self.battle = Battle(None)
+        self.battle.user.name = "p1"
+        self.battle.opponent.name = "p2"
+
+        self.opponent_active = Pokemon("caterpie", 100)
+        self.battle.opponent.active = self.opponent_active
+        self.battle.opponent.active.ability = None
+
+        self.user_active = Pokemon("weedle", 100)
+        self.battle.user.active = self.user_active
+
+        self.username = "CoolUsername"
+
+        self.battle.username = self.username
+
+    def test_basic_removes_item(self):
+        self.battle.opponent.active.item = "airballoon"
+        split_msg = ["", "-enditem", "p2a: Caterpie", "Air Balloon"]
+
+        remove_item(self.battle, split_msg)
+        self.assertEqual(None, self.battle.opponent.active.item)
+
+    def test_sets_removed_item_when_item_ends(self):
+        self.battle.opponent.active.item = "airballoon"
+        split_msg = ["", "-enditem", "p2a: Caterpie", "Air Balloon"]
+
+        remove_item(self.battle, split_msg)
+        self.assertEqual("airballoon", self.battle.opponent.active.removed_item)
 
 
 class TestImmune(unittest.TestCase):

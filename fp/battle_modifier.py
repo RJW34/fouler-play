@@ -1373,8 +1373,13 @@ def remove_item(battle, split_msg):
     else:
         side = battle.user
 
-    logger.info("Removing {}'s item".format(side.active.name))
+    item = normalize_name(split_msg[3].strip())
+
+    logger.info("Removing {}'s item: {}".format(side.active.name, item))
     side.active.item = None
+
+    if side.active.removed_item is None:
+        side.active.removed_item = item
 
     if len(split_msg) >= 5 and "knockoff" in normalize_name(split_msg[4]):
         logger.info("Knockoff removed {}'s item".format(side.active.name))
