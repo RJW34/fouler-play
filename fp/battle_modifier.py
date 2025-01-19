@@ -363,6 +363,7 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
                     side.active.name, side.active.hp, side.active.max_hp
                 )
             )
+
     if side_name == "user" and user_just_switched_into_zoroark(battle, switch_or_drag):
         logger.info(
             "User switched/dragged into Zoroark - replacing the split_msg pokemon"
@@ -442,6 +443,13 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
         side.reserve.append(side.active)
 
     side.active = pkmn
+
+    # zacian-crowned is technically still zacian before switching in for the first time
+    # this is handled by set-prediction for the opponent, but for the bot's pkmn we
+    # need to re-apply the stats that the P.S. server sends us because prior to the first
+    # switch-in the stats would be for zacian, not zacian-crowned
+    if side_name == "user" and pkmn.name in ["zaciancrowned", "zamazentacrowned"]:
+        battle.user.re_initialize_active_pokemon_from_request_json(battle.request_json)
 
     if baton_passed_boosts is not None:
         logger.info(

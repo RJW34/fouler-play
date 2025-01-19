@@ -262,6 +262,55 @@ class TestSwitchOrDrag(unittest.TestCase):
         self.battle.opponent.active = self.opponent_active
         self.battle.opponent.reserve = []
 
+    def test_user_switching_in_zaciancrowned_properly_re_initializes_stats(self):
+        self.battle.request_json = {
+            "active": [],
+            "side": {
+                "pokemon": [
+                    {
+                        "ident": "p1: Zacian",
+                        "details": "Zacian-Crowned",
+                        "condition": "211/325",
+                        "active": True,
+                        "stats": {
+                            "atk": 399,
+                            "def": 267,
+                            "spa": 176,
+                            "spd": 266,
+                            "spe": 434,
+                        },
+                        "moves": [
+                            "behemothblade",
+                            "swordsdance",
+                            "wildcharge",
+                            "closecombat",
+                        ],
+                        "baseAbility": "intrepidsword",
+                        "item": "rustedsword",
+                        "pokeball": "pokeball",
+                        "ability": "intrepidsword",
+                        "commanding": False,
+                        "reviving": False,
+                        "teraType": "Flying",
+                        "terastallized": "",
+                    }
+                ]
+            },
+        }
+        self.battle.user.active = Pokemon("weedle", 100)
+        zacian_crowned_reserve = Pokemon("zaciancrowned", 100)
+        zacian_crowned_reserve.stats = {
+            constants.ATTACK: 359,  # should be replaced with 399
+            constants.DEFENSE: 267,
+            constants.SPECIAL_ATTACK: 176,
+            constants.SPECIAL_DEFENSE: 266,
+            constants.SPEED: 434,
+        }
+        self.battle.user.reserve = [zacian_crowned_reserve]
+        split_msg = ["", "switch", "p1a: Zacian", "Zacian-Crowned", "211/325"]
+        switch_or_drag(self.battle, split_msg)
+        self.assertEqual(399, self.battle.user.active.stats[constants.ATTACK])
+
     def test_switch_properly_switches_zoroark_for_user_when_last_selected_move_was_zoroark(
         self,
     ):
