@@ -263,6 +263,17 @@ class TestSwitchOrDrag(unittest.TestCase):
         self.battle.opponent.active = self.opponent_active
         self.battle.opponent.reserve = []
 
+    def test_cramorantgulping_reverts_to_cramorant_in_switchout(self):
+        self.battle.opponent.active.name = "cramorantgulping"
+        split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]
+        switch_or_drag(self.battle, split_msg)
+
+        self.assertEqual("caterpie", self.battle.opponent.active.name)
+        self.assertIn("cramorant", [p.name for p in self.battle.opponent.reserve])
+        self.assertNotIn(
+            "cramorantgulping", [p.name for p in self.battle.opponent.reserve]
+        )
+
     def test_user_switching_in_zaciancrowned_properly_re_initializes_stats(self):
         self.battle.request_json = {
             "active": [],

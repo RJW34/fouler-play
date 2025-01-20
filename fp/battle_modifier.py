@@ -364,6 +364,12 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
                 )
             )
 
+        if side.active.name in ["cramorantgulping", "cramorantgorging"]:
+            logger.info(
+                "Resetting {} to 'cramorant' on switch out".format(side.active.name)
+            )
+            side.active.name = "cramorant"
+
     if side_name == "user" and user_just_switched_into_zoroark(battle, switch_or_drag):
         logger.info(
             "User switched/dragged into Zoroark - replacing the split_msg pokemon"
