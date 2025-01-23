@@ -458,7 +458,7 @@ class _TeamDatasets(PokemonSets):
                 pkmn,
                 match_ability=match_traits,
                 match_item=match_traits,
-                speed_check=True,
+                speed_check=match_traits,
             ):
                 remaining_sets.append(pkmn_set)
 
