@@ -102,6 +102,56 @@ class TestPredictSet(unittest.TestCase):
     def setUp(self):
         TeamDatasets.__init__()
 
+    def test_omits_impossible_ability_when_predicting_set(self):
+        TeamDatasets.initialize(
+            "gen9battlefactory", {"krookodile"}, battle_factory_tier_name="ru"
+        )
+
+        pkmn = Pokemon("krookodile", 100)
+        pkmn.ability = None
+
+        all_sets = TeamDatasets.get_all_remaining_sets(pkmn)
+        any_set_has_intimidate = any(
+            set_.pkmn_set.ability == "intimidate" for set_ in all_sets
+        )
+        self.assertTrue(
+            any_set_has_intimidate
+        )  # Intimidate is possible before adding it to impossible_abilities
+
+        pkmn.impossible_abilities.add("intimidate")
+
+        all_sets = TeamDatasets.get_all_remaining_sets(pkmn)
+        any_set_has_intimidate = any(
+            set_.pkmn_set.ability == "intimidate" for set_ in all_sets
+        )
+        self.assertFalse(any_set_has_intimidate)
+
+    def test_omits_impossible_ability_when_predicting_set(self):
+        TeamDatasets.initialize(
+            "gen9battlefactory", {"krookodile"}, battle_factory_tier_name="ru"
+        )
+
+        pkmn = Pokemon("krookodile", 100)
+        pkmn.ability = None
+
+        all_sets = TeamDatasets.get_all_remaining_sets(pkmn)
+        any_set_has_intimidate = any(
+            set_.pkmn_set.ability == "intimidate" for set_ in all_sets
+        )
+        self.assertTrue(
+            any_set_has_intimidate
+        )  # Intimidate is possible before adding it to impossible_abilities
+
+        # this doesn't matter because the pkmn's ability is intimidate
+        pkmn.impossible_abilities.add("intimidate")
+        pkmn.ability = "intimidate"
+
+        all_sets = TeamDatasets.get_all_remaining_sets(pkmn)
+        any_set_has_intimidate = any(
+            set_.pkmn_set.ability == "intimidate" for set_ in all_sets
+        )
+        self.assertTrue(any_set_has_intimidate)  # this is True because intimidate is the ability
+
     def test_uses_removed_item_when_predicting_set(self):
         TeamDatasets.initialize(
             "gen9battlefactory", {"gholdengo"}, battle_factory_tier_name="ou"

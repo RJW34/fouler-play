@@ -91,6 +91,14 @@ class PredictedPokemonSet:
         else:
             return pkmn.item == constants.UNKNOWN_ITEM
 
+    def ability_check(self, pkmn: Pokemon) -> bool:
+        if self.pkmn_set.ability == pkmn.ability:
+            return True
+        elif self.pkmn_set.ability in pkmn.impossible_abilities:
+            return False
+        else:
+            return pkmn.ability is None
+
     def moveset_makes_sense(self):
         has_hiddenpower = False
         for mv in self.pkmn_moveset.moves:
@@ -114,9 +122,7 @@ class PredictedPokemonSet:
     def predicted_set_makes_sense(
         self, pkmn: Pokemon, match_ability=True, match_item=True, speed_check=True
     ) -> bool:
-        ability_check = not match_ability or (
-            self.pkmn_set.ability == pkmn.ability or pkmn.ability is None
-        )
+        ability_check = not match_ability or self.ability_check(pkmn)
         item_check = not match_item or self.item_check(pkmn)
         speed_check = not speed_check or self.speed_check(pkmn)
         tera_check = True

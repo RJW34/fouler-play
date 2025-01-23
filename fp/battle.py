@@ -525,6 +525,7 @@ class Pokemon:
         self.item_inferred = False
         self.gen_3_consecutive_sleep_talks = 0
         self.impossible_items = set()
+        self.impossible_abilities = set()
 
     def forme_change(self, new_forme_switch_string):
         current_hp_percentage = self.hp / self.max_hp

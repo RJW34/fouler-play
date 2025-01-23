@@ -263,6 +263,13 @@ class TestSwitchOrDrag(unittest.TestCase):
         self.battle.opponent.active = self.opponent_active
         self.battle.opponent.reserve = []
 
+    def test_adds_intimidate_to_impossible_abilities_when_switching_in(self):
+        split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]
+        switch_or_drag(self.battle, split_msg)
+
+        self.assertEqual("caterpie", self.battle.opponent.active.name)
+        self.assertIn("intimidate", self.battle.opponent.active.impossible_abilities)
+
     def test_cramorantgulping_reverts_to_cramorant_in_switchout(self):
         self.battle.opponent.active.name = "cramorantgulping"
         split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]

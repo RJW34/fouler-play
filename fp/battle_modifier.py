@@ -457,6 +457,16 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
     if side_name == "user" and pkmn.name in ["zaciancrowned", "zamazentacrowned"]:
         battle.user.re_initialize_active_pokemon_from_request_json(battle.request_json)
 
+    # intimidate will reveal itself on switch-in
+    # this makes sure we don't guess intimidate as a possible ability
+    if "intimidate" not in pkmn.impossible_abilities:
+        logger.info(
+            "{} switched in, adding intimidate to impossible abilities".format(
+                pkmn.name
+            )
+        )
+        pkmn.impossible_abilities.add("intimidate")
+
     if baton_passed_boosts is not None:
         logger.info(
             "Applying baton passed boosts to {}: {}".format(
