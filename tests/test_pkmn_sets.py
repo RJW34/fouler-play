@@ -150,7 +150,9 @@ class TestPredictSet(unittest.TestCase):
         any_set_has_intimidate = any(
             set_.pkmn_set.ability == "intimidate" for set_ in all_sets
         )
-        self.assertTrue(any_set_has_intimidate)  # this is True because intimidate is the ability
+        self.assertTrue(
+            any_set_has_intimidate
+        )  # this is True because intimidate is the ability
 
     def test_uses_removed_item_when_predicting_set(self):
         TeamDatasets.initialize(
