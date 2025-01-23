@@ -126,7 +126,9 @@ class TestPredictSet(unittest.TestCase):
         )
         self.assertFalse(any_set_has_intimidate)
 
-    def test_omits_impossible_ability_when_predicting_set(self):
+    def test_allows_impossible_ability_when_predicting_set_if_ability_is_explicitly_set(
+        self,
+    ):
         TeamDatasets.initialize(
             "gen9battlefactory", {"krookodile"}, battle_factory_tier_name="ru"
         )
