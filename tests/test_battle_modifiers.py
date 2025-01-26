@@ -2686,6 +2686,29 @@ class TestIllusionEnd(unittest.TestCase):
 
         self.assertEqual("zoroark", self.battle.opponent.active.name)
 
+    def test_pkmn_disguised_as_gets_original_hp(self):
+        self.battle.opponent.active = Pokemon("meloetta", 100)
+        self.battle.opponent.active.hp = 50
+        self.battle.opponent.active.max_hp = 100
+        self.battle.opponent.active.hp_at_switch_in = 100
+        self.battle.opponent.reserve = []
+        split_msg = ["", "replace", "p2a: Zoroark", "Zoroark, L82, M"]
+        illusion_end(self.battle, split_msg)
+
+        self.assertEqual("meloetta", self.battle.opponent.reserve[0].name)
+        self.assertEqual(100, self.battle.opponent.reserve[0].hp)
+
+    def test_pkmn_disguised_as_gets_original_status(self):
+        self.battle.opponent.active = Pokemon("meloetta", 100)
+        self.battle.opponent.active.status = constants.PARALYZED
+        self.battle.opponent.active.status_at_switch_in = None
+        self.battle.opponent.reserve = []
+        split_msg = ["", "replace", "p2a: Zoroark", "Zoroark, L82, M"]
+        illusion_end(self.battle, split_msg)
+
+        self.assertEqual("meloetta", self.battle.opponent.reserve[0].name)
+        self.assertIsNone(self.battle.opponent.reserve[0].status)
+
     def test_zoroark_disguising_as_pokemon_results_in_that_pkmn_in_reserve(
         self,
     ):

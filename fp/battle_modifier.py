@@ -413,6 +413,14 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
             side.reserve.remove(unknown_forme_pkmn)
     else:
         pkmn.nickname = temp_pkmn.nickname
+
+        # Zoroark edge-case nonsense
+        # if this pokemon turns out to be zoroark it may have permanent conditions change that need to be un-done after
+        # finding out it is zoroark e.g. the HP value of this pokemon on switch-in is preserved so we can reset it if it
+        # turns out to be zoroark
+        pkmn.hp_at_switch_in = pkmn.hp
+        pkmn.status_at_switch_in = pkmn.status
+
         side.reserve.remove(pkmn)
 
     split_hp_msg = split_msg[4].split("/")
@@ -1594,7 +1602,7 @@ def illusion_end(battle, split_msg):
 
     if (
         is_opponent(battle, split_msg)
-        and side.active.name != "zoroark"
+        and side.active.name not in ["zoroark", "zoroarkhisui"]
         and side.active.zoroark_disguised_as is None
     ):
         logger.info("Illusion ending for opponent")
@@ -1626,6 +1634,35 @@ def illusion_end(battle, split_msg):
             pkmn_disguised_as.remove_move(mv)
             if side.active.get_move(mv) is None:
                 side.active.add_move(mv)
+
+        # the pokemon that we thought was active needs some attributes reset to
+        # whatever the values were at switch-in as any changes that happened to zoroark
+        # since switching in have not happened to the actual pokemon
+        if pkmn_disguised_as.hp_at_switch_in != pkmn_disguised_as.hp:
+            logger.info(
+                "Resetting {}'s HP {} to its value at switch-in: {}/{} ({}%)".format(
+                    pkmn_disguised_as.name,
+                    int(pkmn_disguised_as.hp),
+                    pkmn_disguised_as.hp_at_switch_in,
+                    pkmn_disguised_as.max_hp,
+                    round(
+                        100
+                        * pkmn_disguised_as.hp_at_switch_in
+                        / pkmn_disguised_as.max_hp,
+                        1,
+                    ),
+                )
+            )
+            pkmn_disguised_as.hp = pkmn_disguised_as.hp_at_switch_in
+        if pkmn_disguised_as.status_at_switch_in != pkmn_disguised_as.status:
+            logger.info(
+                "Resetting {}'s status {} to its value at switch-in: {}".format(
+                    pkmn_disguised_as.name,
+                    pkmn_disguised_as.status,
+                    pkmn_disguised_as.status_at_switch_in,
+                )
+            )
+            pkmn_disguised_as.status = pkmn_disguised_as.status_at_switch_in
 
         side.active.hp = hp_percent * side.active.max_hp
         side.active.boosts = previous_boosts

@@ -504,6 +504,8 @@ class Pokemon:
 
         self.moves_used_since_switch_in = set()
         self.zoroark_disguised_as = None
+        self.hp_at_switch_in = self.max_hp
+        self.status_at_switch_in = None
         self.terastallized = False
         self.tera_type = None
         self.original_ability = None
