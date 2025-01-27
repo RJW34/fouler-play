@@ -992,6 +992,15 @@ def activate(battle, split_msg):
         logger.info("Setting {}'s item to {}".format(pkmn.name, item))
         pkmn.item = item
 
+    if split_msg[3].lower().startswith("move: "):
+        move_name = normalize_name(split_msg[3].split(":")[-1].strip())
+        if (
+            move_name in all_move_json
+            and all_move_json[move_name].get("volatileStatus") == "partiallytrapped"
+        ):
+            logger.info("{} was partially trapped by {}".format(pkmn.name, move_name))
+            pkmn.volatile_statuses.append("partiallytrapped")
+
 
 def anim(battle, split_msg):
     if is_opponent(battle, split_msg):
@@ -1139,6 +1148,8 @@ def end_volatile_status(battle, split_msg):
             if vs.startswith(volatile_status):
                 logger.info("Removing {} from {}".format(vs, pkmn.name))
                 pkmn.volatile_statuses.remove(vs)
+    elif len(split_msg) >= 5 and "partiallytrapped" in split_msg[4]:
+        remove_volatile(pkmn, "partiallytrapped")
     elif volatile_status not in pkmn.volatile_statuses:
         logger.warning(
             "Pokemon '{}' does not have the volatile status '{}'".format(

@@ -1025,6 +1025,42 @@ class TestActivate(unittest.TestCase):
         self.battle.opponent.active = self.opponent_active
         self.battle.user.active = self.user_active
 
+    def test_activating_partially_trapped_whirlpool(self):
+        split_msg = [
+            "",
+            "-activate",
+            "p2a: Caterpie",
+            "move: Whirlpool",
+            "[of] p1a: Luvdisc",
+        ]
+        activate(self.battle, split_msg)
+        self.assertIn("partiallytrapped", self.battle.opponent.active.volatile_statuses)
+
+    def test_activating_partially_trapped_magmastorm(self):
+        split_msg = [
+            "",
+            "-activate",
+            "p2a: Caterpie",
+            "move: Magma Storm",
+            "[of] p1a: Luvdisc",
+        ]
+        activate(self.battle, split_msg)
+        self.assertIn("partiallytrapped", self.battle.opponent.active.volatile_statuses)
+
+    def test_does_not_activate_partiallytrapped_when_not_a_partiallytrapping_move(self):
+        # this isn't something that would cause an `-activate`, but just to make sure the logic is correct
+        split_msg = [
+            "",
+            "-activate",
+            "p2a: Caterpie",
+            "move: Tackle",
+            "[of] p1a: Luvdisc",
+        ]
+        activate(self.battle, split_msg)
+        self.assertNotIn(
+            "partiallytrapped", self.battle.opponent.active.volatile_statuses
+        )
+
     def test_sets_item_when_poltergeist_activates(self):
         split_msg = [
             "",
@@ -2469,6 +2505,27 @@ class TestEndVolatileStatus(unittest.TestCase):
 
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
+
+    def test_removes_partiallytrapped(self):
+        self.battle.opponent.active.volatile_statuses = ["partiallytrapped"]
+        split_msg = ["", "-end", "p2a: Caterpie", "whirlpool", "[partiallytrapped]"]
+        end_volatile_status(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+
+    def test_removes_partiallytrapped_silent(self):
+        self.battle.opponent.active.volatile_statuses = ["partiallytrapped"]
+        split_msg = [
+            "",
+            "-end",
+            "p2a: Caterpie",
+            "whirlpool",
+            "[partiallytrapped]",
+            "[silent]",
+        ]
+        end_volatile_status(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
 
     def test_removes_volatile_status_from_opponent(self):
         self.battle.opponent.active.volatile_statuses = ["encore"]
