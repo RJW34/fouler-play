@@ -47,11 +47,13 @@ def pokemon_to_poke_engine_pkmn(pkmn: Pokemon):
     if pkmn.knocked_off or pkmn.item == "" or pkmn.item is None:
         pkmn.item = "None"
 
+    base_types = pokedex[str(pkmn.name)][constants.TYPES]
     num_moves = len(pkmn.moves)
     p = PokeEnginePokemon(
         id=str(pkmn.name),
         level=pkmn.level,
         types=pkmn.types,
+        base_types=base_types,
         hp=int(pkmn.hp),
         maxhp=int(pkmn.max_hp),
         ability=str(pkmn.ability),
@@ -74,9 +76,6 @@ def pokemon_to_poke_engine_pkmn(pkmn: Pokemon):
         tera_type=pkmn.tera_type or "typeless",
         terastallized=pkmn.terastallized,
     )
-
-    if len(pkmn.types) == 1:
-        pkmn.types = (pkmn.types[0], "typeless")
 
     while num_moves < 6:
         p.moves.append(PokeEngineMove(id="none", disabled=True, pp=0))
