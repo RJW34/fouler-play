@@ -724,7 +724,8 @@ def move(battle, split_msg):
                 )
             )
         return
-    elif "[from]" in split_msg[-1] and split_msg[-1] != "[from]lockedmove":
+
+    elif any("[from]" in msg and msg != "[from]lockedmove" for msg in split_msg):
         return
 
     if "destinybond" in pkmn.volatile_statuses:

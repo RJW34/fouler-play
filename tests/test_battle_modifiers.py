@@ -1452,8 +1452,24 @@ class TestMove(unittest.TestCase):
         move(self.battle, split_msg)
         self.assertIn("truant", self.battle.opponent.active.volatile_statuses)
 
-    def test_does_not_set_move_for_magicbounch(self):
+    def test_does_not_set_move_for_magicbounce(self):
         split_msg = ["", "move", "p2a: Caterpie", "String Shot", "[from]Magic Bounce"]
+
+        move(self.battle, split_msg)
+        m = Move("String Shot")
+
+        self.assertNotIn(m, self.battle.opponent.active.moves)
+
+    def test_does_not_set_move_for_magicbounce_when_still(self):
+        # |move|p2a: Espeon|Leech Seed||[from] ability: Magic Bounce|[still]
+        split_msg = [
+            "",
+            "move",
+            "p2a: Caterpie",
+            "String Shot",
+            "[from]Magic Bounce",
+            "[still]",
+        ]
 
         move(self.battle, split_msg)
         m = Move("String Shot")
