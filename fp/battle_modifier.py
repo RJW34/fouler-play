@@ -262,7 +262,10 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
             )
             side.active.types = original_types
 
-        if side.active.original_ability is not None:
+        if (
+            side.active.original_ability is not None
+            and side.active.ability != side.active.original_ability
+        ):
             logger.info(
                 "{}'s ability was modified to {} - setting it back to {} on switch-out".format(
                     side.active.name, side.active.ability, side.active.original_ability
@@ -1597,11 +1600,28 @@ def _switch_active_with_zoroark_from_reserves(
 def set_opponent_ability_from_ability_tag(battle, split_msg):
     if is_opponent(battle, split_msg):
         side = battle.opponent
+        other_side = battle.user
     else:
         side = battle.user
+        other_side = battle.opponent
 
     ability = normalize_name(split_msg[3])
     logger.info("Setting {}'s ability to {}".format(side.active.name, ability))
+    if len(split_msg) >= 6 and "ability:" in split_msg[4]:
+        original_ability = normalize_name(split_msg[4].split(":")[-1])
+        logger.info(
+            "Setting {}'s original ability to {}".format(
+                side.active.name, original_ability
+            )
+        )
+        side.active.original_ability = original_ability
+
+        if split_msg[5].startswith("[of]") and other_side.name in split_msg[5]:
+            logger.info(
+                "Setting {}'s ability to {}".format(other_side.active.name, ability)
+            )
+            other_side.active.ability = ability
+
     side.active.ability = ability
 
 

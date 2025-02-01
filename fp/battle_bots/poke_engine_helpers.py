@@ -57,6 +57,7 @@ def pokemon_to_poke_engine_pkmn(pkmn: Pokemon):
         hp=int(pkmn.hp),
         maxhp=int(pkmn.max_hp),
         ability=str(pkmn.ability),
+        base_ability=pkmn.original_ability,
         item=str(pkmn.item),
         nature=pkmn.nature,
         evs=tuple(pkmn.evs),

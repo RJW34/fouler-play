@@ -425,6 +425,15 @@ class TestSwitchOrDrag(unittest.TestCase):
 
         self.assertEqual(["bug"], active.types)
 
+    def test_switch_properly_resets_ability_when_pkmn_had_ability_changed(self):
+        self.battle.opponent.active.ability = "lingeringarmoa"
+        self.battle.opponent.active.original_ability = "intimidate"
+        active = self.battle.opponent.active
+        split_msg = ["", "switch", "p2a: weedle", "Weedle, L100, M", "100/100"]
+        switch_or_drag(self.battle, split_msg)
+
+        self.assertEqual("intimidate", active.ability)
+
     def test_increments_rest_turns_by_consequtive_sleeptalks(self):
         self.battle.generation = "gen3"
         active = self.battle.opponent.active
@@ -1024,6 +1033,28 @@ class TestActivate(unittest.TestCase):
 
         self.battle.opponent.active = self.opponent_active
         self.battle.user.active = self.user_active
+
+    def test_lingeringarmoa_activating_to_change_abilities(self):
+        self.battle.user.active.ability = "intimidate"
+        self.battle.opponent.active.ability = (
+            None  # lets say ability is unknown beforehand
+        )
+        split_msg = [
+            "",
+            "-activate",
+            "p2a: Caterpie",
+            "ability: Lingering Aroma",
+            "Intimidate",
+            "[of] p1a: Caterpie",
+        ]
+        activate(self.battle, split_msg)
+
+        # sets ability but retains original ability
+        self.assertEqual("lingeringaroma", self.battle.user.active.ability)
+        self.assertEqual("intimidate", self.battle.user.active.original_ability)
+
+        # sets ability on the other pkmn
+        self.assertEqual("lingeringaroma", self.battle.opponent.active.ability)
 
     def test_activating_partially_trapped_whirlpool(self):
         split_msg = [
@@ -2609,6 +2640,64 @@ class TestUpdateAbility(unittest.TestCase):
 
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
+
+    def test_sets_original_ability_from_trace(self):
+        self.battle.user.active.ability = "intimidate"
+        self.battle.opponent.active.ability = None
+
+        split_msg = [
+            "",
+            "-ability",
+            "p2a: Caterpie",
+            "Intimidate",
+            "[from] ability: Trace",
+            "[of] p1a: Caterpie",
+        ]
+        set_opponent_ability_from_ability_tag(self.battle, split_msg)
+
+        self.assertEqual("intimidate", self.battle.opponent.active.ability)
+        self.assertEqual("trace", self.battle.opponent.active.original_ability)
+
+    def test_sets_original_ability_from_trace_with_intimidate(self):
+        self.battle.user.active.ability = "intimidate"
+        self.battle.opponent.active.ability = None
+
+        # PS protocol sends 2 `-ability` messages here so just make sure everything is set properly
+        split_msg_1 = ["", "-ability", "p2a: Caterpie", "Intimidate", "boost"]
+        split_msg_2 = [
+            "",
+            "-ability",
+            "p2a: Caterpie",
+            "Intimidate",
+            "[from] ability: Trace",
+            "[of] p1a: Caterpie",
+        ]
+        set_opponent_ability_from_ability_tag(self.battle, split_msg_1)
+        set_opponent_ability_from_ability_tag(self.battle, split_msg_2)
+
+        self.assertEqual("intimidate", self.battle.opponent.active.ability)
+        self.assertEqual("trace", self.battle.opponent.active.original_ability)
+
+    def test_sets_original_ability_from_trace_with_intimidate_for_bot(self):
+        self.battle.user.active.ability = "trace"
+        self.battle.opponent.active.ability = None
+
+        # PS protocol sends 2 `-ability` messages here so just make sure everything is set properly
+        split_msg_1 = ["", "-ability", "p1a: Caterpie", "Intimidate", "boost"]
+        split_msg_2 = [
+            "",
+            "-ability",
+            "p1a: Caterpie",
+            "Intimidate",
+            "[from] ability: Trace",
+            "[of] p2a: Caterpie",
+        ]
+        set_opponent_ability_from_ability_tag(self.battle, split_msg_1)
+        set_opponent_ability_from_ability_tag(self.battle, split_msg_2)
+
+        self.assertEqual("intimidate", self.battle.opponent.active.ability)
+        self.assertEqual("trace", self.battle.user.active.original_ability)
+        self.assertEqual("intimidate", self.battle.user.active.ability)
 
     def test_update_ability_from_ability_string_properly_updates_ability(self):
         split_msg = ["", "-ability", "p2a: Caterpie", "Lightning Rod", "boost"]
