@@ -78,7 +78,7 @@ def pokemon_to_poke_engine_pkmn(pkmn: Pokemon):
         terastallized=pkmn.terastallized,
     )
 
-    while num_moves < 6:
+    while num_moves < 4:
         p.moves.append(PokeEngineMove(id="none", disabled=True, pp=0))
         num_moves += 1
 
