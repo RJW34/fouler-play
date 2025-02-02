@@ -2805,7 +2805,7 @@ def update_battle(battle, msg):
         if action == "turn":
             return True
 
-    if action in ["inactive", "updatesearch"]:
+    if action in ["inactive", "updatesearch", "c"]:
         return False
 
     if action != "request":
