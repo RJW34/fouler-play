@@ -41,7 +41,7 @@ from fp.battle_modifier import curestatus
 from fp.battle_modifier import start_volatile_status
 from fp.battle_modifier import end_volatile_status
 from fp.battle_modifier import immune
-from fp.battle_modifier import set_opponent_ability_from_ability_tag
+from fp.battle_modifier import update_ability
 from fp.battle_modifier import form_change
 from fp.battle_modifier import zpower
 from fp.battle_modifier import clearnegativeboost
@@ -2657,6 +2657,34 @@ class TestUpdateAbility(unittest.TestCase):
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
 
+    def test_sets_as_one_spectrier(self):
+        self.battle.opponent.active.name = "calyrexshadow"
+        split_msg = ["", "-ability", "p2a: Calyrex", "As One"]
+        update_ability(self.battle, split_msg)
+        self.assertEqual("asonespectrier", self.battle.opponent.active.ability)
+
+    def test_sets_as_one_glastrier(self):
+        self.battle.opponent.active.name = "calyrexice"
+        split_msg = ["", "-ability", "p2a: Calyrex", "As One"]
+        update_ability(self.battle, split_msg)
+        self.assertEqual("asoneglastrier", self.battle.opponent.active.ability)
+
+    def test_does_not_update_asoneglastrier_to_unnerve(self):
+        self.battle.opponent.active.name = "calyrexice"
+        split_msg = ["", "-ability", "p2a: Calyrex", "As One"]
+        update_ability(self.battle, split_msg)
+        split_msg = ["", "-ability", "p2a: Calyrex", "Unnerve"]
+        update_ability(self.battle, split_msg)
+        self.assertEqual("asoneglastrier", self.battle.opponent.active.ability)
+
+    def test_does_not_update_asonespectrier_to_unnerve(self):
+        self.battle.opponent.active.name = "calyrexshadow"
+        split_msg = ["", "-ability", "p2a: Calyrex", "As One"]
+        update_ability(self.battle, split_msg)
+        split_msg = ["", "-ability", "p2a: Calyrex", "Unnerve"]
+        update_ability(self.battle, split_msg)
+        self.assertEqual("asonespectrier", self.battle.opponent.active.ability)
+
     def test_sets_original_ability_from_trace(self):
         self.battle.user.active.ability = "intimidate"
         self.battle.opponent.active.ability = None
@@ -2669,7 +2697,7 @@ class TestUpdateAbility(unittest.TestCase):
             "[from] ability: Trace",
             "[of] p1a: Caterpie",
         ]
-        set_opponent_ability_from_ability_tag(self.battle, split_msg)
+        update_ability(self.battle, split_msg)
 
         self.assertEqual("intimidate", self.battle.opponent.active.ability)
         self.assertEqual("trace", self.battle.opponent.active.original_ability)
@@ -2688,8 +2716,8 @@ class TestUpdateAbility(unittest.TestCase):
             "[from] ability: Trace",
             "[of] p1a: Caterpie",
         ]
-        set_opponent_ability_from_ability_tag(self.battle, split_msg_1)
-        set_opponent_ability_from_ability_tag(self.battle, split_msg_2)
+        update_ability(self.battle, split_msg_1)
+        update_ability(self.battle, split_msg_2)
 
         self.assertEqual("intimidate", self.battle.opponent.active.ability)
         self.assertEqual("trace", self.battle.opponent.active.original_ability)
@@ -2708,8 +2736,8 @@ class TestUpdateAbility(unittest.TestCase):
             "[from] ability: Trace",
             "[of] p2a: Caterpie",
         ]
-        set_opponent_ability_from_ability_tag(self.battle, split_msg_1)
-        set_opponent_ability_from_ability_tag(self.battle, split_msg_2)
+        update_ability(self.battle, split_msg_1)
+        update_ability(self.battle, split_msg_2)
 
         self.assertEqual("intimidate", self.battle.opponent.active.ability)
         self.assertEqual("trace", self.battle.user.active.original_ability)
@@ -2717,7 +2745,7 @@ class TestUpdateAbility(unittest.TestCase):
 
     def test_update_ability_from_ability_string_properly_updates_ability(self):
         split_msg = ["", "-ability", "p2a: Caterpie", "Lightning Rod", "boost"]
-        set_opponent_ability_from_ability_tag(self.battle, split_msg)
+        update_ability(self.battle, split_msg)
 
         expected_ability = "lightningrod"
 
@@ -2725,7 +2753,7 @@ class TestUpdateAbility(unittest.TestCase):
 
     def test_update_ability_from_ability_string_properly_updates_ability_for_bot(self):
         split_msg = ["", "-ability", "p1a: Caterpie", "Lightning Rod", "boost"]
-        set_opponent_ability_from_ability_tag(self.battle, split_msg)
+        update_ability(self.battle, split_msg)
 
         expected_ability = "lightningrod"
 

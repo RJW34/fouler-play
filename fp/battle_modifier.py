@@ -1598,7 +1598,7 @@ def _switch_active_with_zoroark_from_reserves(
     opponent_side.reserve.remove(zoroark_from_reserves)
 
 
-def set_opponent_ability_from_ability_tag(battle, split_msg):
+def update_ability(battle, split_msg):
     if is_opponent(battle, split_msg):
         side = battle.opponent
         other_side = battle.user
@@ -1607,7 +1607,6 @@ def set_opponent_ability_from_ability_tag(battle, split_msg):
         other_side = battle.opponent
 
     ability = normalize_name(split_msg[3])
-    logger.info("Setting {}'s ability to {}".format(side.active.name, ability))
     if len(split_msg) >= 6 and "ability:" in split_msg[4]:
         original_ability = normalize_name(split_msg[4].split(":")[-1])
         logger.info(
@@ -1622,7 +1621,27 @@ def set_opponent_ability_from_ability_tag(battle, split_msg):
                 "Setting {}'s ability to {}".format(other_side.active.name, ability)
             )
             other_side.active.ability = ability
+    elif ability == "asone":
+        if side.active.name == "calyrexice":
+            ability = "asoneglastrier"
+        elif side.active.name == "calyrexshadow":
+            ability = "asonespectrier"
+        else:
+            logger.warning(
+                "Unknown asone ability for {} - defaulting to asoneglastrier".format(
+                    side.active.name
+                )
+            )
+            ability = "asoneglastrier"
+    elif side.active.ability in ["asoneglastrier", "asonespectrier"]:
+        logger.info(
+            "{} has the ability {}, will not change to {}".format(
+                side.active.name, side.active.ability, ability
+            )
+        )
+        ability = side.active.ability
 
+    logger.info("Setting {}'s ability to {}".format(side.active.name, ability))
     side.active.ability = ability
 
 
@@ -2761,7 +2780,7 @@ def update_battle(battle, msg):
             "-item": set_item,
             "-enditem": remove_item,
             "-immune": immune,
-            "-ability": set_opponent_ability_from_ability_tag,
+            "-ability": update_ability,
             "detailschange": form_change,
             "replace": illusion_end,
             "-formechange": form_change,
