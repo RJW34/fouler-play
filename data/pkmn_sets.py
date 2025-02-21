@@ -207,6 +207,11 @@ class PokemonSets(ABC):
             if pkmn_base_species in d:
                 return d[pkmn_base_species]
 
+        if pkmn_name in pokedex and "name" in pokedex[pkmn_name]:
+            pkmn_non_cosmetic_name = normalize_name(pokedex[pkmn_name]["name"])
+            if pkmn_non_cosmetic_name in d:
+                return d[pkmn_non_cosmetic_name]
+
         logger.warning("Could not find key in dict for {}".format(pkmn_name))
         return []
 
