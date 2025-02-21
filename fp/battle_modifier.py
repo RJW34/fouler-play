@@ -640,6 +640,7 @@ def move(battle, split_msg):
     if (
         is_opponent(battle, split_msg)
         and zoroark_from_reserves is not None
+        and "transform" not in pkmn.volatile_statuses
         and battle.battle_type == constants.BATTLE_FACTORY
         and move_name not in TeamDatasets.get_all_possible_moves(pkmn)
         and move_name in TeamDatasets.get_all_possible_moves(zoroark_from_reserves)
@@ -661,6 +662,7 @@ def move(battle, split_msg):
     if (
         is_opponent(battle, split_msg)
         and battle.battle_type == constants.RANDOM_BATTLE
+        and "transform" not in pkmn.volatile_statuses
         and move_name not in RandomBattleTeamDatasets.get_all_possible_moves(pkmn)
         and "from" not in split_msg[-1]
     ):
