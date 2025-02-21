@@ -5238,6 +5238,30 @@ class TestImmune(unittest.TestCase):
 
         self.battle.username = self.username
 
+    def test_randbats_does_not_infer_zoroark_from_tera_immunity_on_judgment(self):
+        self.battle.battle_type = constants.RANDOM_BATTLE
+        self.battle.generation = "gen9"
+        RandomBattleTeamDatasets.initialize("gen9")
+        self.battle.opponent.reserve = []
+
+        self.battle.opponent.active = Pokemon("enamorustherian", 83)
+        self.battle.opponent.active.tera_type = "ground"
+        self.battle.opponent.active.terastallized = True
+
+        self.battle.user.active = Pokemon("arceuselectric", 70)
+        self.battle.user.last_used_move = LastUsedMove("arceuselectric", "judgment", 0)
+        split_msg = [
+            "",
+            "-immune",
+            "p2a: Enamorus-Therian",
+        ]
+        immune(self.battle, split_msg)
+
+        # tera-type renders immune to electric-judgment
+        # make sure no zoroark-hisui is inferred here thinking judgment is a normal type
+        self.assertEqual("enamorustherian", self.battle.opponent.active.name)
+        self.assertEqual(0, len(self.battle.opponent.reserve))
+
     def test_randbats_infer_zoroark_from_immunity_when_in_reserves(self):
         self.battle.battle_type = constants.RANDOM_BATTLE
         self.battle.generation = "gen9"

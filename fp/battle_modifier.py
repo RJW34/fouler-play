@@ -30,7 +30,6 @@ from fp.battle import boost_multiplier_lookup
 
 logger = logging.getLogger(__name__)
 
-
 MOVE_END_STRINGS = {"move", "switch", "upkeep", "-miss", ""}
 ITEMS_REVEALED_ON_SWITCH_IN = [
     # boosterenergy technically only revealed if pkmn has quarkdrive/protosynthesis
@@ -1491,8 +1490,11 @@ def immune(battle, split_msg):
         "zoroark"
     ) or side.find_pokemon_in_reserves("zoroarkhisui")
 
+    expected_damage_rolls = poke_engine_get_damage_rolls(
+        deepcopy(battle), battle.user.last_used_move.move, "none", True
+    )
+
     # Zoroark checks
-    # FIXME: this does not deal with moves that change type. e.g. tera-blast
     if (
         is_opponent(battle, split_msg)
         and not side.active.name.startswith("zoroark")
@@ -1505,6 +1507,7 @@ def immune(battle, split_msg):
         )
         != 0
         and "from" not in split_msg[-1]
+        and not all(x == 0 for x in expected_damage_rolls[0])
         and battle.user.future_sight[0] != 1
         and not (
             side.active.terastallized
