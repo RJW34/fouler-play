@@ -2141,7 +2141,7 @@
         "secondary": null,
         "target": "all",
         "type": "ice",
-        "weather": "snow"
+        "weather": "snowscape"
     },
     "chipaway": {
         "accuracy": 100,
@@ -13956,7 +13956,7 @@
         "secondary": null,
         "target": "all",
         "type": "ice",
-        "weather": "snow"
+        "weather": "snowscape"
     },
     "soak": {
         "accuracy": 100,
