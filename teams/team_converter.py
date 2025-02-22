@@ -28,11 +28,12 @@ def json_to_packed(json_team):
 
 
 def single_pokemon_export_to_dict(pkmn_export_string):
-    def get_species(s):
+    def get_species_in_parentheses(s):
         if "(" in s and ")" in s:
             species = s[s.find("(") + 1 : s.find(")")]
-            return species
-        return None
+            nickname = s.replace(species, "").replace("()", "")
+            return species.strip(), nickname.strip()
+        return None, None
 
     pkmn_dict = {
         "name": "",
@@ -62,12 +63,13 @@ def single_pokemon_export_to_dict(pkmn_export_string):
     if "(F)" in name:
         pkmn_dict["gender"] = "F"
         name = name.replace("(F)", "")
-    species = get_species(name)
+    species, nickname = get_species_in_parentheses(name)
     if species:
-        pkmn_dict["species"] = normalize_name(species)
-        pkmn_dict["name"] = normalize_name(species)
+        pkmn_dict["species"] = species.strip()
+        pkmn_dict["name"] = nickname.strip()
     else:
-        pkmn_dict["name"] = normalize_name(name.strip())
+        pkmn_dict["name"] = name.strip()
+        pkmn_dict["species"] = name.strip()
     if "@" in pkmn_info[0]:
         pkmn_dict["item"] = normalize_name(pkmn_info[0].split("@")[1])
     for line in map(str.strip, pkmn_info[1:]):
