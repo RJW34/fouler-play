@@ -1843,9 +1843,13 @@ def singleturn(battle, split_msg):
 
     move_name = normalize_name(split_msg[3].split(":")[-1])
     if move_name in constants.PROTECT_VOLATILE_STATUSES:
-        # set to 2 because the `upkeep` function will decrement by 1 on every end-of-turn
-        side.side_conditions[constants.PROTECT] = 2
-        logger.info("{} used protect".format(side.active.name))
+        # increment by 2 because the `upkeep` function will decrement by 1 on every end-of-turn
+        side.side_conditions[constants.PROTECT] += 2
+        logger.info(
+            "{} used a protect move, set protect side condition to {}".format(
+                side.active.name, side.side_conditions[constants.PROTECT]
+            )
+        )
 
     # |-singleturn|p1a: Skarmory|move: Roost
     elif move_name == constants.ROOST:

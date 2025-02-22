@@ -3400,6 +3400,12 @@ class TestSingleTurn(unittest.TestCase):
 
         self.assertEqual(2, self.battle.opponent.side_conditions[constants.PROTECT])
 
+    def test_sets_protect_side_condition_when_endure_is_used(self):
+        split_msg = ["", "-singleturn", "p2a: Caterpie", "Endure"]
+        singleturn(self.battle, split_msg)
+
+        self.assertEqual(2, self.battle.opponent.side_conditions[constants.PROTECT])
+
     def test_does_not_set_for_non_protect_move(self):
         split_msg = ["", "-singleturn", "p2a: Caterpie", "Roost"]
         singleturn(self.battle, split_msg)

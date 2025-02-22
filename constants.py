@@ -207,6 +207,7 @@ ROOST = "roost"
 PROTECT = "protect"
 BANEFUL_BUNKER = "banefulbunker"
 SILK_TRAP = "silktrap"
+ENDURE = "endure"
 SPIKY_SHIELD = "spikyshield"
 DYNAMAX = "dynamax"
 TERASTALLIZE = "terastallize"
@@ -214,7 +215,7 @@ TRANSFORM = "transform"
 YAWN = "yawn"
 YAWN_SLEEP_THIS_TURN = "yawnsleepthisturn"
 
-PROTECT_VOLATILE_STATUSES = [PROTECT, BANEFUL_BUNKER, SPIKY_SHIELD, SILK_TRAP]
+PROTECT_VOLATILE_STATUSES = [PROTECT, BANEFUL_BUNKER, SPIKY_SHIELD, SILK_TRAP, ENDURE]
 
 # non-volatile statuses
 SLEEP = "slp"
