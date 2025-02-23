@@ -3842,6 +3842,37 @@ class TestCheckSpeedRanges(unittest.TestCase):
             },
         }
 
+    def test_recharging_makes_this_check_not_happen(self):
+        self.battle.user.active.stats[constants.SPEED] = 150
+        self.battle.opponent.active.stats[constants.SPEED] = 100
+        self.battle.user.last_selected_move = LastUsedMove("caterpie", "agility", 0)
+
+        messages = [
+            "|cant|p1a: Caterpie|recharge",
+            "|move|p2a: Pikachu|Tackle|p1a: Caterpie",
+            "|-damage|p1a: Caterpie|1/100",
+            "|upkeep",
+            "|turn|7",
+        ]
+        check_speed_ranges(self.battle, messages)
+        self.assertEqual(0, self.battle.opponent.active.speed_range.min)  # unchanged
+
+    def test_hit_self_in_confusion_makes_this_check_not_happen(self):
+        self.battle.user.active.stats[constants.SPEED] = 150
+        self.battle.opponent.active.stats[constants.SPEED] = 100
+        self.battle.user.last_selected_move = LastUsedMove("caterpie", "agility", 0)
+
+        messages = [
+            "|-activate|p1a: Caterpie|confusion",
+            "|-damage|p1a: Caterpie|15/100|[from] confusion",
+            "|move|p2a: Pikachu|Tackle|p1a: Caterpie",
+            "|-damage|p1a: Caterpie|1/100",
+            "|upkeep",
+            "|turn|7",
+        ]
+        check_speed_ranges(self.battle, messages)
+        self.assertEqual(0, self.battle.opponent.active.speed_range.min)  # unchanged
+
     def test_boosting_speed_after_opponent_does_not_mess_up_speed_range_check(self):
         self.battle.user.active.stats[constants.SPEED] = 150
         self.battle.opponent.active.stats[constants.SPEED] = 100
@@ -4451,6 +4482,7 @@ class TestGuessChoiceScarf(unittest.TestCase):
         self.battle.user.last_selected_move = LastUsedMove("caterpie", "tackle", 0)
         messages = [
             "|-activate|p1a: Caterpie|confusion",
+            "|-damage|p1a: Caterpie|15/100|[from] confusion",
             "|move|p2a: Caterpie|Tackle| p1a: Caterpie",
             "|-damage|p1a: Caterpie|0 fnt",
             "|faint|p1a: Forretress",
