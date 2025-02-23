@@ -3842,6 +3842,22 @@ class TestCheckSpeedRanges(unittest.TestCase):
             },
         }
 
+    def test_protosynthesis_speed_is_accounted_for_in_speed_range_check(self):
+        self.battle.user.active.stats[constants.SPEED] = 300
+        self.battle.user.active.boosts[constants.SPEED] = 1
+        self.battle.user.last_selected_move = LastUsedMove("caterpie", "tackle", 0)
+
+        self.battle.opponent.active.stats[constants.SPEED] = 370
+        self.battle.opponent.active.volatile_statuses.append("protosynthesisspe")
+
+        messages = [
+            "|move|p2a: Pikachu|U-turn|p1a: Caterpie",
+            "|-damage|p1a: Caterpie|0 fnt",
+            "|faint|p2a: Caterpie",
+        ]
+        check_speed_ranges(self.battle, messages)
+        self.assertEqual(300, self.battle.opponent.active.speed_range.min)  # unchanged
+
     def test_recharging_makes_this_check_not_happen(self):
         self.battle.user.active.stats[constants.SPEED] = 150
         self.battle.opponent.active.stats[constants.SPEED] = 100

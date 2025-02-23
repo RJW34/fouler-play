@@ -2238,6 +2238,9 @@ def check_speed_ranges(battle, msg_lines):
         / boost_multiplier_lookup[battle_copy.opponent.active.boosts[constants.SPEED]]
     )
 
+    if "protosynthesisspe" in battle.opponent.active.volatile_statuses:
+        speed_threshold = int(speed_threshold / 1.5)
+
     if battle.opponent.side_conditions[constants.TAILWIND]:
         speed_threshold = int(speed_threshold / 2)
 
@@ -2257,6 +2260,9 @@ def check_speed_ranges(battle, msg_lines):
             speed_threshold = int(speed_threshold / 2)
 
     if battle.user.active.item == "choicescarf":
+        speed_threshold = int(speed_threshold * 1.5)
+
+    if "protosynthesisspe" in battle.user.active.volatile_statuses:
         speed_threshold = int(speed_threshold * 1.5)
 
     # we want to swap which attribute gets updated in trickroom because the slower pokemon goes first
