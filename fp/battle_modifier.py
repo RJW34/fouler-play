@@ -2178,9 +2178,24 @@ def check_speed_ranges(battle, msg_lines):
             return
 
     moves = [get_move_information(m) for m in msg_lines if m.startswith("|move|")]
+    number_of_moves = len(moves)
+    if number_of_moves not in [1, 2]:
+        return
+
+    if number_of_moves == 1 and moves[0][0].startswith(battle.opponent.name):
+        moves.append(
+            (
+                "{}a: {}".format(battle.opponent.name, battle.user.active.name),
+                all_move_json[normalize_name(battle.user.last_selected_move.move)],
+            )
+        )
+
+    # if the bot knocked out the opponent there's nothing to do here
+    elif number_of_moves == 1:
+        return
+
     if (
-        len(moves) != 2
-        or moves[0][1][constants.PRIORITY] != moves[1][1][constants.PRIORITY]
+        moves[0][1][constants.PRIORITY] != moves[1][1][constants.PRIORITY]
         or moves[0][1][constants.ID] == "encore"
     ):
         return
@@ -2335,6 +2350,7 @@ def check_choicescarf(battle, msg_lines):
     moves = [get_move_information(m) for m in msg_lines if m.startswith("|move|")]
     number_of_moves = len(moves)
 
+    # if the bot went first we cannot ever infer a choicescarf
     if number_of_moves not in [1, 2] or moves[0][0].startswith(battle.user.name):
         return
 

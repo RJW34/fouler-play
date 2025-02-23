@@ -3842,6 +3842,72 @@ class TestCheckSpeedRanges(unittest.TestCase):
             },
         }
 
+    def test_boosting_speed_after_opponent_does_not_mess_up_speed_range_check(self):
+        self.battle.user.active.stats[constants.SPEED] = 150
+        self.battle.opponent.active.stats[constants.SPEED] = 100
+        self.battle.user.last_selected_move = LastUsedMove("caterpie", "agility", 0)
+
+        messages = [
+            "|move|p2a: Pikachu|Tackle|p1a: Caterpie",
+            "|-damage|p1a: Caterpie|1/100",
+            "|move|p1a: Caterpie|Agility|p1a: Caterpie",
+            "|-boost|p1a: Caterpie|spe|2",
+            "|upkeep",
+            "|turn|7",
+        ]
+        check_speed_ranges(self.battle, messages)
+        self.assertEqual(150, self.battle.opponent.active.speed_range.min)
+
+    def test_boosting_speed_before_opponent_does_not_mess_up_speed_range_check(self):
+        self.battle.user.active.stats[constants.SPEED] = 150
+        self.battle.opponent.active.stats[constants.SPEED] = 100
+        self.battle.user.last_selected_move = LastUsedMove("caterpie", "agility", 0)
+
+        messages = [
+            "|move|p1a: Caterpie|Agility|p1a: Caterpie",
+            "|-boost|p1a: Caterpie|spe|2",
+            "|move|p2a: Pikachu|Tackle|p1a: Caterpie",
+            "|-damage|p1a: Caterpie|1/100",
+            "|upkeep",
+            "|turn|7",
+        ]
+        check_speed_ranges(self.battle, messages)
+        self.assertEqual(150, self.battle.opponent.active.speed_range.max)
+
+    def test_opponent_knocking_out_user_sets_speed_range_if_bot_used_same_priority_move(
+        self,
+    ):
+        self.battle.user.active.stats[constants.SPEED] = 150
+        self.battle.opponent.active.stats[constants.SPEED] = 100
+        self.battle.user.last_selected_move = LastUsedMove("caterpie", "tackle", 0)
+
+        messages = [
+            "|move|p2a: Pikachu|Tackle|p1a: Caterpie",
+            "|-damage|p1a: Caterpie|0 fnt",
+            "|faint|p1a: Caterpie",
+            "|upkeep",
+            "|turn|7",
+        ]
+        check_speed_ranges(self.battle, messages)
+        self.assertEqual(150, self.battle.opponent.active.speed_range.min)
+
+    def test_user_knocking_out_opponent_does_nothing(
+        self,
+    ):
+        self.battle.user.active.stats[constants.SPEED] = 150
+        self.battle.opponent.active.stats[constants.SPEED] = 100
+        self.battle.user.last_selected_move = LastUsedMove("caterpie", "tackle", 0)
+
+        messages = [
+            "|move|p1a: Caterpie|Tackle|p2a: Pikachu",
+            "|-damage|p2a: Pikachu|0 fnt",
+            "|faint|p2a: Pikachu",
+            "|upkeep",
+            "|turn|7",
+        ]
+        check_speed_ranges(self.battle, messages)
+        self.assertEqual(0, self.battle.opponent.active.speed_range.min)
+
     def test_suckerpunch_and_thunderclap_sets_speed_ranges(self):
         # opponent should have min speed equal to the bot's speed
         self.battle.user.active.stats[constants.SPEED] = 150
