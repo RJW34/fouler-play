@@ -1467,6 +1467,13 @@ def remove_item(battle, split_msg):
     if side.active.removed_item is None:
         side.active.removed_item = item
 
+    if "unburden" not in side.active.volatile_statuses and "unburden" in [
+        normalize_name(a)
+        for a in pokedex[side.active.name][constants.ABILITIES].values()
+    ]:
+        logger.info("Adding unburden volatile to {}".format(side.active.name))
+        side.active.volatile_statuses.append("unburden")
+
     if len(split_msg) >= 5 and "knockoff" in normalize_name(split_msg[4]):
         logger.info("Knockoff removed {}'s item".format(side.active.name))
         side.active.knocked_off = True

@@ -5326,6 +5326,14 @@ class TestRemoveItem(unittest.TestCase):
 
         self.battle.username = self.username
 
+    def test_adds_unburden_when_appropriate(self):
+        self.battle.opponent.active.name = "hawlucha"
+        self.battle.opponent.active.item = "sitrusberry"
+        split_msg = ["", "-enditem", "p2a: Hawlucha", "Sitrus Berry"]
+
+        remove_item(self.battle, split_msg)
+        self.assertIn("unburden", self.battle.opponent.active.volatile_statuses)
+
     def test_basic_removes_item(self):
         self.battle.opponent.active.item = "airballoon"
         split_msg = ["", "-enditem", "p2a: Caterpie", "Air Balloon"]
