@@ -273,6 +273,8 @@ def sample_pokemon_moveset_with_known_pkmn_set(pkmn: Pokemon, pkmn_set: PokemonS
     )
     index = 0
     while True:
+        if len(pkmn_known_moves) >= 4 or not moves_adjusted_probabilities:
+            break
         index = index % len(moves_adjusted_probabilities)
         mv, chance = moves_adjusted_probabilities[index]
         if random.random() < chance:
@@ -288,9 +290,6 @@ def sample_pokemon_moveset_with_known_pkmn_set(pkmn: Pokemon, pkmn_set: PokemonS
             moves_adjusted_probabilities.pop(index)
         else:
             index += 1  # index is only incremented if the move is not added
-
-        if len(pkmn_known_moves) >= 4 or not moves_adjusted_probabilities:
-            break
 
     return pkmn_known_moves
 
