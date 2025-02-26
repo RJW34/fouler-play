@@ -310,7 +310,7 @@ def sample_pokemon(pkmn: Pokemon):
     remaining_team_sets = [
         s
         for s in TeamDatasets.get_pkmn_sets_from_pkmn_name(pkmn.name, pkmn.base_name)
-        if s.pkmn_set.set_makes_sense(pkmn)
+        if s.pkmn_set.set_makes_sense(pkmn) and smogon_set_makes_sense(s)
     ]
     if remaining_team_sets:
         sampled_set = deepcopy(random.choice(remaining_team_sets).pkmn_set)
