@@ -144,7 +144,7 @@ RAIN = "raindance"
 SUN = "sunnyday"
 SAND = "sandstorm"
 HAIL = "hail"
-SNOW = "snow"
+SNOW = "snowscape"
 DESOLATE_LAND = "desolateland"
 HEAVY_RAIN = "primordialsea"
 
