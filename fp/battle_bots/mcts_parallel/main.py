@@ -4,7 +4,6 @@ from concurrent.futures import ProcessPoolExecutor
 from poke_engine import MctsResult
 
 import constants
-from data.pkmn_sets import TeamDatasets
 from fp.battle import Battle
 from config import FoulPlayConfig
 from .standard_battles import prepare_battles
@@ -74,36 +73,6 @@ class BattleBot(Battle):
             max(num_battles // FoulPlayConfig.parallelism, 1)
         )
 
-    def _num_battles_battle_factory(self, datasets):
-        opponent_active_num_sets = len(
-            datasets.get_all_remaining_sets(self.opponent.active)
-        )
-        if self.team_preview or (
-            self.opponent.active.hp > 0
-            and opponent_active_num_sets > (FoulPlayConfig.parallelism * 2)
-        ):
-            num_battles = FoulPlayConfig.parallelism * 4
-        elif opponent_active_num_sets > FoulPlayConfig.parallelism:
-            num_battles = FoulPlayConfig.parallelism * 2
-        else:
-            num_battles = FoulPlayConfig.parallelism
-
-        return num_battles
-
-    def _search_time_per_battle_battle_factory(self, num_battles):
-        if (
-            self.team_preview
-            or self.turn < 3
-            or (self.time_remaining is not None and self.time_remaining > 60)
-        ):
-            search_time_per_battle = FoulPlayConfig.search_time_ms
-        else:
-            search_time_per_battle = self._search_time_per_battle_randombattles(
-                num_battles
-            )
-
-        return search_time_per_battle
-
     def _search_time_num_battles_standard_battle(self):
         num_opponent_fainted = self.opponent.num_fainted_pkmn()
         opponent_active_num_moves = len(self.opponent.active.moves)
@@ -155,9 +124,8 @@ class BattleBot(Battle):
             )
             battles = prepare_random_battles(self, num_battles)
         elif self.battle_type == constants.BATTLE_FACTORY:
-            num_battles = self._num_battles_battle_factory(TeamDatasets)
-            search_time_per_battle = self._search_time_per_battle_battle_factory(
-                num_battles
+            num_battles, search_time_per_battle = (
+                self._search_time_num_battles_standard_battle()
             )
             battles = prepare_random_battles(self, num_battles)
         elif self.battle_type == constants.STANDARD_BATTLE:
