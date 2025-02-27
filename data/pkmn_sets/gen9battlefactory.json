@@ -307,6 +307,9 @@
       "stellar|protosynthesis|lifeorb|timid|0,0,0,252,4,252|moonblast|shadowball|mysticalfire|powergem": 8.333333333333334,
       "stellar|protosynthesis|lifeorb|timid|0,0,0,252,4,252|moonblast|shadowball|calmmind|powergem": 8.333333333333334
     },
+    "skeledirge": {
+      "fairy|unaware|heavydutyboots|bold|252,0,252,4,0,0|torchsong|hex|willowisp|slackoff": 100.0
+    },
     "rayquaza": {
       "flying|airlock|lifeorb|jolly|0,252,4,0,0,252|dragonascent|earthquake|extremespeed|dragondance": 6.25,
       "normal|airlock|lifeorb|jolly|0,252,4,0,0,252|dragonascent|earthquake|extremespeed|dragondance": 6.25,
@@ -317,22 +320,6 @@
       "ground|airlock|lifeorb|adamant|0,252,4,0,0,252|dragonascent|earthquake|extremespeed|dragondance": 6.25,
       "steel|airlock|lifeorb|adamant|0,252,4,0,0,252|dragonascent|earthquake|extremespeed|dragondance": 6.25,
       "normal|airlock|lifeorb|jolly|0,252,4,0,0,252|dragonascent|earthquake|extremespeed|swordsdance": 50.0
-    },
-    "skeledirge": {
-      "fairy|unaware|heavydutyboots|bold|252,0,252,4,0,0|torchsong|hex|willowisp|slackoff": 100.0
-    },
-    "toxapex": {
-      "fairy|regenerator|rockyhelmet|bold|252,0,252,0,4,0|toxic|recover|haze|toxicspikes": 33.5,
-      "fairy|regenerator|rockyhelmet|bold|252,0,252,0,4,0|toxic|recover|haze|icebeam": 33.5,
-      "fairy|regenerator|rockyhelmet|impish|252,0,252,0,4,0|toxic|recover|haze|poisonjab": 33.0
-    },
-    "zaciancrowned": {
-      "fighting|intrepidsword|rustedsword|jolly|0,252,4,0,0,252|behemothblade|swordsdance|wildcharge|closecombat": 16.666666666666668,
-      "fighting|intrepidsword|rustedsword|jolly|0,252,4,0,0,252|playrough|swordsdance|wildcharge|closecombat": 16.666666666666668,
-      "fire|intrepidsword|rustedsword|jolly|0,252,4,0,0,252|behemothblade|swordsdance|wildcharge|closecombat": 16.666666666666668,
-      "fire|intrepidsword|rustedsword|jolly|0,252,4,0,0,252|playrough|swordsdance|wildcharge|closecombat": 16.666666666666668,
-      "flying|intrepidsword|rustedsword|jolly|0,252,4,0,0,252|behemothblade|swordsdance|wildcharge|closecombat": 16.666666666666668,
-      "flying|intrepidsword|rustedsword|jolly|0,252,4,0,0,252|playrough|swordsdance|wildcharge|closecombat": 16.666666666666668
     }
   },
   "ou": {
@@ -1342,16 +1329,6 @@
       "fairy|overcoat|heavydutyboots|modest|84,0,0,252,0,172|moonblast|earthpower|drainingkiss|calmmind": 25.0,
       "ground|overcoat|heavydutyboots|modest|84,0,0,252,0,172|moonblast|earthpower|mysticalfire|calmmind": 50.0
     },
-    "gardevoir": {
-      "fairy|trace|choicescarf|timid|0,0,4,252,0,252|moonblast|psychic|focusblast|healingwish": 25.0,
-      "fairy|trace|choicescarf|timid|0,0,4,252,0,252|moonblast|psychic|trick|healingwish": 25.0,
-      "fairy|trace|choicescarf|modest|0,0,4,252,0,252|moonblast|psychic|focusblast|healingwish": 25.0,
-      "fairy|trace|choicescarf|modest|0,0,4,252,0,252|moonblast|psychic|trick|healingwish": 25.0
-    },
-    "arcaninehisui": {
-      "normal|rockhead|heavydutyboots|jolly|0,252,4,0,0,252|headsmash|flareblitz|extremespeed|stealthrock": 50.0,
-      "normal|rockhead|heavydutyboots|jolly|0,252,4,0,0,252|headsmash|flareblitz|extremespeed|morningsun": 50.0
-    },
     "keldeo": {
       "steel|justified|leftovers|timid|0,0,4,252,0,252|secretsword|surf|calmmind|substitute": 25.0,
       "steel|justified|leftovers|timid|0,0,4,252,0,252|secretsword|surf|calmmind|taunt": 25.0,
@@ -1362,9 +1339,6 @@
     },
     "manaphy": {
       "fairy|hydration|leftovers|timid|0,0,4,252,0,252|tailglow|scald|icebeam|alluringvoice": 100.0
-    },
-    "polteageist": {
-      "steel|cursedbody|whiteherb|bold|248,0,184,0,0,76|shellsmash|shadowball|storedpower|strengthsap": 100.0
     },
     "revavroom": {
       "ground|filter|airballoon|adamant|0,252,4,0,0,252|shiftgear|temperflare|gunkshot|highhorsepower": 50.0,
@@ -1387,23 +1361,6 @@
       "fairy|regenerator|leftovers|impish|248,0,152,0,108,0|liquidation|toxic|haze|recover": 16.666666666666668,
       "fairy|regenerator|heavydutyboots|impish|248,0,152,0,108,0|liquidation|toxic|haze|recover": 16.666666666666668,
       "fairy|regenerator|rockyhelmet|impish|248,0,152,0,108,0|liquidation|toxic|haze|recover": 16.666666666666668
-    },
-    "chesnaught": {
-      "poison|bulletproof|leftovers|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|knockoff": 8.333333333333334,
-      "poison|bulletproof|leftovers|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|woodhammer": 8.333333333333334,
-      "poison|bulletproof|leftovers|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|stoneedge": 8.333333333333334,
-      "ghost|bulletproof|leftovers|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|knockoff": 8.333333333333334,
-      "ghost|bulletproof|leftovers|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|woodhammer": 8.333333333333334,
-      "ghost|bulletproof|leftovers|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|stoneedge": 8.333333333333334,
-      "poison|bulletproof|rockyhelmet|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|knockoff": 8.333333333333334,
-      "poison|bulletproof|rockyhelmet|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|woodhammer": 8.333333333333334,
-      "poison|bulletproof|rockyhelmet|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|stoneedge": 8.333333333333334,
-      "ghost|bulletproof|rockyhelmet|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|knockoff": 8.333333333333334,
-      "ghost|bulletproof|rockyhelmet|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|woodhammer": 8.333333333333334,
-      "ghost|bulletproof|rockyhelmet|impish|252,0,252,0,4,0|spikes|bodypress|synthesis|stoneedge": 8.333333333333334
-    },
-    "comfey": {
-      "ground|triage|lifeorb|modest|240,0,0,252,0,16|calmmind|taunt|drainingkiss|terablast": 100.0
     },
     "fezandipiti": {
       "water|toxicchain|heavydutyboots|calm|248,0,128,0,16,116|moonblast|uturn|beatup|roost": 100.0
@@ -1430,12 +1387,6 @@
       "fairy|intimidate|heavydutyboots|modest|160,0,0,252,0,96|roost|dracometeor|hurricane|flamethrower": 12.5,
       "water|intimidate|heavydutyboots|modest|160,0,0,252,0,96|roost|dracometeor|hurricane|flamethrower": 12.5
     },
-    "sinistcha": {
-      "fairy|heatproof|heavydutyboots|bold|252,0,160,0,0,96|calmmind|matchagotcha|shadowball|strengthsap": 25.0,
-      "poison|heatproof|heavydutyboots|bold|252,0,160,0,0,96|calmmind|matchagotcha|shadowball|strengthsap": 25.0,
-      "fairy|heatproof|leftovers|bold|252,0,160,0,0,96|calmmind|matchagotcha|shadowball|strengthsap": 25.0,
-      "poison|heatproof|leftovers|bold|252,0,160,0,0,96|calmmind|matchagotcha|shadowball|strengthsap": 25.0
-    },
     "conkeldurr": {
       "normal|guts|flameorb|adamant|0,252,4,0,0,252|closecombat|machpunch|facade|knockoff": 100.0
     },
@@ -1446,6 +1397,18 @@
       "steel|protosynthesis|heavydutyboots|adamant|0,252,4,0,0,252|closecombat|firstimpression|uturn|morningsun": 16.666666666666668,
       "steel|protosynthesis|heavydutyboots|adamant|0,252,4,0,0,252|closecombat|firstimpression|uturn|willowisp": 16.666666666666668,
       "steel|protosynthesis|heavydutyboots|adamant|0,252,4,0,0,252|closecombat|firstimpression|uturn|stunspore": 16.666666666666668
+    },
+    "hydreigon": {
+      "steel|levitate|leftovers|timid|0,0,0,252,4,252|dracometeor|darkpulse|nastyplot|substitute": 12.5,
+      "steel|levitate|leftovers|timid|0,0,0,252,4,252|dracometeor|darkpulse|nastyplot|thunderwave": 12.5,
+      "steel|levitate|leftovers|timid|0,0,0,252,4,252|earthpower|darkpulse|nastyplot|substitute": 12.5,
+      "steel|levitate|leftovers|timid|0,0,0,252,4,252|earthpower|darkpulse|nastyplot|thunderwave": 12.5,
+      "dragon|levitate|choicescarf|timid|0,0,0,252,4,252|dracometeor|darkpulse|earthpower|uturn": 25.0,
+      "dragon|levitate|choicescarf|timid|0,0,0,252,4,252|dracometeor|darkpulse|fireblast|uturn": 25.0
+    },
+    "zapdosgalar": {
+      "flying|defiant|choicescarf|jolly|0,252,4,0,0,252|closecombat|bravebird|uturn|knockoff": 50.0,
+      "fighting|defiant|choicescarf|jolly|0,252,4,0,0,252|closecombat|bravebird|uturn|knockoff": 50.0
     }
   },
   "ru": {
@@ -1483,8 +1446,32 @@
       "ghost|regenerator|heavydutyboots|jolly|252,0,0,0,4,252|rapidspin|knockoff|uturn|doubleedge": 10.0
     },
     "goodrahisui": {
-      "ghost|gooey|choicespecs|modest|40,0,0,252,0,216|flashcannon|dracometeor|thunderbolt|flamethrower": 50.0,
-      "dragon|gooey|choicespecs|modest|40,0,0,252,0,216|flashcannon|dracometeor|thunderbolt|flamethrower": 50.0
+      "ghost|gooey|choicespecs|modest|40,0,0,252,0,216|flashcannon|dracometeor|thunderbolt|flamethrower": 20.0,
+      "dragon|gooey|choicespecs|modest|40,0,0,252,0,216|flashcannon|dracometeor|thunderbolt|flamethrower": 20.0,
+      "ghost|gooey|leftovers|quiet|252,0,64,192,0,0|acidspray|dracometeor|knockoff|protect": 2.5,
+      "ghost|gooey|leftovers|quiet|252,0,64,192,0,0|heavyslam|dracometeor|knockoff|protect": 2.5,
+      "ghost|gooey|leftovers|quiet|252,0,64,192,0,0|flashcannon|dracometeor|knockoff|protect": 2.5,
+      "fairy|gooey|leftovers|quiet|252,0,64,192,0,0|acidspray|dracometeor|knockoff|protect": 2.5,
+      "fairy|gooey|leftovers|quiet|252,0,64,192,0,0|heavyslam|dracometeor|knockoff|protect": 2.5,
+      "fairy|gooey|leftovers|quiet|252,0,64,192,0,0|flashcannon|dracometeor|knockoff|protect": 2.5,
+      "ghost|sapsipper|leftovers|quiet|252,0,64,192,0,0|acidspray|dracometeor|knockoff|protect": 2.5,
+      "ghost|sapsipper|leftovers|quiet|252,0,64,192,0,0|heavyslam|dracometeor|knockoff|protect": 2.5,
+      "ghost|sapsipper|leftovers|quiet|252,0,64,192,0,0|flashcannon|dracometeor|knockoff|protect": 2.5,
+      "fairy|sapsipper|leftovers|quiet|252,0,64,192,0,0|acidspray|dracometeor|knockoff|protect": 2.5,
+      "fairy|sapsipper|leftovers|quiet|252,0,64,192,0,0|heavyslam|dracometeor|knockoff|protect": 2.5,
+      "fairy|sapsipper|leftovers|quiet|252,0,64,192,0,0|flashcannon|dracometeor|knockoff|protect": 2.5,
+      "ghost|gooey|leftovers|quiet|252,0,64,192,0,0|acidspray|dracometeor|knockoff|dragontail": 2.5,
+      "ghost|gooey|leftovers|quiet|252,0,64,192,0,0|heavyslam|dracometeor|knockoff|dragontail": 2.5,
+      "ghost|gooey|leftovers|quiet|252,0,64,192,0,0|flashcannon|dracometeor|knockoff|dragontail": 2.5,
+      "fairy|gooey|leftovers|quiet|252,0,64,192,0,0|acidspray|dracometeor|knockoff|dragontail": 2.5,
+      "fairy|gooey|leftovers|quiet|252,0,64,192,0,0|heavyslam|dracometeor|knockoff|dragontail": 2.5,
+      "fairy|gooey|leftovers|quiet|252,0,64,192,0,0|flashcannon|dracometeor|knockoff|dragontail": 2.5,
+      "ghost|sapsipper|leftovers|quiet|252,0,64,192,0,0|acidspray|dracometeor|knockoff|dragontail": 2.5,
+      "ghost|sapsipper|leftovers|quiet|252,0,64,192,0,0|heavyslam|dracometeor|knockoff|dragontail": 2.5,
+      "ghost|sapsipper|leftovers|quiet|252,0,64,192,0,0|flashcannon|dracometeor|knockoff|dragontail": 2.5,
+      "fairy|sapsipper|leftovers|quiet|252,0,64,192,0,0|acidspray|dracometeor|knockoff|dragontail": 2.5,
+      "fairy|sapsipper|leftovers|quiet|252,0,64,192,0,0|heavyslam|dracometeor|knockoff|dragontail": 2.5,
+      "fairy|sapsipper|leftovers|quiet|252,0,64,192,0,0|flashcannon|dracometeor|knockoff|dragontail": 2.5
     },
     "jirachi": {
       "water|serenegrace|leftovers|jolly|252,0,0,0,32,224|ironhead|stealthrock|bodyslam|uturn": 4.444444444444445,
@@ -1544,12 +1531,18 @@
       "poison|moxie|choicescarf|jolly|0,252,4,0,0,252|earthquake|knockoff|stoneedge|stealthrock": 0.625
     },
     "slitherwing": {
-      "steel|protosynthesis|heavydutyboots|adamant|252,16,72,0,0,168|uturn|closecombat|firstimpression|morningsun": 25.0,
-      "steel|protosynthesis|heavydutyboots|adamant|252,16,72,0,0,168|uturn|closecombat|willowisp|morningsun": 25.0,
-      "steel|protosynthesis|choiceband|adamant|0,252,4,0,0,252|uturn|closecombat|firstimpression|earthquake": 12.5,
-      "steel|protosynthesis|choiceband|adamant|0,252,4,0,0,252|uturn|closecombat|firstimpression|heavyslam": 12.5,
-      "bug|protosynthesis|choiceband|adamant|0,252,4,0,0,252|uturn|closecombat|firstimpression|earthquake": 12.5,
-      "bug|protosynthesis|choiceband|adamant|0,252,4,0,0,252|uturn|closecombat|firstimpression|heavyslam": 12.5
+      "steel|protosynthesis|heavydutyboots|adamant|252,16,72,0,0,168|uturn|closecombat|firstimpression|morningsun": 50.0,
+      "steel|protosynthesis|heavydutyboots|adamant|252,16,72,0,0,168|uturn|closecombat|willowisp|morningsun": 50.0
+    },
+    "mamoswine": {
+      "fire|thickfat|heavydutyboots|jolly|0,252,0,0,4,252|earthquake|iciclecrash|knockoff|iceshard": 12.5,
+      "ice|thickfat|heavydutyboots|jolly|0,252,0,0,4,252|earthquake|iciclecrash|knockoff|iceshard": 12.5,
+      "fire|thickfat|nevermeltice|jolly|0,252,0,0,4,252|earthquake|iciclecrash|knockoff|iceshard": 12.5,
+      "ice|thickfat|nevermeltice|jolly|0,252,0,0,4,252|earthquake|iciclecrash|knockoff|iceshard": 12.5,
+      "fire|thickfat|choiceband|jolly|0,252,0,0,4,252|earthquake|iciclecrash|knockoff|iceshard": 12.5,
+      "ice|thickfat|choiceband|jolly|0,252,0,0,4,252|earthquake|iciclecrash|knockoff|iceshard": 12.5,
+      "fire|thickfat|loadeddice|jolly|0,252,0,0,4,252|earthquake|iciclespear|knockoff|iceshard": 12.5,
+      "ice|thickfat|loadeddice|jolly|0,252,0,0,4,252|earthquake|iciclespear|knockoff|iceshard": 12.5
     },
     "empoleon": {
       "fairy|competitive|leftovers|modest|144,0,0,148,0,216|surf|roost|icebeam|grassknot": 30.0,
@@ -1777,36 +1770,24 @@
       "ghost|innerfocus|heavydutyboots|calm|252,0,4,0,252,0|foulplay|toxic|wish|moonlight": 12.5
     },
     "weezinggalar": {
-      "steel|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.0,
-      "steel|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.0,
-      "steel|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.0,
-      "ghost|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.0,
-      "ghost|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.0,
-      "ghost|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.0,
-      "water|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.0,
-      "water|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.0,
-      "water|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.0,
-      "steel|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.0,
-      "steel|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.0,
-      "steel|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.0,
-      "ghost|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.0,
-      "ghost|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.0,
-      "ghost|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.0,
-      "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.0,
-      "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.0,
-      "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.0,
-      "ghost|neutralizinggas|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 0.8333333333333334,
-      "ghost|neutralizinggas|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 0.8333333333333334,
-      "ghost|neutralizinggas|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 0.8333333333333334,
-      "water|neutralizinggas|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 0.8333333333333334,
-      "water|neutralizinggas|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 0.8333333333333334,
-      "water|neutralizinggas|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 0.8333333333333334,
-      "ghost|neutralizinggas|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 0.8333333333333334,
-      "ghost|neutralizinggas|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 0.8333333333333334,
-      "ghost|neutralizinggas|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 0.8333333333333334,
-      "water|neutralizinggas|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 0.8333333333333334,
-      "water|neutralizinggas|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 0.8333333333333334,
-      "water|neutralizinggas|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 0.8333333333333334
+      "steel|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.555555555555555,
+      "steel|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.555555555555555,
+      "steel|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.555555555555555,
+      "ghost|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.555555555555555,
+      "ghost|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.555555555555555,
+      "ghost|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.555555555555555,
+      "water|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.555555555555555,
+      "water|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.555555555555555,
+      "water|levitate|leftovers|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.555555555555555,
+      "steel|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.555555555555555,
+      "steel|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.555555555555555,
+      "steel|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.555555555555555,
+      "ghost|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.555555555555555,
+      "ghost|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.555555555555555,
+      "ghost|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.555555555555555,
+      "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.555555555555555,
+      "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.555555555555555,
+      "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.555555555555555
     },
     "zoroarkhisui": {
       "fairy|illusion|choicespecs|timid|0,0,0,252,4,252|shadowball|terablast|flamethrower|trick": 10.0,
@@ -1856,8 +1837,9 @@
       "flying|moxie|heavydutyboots|jolly|0,252,4,0,0,252|dragondance|waterfall|earthquake|terablast": 35.0,
       "ground|intimidate|heavydutyboots|jolly|0,252,4,0,0,252|dragondance|waterfall|earthquake|icefang": 5.0,
       "ground|moxie|heavydutyboots|jolly|0,252,4,0,0,252|dragondance|waterfall|earthquake|icefang": 5.0,
-      "ground|intimidate|covertcloak|jolly|0,252,4,0,0,252|dragondance|waterfall|earthquake|taunt": 10.0,
-      "ground|moxie|covertcloak|jolly|0,252,4,0,0,252|dragondance|waterfall|earthquake|taunt": 10.0
+      "ground|intimidate|covertcloak|jolly|0,252,4,0,0,252|dragondance|waterfall|earthquake|taunt": 5.0,
+      "ground|moxie|covertcloak|jolly|0,252,4,0,0,252|dragondance|waterfall|earthquake|taunt": 5.0,
+      "flying|moxie|chestoberry|adamant|176,96,24,0,0,212|dragondance|waterfall|terablast|rest": 10.0
     },
     "mienshao": {
       "dark|regenerator|lifeorb|jolly|0,252,0,0,4,252|closecombat|knockoff|uturn|tripleaxel": 12.5,
