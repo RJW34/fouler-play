@@ -94,39 +94,25 @@ def prepare_random_battles(battle: Battle, num_battles: int) -> list[(Battle, fl
     for index in range(num_battles):
         battle_copy = deepcopy(battle)
 
-        sample_chance = 1.0
         active = battle_copy.opponent.active
         if revealed_pkmn_sets[active.name]:
-            set_count_sum = sum(
-                s.pkmn_set.count for s in revealed_pkmn_sets[active.name]
-            )
             pkmn_full_set = random.choices(
                 revealed_pkmn_sets[active.name],
                 weights=[s.pkmn_set.count for s in revealed_pkmn_sets[active.name]],
             )[0]
-            sample_chance *= pkmn_full_set.pkmn_set.count / set_count_sum
             populate_pkmn_from_set(active, pkmn_full_set)
 
         for pkmn in filter(lambda x: x.is_alive(), battle_copy.opponent.reserve):
             if not revealed_pkmn_sets[pkmn.name]:
                 continue
-            set_count_sum = sum(s.pkmn_set.count for s in revealed_pkmn_sets[pkmn.name])
             pkmn_full_set = random.choices(
                 revealed_pkmn_sets[pkmn.name],
                 weights=[s.pkmn_set.count for s in revealed_pkmn_sets[pkmn.name]],
             )[0]
-            sample_chance *= pkmn_full_set.pkmn_set.count / set_count_sum
             populate_pkmn_from_set(pkmn, pkmn_full_set)
 
         battle_copy.opponent.lock_moves()
-        sampled_battles.append((battle_copy, sample_chance))
-
-    sample_chance_total = sum(x[1] for x in sampled_battles)
-    for i in range(len(sampled_battles)):
-        sampled_battles[i] = (
-            sampled_battles[i][0],
-            sampled_battles[i][1] / sample_chance_total,
-        )
+        sampled_battles.append((battle_copy, 1 / num_battles))
 
     return sampled_battles
 

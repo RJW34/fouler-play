@@ -22,10 +22,6 @@ from ..poke_engine_helpers import battle_to_poke_engine_state
 
 logger = logging.getLogger(__name__)
 
-# the number of revealed pkmn on the opponent's team determines the number of battles to sample
-# fewer revealed pokemon means more battles are sampled and a shallower search
-PARALLELISM_MULTIPLIER = {6: 1, 5: 1, 4: 2, 3: 4, 2: 4, 1: 4, 0: 4}
-
 
 def select_move_from_mcts_results(mcts_results: list[(MctsResult, float, int)]) -> str:
     final_policy = {}
@@ -65,13 +61,62 @@ class BattleBot(Battle):
     def __init__(self, *args, **kwargs):
         super(BattleBot, self).__init__(*args, **kwargs)
 
-    def _num_battles_randombattles(self, revealed_pkmn):
-        return int(FoulPlayConfig.parallelism * PARALLELISM_MULTIPLIER[revealed_pkmn])
+    def _search_time_num_battles_randombattles(self):
+        revealed_pkmn = len(self.opponent.reserve)
+        if self.opponent.active is not None:
+            revealed_pkmn += 1
 
-    def _search_time_per_battle_randombattles(self, num_battles):
-        return FoulPlayConfig.search_time_ms // (
-            max(num_battles // FoulPlayConfig.parallelism, 1)
-        )
+        num_opponent_fainted = self.opponent.num_fainted_pkmn()
+        opponent_active_num_moves = len(self.opponent.active.moves)
+        in_time_pressure = self.time_remaining is not None and self.time_remaining <= 60
+
+        # it is still quite early in the battle and the pkmn in front of us
+        # hasn't revealed any moves: search a lot of battles shallowly
+        if (
+            revealed_pkmn <= 3
+            and self.opponent.active.hp > 0
+            and opponent_active_num_moves == 0
+        ):
+            num_battles_multiplier = 4 if in_time_pressure else 16
+            return FoulPlayConfig.parallelism * num_battles_multiplier, int(
+                FoulPlayConfig.search_time_ms // 4
+            )
+
+        # only 1 of the previous two checks is met:
+        # search many battles shallowly
+        elif revealed_pkmn <= 3 or (
+            self.opponent.active.hp > 0 and opponent_active_num_moves == 0
+        ):
+            return FoulPlayConfig.parallelism * 4, int(
+                FoulPlayConfig.search_time_ms // 4
+            )
+
+        # until at least 5 pkmn are revealed, search many battles a bit shallower
+        elif revealed_pkmn < 5:
+            num_battles_multiplier = 2 if in_time_pressure else 4
+            return FoulPlayConfig.parallelism * num_battles_multiplier, int(
+                FoulPlayConfig.search_time_ms // 2
+            )
+
+        # opponent has a lot of pkmn remaining
+        # search many battles a bit shallower
+        elif num_opponent_fainted < 3:
+            return FoulPlayConfig.parallelism * 2, int(
+                FoulPlayConfig.search_time_ms // 2
+            )
+
+        # opponent has few pokemon remaining and few revealed moves on their active
+        # search many battles deeply if time allows
+        elif opponent_active_num_moves < 3:
+            search_time_divisor = 2 if in_time_pressure else 1
+            return FoulPlayConfig.parallelism * 2, int(
+                FoulPlayConfig.search_time_ms // search_time_divisor
+            )
+
+        # opponent has few pokemon remaining and lots of revealed moves on their active
+        # search few battles deeply
+        else:
+            return FoulPlayConfig.parallelism, FoulPlayConfig.search_time_ms
 
     def _search_time_num_battles_standard_battle(self):
         num_opponent_fainted = self.opponent.num_fainted_pkmn()
@@ -113,14 +158,9 @@ class BattleBot(Battle):
             self.user.active = self.user.reserve.pop(0)
             self.opponent.active = self.opponent.reserve.pop(0)
 
-        revealed_pkmn = len(self.opponent.reserve)
-        if self.opponent.active is not None:
-            revealed_pkmn += 1
-
         if self.battle_type == constants.RANDOM_BATTLE:
-            num_battles = self._num_battles_randombattles(revealed_pkmn)
-            search_time_per_battle = self._search_time_per_battle_randombattles(
-                num_battles
+            num_battles, search_time_per_battle = (
+                self._search_time_num_battles_randombattles()
             )
             battles = prepare_random_battles(self, num_battles)
         elif self.battle_type == constants.BATTLE_FACTORY:
