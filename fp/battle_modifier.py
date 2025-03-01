@@ -1363,6 +1363,7 @@ def fieldend(battle, split_msg):
     else:
         logger.info("Setting the field to None")
         battle.field = None
+        battle.field_turns_remaining = 0
 
 
 def sidestart(battle, split_msg):
@@ -1965,6 +1966,20 @@ def upkeep(battle, _):
         logger.info(
             "Trick Room turns remaining: {}".format(battle.trick_room_turns_remaining)
         )
+
+    if battle.field is not None and battle.field_turns_remaining > 0:
+        battle.field_turns_remaining -= 1
+        logger.info(
+            "{} turns remaining: {}".format(
+                battle.field, battle.trick_room_turns_remaining
+            )
+        )
+
+    if battle.field is not None and battle.field_turns_remaining == 0:
+        logger.info(
+            "{} did not end when expected, giving 3 more turns".format(battle.field)
+        )
+        battle.field_turns_remaining = 3
 
     if constants.ROOST in battle.user.active.volatile_statuses:
         logger.info(

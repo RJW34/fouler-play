@@ -3691,6 +3691,24 @@ class TestUpkeep(unittest.TestCase):
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
 
+    def test_field_turns_remaining_is_decremented(self):
+        self.battle.field_turns_remaining = 5
+        self.battle.field = constants.GRASSY_TERRAIN
+        upkeep(self.battle, "")
+        self.assertEqual(4, self.battle.field_turns_remaining)
+
+    def test_0_turns_remaining_field_sets_turns_remaining_to_3(self):
+        self.battle.field_turns_remaining = 1
+        self.battle.field = constants.GRASSY_TERRAIN
+        upkeep(self.battle, "")
+        self.assertEqual(3, self.battle.field_turns_remaining)
+
+    def test_none_field_does_not_change_field_or_turns_remaining(self):
+        self.battle.field_turns_remaining = 0
+        self.battle.field = None
+        upkeep(self.battle, "")
+        self.assertEqual(0, self.battle.field_turns_remaining)
+
     def test_resets_sleep_turns_to_zero_after_not_using_sleeptalk(self):
         self.battle.generation = "gen3"
         self.battle.user.active.status = constants.SLEEP

@@ -182,7 +182,6 @@ COURT_CHANGE_SWAPS = {
 TRICK_ROOM = "trickroom"
 GRAVITY = "gravity"
 
-TERRAIN = "terrain"
 ELECTRIC_TERRAIN = "electricterrain"
 GRASSY_TERRAIN = "grassyterrain"
 MISTY_TERRAIN = "mistyterrain"
