@@ -205,8 +205,7 @@ def request(battle, split_msg):
         else:
             battle.wait = False
 
-        if not battle.wait:
-            battle.request_json = battle_json
+        battle.request_json = battle_json
 
 
 def inactive(battle, split_msg):
@@ -2622,8 +2621,6 @@ def _do_check(
     allow_emptying=False,
 ):
     actual_damage_dealt = damage_dealt.percent_damage * battle_copy.user.active.max_hp
-    if damage_dealt.crit:
-        actual_damage_dealt /= crit_rate_for_generation(battle.generation)
 
     indicies_to_remove = []
     num_starting_possibilites = len(possibilites)
@@ -2640,13 +2637,19 @@ def _do_check(
             p.nature, ",".join(str(x) for x in p.evs)
         )
 
-        damage = None
         if check_type == "damage_received":
             actual_damage_dealt = (
                 damage_dealt.percent_damage * battle_copy.opponent.active.max_hp
             )
             if damage_dealt.crit:
-                actual_damage_dealt /= crit_rate_for_generation(battle.generation)
+                if battle_copy.user.active.boosts[constants.ATTACK] < 0:
+                    battle_copy.user.active.boosts[constants.ATTACK] = 0
+                if battle_copy.user.active.boosts[constants.SPECIAL_ATTACK] < 0:
+                    battle_copy.user.active.boosts[constants.SPECIAL_ATTACK] = 0
+                if battle_copy.opponent.active.boosts[constants.DEFENSE] > 0:
+                    battle_copy.opponent.active.boosts[constants.DEFENSE] = 0
+                if battle_copy.opponent.active.boosts[constants.SPECIAL_DEFENSE] > 0:
+                    battle_copy.opponent.active.boosts[constants.SPECIAL_DEFENSE] = 0
 
             if bot_went_first:
                 opponent_move = constants.DO_NOTHING_MOVE
@@ -2657,12 +2660,26 @@ def _do_check(
                 battle_copy, damage_dealt.move, opponent_move, bot_went_first
             )
         elif check_type == "damage_dealt":
+            if damage_dealt.crit:
+                if battle_copy.opponent.active.boosts[constants.ATTACK] < 0:
+                    battle_copy.opponent.active.boosts[constants.ATTACK] = 0
+                if battle_copy.opponent.active.boosts[constants.SPECIAL_ATTACK] < 0:
+                    battle_copy.opponent.active.boosts[constants.SPECIAL_ATTACK] = 0
+                if battle_copy.user.active.boosts[constants.DEFENSE] > 0:
+                    battle_copy.user.active.boosts[constants.DEFENSE] = 0
+                if battle_copy.user.active.boosts[constants.SPECIAL_DEFENSE] > 0:
+                    battle_copy.user.active.boosts[constants.SPECIAL_DEFENSE] = 0
             _, damage = poke_engine_get_damage_rolls(
                 battle_copy,
                 battle_copy.user.last_selected_move.move,
                 damage_dealt.move,
                 bot_went_first,
             )
+        else:
+            raise ValueError("Invalid check_type: {}".format(check_type))
+
+        if damage_dealt.crit:
+            damage = [d * crit_rate_for_generation(battle.generation) for d in damage]
 
         lower_bound_violated = check_lower_bound and (
             actual_damage_dealt < (damage[0] * 0.975 - 5)
@@ -2696,12 +2713,10 @@ def update_dataset_possibilities(
         or battle.opponent.active.hp <= 0
         or battle.opponent.active.name in ["ditto", "shedinja", "terapagosterastal"]
         or battle.user.active.name in ["ditto", "shedinja", "terapagosterastal"]
-        or battle.opponent.active.ability in ["protean", "libero"]
-        or battle.user.active.ability in ["protean", "libero"]
-        or damage_dealt.move in constants.WEIGHT_BASED_MOVES
-        or damage_dealt.move in constants.SPEED_BASED_MOVES
         or damage_dealt.move not in all_move_json
         or all_move_json[damage_dealt.move][constants.CATEGORY] == constants.STATUS
+        or "multihit" in all_move_json[damage_dealt.move]
+        or "multiaccuracy" in all_move_json[damage_dealt.move]
         or damage_dealt.move.startswith(constants.HIDDEN_POWER)
         or damage_dealt.percent_damage == 0
         or (
