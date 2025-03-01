@@ -37,6 +37,15 @@ ITEMS_REVEALED_ON_SWITCH_IN = [
     "boosterenergy",
     "airballoon",
 ]
+ABILITIES_REVEALED_ON_SWITCH_IN = [
+    "intimidate",
+    "pressure",
+    "neutralizinggas",
+    "sandstream",
+    "drought",
+    "drizzle",
+    "snowwarning",
+]
 
 SIDE_CONDITION_DEFAULT_DURATION = {
     constants.REFLECT: 5,
@@ -268,10 +277,12 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
     if is_opponent(battle, split_msg):
         side_name = "opponent"
         side = battle.opponent
+        other_side = battle.user
         logger.info("Opponent has switched - clearing the last used move")
     else:
         side_name = "user"
         side = battle.user
+        other_side = battle.opponent
         side.side_conditions[constants.TOXIC_COUNT] = 0
 
     baton_passed_boosts = None
@@ -494,15 +505,17 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
     if side_name == "user" and pkmn.name in ["zaciancrowned", "zamazentacrowned"]:
         battle.user.re_initialize_active_pokemon_from_request_json(battle.request_json)
 
-    # intimidate will reveal itself on switch-in
-    # this makes sure we don't guess intimidate as a possible ability
-    if "intimidate" not in pkmn.impossible_abilities:
-        logger.info(
-            "{} switched in, adding intimidate to impossible abilities".format(
-                pkmn.name
+    for ability in ABILITIES_REVEALED_ON_SWITCH_IN:
+        if (
+            ability not in pkmn.impossible_abilities
+            and other_side.active.ability != "neutralizinggas"
+        ):
+            logger.info(
+                "{} switched in, adding {} to impossible abilities".format(
+                    pkmn.name, ability
+                )
             )
-        )
-        pkmn.impossible_abilities.add("intimidate")
+            pkmn.impossible_abilities.add(ability)
 
     for item in ITEMS_REVEALED_ON_SWITCH_IN:
         if item not in pkmn.impossible_items:
