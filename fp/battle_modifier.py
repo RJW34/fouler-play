@@ -38,6 +38,15 @@ ITEMS_REVEALED_ON_SWITCH_IN = [
     "airballoon",
 ]
 
+SIDE_CONDITION_DEFAULT_DURATION = {
+    constants.REFLECT: 5,
+    constants.LIGHT_SCREEN: 5,
+    constants.AURORA_VEIL: 5,
+    constants.SAFEGUARD: 5,
+    constants.MIST: 5,
+    constants.TAILWIND: 3,
+}
+
 
 def crit_rate_for_generation(generation):
     if generation == "gen1":
@@ -172,8 +181,6 @@ def get_move_information(m):
 
 
 def request(battle, split_msg):
-    """Update the user's team given the battle JSON in split_msg[2]
-    Also updates some battle meta-data such as rqid, force_switch, and wait"""
     if len(split_msg) >= 2:
         battle_json = json.loads(split_msg[2].strip("'"))
         logger.debug("Received battle JSON from server: {}".format(battle_json))
@@ -1367,16 +1374,36 @@ def fieldend(battle, split_msg):
 
 
 def sidestart(battle, split_msg):
-    """Set a side effect such as stealth rock or sticky web"""
+    # Inconsistencies in the protocol mean parse after the `:` to get the side condition
+    # |-sidestart|p2: Name|Reflect
+    # |-sidestart|p2: Name|move: Light Screen
+    # |-sidestart|p2: Name|Spikes
+    # |-sidestart|p1: Name|move: Stealth Rock
+    #
+    # Some side conditions have an explicit duration such as lightscreen, reflect, etc.
+    # Others are incremented by 1
+
     condition = split_msg[3].split(":")[-1].strip()
     condition = normalize_name(condition)
-
     if is_opponent(battle, split_msg):
-        logger.info("Side condition {} starting for opponent".format(condition))
-        battle.opponent.side_conditions[condition] += 1
+        side = battle.opponent
     else:
-        logger.info("Side condition {} starting for bot".format(condition))
-        battle.user.side_conditions[condition] += 1
+        side = battle.user
+
+    if condition in SIDE_CONDITION_DEFAULT_DURATION:
+        side.side_conditions[condition] = SIDE_CONDITION_DEFAULT_DURATION[condition]
+        logger.info(
+            "Setting side condition {} to {} for {}".format(
+                condition, SIDE_CONDITION_DEFAULT_DURATION[condition], side.active.name
+            )
+        )
+    else:
+        side.side_conditions[condition] += 1
+        logger.info(
+            "Incremented side condition {} to {} for {}".format(
+                condition, side.side_conditions[condition], side.active.name
+            )
+        )
 
 
 def sideend(battle, split_msg):
@@ -1388,7 +1415,7 @@ def sideend(battle, split_msg):
         logger.info("Side condition {} ending for opponent".format(condition))
         battle.opponent.side_conditions[condition] = 0
     else:
-        logger.info("Side condition {} ending for bot".format(condition))
+        logger.info("Side condition {} ending for user".format(condition))
         battle.user.side_conditions[condition] = 0
 
 

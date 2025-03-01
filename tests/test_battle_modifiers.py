@@ -24,6 +24,7 @@ from fp.battle_modifier import (
     remove_item,
     set_item,
     ITEMS_REVEALED_ON_SWITCH_IN,
+    sidestart,
 )
 from fp.battle_modifier import terastallize
 from fp.battle_modifier import activate
@@ -3375,6 +3376,54 @@ class TestZPower(unittest.TestCase):
         zpower(self.battle, split_msg)
 
         self.assertEqual("some_item", self.battle.opponent.active.item)
+
+
+class TestSideStart(unittest.TestCase):
+    def setUp(self):
+        self.battle = Battle(None)
+        self.battle.user.name = "p1"
+        self.battle.opponent.name = "p2"
+
+        self.opponent_active = Pokemon("caterpie", 100)
+        self.battle.opponent.active = self.opponent_active
+        self.battle.opponent.active.ability = None
+
+        self.user_active = Pokemon("weedle", 100)
+        self.battle.user.active = self.user_active
+
+        self.username = "CoolUsername"
+
+        self.battle.username = self.username
+
+    def test_stealthrock_gets_1_layer(self):
+        split_msg = ["", "-sidestart", "p2", "Stealth Rock"]
+        sidestart(self.battle, split_msg)
+        self.assertEqual(
+            1, self.battle.opponent.side_conditions[constants.STEALTH_ROCK]
+        )
+
+    def test_spikes_increments_by_1(self):
+        split_msg = ["", "-sidestart", "p2", "Spikes"]
+        self.battle.opponent.side_conditions[constants.SPIKES] = 1
+        sidestart(self.battle, split_msg)
+        self.assertEqual(2, self.battle.opponent.side_conditions[constants.SPIKES])
+
+    def test_reflect_gets_5_turns(self):
+        split_msg = ["", "-sidestart", "p2", "Reflect"]
+        sidestart(self.battle, split_msg)
+        self.assertEqual(5, self.battle.opponent.side_conditions[constants.REFLECT])
+
+    def test_lightscreen_gets_5_turns(self):
+        split_msg = ["", "-sidestart", "p2", "move: Light Screen"]
+        sidestart(self.battle, split_msg)
+        self.assertEqual(
+            5, self.battle.opponent.side_conditions[constants.LIGHT_SCREEN]
+        )
+
+    def test_tailwind_gets_3_turns(self):
+        split_msg = ["", "-sidestart", "p2", "move: Tail Wind"]
+        sidestart(self.battle, split_msg)
+        self.assertEqual(3, self.battle.opponent.side_conditions[constants.TAILWIND])
 
 
 class TestSingleTurn(unittest.TestCase):
