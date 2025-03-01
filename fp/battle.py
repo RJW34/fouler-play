@@ -539,7 +539,6 @@ class Pokemon:
 
         new_pokemon = Pokemon.from_switch_string(new_forme_switch_string)
         self.name = new_pokemon.name
-        self.max_hp = new_pokemon.max_hp
         self.hp = int(current_hp_percentage * self.max_hp)
         self.base_stats = new_pokemon.base_stats
         self.stats = calculate_stats(self.base_stats, self.level)
