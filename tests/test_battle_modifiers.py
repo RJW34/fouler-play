@@ -3420,10 +3420,10 @@ class TestSideStart(unittest.TestCase):
             5, self.battle.opponent.side_conditions[constants.LIGHT_SCREEN]
         )
 
-    def test_tailwind_gets_3_turns(self):
+    def test_tailwind_gets_4_turns(self):
         split_msg = ["", "-sidestart", "p2", "move: Tail Wind"]
         sidestart(self.battle, split_msg)
-        self.assertEqual(3, self.battle.opponent.side_conditions[constants.TAILWIND])
+        self.assertEqual(4, self.battle.opponent.side_conditions[constants.TAILWIND])
 
 
 class TestSingleTurn(unittest.TestCase):
@@ -3739,6 +3739,45 @@ class TestUpkeep(unittest.TestCase):
 
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
+
+    def test_decrements_reflect_end_of_turn(self):
+        self.battle.opponent.side_conditions[constants.REFLECT] = 5
+        upkeep(self.battle, "")
+        self.assertEqual(4, self.battle.opponent.side_conditions[constants.REFLECT])
+
+    def test_decrementing_reflect_to_0_extends_by_3(self):
+        self.battle.opponent.side_conditions[constants.REFLECT] = 1
+        upkeep(self.battle, "")
+        self.assertEqual(3, self.battle.opponent.side_conditions[constants.REFLECT])
+
+    def test_decrements_lightscreen_end_of_turn(self):
+        self.battle.opponent.side_conditions[constants.LIGHT_SCREEN] = 5
+        upkeep(self.battle, "")
+        self.assertEqual(
+            4, self.battle.opponent.side_conditions[constants.LIGHT_SCREEN]
+        )
+
+    def test_decrementing_lightscreen_to_0_extends_by_3(self):
+        self.battle.opponent.side_conditions[constants.LIGHT_SCREEN] = 1
+        upkeep(self.battle, "")
+        self.assertEqual(
+            3, self.battle.opponent.side_conditions[constants.LIGHT_SCREEN]
+        )
+
+    def test_decrements_auroraveil_end_of_turn(self):
+        self.battle.opponent.side_conditions[constants.AURORA_VEIL] = 5
+        upkeep(self.battle, "")
+        self.assertEqual(4, self.battle.opponent.side_conditions[constants.AURORA_VEIL])
+
+    def test_decrementing_auroraveil_to_0_extends_by_3(self):
+        self.battle.opponent.side_conditions[constants.AURORA_VEIL] = 1
+        upkeep(self.battle, "")
+        self.assertEqual(3, self.battle.opponent.side_conditions[constants.AURORA_VEIL])
+
+    def test_decrements_tailwind_end_of_turn(self):
+        self.battle.opponent.side_conditions[constants.TAILWIND] = 2
+        upkeep(self.battle, "")
+        self.assertEqual(1, self.battle.opponent.side_conditions[constants.TAILWIND])
 
     def test_field_turns_remaining_is_decremented(self):
         self.battle.field_turns_remaining = 5

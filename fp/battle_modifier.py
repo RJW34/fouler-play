@@ -44,7 +44,7 @@ SIDE_CONDITION_DEFAULT_DURATION = {
     constants.AURORA_VEIL: 5,
     constants.SAFEGUARD: 5,
     constants.MIST: 5,
-    constants.TAILWIND: 3,
+    constants.TAILWIND: 4,
 }
 
 
@@ -2025,6 +2025,76 @@ def upkeep(battle, _):
         ]
 
     for side in [battle.user, battle.opponent]:
+        side_string = "opponent" if side == battle.opponent else "user"
+        if side.side_conditions[constants.REFLECT] > 0:
+            side.side_conditions[constants.REFLECT] -= 1
+            logger.info(
+                "Decrementing reflect for {} to {}".format(
+                    side.side_conditions[constants.REFLECT], side_string
+                )
+            )
+            if side.side_conditions[constants.REFLECT] == 0:
+                logger.info(
+                    "reflect did not end for {} when expected, giving it 3 more turns".format(
+                        side_string
+                    )
+                )
+                side.side_conditions[constants.REFLECT] = 3
+
+        if side.side_conditions[constants.LIGHT_SCREEN] > 0:
+            side.side_conditions[constants.LIGHT_SCREEN] -= 1
+            logger.info(
+                "Decrementing lightscreen for {} to {}".format(
+                    side.side_conditions[constants.LIGHT_SCREEN], side_string
+                )
+            )
+            if side.side_conditions[constants.LIGHT_SCREEN] == 0:
+                logger.info(
+                    "lightscreen did not end for {} when expected, giving it 3 more turns".format(
+                        side_string
+                    )
+                )
+                side.side_conditions[constants.LIGHT_SCREEN] = 3
+
+        if side.side_conditions[constants.AURORA_VEIL] > 0:
+            side.side_conditions[constants.AURORA_VEIL] -= 1
+            logger.info(
+                "Decrementing auroraveil for {} to {}".format(
+                    side.side_conditions[constants.AURORA_VEIL], side_string
+                )
+            )
+            if side.side_conditions[constants.AURORA_VEIL] == 0:
+                logger.info(
+                    "auroraveil did not end for {} when expected, giving it 3 more turns".format(
+                        side_string
+                    )
+                )
+                side.side_conditions[constants.AURORA_VEIL] = 3
+
+        if side.side_conditions[constants.TAILWIND] > 0:
+            side.side_conditions[constants.TAILWIND] -= 1
+            logger.info(
+                "Decrementing tailwind for {} to {}".format(
+                    side.side_conditions[constants.TAILWIND], side_string
+                )
+            )
+
+        if side.side_conditions[constants.MIST] > 0:
+            side.side_conditions[constants.MIST] -= 1
+            logger.info(
+                "Decrementing mist for {} to {}".format(
+                    side.side_conditions[constants.MIST], side_string
+                )
+            )
+
+        if side.side_conditions[constants.SAFEGUARD] > 0:
+            side.side_conditions[constants.SAFEGUARD] -= 1
+            logger.info(
+                "Decrementing safeguard for {} to {}".format(
+                    side.side_conditions[constants.SAFEGUARD], side_string
+                )
+            )
+
         pkmn = side.active
         if constants.YAWN in pkmn.volatile_statuses:
             logger.info(
