@@ -1,6 +1,5 @@
 from collections import defaultdict
 from collections import namedtuple
-from copy import copy
 from abc import ABC
 from abc import abstractmethod
 
@@ -471,16 +470,6 @@ class Battler:
 
         self._initialize_user_active_from_request_json(request_json)
 
-    def to_dict(self):
-        return {
-            constants.TRAPPED: self.trapped,
-            constants.ACTIVE: self.active.to_dict(),
-            constants.RESERVE: [p.to_dict() for p in self.reserve],
-            constants.WISH: copy(self.wish),
-            constants.FUTURE_SIGHT: copy(self.future_sight),
-            constants.SIDE_CONDITIONS: copy(self.side_conditions),
-        }
-
 
 class Pokemon:
     def __init__(self, name: str, level: int, nature="serious", evs=(85,) * 6):
@@ -635,27 +624,6 @@ class Pokemon:
                 return m
         return None
 
-    def to_dict(self):
-        return {
-            constants.FAINTED: self.fainted,
-            constants.ID: self.name,
-            constants.LEVEL: self.level,
-            constants.TYPES: self.types,
-            constants.HITPOINTS: self.hp,
-            constants.MAXHP: self.max_hp,
-            constants.ABILITY: self.ability,
-            constants.ITEM: self.item,
-            constants.BASESTATS: self.base_stats,
-            constants.STATS: self.stats,
-            constants.NATURE: self.nature,
-            constants.EVS: self.evs,
-            constants.BOOSTS: self.boosts,
-            constants.STATUS: self.status,
-            constants.TERASTALLIZED: self.terastallized,
-            constants.VOLATILE_STATUS: set(self.volatile_statuses),
-            constants.MOVES: [m.to_dict() for m in self.moves],
-        }
-
     @classmethod
     def get_dummy(cls):
         p = Pokemon("pikachu", 100)
@@ -690,13 +658,6 @@ class Move:
         self.disabled = False
         self.can_z = False
         self.current_pp = self.max_pp
-
-    def to_dict(self):
-        return {
-            "id": self.name,
-            "disabled": self.disabled,
-            "current_pp": self.current_pp,
-        }
 
     def __eq__(self, other):
         return self.name == other.name

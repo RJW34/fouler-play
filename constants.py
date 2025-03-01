@@ -9,9 +9,6 @@ RANDOM_BATTLE = "random_battle"
 
 NO_TEAM_PREVIEW_GENS = {"gen1", "gen2", "gen3", "gen4"}
 
-PICK_SAFEST = "safest"
-PICK_NASH_EQUILIBRIUM = "nash"
-
 START_STRING = "|start"
 RQID = "rqid"
 TEAM_PREVIEW_POKE = "poke"
@@ -46,16 +43,11 @@ DO_NOTHING_MOVE = "splash"
 
 ID = "id"
 BASESTATS = "baseStats"
-LEVEL = "level"
 NAME = "name"
 STATUS = "status"
 TYPES = "types"
 TYPE = "type"
-BASE_POWER = "basePower"
 WEIGHT = "weightkg"
-NATURE = "nature"
-EVS = "evs"
-TERASTALLIZED = "terastallized"
 
 SIDE = "side"
 POKEMON = "pokemon"
@@ -81,12 +73,9 @@ ULTRA_BURST = "ultra"
 MEGA = "mega"
 
 ACTIVE = "active"
-RESERVE = "reserve"
-SIDE_CONDITIONS = "side_conditions"
 
 PRIORITY = "priority"
 STATS = "stats"
-MAXHP = "maxhp"
 BOOSTS = "boosts"
 
 HITPOINTS = "hp"
@@ -116,8 +105,6 @@ STAT_ABBREVIATION_LOOKUPS = {
 HIDDEN_POWER = "hiddenpower"
 HIDDEN_POWER_TYPE_STRING_INDEX = -1
 HIDDEN_POWER_ACTIVE_MOVE_BASE_DAMAGE_STRING = "60"
-
-FAINTED = "dead"
 
 PHYSICAL = "physical"
 SPECIAL = "special"

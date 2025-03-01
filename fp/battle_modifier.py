@@ -1102,7 +1102,7 @@ def start_volatile_status(battle, split_msg):
 
     # for some reason futuresight is sent with the `-start` message
     # `-start` is typically reserved for volatile statuses
-    if volatile_status == "futuresight":
+    if volatile_status == constants.FUTURE_SIGHT:
         side.future_sight = (3, pkmn.name)
         return
 
@@ -1191,8 +1191,8 @@ def end_volatile_status(battle, split_msg):
         remove_volatile(pkmn, "partiallytrapped")
     elif volatile_status not in pkmn.volatile_statuses:
         logger.warning(
-            "Pokemon '{}' does not have the volatile status '{}'".format(
-                pkmn.to_dict(), volatile_status
+            "{} does not have the volatile status '{}'. Volatiles: {}".format(
+                pkmn, volatile_status, pkmn.volatile_statuses
             )
         )
     else:
