@@ -74,22 +74,16 @@ class BattleBot(Battle):
             and self.opponent.active.hp > 0
             and opponent_active_num_moves == 0
         ):
-            num_battles_multiplier = 4 if in_time_pressure else 16
+            num_battles_multiplier = 4 if in_time_pressure else 8
             return FoulPlayConfig.parallelism * num_battles_multiplier, int(
                 FoulPlayConfig.search_time_ms // 4
             )
 
-        # only 1 of the previous two checks is met:
-        # search many battles shallowly
-        elif revealed_pkmn <= 3 or (
+        # if less than 5 pkmn are revealed or if the opponent's active has not used a move yet
+        # try to search many battles if time allows
+        elif revealed_pkmn < 5 or (
             self.opponent.active.hp > 0 and opponent_active_num_moves == 0
         ):
-            return FoulPlayConfig.parallelism * 4, int(
-                FoulPlayConfig.search_time_ms // 4
-            )
-
-        # until at least 5 pkmn are revealed, search many battles a bit shallower
-        elif revealed_pkmn < 5:
             num_battles_multiplier = 2 if in_time_pressure else 4
             return FoulPlayConfig.parallelism * num_battles_multiplier, int(
                 FoulPlayConfig.search_time_ms // 2
@@ -98,22 +92,16 @@ class BattleBot(Battle):
         # opponent has a lot of pkmn remaining
         # search many battles a bit shallower
         elif num_opponent_fainted < 3:
-            return FoulPlayConfig.parallelism * 2, int(
+            num_battles_multiplier = 2 if in_time_pressure else 4
+            return FoulPlayConfig.parallelism * num_battles_multiplier, int(
                 FoulPlayConfig.search_time_ms // 2
             )
 
-        # opponent has few pokemon remaining and few revealed moves on their active
-        # search many battles deeply if time allows
-        elif opponent_active_num_moves < 3:
-            search_time_divisor = 2 if in_time_pressure else 1
-            return FoulPlayConfig.parallelism * 2, int(
-                FoulPlayConfig.search_time_ms // search_time_divisor
-            )
-
-        # opponent has few pokemon remaining and lots of revealed moves on their active
-        # search few battles deeply
         else:
-            return FoulPlayConfig.parallelism, FoulPlayConfig.search_time_ms
+            num_battles_multiplier = 1 if in_time_pressure else 2
+            return FoulPlayConfig.parallelism * num_battles_multiplier, int(
+                FoulPlayConfig.search_time_ms
+            )
 
     def _search_time_num_battles_standard_battle(self):
         num_opponent_fainted = self.opponent.num_fainted_pkmn()
