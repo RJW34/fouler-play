@@ -2050,7 +2050,7 @@ def upkeep(battle, _):
             side.side_conditions[constants.REFLECT] -= 1
             logger.info(
                 "Decrementing reflect for {} to {}".format(
-                    side.side_conditions[constants.REFLECT], side_string
+                    side_string, side.side_conditions[constants.REFLECT]
                 )
             )
             if side.side_conditions[constants.REFLECT] == 0:
@@ -2065,7 +2065,7 @@ def upkeep(battle, _):
             side.side_conditions[constants.LIGHT_SCREEN] -= 1
             logger.info(
                 "Decrementing lightscreen for {} to {}".format(
-                    side.side_conditions[constants.LIGHT_SCREEN], side_string
+                    side_string, side.side_conditions[constants.LIGHT_SCREEN]
                 )
             )
             if side.side_conditions[constants.LIGHT_SCREEN] == 0:
@@ -2080,7 +2080,7 @@ def upkeep(battle, _):
             side.side_conditions[constants.AURORA_VEIL] -= 1
             logger.info(
                 "Decrementing auroraveil for {} to {}".format(
-                    side.side_conditions[constants.AURORA_VEIL], side_string
+                    side_string, side.side_conditions[constants.AURORA_VEIL]
                 )
             )
             if side.side_conditions[constants.AURORA_VEIL] == 0:
@@ -2095,7 +2095,7 @@ def upkeep(battle, _):
             side.side_conditions[constants.TAILWIND] -= 1
             logger.info(
                 "Decrementing tailwind for {} to {}".format(
-                    side.side_conditions[constants.TAILWIND], side_string
+                    side_string, side.side_conditions[constants.TAILWIND]
                 )
             )
 
@@ -2103,7 +2103,7 @@ def upkeep(battle, _):
             side.side_conditions[constants.MIST] -= 1
             logger.info(
                 "Decrementing mist for {} to {}".format(
-                    side.side_conditions[constants.MIST], side_string
+                    side_string, side.side_conditions[constants.MIST]
                 )
             )
 
@@ -2111,7 +2111,7 @@ def upkeep(battle, _):
             side.side_conditions[constants.SAFEGUARD] -= 1
             logger.info(
                 "Decrementing safeguard for {} to {}".format(
-                    side.side_conditions[constants.SAFEGUARD], side_string
+                    side_string, side.side_conditions[constants.SAFEGUARD]
                 )
             )
 
