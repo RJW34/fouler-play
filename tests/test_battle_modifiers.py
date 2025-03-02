@@ -5345,6 +5345,58 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
+    def test_tera_flying_type_does_not_trigger_heavydutyboots_check_on_toxicspikes(
+        self,
+    ):
+        caterpie = Pokemon("caterpie", 100)
+        caterpie.types = ["normal", "water"]
+        caterpie.tera_type = "flying"
+        caterpie.terastallized = True
+        self.battle.opponent.reserve.append(caterpie)
+        self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
+
+        messages = [
+            "|switch|p2a: Caterpie|Caterpie, M|100/100",
+        ]
+
+        update_battle(self.battle, "\n".join(messages))
+
+        self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
+
+    def test_tera_flying_type_does_not_trigger_heavydutyboots_check_on_spikes(
+        self,
+    ):
+        caterpie = Pokemon("caterpie", 100)
+        caterpie.types = ["normal", "water"]
+        caterpie.tera_type = "flying"
+        caterpie.terastallized = True
+        self.battle.opponent.reserve.append(caterpie)
+        self.battle.opponent.side_conditions[constants.SPIKES] = 1
+
+        messages = [
+            "|switch|p2a: Caterpie|Caterpie, M|100/100",
+        ]
+
+        update_battle(self.battle, "\n".join(messages))
+
+        self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
+
+    def test_tera_steel_type_does_not_trigger_heavydutyboots_check_on_toxicspikes(self):
+        caterpie = Pokemon("caterpie", 100)
+        caterpie.types = ["normal", "water"]
+        caterpie.tera_type = "steel"
+        caterpie.terastallized = True
+        self.battle.opponent.reserve.append(caterpie)
+        self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
+
+        messages = [
+            "|switch|p2a: Caterpie|Caterpie, M|100/100",
+        ]
+
+        update_battle(self.battle, "\n".join(messages))
+
+        self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
+
     def test_getting_poisoned_by_toxicspikes_does_not_set_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
         self.battle.opponent.active = Pokemon("pikachu", 100)

@@ -2877,7 +2877,7 @@ def check_heavydutyboots(battle, msg_lines):
             normalize_name(a)
             for a in pokedex[side_to_check.active.name][constants.ABILITIES].values()
         ]
-        and "flying" not in side_to_check.active.types
+        and not side_to_check.active.has_type("flying")
         and side_to_check.active.ability != "levitate"
     ):
         pkmn_took_spikes_damage = False
@@ -2907,9 +2907,9 @@ def check_heavydutyboots(battle, msg_lines):
     elif (
         side_to_check.side_conditions[constants.TOXIC_SPIKES] > 0
         and side_to_check.active.status is None
-        and "flying" not in side_to_check.active.types
-        and "poison" not in side_to_check.active.types
-        and "steel" not in side_to_check.active.types
+        and not side_to_check.active.has_type("flying")
+        and not side_to_check.active.has_type("poison")
+        and not side_to_check.active.has_type("steel")
         and side_to_check.active.ability != "levitate"
         and "levitate"
         not in [
@@ -2952,7 +2952,7 @@ def check_heavydutyboots(battle, msg_lines):
 
     elif (
         side_to_check.side_conditions[constants.STICKY_WEB] > 0
-        and "flying" not in side_to_check.active.types
+        and not side_to_check.active.has_type("flying")
         and "levitate"
         not in [
             normalize_name(a)

@@ -534,6 +534,12 @@ class Pokemon:
         self.impossible_items = set()
         self.impossible_abilities = set()
 
+    def has_type(self, pkmn_type: str):
+        if self.terastallized:
+            return pkmn_type == self.tera_type
+        else:
+            return pkmn_type in self.types
+
     def forme_change(self, new_forme_switch_string):
         current_hp_percentage = self.hp / self.max_hp
 
