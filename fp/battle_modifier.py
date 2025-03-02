@@ -513,8 +513,8 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
         battle.user.re_initialize_active_pokemon_from_request_json(battle.request_json)
 
     for ability in ABILITIES_REVEALED_ON_SWITCH_IN:
-        if (
-            ability not in pkmn.impossible_abilities
+        if ability not in pkmn.impossible_abilities and (
+            other_side.active is not None
             and other_side.active.ability != "neutralizinggas"
         ):
             logger.info(
