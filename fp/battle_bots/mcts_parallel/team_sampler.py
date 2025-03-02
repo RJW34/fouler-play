@@ -16,13 +16,21 @@ logger = logging.getLogger(__name__)
 
 def log_pkmn_set(pkmn: Pokemon, source=None):
     nature_evs = f"{pkmn.nature},{','.join(str(x) for x in pkmn.evs)}"
-    s = "\t{} {} {} {} {}".format(
-        pkmn.name.rjust(15),
-        nature_evs.rjust(25),
-        str(pkmn.ability).rjust(12),
-        str(pkmn.item).rjust(12),
-        pkmn.moves,
-    )
+    if nature_evs == "serious,85,85,85,85,85,85":
+        s = "\t{} {} {} {}".format(
+            pkmn.name.rjust(15),
+            str(pkmn.ability).rjust(12),
+            str(pkmn.item).rjust(12),
+            pkmn.moves,
+        )
+    else:
+        s = "\t{} {} {} {} {}".format(
+            pkmn.name.rjust(15),
+            nature_evs.rjust(25),
+            str(pkmn.ability).rjust(12),
+            str(pkmn.item).rjust(12),
+            pkmn.moves,
+        )
     if pkmn.tera_type is not None and pkmn.tera_type != "nothing":
         s += " ttype={}".format(pkmn.tera_type)
     if source is not None:
@@ -92,6 +100,7 @@ def prepare_random_battles(battle: Battle, num_battles: int) -> list[(Battle, fl
 
     sampled_battles = []
     for index in range(num_battles):
+        logger.info("Sampling battle {}".format(index))
         battle_copy = deepcopy(battle)
 
         active = battle_copy.opponent.active
@@ -111,6 +120,7 @@ def prepare_random_battles(battle: Battle, num_battles: int) -> list[(Battle, fl
             )[0]
             populate_pkmn_from_set(pkmn, pkmn_full_set)
 
+        fill_in_opponent_unrevealed_pkmn(battle_copy)
         battle_copy.opponent.lock_moves()
         sampled_battles.append((battle_copy, 1 / num_battles))
 
@@ -206,6 +216,10 @@ def fill_in_opponent_unrevealed_pkmn(battle: Battle):
         existing_pkmn.append(battle.opponent.active)
         num_revealed_pkmn += 1
 
+    if num_revealed_pkmn == 6:
+        return
+
+    logger.info("Sampling {} unrevealed pokemon".format(6 - num_revealed_pkmn))
     while num_revealed_pkmn < 6:
         pkmn = sample_random_pkmn(existing_pkmn)
         existing_pkmn.append(pkmn)

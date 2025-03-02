@@ -176,9 +176,6 @@ class BattleBot(Battle):
         else:
             raise ValueError("Unsupported battle type: {}".format(self.battle_type))
 
-        for b, _ in battles:
-            fill_in_opponent_unrevealed_pkmn(b)
-
         logger.info("Searching for a move using MCTS...")
         logger.info(
             "Sampling {} battles at {}ms each".format(
