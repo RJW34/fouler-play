@@ -4576,6 +4576,25 @@ class TestGuessChoiceScarf(unittest.TestCase):
             },
         }
 
+    def test_fainting_pkmn_with_priority_modified_does_not_infer_scarf(self):
+        self.battle.user.active.stats[constants.SPEED] = (
+            210  # opponent's speed should not be greater than 207 (max speed caterpie)
+        )
+        self.battle.user.active.ability = "myceliummight"
+        self.battle.user.active.name = "toedscruel"
+        self.battle.user.last_selected_move = LastUsedMove("toedscruel", "toxic", 0)
+
+        messages = [
+            "|move|p2a: Porygon2|Ice Beam|p1a: Toedscruel",
+            "|-supereffective|p1a: Toedscruel",
+            "|-damage|p1a: Toedscruel|0 fnt",
+            "|faint|p1a: Toedscruel",
+        ]
+
+        check_choicescarf(self.battle, messages)
+
+        self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
+
     def test_guesses_choicescarf_when_opponent_should_always_be_slower(self):
         self.battle.user.active.stats[constants.SPEED] = (
             210  # opponent's speed should not be greater than 207 (max speed caterpie)

@@ -78,8 +78,16 @@ def can_have_priority_modified(battle, pokemon, move_name):
             normalize_name(a)
             for a in pokedex[pokemon.name][constants.ABILITIES].values()
         ]
-        or move_name == "grassyglide"
-        and battle.field == constants.GRASSY_TERRAIN
+        or (move_name == "grassyglide" and battle.field == constants.GRASSY_TERRAIN)
+        or (
+            move_name in all_move_json
+            and all_move_json[move_name][constants.CATEGORY] == constants.STATUS
+            and "myceliummight"
+            in [
+                normalize_name(a)
+                for a in pokedex[pokemon.name][constants.ABILITIES].values()
+            ]
+        )
     )
 
 
@@ -2517,6 +2525,9 @@ def check_choicescarf(battle, msg_lines):
         or can_have_speed_modified(battle, battle.opponent.active)
         or can_have_priority_modified(
             battle, battle.opponent.active, moves[0][1][constants.ID]
+        )
+        or can_have_priority_modified(
+            battle, battle.user.active, moves[1][1][constants.ID]
         )
         or (
             battle_copy.user.active.ability == "unburden"
