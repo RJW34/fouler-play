@@ -225,6 +225,11 @@ class PokemonSets(ABC):
             return self.raw_pkmn_sets[pkmn_name]
         elif pkmn_base_name in self.raw_pkmn_sets:
             return self.raw_pkmn_sets[pkmn_base_name]
+        elif (
+            pkmn_name in pokedex
+            and pokedex[pkmn_name].get("name") in self.raw_pkmn_sets
+        ):
+            return self.raw_pkmn_sets[pokedex[pkmn_name]["name"]]
 
         if pkmn_name in pokedex and "baseSpecies" in pokedex[pkmn_name]:
             pkmn_base_species = normalize_name(pokedex[pkmn_name]["baseSpecies"])
