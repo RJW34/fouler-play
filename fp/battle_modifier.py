@@ -781,6 +781,10 @@ def move(battle, split_msg):
         return
 
     elif any("[from]" in msg and msg != "[from]lockedmove" for msg in split_msg):
+        if split_msg[-1].startswith("[from] ability:"):
+            ability = normalize_name(split_msg[-1].split("ability: ")[-1])
+            logger.info("Setting {}'s ability to: {}".format(pkmn.name, ability))
+            pkmn.ability = ability
         return
 
     if "destinybond" in pkmn.volatile_statuses:
