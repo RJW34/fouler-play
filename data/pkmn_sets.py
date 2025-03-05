@@ -775,6 +775,7 @@ class _SmogonSets(PokemonSets):
                     match_ability=False,
                     match_item=False,
                     match_tera=False,
+                    speed_check=False,
                 ):
                     remaining_sets.append(pkmn_set)
 
