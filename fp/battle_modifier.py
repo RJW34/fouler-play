@@ -1050,7 +1050,9 @@ def activate(battle, split_msg):
                 )
             )
 
-    elif split_msg[3].lower().startswith("item: "):
+    elif split_msg[3].lower().startswith("item: ") and not any(
+        i == "[consumed]" for i in split_msg
+    ):
         item = normalize_name(split_msg[3].split(":")[-1].strip())
         logger.info("Setting {}'s item to {}".format(pkmn.name, item))
         pkmn.item = item
@@ -1517,6 +1519,7 @@ def remove_item(battle, split_msg):
     side.active.item = None
 
     if side.active.removed_item is None:
+        logger.info("Setting {}'s removed item to {}".format(side.active.name, item))
         side.active.removed_item = item
 
     if "unburden" not in side.active.volatile_statuses and "unburden" in [

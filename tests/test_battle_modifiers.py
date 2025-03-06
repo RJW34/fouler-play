@@ -1114,6 +1114,18 @@ class TestActivate(unittest.TestCase):
             "partiallytrapped", self.battle.opponent.active.volatile_statuses
         )
 
+    def test_does_not_set_consumed_item(self):
+        split_msg = [
+            "",
+            "-activate",
+            "p2a: Caterpie",
+            "item: Custap Berry",
+            "[consumed]",
+        ]
+        self.battle.opponent.active.item = None
+        activate(self.battle, split_msg)
+        self.assertIsNone(self.battle.opponent.active.item)
+
     def test_sets_item_when_poltergeist_activates(self):
         split_msg = [
             "",
