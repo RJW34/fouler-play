@@ -519,6 +519,7 @@ class Pokemon:
         self.moves = []
         self.status = None
         self.volatile_statuses = []
+        self.volatile_status_durations = defaultdict(lambda: 0)
         self.boosts = defaultdict(lambda: 0)
         self.rest_turns = 0
         self.sleep_turns = 0

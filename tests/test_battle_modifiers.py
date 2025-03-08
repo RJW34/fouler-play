@@ -2613,11 +2613,18 @@ class TestStartVolatileStatus(unittest.TestCase):
 
     def test_getting_confused_from_fatigue_removes_lockedmove(self):
         self.battle.opponent.active.volatile_statuses.append("lockedmove")
+        self.battle.opponent.active.volatile_status_durations[constants.LOCKED_MOVE] = 1
         split_msg = ["", "-start", "p2a: Cinderace", "Confusion", "[fatigue]"]
         start_volatile_status(self.battle, split_msg)
 
         self.assertNotIn(
             constants.LOCKED_MOVE, self.battle.opponent.active.volatile_statuses
+        )
+        self.assertEqual(
+            0,
+            self.battle.opponent.active.volatile_status_durations[
+                constants.LOCKED_MOVE
+            ],
         )
 
     def test_typechange_changes_the_type_of_the_user(self):
@@ -3766,6 +3773,17 @@ class TestUpkeep(unittest.TestCase):
 
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
+
+    def test_increments_lockedmove_end_of_turn(self):
+        self.battle.opponent.active.volatile_statuses.append(constants.LOCKED_MOVE)
+        self.battle.opponent.active.volatile_status_durations[constants.LOCKED_MOVE] = 0
+        upkeep(self.battle, "")
+        self.assertEqual(
+            1,
+            self.battle.opponent.active.volatile_status_durations[
+                constants.LOCKED_MOVE
+            ],
+        )
 
     def test_decrements_reflect_end_of_turn(self):
         self.battle.opponent.side_conditions[constants.REFLECT] = 5

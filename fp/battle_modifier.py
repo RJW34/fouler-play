@@ -1169,7 +1169,8 @@ def start_volatile_status(battle, split_msg):
                     pkmn.name
                 )
             )
-            remove_volatile(pkmn, "lockedmove")
+            remove_volatile(pkmn, constants.LOCKED_MOVE)
+            side.active.volatile_status_durations[constants.LOCKED_MOVE] = 0
 
     if volatile_status == constants.DYNAMAX:
         pkmn.hp *= 2
@@ -2053,6 +2054,16 @@ def upkeep(battle, _):
 
     for side in [battle.user, battle.opponent]:
         side_string = "opponent" if side == battle.opponent else "user"
+
+        if constants.LOCKED_MOVE in side.active.volatile_statuses:
+            side.active.volatile_status_durations[constants.LOCKED_MOVE] += 1
+            logger.info(
+                "Incremented lockedmove for {} to {}".format(
+                    side_string,
+                    side.active.volatile_status_durations[constants.LOCKED_MOVE],
+                )
+            )
+
         if side.side_conditions[constants.REFLECT] > 0:
             side.side_conditions[constants.REFLECT] -= 1
             logger.info(

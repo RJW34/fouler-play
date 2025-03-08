@@ -230,7 +230,8 @@ def sample_pokemon_moveset_with_known_pkmn_set(pkmn: Pokemon, pkmn_set: PokemonS
     # 1: Use TeamDatasets' movesets to sample a moveset, if possible
     remaining_team_movesets = []
     pkmn_movesets = [
-        ms for ms in TeamDatasets.get_all_possible_move_combinations(pkmn, pkmn_set)
+        ms
+        for ms in TeamDatasets.get_all_possible_move_combinations(pkmn, pkmn_set)
         if smogon_set_makes_sense(
             PredictedPokemonSet(
                 pkmn_set=pkmn_set,
