@@ -50,6 +50,14 @@ def pokemon_to_poke_engine_pkmn(pkmn: Pokemon):
 
     base_types = pokedex[str(pkmn.name)][constants.TYPES]
     num_moves = len(pkmn.moves)
+    if num_moves > 4:
+        logger.warning(
+            "More than 4 moves on pokemon: {} moves: {}".format(
+                pkmn.name, [m.name for m in pkmn.moves]
+            )
+        )
+        logger.warning("Truncating moves to first 4")
+        pkmn.moves = pkmn.moves[:4]
     p = PokeEnginePokemon(
         id=str(pkmn.name),
         level=pkmn.level,
