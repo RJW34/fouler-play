@@ -668,7 +668,7 @@ def move(battle, split_msg):
         is_opponent(battle, split_msg)
         and zoroark_from_reserves is not None
         and "transform" not in pkmn.volatile_statuses
-        and battle.battle_type == constants.BATTLE_FACTORY
+        and battle.battle_type in [constants.BATTLE_FACTORY, constants.STANDARD_BATTLE]
         and move_name not in TeamDatasets.get_all_possible_moves(pkmn)
         and move_name in TeamDatasets.get_all_possible_moves(zoroark_from_reserves)
         and "from" not in split_msg[-1]
