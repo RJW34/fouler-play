@@ -624,11 +624,13 @@ class TestSwitchOrDrag(unittest.TestCase):
         user_active = self.battle.user.active
         already_seen_pokemon = Pokemon("weedle", 100)
         self.battle.user.reserve.append(already_seen_pokemon)
-        user_active.volatile_statuses = ["flashfire"]
+        user_active.volatile_statuses = ["flashfire", "encore"]
+        user_active.volatile_status_durations["encore"] = 1
         split_msg = ["", "switch", "p1a: weedle", "Weedle, L100, M", "100/100"]
         switch_or_drag(self.battle, split_msg)
 
         self.assertEqual([], user_active.volatile_statuses)
+        self.assertEqual(0, user_active.volatile_status_durations["encore"])
 
     def test_already_seen_pokemon_is_the_same_object_as_the_one_in_the_reserve(self):
         already_seen_pokemon = Pokemon("weedle", 100)
@@ -1689,6 +1691,15 @@ class TestMove(unittest.TestCase):
         move(self.battle, split_msg)
 
         self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+
+    def test_increments_encore_duration_when_using_move_having_been_encored(self):
+        self.battle.opponent.active.volatile_statuses = ["encore"]
+        self.battle.opponent.active.volatile_status_durations["encore"] = 0
+        split_msg = ["", "move", "p2a: Caterpie", "Tackle"]
+        move(self.battle, split_msg)
+        self.assertEqual(
+            1, self.battle.opponent.active.volatile_status_durations["encore"]
+        )
 
     def test_removes_destinybond_if_it_exists_in_volatiles_when_using_destinybond(self):
         self.battle.opponent.active.volatile_statuses = ["destinybond"]

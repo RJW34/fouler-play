@@ -393,6 +393,7 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
 
         # reset the volatile statuses of the pokemon being replaced
         side.active.volatile_statuses.clear()
+        side.active.volatile_status_durations.clear()
 
         # reset toxic count for this side
         side.side_conditions[constants.TOXIC_COUNT] = 0
@@ -790,6 +791,14 @@ def move(battle, split_msg):
     if "destinybond" in pkmn.volatile_statuses:
         logger.info("Removing destinybond from {}".format(pkmn.name))
         remove_volatile(pkmn, "destinybond")
+
+    if "encore" in pkmn.volatile_statuses:
+        pkmn.volatile_status_durations["encore"] += 1
+        logger.info(
+            "Incrementing encore duration for {} to {}".format(
+                pkmn.name, pkmn.volatile_status_durations["encore"]
+            )
+        )
 
     # remove volatile status if they have it
     # this is for preparation moves like Phantom Force
@@ -1699,6 +1708,7 @@ def _switch_active_with_zoroark_from_reserves(
     pkmn.boosts.clear()
     pkmn.status = None
     pkmn.volatile_statuses.clear()
+    pkmn.volatile_status_durations.clear()
 
     if pkmn.terastallized:
         pkmn.terastallized = False
