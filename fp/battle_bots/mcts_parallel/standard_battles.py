@@ -229,27 +229,24 @@ def sample_pokemon_moveset_with_known_pkmn_set(pkmn: Pokemon, pkmn_set: PokemonS
 
     # 1: Use TeamDatasets' movesets to sample a moveset, if possible
     remaining_team_movesets = []
-    pkmn_movesets = [
-        ms
-        for ms in TeamDatasets.get_all_possible_move_combinations(pkmn, pkmn_set)
-        if smogon_set_makes_sense(
+    for pkmn_moveset in TeamDatasets.get_all_possible_move_combinations(pkmn, pkmn_set):
+        if not smogon_set_makes_sense(
             PredictedPokemonSet(
                 pkmn_set=pkmn_set,
-                pkmn_moveset=ms,
+                pkmn_moveset=pkmn_moveset,
             )
-        )
-    ]
-    max_len = 2
-    for pkmn_moveset in pkmn_movesets:
+        ):
+            continue
         num_pkmn_moves = len(pkmn_moveset)
 
-        if num_pkmn_moves > max_len:
-            remaining_team_movesets.clear()
-            max_len = num_pkmn_moves
-        elif num_pkmn_moves != max_len:
-            continue
-
-        remaining_team_movesets.append((pkmn_moveset, pkmn_moveset.count))
+        # movesets with more moves known are more likely to be sampled
+        if num_pkmn_moves == 2:
+            count = pkmn_moveset.count
+        elif num_pkmn_moves == 3:
+            count = pkmn_moveset.count * 2
+        else:
+            count = pkmn_moveset.count * 3
+        remaining_team_movesets.append((pkmn_moveset, count))
 
     if remaining_team_movesets:
         sampled_moveset, count = random.choices(
