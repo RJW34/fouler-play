@@ -628,6 +628,8 @@ class Pokemon:
                 constants.HIDDEN_POWER
             ):
                 return m
+            elif m.name.startswith("return") and move_name.startswith("return"):
+                return m
         return None
 
     @classmethod
