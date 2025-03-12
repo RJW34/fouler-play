@@ -113,7 +113,7 @@ class BattleBot(Battle):
         if self.team_preview or (
             self.opponent.active.hp > 0 and opponent_active_num_moves == 0
         ):
-            num_battles_multiplier = 4 if in_time_pressure else 16
+            num_battles_multiplier = 4 if in_time_pressure else 8
             return FoulPlayConfig.parallelism * num_battles_multiplier, int(
                 FoulPlayConfig.search_time_ms // 4
             )
