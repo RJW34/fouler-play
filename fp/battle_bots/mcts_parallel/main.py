@@ -118,13 +118,6 @@ class BattleBot(Battle):
                 FoulPlayConfig.search_time_ms // 4
             )
 
-        # opponent has a lot of pkmn remaining
-        # search many battles a bit shallower
-        elif num_opponent_fainted < 3:
-            return FoulPlayConfig.parallelism * 2, int(
-                FoulPlayConfig.search_time_ms // 2
-            )
-
         # opponent has few pokemon remaining and few revealed moves on their active
         # search many battles deeply if time allows
         elif opponent_active_num_moves < 3:
