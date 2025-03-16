@@ -5,6 +5,7 @@ clean_logs:
 	rm logs/*
 
 test:
+	ruff check
 	pytest tests
 
 fmt:

@@ -104,7 +104,6 @@ class BattleBot(Battle):
             )
 
     def _search_time_num_battles_standard_battle(self):
-        num_opponent_fainted = self.opponent.num_fainted_pkmn()
         opponent_active_num_moves = len(self.opponent.active.moves)
         in_time_pressure = self.time_remaining is not None and self.time_remaining <= 60
 
