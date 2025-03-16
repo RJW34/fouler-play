@@ -60,6 +60,7 @@ class _FoulPlayConfig:
     websocket_uri: str
     username: str
     password: str
+    avatar: str
     bot_mode: str
     pokemon_mode: str = ""
     smogon_stats: str = None
@@ -81,6 +82,7 @@ class _FoulPlayConfig:
         self.websocket_uri = env("WEBSOCKET_URI")
         self.username = env("PS_USERNAME")
         self.password = env("PS_PASSWORD")
+        self.avatar = env("PS_AVATAR", None)
         self.bot_mode = env("BOT_MODE")
         self.pokemon_mode = env("POKEMON_MODE")
         self.smogon_stats = env("SMOGON_STATS", None)

@@ -52,6 +52,26 @@ class PSWebsocketClient:
         await self.websocket.send(message)
         self.last_message = message
 
+    async def avatar(self, avatar):
+        await self.send_message("", ["/avatar {}".format(avatar)])
+        await self.send_message("", ["/cmd userdetails {}".format(self.username)])
+        while True:
+            # Wait for the query response and check the avatar
+            # |queryresponse|QUERYTYPE|JSON
+            msg = await self.receive_message()
+            msg_split = msg.split("|")
+            if msg_split[1] == "queryresponse":
+                user_details = json.loads(msg_split[3])
+                if user_details["avatar"] == avatar:
+                    logger.info("Avatar set to {}".format(avatar))
+                else:
+                    logger.warning(
+                        "Could not set avatar to {}, avatar is {}".format(
+                            avatar, user_details["avatar"]
+                        )
+                    )
+                break
+
     async def close(self):
         await self.websocket.close()
 

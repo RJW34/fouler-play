@@ -56,6 +56,9 @@ async def run_foul_play():
     )
     await ps_websocket_client.login()
 
+    if FoulPlayConfig.avatar is not None:
+        await ps_websocket_client.avatar(FoulPlayConfig.avatar)
+
     battles_run = 0
     wins = 0
     losses = 0
