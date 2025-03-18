@@ -82,6 +82,9 @@ def choice_item(predicted_pkmn_set: PredictedPokemonSet):
         if all_move_json[mv][constants.CATEGORY] not in logical_moves and mv not in [
             "trick",
             "switcheroo",
+            "flipturn",
+            "uturn",
+            "voltswitch",
         ]:
             num_illogical_moves += 1
 
