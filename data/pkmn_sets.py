@@ -652,6 +652,8 @@ class _SmogonSets(PokemonSets):
                     abilities.append((ability, count / total_count))
 
             for tera_type, count in pkmn_information["Tera Types"].items():
+                if tera_type == "nothing":
+                    tera_type = "typeless"
                 if count > 0:
                     tera_types.append((tera_type, count / total_count))
 

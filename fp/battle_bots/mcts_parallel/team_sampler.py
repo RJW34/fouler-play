@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def log_pkmn_set(pkmn: Pokemon, source=None):
     nature_evs = f"{pkmn.nature},{','.join(str(x) for x in pkmn.evs)}"
-    if nature_evs == "serious,85,85,85,85,85,85":
+    if nature_evs in ["serious,85,85,85,85,85,85", "serious,252,252,252,252,252,252"]:
         s = "\t{} {} {} {}".format(
             pkmn.name.rjust(15),
             str(pkmn.ability).rjust(12),
@@ -31,7 +31,7 @@ def log_pkmn_set(pkmn: Pokemon, source=None):
             str(pkmn.item).rjust(12),
             pkmn.moves,
         )
-    if pkmn.tera_type is not None and pkmn.tera_type != "nothing":
+    if pkmn.tera_type is not None and pkmn.tera_type not in ["nothing", "typeless"]:
         s += " ttype={}".format(pkmn.tera_type)
     if source is not None:
         s += " source={}".format(source)
