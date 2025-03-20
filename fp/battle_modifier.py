@@ -1427,7 +1427,14 @@ def sidestart(battle, split_msg):
         side = battle.user
 
     if condition in SIDE_CONDITION_DEFAULT_DURATION:
-        side.side_conditions[condition] = SIDE_CONDITION_DEFAULT_DURATION[condition]
+        increment_amount = SIDE_CONDITION_DEFAULT_DURATION[condition]
+        if (
+            condition in ["reflect", "lightscreen", "auroraveil"]
+            and side.active.item == "lightclay"
+        ):
+            increment_amount += 3
+
+        side.side_conditions[condition] = increment_amount
         logger.info(
             "Setting side condition {} to {} for {}".format(
                 condition, SIDE_CONDITION_DEFAULT_DURATION[condition], side.active.name

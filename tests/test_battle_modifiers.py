@@ -3465,6 +3465,20 @@ class TestSideStart(unittest.TestCase):
             5, self.battle.opponent.side_conditions[constants.LIGHT_SCREEN]
         )
 
+    def test_lightscreen_gets_8_turns_with_lightclay(self):
+        split_msg = ["", "-sidestart", "p2", "move: Light Screen"]
+        self.battle.opponent.active.item = "lightclay"
+        sidestart(self.battle, split_msg)
+        self.assertEqual(
+            8, self.battle.opponent.side_conditions[constants.LIGHT_SCREEN]
+        )
+
+    def test_auroraveil_gets_8_turns_with_lightclay(self):
+        split_msg = ["", "-sidestart", "p2", "move: Aurora Veil"]
+        self.battle.opponent.active.item = "lightclay"
+        sidestart(self.battle, split_msg)
+        self.assertEqual(8, self.battle.opponent.side_conditions[constants.AURORA_VEIL])
+
     def test_tailwind_gets_4_turns(self):
         split_msg = ["", "-sidestart", "p2", "move: Tail Wind"]
         sidestart(self.battle, split_msg)
