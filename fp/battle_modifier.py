@@ -2363,7 +2363,11 @@ def check_speed_ranges(battle, msg_lines):
     if number_of_moves not in [1, 2]:
         return
 
-    if number_of_moves == 1 and moves[0][0].startswith(battle.opponent.name):
+    if (
+        number_of_moves == 1
+        and moves[0][0].startswith(battle.opponent.name)
+        and moves[0][1][constants.ID] != "pursuit"
+    ):
         moves.append(
             (
                 "{}a: {}".format(battle.opponent.name, battle.user.active.name),
