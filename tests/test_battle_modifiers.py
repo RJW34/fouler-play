@@ -2277,6 +2277,30 @@ class TestStatus(unittest.TestCase):
         self.battle.opponent.active = Pokemon("caterpie", 100)
         self.battle.user.active = Pokemon("caterpie", 100)
 
+    def test_sets_ability_when_status_comes_from_flamebody(self):
+        split_msg = [
+            "",
+            "-status",
+            "p1a: Caterpie",
+            "brn",
+            "[from] ability: Flame Body",
+            "[of] p2a: Caterpie",
+        ]
+        status(self.battle, split_msg)
+        self.assertEqual("flamebody", self.battle.opponent.active.ability)
+
+    def test_sets_ability_when_status_comes_from_effectspore(self):
+        split_msg = [
+            "",
+            "-status",
+            "p1a: Caterpie",
+            "brn",
+            "[from] ability: Effect Spore",
+            "[of] p2a: Caterpie",
+        ]
+        status(self.battle, split_msg)
+        self.assertEqual("effectspore", self.battle.opponent.active.ability)
+
     def test_opponents_active_pokemon_has_status_properly_set(self):
         split_msg = ["", "-status", "p2a: Caterpie", "brn"]
         status(self.battle, split_msg)

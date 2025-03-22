@@ -992,9 +992,13 @@ def unboost(battle, split_msg):
 
 def status(battle, split_msg):
     if is_opponent(battle, split_msg):
+        side = battle.opponent
+        other_side = battle.user
         pkmn = battle.opponent.active
     else:
         pkmn = battle.user.active
+        side = battle.user
+        other_side = battle.opponent
 
     if len(split_msg) > 4 and "item: " in split_msg[4]:
         pkmn.item = normalize_name(split_msg[4].split("item:")[-1])
@@ -1018,6 +1022,17 @@ def status(battle, split_msg):
             )
         )
         pkmn.impossible_items.add("lumberry")
+
+    # ["", "-status", "p1a: Caterpie", "brn", "[from] ability: Flame Body", "[of] p2a: Caterpie"]
+    if (
+        len(split_msg) > 5
+        and split_msg[4].startswith("[from] ability: ")
+        and split_msg[5].startswith("[of]")
+        and split_msg[5].startswith(f"[of] {other_side.name}")
+    ):
+        ability = normalize_name(split_msg[4].split("ability: ")[-1])
+        logger.info("Setting {}'s ability to: {}".format(pkmn.name, ability))
+        other_side.active.ability = ability
 
 
 def activate(battle, split_msg):
