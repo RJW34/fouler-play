@@ -1318,15 +1318,24 @@ def weather(battle, split_msg):
     #
     # If that information is present, we can infer certain things about the Side
     side = None
+    side_name = None
     if len(split_msg) == 5:
         if battle.opponent.name in split_msg[-1]:
             side = battle.opponent
+            side_name = "opponent"
         else:
             side = battle.user
+            side_name = "user"
 
     weather_name = normalize_name(split_msg[2].split(":")[-1].strip())
     logger.info("Weather {} is active".format(weather_name))
     battle.weather = weather_name
+
+    if weather_name == "none":
+        logger.info("Resetting weather source to None")
+        battle.weather_source = None
+    elif side is not None and side_name is not None:
+        battle.weather_source = f"{side_name}:{side.active.name}"
 
     if split_msg[-1] == "[upkeep]" and battle.weather_turns_remaining > 0:
         battle.weather_turns_remaining -= 1
@@ -1381,6 +1390,38 @@ def weather(battle, split_msg):
             )
         )
         battle.weather_turns_remaining = 3
+        if (
+            battle.weather_source is not None
+            and battle.weather_source != ""
+            and battle.weather_source.startswith("opponent")
+        ):
+            side = battle.opponent
+            pkmn_name = battle.weather_source.split(":")[-1]
+            pkmn = (
+                side.active
+                if side.active.name == pkmn_name
+                else side.find_pokemon_in_reserves(pkmn_name)
+            )
+            if pkmn is not None and pkmn.item == constants.UNKNOWN_ITEM:
+                if weather_name == constants.SUN:
+                    item = "heatrock"
+                elif weather_name == constants.RAIN:
+                    item = "damprock"
+                elif weather_name == constants.SAND:
+                    item = "smoothrock"
+                elif weather_name == constants.HAIL:
+                    item = "icyrock"
+                elif weather_name == constants.SNOW:
+                    item = "icyrock"
+                else:
+                    item = constants.UNKNOWN_ITEM
+
+                logger.info(
+                    "Weather not ending means that opponent's {} has a {}".format(
+                        pkmn.name, item
+                    )
+                )
+                pkmn.item = item
 
     if side is not None and len(split_msg) >= 5 and side.name in split_msg[4]:
         ability = normalize_name(split_msg[3].split(":")[-1].strip())

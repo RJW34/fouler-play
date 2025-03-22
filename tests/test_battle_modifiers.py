@@ -1944,12 +1944,13 @@ class TestWeather(unittest.TestCase):
             "-weather",
             "RainDance",
             "[from] ability: Drizzle",
-            "[of] p2a: Pelipper",
+            "[of] p2a: Caterpie",
         ]
 
         weather(self.battle, split_msg)
 
         self.assertEqual("raindance", self.battle.weather)
+        self.assertEqual("opponent:caterpie", self.battle.weather_source)
 
     def test_sets_weather_turns_remaining_from_ability_gen4(self):
         self.battle.generation = "gen4"
@@ -1958,13 +1959,14 @@ class TestWeather(unittest.TestCase):
             "-weather",
             "RainDance",
             "[from] ability: Drizzle",
-            "[of] p2a: Pelipper",
+            "[of] p2a: Caterpie",
         ]
 
         weather(self.battle, split_msg)
 
         self.assertEqual("raindance", self.battle.weather)
         self.assertEqual(-1, self.battle.weather_turns_remaining)
+        self.assertEqual("opponent:caterpie", self.battle.weather_source)
 
     def test_sets_weather_turns_remaining_from_ability_gen6(self):
         self.battle.generation = "gen6"
@@ -1973,13 +1975,30 @@ class TestWeather(unittest.TestCase):
             "-weather",
             "RainDance",
             "[from] ability: Drizzle",
-            "[of] p2a: Pelipper",
+            "[of] p2a: Caterpie",
         ]
 
         weather(self.battle, split_msg)
 
         self.assertEqual("raindance", self.battle.weather)
         self.assertEqual(5, self.battle.weather_turns_remaining)
+        self.assertEqual("opponent:caterpie", self.battle.weather_source)
+
+    def test_sets_weather_turns_remaining_from_user_ability(self):
+        self.battle.generation = "gen6"
+        split_msg = [
+            "",
+            "-weather",
+            "RainDance",
+            "[from] ability: Drizzle",
+            "[of] p1a: Weedle",
+        ]
+
+        weather(self.battle, split_msg)
+
+        self.assertEqual("raindance", self.battle.weather)
+        self.assertEqual(5, self.battle.weather_turns_remaining)
+        self.assertEqual("user:caterpie", self.battle.weather_source)
 
     def test_sets_rain_to_8_turns_from_ability_gen6_with_extension_item(self):
         self.battle.generation = "gen6"
@@ -1989,13 +2008,14 @@ class TestWeather(unittest.TestCase):
             "-weather",
             "RainDance",
             "[from] ability: Drizzle",
-            "[of] p2a: Pelipper",
+            "[of] p2a: Caterpie",
         ]
 
         weather(self.battle, split_msg)
 
         self.assertEqual("raindance", self.battle.weather)
         self.assertEqual(8, self.battle.weather_turns_remaining)
+        self.assertEqual("opponent:caterpie", self.battle.weather_source)
 
     def test_sets_sun_to_8_turns_from_ability_gen6_with_extension_item(self):
         self.battle.generation = "gen6"
@@ -2005,13 +2025,14 @@ class TestWeather(unittest.TestCase):
             "-weather",
             "SunnyDay",
             "[from] ability: Drought",
-            "[of] p2a: Pelipper",
+            "[of] p2a: Caterpie",
         ]
 
         weather(self.battle, split_msg)
 
         self.assertEqual("sunnyday", self.battle.weather)
         self.assertEqual(8, self.battle.weather_turns_remaining)
+        self.assertEqual("opponent:caterpie", self.battle.weather_source)
 
     def test_sets_sand_to_8_turns_from_ability_gen6_with_extension_item(self):
         self.battle.generation = "gen6"
@@ -2021,13 +2042,14 @@ class TestWeather(unittest.TestCase):
             "-weather",
             "SandStorm",
             "[from] ability: Sand Stream",
-            "[of] p2a: Pelipper",
+            "[of] p2a: Caterpie",
         ]
 
         weather(self.battle, split_msg)
 
         self.assertEqual("sandstorm", self.battle.weather)
         self.assertEqual(8, self.battle.weather_turns_remaining)
+        self.assertEqual("opponent:caterpie", self.battle.weather_source)
 
     def test_sets_hail_to_8_turns_from_ability_gen6_with_extension_item(self):
         self.battle.generation = "gen6"
@@ -2037,12 +2059,13 @@ class TestWeather(unittest.TestCase):
             "-weather",
             "Hail",
             "[from] ability: Snow Warning",
-            "[of] p2a: Pelipper",
+            "[of] p2a: Caterpie",
         ]
 
         weather(self.battle, split_msg)
 
         self.assertEqual("hail", self.battle.weather)
+        self.assertEqual("opponent:caterpie", self.battle.weather_source)
         self.assertEqual(8, self.battle.weather_turns_remaining)
 
     def test_sets_weather_turns_remaining_from_move_gen4(self):
@@ -2090,9 +2113,13 @@ class TestWeather(unittest.TestCase):
         self.assertEqual("raindance", self.battle.weather)
         self.assertEqual(-1, self.battle.weather_turns_remaining)
 
-    def test_sets_weather_to_3_when_expecting_0(self):
-        self.battle.generation = "gen4"
+    def test_sets_weather_to_3_when_expecting_0_and_sets_appropriate_extension_item(
+        self,
+    ):
+        self.battle.generation = "gen6"
         self.battle.weather = constants.RAIN
+        self.battle.weather_source = "opponent:caterpie"
+        self.battle.opponent.active.item = constants.UNKNOWN_ITEM
         self.battle.weather_turns_remaining = 1
         split_msg = [
             "",
@@ -2103,7 +2130,29 @@ class TestWeather(unittest.TestCase):
 
         weather(self.battle, split_msg)
 
+        self.assertEqual("damprock", self.battle.opponent.active.item)
         self.assertEqual("raindance", self.battle.weather)
+        self.assertEqual(3, self.battle.weather_turns_remaining)
+
+    def test_sets_sun_to_3_when_expecting_0_and_sets_appropriate_extension_item(
+        self,
+    ):
+        self.battle.generation = "gen6"
+        self.battle.weather = constants.SUN
+        self.battle.weather_source = "opponent:caterpie"
+        self.battle.opponent.active.item = constants.UNKNOWN_ITEM
+        self.battle.weather_turns_remaining = 1
+        split_msg = [
+            "",
+            "-weather",
+            "SunnyDay",
+            "[upkeep]",
+        ]
+
+        weather(self.battle, split_msg)
+
+        self.assertEqual("heatrock", self.battle.opponent.active.item)
+        self.assertEqual("sunnyday", self.battle.weather)
         self.assertEqual(3, self.battle.weather_turns_remaining)
 
     def test_sets_weather_ability_on_opponent_when_it_is_present(self):

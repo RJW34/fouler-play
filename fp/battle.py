@@ -63,6 +63,7 @@ class Battle(ABC):
         self.opponent = Battler()
         self.weather = None
         self.weather_turns_remaining = -1
+        self.weather_source = ""
         self.field = None
         self.field_turns_remaining = 0
         self.trick_room = False
