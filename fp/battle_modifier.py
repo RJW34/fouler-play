@@ -646,6 +646,25 @@ def faint(battle, split_msg):
     side.active.hp = 0
 
 
+def fail(battle, split_msg):
+    # |-fail|p2a: Dragapult|unboost|[from] ability: Clear Body|[of] p2a: Dragapult
+    if (
+        len(split_msg) > 5
+        and split_msg[4].startswith("[from] ability: ")
+        and split_msg[5].startswith("[of]")
+    ):
+        ability_side = (
+            battle.user
+            if split_msg[5].startswith(f"[of] {battle.user.name}")
+            else battle.opponent
+        )
+        ability = normalize_name(split_msg[4].split("ability: ")[-1])
+        logger.info(
+            "Setting {}'s ability to: {}".format(ability_side.active.name, ability)
+        )
+        ability_side.active.ability = ability
+
+
 def move(battle, split_msg):
     if is_opponent(battle, split_msg):
         side = battle.opponent
@@ -3094,6 +3113,7 @@ def update_battle(battle, msg):
             "request": request,
             "switch": switch,
             "faint": faint,
+            "-fail": fail,
             "drag": drag,
             "-heal": heal_or_damage,
             "-damage": heal_or_damage,

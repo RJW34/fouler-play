@@ -26,6 +26,7 @@ from fp.battle_modifier import (
     ITEMS_REVEALED_ON_SWITCH_IN,
     sidestart,
 )
+from fp.battle_modifier import fail
 from fp.battle_modifier import terastallize
 from fp.battle_modifier import activate
 from fp.battle_modifier import prepare
@@ -3241,6 +3242,32 @@ class TestIllusionEnd(unittest.TestCase):
         self.assertEqual(None, self.battle.opponent.active.zoroark_disguised_as)
         self.assertEqual("meloetta", self.battle.opponent.reserve[0].name)
         self.assertEqual(4, len(self.battle.opponent.active.moves))
+
+
+class TestFail(unittest.TestCase):
+    def setUp(self):
+        self.battle = Battle(None)
+        self.battle.user.name = "p1"
+        self.battle.opponent.name = "p2"
+
+        self.opponent_active = Pokemon("caterpie", 100)
+        self.battle.opponent.active = self.opponent_active
+        self.battle.opponent.active.ability = None
+
+        self.user_active = Pokemon("weedle", 100)
+        self.battle.user.active = self.user_active
+
+    def test_failed_effect_due_to_clearbody_sets_ability(self):
+        split_msg = [
+            "",
+            "-fail",
+            "p2a: Caterpie",
+            "unboost",
+            "[from] ability: Clear Body",
+            "[of] p2a: Caterpie",
+        ]
+        fail(self.battle, split_msg)
+        self.assertEqual("clearbody", self.battle.opponent.active.ability)
 
 
 class TestFormChange(unittest.TestCase):
