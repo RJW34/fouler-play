@@ -992,12 +992,10 @@ def unboost(battle, split_msg):
 
 def status(battle, split_msg):
     if is_opponent(battle, split_msg):
-        side = battle.opponent
         other_side = battle.user
         pkmn = battle.opponent.active
     else:
         pkmn = battle.user.active
-        side = battle.user
         other_side = battle.opponent
 
     if len(split_msg) > 4 and "item: " in split_msg[4]:
