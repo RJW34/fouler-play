@@ -1391,7 +1391,7 @@ def weather(battle, split_msg):
         battle.weather_turns_remaining = 8
     elif (
         side is not None
-        and weather_name == constants.HAIL
+        and weather_name in constants.HAIL_OR_SNOW
         and side.active.item == "icyrock"
     ):
         logger.info("{} has icyrock, assuming 8 turns of hail".format(side.active.name))
@@ -1426,9 +1426,7 @@ def weather(battle, split_msg):
                     item = "damprock"
                 elif weather_name == constants.SAND:
                     item = "smoothrock"
-                elif weather_name == constants.HAIL:
-                    item = "icyrock"
-                elif weather_name == constants.SNOW:
+                elif weather_name in constants.HAIL_OR_SNOW:
                     item = "icyrock"
                 else:
                     item = constants.UNKNOWN_ITEM

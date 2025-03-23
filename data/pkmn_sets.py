@@ -31,6 +31,8 @@ SPREADS_STRING = "spreads"
 ABILITY_STRING = "abilities"
 TERA_TYPE_STRING = "tera_types"
 EFFECTIVENESS = "effectiveness"
+TEAMMATES = "teammates"
+RAW_COUNT = "raw_count"
 
 if typing.TYPE_CHECKING:
     from fp.battle import Pokemon
@@ -391,10 +393,11 @@ class _TeamDatasets(PokemonSets):
             except KeyError:
                 logger.warning("No pokemon sets for {}".format(pkmn))
 
-    def _load_team_datasets(self, pkmn_names: set[str]):
+    def _load_team_datasets(self, pkmn_names: set[str], get_all_pkmn: bool):
         sets_dict = self._get_sets_dict()
         all_pkmn_moves = self._get_moves_dict()
-        for pkmn in pkmn_names:
+        iter_list = all_pkmn_moves.keys() if get_all_pkmn else pkmn_names
+        for pkmn in iter_list:
             if pkmn not in sets_dict:
                 logger.warning("No pokemon sets for {}".format(pkmn))
                 continue
@@ -411,7 +414,7 @@ class _TeamDatasets(PokemonSets):
             self.pkmn_sets[pkmn] = []
             for set_, count in sets.items():
                 set_split = set_.split("|")
-                tera_type = set_split[0] or "normal"
+                tera_type = set_split[0] or "typeless"
                 ability = set_split[1]
                 item = set_split[2]
                 nature = set_split[3]
@@ -439,12 +442,21 @@ class _TeamDatasets(PokemonSets):
         self.raw_pkmn_sets = {}
         self.pkmn_sets = {}
         self.pkmn_mode = pkmn_mode
+        get_all_pkmn = any(
+            g in pkmn_mode
+            for g in [
+                "gen1",
+                "gen2",
+                "gen3",
+                "gen4",
+            ]
+        )
         if battle_factory_tier_name:
             self._load_battle_factory_team_datasets(
                 pkmn_names, battle_factory_tier_name
             )
         else:
-            self._load_team_datasets(pkmn_names)
+            self._load_team_datasets(pkmn_names, get_all_pkmn)
         self._add_to_pkmn_sets(self.raw_pkmn_sets)
 
     def add_new_pokemon(self, pkmn_name: str):
@@ -535,6 +547,7 @@ class _SmogonSets(PokemonSets):
     def __init__(self):
         self.current_pkmn_sets_url = ""
         self.raw_pkmn_sets = {}
+        self.all_pkmn_counts = {}
         self.pkmn_sets = {}
         self.pkmn_mode = "uninitialized"
 
@@ -588,10 +601,20 @@ class _SmogonSets(PokemonSets):
 
     def _get_pokemon_information(self, smogon_stats_url, pkmn_names) -> dict:
         infos = self._get_smogon_stats_json(smogon_stats_url)
+        self.all_pkmn_counts.clear()
 
         final_infos = {}
         for pkmn_name, pkmn_information in infos.items():
             normalized_name = normalize_name(pkmn_name)
+            self.all_pkmn_counts[normalized_name] = {}
+            self.all_pkmn_counts[normalized_name][RAW_COUNT] = pkmn_information[
+                "Raw count"
+            ]
+            self.all_pkmn_counts[normalized_name][TEAMMATES] = {}
+            for teammate_name, teammate_count in pkmn_information["Teammates"].items():
+                self.all_pkmn_counts[normalized_name][TEAMMATES][
+                    normalize_name(teammate_name)
+                ] = teammate_count
 
             # if `pkmn_names` is provided, only find data on pkmn in that list
             if (

@@ -7,8 +7,7 @@ import constants
 from fp.battle import Battle
 from config import FoulPlayConfig
 from .standard_battles import prepare_battles
-
-from .team_sampler import prepare_random_battles
+from .random_battles import prepare_random_battles
 
 from poke_engine import (
     State as PokeEngineState,

@@ -22,14 +22,6 @@ class TestTeamDatasets(unittest.TestCase):
         self.assertEqual("gen5ou", TeamDatasets.pkmn_mode)
         self.assertEqual(6, len(TeamDatasets.pkmn_sets))
 
-    def test_team_datasets_initialize_gen4(self):
-        TeamDatasets.initialize(
-            "gen4ou",
-            {"azelf", "heatran", "rotomwash", "scizor", "tyranitar", "dragonite"},
-        )
-        self.assertEqual("gen4ou", TeamDatasets.pkmn_mode)
-        self.assertEqual(6, len(TeamDatasets.pkmn_sets))
-
     def test_team_datasets_add_new_pokemon(self):
         TeamDatasets.initialize("gen4ou", {"dragonite"})
         self.assertNotIn("azelf", TeamDatasets.pkmn_sets)
@@ -51,7 +43,7 @@ class TestTeamDatasets(unittest.TestCase):
         self.assertNotIn("gastrodon", TeamDatasets.pkmn_sets)
 
     def test_removing_initial_set_does_not_change_existing_pokemon_sets(self):
-        TeamDatasets.initialize("gen4ou", {"dragonite"})
+        TeamDatasets.initialize("gen5ou", {"dragonite"})
         initial_len = len(TeamDatasets.pkmn_sets["dragonite"])
         TeamDatasets.pkmn_sets["dragonite"].pop(-1)
         len_after_pop = len(TeamDatasets.pkmn_sets["dragonite"])
