@@ -463,6 +463,24 @@ class Battler:
                 self.reserve.append(pkmn)
 
             for move_name in pkmn_dict[constants.MOVES]:
+                if (
+                    pkmn.name.startswith("zacian")
+                    and pkmn_item == "rustedsword"
+                    and move_name == "ironhead"
+                ):
+                    logger.info(
+                        "Zacian with rusted sword: changing ironhead to behemothblade"
+                    )
+                    move_name = "behemothblade"
+                elif (
+                    pkmn.name.startswith("zamazenta")
+                    and pkmn_item == "rustedshield"
+                    and move_name == "ironhead"
+                ):
+                    logger.info(
+                        "Zamazenta with rusted shield: changing ironhead to behemothbash"
+                    )
+                    move_name = "behemothbash"
                 pkmn.add_move(move_name)
 
         # if there is no active pokemon, we do not want to look through it's moves
