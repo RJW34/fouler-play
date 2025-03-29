@@ -88,14 +88,6 @@ class BattleBot(Battle):
                 FoulPlayConfig.search_time_ms // 2
             )
 
-        # opponent has a lot of pkmn remaining
-        # search many battles a bit shallower
-        elif num_opponent_fainted < 3:
-            num_battles_multiplier = 2 if in_time_pressure else 4
-            return FoulPlayConfig.parallelism * num_battles_multiplier, int(
-                FoulPlayConfig.search_time_ms // 2
-            )
-
         else:
             num_battles_multiplier = 1 if in_time_pressure else 2
             return FoulPlayConfig.parallelism * num_battles_multiplier, int(
