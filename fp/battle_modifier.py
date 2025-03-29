@@ -2114,7 +2114,7 @@ def upkeep(battle, _):
         battle.field_turns_remaining -= 1
         logger.info(
             "{} turns remaining: {}".format(
-                battle.field, battle.trick_room_turns_remaining
+                battle.field, battle.field_turns_remaining
             )
         )
 
