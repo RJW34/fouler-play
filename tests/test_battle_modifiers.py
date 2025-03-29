@@ -2405,6 +2405,15 @@ class TestCureStatus(unittest.TestCase):
 
         self.battle.user.active = Pokemon("weedle", 100)
 
+    def test_curestatus_resets_toxic_count(self):
+        self.battle.opponent.active.status = constants.TOXIC
+        self.battle.opponent.side_conditions[constants.TOXIC_COUNT] = 3
+        split_msg = ["", "-curestatus", "p2: Caterpie", "tox", "[msg]"]
+        curestatus(self.battle, split_msg)
+
+        self.assertEqual(None, self.battle.opponent.active.status)
+        self.assertEqual(0, self.battle.opponent.side_conditions[constants.TOXIC_COUNT])
+
     def test_curestatus_works_on_active_pokemon(self):
         self.opponent_active.status = constants.BURN
         split_msg = ["", "-curestatus", "p2: Caterpie", "brn", "[msg]"]

@@ -1310,6 +1310,8 @@ def curestatus(battle, split_msg):
         )
         pkmn.rest_turns = 0
         pkmn.sleep_turns = 0
+    elif pkmn.status == constants.TOXIC:
+        side.side_conditions[constants.TOXIC_COUNT] = 0
 
     pkmn.status = None
 
@@ -2113,9 +2115,7 @@ def upkeep(battle, _):
     if battle.field is not None and battle.field_turns_remaining > 0:
         battle.field_turns_remaining -= 1
         logger.info(
-            "{} turns remaining: {}".format(
-                battle.field, battle.field_turns_remaining
-            )
+            "{} turns remaining: {}".format(battle.field, battle.field_turns_remaining)
         )
 
     if battle.field is not None and battle.field_turns_remaining == 0:
