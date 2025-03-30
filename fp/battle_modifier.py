@@ -800,7 +800,10 @@ def move(battle, split_msg):
             )
         return
 
-    elif any("[from]" in msg and msg != "[from]lockedmove" for msg in split_msg):
+    elif any(
+        "[from]" in msg and msg != "[from]lockedmove" and msg != "[from] lockedmove"
+        for msg in split_msg
+    ):
         if split_msg[-1].startswith("[from] ability:"):
             ability = normalize_name(split_msg[-1].split("ability: ")[-1])
             logger.info("Setting {}'s ability to: {}".format(pkmn.name, ability))
@@ -1642,7 +1645,7 @@ def immune(battle, split_msg):
         "zoroark"
     ) or side.find_pokemon_in_reserves("zoroarkhisui")
 
-    expected_damage_rolls = poke_engine_get_damage_rolls(
+    expected_damage_rolls, _ = poke_engine_get_damage_rolls(
         deepcopy(battle), battle.user.last_used_move.move, "none", True
     )
 
@@ -1659,7 +1662,7 @@ def immune(battle, split_msg):
         )
         != 0
         and "from" not in split_msg[-1]
-        and not all(x == 0 for x in expected_damage_rolls[0])
+        and not all(x == 0 for x in expected_damage_rolls)
         and battle.user.future_sight[0] != 1
         and not (
             side.active.terastallized
@@ -2762,15 +2765,6 @@ def _do_check(
             actual_damage_dealt = (
                 damage_dealt.percent_damage * battle_copy.opponent.active.max_hp
             )
-            if damage_dealt.crit:
-                if battle_copy.user.active.boosts[constants.ATTACK] < 0:
-                    battle_copy.user.active.boosts[constants.ATTACK] = 0
-                if battle_copy.user.active.boosts[constants.SPECIAL_ATTACK] < 0:
-                    battle_copy.user.active.boosts[constants.SPECIAL_ATTACK] = 0
-                if battle_copy.opponent.active.boosts[constants.DEFENSE] > 0:
-                    battle_copy.opponent.active.boosts[constants.DEFENSE] = 0
-                if battle_copy.opponent.active.boosts[constants.SPECIAL_DEFENSE] > 0:
-                    battle_copy.opponent.active.boosts[constants.SPECIAL_DEFENSE] = 0
 
             if bot_went_first:
                 opponent_move = constants.DO_NOTHING_MOVE
@@ -2781,15 +2775,6 @@ def _do_check(
                 battle_copy, damage_dealt.move, opponent_move, bot_went_first
             )
         elif check_type == "damage_dealt":
-            if damage_dealt.crit:
-                if battle_copy.opponent.active.boosts[constants.ATTACK] < 0:
-                    battle_copy.opponent.active.boosts[constants.ATTACK] = 0
-                if battle_copy.opponent.active.boosts[constants.SPECIAL_ATTACK] < 0:
-                    battle_copy.opponent.active.boosts[constants.SPECIAL_ATTACK] = 0
-                if battle_copy.user.active.boosts[constants.DEFENSE] > 0:
-                    battle_copy.user.active.boosts[constants.DEFENSE] = 0
-                if battle_copy.user.active.boosts[constants.SPECIAL_DEFENSE] > 0:
-                    battle_copy.user.active.boosts[constants.SPECIAL_DEFENSE] = 0
             _, damage = poke_engine_get_damage_rolls(
                 battle_copy,
                 battle_copy.user.last_selected_move.move,
@@ -2800,16 +2785,19 @@ def _do_check(
             raise ValueError("Invalid check_type: {}".format(check_type))
 
         if damage_dealt.crit:
-            damage = [d * crit_rate_for_generation(battle.generation) for d in damage]
+            max_damage = damage[1]
+        else:
+            max_damage = damage[0]
 
+        damage = [max_damage * 0.85, max_damage]
         lower_bound_violated = check_lower_bound and (
             actual_damage_dealt < (damage[0] * 0.975 - 5)
         )
-        upper_bound_violated = actual_damage_dealt > (damage[-1] * 1.025 + 5)
+        upper_bound_violated = actual_damage_dealt > (damage[1] * 1.025 + 5)
         if lower_bound_violated or upper_bound_violated:
             logger.debug(
                 "{} is invalid based on reverse damage calc. damage_dealt={}, lower={}, upper={}".format(
-                    p, actual_damage_dealt, damage[0], damage[-1]
+                    p, actual_damage_dealt, damage[0], damage[1]
                 )
             )
             indicies_to_remove.append(i)

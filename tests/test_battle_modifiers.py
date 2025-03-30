@@ -1687,7 +1687,7 @@ class TestMove(unittest.TestCase):
 
     def test_removes_volatilestatus_if_pkmn_has_it_when_using_move(self):
         self.battle.opponent.active.volatile_statuses = ["phantomforce"]
-        split_msg = ["", "move", "p2a: Caterpie", "Phantom Force", "[from]lockedmove"]
+        split_msg = ["", "move", "p2a: Caterpie", "Phantom Force", "[from] lockedmove"]
 
         move(self.battle, split_msg)
 
