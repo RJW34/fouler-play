@@ -172,10 +172,7 @@ class PSWebsocketClient:
         message = ["/search {}".format(battle_format)]
         await self.send_message("", message)
 
-    async def leave_battle(self, battle_tag, save_replay=False):
-        if save_replay:
-            await self.save_replay(battle_tag)
-
+    async def leave_battle(self, battle_tag):
         message = ["/leave {}".format(battle_tag)]
         await self.send_message("", message)
 

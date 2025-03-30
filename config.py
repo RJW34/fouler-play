@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from enum import Enum, auto
 from logging.handlers import RotatingFileHandler
 from typing import Optional
 
@@ -55,6 +56,12 @@ def init_logging(level, log_to_file):
         FoulPlayConfig.file_log_handler = file_handler
 
 
+class SaveReplay(Enum):
+    Always = auto()
+    Never = auto()
+    OnLoss = auto()
+
+
 class _FoulPlayConfig:
     battle_bot_module: str
     websocket_uri: str
@@ -69,7 +76,7 @@ class _FoulPlayConfig:
     run_count: int
     team: str
     user_to_challenge: str
-    save_replay: bool
+    save_replay: SaveReplay
     room_name: str
     damage_calc_type: str
     log_level: str
@@ -94,7 +101,7 @@ class _FoulPlayConfig:
         self.team = env("TEAM_NAME", None)
         self.user_to_challenge = env("USER_TO_CHALLENGE", None)
 
-        self.save_replay = env.bool("SAVE_REPLAY", False)
+        self.save_replay = SaveReplay[env.str("SAVE_REPLAY", "Never")]
         self.room_name = env("ROOM_NAME", None)
         self.damage_calc_type = env("DAMAGE_CALC_TYPE", "average")
 

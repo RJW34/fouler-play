@@ -8,7 +8,7 @@ import logging
 from data.pkmn_sets import RandomBattleTeamDatasets, TeamDatasets
 from data.pkmn_sets import SmogonSets
 import constants
-from config import FoulPlayConfig
+from config import FoulPlayConfig, SaveReplay
 from fp.battle import LastUsedMove, Pokemon
 from fp.battle_bots.helpers import format_decision
 from fp.battle_modifier import async_update_battle
@@ -261,9 +261,12 @@ async def pokemon_battle(ps_websocket_client, pokemon_battle_type):
                 winner = None
             logger.info("Winner: {}".format(winner))
             await ps_websocket_client.send_message(battle.battle_tag, ["gg"])
-            await ps_websocket_client.leave_battle(
-                battle.battle_tag, save_replay=FoulPlayConfig.save_replay
-            )
+            if FoulPlayConfig.save_replay == SaveReplay.Always or (
+                FoulPlayConfig.save_replay == SaveReplay.OnLoss
+                and winner != FoulPlayConfig.username
+            ):
+                await ps_websocket_client.save_replay(battle.battle_tag)
+            await ps_websocket_client.leave_battle(battle.battle_tag)
             return winner
         else:
             action_required = await async_update_battle(battle, msg)
