@@ -1,1 +1,1714 @@
-{"absol": {"87,leftovers,pressure,batonpass,hiddenpowerfighting,shadowball,swordsdance": 499, "87,leftovers,pressure,hiddenpowerfighting,quickattack,shadowball,swordsdance": 468, "87,choiceband,pressure,doubleedge,hiddenpowerfighting,quickattack,shadowball": 1484, "87,salacberry,pressure,doubleedge,hiddenpowerfighting,shadowball,swordsdance": 521}, "aerodactyl": {"73,liechiberry,pressure,earthquake,hiddenpowerflying,rockslide,substitute": 1252, "73,choiceband,rockhead,doubleedge,earthquake,hiddenpowerflying,rockslide": 1302}, "aggron": {"85,leftovers,rockhead,earthquake,irontail,rockslide,toxic": 432, "85,leftovers,rockhead,focuspunch,irontail,rockslide,substitute": 687, "85,choiceband,rockhead,doubleedge,earthquake,irontail,rockslide": 1100, "85,leftovers,rockhead,earthquake,irontail,rockslide,thunderwave": 431}, "aipom": {"93,choiceband,runaway,batonpass,brickbreak,return,shadowball": 249, "93,leftovers,pickup,brickbreak,return,shadowball,toxic": 133, "93,leftovers,runaway,brickbreak,return,substitute,toxic": 69, "93,leftovers,runaway,brickbreak,return,shadowball,substitute": 49, "93,choiceband,pickup,batonpass,brickbreak,doubleedge,shadowball": 234, "93,leftovers,runaway,brickbreak,return,shadowball,thunderwave": 148, "93,choiceband,pickup,batonpass,brickbreak,return,shadowball": 234, "93,leftovers,pickup,batonpass,return,substitute,thunderwave": 57, "93,leftovers,runaway,brickbreak,return,substitute,thunderwave": 50, "93,leftovers,pickup,brickbreak,return,shadowball,substitute": 59, "93,leftovers,runaway,batonpass,brickbreak,return,substitute": 58, "93,leftovers,pickup,focuspunch,return,shadowball,substitute": 205, "93,leftovers,pickup,brickbreak,return,substitute,thunderwave": 61, "93,leftovers,runaway,return,shadowball,substitute,thunderwave": 60, "93,leftovers,runaway,batonpass,return,substitute,toxic": 36, "93,leftovers,pickup,return,shadowball,substitute,thunderwave": 62, "93,leftovers,pickup,batonpass,return,substitute,toxic": 56, "93,leftovers,pickup,brickbreak,return,shadowball,thunderwave": 135, "93,leftovers,runaway,focuspunch,return,shadowball,substitute": 181, "93,choiceband,runaway,batonpass,brickbreak,doubleedge,shadowball": 246, "93,leftovers,runaway,brickbreak,return,shadowball,toxic": 142, "93,leftovers,pickup,batonpass,return,shadowball,substitute": 46, "93,leftovers,runaway,batonpass,return,shadowball,substitute": 77, "93,leftovers,runaway,batonpass,return,substitute,thunderwave": 57, "93,leftovers,pickup,return,shadowball,substitute,toxic": 53, "93,leftovers,pickup,brickbreak,return,substitute,toxic": 54, "93,leftovers,runaway,return,shadowball,substitute,toxic": 41, "93,leftovers,pickup,batonpass,brickbreak,return,substitute": 38}, "alakazam": {"76,leftovers,synchronize,calmmind,firepunch,psychic,substitute": 615, "76,leftovers,synchronize,calmmind,firepunch,icepunch,psychic": 578, "76,leftovers,synchronize,calmmind,firepunch,psychic,recover": 584, "76,leftovers,synchronize,calmmind,firepunch,psychic,thunderpunch": 601, "76,leftovers,synchronize,calmmind,encore,firepunch,psychic": 549}, "altaria": {"85,leftovers,naturalcure,dragonclaw,earthquake,rest,toxic": 82, "85,chestoberry,naturalcure,dragondance,earthquake,hiddenpowerflying,rest": 396, "85,leftovers,naturalcure,dragonclaw,earthquake,haze,healbell": 53, "85,leftovers,naturalcure,dragondance,earthquake,healbell,hiddenpowerflying": 401, "85,leftovers,naturalcure,dragondance,earthquake,fireblast,hiddenpowerflying": 455, "85,leftovers,naturalcure,dragonclaw,flamethrower,haze,rest": 74, "85,leftovers,naturalcure,dragonclaw,flamethrower,rest,toxic": 66, "85,leftovers,naturalcure,dragonclaw,earthquake,flamethrower,rest": 81, "85,leftovers,naturalcure,dragonclaw,flamethrower,healbell,rest": 69, "85,leftovers,naturalcure,dragonclaw,earthquake,healbell,toxic": 64, "85,leftovers,naturalcure,dragonclaw,earthquake,haze,toxic": 64, "85,leftovers,naturalcure,dragonclaw,earthquake,flamethrower,haze": 66, "85,leftovers,naturalcure,dragonclaw,earthquake,flamethrower,toxic": 72, "85,leftovers,naturalcure,dragonclaw,healbell,rest,toxic": 64, "85,leftovers,naturalcure,dragonclaw,haze,healbell,rest": 71, "85,leftovers,naturalcure,dragonclaw,earthquake,haze,rest": 66, "85,leftovers,naturalcure,dragonclaw,flamethrower,haze,toxic": 78, "85,leftovers,naturalcure,dragonclaw,haze,healbell,toxic": 61, "85,leftovers,naturalcure,dragonclaw,earthquake,flamethrower,healbell": 71, "85,leftovers,naturalcure,dragonclaw,earthquake,healbell,rest": 59, "85,leftovers,naturalcure,dragonclaw,flamethrower,healbell,toxic": 53, "85,leftovers,naturalcure,dragonclaw,flamethrower,haze,healbell": 64, "85,leftovers,naturalcure,dragonclaw,haze,rest,toxic": 59}, "ampharos": {"82,leftovers,static,firepunch,healbell,hiddenpowerice,thunderbolt": 934, "82,leftovers,static,firepunch,hiddenpowerice,thunderbolt,toxic": 1125, "82,leftovers,static,healbell,hiddenpowerice,thunderbolt,toxic": 940}, "arbok": {"85,choiceband,intimidate,earthquake,hiddenpowerghost,rockslide,sludgebomb": 1502, "85,leftovers,intimidate,earthquake,rest,sleeptalk,sludgebomb": 1573}, "arcanine": {"79,leftovers,intimidate,flamethrower,rest,sleeptalk,toxic": 448, "79,choiceband,intimidate,extremespeed,fireblast,hiddenpowerrock,irontail": 308, "79,choiceband,intimidate,doubleedge,extremespeed,fireblast,irontail": 347, "79,leftovers,intimidate,flamethrower,hiddenpowergrass,protect,toxic": 466, "79,leftovers,intimidate,flamethrower,hiddenpowergrass,rest,sleeptalk": 510, "79,choiceband,intimidate,doubleedge,fireblast,hiddenpowerrock,irontail": 294, "79,leftovers,intimidate,flamethrower,hiddenpowerrock,protect,toxic": 498}, "ariados": {"98,leftovers,swarm,agility,batonpass,signalbeam,sludgebomb": 467, "98,leftovers,insomnia,agility,batonpass,sludgebomb,spiderweb": 958, "98,leftovers,swarm,batonpass,signalbeam,spiderweb,toxic": 241, "98,leftovers,insomnia,batonpass,signalbeam,sludgebomb,spiderweb": 231, "98,leftovers,insomnia,agility,batonpass,signalbeam,sludgebomb": 469, "98,leftovers,insomnia,batonpass,signalbeam,spiderweb,toxic": 237, "98,leftovers,swarm,batonpass,signalbeam,sludgebomb,spiderweb": 237}, "armaldo": {"83,leftovers,battlearmor,earthquake,hiddenpowerbug,rockslide,swordsdance": 1038, "83,choiceband,battlearmor,doubleedge,earthquake,hiddenpowerbug,rockslide": 1022, "83,choiceband,battlearmor,earthquake,hiddenpowerbug,rapidspin,rockslide": 934}, "articuno": {"80,leftovers,pressure,hiddenpowerfire,icebeam,rest,sleeptalk": 1226, "80,leftovers,pressure,hiddenpowerfire,icebeam,protect,toxic": 655, "80,leftovers,pressure,healbell,icebeam,protect,toxic": 619}, "azumarill": {"87,choiceband,hugepower,brickbreak,doubleedge,hiddenpowerghost,hydropump": 707, "87,leftovers,hugepower,hydropump,rest,return,sleeptalk": 678, "87,choiceband,hugepower,brickbreak,hiddenpowerghost,hydropump,return": 694, "87,leftovers,hugepower,doubleedge,hydropump,rest,sleeptalk": 677}, "banette": {"88,salacberry,insomnia,destinybond,endure,hiddenpowerfighting,shadowball": 1631, "88,choiceband,insomnia,doubleedge,hiddenpowerfighting,knockoff,shadowball": 504, "88,leftovers,insomnia,hiddenpowerfighting,knockoff,shadowball,willowisp": 543, "88,leftovers,insomnia,doubleedge,hiddenpowerfighting,shadowball,willowisp": 533}, "beautifly": {"100,leftovers,swarm,hiddenpowerfire,morningsun,psychic,toxic": 2175}, "beedrill": {"92,salacberry,swarm,brickbreak,endure,hiddenpowerbug,swordsdance": 709, "92,salacberry,swarm,endure,hiddenpowerbug,sludgebomb,swordsdance": 697, "92,choiceband,swarm,brickbreak,doubleedge,hiddenpowerbug,sludgebomb": 489, "92,salacberry,swarm,doubleedge,hiddenpowerbug,sludgebomb,swordsdance": 335, "92,salacberry,swarm,brickbreak,doubleedge,sludgebomb,swordsdance": 310, "92,salacberry,swarm,brickbreak,hiddenpowerbug,sludgebomb,swordsdance": 306}, "bellossom": {"92,leftovers,chlorophyll,hiddenpowerfire,magicalleaf,moonlight,stunspore": 938, "92,leftovers,chlorophyll,hiddenpowerfire,magicalleaf,moonlight,sleeppowder": 1009, "92,leftovers,chlorophyll,hiddenpowerfire,leechseed,magicalleaf,moonlight": 953}, "blastoise": {"82,leftovers,torrent,rest,sleeptalk,surf,toxic": 446, "82,leftovers,torrent,icebeam,protect,surf,toxic": 454, "82,leftovers,torrent,icebeam,roar,surf,toxic": 143, "82,leftovers,torrent,icebeam,refresh,surf,toxic": 153, "82,leftovers,torrent,icebeam,rest,sleeptalk,surf": 474, "82,leftovers,torrent,icebeam,refresh,roar,surf": 151, "82,leftovers,torrent,icebeam,rapidspin,refresh,surf": 138, "82,leftovers,torrent,protect,refresh,surf,toxic": 446, "82,leftovers,torrent,icebeam,rapidspin,roar,surf": 134, "82,leftovers,torrent,icebeam,rapidspin,surf,toxic": 145}, "blaziken": {"82,leftovers,blaze,fireblast,hiddenpowerice,rockslide,skyuppercut": 153, "82,salacberry,blaze,endure,fireblast,reversal,swordsdance": 978, "82,salacberry,blaze,fireblast,rockslide,skyuppercut,swordsdance": 335, "82,choiceband,blaze,earthquake,fireblast,rockslide,skyuppercut": 352, "82,leftovers,blaze,fireblast,hiddenpowerice,skyuppercut,thunderpunch": 179, "82,leftovers,blaze,earthquake,fireblast,hiddenpowerice,skyuppercut": 159, "82,leftovers,blaze,earthquake,fireblast,rockslide,skyuppercut": 148, "82,leftovers,blaze,fireblast,rockslide,skyuppercut,thunderpunch": 185, "82,leftovers,blaze,earthquake,fireblast,skyuppercut,thunderpunch": 169, "82,salacberry,blaze,earthquake,fireblast,skyuppercut,swordsdance": 336}, "blissey": {"77,leftovers,naturalcure,protect,seismictoss,toxic,wish": 1363, "77,leftovers,naturalcure,aromatherapy,seismictoss,softboiled,toxic": 694, "77,leftovers,naturalcure,seismictoss,softboiled,thunderwave,toxic": 751}, "breloom": {"84,leftovers,effectspore,hiddenpowerrock,machpunch,skyuppercut,spore": 229, "84,leftovers,effectspore,hiddenpowerghost,skyuppercut,spore,swordsdance": 250, "84,leftovers,effectspore,focuspunch,hiddenpowerrock,spore,substitute": 775, "84,leftovers,effectspore,hiddenpowerrock,skyuppercut,spore,substitute": 229, "84,leftovers,effectspore,hiddenpowerghost,skyuppercut,spore,substitute": 205, "84,leftovers,effectspore,focuspunch,hiddenpowerghost,spore,substitute": 717, "84,leftovers,effectspore,hiddenpowerrock,skyuppercut,spore,swordsdance": 268, "84,leftovers,effectspore,hiddenpowerghost,machpunch,skyuppercut,spore": 224}, "butterfree": {"97,leftovers,compoundeyes,hiddenpowerfire,morningsun,psychic,sleeppowder": 222, "97,leftovers,compoundeyes,morningsun,psychic,sleeppowder,stunspore": 371, "97,leftovers,compoundeyes,hiddenpowerfire,psychic,sleeppowder,toxic": 342, "97,leftovers,compoundeyes,hiddenpowerfire,morningsun,psychic,toxic": 361, "97,leftovers,compoundeyes,hiddenpowerfire,psychic,sleeppowder,stunspore": 350, "97,leftovers,compoundeyes,hiddenpowerfire,morningsun,psychic,stunspore": 354, "97,leftovers,compoundeyes,morningsun,psychic,sleeppowder,toxic": 332}, "cacturne": {"94,leftovers,sandveil,hiddenpowerdark,needlearm,spikes,thunderpunch": 1302, "94,leftovers,sandveil,focuspunch,hiddenpowerdark,leechseed,substitute": 1380}, "camerupt": {"86,leftovers,magmaarmor,earthquake,explosion,fireblast,toxic": 550, "86,leftovers,magmaarmor,earthquake,fireblast,rockslide,toxic": 569, "86,leftovers,magmaarmor,earthquake,fireblast,rest,sleeptalk": 1126, "86,choiceband,magmaarmor,earthquake,explosion,fireblast,rockslide": 569}, "castform": {"90,leftovers,forecast,fireblast,icebeam,return,thunderwave": 637, "90,leftovers,forecast,fireblast,return,thunderbolt,thunderwave": 603, "90,leftovers,forecast,icebeam,return,thunderbolt,thunderwave": 581, "90,leftovers,forecast,fireblast,icebeam,return,thunderbolt": 963}, "celebi": {"74,leftovers,naturalcure,hiddenpowerfire,psychic,recover,toxic": 332, "74,leftovers,naturalcure,hiddenpowergrass,psychic,recover,toxic": 368, "74,leftovers,naturalcure,healbell,psychic,recover,toxic": 323, "74,leftovers,naturalcure,leechseed,psychic,recover,toxic": 336, "74,leftovers,naturalcure,calmmind,hiddenpowergrass,psychic,recover": 450, "74,leftovers,naturalcure,calmmind,hiddenpowerfire,psychic,recover": 459, "74,leftovers,naturalcure,batonpass,calmmind,psychic,recover": 402}, "charizard": {"79,lumberry,blaze,dragondance,earthquake,fireblast,hiddenpowerflying": 401, "79,petayaberry,blaze,dragonclaw,fireblast,hiddenpowergrass,substitute": 836, "79,salacberry,blaze,bellydrum,earthquake,hiddenpowerflying,substitute": 432, "79,choiceband,blaze,earthquake,fireblast,hiddenpowerflying,rockslide": 411, "79,lumberry,blaze,bellydrum,earthquake,hiddenpowerflying,rockslide": 385}, "chimecho": {"89,leftovers,levitate,calmmind,healbell,hiddenpowerfire,psychic": 1482, "89,leftovers,levitate,healbell,hiddenpowerfire,psychic,toxic": 1307, "89,leftovers,levitate,calmmind,hiddenpowerfire,psychic,toxic": 212}, "claydol": {"81,leftovers,levitate,earthquake,psychic,rapidspin,toxic": 289, "81,leftovers,levitate,earthquake,icebeam,rapidspin,toxic": 273, "81,leftovers,levitate,earthquake,explosion,icebeam,rapidspin": 281, "81,leftovers,levitate,earthquake,explosion,psychic,toxic": 291, "81,leftovers,levitate,earthquake,explosion,psychic,rapidspin": 269, "81,leftovers,levitate,earthquake,explosion,rapidspin,toxic": 293, "81,leftovers,levitate,earthquake,icebeam,psychic,rapidspin": 281, "81,leftovers,levitate,earthquake,explosion,icebeam,toxic": 299, "81,leftovers,levitate,earthquake,explosion,icebeam,psychic": 295, "81,leftovers,levitate,earthquake,icebeam,psychic,toxic": 321}, "clefable": {"85,leftovers,cutecharm,fireblast,return,softboiled,thunderwave": 281, "85,leftovers,cutecharm,calmmind,icebeam,softboiled,thunderbolt": 1456, "85,leftovers,cutecharm,return,shadowball,softboiled,thunderwave": 287, "85,leftovers,cutecharm,return,shadowball,softboiled,toxic": 296, "85,leftovers,cutecharm,fireblast,return,softboiled,toxic": 270, "85,leftovers,cutecharm,fireblast,return,shadowball,softboiled": 236}, "cloyster": {"82,leftovers,shellarmor,explosion,icebeam,spikes,surf": 417, "82,leftovers,shellarmor,explosion,spikes,surf,toxic": 438, "82,leftovers,shellarmor,rapidspin,spikes,surf,toxic": 399, "82,leftovers,shellarmor,icebeam,spikes,surf,toxic": 443, "82,leftovers,shellarmor,explosion,rapidspin,spikes,surf": 406, "82,leftovers,shellarmor,icebeam,rapidspin,spikes,surf": 427}, "corsola": {"97,leftovers,naturalcure,icebeam,recover,surf,toxic": 1166, "97,leftovers,naturalcure,calmmind,icebeam,recover,surf": 1249}, "cradily": {"84,leftovers,suctioncups,earthquake,hiddenpowergrass,recover,rockslide": 1414, "84,leftovers,suctioncups,earthquake,recover,rockslide,toxic": 1366}, "crawdaunt": {"90,leftovers,hypercutter,crunch,doubleedge,hiddenpowergrass,surf": 323, "90,choiceband,hypercutter,brickbreak,doubleedge,hiddenpowerflying,surf": 466, "90,leftovers,hypercutter,brickbreak,crunch,doubleedge,surf": 309, "90,leftovers,hypercutter,crunch,doubleedge,hiddenpowerelectric,surf": 316, "90,leftovers,hypercutter,doubleedge,hiddenpowerflying,surf,swordsdance": 430, "90,leftovers,hypercutter,brickbreak,doubleedge,surf,swordsdance": 409, "90,leftovers,hypercutter,crunch,doubleedge,icebeam,surf": 327}, "crobat": {"79,choiceband,innerfocus,aerialace,hiddenpowerground,shadowball,sludgebomb": 428, "79,leftovers,innerfocus,aerialace,haze,hiddenpowerground,sludgebomb": 384, "79,leftovers,innerfocus,haze,hiddenpowerground,shadowball,sludgebomb": 389, "79,leftovers,innerfocus,aerialace,hiddenpowerground,sludgebomb,toxic": 418, "79,leftovers,innerfocus,haze,hiddenpowerground,sludgebomb,toxic": 398, "79,leftovers,innerfocus,hiddenpowerground,shadowball,sludgebomb,toxic": 445}, "delcatty": {"96,leftovers,cutecharm,batonpass,calmmind,icebeam,thunderbolt": 874, "96,leftovers,cutecharm,doubleedge,protect,thunderwave,wish": 471, "96,leftovers,cutecharm,doubleedge,protect,toxic,wish": 437, "96,leftovers,cutecharm,bodyslam,healbell,protect,wish": 948}, "delibird": {"97,choiceband,hustle,aerialace,hiddenpowerground,icebeam,quickattack": 823, "97,choiceband,hustle,aerialace,doubleedge,hiddenpowerground,icebeam": 749, "97,choiceband,hustle,aerialace,focuspunch,hiddenpowerground,icebeam": 803}, "deoxys": {"72,whiteherb,pressure,icebeam,psychoboost,shadowball,superpower": 496, "72,whiteherb,pressure,firepunch,psychoboost,shadowball,superpower": 521, "72,choiceband,pressure,extremespeed,psychoboost,shadowball,superpower": 493}, "deoxysattack": {"71,whiteherb,pressure,icebeam,psychoboost,shadowball,superpower": 486, "71,whiteherb,pressure,firepunch,psychoboost,shadowball,superpower": 475, "71,choiceband,pressure,extremespeed,psychoboost,shadowball,superpower": 500}, "deoxysdefense": {"75,leftovers,pressure,recover,seismictoss,spikes,toxic": 1439}, "deoxysspeed": {"77,leftovers,pressure,psychoboost,recover,spikes,toxic": 375, "77,leftovers,pressure,calmmind,firepunch,psychic,recover": 228, "77,leftovers,pressure,calmmind,firepunch,psychic,substitute": 271, "77,leftovers,pressure,calmmind,firepunch,icebeam,psychic": 256, "77,leftovers,pressure,psychoboost,recover,spikes,superpower": 368}, "dewgong": {"87,leftovers,thickfat,encore,icebeam,surf,toxic": 619, "87,leftovers,thickfat,icebeam,protect,surf,toxic": 1246, "87,leftovers,thickfat,icebeam,rest,sleeptalk,surf": 591}, "ditto": {"100,leftovers,limber,transform": 2585}, "dodrio": {"77,liechiberry,earlybird,drillpeck,flail,hiddenpowerground,substitute": 633, "77,choiceband,earlybird,drillpeck,hiddenpowerground,quickattack,return": 664, "77,choiceband,earlybird,doubleedge,drillpeck,hiddenpowerground,quickattack": 612, "77,liechiberry,earlybird,drillpeck,flail,quickattack,substitute": 630}, "donphan": {"83,leftovers,sturdy,earthquake,rest,rockslide,sleeptalk": 1549, "83,leftovers,sturdy,earthquake,rapidspin,rockslide,toxic": 1358}, "dragonite": {"76,leftovers,innerfocus,dragondance,earthquake,hiddenpowerflying,substitute": 372, "76,choiceband,innerfocus,brickbreak,earthquake,fireblast,hiddenpowerflying": 457, "76,chestoberry,innerfocus,dragondance,earthquake,hiddenpowerflying,rest": 309, "76,choiceband,innerfocus,brickbreak,doubleedge,earthquake,hiddenpowerflying": 477, "76,choiceband,innerfocus,doubleedge,earthquake,fireblast,hiddenpowerflying": 405, "76,lumberry,innerfocus,doubleedge,dragondance,earthquake,hiddenpowerflying": 367, "76,leftovers,innerfocus,dragondance,earthquake,healbell,hiddenpowerflying": 324}, "dugtrio": {"78,choiceband,arenatrap,earthquake,hiddenpowerbug,rockslide,sludgebomb": 3006}, "dunsparce": {"88,leftovers,serenegrace,earthquake,headbutt,shadowball,thunderwave": 1362, "88,chestoberry,serenegrace,bodyslam,curse,earthquake,rest": 484, "88,leftovers,serenegrace,bodyslam,curse,earthquake,shadowball": 477, "88,chestoberry,serenegrace,bodyslam,curse,rest,shadowball": 467}, "dusclops": {"86,leftovers,pressure,focuspunch,shadowball,substitute,willowisp": 256, "86,leftovers,pressure,focuspunch,icebeam,shadowball,substitute": 239, "86,leftovers,pressure,rest,seismictoss,sleeptalk,willowisp": 1031, "86,leftovers,pressure,rest,seismictoss,shadowball,sleeptalk": 1076, "86,leftovers,pressure,focuspunch,painsplit,shadowball,substitute": 245, "86,leftovers,pressure,icebeam,painsplit,shadowball,willowisp": 291}, "dustox": {"96,leftovers,shielddust,hiddenpowerground,moonlight,sludgebomb,toxic": 1467, "96,leftovers,shielddust,moonlight,sludgebomb,toxic,whirlwind": 1464}, "electabuzz": {"82,petayaberry,static,firepunch,icepunch,substitute,thunderbolt": 751, "82,leftovers,static,firepunch,hiddenpowergrass,icepunch,thunderbolt": 311, "82,leftovers,static,focuspunch,icepunch,substitute,thunderbolt": 601, "82,petayaberry,static,hiddenpowergrass,icepunch,substitute,thunderbolt": 789, "82,leftovers,static,crosschop,hiddenpowergrass,icepunch,thunderbolt": 291, "82,leftovers,static,crosschop,firepunch,icepunch,thunderbolt": 316}, "electrode": {"82,leftovers,static,hiddenpowerice,substitute,thunderbolt,toxic": 1016, "82,leftovers,static,explosion,hiddenpowerice,thunderbolt,toxic": 956, "82,leftovers,static,explosion,hiddenpowerice,substitute,thunderbolt": 1027}, "entei": {"79,leftovers,pressure,flamethrower,protect,substitute,toxic": 939, "79,leftovers,pressure,flamethrower,rest,sleeptalk,toxic": 940, "79,leftovers,pressure,calmmind,flamethrower,hiddenpowergrass,substitute": 1015}, "espeon": {"77,leftovers,synchronize,batonpass,calmmind,hiddenpowerfire,psychic": 963, "77,leftovers,synchronize,calmmind,hiddenpowerfire,psychic,substitute": 977, "77,leftovers,synchronize,calmmind,hiddenpowerfire,morningsun,psychic": 1020}, "exeggutor": {"83,leftovers,chlorophyll,hiddenpowerfire,psychic,solarbeam,sunnyday": 919, "83,leftovers,chlorophyll,gigadrain,hiddenpowerfire,psychic,stunspore": 107, "83,leftovers,chlorophyll,gigadrain,leechseed,psychic,substitute": 142, "83,leftovers,chlorophyll,hiddenpowerfire,psychic,stunspore,synthesis": 143, "83,leftovers,chlorophyll,explosion,hiddenpowerfire,psychic,sleeppowder": 62, "83,leftovers,chlorophyll,gigadrain,psychic,sleeppowder,synthesis": 149, "83,leftovers,chlorophyll,hiddenpowerfire,leechseed,psychic,substitute": 129, "83,leftovers,chlorophyll,gigadrain,hiddenpowerfire,psychic,synthesis": 323, "83,leftovers,chlorophyll,gigadrain,hiddenpowerfire,psychic,sleeppowder": 87, "83,leftovers,chlorophyll,gigadrain,psychic,sleeppowder,stunspore": 55, "83,leftovers,chlorophyll,explosion,gigadrain,hiddenpowerfire,psychic": 79, "83,leftovers,chlorophyll,hiddenpowerfire,psychic,sleeppowder,synthesis": 164, "83,leftovers,chlorophyll,explosion,gigadrain,psychic,stunspore": 46, "83,leftovers,chlorophyll,explosion,hiddenpowerfire,psychic,stunspore": 46, "83,leftovers,chlorophyll,hiddenpowerfire,psychic,sleeppowder,stunspore": 50, "83,leftovers,chlorophyll,gigadrain,psychic,stunspore,synthesis": 160, "83,leftovers,chlorophyll,explosion,gigadrain,psychic,sleeppowder": 54}, "exploud": {"86,choiceband,soundproof,earthquake,overheat,return,shadowball": 671, "86,leftovers,soundproof,earthquake,flamethrower,icebeam,return": 240, "86,leftovers,soundproof,earthquake,flamethrower,return,substitute": 223, "86,leftovers,soundproof,earthquake,return,shadowball,substitute": 220, "86,leftovers,soundproof,earthquake,icebeam,return,substitute": 222, "86,choiceband,soundproof,doubleedge,earthquake,overheat,shadowball": 720, "86,leftovers,soundproof,earthquake,icebeam,return,shadowball": 260, "86,leftovers,soundproof,earthquake,flamethrower,return,shadowball": 249}, "farfetchd": {"100,stick,innerfocus,agility,batonpass,return,swordsdance": 2461}, "fearow": {"81,choiceband,keeneye,drillpeck,hiddenpowerground,quickattack,return": 1306, "81,choiceband,keeneye,doubleedge,drillpeck,hiddenpowerground,quickattack": 1226}, "feraligatr": {"83,salacberry,torrent,earthquake,hiddenpowerflying,hydropump,swordsdance": 939, "83,salacberry,torrent,earthquake,hydropump,rockslide,swordsdance": 926, "83,choiceband,torrent,earthquake,hiddenpowerflying,hydropump,rockslide": 968}, "flareon": {"88,choiceband,flashfire,doubleedge,fireblast,hiddenpowerrock,irontail": 100, "88,choiceband,flashfire,fireblast,hiddenpowerrock,irontail,shadowball": 122, "88,leftovers,flashfire,flamethrower,hiddenpowergrass,protect,wish": 702, "88,leftovers,flashfire,flamethrower,protect,toxic,wish": 704, "88,choiceband,flashfire,doubleedge,fireblast,irontail,shadowball": 94, "88,leftovers,flashfire,fireblast,hiddenpowergrass,shadowball,toxic": 88, "88,leftovers,flashfire,fireblast,hiddenpowerrock,shadowball,toxic": 73, "88,leftovers,flashfire,fireblast,hiddenpowerrock,irontail,toxic": 88, "88,leftovers,flashfire,doubleedge,fireblast,hiddenpowergrass,toxic": 99, "88,leftovers,flashfire,doubleedge,fireblast,hiddenpowergrass,shadowball": 124, "88,leftovers,flashfire,doubleedge,fireblast,hiddenpowergrass,irontail": 110, "88,choiceband,flashfire,doubleedge,fireblast,hiddenpowerrock,shadowball": 105, "88,leftovers,flashfire,doubleedge,fireblast,hiddenpowerrock,toxic": 90, "88,leftovers,flashfire,doubleedge,fireblast,shadowball,toxic": 42, "88,leftovers,flashfire,fireblast,hiddenpowergrass,irontail,shadowball": 127, "88,leftovers,flashfire,fireblast,irontail,shadowball,toxic": 55, "88,leftovers,flashfire,fireblast,hiddenpowergrass,irontail,toxic": 81, "88,leftovers,flashfire,doubleedge,fireblast,irontail,toxic": 43}, "flygon": {"78,leftovers,levitate,earthquake,fireblast,protect,toxic": 460, "78,leftovers,levitate,dragonclaw,earthquake,substitute,toxic": 52, "78,choiceband,levitate,earthquake,hiddenpowerbug,quickattack,rockslide": 948, "78,leftovers,levitate,dragonclaw,earthquake,rockslide,toxic": 119, "78,leftovers,levitate,dragonclaw,earthquake,protect,toxic": 463, "78,leftovers,levitate,dragonclaw,earthquake,fireblast,rockslide": 156, "78,leftovers,levitate,earthquake,fireblast,rockslide,toxic": 114, "78,leftovers,levitate,dragonclaw,earthquake,fireblast,substitute": 121, "78,leftovers,levitate,earthquake,fireblast,rockslide,substitute": 110, "78,leftovers,levitate,earthquake,fireblast,substitute,toxic": 43, "78,leftovers,levitate,dragonclaw,earthquake,rockslide,substitute": 108, "78,leftovers,levitate,dragonclaw,earthquake,fireblast,toxic": 94, "78,leftovers,levitate,earthquake,rockslide,substitute,toxic": 50}, "forretress": {"82,leftovers,sturdy,earthquake,explosion,hiddenpowersteel,spikes": 266, "82,leftovers,sturdy,earthquake,explosion,hiddenpowerbug,spikes": 252, "82,leftovers,sturdy,earthquake,hiddenpowersteel,spikes,toxic": 269, "82,leftovers,sturdy,hiddenpowersteel,rapidspin,spikes,toxic": 263, "82,leftovers,sturdy,earthquake,hiddenpowerbug,rapidspin,spikes": 241, "82,leftovers,sturdy,explosion,hiddenpowerbug,spikes,toxic": 257, "82,leftovers,sturdy,hiddenpowerbug,rapidspin,spikes,toxic": 232, "82,leftovers,sturdy,earthquake,hiddenpowerbug,spikes,toxic": 262, "82,leftovers,sturdy,earthquake,hiddenpowersteel,rapidspin,spikes": 243, "82,leftovers,sturdy,explosion,hiddenpowersteel,spikes,toxic": 264, "82,leftovers,sturdy,explosion,hiddenpowerbug,rapidspin,spikes": 243, "82,leftovers,sturdy,explosion,hiddenpowersteel,rapidspin,spikes": 248}, "furret": {"87,liechiberry,keeneye,return,reversal,shadowball,substitute": 964, "87,choiceband,keeneye,brickbreak,doubleedge,quickattack,shadowball": 454, "87,choiceband,keeneye,brickbreak,doubleedge,shadowball,trick": 465, "87,choiceband,keeneye,brickbreak,quickattack,return,shadowball": 461, "87,choiceband,keeneye,brickbreak,return,shadowball,trick": 445}, "gardevoir": {"79,leftovers,trace,calmmind,firepunch,hypnosis,psychic": 728, "79,leftovers,trace,calmmind,firepunch,psychic,thunderbolt": 676, "79,leftovers,trace,calmmind,firepunch,icepunch,psychic": 749, "79,leftovers,trace,calmmind,firepunch,psychic,substitute": 727}, "gengar": {"74,leftovers,levitate,destinybond,icepunch,substitute,thunderbolt": 373, "74,leftovers,levitate,explosion,icepunch,thunderbolt,willowisp": 345, "74,leftovers,levitate,destinybond,icepunch,thunderbolt,willowisp": 350, "74,leftovers,levitate,firepunch,icepunch,thunderbolt,willowisp": 280, "74,leftovers,levitate,firepunch,icepunch,substitute,thunderbolt": 291, "74,leftovers,levitate,destinybond,firepunch,icepunch,thunderbolt": 339, "74,leftovers,levitate,icepunch,substitute,thunderbolt,willowisp": 298, "74,leftovers,levitate,explosion,icepunch,substitute,thunderbolt": 375, "74,leftovers,levitate,explosion,firepunch,icepunch,thunderbolt": 331}, "girafarig": {"85,leftovers,earlybird,calmmind,hiddenpowerfire,psychic,thunderbolt": 339, "85,leftovers,earlybird,doubleedge,protect,psychic,wish": 35, "85,leftovers,earlybird,batonpass,calmmind,hiddenpowerfire,psychic": 156, "85,choiceband,earlybird,doubleedge,earthquake,shadowball,thunderbolt": 34, "85,choiceband,earlybird,earthquake,return,shadowball,thunderbolt": 35, "85,leftovers,earlybird,doubleedge,psychic,shadowball,thunderwave": 22, "85,leftovers,earlybird,batonpass,calmmind,psychic,thunderbolt": 185, "85,leftovers,earlybird,calmmind,hiddenpowerfire,psychic,rest": 154, "85,leftovers,earlybird,earthquake,return,shadowball,toxic": 30, "85,leftovers,earlybird,doubleedge,psychic,shadowball,thunderbolt": 32, "85,leftovers,earlybird,earthquake,return,shadowball,thunderwave": 32, "85,leftovers,earlybird,doubleedge,protect,thunderbolt,wish": 53, "85,leftovers,earlybird,earthquake,psychic,return,thunderbolt": 42, "85,leftovers,earlybird,return,shadowball,thunderbolt,toxic": 33, "85,leftovers,earlybird,doubleedge,earthquake,shadowball,thunderwave": 28, "85,leftovers,earlybird,psychic,return,shadowball,thunderwave": 28, "85,choiceband,earlybird,doubleedge,earthquake,psychic,shadowball": 41, "85,leftovers,earlybird,doubleedge,psychic,thunderbolt,thunderwave": 34, "85,leftovers,earlybird,earthquake,protect,return,wish": 52, "85,leftovers,earlybird,psychic,return,shadowball,thunderbolt": 27, "85,leftovers,earlybird,earthquake,return,thunderbolt,toxic": 32, "85,leftovers,earlybird,calmmind,psychic,substitute,thunderbolt": 157, "85,leftovers,earlybird,doubleedge,protect,shadowball,wish": 51, "85,leftovers,earlybird,doubleedge,earthquake,protect,wish": 49, "85,leftovers,earlybird,calmmind,hiddenpowerfire,psychic,substitute": 179, "85,leftovers,earlybird,calmmind,psychic,rest,thunderbolt": 172, "85,leftovers,earlybird,protect,return,thunderbolt,wish": 52, "85,leftovers,earlybird,doubleedge,shadowball,thunderbolt,toxic": 38, "85,leftovers,earlybird,psychic,return,thunderbolt,thunderwave": 25, "85,leftovers,earlybird,doubleedge,psychic,thunderbolt,toxic": 28, "85,leftovers,earlybird,psychic,return,thunderbolt,toxic": 27, "85,leftovers,earlybird,doubleedge,earthquake,thunderbolt,thunderwave": 25, "85,leftovers,earlybird,doubleedge,earthquake,shadowball,toxic": 22, "85,leftovers,earlybird,doubleedge,earthquake,thunderbolt,toxic": 33, "85,leftovers,earlybird,doubleedge,earthquake,psychic,toxic": 29, "85,leftovers,earlybird,protect,psychic,return,wish": 42, "85,leftovers,earlybird,doubleedge,psychic,shadowball,toxic": 29, "85,leftovers,earlybird,psychic,return,shadowball,toxic": 36, "85,leftovers,earlybird,earthquake,return,thunderbolt,thunderwave": 25, "85,leftovers,earlybird,doubleedge,earthquake,psychic,thunderbolt": 30, "85,leftovers,earlybird,protect,return,shadowball,wish": 50, "85,leftovers,earlybird,earthquake,psychic,return,thunderwave": 33, "85,choiceband,earlybird,earthquake,psychic,return,shadowball": 46, "85,leftovers,earlybird,earthquake,psychic,return,toxic": 28, "85,leftovers,earlybird,doubleedge,earthquake,psychic,thunderwave": 21, "85,leftovers,earlybird,doubleedge,shadowball,thunderbolt,thunderwave": 25, "85,leftovers,earlybird,return,shadowball,thunderbolt,thunderwave": 27}, "glalie": {"82,leftovers,innerfocus,explosion,icebeam,spikes,toxic": 943, "82,leftovers,innerfocus,earthquake,explosion,icebeam,spikes": 945, "82,leftovers,innerfocus,earthquake,icebeam,spikes,toxic": 901}, "gligar": {"84,salacberry,hypercutter,earthquake,hiddenpowerflying,substitute,swordsdance": 816, "84,leftovers,hypercutter,earthquake,hiddenpowerflying,quickattack,swordsdance": 831, "84,salacberry,hypercutter,earthquake,hiddenpowerflying,rockslide,swordsdance": 876}, "golduck": {"81,leftovers,cloudnine,calmmind,hiddenpowerelectric,icebeam,surf": 362, "81,leftovers,cloudnine,calmmind,hiddenpowergrass,icebeam,surf": 358, "81,leftovers,cloudnine,calmmind,hydropump,icebeam,substitute": 332, "81,leftovers,cloudnine,calmmind,hiddenpowerelectric,hydropump,icebeam": 306, "81,leftovers,cloudnine,calmmind,icebeam,substitute,surf": 342, "81,leftovers,cloudnine,calmmind,hypnosis,icebeam,surf": 355, "81,leftovers,cloudnine,calmmind,hydropump,hypnosis,icebeam": 347, "81,leftovers,cloudnine,calmmind,hiddenpowergrass,hydropump,icebeam": 371}, "golem": {"84,choiceband,rockhead,earthquake,explosion,hiddenpowerbug,rockslide": 187, "84,leftovers,rockhead,earthquake,protect,rockslide,toxic": 1186, "84,leftovers,rockhead,earthquake,hiddenpowerbug,rockslide,toxic": 193, "84,choiceband,rockhead,doubleedge,earthquake,hiddenpowerbug,rockslide": 234, "84,choiceband,rockhead,doubleedge,earthquake,explosion,rockslide": 186, "84,leftovers,rockhead,doubleedge,earthquake,rockslide,toxic": 224, "84,leftovers,rockhead,earthquake,explosion,rockslide,toxic": 209}, "gorebyss": {"85,petayaberry,swiftswim,hiddenpowerelectric,hydropump,icebeam,raindance": 721, "85,petayaberry,swiftswim,hiddenpowerelectric,icebeam,raindance,surf": 662, "85,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 701, "85,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 687}, "granbull": {"83,leftovers,intimidate,doubleedge,earthquake,rest,sleeptalk": 463, "83,leftovers,intimidate,bulkup,doubleedge,earthquake,shadowball": 349, "83,leftovers,intimidate,earthquake,healbell,return,shadowball": 298, "83,leftovers,intimidate,earthquake,rest,return,sleeptalk": 490, "83,choiceband,intimidate,doubleedge,earthquake,overheat,shadowball": 599, "83,leftovers,intimidate,earthquake,return,shadowball,thunderwave": 351, "83,leftovers,intimidate,earthquake,healbell,return,thunderwave": 305}, "groudon": {"69,leftovers,drought,earthquake,hiddenpowerbug,rockslide,thunderwave": 292, "69,choiceband,drought,earthquake,hiddenpowerbug,overheat,rockslide": 327, "69,salacberry,drought,earthquake,rockslide,substitute,swordsdance": 323, "69,salacberry,drought,earthquake,overheat,rockslide,swordsdance": 304, "69,salacberry,drought,earthquake,hiddenpowerbug,rockslide,swordsdance": 302, "69,leftovers,drought,earthquake,rockslide,swordsdance,thunderwave": 287, "69,leftovers,drought,earthquake,overheat,rockslide,thunderwave": 283, "69,leftovers,drought,earthquake,hiddenpowerbug,rockslide,substitute": 268, "69,leftovers,drought,earthquake,rockslide,substitute,thunderwave": 296, "69,leftovers,drought,earthquake,overheat,rockslide,substitute": 292}, "grumpig": {"83,leftovers,thickfat,calmmind,firepunch,psychic,substitute": 1530, "83,leftovers,thickfat,calmmind,firepunch,psychic,thunderpunch": 1528}, "gyarados": {"74,leftovers,intimidate,dragondance,earthquake,hiddenpowerflying,substitute": 660, "74,lumberry,intimidate,dragondance,earthquake,hiddenpowerflying,hydropump": 642, "74,lumberry,intimidate,doubleedge,dragondance,earthquake,hiddenpowerflying": 662, "74,choiceband,intimidate,doubleedge,earthquake,hiddenpowerflying,hydropump": 596}, "hariyama": {"83,leftovers,guts,bulkup,crosschop,earthquake,rockslide": 124, "83,leftovers,guts,crosschop,earthquake,knockoff,rockslide": 91, "83,leftovers,guts,bulkup,crosschop,earthquake,hiddenpowerghost": 117, "83,leftovers,thickfat,bulkup,crosschop,earthquake,rockslide": 109, "83,leftovers,guts,crosschop,rest,rockslide,sleeptalk": 847, "83,choiceband,guts,crosschop,earthquake,hiddenpowerghost,rockslide": 137, "83,choiceband,thickfat,crosschop,earthquake,hiddenpowerghost,rockslide": 99, "83,leftovers,thickfat,crosschop,earthquake,knockoff,rockslide": 96, "83,leftovers,guts,crosschop,hiddenpowerghost,rest,sleeptalk": 792, "83,leftovers,guts,crosschop,hiddenpowerghost,knockoff,rockslide": 103, "83,leftovers,thickfat,crosschop,hiddenpowerghost,knockoff,rockslide": 112, "83,leftovers,thickfat,bulkup,crosschop,earthquake,hiddenpowerghost": 114, "83,leftovers,guts,bulkup,crosschop,hiddenpowerghost,rockslide": 107, "83,leftovers,thickfat,bulkup,crosschop,hiddenpowerghost,rockslide": 130, "83,leftovers,thickfat,crosschop,earthquake,hiddenpowerghost,knockoff": 105, "83,leftovers,guts,crosschop,earthquake,hiddenpowerghost,knockoff": 115}, "heracross": {"77,salacberry,guts,brickbreak,megahorn,rockslide,swordsdance": 968, "77,salacberry,swarm,megahorn,reversal,rockslide,substitute": 458, "77,choiceband,guts,brickbreak,earthquake,megahorn,rockslide": 518, "77,choiceband,guts,brickbreak,hiddenpowerghost,megahorn,rockslide": 481, "77,salacberry,swarm,endure,megahorn,reversal,rockslide": 476}, "hitmonchan": {"87,choiceband,keeneye,hiddenpowerghost,rapidspin,rockslide,skyuppercut": 220, "87,choiceband,keeneye,hiddenpowerghost,machpunch,rapidspin,skyuppercut": 209, "87,leftovers,keeneye,bulkup,hiddenpowerghost,machpunch,skyuppercut": 272, "87,leftovers,keeneye,hiddenpowerghost,rockslide,skyuppercut,toxic": 250, "87,leftovers,keeneye,bulkup,earthquake,hiddenpowerghost,skyuppercut": 277, "87,leftovers,keeneye,earthquake,hiddenpowerghost,skyuppercut,toxic": 228, "87,choiceband,keeneye,earthquake,hiddenpowerghost,rapidspin,skyuppercut": 223, "87,choiceband,keeneye,earthquake,hiddenpowerghost,machpunch,skyuppercut": 189, "87,choiceband,keeneye,earthquake,hiddenpowerghost,rockslide,skyuppercut": 230, "87,choiceband,keeneye,hiddenpowerghost,machpunch,rockslide,skyuppercut": 214, "87,leftovers,keeneye,hiddenpowerghost,rapidspin,skyuppercut,toxic": 223, "87,leftovers,keeneye,bulkup,hiddenpowerghost,rockslide,skyuppercut": 294, "87,leftovers,keeneye,hiddenpowerghost,machpunch,skyuppercut,toxic": 245}, "hitmonlee": {"84,salacberry,limber,hiddenpowerghost,reversal,rockslide,substitute": 789, "84,salacberry,limber,earthquake,hiddenpowerghost,reversal,substitute": 808, "84,leftovers,limber,brickbreak,bulkup,hiddenpowerghost,rockslide": 254, "84,leftovers,limber,brickbreak,bulkup,hiddenpowerghost,machpunch": 242, "84,choiceband,limber,brickbreak,earthquake,hiddenpowerghost,machpunch": 275, "84,choiceband,limber,brickbreak,earthquake,hiddenpowerghost,rockslide": 243, "84,leftovers,limber,brickbreak,bulkup,earthquake,hiddenpowerghost": 273, "84,choiceband,limber,brickbreak,hiddenpowerghost,machpunch,rockslide": 260}, "hitmontop": {"86,leftovers,intimidate,brickbreak,bulkup,earthquake,hiddenpowerghost": 269, "86,leftovers,intimidate,brickbreak,hiddenpowerghost,rockslide,toxic": 231, "86,choiceband,intimidate,brickbreak,earthquake,hiddenpowerghost,rockslide": 244, "86,leftovers,intimidate,brickbreak,hiddenpowerghost,machpunch,toxic": 264, "86,leftovers,intimidate,brickbreak,bulkup,hiddenpowerghost,rockslide": 300, "86,leftovers,intimidate,brickbreak,hiddenpowerghost,rapidspin,toxic": 268, "86,choiceband,intimidate,brickbreak,earthquake,hiddenpowerghost,machpunch": 222, "86,leftovers,intimidate,brickbreak,bulkup,hiddenpowerghost,machpunch": 276, "86,choiceband,intimidate,brickbreak,earthquake,hiddenpowerghost,rapidspin": 212, "86,choiceband,intimidate,brickbreak,hiddenpowerghost,machpunch,rapidspin": 217, "86,choiceband,intimidate,brickbreak,hiddenpowerghost,machpunch,rockslide": 202, "86,leftovers,intimidate,brickbreak,earthquake,hiddenpowerghost,toxic": 247, "86,choiceband,intimidate,brickbreak,hiddenpowerghost,rapidspin,rockslide": 214}, "hooh": {"70,leftovers,pressure,calmmind,recover,sacredfire,thunderbolt": 1155, "70,leftovers,pressure,earthquake,recover,sacredfire,thunderbolt": 384, "70,leftovers,pressure,earthquake,recover,sacredfire,toxic": 204, "70,leftovers,pressure,recover,sacredfire,substitute,thunderbolt": 162, "70,leftovers,pressure,recover,sacredfire,thunderbolt,toxic": 207, "70,leftovers,pressure,earthquake,recover,sacredfire,substitute": 188}, "houndoom": {"81,leftovers,flashfire,crunch,fireblast,hiddenpowergrass,pursuit": 437, "81,leftovers,flashfire,crunch,fireblast,pursuit,willowisp": 445, "81,petayaberry,flashfire,crunch,fireblast,hiddenpowergrass,substitute": 1369, "81,leftovers,flashfire,crunch,fireblast,hiddenpowergrass,willowisp": 433}, "huntail": {"89,leftovers,swiftswim,doubleedge,hydropump,icebeam,raindance": 443, "89,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 456, "89,petayaberry,swiftswim,hiddenpowerelectric,icebeam,raindance,surf": 467, "89,leftovers,swiftswim,doubleedge,icebeam,raindance,surf": 439, "89,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 474, "89,petayaberry,swiftswim,hiddenpowerelectric,hydropump,icebeam,raindance": 464}, "hypno": {"88,leftovers,insomnia,protect,psychic,toxic,wish": 462, "88,leftovers,insomnia,firepunch,protect,psychic,wish": 503, "88,leftovers,insomnia,batonpass,calmmind,firepunch,psychic": 1021, "88,leftovers,insomnia,protect,seismictoss,toxic,wish": 1027}, "illumise": {"94,leftovers,oblivious,encore,seismictoss,substitute,toxic": 327, "94,leftovers,oblivious,encore,moonlight,seismictoss,thunderwave": 866, "94,leftovers,oblivious,batonpass,encore,seismictoss,substitute": 244, "94,leftovers,oblivious,batonpass,seismictoss,substitute,thunderwave": 313, "94,leftovers,oblivious,encore,seismictoss,substitute,thunderwave": 288, "94,leftovers,oblivious,encore,moonlight,seismictoss,toxic": 729, "94,leftovers,oblivious,batonpass,seismictoss,substitute,toxic": 311}, "jirachi": {"73,leftovers,serenegrace,calmmind,firepunch,icepunch,psychic": 513, "73,leftovers,serenegrace,bodyslam,firepunch,psychic,toxic": 415, "73,leftovers,serenegrace,calmmind,firepunch,psychic,thunderbolt": 462, "73,leftovers,serenegrace,calmmind,firepunch,psychic,substitute": 466, "73,leftovers,serenegrace,firepunch,protect,psychic,wish": 365, "73,leftovers,serenegrace,protect,psychic,toxic,wish": 329, "73,leftovers,serenegrace,bodyslam,protect,psychic,wish": 338}, "jolteon": {"77,leftovers,voltabsorb,hiddenpowerice,protect,thunderbolt,toxic": 1577, "77,leftovers,voltabsorb,batonpass,hiddenpowerice,substitute,thunderbolt": 1504}, "jumpluff": {"87,leftovers,chlorophyll,encore,hiddenpowerflying,synthesis,toxic": 308, "87,leftovers,chlorophyll,hiddenpowerflying,leechseed,protect,substitute": 1266, "87,leftovers,chlorophyll,hiddenpowerflying,sleeppowder,synthesis,toxic": 343, "87,leftovers,chlorophyll,encore,hiddenpowerflying,sleeppowder,synthesis": 297, "87,leftovers,chlorophyll,encore,hiddenpowerflying,sleeppowder,toxic": 297}, "jynx": {"80,leftovers,oblivious,calmmind,icebeam,lovelykiss,psychic": 878, "80,leftovers,oblivious,calmmind,icebeam,psychic,substitute": 945, "80,leftovers,oblivious,calmmind,hiddenpowerfire,icebeam,psychic": 908}, "kabutops": {"84,salacberry,battlearmor,brickbreak,rockslide,surf,swordsdance": 759, "84,choiceband,battlearmor,brickbreak,hiddenpowerflying,rockslide,surf": 791, "84,salacberry,battlearmor,hiddenpowerflying,rockslide,surf,swordsdance": 784, "84,salacberry,swiftswim,hiddenpowerflying,rockslide,surf,swordsdance": 21, "84,choiceband,swiftswim,brickbreak,hiddenpowerflying,rockslide,surf": 19, "84,salacberry,swiftswim,brickbreak,rockslide,surf,swordsdance": 25}, "kangaskhan": {"79,leftovers,earlybird,bodyslam,earthquake,protect,wish": 744, "79,leftovers,earlybird,doubleedge,earthquake,rest,toxic": 228, "79,leftovers,earlybird,earthquake,protect,return,wish": 742, "79,leftovers,earlybird,earthquake,rest,return,shadowball": 228, "79,leftovers,earlybird,earthquake,return,shadowball,toxic": 234, "79,leftovers,earlybird,doubleedge,earthquake,rest,shadowball": 249, "79,leftovers,earlybird,earthquake,rest,return,toxic": 228, "79,leftovers,earlybird,doubleedge,earthquake,shadowball,toxic": 244}, "kecleon": {"91,choiceband,colorchange,brickbreak,return,shadowball,trick": 1428, "91,leftovers,colorchange,brickbreak,return,shadowball,thunderwave": 1394}, "kingdra": {"81,petayaberry,swiftswim,hiddenpowerelectric,hydropump,icebeam,raindance": 484, "81,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 476, "81,petayaberry,swiftswim,hiddenpowerelectric,icebeam,raindance,surf": 472, "81,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 492, "81,leftovers,swiftswim,icebeam,raindance,substitute,surf": 471, "81,leftovers,swiftswim,hydropump,icebeam,raindance,substitute": 460}, "kingler": {"91,salacberry,hypercutter,doubleedge,hiddenpowerground,surf,swordsdance": 1365, "91,salacberry,hypercutter,doubleedge,hiddenpowerghost,surf,swordsdance": 1405}, "kyogre": {"67,leftovers,drizzle,calmmind,rest,sleeptalk,surf": 649, "67,leftovers,drizzle,icebeam,rest,sleeptalk,surf": 631, "67,leftovers,drizzle,calmmind,icebeam,surf,thunder": 814, "67,leftovers,drizzle,rest,sleeptalk,surf,thunder": 648}, "lanturn": {"82,leftovers,voltabsorb,icebeam,surf,thunderbolt,toxic": 1342, "82,leftovers,voltabsorb,rest,sleeptalk,surf,thunderbolt": 1367}, "lapras": {"79,leftovers,waterabsorb,icebeam,rest,sleeptalk,surf": 538, "79,leftovers,waterabsorb,icebeam,rest,sleeptalk,thunderbolt": 693, "79,leftovers,waterabsorb,healbell,icebeam,thunderbolt,toxic": 567, "79,leftovers,waterabsorb,healbell,icebeam,surf,toxic": 208, "79,leftovers,waterabsorb,healbell,icebeam,surf,thunderbolt": 221, "79,leftovers,waterabsorb,icebeam,surf,thunderbolt,toxic": 283}, "latias": {"67,souldew,levitate,calmmind,dragonclaw,recover,refresh": 1356, "67,souldew,levitate,calmmind,hiddenpowerfire,psychic,recover": 756, "67,souldew,levitate,calmmind,dragonclaw,psychic,recover": 746}, "latios": {"67,souldew,levitate,calmmind,dragonclaw,recover,refresh": 1365, "67,souldew,levitate,calmmind,dragonclaw,psychic,recover": 706, "67,souldew,levitate,calmmind,hiddenpowerfire,psychic,recover": 696}, "ledian": {"100,leftovers,swarm,agility,batonpass,silverwind,swordsdance": 1060, "100,leftovers,swarm,batonpass,silverwind,substitute,swordsdance": 1123}, "lickitung": {"94,leftovers,owntempo,healbell,protect,seismictoss,wish": 437, "94,leftovers,owntempo,bodyslam,earthquake,protect,wish": 909, "94,leftovers,owntempo,protect,seismictoss,toxic,wish": 960, "94,leftovers,owntempo,knockoff,protect,seismictoss,wish": 500}, "linoone": {"82,silkscarf,pickup,bellydrum,extremespeed,hiddenpowerground,shadowball": 1456, "82,lumberry,pickup,bellydrum,hiddenpowerground,return,shadowball": 639, "82,salacberry,pickup,bellydrum,hiddenpowerground,return,substitute": 723}, "ludicolo": {"84,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 1313, "84,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 1312}, "lugia": {"69,leftovers,pressure,calmmind,icebeam,recover,thunderbolt": 1290, "69,leftovers,pressure,earthquake,psychic,recover,toxic": 672, "69,leftovers,pressure,psychic,recover,substitute,toxic": 645}, "lunatone": {"84,leftovers,levitate,calmmind,hypnosis,icebeam,psychic": 222, "84,leftovers,levitate,batonpass,calmmind,icebeam,psychic": 223, "84,leftovers,levitate,batonpass,calmmind,hiddenpowerfire,psychic": 235, "84,leftovers,levitate,hypnosis,icebeam,psychic,toxic": 143, "84,leftovers,levitate,explosion,hiddenpowerfire,psychic,toxic": 103, "84,leftovers,levitate,hiddenpowerfire,icebeam,psychic,toxic": 206, "84,leftovers,levitate,calmmind,hiddenpowerfire,icebeam,psychic": 421, "84,leftovers,levitate,hiddenpowerfire,hypnosis,icebeam,psychic": 231, "84,leftovers,levitate,hiddenpowerfire,hypnosis,psychic,toxic": 96, "84,leftovers,levitate,explosion,icebeam,psychic,toxic": 116, "84,leftovers,levitate,explosion,hiddenpowerfire,icebeam,psychic": 253, "84,leftovers,levitate,calmmind,hiddenpowerfire,hypnosis,psychic": 214, "84,leftovers,levitate,explosion,hiddenpowerfire,hypnosis,psychic": 111, "84,leftovers,levitate,explosion,hypnosis,icebeam,psychic": 125}, "luvdisc": {"100,leftovers,swiftswim,icebeam,protect,surf,toxic": 1229, "100,leftovers,swiftswim,protect,substitute,surf,toxic": 1276}, "machamp": {"83,leftovers,guts,crosschop,hiddenpowerghost,rest,sleeptalk": 804, "83,leftovers,guts,crosschop,rest,rockslide,sleeptalk": 795, "83,leftovers,guts,bulkup,crosschop,hiddenpowerghost,rockslide": 358, "83,leftovers,guts,bulkup,crosschop,earthquake,hiddenpowerghost": 350, "83,choiceband,guts,crosschop,earthquake,hiddenpowerghost,rockslide": 490, "83,leftovers,guts,bulkup,crosschop,earthquake,rockslide": 339}, "magcargo": {"99,leftovers,flamebody,flamethrower,rest,sleeptalk,toxic": 336, "99,leftovers,flamebody,fireblast,hiddenpowergrass,rest,sleeptalk": 303, "99,leftovers,flamebody,fireblast,hiddenpowergrass,protect,toxic": 618, "99,leftovers,flamebody,flamethrower,hiddenpowergrass,protect,toxic": 644, "99,leftovers,flamebody,fireblast,rest,sleeptalk,toxic": 331, "99,leftovers,flamebody,flamethrower,hiddenpowergrass,rest,sleeptalk": 312}, "magmar": {"85,petayaberry,flamebody,flamethrower,hiddenpowergrass,substitute,thunderpunch": 357, "85,leftovers,flamebody,crosschop,fireblast,hiddenpowergrass,thunderpunch": 117, "85,leftovers,flamebody,fireblast,focuspunch,substitute,thunderpunch": 231, "85,petayaberry,flamebody,fireblast,hiddenpowergrass,substitute,thunderpunch": 312, "85,leftovers,flamebody,fireblast,hiddenpowergrass,thunderpunch,toxic": 105, "85,leftovers,flamebody,flamethrower,hiddenpowerice,thunderpunch,toxic": 98, "85,leftovers,flamebody,flamethrower,focuspunch,substitute,thunderpunch": 240, "85,petayaberry,flamebody,fireblast,hiddenpowerice,substitute,thunderpunch": 358, "85,leftovers,flamebody,flamethrower,hiddenpowergrass,thunderpunch,toxic": 88, "85,petayaberry,flamebody,flamethrower,hiddenpowerice,substitute,thunderpunch": 363, "85,leftovers,flamebody,crosschop,fireblast,thunderpunch,toxic": 76, "85,leftovers,flamebody,crosschop,flamethrower,thunderpunch,toxic": 73, "85,leftovers,flamebody,crosschop,fireblast,hiddenpowerice,thunderpunch": 75, "85,leftovers,flamebody,fireblast,hiddenpowerice,thunderpunch,toxic": 111, "85,leftovers,flamebody,crosschop,flamethrower,hiddenpowergrass,thunderpunch": 94, "85,leftovers,flamebody,crosschop,flamethrower,hiddenpowerice,thunderpunch": 102}, "magneton": {"85,leftovers,magnetpull,hiddenpowerice,protect,thunderbolt,toxic": 1347, "85,leftovers,magnetpull,hiddenpowerice,rest,sleeptalk,thunderbolt": 1307}, "manectric": {"82,petayaberry,static,crunch,hiddenpowerice,substitute,thunderbolt": 3007}, "mantine": {"86,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 405, "86,leftovers,waterabsorb,haze,protect,surf,toxic": 395, "86,leftovers,waterabsorb,rest,sleeptalk,surf,toxic": 200, "86,leftovers,waterabsorb,icebeam,rest,sleeptalk,surf": 178, "86,leftovers,waterabsorb,hiddenpowergrass,rest,sleeptalk,surf": 196, "86,leftovers,waterabsorb,icebeam,protect,surf,toxic": 422, "86,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 446, "86,leftovers,waterabsorb,hiddenpowergrass,icebeam,surf,toxic": 256}, "marowak": {"83,thickclub,rockhead,doubleedge,earthquake,rockslide,swordsdance": 1376, "83,thickclub,rockhead,bonemerang,doubleedge,rockslide,swordsdance": 1452}, "masquerain": {"96,leftovers,intimidate,hydropump,icebeam,stunspore,substitute": 1241, "96,leftovers,intimidate,hydropump,icebeam,substitute,toxic": 1163}, "mawile": {"95,leftovers,intimidate,focuspunch,hiddenpowersteel,rockslide,substitute": 696, "95,leftovers,intimidate,brickbreak,hiddenpowersteel,substitute,swordsdance": 477, "95,leftovers,intimidate,batonpass,brickbreak,hiddenpowersteel,swordsdance": 462, "95,leftovers,intimidate,focuspunch,hiddenpowersteel,substitute,toxic": 678, "95,leftovers,intimidate,brickbreak,hiddenpowersteel,rockslide,swordsdance": 473}, "medicham": {"82,leftovers,purepower,brickbreak,bulkup,rockslide,shadowball": 505, "82,salacberry,purepower,brickbreak,bulkup,shadowball,substitute": 432, "82,salacberry,purepower,bulkup,reversal,shadowball,substitute": 1424, "82,leftovers,purepower,brickbreak,bulkup,recover,shadowball": 492}, "meganium": {"85,leftovers,overgrow,hiddenpowergrass,leechseed,synthesis,toxic": 450, "85,leftovers,overgrow,bodyslam,earthquake,swordsdance,synthesis": 720, "85,leftovers,overgrow,earthquake,hiddenpowerrock,swordsdance,synthesis": 762, "85,leftovers,overgrow,bodyslam,hiddenpowergrass,synthesis,toxic": 437, "85,leftovers,overgrow,earthquake,hiddenpowergrass,synthesis,toxic": 465}, "metagross": {"73,leftovers,clearbody,agility,earthquake,meteormash,rockslide": 454, "73,choiceband,clearbody,earthquake,explosion,meteormash,rockslide": 1395, "73,leftovers,clearbody,agility,earthquake,explosion,meteormash": 449, "73,leftovers,clearbody,agility,earthquake,meteormash,psychic": 492}, "mew": {"72,leftovers,synchronize,calmmind,flamethrower,psychic,softboiled": 486, "72,salacberry,synchronize,brickbreak,earthquake,rockslide,swordsdance": 293, "72,leftovers,synchronize,explosion,psychic,softboiled,thunderwave": 145, "72,leftovers,synchronize,flamethrower,psychic,softboiled,transform": 157, "72,leftovers,synchronize,flamethrower,psychic,softboiled,thunderwave": 150, "72,leftovers,synchronize,psychic,softboiled,thunderwave,transform": 165, "72,leftovers,synchronize,calmmind,psychic,softboiled,thunderbolt": 503, "72,salacberry,synchronize,earthquake,explosion,rockslide,swordsdance": 349, "72,leftovers,synchronize,earthquake,rockslide,softboiled,swordsdance": 328, "72,leftovers,synchronize,explosion,flamethrower,psychic,softboiled": 181, "72,leftovers,synchronize,explosion,psychic,softboiled,transform": 159}, "mewtwo": {"66,leftovers,pressure,calmmind,flamethrower,psychic,thunderbolt": 731, "66,leftovers,pressure,calmmind,flamethrower,psychic,recover": 1485, "66,leftovers,pressure,calmmind,icebeam,psychic,thunderbolt": 725}, "mightyena": {"91,leftovers,intimidate,crunch,healbell,hiddenpowerfighting,toxic": 432, "91,leftovers,intimidate,crunch,doubleedge,healbell,hiddenpowerfighting": 482, "91,leftovers,intimidate,crunch,hiddenpowerfighting,shadowball,toxic": 495, "91,leftovers,intimidate,crunch,healbell,hiddenpowerfighting,shadowball": 443, "91,leftovers,intimidate,crunch,doubleedge,hiddenpowerfighting,toxic": 525, "91,choiceband,intimidate,crunch,doubleedge,hiddenpowerfighting,shadowball": 512}, "milotic": {"77,leftovers,marvelscale,recover,refresh,surf,toxic": 1379, "77,leftovers,marvelscale,icebeam,recover,surf,toxic": 1434}, "miltank": {"77,leftovers,thickfat,bodyslam,curse,earthquake,milkdrink": 928, "77,leftovers,thickfat,bodyslam,earthquake,milkdrink,toxic": 991, "77,leftovers,thickfat,bodyslam,earthquake,healbell,milkdrink": 875}, "minun": {"89,leftovers,minus,hiddenpowerice,protect,thunderbolt,wish": 511, "89,leftovers,minus,hiddenpowerice,protect,thunderbolt,toxic": 1072, "89,leftovers,minus,protect,thunderbolt,toxic,wish": 533, "89,leftovers,minus,batonpass,hiddenpowerice,substitute,thunderbolt": 323, "89,leftovers,minus,hiddenpowerice,substitute,thunderbolt,toxic": 354, "89,leftovers,minus,encore,hiddenpowerice,substitute,thunderbolt": 316}, "misdreavus": {"85,leftovers,levitate,meanlook,perishsong,protect,shadowball": 1082, "85,leftovers,levitate,calmmind,hiddenpowerice,substitute,thunderbolt": 1087, "85,leftovers,levitate,hiddenpowerice,painsplit,shadowball,thunderwave": 174, "85,leftovers,levitate,hiddenpowerice,shadowball,thunderbolt,thunderwave": 153, "85,leftovers,levitate,painsplit,shadowball,thunderbolt,toxic": 179, "85,leftovers,levitate,hiddenpowerice,painsplit,shadowball,toxic": 165, "85,leftovers,levitate,hiddenpowerice,shadowball,thunderbolt,toxic": 150, "85,leftovers,levitate,painsplit,shadowball,thunderbolt,thunderwave": 159, "85,leftovers,levitate,hiddenpowerice,painsplit,shadowball,thunderbolt": 85}, "moltres": {"78,leftovers,pressure,fireblast,hiddenpowergrass,morningsun,willowisp": 399, "78,leftovers,pressure,flamethrower,hiddenpowergrass,morningsun,willowisp": 416, "78,leftovers,pressure,flamethrower,hiddenpowergrass,morningsun,substitute": 394, "78,leftovers,pressure,fireblast,hiddenpowergrass,morningsun,toxic": 411, "78,leftovers,pressure,flamethrower,hiddenpowergrass,morningsun,toxic": 401, "78,leftovers,pressure,fireblast,hiddenpowergrass,morningsun,substitute": 391}, "mrmime": {"84,leftovers,soundproof,calmmind,psychic,substitute,thunderbolt": 308, "84,leftovers,soundproof,calmmind,firepunch,psychic,thunderbolt": 632, "84,leftovers,soundproof,calmmind,hypnosis,psychic,thunderbolt": 328, "84,leftovers,soundproof,calmmind,firepunch,psychic,substitute": 309, "84,leftovers,soundproof,batonpass,calmmind,firepunch,psychic": 281, "84,leftovers,soundproof,batonpass,calmmind,psychic,thunderbolt": 268, "84,leftovers,soundproof,calmmind,firepunch,hypnosis,psychic": 285, "84,leftovers,soundproof,calmmind,encore,psychic,thunderbolt": 306, "84,leftovers,soundproof,calmmind,encore,firepunch,psychic": 293}, "muk": {"84,chestoberry,stickyhold,curse,hiddenpowerground,rest,sludgebomb": 1472, "84,chestoberry,stickyhold,fireblast,hiddenpowerground,rest,sludgebomb": 342, "84,choiceband,stickyhold,explosion,fireblast,hiddenpowerground,sludgebomb": 304, "84,leftovers,stickyhold,explosion,hiddenpowerground,sludgebomb,toxic": 314, "84,chestoberry,stickyhold,hiddenpowerground,rest,sludgebomb,toxic": 325, "84,leftovers,stickyhold,fireblast,hiddenpowerground,sludgebomb,toxic": 237}, "murkrow": {"90,leftovers,insomnia,drillpeck,hiddenpowerground,shadowball,toxic": 296, "90,choiceband,insomnia,doubleedge,drillpeck,hiddenpowerground,shadowball": 630, "90,choiceband,insomnia,doubleedge,drillpeck,hiddenpowerfighting,shadowball": 695, "90,leftovers,insomnia,drillpeck,hiddenpowerground,pursuit,toxic": 274, "90,leftovers,insomnia,drillpeck,hiddenpowerground,shadowball,thunderwave": 304, "90,leftovers,insomnia,drillpeck,hiddenpowerground,pursuit,thunderwave": 295, "90,leftovers,insomnia,drillpeck,hiddenpowerground,pursuit,shadowball": 212}, "nidoking": {"80,leftovers,poisonpoint,earthquake,sludgebomb,substitute,thunderbolt": 212, "80,leftovers,poisonpoint,earthquake,icebeam,sludgebomb,thunderbolt": 199, "80,leftovers,poisonpoint,earthquake,shadowball,sludgebomb,substitute": 164, "80,choiceband,poisonpoint,earthquake,megahorn,shadowball,sludgebomb": 179, "80,choiceband,poisonpoint,earthquake,fireblast,shadowball,sludgebomb": 180, "80,leftovers,poisonpoint,earthquake,fireblast,sludgebomb,substitute": 185, "80,choiceband,poisonpoint,earthquake,megahorn,sludgebomb,thunderbolt": 206, "80,choiceband,poisonpoint,earthquake,fireblast,megahorn,sludgebomb": 180, "80,choiceband,poisonpoint,earthquake,shadowball,sludgebomb,thunderbolt": 196, "80,leftovers,poisonpoint,earthquake,megahorn,sludgebomb,substitute": 211, "80,choiceband,poisonpoint,earthquake,icebeam,shadowball,sludgebomb": 195, "80,leftovers,poisonpoint,earthquake,icebeam,sludgebomb,substitute": 188, "80,leftovers,poisonpoint,earthquake,fireblast,icebeam,sludgebomb": 181, "80,choiceband,poisonpoint,earthquake,icebeam,megahorn,sludgebomb": 175, "80,leftovers,poisonpoint,earthquake,fireblast,sludgebomb,thunderbolt": 182}, "nidoqueen": {"82,choiceband,poisonpoint,earthquake,shadowball,sludgebomb,thunderbolt": 279, "82,leftovers,poisonpoint,earthquake,icebeam,sludgebomb,substitute": 324, "82,choiceband,poisonpoint,earthquake,fireblast,shadowball,sludgebomb": 274, "82,leftovers,poisonpoint,earthquake,fireblast,sludgebomb,substitute": 284, "82,leftovers,poisonpoint,earthquake,sludgebomb,substitute,thunderbolt": 288, "82,leftovers,poisonpoint,earthquake,shadowball,sludgebomb,substitute": 303, "82,leftovers,poisonpoint,earthquake,icebeam,sludgebomb,thunderbolt": 292, "82,choiceband,poisonpoint,earthquake,icebeam,shadowball,sludgebomb": 273, "82,leftovers,poisonpoint,earthquake,fireblast,sludgebomb,thunderbolt": 265, "82,leftovers,poisonpoint,earthquake,fireblast,icebeam,sludgebomb": 284}, "ninetales": {"82,leftovers,flashfire,flamethrower,hiddenpowergrass,hypnosis,toxic": 275, "82,leftovers,flashfire,fireblast,hiddenpowergrass,hypnosis,toxic": 295, "82,leftovers,flashfire,fireblast,hiddenpowergrass,hypnosis,willowisp": 289, "82,leftovers,flashfire,flamethrower,hiddenpowergrass,substitute,willowisp": 256, "82,leftovers,flashfire,flamethrower,hiddenpowergrass,substitute,toxic": 293, "82,leftovers,flashfire,flamethrower,hiddenpowergrass,hypnosis,willowisp": 307, "82,leftovers,flashfire,fireblast,hiddenpowergrass,substitute,toxic": 316, "82,leftovers,flashfire,fireblast,hiddenpowergrass,hypnosis,substitute": 218, "82,leftovers,flashfire,flamethrower,hiddenpowergrass,hypnosis,substitute": 247, "82,leftovers,flashfire,fireblast,hiddenpowergrass,substitute,willowisp": 264}, "ninjask": {"80,leftovers,speedboost,batonpass,hiddenpowerflying,protect,swordsdance": 1248, "80,leftovers,speedboost,batonpass,hiddenpowerflying,substitute,swordsdance": 1241}, "noctowl": {"92,leftovers,insomnia,hiddenpowerfire,return,toxic,whirlwind": 885, "92,leftovers,insomnia,hiddenpowerfire,hypnosis,return,toxic": 792, "92,leftovers,insomnia,hypnosis,return,toxic,whirlwind": 837}, "nosepass": {"100,leftovers,magnetpull,earthquake,explosion,rockslide,toxic": 1252, "100,leftovers,magnetpull,earthquake,explosion,rockslide,thunderwave": 1230}, "octillery": {"87,leftovers,suctioncups,hiddenpowergrass,icebeam,surf,thunderwave": 577, "87,leftovers,suctioncups,fireblast,hiddenpowerelectric,icebeam,surf": 545, "87,leftovers,suctioncups,fireblast,icebeam,surf,thunderwave": 486, "87,leftovers,suctioncups,hiddenpowerelectric,icebeam,surf,thunderwave": 577, "87,leftovers,suctioncups,fireblast,hiddenpowergrass,icebeam,surf": 547}, "omastar": {"84,leftovers,shellarmor,hiddenpowergrass,hydropump,icebeam,spikes": 554, "84,leftovers,shellarmor,hiddenpowergrass,icebeam,spikes,surf": 595, "84,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 557, "84,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 596, "84,leftovers,swiftswim,hiddenpowergrass,hydropump,icebeam,spikes": 24, "84,leftovers,swiftswim,hiddenpowergrass,icebeam,spikes,surf": 8}, "parasect": {"96,leftovers,effectspore,gigadrain,hiddenpowerbug,return,spore": 939, "96,leftovers,effectspore,aromatherapy,hiddenpowerbug,return,spore": 775, "96,leftovers,effectspore,hiddenpowerbug,return,spore,stunspore": 892}, "pelipper": {"88,leftovers,keeneye,icebeam,rest,sleeptalk,surf": 590, "88,leftovers,keeneye,icebeam,protect,surf,toxic": 1182, "88,leftovers,keeneye,rest,sleeptalk,surf,toxic": 610}, "persian": {"88,leftovers,limber,hiddenpowerground,hypnosis,return,shadowball": 314, "88,liechiberry,limber,irontail,return,shadowball,substitute": 421, "88,liechiberry,limber,hiddenpowerground,irontail,return,substitute": 453, "88,choiceband,limber,hiddenpowerground,irontail,return,shadowball": 449, "88,liechiberry,limber,hiddenpowerground,return,shadowball,substitute": 461, "88,leftovers,limber,hiddenpowerground,hypnosis,irontail,return": 283, "88,leftovers,limber,hypnosis,irontail,return,shadowball": 313}, "pidgeot": {"87,choiceband,keeneye,aerialace,hiddenpowerground,quickattack,return": 304, "87,liechiberry,keeneye,aerialace,hiddenpowerground,return,substitute": 1239, "87,leftovers,keeneye,aerialace,hiddenpowerground,return,toxic": 324, "87,choiceband,keeneye,aerialace,doubleedge,hiddenpowerground,quickattack": 316, "87,leftovers,keeneye,aerialace,doubleedge,hiddenpowerground,toxic": 327}, "pikachu": {"87,lightball,static,hiddenpowerice,surf,thunderbolt,volttackle": 1514, "87,lightball,static,hiddenpowerice,substitute,surf,thunderbolt": 781, "87,lightball,static,encore,hiddenpowerice,surf,thunderbolt": 760}, "piloswine": {"87,leftovers,oblivious,earthquake,icebeam,rest,sleeptalk": 734, "87,choiceband,oblivious,doubleedge,earthquake,icebeam,rockslide": 676, "87,leftovers,oblivious,earthquake,icebeam,protect,toxic": 1289}, "pinsir": {"81,salacberry,hypercutter,earthquake,hiddenpowerbug,rockslide,swordsdance": 1425, "81,choiceband,hypercutter,doubleedge,earthquake,hiddenpowerbug,rockslide": 1489}, "plusle": {"88,leftovers,plus,hiddenpowerice,protect,thunderbolt,toxic": 1069, "88,leftovers,plus,encore,hiddenpowerice,substitute,thunderbolt": 326, "88,leftovers,plus,protect,thunderbolt,toxic,wish": 514, "88,leftovers,plus,hiddenpowerice,protect,thunderbolt,wish": 508, "88,leftovers,plus,hiddenpowerice,substitute,thunderbolt,toxic": 364, "88,leftovers,plus,batonpass,hiddenpowerice,substitute,thunderbolt": 312}, "politoed": {"84,leftovers,waterabsorb,icebeam,rest,sleeptalk,surf": 447, "84,leftovers,waterabsorb,icebeam,protect,surf,toxic": 917, "84,leftovers,waterabsorb,hiddenpowergrass,hypnosis,icebeam,surf": 156, "84,leftovers,waterabsorb,hiddenpowergrass,icebeam,surf,toxic": 177, "84,leftovers,waterabsorb,rest,sleeptalk,surf,toxic": 467, "84,chestoberry,waterabsorb,icebeam,rest,surf,toxic": 150, "84,leftovers,waterabsorb,hypnosis,icebeam,surf,toxic": 135, "84,chestoberry,waterabsorb,hypnosis,icebeam,rest,surf": 163, "84,chestoberry,waterabsorb,hiddenpowergrass,icebeam,rest,surf": 139}, "poliwrath": {"85,leftovers,waterabsorb,brickbreak,hydropump,rest,sleeptalk": 317, "85,leftovers,waterabsorb,focuspunch,hydropump,substitute,toxic": 452, "85,leftovers,waterabsorb,brickbreak,bulkup,hydropump,hypnosis": 233, "85,leftovers,waterabsorb,brickbreak,hiddenpowerghost,hydropump,toxic": 128, "85,leftovers,waterabsorb,focuspunch,hydropump,icebeam,substitute": 461, "85,leftovers,waterabsorb,brickbreak,bulkup,earthquake,hydropump": 244, "85,leftovers,waterabsorb,brickbreak,hydropump,hypnosis,icebeam": 92, "85,salacberry,waterabsorb,brickbreak,bulkup,hydropump,substitute": 227, "85,leftovers,waterabsorb,brickbreak,hydropump,hypnosis,toxic": 92, "85,leftovers,waterabsorb,brickbreak,hiddenpowerghost,hydropump,icebeam": 86, "85,leftovers,waterabsorb,brickbreak,bulkup,hiddenpowerghost,hydropump": 231, "85,leftovers,waterabsorb,brickbreak,hydropump,icebeam,toxic": 94, "85,leftovers,waterabsorb,brickbreak,hiddenpowerghost,hydropump,hypnosis": 93}, "porygon2": {"80,leftovers,trace,recover,return,thunderbolt,thunderwave": 569, "80,leftovers,trace,icebeam,recover,return,toxic": 618, "80,leftovers,trace,recover,return,thunderbolt,toxic": 655, "80,leftovers,trace,icebeam,recover,return,thunderwave": 587, "80,leftovers,trace,icebeam,recover,return,thunderbolt": 439}, "primeape": {"84,choiceband,vitalspirit,crosschop,earthquake,hiddenpowerghost,rockslide": 360, "84,salacberry,vitalspirit,bulkup,crosschop,rockslide,substitute": 258, "84,liechiberry,vitalspirit,bulkup,hiddenpowerghost,reversal,substitute": 1077, "84,leftovers,vitalspirit,bulkup,crosschop,earthquake,hiddenpowerghost": 235, "84,leftovers,vitalspirit,bulkup,crosschop,hiddenpowerghost,rockslide": 723, "84,salacberry,vitalspirit,bulkup,crosschop,hiddenpowerghost,substitute": 274, "84,leftovers,vitalspirit,bulkup,crosschop,earthquake,rockslide": 219}, "quagsire": {"85,leftovers,waterabsorb,earthquake,rest,sleeptalk,surf": 612, "85,leftovers,waterabsorb,earthquake,icebeam,protect,toxic": 1279, "85,leftovers,waterabsorb,earthquake,icebeam,surf,toxic": 652}, "qwilfish": {"84,leftovers,poisonpoint,hydropump,selfdestruct,sludgebomb,spikes": 618, "84,salacberry,poisonpoint,hydropump,shadowball,sludgebomb,swordsdance": 403, "84,salacberry,poisonpoint,hydropump,selfdestruct,sludgebomb,swordsdance": 409, "84,choiceband,poisonpoint,hydropump,selfdestruct,shadowball,sludgebomb": 473, "84,leftovers,poisonpoint,destinybond,hydropump,sludgebomb,spikes": 644, "84,salacberry,swiftswim,hydropump,selfdestruct,sludgebomb,swordsdance": 9, "84,leftovers,swiftswim,destinybond,hydropump,sludgebomb,spikes": 19, "84,choiceband,swiftswim,hydropump,selfdestruct,shadowball,sludgebomb": 11, "84,leftovers,swiftswim,hydropump,selfdestruct,sludgebomb,spikes": 15, "84,salacberry,swiftswim,hydropump,shadowball,sludgebomb,swordsdance": 10}, "raichu": {"83,petayaberry,static,hiddenpowerice,substitute,surf,thunderbolt": 1439, "83,leftovers,static,encore,hiddenpowerice,thunderbolt,thunderwave": 315, "83,leftovers,static,hiddenpowerice,surf,thunderbolt,toxic": 302, "83,leftovers,static,encore,hiddenpowerice,surf,thunderbolt": 302, "83,leftovers,static,encore,hiddenpowerice,thunderbolt,toxic": 311, "83,leftovers,static,hiddenpowerice,surf,thunderbolt,thunderwave": 286}, "raikou": {"73,leftovers,pressure,hiddenpowerice,rest,sleeptalk,thunderbolt": 1492, "73,leftovers,pressure,calmmind,hiddenpowerice,substitute,thunderbolt": 775, "73,leftovers,pressure,calmmind,crunch,hiddenpowerice,thunderbolt": 765}, "rapidash": {"83,leftovers,flashfire,fireblast,hiddenpowergrass,substitute,toxic": 1447, "83,leftovers,flashfire,fireblast,hiddenpowerrock,substitute,toxic": 1454}, "raticate": {"85,choiceband,guts,hiddenpowerground,quickattack,return,shadowball": 479, "85,liechiberry,guts,return,reversal,shadowball,substitute": 959, "85,choiceband,guts,doubleedge,facade,hiddenpowerground,shadowball": 447, "85,choiceband,guts,facade,hiddenpowerground,return,shadowball": 452, "85,choiceband,guts,doubleedge,hiddenpowerground,quickattack,shadowball": 476}, "rayquaza": {"70,lumberry,airlock,dragondance,earthquake,hiddenpowerflying,overheat": 687, "70,choiceband,airlock,earthquake,extremespeed,hiddenpowerflying,rockslide": 677, "70,choiceband,airlock,earthquake,extremespeed,hiddenpowerflying,overheat": 682, "70,lumberry,airlock,dragondance,earthquake,hiddenpowerflying,rockslide": 609}, "regice": {"79,leftovers,clearbody,explosion,icebeam,thunderbolt,thunderwave": 719, "79,leftovers,clearbody,icebeam,protect,thunderbolt,toxic": 1356, "79,leftovers,clearbody,icebeam,rest,sleeptalk,thunderbolt": 723}, "regirock": {"81,leftovers,clearbody,curse,earthquake,explosion,rockslide": 311, "81,leftovers,clearbody,earthquake,explosion,rockslide,thunderwave": 432, "81,leftovers,clearbody,earthquake,explosion,rockslide,toxic": 381, "81,chestoberry,clearbody,earthquake,rest,rockslide,superpower": 278, "81,leftovers,clearbody,curse,earthquake,rockslide,superpower": 235, "81,chestoberry,clearbody,curse,earthquake,rest,rockslide": 268, "81,choiceband,clearbody,earthquake,explosion,rockslide,superpower": 281, "81,leftovers,clearbody,earthquake,rest,rockslide,sleeptalk": 544}, "registeel": {"78,leftovers,clearbody,rest,seismictoss,sleeptalk,toxic": 2772}, "relicanth": {"88,leftovers,swiftswim,earthquake,hiddenpowerflying,rockslide,toxic": 476, "88,leftovers,swiftswim,earthquake,rest,rockslide,sleeptalk": 960, "88,choiceband,rockhead,doubleedge,earthquake,hiddenpowerflying,rockslide": 463, "88,leftovers,rockhead,doubleedge,earthquake,rockslide,toxic": 495, "88,choiceband,swiftswim,doubleedge,earthquake,hiddenpowerflying,rockslide": 10, "88,leftovers,swiftswim,doubleedge,earthquake,rockslide,toxic": 13}, "rhydon": {"84,choiceband,rockhead,doubleedge,earthquake,megahorn,rockslide": 1185, "84,leftovers,rockhead,earthquake,megahorn,rockslide,swordsdance": 416, "84,leftovers,rockhead,earthquake,megahorn,rockslide,substitute": 410, "84,leftovers,rockhead,earthquake,rockslide,substitute,swordsdance": 400}, "roselia": {"97,leftovers,naturalcure,hiddenpowergrass,spikes,synthesis,toxic": 755, "97,leftovers,naturalcure,hiddenpowerfire,magicalleaf,spikes,synthesis": 1473, "97,leftovers,naturalcure,aromatherapy,hiddenpowergrass,spikes,synthesis": 661}, "sableye": {"90,leftovers,keeneye,recover,seismictoss,shadowball,toxic": 1493, "90,leftovers,keeneye,knockoff,recover,seismictoss,toxic": 1503}, "salamence": {"73,choiceband,intimidate,brickbreak,doubleedge,earthquake,hiddenpowerflying": 238, "73,lumberry,intimidate,dragondance,earthquake,hiddenpowerflying,rockslide": 664, "73,choiceband,intimidate,earthquake,fireblast,hiddenpowerflying,rockslide": 223, "73,choiceband,intimidate,doubleedge,earthquake,hiddenpowerflying,rockslide": 249, "73,choiceband,intimidate,doubleedge,earthquake,fireblast,hiddenpowerflying": 218, "73,choiceband,intimidate,brickbreak,earthquake,hiddenpowerflying,rockslide": 207, "73,lumberry,intimidate,dragondance,earthquake,fireblast,hiddenpowerflying": 652, "73,choiceband,intimidate,brickbreak,earthquake,fireblast,hiddenpowerflying": 182}, "sandslash": {"85,salacberry,sandveil,earthquake,hiddenpowerbug,rockslide,swordsdance": 1039, "85,leftovers,sandveil,earthquake,hiddenpowerbug,rockslide,toxic": 653, "85,choiceband,sandveil,earthquake,hiddenpowerbug,rapidspin,rockslide": 606, "85,leftovers,sandveil,earthquake,rapidspin,rockslide,toxic": 730}, "sceptile": {"82,leftovers,overgrow,earthquake,leafblade,thunderpunch,toxic": 309, "82,leftovers,overgrow,hiddenpowerfire,leafblade,leechseed,substitute": 490, "82,leftovers,overgrow,hiddenpowerice,leafblade,leechseed,substitute": 480, "82,petayaberry,overgrow,hiddenpowerice,leafblade,substitute,thunderpunch": 1032, "82,leftovers,overgrow,earthquake,hiddenpowerice,leafblade,toxic": 305, "82,leftovers,overgrow,earthquake,hiddenpowerice,leafblade,thunderpunch": 306}, "scizor": {"82,leftovers,swarm,agility,batonpass,silverwind,steelwing": 373, "82,leftovers,swarm,batonpass,silverwind,steelwing,swordsdance": 268, "82,leftovers,swarm,morningsun,silverwind,steelwing,swordsdance": 264, "82,leftovers,swarm,hiddenpowerground,morningsun,steelwing,swordsdance": 245, "82,salacberry,swarm,hiddenpowerground,silverwind,steelwing,swordsdance": 467, "82,choiceband,swarm,batonpass,hiddenpowerground,silverwind,steelwing": 377, "82,leftovers,swarm,agility,batonpass,hiddenpowerground,steelwing": 339, "82,leftovers,swarm,agility,hiddenpowerground,silverwind,steelwing": 367, "82,leftovers,swarm,batonpass,hiddenpowerground,steelwing,swordsdance": 219}, "scyther": {"81,leftovers,swarm,aerialace,batonpass,hiddenpowerground,swordsdance": 1249, "81,lumberry,swarm,aerialace,hiddenpowerground,silverwind,swordsdance": 602, "81,liechiberry,swarm,aerialace,hiddenpowerground,silverwind,swordsdance": 627}, "seaking": {"90,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 618, "90,leftovers,swiftswim,hiddenpowerelectric,hydropump,megahorn,raindance": 575, "90,petayaberry,swiftswim,hiddenpowerelectric,hydropump,icebeam,raindance": 523, "90,leftovers,swiftswim,hydropump,icebeam,megahorn,raindance": 449, "90,leftovers,swiftswim,hiddenpowergrass,hydropump,megahorn,raindance": 549}, "seviper": {"88,leftovers,shedskin,crunch,earthquake,flamethrower,sludgebomb": 989, "88,leftovers,shedskin,crunch,earthquake,hiddenpowergrass,sludgebomb": 985, "88,leftovers,shedskin,earthquake,flamethrower,hiddenpowergrass,sludgebomb": 1015}, "sharpedo": {"85,petayaberry,roughskin,crunch,hydropump,icebeam,substitute": 428, "85,petayaberry,roughskin,crunch,hiddenpowerelectric,hydropump,substitute": 434, "85,choiceband,roughskin,doubleedge,earthquake,hiddenpowerflying,hydropump": 1310, "85,petayaberry,roughskin,crunch,hiddenpowergrass,hydropump,substitute": 423}, "shedinja": {"100,lumberry,wonderguard,agility,hiddenpowerfighting,shadowball,silverwind": 509, "100,lumberry,wonderguard,batonpass,hiddenpowerfighting,shadowball,toxic": 530, "100,lumberry,wonderguard,agility,batonpass,hiddenpowerfighting,shadowball": 522, "100,lumberry,wonderguard,hiddenpowerfighting,shadowball,silverwind,toxic": 553, "100,lumberry,wonderguard,batonpass,hiddenpowerfighting,shadowball,silverwind": 425}, "shiftry": {"91,leftovers,earlybird,hiddenpowerdark,leechseed,substitute,toxic": 1352, "91,salacberry,earlybird,brickbreak,explosion,shadowball,swordsdance": 1352, "91,leftovers,chlorophyll,hiddenpowerdark,leechseed,substitute,toxic": 10, "91,salacberry,chlorophyll,brickbreak,explosion,shadowball,swordsdance": 14}, "shuckle": {"98,leftovers,sturdy,encore,rest,toxic,wrap": 2970}, "skarmory": {"74,leftovers,keeneye,drillpeck,spikes,toxic,whirlwind": 869, "74,leftovers,keeneye,drillpeck,protect,spikes,toxic": 898, "74,leftovers,keeneye,protect,spikes,toxic,whirlwind": 869}, "slaking": {"78,choiceband,truant,earthquake,hyperbeam,return,shadowball": 1350, "78,choiceband,truant,doubleedge,earthquake,hyperbeam,shadowball": 1366}, "slowbro": {"82,leftovers,owntempo,psychic,rest,sleeptalk,surf": 264, "82,chestoberry,owntempo,calmmind,psychic,rest,surf": 878, "82,leftovers,owntempo,calmmind,rest,sleeptalk,surf": 884, "82,leftovers,owntempo,fireblast,psychic,surf,toxic": 101, "82,leftovers,owntempo,fireblast,psychic,surf,thunderwave": 89, "82,leftovers,owntempo,icebeam,psychic,surf,thunderwave": 106, "82,leftovers,owntempo,icebeam,psychic,surf,toxic": 132, "82,leftovers,owntempo,fireblast,icebeam,psychic,surf": 113}, "slowking": {"83,chestoberry,owntempo,calmmind,psychic,rest,surf": 866, "83,leftovers,owntempo,icebeam,psychic,surf,thunderwave": 133, "83,leftovers,owntempo,calmmind,rest,sleeptalk,surf": 843, "83,leftovers,owntempo,fireblast,icebeam,psychic,surf": 104, "83,leftovers,owntempo,psychic,rest,sleeptalk,surf": 287, "83,leftovers,owntempo,fireblast,psychic,surf,thunderwave": 121, "83,leftovers,owntempo,fireblast,psychic,surf,toxic": 130, "83,leftovers,owntempo,icebeam,psychic,surf,toxic": 131}, "smeargle": {"89,leftovers,owntempo,encore,explosion,spikes,spore": 2853}, "sneasel": {"88,liechiberry,innerfocus,brickbreak,shadowball,substitute,swordsdance": 649, "88,liechiberry,innerfocus,brickbreak,hiddenpowerflying,shadowball,swordsdance": 560, "88,choiceband,innerfocus,brickbreak,doubleedge,hiddenpowerflying,shadowball": 446, "88,lumberry,innerfocus,brickbreak,doubleedge,shadowball,swordsdance": 231, "88,lumberry,innerfocus,brickbreak,hiddenpowerflying,shadowball,swordsdance": 577, "88,liechiberry,innerfocus,brickbreak,doubleedge,shadowball,swordsdance": 207}, "snorlax": {"72,choiceband,immunity,earthquake,return,selfdestruct,shadowball": 480, "72,leftovers,thickfat,bodyslam,curse,rest,sleeptalk": 1002, "72,chestoberry,thickfat,bodyslam,curse,earthquake,rest": 467, "72,chestoberry,immunity,bodyslam,curse,earthquake,rest": 460, "72,choiceband,immunity,bodyslam,earthquake,selfdestruct,shadowball": 474}, "solrock": {"84,choiceband,levitate,earthquake,explosion,overheat,rockslide": 452, "84,leftovers,levitate,earthquake,protect,rockslide,toxic": 1377, "84,choiceband,levitate,earthquake,overheat,rockslide,shadowball": 471, "84,choiceband,levitate,earthquake,explosion,rockslide,shadowball": 450}, "spinda": {"100,leftovers,owntempo,protect,seismictoss,toxic,wish": 1248, "100,leftovers,owntempo,protect,seismictoss,shadowball,toxic": 430, "100,leftovers,owntempo,protect,seismictoss,substitute,toxic": 391, "100,leftovers,owntempo,encore,protect,seismictoss,toxic": 423}, "stantler": {"83,leftovers,intimidate,earthquake,hypnosis,return,thunderbolt": 460, "83,leftovers,intimidate,earthquake,return,thunderbolt,thunderwave": 455, "83,leftovers,intimidate,earthquake,hypnosis,return,shadowball": 473, "83,leftovers,intimidate,earthquake,return,shadowball,thunderwave": 464, "83,choiceband,intimidate,earthquake,return,shadowball,thunderbolt": 473, "83,leftovers,intimidate,earthquake,hypnosis,return,thunderwave": 498}, "starmie": {"75,leftovers,naturalcure,psychic,recover,surf,thunderbolt": 665, "75,leftovers,naturalcure,icebeam,psychic,recover,surf": 680, "75,leftovers,naturalcure,hydropump,icebeam,psychic,recover": 631, "75,leftovers,naturalcure,hydropump,psychic,recover,thunderbolt": 617}, "steelix": {"83,leftovers,rockhead,earthquake,hiddenpowerrock,protect,toxic": 662, "83,leftovers,rockhead,earthquake,hiddenpowerrock,irontail,toxic": 109, "83,leftovers,rockhead,doubleedge,earthquake,protect,toxic": 629, "83,chestoberry,rockhead,doubleedge,earthquake,irontail,rest": 93, "83,leftovers,rockhead,earthquake,explosion,irontail,roar": 106, "83,choiceband,rockhead,doubleedge,earthquake,explosion,irontail": 111, "83,chestoberry,rockhead,earthquake,irontail,rest,roar": 97, "83,choiceband,rockhead,earthquake,explosion,hiddenpowerrock,irontail": 94, "83,leftovers,rockhead,doubleedge,earthquake,irontail,roar": 98, "83,leftovers,rockhead,doubleedge,earthquake,irontail,toxic": 96, "83,chestoberry,rockhead,earthquake,irontail,rest,toxic": 116, "83,leftovers,rockhead,earthquake,hiddenpowerrock,irontail,roar": 90, "83,chestoberry,rockhead,earthquake,hiddenpowerrock,irontail,rest": 100, "83,choiceband,rockhead,doubleedge,earthquake,hiddenpowerrock,irontail": 89, "83,leftovers,rockhead,earthquake,irontail,roar,toxic": 87, "83,leftovers,rockhead,earthquake,explosion,irontail,toxic": 99}, "sudowoodo": {"92,leftovers,rockhead,brickbreak,earthquake,rockslide,toxic": 462, "92,choiceband,rockhead,brickbreak,earthquake,explosion,rockslide": 464, "92,choiceband,rockhead,brickbreak,doubleedge,earthquake,rockslide": 468, "92,choiceband,rockhead,doubleedge,earthquake,explosion,rockslide": 426, "92,leftovers,rockhead,doubleedge,earthquake,rockslide,toxic": 469, "92,leftovers,rockhead,earthquake,explosion,rockslide,toxic": 463}, "suicune": {"74,leftovers,pressure,calmmind,icebeam,substitute,surf": 679, "74,leftovers,pressure,calmmind,rest,sleeptalk,surf": 1430, "74,chestoberry,pressure,calmmind,icebeam,rest,surf": 624}, "sunflora": {"100,leftovers,chlorophyll,hiddenpowerfire,razorleaf,synthesis,toxic": 649, "100,leftovers,chlorophyll,hiddenpowerfire,solarbeam,sunnyday,synthesis": 1293, "100,leftovers,chlorophyll,hiddenpowerfire,leechseed,razorleaf,synthesis": 671}, "swalot": {"88,leftovers,liquidooze,encore,shadowball,sludgebomb,toxic": 47, "88,leftovers,liquidooze,encore,icebeam,sludgebomb,toxic": 41, "88,leftovers,liquidooze,encore,hiddenpowerground,painsplit,sludgebomb": 54, "88,leftovers,liquidooze,hiddenpowerground,icebeam,painsplit,sludgebomb": 81, "88,leftovers,liquidooze,hiddenpowerground,shadowball,sludgebomb,yawn": 117, "88,leftovers,liquidooze,icebeam,shadowball,sludgebomb,toxic": 110, "88,leftovers,liquidooze,icebeam,painsplit,shadowball,sludgebomb": 103, "88,leftovers,liquidooze,explosion,hiddenpowerground,icebeam,sludgebomb": 110, "88,leftovers,liquidooze,encore,icebeam,painsplit,sludgebomb": 63, "88,leftovers,liquidooze,icebeam,painsplit,sludgebomb,yawn": 58, "88,leftovers,liquidooze,encore,hiddenpowerground,sludgebomb,yawn": 57, "88,leftovers,liquidooze,encore,hiddenpowerground,shadowball,sludgebomb": 92, "88,leftovers,liquidooze,hiddenpowerground,icebeam,sludgebomb,toxic": 111, "88,leftovers,liquidooze,explosion,hiddenpowerground,sludgebomb,yawn": 55, "88,leftovers,liquidooze,encore,icebeam,sludgebomb,yawn": 62, "88,leftovers,liquidooze,icebeam,shadowball,sludgebomb,yawn": 110, "88,leftovers,liquidooze,painsplit,shadowball,sludgebomb,toxic": 63, "88,leftovers,liquidooze,encore,explosion,icebeam,sludgebomb": 53, "88,leftovers,liquidooze,explosion,icebeam,shadowball,sludgebomb": 101, "88,leftovers,liquidooze,explosion,shadowball,sludgebomb,toxic": 69, "88,choiceband,liquidooze,explosion,hiddenpowerground,shadowball,sludgebomb": 101, "88,leftovers,liquidooze,hiddenpowerground,icebeam,sludgebomb,yawn": 79, "88,leftovers,liquidooze,icebeam,painsplit,sludgebomb,toxic": 46, "88,leftovers,liquidooze,encore,hiddenpowerground,icebeam,sludgebomb": 107, "88,leftovers,liquidooze,hiddenpowerground,painsplit,shadowball,sludgebomb": 105, "88,leftovers,liquidooze,encore,shadowball,sludgebomb,yawn": 50, "88,leftovers,liquidooze,encore,explosion,shadowball,sludgebomb": 46, "88,leftovers,liquidooze,encore,painsplit,shadowball,sludgebomb": 56, "88,leftovers,liquidooze,hiddenpowerground,painsplit,sludgebomb,yawn": 66, "88,leftovers,liquidooze,encore,icebeam,shadowball,sludgebomb": 92, "88,leftovers,liquidooze,explosion,shadowball,sludgebomb,yawn": 50, "88,leftovers,liquidooze,explosion,icebeam,sludgebomb,yawn": 56, "88,leftovers,liquidooze,explosion,hiddenpowerground,sludgebomb,toxic": 55, "88,leftovers,liquidooze,explosion,icebeam,sludgebomb,toxic": 58, "88,leftovers,liquidooze,encore,hiddenpowerground,sludgebomb,toxic": 60, "88,leftovers,liquidooze,encore,explosion,hiddenpowerground,sludgebomb": 54, "88,leftovers,liquidooze,hiddenpowerground,shadowball,sludgebomb,toxic": 87, "88,leftovers,liquidooze,hiddenpowerground,icebeam,shadowball,sludgebomb": 131, "88,leftovers,liquidooze,hiddenpowerground,painsplit,sludgebomb,toxic": 52, "88,leftovers,liquidooze,painsplit,shadowball,sludgebomb,yawn": 58}, "swampert": {"79,leftovers,torrent,earthquake,icebeam,surf,toxic": 205, "79,leftovers,torrent,earthquake,hydropump,refresh,toxic": 212, "79,leftovers,torrent,earthquake,hydropump,protect,toxic": 430, "79,leftovers,torrent,earthquake,refresh,surf,toxic": 202, "79,leftovers,torrent,earthquake,hydropump,icebeam,toxic": 216, "79,leftovers,torrent,earthquake,protect,surf,toxic": 390, "79,leftovers,torrent,earthquake,rest,sleeptalk,surf": 393, "79,leftovers,torrent,earthquake,hydropump,rest,sleeptalk": 410}, "swellow": {"81,choiceband,guts,aerialace,hiddenpowerground,quickattack,return": 655, "81,choiceband,guts,aerialace,doubleedge,facade,hiddenpowerground": 645, "81,choiceband,guts,aerialace,facade,hiddenpowerground,return": 615, "81,choiceband,guts,aerialace,doubleedge,hiddenpowerground,quickattack": 630}, "tangela": {"94,leftovers,chlorophyll,hiddenpowergrass,leechseed,morningsun,toxic": 291, "94,leftovers,chlorophyll,hiddenpowerfire,sleeppowder,solarbeam,sunnyday": 728, "94,leftovers,chlorophyll,hiddenpowergrass,leechseed,morningsun,stunspore": 308, "94,leftovers,chlorophyll,hiddenpowerfire,morningsun,solarbeam,sunnyday": 708, "94,leftovers,chlorophyll,hiddenpowergrass,morningsun,sleeppowder,stunspore": 312, "94,leftovers,chlorophyll,hiddenpowergrass,leechseed,morningsun,sleeppowder": 243, "94,leftovers,chlorophyll,hiddenpowergrass,morningsun,sleeppowder,toxic": 288}, "tauros": {"76,choiceband,intimidate,doubleedge,earthquake,hiddenpowerghost,return": 2789}, "tentacruel": {"79,leftovers,liquidooze,icebeam,rapidspin,sludgebomb,surf": 193, "79,leftovers,liquidooze,hydropump,icebeam,sludgebomb,toxic": 221, "79,leftovers,clearbody,hydropump,icebeam,rapidspin,sludgebomb": 227, "79,leftovers,clearbody,rapidspin,sludgebomb,surf,toxic": 203, "79,leftovers,liquidooze,rapidspin,sludgebomb,surf,toxic": 192, "79,leftovers,clearbody,hydropump,rapidspin,sludgebomb,toxic": 220, "79,leftovers,liquidooze,hydropump,icebeam,rapidspin,sludgebomb": 223, "79,leftovers,liquidooze,icebeam,sludgebomb,surf,toxic": 237, "79,leftovers,clearbody,icebeam,rapidspin,sludgebomb,surf": 194, "79,leftovers,liquidooze,hydropump,rapidspin,sludgebomb,toxic": 201, "79,leftovers,clearbody,icebeam,sludgebomb,surf,toxic": 230, "79,leftovers,clearbody,hydropump,icebeam,sludgebomb,toxic": 226}, "togetic": {"97,leftovers,serenegrace,protect,seismictoss,toxic,wish": 1274, "97,leftovers,serenegrace,seismictoss,softboiled,thunderwave,toxic": 323, "97,leftovers,serenegrace,charm,seismictoss,softboiled,toxic": 291, "97,leftovers,serenegrace,encore,seismictoss,softboiled,toxic": 331, "97,leftovers,serenegrace,flamethrower,seismictoss,softboiled,toxic": 329}, "torkoal": {"90,chestoberry,whitesmoke,flamethrower,hiddenpowergrass,rest,toxic": 727, "90,leftovers,whitesmoke,explosion,flamethrower,hiddenpowergrass,toxic": 734, "90,chestoberry,whitesmoke,fireblast,hiddenpowergrass,rest,toxic": 684, "90,leftovers,whitesmoke,explosion,fireblast,hiddenpowergrass,toxic": 747}, "tropius": {"95,leftovers,chlorophyll,earthquake,hiddenpowerflying,swordsdance,synthesis": 1279, "95,leftovers,chlorophyll,earthquake,hiddenpowerflying,synthesis,toxic": 637, "95,leftovers,chlorophyll,hiddenpowerflying,leechseed,synthesis,toxic": 627}, "typhlosion": {"79,petayaberry,blaze,fireblast,hiddenpowerice,substitute,thunderpunch": 704, "79,leftovers,blaze,earthquake,flamethrower,thunderpunch,toxic": 133, "79,leftovers,blaze,earthquake,fireblast,thunderpunch,toxic": 156, "79,leftovers,blaze,fireblast,hiddenpowerice,thunderpunch,toxic": 136, "79,leftovers,blaze,flamethrower,hiddenpowerice,thunderpunch,toxic": 145, "79,petayaberry,blaze,flamethrower,hiddenpowerice,substitute,thunderpunch": 734, "79,leftovers,blaze,flamethrower,focuspunch,substitute,thunderpunch": 299, "79,leftovers,blaze,fireblast,focuspunch,substitute,thunderpunch": 280, "79,leftovers,blaze,earthquake,fireblast,hiddenpowerice,thunderpunch": 152, "79,leftovers,blaze,earthquake,flamethrower,hiddenpowerice,thunderpunch": 138}, "tyranitar": {"74,leftovers,sandstream,crunch,earthquake,pursuit,rockslide": 99, "74,leftovers,sandstream,crunch,fireblast,rockslide,thunderwave": 86, "74,choiceband,sandstream,earthquake,fireblast,hiddenpowerflying,rockslide": 433, "74,leftovers,sandstream,crunch,fireblast,pursuit,rockslide": 115, "74,lumberry,sandstream,dragondance,earthquake,fireblast,rockslide": 444, "74,leftovers,sandstream,crunch,pursuit,rockslide,thunderwave": 111, "74,leftovers,sandstream,crunch,icebeam,pursuit,rockslide": 87, "74,leftovers,sandstream,earthquake,rest,rockslide,sleeptalk": 459, "74,leftovers,sandstream,crunch,earthquake,rockslide,thunderwave": 99, "74,leftovers,sandstream,crunch,fireblast,icebeam,rockslide": 91, "74,lumberry,sandstream,dragondance,earthquake,hiddenpowerflying,rockslide": 467, "74,leftovers,sandstream,crunch,icebeam,rockslide,thunderwave": 89, "74,leftovers,sandstream,crunch,earthquake,icebeam,rockslide": 78, "74,leftovers,sandstream,crunch,earthquake,fireblast,rockslide": 89}, "umbreon": {"85,leftovers,synchronize,batonpass,protect,toxic,wish": 1484, "85,leftovers,synchronize,hiddenpowerfire,protect,toxic,wish": 772, "85,leftovers,synchronize,hiddenpowerground,protect,toxic,wish": 709}, "unown": {"100,choiceband,levitate,hiddenpowerfighting": 646, "100,choiceband,levitate,hiddenpowerbug": 659, "100,twistedspoon,levitate,hiddenpowerpsychic": 1330}, "ursaring": {"81,choiceband,guts,earthquake,focuspunch,hiddenpowerghost,return": 918, "81,choiceband,guts,earthquake,facade,hiddenpowerghost,return": 921, "81,leftovers,guts,earthquake,hiddenpowerghost,return,swordsdance": 918}, "vaporeon": {"79,leftovers,waterabsorb,protect,surf,toxic,wish": 1418, "79,leftovers,waterabsorb,icebeam,protect,surf,wish": 1383}, "venomoth": {"87,leftovers,shielddust,psychic,signalbeam,sleeppowder,sludgebomb": 390, "87,leftovers,shielddust,hiddenpowerfire,psychic,signalbeam,sludgebomb": 357, "87,leftovers,shielddust,signalbeam,sleeppowder,sludgebomb,substitute": 136, "87,leftovers,shielddust,batonpass,psychic,sludgebomb,substitute": 146, "87,leftovers,shielddust,psychic,sleeppowder,sludgebomb,substitute": 132, "87,leftovers,shielddust,hiddenpowerfire,signalbeam,sleeppowder,sludgebomb": 366, "87,leftovers,shielddust,batonpass,sleeppowder,sludgebomb,substitute": 142, "87,leftovers,shielddust,hiddenpowerfire,psychic,sleeppowder,sludgebomb": 364, "87,leftovers,shielddust,hiddenpowerfire,sleeppowder,sludgebomb,substitute": 146, "87,leftovers,shielddust,batonpass,hiddenpowerfire,sludgebomb,substitute": 128, "87,leftovers,shielddust,hiddenpowerfire,psychic,sludgebomb,substitute": 143, "87,leftovers,shielddust,hiddenpowerfire,signalbeam,sludgebomb,substitute": 138, "87,leftovers,shielddust,psychic,signalbeam,sludgebomb,substitute": 121, "87,leftovers,shielddust,batonpass,signalbeam,sludgebomb,substitute": 131}, "venusaur": {"81,leftovers,overgrow,earthquake,sleeppowder,sludgebomb,swordsdance": 498, "81,leftovers,overgrow,hiddenpowergrass,leechseed,sludgebomb,substitute": 744, "81,leftovers,overgrow,leechseed,sleeppowder,sludgebomb,substitute": 712, "81,leftovers,overgrow,earthquake,sludgebomb,swordsdance,synthesis": 498, "81,salacberry,overgrow,earthquake,hiddenpowerghost,sludgebomb,swordsdance": 492}, "victreebel": {"85,leftovers,chlorophyll,hiddenpowerground,magicalleaf,sludgebomb,synthesis": 439, "85,leftovers,chlorophyll,hiddenpowerfire,sludgebomb,solarbeam,sunnyday": 977, "85,leftovers,chlorophyll,hiddenpowerground,sleeppowder,sludgebomb,synthesis": 483, "85,leftovers,chlorophyll,hiddenpowerground,sludgebomb,swordsdance,synthesis": 485, "85,leftovers,chlorophyll,hiddenpowerground,sleeppowder,sludgebomb,swordsdance": 490}, "vigoroth": {"84,leftovers,vitalspirit,bulkup,earthquake,return,slackoff": 691, "84,leftovers,vitalspirit,bulkup,return,shadowball,slackoff": 678, "84,leftovers,vitalspirit,bodyslam,bulkup,earthquake,slackoff": 694, "84,leftovers,vitalspirit,bodyslam,bulkup,shadowball,slackoff": 695}, "vileplume": {"85,leftovers,chlorophyll,aromatherapy,hiddenpowerfire,sludgebomb,synthesis": 519, "85,leftovers,chlorophyll,hiddenpowergrass,sleeppowder,sludgebomb,synthesis": 647, "85,leftovers,chlorophyll,aromatherapy,sleeppowder,sludgebomb,synthesis": 447, "85,leftovers,chlorophyll,hiddenpowerfire,sleeppowder,sludgebomb,synthesis": 668, "85,leftovers,chlorophyll,aromatherapy,hiddenpowergrass,sludgebomb,synthesis": 559}, "volbeat": {"93,leftovers,swarm,batonpass,icepunch,tailglow,thunderbolt": 2983}, "wailord": {"87,leftovers,waterveil,rest,sleeptalk,surf,toxic": 755, "87,leftovers,waterveil,icebeam,rest,sleeptalk,surf": 707, "87,leftovers,waterveil,hiddenpowergrass,icebeam,selfdestruct,surf": 451, "87,leftovers,waterveil,icebeam,selfdestruct,surf,toxic": 497, "87,leftovers,waterveil,hiddenpowergrass,icebeam,surf,toxic": 465}, "walrein": {"80,leftovers,thickfat,icebeam,protect,surf,toxic": 1330, "80,leftovers,thickfat,icebeam,rest,sleeptalk,surf": 656, "80,leftovers,thickfat,encore,icebeam,surf,toxic": 637}, "weezing": {"82,leftovers,levitate,explosion,fireblast,haze,sludgebomb": 354, "82,leftovers,levitate,fireblast,painsplit,sludgebomb,toxic": 403, "82,leftovers,levitate,fireblast,haze,sludgebomb,toxic": 361, "82,leftovers,levitate,fireblast,haze,sludgebomb,willowisp": 338, "82,leftovers,levitate,fireblast,haze,painsplit,sludgebomb": 344, "82,leftovers,levitate,explosion,fireblast,sludgebomb,willowisp": 394, "82,leftovers,levitate,explosion,fireblast,sludgebomb,toxic": 422, "82,leftovers,levitate,fireblast,painsplit,sludgebomb,willowisp": 432}, "whiscash": {"83,leftovers,oblivious,earthquake,icebeam,surf,toxic": 651, "83,leftovers,oblivious,earthquake,rest,sleeptalk,surf": 623, "83,leftovers,oblivious,earthquake,icebeam,protect,toxic": 1254}, "wigglytuff": {"91,leftovers,cutecharm,protect,seismictoss,toxic,wish": 980, "91,leftovers,cutecharm,bodyslam,fireblast,protect,wish": 909, "91,leftovers,cutecharm,doubleedge,protect,toxic,wish": 444, "91,leftovers,cutecharm,doubleedge,protect,thunderwave,wish": 446}, "wobbuffet": {"81,leftovers,shadowtag,counter,destinybond,encore,mirrorcoat": 1}, "xatu": {"85,leftovers,synchronize,batonpass,calmmind,hiddenpowerfire,psychic": 474, "85,leftovers,earlybird,calmmind,hiddenpowerfire,psychic,rest": 851, "85,leftovers,synchronize,hiddenpowerfire,protect,psychic,wish": 438, "85,leftovers,synchronize,protect,psychic,thunderwave,wish": 422, "85,leftovers,synchronize,protect,psychic,toxic,wish": 420}, "yanma": {"91,leftovers,compoundeyes,aerialace,hiddenpowerground,hypnosis,toxic": 210, "91,leftovers,compoundeyes,aerialace,hiddenpowerground,signalbeam,toxic": 199, "91,liechiberry,compoundeyes,hiddenpowerflying,hypnosis,reversal,substitute": 601, "91,leftovers,compoundeyes,aerialace,hiddenpowerground,hypnosis,signalbeam": 200, "91,liechiberry,speedboost,hiddenpowerflying,reversal,shadowball,substitute": 608, "91,leftovers,compoundeyes,aerialace,doubleedge,hiddenpowerground,hypnosis": 206, "91,choiceband,speedboost,aerialace,doubleedge,hiddenpowerground,signalbeam": 199, "91,leftovers,compoundeyes,aerialace,doubleedge,hiddenpowerground,toxic": 175}, "zangoose": {"79,leftovers,immunity,quickattack,return,shadowball,swordsdance": 953, "79,choiceband,immunity,brickbreak,quickattack,return,shadowball": 982, "79,salacberry,immunity,brickbreak,return,shadowball,swordsdance": 931}, "zapdos": {"74,leftovers,pressure,hiddenpowerice,rest,sleeptalk,thunderbolt": 883, "74,leftovers,pressure,batonpass,hiddenpowerice,substitute,thunderbolt": 303, "74,leftovers,pressure,hiddenpowerice,protect,thunderbolt,toxic": 876, "74,leftovers,pressure,hiddenpowerice,substitute,thunderbolt,thunderwave": 305, "74,leftovers,pressure,hiddenpowerice,substitute,thunderbolt,toxic": 279}}
+{
+  "absol": {
+    "87,leftovers,pressure,batonpass,hiddenpowerfighting,shadowball,swordsdance": 518,
+    "87,leftovers,pressure,hiddenpowerfighting,quickattack,shadowball,swordsdance": 479,
+    "87,choiceband,pressure,doubleedge,hiddenpowerfighting,quickattack,shadowball": 1526,
+    "87,salacberry,pressure,doubleedge,hiddenpowerfighting,shadowball,swordsdance": 495
+  },
+  "aerodactyl": {
+    "73,liechiberry,pressure,earthquake,hiddenpowerflying,rockslide,substitute": 1251,
+    "73,choiceband,rockhead,doubleedge,earthquake,hiddenpowerflying,rockslide": 1295
+  },
+  "aggron": {
+    "85,leftovers,rockhead,earthquake,irontail,rockslide,toxic": 430,
+    "85,leftovers,rockhead,focuspunch,irontail,rockslide,substitute": 661,
+    "85,choiceband,rockhead,doubleedge,earthquake,irontail,rockslide": 1083,
+    "85,leftovers,rockhead,earthquake,irontail,rockslide,thunderwave": 413
+  },
+  "aipom": {
+    "93,choiceband,runaway,batonpass,brickbreak,return,shadowball": 243,
+    "93,leftovers,pickup,brickbreak,return,shadowball,toxic": 138,
+    "93,leftovers,runaway,brickbreak,return,substitute,toxic": 77,
+    "93,leftovers,runaway,brickbreak,return,shadowball,substitute": 58,
+    "93,choiceband,pickup,batonpass,brickbreak,doubleedge,shadowball": 233,
+    "93,leftovers,runaway,brickbreak,return,shadowball,thunderwave": 135,
+    "93,leftovers,runaway,brickbreak,return,shadowball,toxic": 150,
+    "93,leftovers,pickup,batonpass,return,substitute,thunderwave": 61,
+    "93,leftovers,runaway,brickbreak,return,substitute,thunderwave": 53,
+    "93,leftovers,pickup,brickbreak,return,shadowball,substitute": 64,
+    "93,leftovers,runaway,batonpass,brickbreak,return,substitute": 51,
+    "93,leftovers,pickup,focuspunch,return,shadowball,substitute": 197,
+    "93,leftovers,pickup,brickbreak,return,substitute,thunderwave": 54,
+    "93,choiceband,pickup,batonpass,brickbreak,return,shadowball": 243,
+    "93,leftovers,runaway,return,shadowball,substitute,thunderwave": 63,
+    "93,leftovers,runaway,batonpass,return,substitute,toxic": 37,
+    "93,choiceband,runaway,batonpass,brickbreak,doubleedge,shadowball": 249,
+    "93,leftovers,pickup,return,shadowball,substitute,thunderwave": 55,
+    "93,leftovers,pickup,batonpass,return,substitute,toxic": 55,
+    "93,leftovers,pickup,brickbreak,return,shadowball,thunderwave": 124,
+    "93,leftovers,runaway,focuspunch,return,shadowball,substitute": 188,
+    "93,leftovers,pickup,batonpass,return,shadowball,substitute": 45,
+    "93,leftovers,runaway,batonpass,return,shadowball,substitute": 70,
+    "93,leftovers,runaway,batonpass,return,substitute,thunderwave": 51,
+    "93,leftovers,pickup,return,shadowball,substitute,toxic": 59,
+    "93,leftovers,pickup,brickbreak,return,substitute,toxic": 61,
+    "93,leftovers,pickup,batonpass,brickbreak,return,substitute": 42,
+    "93,leftovers,runaway,return,shadowball,substitute,toxic": 49
+  },
+  "alakazam": {
+    "76,leftovers,synchronize,calmmind,firepunch,psychic,substitute": 606,
+    "76,leftovers,synchronize,calmmind,firepunch,icepunch,psychic": 598,
+    "76,leftovers,synchronize,calmmind,firepunch,psychic,recover": 572,
+    "76,leftovers,synchronize,calmmind,firepunch,psychic,thunderpunch": 601,
+    "76,leftovers,synchronize,calmmind,encore,firepunch,psychic": 534
+  },
+  "altaria": {
+    "85,leftovers,naturalcure,dragonclaw,earthquake,rest,toxic": 80,
+    "85,chestoberry,naturalcure,dragondance,earthquake,hiddenpowerflying,rest": 407,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,haze,healbell": 55,
+    "85,leftovers,naturalcure,dragonclaw,flamethrower,haze,rest": 68,
+    "85,leftovers,naturalcure,dragondance,earthquake,healbell,hiddenpowerflying": 404,
+    "85,leftovers,naturalcure,dragonclaw,flamethrower,rest,toxic": 60,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,flamethrower,rest": 82,
+    "85,leftovers,naturalcure,dragondance,earthquake,fireblast,hiddenpowerflying": 461,
+    "85,leftovers,naturalcure,dragonclaw,flamethrower,healbell,rest": 65,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,healbell,toxic": 72,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,haze,toxic": 72,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,flamethrower,haze": 62,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,flamethrower,toxic": 68,
+    "85,leftovers,naturalcure,dragonclaw,healbell,rest,toxic": 53,
+    "85,leftovers,naturalcure,dragonclaw,haze,healbell,rest": 70,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,haze,rest": 63,
+    "85,leftovers,naturalcure,dragonclaw,flamethrower,haze,toxic": 80,
+    "85,leftovers,naturalcure,dragonclaw,haze,healbell,toxic": 57,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,flamethrower,healbell": 70,
+    "85,leftovers,naturalcure,dragonclaw,earthquake,healbell,rest": 57,
+    "85,leftovers,naturalcure,dragonclaw,flamethrower,healbell,toxic": 53,
+    "85,leftovers,naturalcure,dragonclaw,haze,rest,toxic": 60,
+    "85,leftovers,naturalcure,dragonclaw,flamethrower,haze,healbell": 65
+  },
+  "ampharos": {
+    "82,leftovers,static,firepunch,healbell,hiddenpowerice,thunderbolt": 954,
+    "82,leftovers,static,firepunch,hiddenpowerice,thunderbolt,toxic": 1130,
+    "82,leftovers,static,healbell,hiddenpowerice,thunderbolt,toxic": 918
+  },
+  "arbok": {
+    "85,choiceband,intimidate,earthquake,hiddenpowerghost,rockslide,sludgebomb": 1504,
+    "85,leftovers,intimidate,earthquake,rest,sleeptalk,sludgebomb": 1572
+  },
+  "arcanine": {
+    "79,leftovers,intimidate,flamethrower,rest,sleeptalk,toxic": 441,
+    "79,choiceband,intimidate,extremespeed,fireblast,hiddenpowerrock,irontail": 293,
+    "79,choiceband,intimidate,doubleedge,extremespeed,fireblast,irontail": 330,
+    "79,leftovers,intimidate,flamethrower,hiddenpowergrass,protect,toxic": 464,
+    "79,leftovers,intimidate,flamethrower,hiddenpowergrass,rest,sleeptalk": 494,
+    "79,choiceband,intimidate,doubleedge,fireblast,hiddenpowerrock,irontail": 309,
+    "79,leftovers,intimidate,flamethrower,hiddenpowerrock,protect,toxic": 504
+  },
+  "ariados": {
+    "98,leftovers,swarm,agility,batonpass,signalbeam,sludgebomb": 450,
+    "98,leftovers,insomnia,agility,batonpass,sludgebomb,spiderweb": 983,
+    "98,leftovers,swarm,batonpass,signalbeam,spiderweb,toxic": 234,
+    "98,leftovers,insomnia,batonpass,signalbeam,sludgebomb,spiderweb": 252,
+    "98,leftovers,insomnia,agility,batonpass,signalbeam,sludgebomb": 476,
+    "98,leftovers,swarm,batonpass,signalbeam,sludgebomb,spiderweb": 238,
+    "98,leftovers,insomnia,batonpass,signalbeam,spiderweb,toxic": 240
+  },
+  "armaldo": {
+    "83,leftovers,battlearmor,earthquake,hiddenpowerbug,rockslide,swordsdance": 986,
+    "83,choiceband,battlearmor,doubleedge,earthquake,hiddenpowerbug,rockslide": 1039,
+    "83,choiceband,battlearmor,earthquake,hiddenpowerbug,rapidspin,rockslide": 948
+  },
+  "articuno": {
+    "80,leftovers,pressure,hiddenpowerfire,icebeam,rest,sleeptalk": 1236,
+    "80,leftovers,pressure,hiddenpowerfire,icebeam,protect,toxic": 674,
+    "80,leftovers,pressure,healbell,icebeam,protect,toxic": 594
+  },
+  "azumarill": {
+    "87,choiceband,hugepower,brickbreak,doubleedge,hiddenpowerghost,hydropump": 706,
+    "87,leftovers,hugepower,hydropump,rest,return,sleeptalk": 670,
+    "87,choiceband,hugepower,brickbreak,hiddenpowerghost,hydropump,return": 691,
+    "87,leftovers,hugepower,doubleedge,hydropump,rest,sleeptalk": 667
+  },
+  "banette": {
+    "88,salacberry,insomnia,destinybond,endure,hiddenpowerfighting,shadowball": 1608,
+    "88,choiceband,insomnia,doubleedge,hiddenpowerfighting,knockoff,shadowball": 513,
+    "88,leftovers,insomnia,hiddenpowerfighting,knockoff,shadowball,willowisp": 547,
+    "88,leftovers,insomnia,doubleedge,hiddenpowerfighting,shadowball,willowisp": 574
+  },
+  "beautifly": {
+    "100,leftovers,swarm,hiddenpowerfire,morningsun,psychic,toxic": 2197
+  },
+  "beedrill": {
+    "92,salacberry,swarm,brickbreak,endure,hiddenpowerbug,swordsdance": 715,
+    "92,salacberry,swarm,endure,hiddenpowerbug,sludgebomb,swordsdance": 689,
+    "92,choiceband,swarm,brickbreak,doubleedge,hiddenpowerbug,sludgebomb": 479,
+    "92,salacberry,swarm,doubleedge,hiddenpowerbug,sludgebomb,swordsdance": 339,
+    "92,salacberry,swarm,brickbreak,doubleedge,sludgebomb,swordsdance": 314,
+    "92,salacberry,swarm,brickbreak,hiddenpowerbug,sludgebomb,swordsdance": 314
+  },
+  "bellossom": {
+    "93,leftovers,chlorophyll,hiddenpowerfire,magicalleaf,moonlight,stunspore": 950,
+    "93,leftovers,chlorophyll,hiddenpowerfire,magicalleaf,moonlight,sleeppowder": 1020,
+    "93,leftovers,chlorophyll,hiddenpowerfire,leechseed,magicalleaf,moonlight": 972
+  },
+  "blastoise": {
+    "82,leftovers,torrent,rest,sleeptalk,surf,toxic": 458,
+    "82,leftovers,torrent,icebeam,protect,surf,toxic": 436,
+    "82,leftovers,torrent,icebeam,rapidspin,roar,surf": 137,
+    "82,leftovers,torrent,icebeam,roar,surf,toxic": 145,
+    "82,leftovers,torrent,icebeam,refresh,surf,toxic": 167,
+    "82,leftovers,torrent,icebeam,rest,sleeptalk,surf": 462,
+    "82,leftovers,torrent,icebeam,refresh,roar,surf": 166,
+    "82,leftovers,torrent,icebeam,rapidspin,refresh,surf": 140,
+    "82,leftovers,torrent,protect,refresh,surf,toxic": 450,
+    "82,leftovers,torrent,icebeam,rapidspin,surf,toxic": 145
+  },
+  "blaziken": {
+    "82,leftovers,blaze,fireblast,hiddenpowerice,rockslide,skyuppercut": 147,
+    "82,salacberry,blaze,endure,fireblast,reversal,swordsdance": 957,
+    "82,salacberry,blaze,fireblast,rockslide,skyuppercut,swordsdance": 335,
+    "82,choiceband,blaze,earthquake,fireblast,rockslide,skyuppercut": 329,
+    "82,leftovers,blaze,fireblast,hiddenpowerice,skyuppercut,thunderpunch": 172,
+    "82,leftovers,blaze,earthquake,fireblast,rockslide,skyuppercut": 154,
+    "82,leftovers,blaze,fireblast,rockslide,skyuppercut,thunderpunch": 171,
+    "82,leftovers,blaze,earthquake,fireblast,hiddenpowerice,skyuppercut": 146,
+    "82,leftovers,blaze,earthquake,fireblast,skyuppercut,thunderpunch": 177,
+    "82,salacberry,blaze,earthquake,fireblast,skyuppercut,swordsdance": 317
+  },
+  "blissey": {
+    "77,leftovers,naturalcure,protect,seismictoss,toxic,wish": 1376,
+    "77,leftovers,naturalcure,aromatherapy,seismictoss,softboiled,toxic": 685,
+    "77,leftovers,naturalcure,seismictoss,softboiled,thunderwave,toxic": 761
+  },
+  "breloom": {
+    "84,leftovers,effectspore,hiddenpowerrock,machpunch,skyuppercut,spore": 219,
+    "84,leftovers,effectspore,hiddenpowerghost,skyuppercut,spore,swordsdance": 248,
+    "84,leftovers,effectspore,focuspunch,hiddenpowerrock,spore,substitute": 776,
+    "84,leftovers,effectspore,hiddenpowerrock,skyuppercut,spore,substitute": 230,
+    "84,leftovers,effectspore,hiddenpowerghost,skyuppercut,spore,substitute": 201,
+    "84,leftovers,effectspore,focuspunch,hiddenpowerghost,spore,substitute": 707,
+    "84,leftovers,effectspore,hiddenpowerghost,machpunch,skyuppercut,spore": 228,
+    "84,leftovers,effectspore,hiddenpowerrock,skyuppercut,spore,swordsdance": 257
+  },
+  "butterfree": {
+    "97,leftovers,compoundeyes,hiddenpowerfire,morningsun,psychic,sleeppowder": 228,
+    "97,leftovers,compoundeyes,morningsun,psychic,sleeppowder,stunspore": 368,
+    "97,leftovers,compoundeyes,hiddenpowerfire,psychic,sleeppowder,toxic": 350,
+    "97,leftovers,compoundeyes,hiddenpowerfire,morningsun,psychic,toxic": 368,
+    "97,leftovers,compoundeyes,hiddenpowerfire,psychic,sleeppowder,stunspore": 331,
+    "97,leftovers,compoundeyes,hiddenpowerfire,morningsun,psychic,stunspore": 376,
+    "97,leftovers,compoundeyes,morningsun,psychic,sleeppowder,toxic": 338
+  },
+  "cacturne": {
+    "94,leftovers,sandveil,hiddenpowerdark,needlearm,spikes,thunderpunch": 1338,
+    "94,leftovers,sandveil,focuspunch,hiddenpowerdark,leechseed,substitute": 1392
+  },
+  "camerupt": {
+    "86,leftovers,magmaarmor,earthquake,explosion,fireblast,toxic": 528,
+    "86,leftovers,magmaarmor,earthquake,fireblast,rockslide,toxic": 569,
+    "86,leftovers,magmaarmor,earthquake,fireblast,rest,sleeptalk": 1131,
+    "86,choiceband,magmaarmor,earthquake,explosion,fireblast,rockslide": 550
+  },
+  "castform": {
+    "90,leftovers,forecast,fireblast,icebeam,return,thunderwave": 625,
+    "90,leftovers,forecast,fireblast,return,thunderbolt,thunderwave": 579,
+    "90,leftovers,forecast,icebeam,return,thunderbolt,thunderwave": 564,
+    "90,leftovers,forecast,fireblast,icebeam,return,thunderbolt": 952
+  },
+  "celebi": {
+    "74,leftovers,naturalcure,hiddenpowerfire,psychic,recover,toxic": 294,
+    "74,leftovers,naturalcure,hiddenpowergrass,psychic,recover,toxic": 371,
+    "74,leftovers,naturalcure,healbell,psychic,recover,toxic": 345,
+    "74,leftovers,naturalcure,calmmind,hiddenpowerfire,psychic,recover": 460,
+    "74,leftovers,naturalcure,batonpass,calmmind,psychic,recover": 405,
+    "74,leftovers,naturalcure,calmmind,hiddenpowergrass,psychic,recover": 430,
+    "74,leftovers,naturalcure,leechseed,psychic,recover,toxic": 336
+  },
+  "charizard": {
+    "79,lumberry,blaze,dragondance,earthquake,fireblast,hiddenpowerflying": 401,
+    "79,petayaberry,blaze,dragonclaw,fireblast,hiddenpowergrass,substitute": 797,
+    "79,salacberry,blaze,bellydrum,earthquake,hiddenpowerflying,substitute": 404,
+    "79,choiceband,blaze,earthquake,fireblast,hiddenpowerflying,rockslide": 406,
+    "79,lumberry,blaze,bellydrum,earthquake,hiddenpowerflying,rockslide": 357
+  },
+  "chimecho": {
+    "89,leftovers,levitate,calmmind,healbell,hiddenpowerfire,psychic": 1466,
+    "89,leftovers,levitate,healbell,hiddenpowerfire,psychic,toxic": 1326,
+    "89,leftovers,levitate,calmmind,hiddenpowerfire,psychic,toxic": 202
+  },
+  "claydol": {
+    "81,leftovers,levitate,earthquake,psychic,rapidspin,toxic": 287,
+    "81,leftovers,levitate,earthquake,icebeam,rapidspin,toxic": 271,
+    "81,leftovers,levitate,earthquake,explosion,icebeam,rapidspin": 285,
+    "81,leftovers,levitate,earthquake,explosion,psychic,toxic": 291,
+    "81,leftovers,levitate,earthquake,explosion,psychic,rapidspin": 255,
+    "81,leftovers,levitate,earthquake,explosion,rapidspin,toxic": 292,
+    "81,leftovers,levitate,earthquake,icebeam,psychic,rapidspin": 274,
+    "81,leftovers,levitate,earthquake,explosion,icebeam,toxic": 293,
+    "81,leftovers,levitate,earthquake,explosion,icebeam,psychic": 316,
+    "81,leftovers,levitate,earthquake,icebeam,psychic,toxic": 317
+  },
+  "clefable": {
+    "85,leftovers,cutecharm,fireblast,return,softboiled,thunderwave": 300,
+    "85,leftovers,cutecharm,calmmind,icebeam,softboiled,thunderbolt": 1453,
+    "85,leftovers,cutecharm,return,shadowball,softboiled,thunderwave": 296,
+    "85,leftovers,cutecharm,return,shadowball,softboiled,toxic": 286,
+    "85,leftovers,cutecharm,fireblast,return,softboiled,toxic": 282,
+    "85,leftovers,cutecharm,fireblast,return,shadowball,softboiled": 238
+  },
+  "cloyster": {
+    "82,leftovers,shellarmor,explosion,icebeam,spikes,surf": 408,
+    "82,leftovers,shellarmor,explosion,spikes,surf,toxic": 452,
+    "82,leftovers,shellarmor,rapidspin,spikes,surf,toxic": 407,
+    "82,leftovers,shellarmor,icebeam,spikes,surf,toxic": 458,
+    "82,leftovers,shellarmor,explosion,rapidspin,spikes,surf": 399,
+    "82,leftovers,shellarmor,icebeam,rapidspin,spikes,surf": 411
+  },
+  "corsola": {
+    "98,leftovers,naturalcure,icebeam,recover,surf,toxic": 1172,
+    "98,leftovers,naturalcure,calmmind,icebeam,recover,surf": 1253
+  },
+  "cradily": {
+    "84,leftovers,suctioncups,earthquake,hiddenpowergrass,recover,rockslide": 1449,
+    "84,leftovers,suctioncups,earthquake,recover,rockslide,toxic": 1365
+  },
+  "crawdaunt": {
+    "90,leftovers,hypercutter,crunch,doubleedge,hiddenpowergrass,surf": 331,
+    "90,choiceband,hypercutter,brickbreak,doubleedge,hiddenpowerghost,surf": 282,
+    "90,leftovers,hypercutter,brickbreak,doubleedge,surf,swordsdance": 221,
+    "90,leftovers,hypercutter,brickbreak,crunch,doubleedge,surf": 304,
+    "90,leftovers,hypercutter,crunch,doubleedge,hiddenpowerelectric,surf": 298,
+    "90,leftovers,hypercutter,doubleedge,hiddenpowerghost,surf,swordsdance": 259,
+    "90,leftovers,hypercutter,doubleedge,hiddenpowerflying,surf,swordsdance": 272,
+    "90,leftovers,hypercutter,crunch,doubleedge,icebeam,surf": 340,
+    "90,choiceband,hypercutter,brickbreak,doubleedge,hiddenpowerflying,surf": 255
+  },
+  "crobat": {
+    "79,choiceband,innerfocus,aerialace,hiddenpowerground,shadowball,sludgebomb": 429,
+    "79,leftovers,innerfocus,aerialace,haze,hiddenpowerground,sludgebomb": 389,
+    "79,leftovers,innerfocus,haze,hiddenpowerground,shadowball,sludgebomb": 388,
+    "79,leftovers,innerfocus,aerialace,hiddenpowerground,sludgebomb,toxic": 426,
+    "79,leftovers,innerfocus,haze,hiddenpowerground,sludgebomb,toxic": 394,
+    "79,leftovers,innerfocus,hiddenpowerground,shadowball,sludgebomb,toxic": 426
+  },
+  "delcatty": {
+    "96,leftovers,cutecharm,batonpass,calmmind,icebeam,thunderbolt": 868,
+    "96,leftovers,cutecharm,doubleedge,protect,thunderwave,wish": 455,
+    "96,leftovers,cutecharm,doubleedge,protect,toxic,wish": 455,
+    "96,leftovers,cutecharm,bodyslam,healbell,protect,wish": 959
+  },
+  "delibird": {
+    "97,choiceband,hustle,aerialace,hiddenpowerground,icebeam,quickattack": 811,
+    "97,choiceband,hustle,aerialace,doubleedge,hiddenpowerground,icebeam": 786,
+    "97,choiceband,hustle,aerialace,focuspunch,hiddenpowerground,icebeam": 831
+  },
+  "deoxys": {
+    "72,whiteherb,pressure,icebeam,psychoboost,shadowball,superpower": 495,
+    "72,choiceband,pressure,extremespeed,psychoboost,shadowball,superpower": 494,
+    "72,whiteherb,pressure,firepunch,psychoboost,shadowball,superpower": 508
+  },
+  "deoxysattack": {
+    "71,whiteherb,pressure,icebeam,psychoboost,shadowball,superpower": 475,
+    "71,choiceband,pressure,extremespeed,psychoboost,shadowball,superpower": 494,
+    "71,whiteherb,pressure,firepunch,psychoboost,shadowball,superpower": 497
+  },
+  "deoxysdefense": {
+    "75,leftovers,pressure,recover,seismictoss,spikes,toxic": 1402
+  },
+  "deoxysspeed": {
+    "77,leftovers,pressure,psychoboost,recover,spikes,toxic": 387,
+    "77,leftovers,pressure,calmmind,firepunch,psychic,recover": 209,
+    "77,leftovers,pressure,calmmind,firepunch,psychic,substitute": 264,
+    "77,leftovers,pressure,calmmind,firepunch,icebeam,psychic": 252,
+    "77,leftovers,pressure,psychoboost,recover,spikes,superpower": 360
+  },
+  "dewgong": {
+    "87,leftovers,thickfat,encore,icebeam,surf,toxic": 623,
+    "87,leftovers,thickfat,icebeam,protect,surf,toxic": 1210,
+    "87,leftovers,thickfat,icebeam,rest,sleeptalk,surf": 600
+  },
+  "ditto": {
+    "100,leftovers,limber,transform": 2602
+  },
+  "dodrio": {
+    "77,liechiberry,earlybird,drillpeck,flail,hiddenpowerground,substitute": 646,
+    "77,choiceband,earlybird,drillpeck,hiddenpowerground,quickattack,return": 656,
+    "77,choiceband,earlybird,doubleedge,drillpeck,hiddenpowerground,quickattack": 621,
+    "77,liechiberry,earlybird,drillpeck,flail,quickattack,substitute": 656
+  },
+  "donphan": {
+    "83,leftovers,sturdy,earthquake,rest,rockslide,sleeptalk": 1570,
+    "83,leftovers,sturdy,earthquake,rapidspin,rockslide,toxic": 1359
+  },
+  "dragonite": {
+    "76,leftovers,innerfocus,dragondance,earthquake,hiddenpowerflying,substitute": 364,
+    "76,choiceband,innerfocus,brickbreak,earthquake,fireblast,hiddenpowerflying": 447,
+    "76,chestoberry,innerfocus,dragondance,earthquake,hiddenpowerflying,rest": 321,
+    "76,choiceband,innerfocus,brickbreak,doubleedge,earthquake,hiddenpowerflying": 469,
+    "76,choiceband,innerfocus,doubleedge,earthquake,fireblast,hiddenpowerflying": 430,
+    "76,lumberry,innerfocus,doubleedge,dragondance,earthquake,hiddenpowerflying": 357,
+    "76,leftovers,innerfocus,dragondance,earthquake,healbell,hiddenpowerflying": 302
+  },
+  "dugtrio": {
+    "78,choiceband,arenatrap,earthquake,hiddenpowerbug,rockslide,sludgebomb": 2975
+  },
+  "dunsparce": {
+    "88,leftovers,serenegrace,earthquake,headbutt,shadowball,thunderwave": 1389,
+    "88,chestoberry,serenegrace,bodyslam,curse,earthquake,rest": 459,
+    "88,leftovers,serenegrace,bodyslam,curse,earthquake,shadowball": 494,
+    "88,chestoberry,serenegrace,bodyslam,curse,rest,shadowball": 458
+  },
+  "dusclops": {
+    "86,leftovers,pressure,focuspunch,shadowball,substitute,willowisp": 258,
+    "86,leftovers,pressure,focuspunch,icebeam,shadowball,substitute": 230,
+    "86,leftovers,pressure,rest,seismictoss,sleeptalk,willowisp": 1041,
+    "86,leftovers,pressure,rest,seismictoss,shadowball,sleeptalk": 1074,
+    "86,leftovers,pressure,focuspunch,painsplit,shadowball,substitute": 249,
+    "86,leftovers,pressure,icebeam,painsplit,shadowball,willowisp": 285
+  },
+  "dustox": {
+    "96,leftovers,shielddust,hiddenpowerground,moonlight,sludgebomb,toxic": 1463,
+    "96,leftovers,shielddust,moonlight,sludgebomb,toxic,whirlwind": 1480
+  },
+  "electabuzz": {
+    "82,petayaberry,static,firepunch,icepunch,substitute,thunderbolt": 747,
+    "82,leftovers,static,firepunch,hiddenpowergrass,icepunch,thunderbolt": 324,
+    "82,leftovers,static,focuspunch,icepunch,substitute,thunderbolt": 608,
+    "82,leftovers,static,crosschop,firepunch,icepunch,thunderbolt": 299,
+    "82,leftovers,static,crosschop,hiddenpowergrass,icepunch,thunderbolt": 310,
+    "82,petayaberry,static,hiddenpowergrass,icepunch,substitute,thunderbolt": 789
+  },
+  "electrode": {
+    "82,leftovers,static,hiddenpowerice,substitute,thunderbolt,toxic": 1026,
+    "82,leftovers,static,explosion,hiddenpowerice,thunderbolt,toxic": 927,
+    "82,leftovers,static,explosion,hiddenpowerice,substitute,thunderbolt": 1016
+  },
+  "entei": {
+    "79,leftovers,pressure,flamethrower,protect,substitute,toxic": 963,
+    "79,leftovers,pressure,flamethrower,rest,sleeptalk,toxic": 931,
+    "79,leftovers,pressure,calmmind,flamethrower,hiddenpowergrass,substitute": 1024
+  },
+  "espeon": {
+    "77,leftovers,synchronize,batonpass,calmmind,hiddenpowerfire,psychic": 992,
+    "77,leftovers,synchronize,calmmind,hiddenpowerfire,psychic,substitute": 1013,
+    "77,leftovers,synchronize,calmmind,hiddenpowerfire,morningsun,psychic": 1025
+  },
+  "exeggutor": {
+    "83,leftovers,chlorophyll,hiddenpowerfire,psychic,solarbeam,sunnyday": 949,
+    "83,leftovers,chlorophyll,gigadrain,hiddenpowerfire,psychic,stunspore": 107,
+    "83,leftovers,chlorophyll,gigadrain,leechseed,psychic,substitute": 146,
+    "83,leftovers,chlorophyll,hiddenpowerfire,psychic,stunspore,synthesis": 146,
+    "83,leftovers,chlorophyll,hiddenpowerfire,leechseed,psychic,substitute": 136,
+    "83,leftovers,chlorophyll,gigadrain,psychic,sleeppowder,synthesis": 151,
+    "83,leftovers,chlorophyll,explosion,hiddenpowerfire,psychic,sleeppowder": 51,
+    "83,leftovers,chlorophyll,gigadrain,hiddenpowerfire,psychic,synthesis": 319,
+    "83,leftovers,chlorophyll,gigadrain,hiddenpowerfire,psychic,sleeppowder": 98,
+    "83,leftovers,chlorophyll,gigadrain,psychic,sleeppowder,stunspore": 51,
+    "83,leftovers,chlorophyll,explosion,gigadrain,hiddenpowerfire,psychic": 77,
+    "83,leftovers,chlorophyll,hiddenpowerfire,psychic,sleeppowder,synthesis": 162,
+    "83,leftovers,chlorophyll,explosion,gigadrain,psychic,stunspore": 46,
+    "83,leftovers,chlorophyll,explosion,hiddenpowerfire,psychic,stunspore": 40,
+    "83,leftovers,chlorophyll,gigadrain,psychic,stunspore,synthesis": 146,
+    "83,leftovers,chlorophyll,explosion,gigadrain,psychic,sleeppowder": 58,
+    "83,leftovers,chlorophyll,hiddenpowerfire,psychic,sleeppowder,stunspore": 46
+  },
+  "exploud": {
+    "86,choiceband,soundproof,earthquake,overheat,return,shadowball": 642,
+    "86,leftovers,soundproof,earthquake,flamethrower,icebeam,return": 244,
+    "86,leftovers,soundproof,earthquake,flamethrower,return,substitute": 221,
+    "86,leftovers,soundproof,earthquake,return,shadowball,substitute": 220,
+    "86,leftovers,soundproof,earthquake,icebeam,return,substitute": 219,
+    "86,choiceband,soundproof,doubleedge,earthquake,overheat,shadowball": 720,
+    "86,leftovers,soundproof,earthquake,icebeam,return,shadowball": 242,
+    "86,leftovers,soundproof,earthquake,flamethrower,return,shadowball": 247
+  },
+  "farfetchd": {
+    "100,stick,innerfocus,agility,batonpass,return,swordsdance": 2425
+  },
+  "fearow": {
+    "81,choiceband,keeneye,drillpeck,hiddenpowerground,quickattack,return": 1276,
+    "81,choiceband,keeneye,doubleedge,drillpeck,hiddenpowerground,quickattack": 1234
+  },
+  "feraligatr": {
+    "83,salacberry,torrent,earthquake,hiddenpowerflying,hydropump,swordsdance": 946,
+    "83,salacberry,torrent,earthquake,hydropump,rockslide,swordsdance": 949,
+    "83,choiceband,torrent,earthquake,hiddenpowerflying,hydropump,rockslide": 957
+  },
+  "flareon": {
+    "88,choiceband,flashfire,doubleedge,fireblast,hiddenpowerrock,irontail": 106,
+    "88,choiceband,flashfire,fireblast,hiddenpowerrock,irontail,shadowball": 119,
+    "88,leftovers,flashfire,flamethrower,hiddenpowergrass,protect,wish": 713,
+    "88,leftovers,flashfire,doubleedge,fireblast,hiddenpowergrass,irontail": 111,
+    "88,leftovers,flashfire,flamethrower,protect,toxic,wish": 701,
+    "88,choiceband,flashfire,doubleedge,fireblast,irontail,shadowball": 93,
+    "88,leftovers,flashfire,fireblast,hiddenpowergrass,shadowball,toxic": 81,
+    "88,leftovers,flashfire,fireblast,hiddenpowerrock,shadowball,toxic": 81,
+    "88,leftovers,flashfire,fireblast,hiddenpowerrock,irontail,toxic": 84,
+    "88,leftovers,flashfire,doubleedge,fireblast,hiddenpowergrass,toxic": 90,
+    "88,leftovers,flashfire,doubleedge,fireblast,hiddenpowergrass,shadowball": 119,
+    "88,choiceband,flashfire,doubleedge,fireblast,hiddenpowerrock,shadowball": 104,
+    "88,leftovers,flashfire,doubleedge,fireblast,hiddenpowerrock,toxic": 89,
+    "88,leftovers,flashfire,doubleedge,fireblast,shadowball,toxic": 41,
+    "88,leftovers,flashfire,fireblast,hiddenpowergrass,irontail,shadowball": 122,
+    "88,leftovers,flashfire,fireblast,irontail,shadowball,toxic": 52,
+    "88,leftovers,flashfire,fireblast,hiddenpowergrass,irontail,toxic": 86,
+    "88,leftovers,flashfire,doubleedge,fireblast,irontail,toxic": 52
+  },
+  "flygon": {
+    "78,leftovers,levitate,earthquake,fireblast,protect,toxic": 461,
+    "78,choiceband,levitate,earthquake,hiddenpowerbug,quickattack,rockslide": 925,
+    "78,leftovers,levitate,dragonclaw,earthquake,rockslide,toxic": 121,
+    "78,leftovers,levitate,dragonclaw,earthquake,substitute,toxic": 54,
+    "78,leftovers,levitate,dragonclaw,earthquake,protect,toxic": 457,
+    "78,leftovers,levitate,dragonclaw,earthquake,fireblast,rockslide": 165,
+    "78,leftovers,levitate,earthquake,fireblast,rockslide,toxic": 116,
+    "78,leftovers,levitate,dragonclaw,earthquake,fireblast,substitute": 126,
+    "78,leftovers,levitate,earthquake,fireblast,substitute,toxic": 47,
+    "78,leftovers,levitate,earthquake,fireblast,rockslide,substitute": 116,
+    "78,leftovers,levitate,dragonclaw,earthquake,rockslide,substitute": 97,
+    "78,leftovers,levitate,dragonclaw,earthquake,fireblast,toxic": 94,
+    "78,leftovers,levitate,earthquake,rockslide,substitute,toxic": 51
+  },
+  "forretress": {
+    "82,leftovers,sturdy,earthquake,explosion,hiddenpowersteel,spikes": 275,
+    "82,leftovers,sturdy,earthquake,explosion,hiddenpowerbug,spikes": 266,
+    "82,leftovers,sturdy,earthquake,hiddenpowersteel,spikes,toxic": 265,
+    "82,leftovers,sturdy,earthquake,hiddenpowerbug,spikes,toxic": 270,
+    "82,leftovers,sturdy,earthquake,hiddenpowerbug,rapidspin,spikes": 248,
+    "82,leftovers,sturdy,explosion,hiddenpowerbug,spikes,toxic": 262,
+    "82,leftovers,sturdy,hiddenpowerbug,rapidspin,spikes,toxic": 229,
+    "82,leftovers,sturdy,earthquake,hiddenpowersteel,rapidspin,spikes": 249,
+    "82,leftovers,sturdy,explosion,hiddenpowersteel,spikes,toxic": 256,
+    "82,leftovers,sturdy,hiddenpowersteel,rapidspin,spikes,toxic": 246,
+    "82,leftovers,sturdy,explosion,hiddenpowerbug,rapidspin,spikes": 255,
+    "82,leftovers,sturdy,explosion,hiddenpowersteel,rapidspin,spikes": 244
+  },
+  "furret": {
+    "87,liechiberry,keeneye,return,reversal,shadowball,substitute": 965,
+    "87,choiceband,keeneye,brickbreak,doubleedge,quickattack,shadowball": 454,
+    "87,choiceband,keeneye,brickbreak,quickattack,return,shadowball": 463,
+    "87,choiceband,keeneye,brickbreak,return,shadowball,trick": 449,
+    "87,choiceband,keeneye,brickbreak,doubleedge,shadowball,trick": 464
+  },
+  "gardevoir": {
+    "79,leftovers,trace,calmmind,firepunch,hypnosis,psychic": 723,
+    "79,leftovers,trace,calmmind,firepunch,psychic,thunderbolt": 712,
+    "79,leftovers,trace,calmmind,firepunch,icepunch,psychic": 732,
+    "79,leftovers,trace,calmmind,firepunch,psychic,substitute": 717
+  },
+  "gengar": {
+    "74,leftovers,levitate,destinybond,icepunch,substitute,thunderbolt": 375,
+    "74,leftovers,levitate,explosion,icepunch,thunderbolt,willowisp": 356,
+    "74,leftovers,levitate,destinybond,icepunch,thunderbolt,willowisp": 355,
+    "74,leftovers,levitate,firepunch,icepunch,thunderbolt,willowisp": 289,
+    "74,leftovers,levitate,firepunch,icepunch,substitute,thunderbolt": 288,
+    "74,leftovers,levitate,destinybond,firepunch,icepunch,thunderbolt": 329,
+    "74,leftovers,levitate,icepunch,substitute,thunderbolt,willowisp": 289,
+    "74,leftovers,levitate,explosion,icepunch,substitute,thunderbolt": 363,
+    "74,leftovers,levitate,explosion,firepunch,icepunch,thunderbolt": 331
+  },
+  "girafarig": {
+    "85,leftovers,earlybird,calmmind,hiddenpowerfire,psychic,thunderbolt": 315,
+    "85,leftovers,earlybird,doubleedge,protect,psychic,wish": 35,
+    "85,leftovers,earlybird,batonpass,calmmind,hiddenpowerfire,psychic": 163,
+    "85,choiceband,earlybird,earthquake,return,shadowball,thunderbolt": 36,
+    "85,leftovers,earlybird,doubleedge,psychic,shadowball,thunderwave": 21,
+    "85,leftovers,earlybird,batonpass,calmmind,psychic,thunderbolt": 192,
+    "85,leftovers,earlybird,calmmind,hiddenpowerfire,psychic,rest": 168,
+    "85,leftovers,earlybird,earthquake,return,shadowball,toxic": 31,
+    "85,leftovers,earlybird,doubleedge,psychic,shadowball,thunderbolt": 31,
+    "85,leftovers,earlybird,earthquake,return,shadowball,thunderwave": 31,
+    "85,leftovers,earlybird,doubleedge,protect,thunderbolt,wish": 58,
+    "85,leftovers,earlybird,earthquake,psychic,return,thunderbolt": 40,
+    "85,leftovers,earlybird,earthquake,return,thunderbolt,thunderwave": 20,
+    "85,leftovers,earlybird,psychic,return,shadowball,thunderwave": 26,
+    "85,choiceband,earlybird,doubleedge,earthquake,psychic,shadowball": 33,
+    "85,leftovers,earlybird,doubleedge,psychic,thunderbolt,thunderwave": 32,
+    "85,leftovers,earlybird,doubleedge,psychic,shadowball,toxic": 38,
+    "85,leftovers,earlybird,psychic,return,shadowball,thunderbolt": 26,
+    "85,leftovers,earlybird,earthquake,return,thunderbolt,toxic": 30,
+    "85,leftovers,earlybird,calmmind,psychic,substitute,thunderbolt": 162,
+    "85,leftovers,earlybird,doubleedge,protect,shadowball,wish": 52,
+    "85,leftovers,earlybird,doubleedge,earthquake,protect,wish": 40,
+    "85,leftovers,earlybird,calmmind,hiddenpowerfire,psychic,substitute": 170,
+    "85,leftovers,earlybird,calmmind,psychic,rest,thunderbolt": 160,
+    "85,leftovers,earlybird,protect,return,thunderbolt,wish": 52,
+    "85,leftovers,earlybird,doubleedge,psychic,thunderbolt,toxic": 37,
+    "85,leftovers,earlybird,doubleedge,earthquake,psychic,thunderwave": 24,
+    "85,leftovers,earlybird,doubleedge,shadowball,thunderbolt,toxic": 36,
+    "85,leftovers,earlybird,earthquake,protect,return,wish": 54,
+    "85,leftovers,earlybird,return,shadowball,thunderbolt,toxic": 30,
+    "85,leftovers,earlybird,psychic,return,thunderbolt,toxic": 27,
+    "85,leftovers,earlybird,doubleedge,earthquake,thunderbolt,thunderwave": 23,
+    "85,leftovers,earlybird,doubleedge,earthquake,shadowball,toxic": 22,
+    "85,leftovers,earlybird,psychic,return,thunderbolt,thunderwave": 30,
+    "85,choiceband,earlybird,doubleedge,earthquake,shadowball,thunderbolt": 37,
+    "85,leftovers,earlybird,doubleedge,earthquake,thunderbolt,toxic": 29,
+    "85,leftovers,earlybird,doubleedge,earthquake,psychic,toxic": 22,
+    "85,leftovers,earlybird,doubleedge,shadowball,thunderbolt,thunderwave": 29,
+    "85,leftovers,earlybird,protect,psychic,return,wish": 47,
+    "85,leftovers,earlybird,psychic,return,shadowball,toxic": 33,
+    "85,leftovers,earlybird,protect,return,shadowball,wish": 46,
+    "85,leftovers,earlybird,earthquake,psychic,return,thunderwave": 33,
+    "85,leftovers,earlybird,doubleedge,earthquake,psychic,thunderbolt": 28,
+    "85,choiceband,earlybird,earthquake,psychic,return,shadowball": 44,
+    "85,leftovers,earlybird,earthquake,psychic,return,toxic": 22,
+    "85,leftovers,earlybird,return,shadowball,thunderbolt,thunderwave": 25,
+    "85,leftovers,earlybird,doubleedge,earthquake,shadowball,thunderwave": 27
+  },
+  "glalie": {
+    "82,leftovers,innerfocus,explosion,icebeam,spikes,toxic": 947,
+    "82,leftovers,innerfocus,earthquake,explosion,icebeam,spikes": 956,
+    "82,leftovers,innerfocus,earthquake,icebeam,spikes,toxic": 907
+  },
+  "gligar": {
+    "84,salacberry,hypercutter,earthquake,hiddenpowerflying,substitute,swordsdance": 802,
+    "84,leftovers,hypercutter,earthquake,hiddenpowerflying,quickattack,swordsdance": 825,
+    "84,salacberry,hypercutter,earthquake,hiddenpowerflying,rockslide,swordsdance": 875
+  },
+  "golduck": {
+    "81,leftovers,cloudnine,calmmind,hiddenpowerelectric,icebeam,surf": 343,
+    "81,leftovers,cloudnine,calmmind,hiddenpowergrass,hydropump,icebeam": 352,
+    "81,leftovers,cloudnine,calmmind,hypnosis,icebeam,surf": 360,
+    "81,leftovers,cloudnine,calmmind,hiddenpowerelectric,hydropump,icebeam": 329,
+    "81,leftovers,cloudnine,calmmind,icebeam,substitute,surf": 350,
+    "81,leftovers,cloudnine,calmmind,hydropump,hypnosis,icebeam": 348,
+    "81,leftovers,cloudnine,calmmind,hydropump,icebeam,substitute": 340,
+    "81,leftovers,cloudnine,calmmind,hiddenpowergrass,icebeam,surf": 366
+  },
+  "golem": {
+    "84,choiceband,rockhead,earthquake,explosion,hiddenpowerbug,rockslide": 203,
+    "84,leftovers,rockhead,earthquake,protect,rockslide,toxic": 1194,
+    "84,leftovers,rockhead,earthquake,hiddenpowerbug,rockslide,toxic": 203,
+    "84,choiceband,rockhead,doubleedge,earthquake,hiddenpowerbug,rockslide": 229,
+    "84,choiceband,rockhead,doubleedge,earthquake,explosion,rockslide": 182,
+    "84,leftovers,rockhead,doubleedge,earthquake,rockslide,toxic": 231,
+    "84,leftovers,rockhead,earthquake,explosion,rockslide,toxic": 203
+  },
+  "gorebyss": {
+    "85,petayaberry,swiftswim,hiddenpowerelectric,hydropump,icebeam,raindance": 701,
+    "85,petayaberry,swiftswim,hiddenpowerelectric,icebeam,raindance,surf": 677,
+    "85,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 703,
+    "85,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 692
+  },
+  "granbull": {
+    "83,leftovers,intimidate,doubleedge,earthquake,rest,sleeptalk": 452,
+    "83,leftovers,intimidate,bulkup,doubleedge,earthquake,shadowball": 333,
+    "83,leftovers,intimidate,earthquake,healbell,return,shadowball": 300,
+    "83,leftovers,intimidate,earthquake,rest,return,sleeptalk": 482,
+    "83,choiceband,intimidate,doubleedge,earthquake,overheat,shadowball": 612,
+    "83,leftovers,intimidate,earthquake,return,shadowball,thunderwave": 349,
+    "83,leftovers,intimidate,earthquake,healbell,return,thunderwave": 300
+  },
+  "groudon": {
+    "69,leftovers,drought,earthquake,hiddenpowerbug,rockslide,thunderwave": 293,
+    "69,choiceband,drought,earthquake,hiddenpowerbug,overheat,rockslide": 321,
+    "69,salacberry,drought,earthquake,rockslide,substitute,swordsdance": 325,
+    "69,salacberry,drought,earthquake,overheat,rockslide,swordsdance": 300,
+    "69,salacberry,drought,earthquake,hiddenpowerbug,rockslide,swordsdance": 308,
+    "69,leftovers,drought,earthquake,overheat,rockslide,thunderwave": 288,
+    "69,leftovers,drought,earthquake,rockslide,swordsdance,thunderwave": 283,
+    "69,leftovers,drought,earthquake,hiddenpowerbug,rockslide,substitute": 276,
+    "69,leftovers,drought,earthquake,rockslide,substitute,thunderwave": 298,
+    "69,leftovers,drought,earthquake,overheat,rockslide,substitute": 298
+  },
+  "grumpig": {
+    "83,leftovers,thickfat,calmmind,firepunch,psychic,substitute": 1545,
+    "83,leftovers,thickfat,calmmind,firepunch,psychic,thunderpunch": 1507
+  },
+  "gyarados": {
+    "74,leftovers,intimidate,dragondance,earthquake,hiddenpowerflying,substitute": 634,
+    "74,lumberry,intimidate,dragondance,earthquake,hiddenpowerflying,hydropump": 623,
+    "74,choiceband,intimidate,doubleedge,earthquake,hiddenpowerflying,hydropump": 586,
+    "74,lumberry,intimidate,doubleedge,dragondance,earthquake,hiddenpowerflying": 673
+  },
+  "hariyama": {
+    "83,leftovers,guts,bulkup,crosschop,earthquake,rockslide": 124,
+    "83,leftovers,guts,crosschop,earthquake,knockoff,rockslide": 98,
+    "83,leftovers,guts,bulkup,crosschop,earthquake,hiddenpowerghost": 108,
+    "83,leftovers,thickfat,bulkup,crosschop,earthquake,rockslide": 98,
+    "83,choiceband,guts,crosschop,earthquake,hiddenpowerghost,rockslide": 134,
+    "83,choiceband,thickfat,crosschop,earthquake,hiddenpowerghost,rockslide": 103,
+    "83,leftovers,guts,crosschop,rest,rockslide,sleeptalk": 832,
+    "83,leftovers,thickfat,crosschop,earthquake,knockoff,rockslide": 94,
+    "83,leftovers,guts,crosschop,hiddenpowerghost,rest,sleeptalk": 789,
+    "83,leftovers,guts,crosschop,hiddenpowerghost,knockoff,rockslide": 108,
+    "83,leftovers,thickfat,crosschop,hiddenpowerghost,knockoff,rockslide": 118,
+    "83,leftovers,guts,crosschop,earthquake,hiddenpowerghost,knockoff": 112,
+    "83,leftovers,thickfat,bulkup,crosschop,earthquake,hiddenpowerghost": 116,
+    "83,leftovers,guts,bulkup,crosschop,hiddenpowerghost,rockslide": 101,
+    "83,leftovers,thickfat,bulkup,crosschop,hiddenpowerghost,rockslide": 130,
+    "83,leftovers,thickfat,crosschop,earthquake,hiddenpowerghost,knockoff": 97
+  },
+  "heracross": {
+    "77,salacberry,guts,brickbreak,megahorn,rockslide,swordsdance": 962,
+    "77,salacberry,swarm,megahorn,reversal,rockslide,substitute": 464,
+    "77,choiceband,guts,brickbreak,hiddenpowerghost,megahorn,rockslide": 485,
+    "77,choiceband,guts,brickbreak,earthquake,megahorn,rockslide": 517,
+    "77,salacberry,swarm,endure,megahorn,reversal,rockslide": 468
+  },
+  "hitmonchan": {
+    "87,choiceband,keeneye,hiddenpowerghost,rapidspin,rockslide,skyuppercut": 216,
+    "87,choiceband,keeneye,hiddenpowerghost,machpunch,rapidspin,skyuppercut": 200,
+    "87,leftovers,keeneye,hiddenpowerghost,rockslide,skyuppercut,toxic": 247,
+    "87,leftovers,keeneye,bulkup,earthquake,hiddenpowerghost,skyuppercut": 292,
+    "87,leftovers,keeneye,bulkup,hiddenpowerghost,machpunch,skyuppercut": 272,
+    "87,leftovers,keeneye,earthquake,hiddenpowerghost,skyuppercut,toxic": 228,
+    "87,choiceband,keeneye,earthquake,hiddenpowerghost,rapidspin,skyuppercut": 218,
+    "87,choiceband,keeneye,earthquake,hiddenpowerghost,machpunch,skyuppercut": 188,
+    "87,choiceband,keeneye,earthquake,hiddenpowerghost,rockslide,skyuppercut": 218,
+    "87,choiceband,keeneye,hiddenpowerghost,machpunch,rockslide,skyuppercut": 206,
+    "87,leftovers,keeneye,hiddenpowerghost,rapidspin,skyuppercut,toxic": 237,
+    "87,leftovers,keeneye,hiddenpowerghost,machpunch,skyuppercut,toxic": 267,
+    "87,leftovers,keeneye,bulkup,hiddenpowerghost,rockslide,skyuppercut": 285
+  },
+  "hitmonlee": {
+    "84,salacberry,limber,hiddenpowerghost,reversal,rockslide,substitute": 765,
+    "84,salacberry,limber,earthquake,hiddenpowerghost,reversal,substitute": 784,
+    "84,leftovers,limber,brickbreak,bulkup,hiddenpowerghost,rockslide": 248,
+    "84,leftovers,limber,brickbreak,bulkup,hiddenpowerghost,machpunch": 258,
+    "84,choiceband,limber,brickbreak,earthquake,hiddenpowerghost,machpunch": 272,
+    "84,choiceband,limber,brickbreak,earthquake,hiddenpowerghost,rockslide": 248,
+    "84,leftovers,limber,brickbreak,bulkup,earthquake,hiddenpowerghost": 286,
+    "84,choiceband,limber,brickbreak,hiddenpowerghost,machpunch,rockslide": 250
+  },
+  "hitmontop": {
+    "86,leftovers,intimidate,brickbreak,bulkup,earthquake,hiddenpowerghost": 281,
+    "86,leftovers,intimidate,brickbreak,hiddenpowerghost,rockslide,toxic": 220,
+    "86,choiceband,intimidate,brickbreak,earthquake,hiddenpowerghost,rockslide": 234,
+    "86,leftovers,intimidate,brickbreak,hiddenpowerghost,machpunch,toxic": 254,
+    "86,leftovers,intimidate,brickbreak,bulkup,hiddenpowerghost,rockslide": 304,
+    "86,leftovers,intimidate,brickbreak,hiddenpowerghost,rapidspin,toxic": 272,
+    "86,choiceband,intimidate,brickbreak,earthquake,hiddenpowerghost,machpunch": 222,
+    "86,leftovers,intimidate,brickbreak,bulkup,hiddenpowerghost,machpunch": 262,
+    "86,choiceband,intimidate,brickbreak,earthquake,hiddenpowerghost,rapidspin": 207,
+    "86,choiceband,intimidate,brickbreak,hiddenpowerghost,machpunch,rapidspin": 222,
+    "86,choiceband,intimidate,brickbreak,hiddenpowerghost,machpunch,rockslide": 198,
+    "86,leftovers,intimidate,brickbreak,earthquake,hiddenpowerghost,toxic": 249,
+    "86,choiceband,intimidate,brickbreak,hiddenpowerghost,rapidspin,rockslide": 215
+  },
+  "hooh": {
+    "70,leftovers,pressure,calmmind,recover,sacredfire,thunderbolt": 1156,
+    "70,leftovers,pressure,earthquake,recover,sacredfire,thunderbolt": 369,
+    "70,leftovers,pressure,earthquake,recover,sacredfire,toxic": 209,
+    "70,leftovers,pressure,recover,sacredfire,substitute,thunderbolt": 171,
+    "70,leftovers,pressure,recover,sacredfire,thunderbolt,toxic": 198,
+    "70,leftovers,pressure,earthquake,recover,sacredfire,substitute": 184
+  },
+  "houndoom": {
+    "81,leftovers,flashfire,crunch,fireblast,hiddenpowergrass,pursuit": 425,
+    "81,leftovers,flashfire,crunch,fireblast,pursuit,willowisp": 432,
+    "81,petayaberry,flashfire,crunch,fireblast,hiddenpowergrass,substitute": 1371,
+    "81,leftovers,flashfire,crunch,fireblast,hiddenpowergrass,willowisp": 422
+  },
+  "huntail": {
+    "89,leftovers,swiftswim,doubleedge,hydropump,icebeam,raindance": 442,
+    "89,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 457,
+    "89,petayaberry,swiftswim,hiddenpowerelectric,icebeam,raindance,surf": 477,
+    "89,leftovers,swiftswim,doubleedge,icebeam,raindance,surf": 462,
+    "89,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 493,
+    "89,petayaberry,swiftswim,hiddenpowerelectric,hydropump,icebeam,raindance": 469
+  },
+  "hypno": {
+    "88,leftovers,insomnia,protect,psychic,toxic,wish": 458,
+    "88,leftovers,insomnia,firepunch,protect,psychic,wish": 478,
+    "88,leftovers,insomnia,batonpass,calmmind,firepunch,psychic": 1008,
+    "88,leftovers,insomnia,protect,seismictoss,toxic,wish": 1036
+  },
+  "illumise": {
+    "93,leftovers,oblivious,encore,seismictoss,substitute,toxic": 325,
+    "93,leftovers,oblivious,encore,moonlight,seismictoss,thunderwave": 841,
+    "93,leftovers,oblivious,batonpass,encore,seismictoss,substitute": 237,
+    "93,leftovers,oblivious,batonpass,seismictoss,substitute,thunderwave": 319,
+    "93,leftovers,oblivious,encore,seismictoss,substitute,thunderwave": 290,
+    "93,leftovers,oblivious,encore,moonlight,seismictoss,toxic": 700,
+    "93,leftovers,oblivious,batonpass,seismictoss,substitute,toxic": 302
+  },
+  "jirachi": {
+    "73,leftovers,serenegrace,calmmind,firepunch,icepunch,psychic": 505,
+    "73,leftovers,serenegrace,bodyslam,firepunch,psychic,toxic": 443,
+    "73,leftovers,serenegrace,calmmind,firepunch,psychic,thunderbolt": 473,
+    "73,leftovers,serenegrace,calmmind,firepunch,psychic,substitute": 445,
+    "73,leftovers,serenegrace,firepunch,protect,psychic,wish": 351,
+    "73,leftovers,serenegrace,protect,psychic,toxic,wish": 333,
+    "73,leftovers,serenegrace,bodyslam,protect,psychic,wish": 343
+  },
+  "jolteon": {
+    "77,leftovers,voltabsorb,hiddenpowerice,protect,thunderbolt,toxic": 1570,
+    "77,leftovers,voltabsorb,batonpass,hiddenpowerice,substitute,thunderbolt": 1484
+  },
+  "jumpluff": {
+    "87,leftovers,chlorophyll,encore,hiddenpowerflying,synthesis,toxic": 306,
+    "87,leftovers,chlorophyll,hiddenpowerflying,leechseed,protect,substitute": 1271,
+    "87,leftovers,chlorophyll,hiddenpowerflying,sleeppowder,synthesis,toxic": 322,
+    "87,leftovers,chlorophyll,encore,hiddenpowerflying,sleeppowder,synthesis": 315,
+    "87,leftovers,chlorophyll,encore,hiddenpowerflying,sleeppowder,toxic": 290
+  },
+  "jynx": {
+    "80,leftovers,oblivious,calmmind,icebeam,lovelykiss,psychic": 904,
+    "80,leftovers,oblivious,calmmind,icebeam,psychic,substitute": 932,
+    "80,leftovers,oblivious,calmmind,hiddenpowerfire,icebeam,psychic": 937
+  },
+  "kabutops": {
+    "84,salacberry,battlearmor,brickbreak,rockslide,surf,swordsdance": 773,
+    "84,choiceband,battlearmor,brickbreak,hiddenpowerflying,rockslide,surf": 795,
+    "84,salacberry,battlearmor,hiddenpowerflying,rockslide,surf,swordsdance": 806,
+    "84,salacberry,swiftswim,hiddenpowerflying,rockslide,surf,swordsdance": 21,
+    "84,salacberry,swiftswim,brickbreak,rockslide,surf,swordsdance": 25,
+    "84,choiceband,swiftswim,brickbreak,hiddenpowerflying,rockslide,surf": 25
+  },
+  "kangaskhan": {
+    "79,leftovers,earlybird,bodyslam,earthquake,protect,wish": 721,
+    "79,leftovers,earlybird,doubleedge,earthquake,rest,toxic": 216,
+    "79,leftovers,earlybird,earthquake,protect,return,wish": 757,
+    "79,leftovers,earlybird,doubleedge,earthquake,rest,shadowball": 237,
+    "79,leftovers,earlybird,earthquake,rest,return,shadowball": 218,
+    "79,leftovers,earlybird,earthquake,rest,return,toxic": 226,
+    "79,leftovers,earlybird,earthquake,return,shadowball,toxic": 243,
+    "79,leftovers,earlybird,doubleedge,earthquake,shadowball,toxic": 240
+  },
+  "kecleon": {
+    "91,choiceband,colorchange,brickbreak,return,shadowball,trick": 1429,
+    "91,leftovers,colorchange,brickbreak,return,shadowball,thunderwave": 1382
+  },
+  "kingdra": {
+    "81,petayaberry,swiftswim,hiddenpowerelectric,hydropump,icebeam,raindance": 480,
+    "81,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 488,
+    "81,petayaberry,swiftswim,hiddenpowerelectric,icebeam,raindance,surf": 474,
+    "81,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 491,
+    "81,leftovers,swiftswim,icebeam,raindance,substitute,surf": 467,
+    "81,leftovers,swiftswim,hydropump,icebeam,raindance,substitute": 484
+  },
+  "kingler": {
+    "91,salacberry,hypercutter,doubleedge,hiddenpowerground,surf,swordsdance": 1342,
+    "91,salacberry,hypercutter,doubleedge,hiddenpowerghost,surf,swordsdance": 1396
+  },
+  "kyogre": {
+    "67,leftovers,drizzle,calmmind,rest,sleeptalk,surf": 621,
+    "67,leftovers,drizzle,icebeam,rest,sleeptalk,surf": 633,
+    "67,leftovers,drizzle,calmmind,icebeam,surf,thunder": 811,
+    "67,leftovers,drizzle,rest,sleeptalk,surf,thunder": 683
+  },
+  "lanturn": {
+    "82,leftovers,voltabsorb,icebeam,surf,thunderbolt,toxic": 1321,
+    "82,leftovers,voltabsorb,rest,sleeptalk,surf,thunderbolt": 1324
+  },
+  "lapras": {
+    "79,leftovers,waterabsorb,icebeam,rest,sleeptalk,surf": 530,
+    "79,leftovers,waterabsorb,icebeam,rest,sleeptalk,thunderbolt": 692,
+    "79,leftovers,waterabsorb,healbell,icebeam,thunderbolt,toxic": 574,
+    "79,leftovers,waterabsorb,healbell,icebeam,surf,toxic": 224,
+    "79,leftovers,waterabsorb,icebeam,surf,thunderbolt,toxic": 298,
+    "79,leftovers,waterabsorb,healbell,icebeam,surf,thunderbolt": 227
+  },
+  "latias": {
+    "67,souldew,levitate,calmmind,dragonclaw,recover,refresh": 1351,
+    "67,souldew,levitate,calmmind,hiddenpowerfire,psychic,recover": 752,
+    "67,souldew,levitate,calmmind,dragonclaw,psychic,recover": 774
+  },
+  "latios": {
+    "67,souldew,levitate,calmmind,dragonclaw,recover,refresh": 1373,
+    "67,souldew,levitate,calmmind,dragonclaw,psychic,recover": 687,
+    "67,souldew,levitate,calmmind,hiddenpowerfire,psychic,recover": 713
+  },
+  "ledian": {
+    "100,leftovers,swarm,agility,batonpass,silverwind,swordsdance": 1049,
+    "100,leftovers,swarm,batonpass,silverwind,substitute,swordsdance": 1146
+  },
+  "lickitung": {
+    "94,leftovers,owntempo,healbell,protect,seismictoss,wish": 436,
+    "94,leftovers,owntempo,bodyslam,earthquake,protect,wish": 912,
+    "94,leftovers,owntempo,protect,seismictoss,toxic,wish": 985,
+    "94,leftovers,owntempo,knockoff,protect,seismictoss,wish": 489
+  },
+  "linoone": {
+    "82,silkscarf,pickup,bellydrum,extremespeed,hiddenpowerground,shadowball": 1413,
+    "82,lumberry,pickup,bellydrum,hiddenpowerground,return,shadowball": 637,
+    "82,salacberry,pickup,bellydrum,hiddenpowerground,return,substitute": 731
+  },
+  "ludicolo": {
+    "84,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 1302,
+    "84,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 1337
+  },
+  "lugia": {
+    "69,leftovers,pressure,calmmind,icebeam,recover,thunderbolt": 1305,
+    "69,leftovers,pressure,earthquake,psychic,recover,toxic": 683,
+    "69,leftovers,pressure,psychic,recover,substitute,toxic": 646
+  },
+  "lunatone": {
+    "84,leftovers,levitate,calmmind,hypnosis,icebeam,psychic": 202,
+    "84,leftovers,levitate,batonpass,calmmind,icebeam,psychic": 242,
+    "84,leftovers,levitate,batonpass,calmmind,hiddenpowerfire,psychic": 232,
+    "84,leftovers,levitate,hypnosis,icebeam,psychic,toxic": 137,
+    "84,leftovers,levitate,hiddenpowerfire,hypnosis,psychic,toxic": 95,
+    "84,leftovers,levitate,explosion,hiddenpowerfire,psychic,toxic": 100,
+    "84,leftovers,levitate,hiddenpowerfire,icebeam,psychic,toxic": 210,
+    "84,leftovers,levitate,calmmind,hiddenpowerfire,icebeam,psychic": 412,
+    "84,leftovers,levitate,hiddenpowerfire,hypnosis,icebeam,psychic": 226,
+    "84,leftovers,levitate,explosion,icebeam,psychic,toxic": 124,
+    "84,leftovers,levitate,explosion,hiddenpowerfire,icebeam,psychic": 249,
+    "84,leftovers,levitate,calmmind,hiddenpowerfire,hypnosis,psychic": 233,
+    "84,leftovers,levitate,explosion,hiddenpowerfire,hypnosis,psychic": 115,
+    "84,leftovers,levitate,explosion,hypnosis,icebeam,psychic": 124
+  },
+  "luvdisc": {
+    "100,leftovers,swiftswim,icebeam,protect,surf,toxic": 1252,
+    "100,leftovers,swiftswim,protect,substitute,surf,toxic": 1270
+  },
+  "machamp": {
+    "83,leftovers,guts,crosschop,hiddenpowerghost,rest,sleeptalk": 796,
+    "83,leftovers,guts,crosschop,rest,rockslide,sleeptalk": 799,
+    "83,leftovers,guts,bulkup,crosschop,hiddenpowerghost,rockslide": 365,
+    "83,leftovers,guts,bulkup,crosschop,earthquake,rockslide": 337,
+    "83,leftovers,guts,bulkup,crosschop,earthquake,hiddenpowerghost": 358,
+    "83,choiceband,guts,crosschop,earthquake,hiddenpowerghost,rockslide": 490
+  },
+  "magcargo": {
+    "99,leftovers,flamebody,flamethrower,rest,sleeptalk,toxic": 329,
+    "99,leftovers,flamebody,fireblast,hiddenpowergrass,rest,sleeptalk": 340,
+    "99,leftovers,flamebody,fireblast,hiddenpowergrass,protect,toxic": 623,
+    "99,leftovers,flamebody,flamethrower,hiddenpowergrass,protect,toxic": 677,
+    "99,leftovers,flamebody,fireblast,rest,sleeptalk,toxic": 315,
+    "99,leftovers,flamebody,flamethrower,hiddenpowergrass,rest,sleeptalk": 347
+  },
+  "magmar": {
+    "85,petayaberry,flamebody,flamethrower,hiddenpowergrass,substitute,thunderpunch": 349,
+    "85,leftovers,flamebody,crosschop,fireblast,hiddenpowergrass,thunderpunch": 115,
+    "85,petayaberry,flamebody,fireblast,hiddenpowergrass,substitute,thunderpunch": 329,
+    "85,leftovers,flamebody,fireblast,focuspunch,substitute,thunderpunch": 239,
+    "85,leftovers,flamebody,fireblast,hiddenpowergrass,thunderpunch,toxic": 98,
+    "85,leftovers,flamebody,flamethrower,hiddenpowerice,thunderpunch,toxic": 95,
+    "85,leftovers,flamebody,flamethrower,focuspunch,substitute,thunderpunch": 231,
+    "85,petayaberry,flamebody,fireblast,hiddenpowerice,substitute,thunderpunch": 381,
+    "85,leftovers,flamebody,flamethrower,hiddenpowergrass,thunderpunch,toxic": 84,
+    "85,petayaberry,flamebody,flamethrower,hiddenpowerice,substitute,thunderpunch": 357,
+    "85,leftovers,flamebody,crosschop,fireblast,thunderpunch,toxic": 73,
+    "85,leftovers,flamebody,crosschop,fireblast,hiddenpowerice,thunderpunch": 85,
+    "85,leftovers,flamebody,fireblast,hiddenpowerice,thunderpunch,toxic": 114,
+    "85,leftovers,flamebody,crosschop,flamethrower,thunderpunch,toxic": 77,
+    "85,leftovers,flamebody,crosschop,flamethrower,hiddenpowergrass,thunderpunch": 89,
+    "85,leftovers,flamebody,crosschop,flamethrower,hiddenpowerice,thunderpunch": 104
+  },
+  "magneton": {
+    "85,leftovers,magnetpull,hiddenpowerice,protect,thunderbolt,toxic": 1342,
+    "85,leftovers,magnetpull,hiddenpowerice,rest,sleeptalk,thunderbolt": 1317
+  },
+  "manectric": {
+    "82,petayaberry,static,crunch,hiddenpowerice,substitute,thunderbolt": 2992
+  },
+  "mantine": {
+    "86,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 402,
+    "86,leftovers,waterabsorb,haze,protect,surf,toxic": 405,
+    "86,leftovers,waterabsorb,hiddenpowergrass,icebeam,surf,toxic": 262,
+    "86,leftovers,waterabsorb,rest,sleeptalk,surf,toxic": 197,
+    "86,leftovers,waterabsorb,icebeam,rest,sleeptalk,surf": 179,
+    "86,leftovers,waterabsorb,hiddenpowergrass,rest,sleeptalk,surf": 201,
+    "86,leftovers,waterabsorb,icebeam,protect,surf,toxic": 390,
+    "86,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 434
+  },
+  "marowak": {
+    "83,thickclub,rockhead,doubleedge,earthquake,rockslide,swordsdance": 1417,
+    "83,thickclub,rockhead,bonemerang,doubleedge,rockslide,swordsdance": 1442
+  },
+  "masquerain": {
+    "96,leftovers,intimidate,hydropump,icebeam,stunspore,substitute": 1223,
+    "96,leftovers,intimidate,hydropump,icebeam,substitute,toxic": 1201
+  },
+  "mawile": {
+    "95,leftovers,intimidate,focuspunch,hiddenpowersteel,rockslide,substitute": 719,
+    "95,leftovers,intimidate,brickbreak,hiddenpowersteel,substitute,swordsdance": 484,
+    "95,leftovers,intimidate,batonpass,brickbreak,hiddenpowersteel,swordsdance": 447,
+    "95,leftovers,intimidate,focuspunch,hiddenpowersteel,substitute,toxic": 702,
+    "95,leftovers,intimidate,brickbreak,hiddenpowersteel,rockslide,swordsdance": 460
+  },
+  "medicham": {
+    "82,leftovers,purepower,brickbreak,bulkup,rockslide,shadowball": 505,
+    "82,salacberry,purepower,brickbreak,bulkup,shadowball,substitute": 446,
+    "82,salacberry,purepower,bulkup,reversal,shadowball,substitute": 1421,
+    "82,leftovers,purepower,brickbreak,bulkup,recover,shadowball": 497
+  },
+  "meganium": {
+    "85,leftovers,overgrow,hiddenpowergrass,leechseed,synthesis,toxic": 447,
+    "85,leftovers,overgrow,bodyslam,earthquake,swordsdance,synthesis": 719,
+    "85,leftovers,overgrow,earthquake,hiddenpowerrock,swordsdance,synthesis": 750,
+    "85,leftovers,overgrow,bodyslam,hiddenpowergrass,synthesis,toxic": 446,
+    "85,leftovers,overgrow,earthquake,hiddenpowergrass,synthesis,toxic": 468
+  },
+  "metagross": {
+    "73,leftovers,clearbody,agility,earthquake,meteormash,rockslide": 450,
+    "73,choiceband,clearbody,earthquake,explosion,meteormash,rockslide": 1351,
+    "73,leftovers,clearbody,agility,earthquake,explosion,meteormash": 438,
+    "73,leftovers,clearbody,agility,earthquake,meteormash,psychic": 485
+  },
+  "mew": {
+    "72,leftovers,synchronize,calmmind,flamethrower,psychic,softboiled": 466,
+    "72,salacberry,synchronize,brickbreak,earthquake,rockslide,swordsdance": 294,
+    "72,leftovers,synchronize,explosion,psychic,softboiled,thunderwave": 152,
+    "72,leftovers,synchronize,flamethrower,psychic,softboiled,transform": 145,
+    "72,leftovers,synchronize,flamethrower,psychic,softboiled,thunderwave": 154,
+    "72,leftovers,synchronize,psychic,softboiled,thunderwave,transform": 154,
+    "72,leftovers,synchronize,calmmind,psychic,softboiled,thunderbolt": 504,
+    "72,salacberry,synchronize,earthquake,explosion,rockslide,swordsdance": 345,
+    "72,leftovers,synchronize,earthquake,rockslide,softboiled,swordsdance": 346,
+    "72,leftovers,synchronize,explosion,flamethrower,psychic,softboiled": 167,
+    "72,leftovers,synchronize,explosion,psychic,softboiled,transform": 174
+  },
+  "mewtwo": {
+    "66,leftovers,pressure,calmmind,flamethrower,psychic,thunderbolt": 744,
+    "66,leftovers,pressure,calmmind,flamethrower,psychic,recover": 1492,
+    "66,leftovers,pressure,calmmind,icebeam,psychic,thunderbolt": 712
+  },
+  "mightyena": {
+    "91,leftovers,intimidate,crunch,healbell,hiddenpowerfighting,toxic": 458,
+    "91,leftovers,intimidate,crunch,doubleedge,healbell,hiddenpowerfighting": 495,
+    "91,choiceband,intimidate,crunch,doubleedge,hiddenpowerfighting,shadowball": 510,
+    "91,leftovers,intimidate,crunch,doubleedge,hiddenpowerfighting,toxic": 538,
+    "91,leftovers,intimidate,crunch,healbell,hiddenpowerfighting,shadowball": 461,
+    "91,leftovers,intimidate,crunch,hiddenpowerfighting,shadowball,toxic": 522
+  },
+  "milotic": {
+    "77,leftovers,marvelscale,recover,refresh,surf,toxic": 1335,
+    "77,leftovers,marvelscale,icebeam,recover,surf,toxic": 1441
+  },
+  "miltank": {
+    "77,leftovers,thickfat,bodyslam,curse,earthquake,milkdrink": 917,
+    "77,leftovers,thickfat,bodyslam,earthquake,healbell,milkdrink": 882,
+    "77,leftovers,thickfat,bodyslam,earthquake,milkdrink,toxic": 1003
+  },
+  "minun": {
+    "89,leftovers,minus,hiddenpowerice,protect,thunderbolt,wish": 496,
+    "89,leftovers,minus,hiddenpowerice,protect,thunderbolt,toxic": 1074,
+    "89,leftovers,minus,protect,thunderbolt,toxic,wish": 497,
+    "89,leftovers,minus,batonpass,hiddenpowerice,substitute,thunderbolt": 317,
+    "89,leftovers,minus,hiddenpowerice,substitute,thunderbolt,toxic": 337,
+    "89,leftovers,minus,encore,hiddenpowerice,substitute,thunderbolt": 330
+  },
+  "misdreavus": {
+    "85,leftovers,levitate,meanlook,perishsong,protect,shadowball": 1091,
+    "85,leftovers,levitate,calmmind,hiddenpowerice,substitute,thunderbolt": 1072,
+    "85,leftovers,levitate,hiddenpowerice,painsplit,shadowball,thunderwave": 182,
+    "85,leftovers,levitate,hiddenpowerice,shadowball,thunderbolt,thunderwave": 156,
+    "85,leftovers,levitate,painsplit,shadowball,thunderbolt,toxic": 183,
+    "85,leftovers,levitate,hiddenpowerice,painsplit,shadowball,toxic": 170,
+    "85,leftovers,levitate,hiddenpowerice,shadowball,thunderbolt,toxic": 143,
+    "85,leftovers,levitate,painsplit,shadowball,thunderbolt,thunderwave": 157,
+    "85,leftovers,levitate,hiddenpowerice,painsplit,shadowball,thunderbolt": 93
+  },
+  "moltres": {
+    "78,leftovers,pressure,fireblast,hiddenpowergrass,morningsun,willowisp": 411,
+    "78,leftovers,pressure,flamethrower,hiddenpowergrass,morningsun,willowisp": 393,
+    "78,leftovers,pressure,flamethrower,hiddenpowergrass,morningsun,substitute": 397,
+    "78,leftovers,pressure,fireblast,hiddenpowergrass,morningsun,toxic": 413,
+    "78,leftovers,pressure,flamethrower,hiddenpowergrass,morningsun,toxic": 385,
+    "78,leftovers,pressure,fireblast,hiddenpowergrass,morningsun,substitute": 409
+  },
+  "mrmime": {
+    "84,leftovers,soundproof,calmmind,psychic,substitute,thunderbolt": 288,
+    "84,leftovers,soundproof,calmmind,firepunch,psychic,thunderbolt": 628,
+    "84,leftovers,soundproof,calmmind,hypnosis,psychic,thunderbolt": 314,
+    "84,leftovers,soundproof,calmmind,firepunch,psychic,substitute": 307,
+    "84,leftovers,soundproof,batonpass,calmmind,firepunch,psychic": 280,
+    "84,leftovers,soundproof,batonpass,calmmind,psychic,thunderbolt": 285,
+    "84,leftovers,soundproof,calmmind,firepunch,hypnosis,psychic": 287,
+    "84,leftovers,soundproof,calmmind,encore,psychic,thunderbolt": 308,
+    "84,leftovers,soundproof,calmmind,encore,firepunch,psychic": 312
+  },
+  "muk": {
+    "84,chestoberry,stickyhold,curse,hiddenpowerground,rest,sludgebomb": 1486,
+    "84,chestoberry,stickyhold,fireblast,hiddenpowerground,rest,sludgebomb": 327,
+    "84,choiceband,stickyhold,explosion,fireblast,hiddenpowerground,sludgebomb": 310,
+    "84,leftovers,stickyhold,explosion,hiddenpowerground,sludgebomb,toxic": 337,
+    "84,leftovers,stickyhold,fireblast,hiddenpowerground,sludgebomb,toxic": 219,
+    "84,chestoberry,stickyhold,hiddenpowerground,rest,sludgebomb,toxic": 323
+  },
+  "murkrow": {
+    "90,leftovers,insomnia,drillpeck,hiddenpowerground,shadowball,toxic": 300,
+    "90,choiceband,insomnia,doubleedge,drillpeck,hiddenpowerground,shadowball": 624,
+    "90,choiceband,insomnia,doubleedge,drillpeck,hiddenpowerfighting,shadowball": 684,
+    "90,leftovers,insomnia,drillpeck,hiddenpowerground,pursuit,thunderwave": 300,
+    "90,leftovers,insomnia,drillpeck,hiddenpowerground,pursuit,toxic": 274,
+    "90,leftovers,insomnia,drillpeck,hiddenpowerground,shadowball,thunderwave": 311,
+    "90,leftovers,insomnia,drillpeck,hiddenpowerground,pursuit,shadowball": 222
+  },
+  "nidoking": {
+    "81,leftovers,poisonpoint,earthquake,sludgebomb,substitute,thunderbolt": 207,
+    "81,leftovers,poisonpoint,earthquake,icebeam,sludgebomb,thunderbolt": 209,
+    "81,leftovers,poisonpoint,earthquake,shadowball,sludgebomb,substitute": 178,
+    "81,choiceband,poisonpoint,earthquake,megahorn,shadowball,sludgebomb": 172,
+    "81,leftovers,poisonpoint,earthquake,fireblast,sludgebomb,substitute": 183,
+    "81,choiceband,poisonpoint,earthquake,megahorn,sludgebomb,thunderbolt": 189,
+    "81,choiceband,poisonpoint,earthquake,fireblast,megahorn,sludgebomb": 175,
+    "81,choiceband,poisonpoint,earthquake,fireblast,shadowball,sludgebomb": 187,
+    "81,choiceband,poisonpoint,earthquake,shadowball,sludgebomb,thunderbolt": 192,
+    "81,leftovers,poisonpoint,earthquake,megahorn,sludgebomb,substitute": 206,
+    "81,choiceband,poisonpoint,earthquake,icebeam,shadowball,sludgebomb": 191,
+    "81,leftovers,poisonpoint,earthquake,icebeam,sludgebomb,substitute": 190,
+    "81,leftovers,poisonpoint,earthquake,fireblast,icebeam,sludgebomb": 185,
+    "81,choiceband,poisonpoint,earthquake,icebeam,megahorn,sludgebomb": 177,
+    "81,leftovers,poisonpoint,earthquake,fireblast,sludgebomb,thunderbolt": 179
+  },
+  "nidoqueen": {
+    "82,choiceband,poisonpoint,earthquake,shadowball,sludgebomb,thunderbolt": 268,
+    "82,leftovers,poisonpoint,earthquake,icebeam,sludgebomb,substitute": 319,
+    "82,choiceband,poisonpoint,earthquake,fireblast,shadowball,sludgebomb": 274,
+    "82,leftovers,poisonpoint,earthquake,icebeam,sludgebomb,thunderbolt": 286,
+    "82,leftovers,poisonpoint,earthquake,fireblast,sludgebomb,substitute": 290,
+    "82,leftovers,poisonpoint,earthquake,sludgebomb,substitute,thunderbolt": 292,
+    "82,choiceband,poisonpoint,earthquake,icebeam,shadowball,sludgebomb": 254,
+    "82,leftovers,poisonpoint,earthquake,shadowball,sludgebomb,substitute": 280,
+    "82,leftovers,poisonpoint,earthquake,fireblast,sludgebomb,thunderbolt": 261,
+    "82,leftovers,poisonpoint,earthquake,fireblast,icebeam,sludgebomb": 275
+  },
+  "ninetales": {
+    "82,leftovers,flashfire,flamethrower,hiddenpowergrass,hypnosis,toxic": 286,
+    "82,leftovers,flashfire,fireblast,hiddenpowergrass,hypnosis,toxic": 304,
+    "82,leftovers,flashfire,fireblast,hiddenpowergrass,hypnosis,willowisp": 275,
+    "82,leftovers,flashfire,flamethrower,hiddenpowergrass,substitute,willowisp": 278,
+    "82,leftovers,flashfire,flamethrower,hiddenpowergrass,substitute,toxic": 292,
+    "82,leftovers,flashfire,flamethrower,hiddenpowergrass,hypnosis,willowisp": 315,
+    "82,leftovers,flashfire,fireblast,hiddenpowergrass,substitute,toxic": 318,
+    "82,leftovers,flashfire,fireblast,hiddenpowergrass,hypnosis,substitute": 224,
+    "82,leftovers,flashfire,flamethrower,hiddenpowergrass,hypnosis,substitute": 244,
+    "82,leftovers,flashfire,fireblast,hiddenpowergrass,substitute,willowisp": 272
+  },
+  "ninjask": {
+    "80,leftovers,speedboost,batonpass,hiddenpowerflying,protect,swordsdance": 1246,
+    "80,leftovers,speedboost,batonpass,hiddenpowerflying,substitute,swordsdance": 1247
+  },
+  "noctowl": {
+    "92,leftovers,insomnia,hiddenpowerfire,return,toxic,whirlwind": 866,
+    "92,leftovers,insomnia,hiddenpowerfire,hypnosis,return,toxic": 819,
+    "92,leftovers,insomnia,hypnosis,return,toxic,whirlwind": 847
+  },
+  "nosepass": {
+    "100,leftovers,magnetpull,earthquake,explosion,rockslide,toxic": 1294,
+    "100,leftovers,magnetpull,earthquake,explosion,rockslide,thunderwave": 1243
+  },
+  "octillery": {
+    "87,leftovers,suctioncups,hiddenpowergrass,icebeam,surf,thunderwave": 586,
+    "87,leftovers,suctioncups,fireblast,hiddenpowerelectric,icebeam,surf": 563,
+    "87,leftovers,suctioncups,fireblast,icebeam,surf,thunderwave": 499,
+    "87,leftovers,suctioncups,fireblast,hiddenpowergrass,icebeam,surf": 562,
+    "87,leftovers,suctioncups,hiddenpowerelectric,icebeam,surf,thunderwave": 580
+  },
+  "omastar": {
+    "84,leftovers,shellarmor,hiddenpowergrass,hydropump,icebeam,spikes": 544,
+    "84,leftovers,shellarmor,hiddenpowergrass,icebeam,spikes,surf": 585,
+    "84,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 549,
+    "84,petayaberry,swiftswim,hiddenpowergrass,icebeam,raindance,surf": 563,
+    "84,leftovers,swiftswim,hiddenpowergrass,hydropump,icebeam,spikes": 23,
+    "84,leftovers,swiftswim,hiddenpowergrass,icebeam,spikes,surf": 8
+  },
+  "parasect": {
+    "96,leftovers,effectspore,gigadrain,hiddenpowerbug,return,spore": 921,
+    "96,leftovers,effectspore,aromatherapy,hiddenpowerbug,return,spore": 793,
+    "96,leftovers,effectspore,hiddenpowerbug,return,spore,stunspore": 889
+  },
+  "pelipper": {
+    "88,leftovers,keeneye,icebeam,rest,sleeptalk,surf": 611,
+    "88,leftovers,keeneye,icebeam,protect,surf,toxic": 1193,
+    "88,leftovers,keeneye,rest,sleeptalk,surf,toxic": 608
+  },
+  "persian": {
+    "88,leftovers,limber,hiddenpowerground,hypnosis,return,shadowball": 316,
+    "88,liechiberry,limber,irontail,return,shadowball,substitute": 426,
+    "88,liechiberry,limber,hiddenpowerground,irontail,return,substitute": 479,
+    "88,choiceband,limber,hiddenpowerground,irontail,return,shadowball": 467,
+    "88,liechiberry,limber,hiddenpowerground,return,shadowball,substitute": 474,
+    "88,leftovers,limber,hiddenpowerground,hypnosis,irontail,return": 281,
+    "88,leftovers,limber,hypnosis,irontail,return,shadowball": 316
+  },
+  "pidgeot": {
+    "87,choiceband,keeneye,aerialace,hiddenpowerground,quickattack,return": 309,
+    "87,liechiberry,keeneye,aerialace,hiddenpowerground,return,substitute": 1257,
+    "87,leftovers,keeneye,aerialace,hiddenpowerground,return,toxic": 320,
+    "87,choiceband,keeneye,aerialace,doubleedge,hiddenpowerground,quickattack": 308,
+    "87,leftovers,keeneye,aerialace,doubleedge,hiddenpowerground,toxic": 343
+  },
+  "pikachu": {
+    "87,lightball,static,hiddenpowerice,surf,thunderbolt,volttackle": 1498,
+    "87,lightball,static,hiddenpowerice,substitute,surf,thunderbolt": 758,
+    "87,lightball,static,encore,hiddenpowerice,surf,thunderbolt": 751
+  },
+  "piloswine": {
+    "87,leftovers,oblivious,earthquake,icebeam,rest,sleeptalk": 710,
+    "87,choiceband,oblivious,doubleedge,earthquake,icebeam,rockslide": 678,
+    "87,leftovers,oblivious,earthquake,icebeam,protect,toxic": 1293
+  },
+  "pinsir": {
+    "81,salacberry,hypercutter,earthquake,hiddenpowerbug,rockslide,swordsdance": 1429,
+    "81,choiceband,hypercutter,doubleedge,earthquake,hiddenpowerbug,rockslide": 1479
+  },
+  "plusle": {
+    "88,leftovers,plus,hiddenpowerice,protect,thunderbolt,toxic": 1033,
+    "88,leftovers,plus,encore,hiddenpowerice,substitute,thunderbolt": 309,
+    "88,leftovers,plus,batonpass,hiddenpowerice,substitute,thunderbolt": 318,
+    "88,leftovers,plus,hiddenpowerice,protect,thunderbolt,wish": 509,
+    "88,leftovers,plus,protect,thunderbolt,toxic,wish": 520,
+    "88,leftovers,plus,hiddenpowerice,substitute,thunderbolt,toxic": 365
+  },
+  "politoed": {
+    "84,leftovers,waterabsorb,icebeam,rest,sleeptalk,surf": 469,
+    "84,leftovers,waterabsorb,icebeam,protect,surf,toxic": 886,
+    "84,leftovers,waterabsorb,hiddenpowergrass,hypnosis,icebeam,surf": 152,
+    "84,leftovers,waterabsorb,hiddenpowergrass,icebeam,surf,toxic": 171,
+    "84,leftovers,waterabsorb,rest,sleeptalk,surf,toxic": 450,
+    "84,chestoberry,waterabsorb,icebeam,rest,surf,toxic": 166,
+    "84,leftovers,waterabsorb,hypnosis,icebeam,surf,toxic": 128,
+    "84,chestoberry,waterabsorb,hypnosis,icebeam,rest,surf": 158,
+    "84,chestoberry,waterabsorb,hiddenpowergrass,icebeam,rest,surf": 139
+  },
+  "poliwrath": {
+    "85,leftovers,waterabsorb,brickbreak,hydropump,rest,sleeptalk": 285,
+    "85,leftovers,waterabsorb,focuspunch,hydropump,substitute,toxic": 462,
+    "85,leftovers,waterabsorb,brickbreak,bulkup,hydropump,hypnosis": 237,
+    "85,leftovers,waterabsorb,brickbreak,hydropump,icebeam,toxic": 96,
+    "85,leftovers,waterabsorb,brickbreak,bulkup,earthquake,hydropump": 230,
+    "85,leftovers,waterabsorb,focuspunch,hydropump,icebeam,substitute": 456,
+    "85,leftovers,waterabsorb,brickbreak,hydropump,hypnosis,icebeam": 97,
+    "85,salacberry,waterabsorb,brickbreak,bulkup,hydropump,substitute": 228,
+    "85,leftovers,waterabsorb,brickbreak,hiddenpowerghost,hydropump,icebeam": 92,
+    "85,leftovers,waterabsorb,brickbreak,bulkup,hiddenpowerghost,hydropump": 222,
+    "85,leftovers,waterabsorb,brickbreak,hiddenpowerghost,hydropump,toxic": 128,
+    "85,leftovers,waterabsorb,brickbreak,hydropump,hypnosis,toxic": 97,
+    "85,leftovers,waterabsorb,brickbreak,hiddenpowerghost,hydropump,hypnosis": 101
+  },
+  "porygon2": {
+    "80,leftovers,trace,recover,return,thunderbolt,thunderwave": 579,
+    "80,leftovers,trace,icebeam,recover,return,toxic": 586,
+    "80,leftovers,trace,icebeam,recover,return,thunderwave": 584,
+    "80,leftovers,trace,icebeam,recover,return,thunderbolt": 432,
+    "80,leftovers,trace,recover,return,thunderbolt,toxic": 625
+  },
+  "primeape": {
+    "84,choiceband,vitalspirit,crosschop,earthquake,hiddenpowerghost,rockslide": 377,
+    "84,salacberry,vitalspirit,bulkup,crosschop,rockslide,substitute": 240,
+    "84,liechiberry,vitalspirit,bulkup,hiddenpowerghost,reversal,substitute": 1080,
+    "84,leftovers,vitalspirit,bulkup,crosschop,earthquake,hiddenpowerghost": 247,
+    "84,leftovers,vitalspirit,bulkup,crosschop,hiddenpowerghost,rockslide": 699,
+    "84,salacberry,vitalspirit,bulkup,crosschop,hiddenpowerghost,substitute": 276,
+    "84,leftovers,vitalspirit,bulkup,crosschop,earthquake,rockslide": 228
+  },
+  "quagsire": {
+    "85,leftovers,waterabsorb,earthquake,rest,sleeptalk,surf": 611,
+    "85,leftovers,waterabsorb,earthquake,icebeam,surf,toxic": 637,
+    "85,leftovers,waterabsorb,earthquake,icebeam,protect,toxic": 1284
+  },
+  "qwilfish": {
+    "83,leftovers,poisonpoint,hydropump,selfdestruct,sludgebomb,spikes": 602,
+    "83,salacberry,poisonpoint,hydropump,shadowball,sludgebomb,swordsdance": 398,
+    "83,salacberry,poisonpoint,hydropump,selfdestruct,sludgebomb,swordsdance": 383,
+    "83,choiceband,poisonpoint,hydropump,selfdestruct,shadowball,sludgebomb": 458,
+    "83,leftovers,poisonpoint,destinybond,hydropump,sludgebomb,spikes": 634,
+    "83,leftovers,swiftswim,destinybond,hydropump,sludgebomb,spikes": 22,
+    "83,choiceband,swiftswim,hydropump,selfdestruct,shadowball,sludgebomb": 8,
+    "83,salacberry,swiftswim,hydropump,selfdestruct,sludgebomb,swordsdance": 8,
+    "83,leftovers,swiftswim,hydropump,selfdestruct,sludgebomb,spikes": 12,
+    "83,salacberry,swiftswim,hydropump,shadowball,sludgebomb,swordsdance": 11
+  },
+  "raichu": {
+    "83,petayaberry,static,hiddenpowerice,substitute,surf,thunderbolt": 1474,
+    "83,leftovers,static,encore,hiddenpowerice,thunderbolt,thunderwave": 315,
+    "83,leftovers,static,hiddenpowerice,surf,thunderbolt,toxic": 308,
+    "83,leftovers,static,encore,hiddenpowerice,thunderbolt,toxic": 309,
+    "83,leftovers,static,encore,hiddenpowerice,surf,thunderbolt": 287,
+    "83,leftovers,static,hiddenpowerice,surf,thunderbolt,thunderwave": 279
+  },
+  "raikou": {
+    "73,leftovers,pressure,hiddenpowerice,rest,sleeptalk,thunderbolt": 1556,
+    "73,leftovers,pressure,calmmind,hiddenpowerice,substitute,thunderbolt": 757,
+    "73,leftovers,pressure,calmmind,crunch,hiddenpowerice,thunderbolt": 762
+  },
+  "rapidash": {
+    "83,leftovers,flashfire,fireblast,hiddenpowergrass,substitute,toxic": 1411,
+    "83,leftovers,flashfire,fireblast,hiddenpowerrock,substitute,toxic": 1488
+  },
+  "raticate": {
+    "85,liechiberry,guts,return,reversal,shadowball,substitute": 973,
+    "85,choiceband,guts,hiddenpowerground,quickattack,return,shadowball": 469,
+    "85,choiceband,guts,doubleedge,facade,hiddenpowerground,shadowball": 446,
+    "85,choiceband,guts,facade,hiddenpowerground,return,shadowball": 459,
+    "85,choiceband,guts,doubleedge,hiddenpowerground,quickattack,shadowball": 484
+  },
+  "rayquaza": {
+    "69,lumberry,airlock,dragondance,earthquake,hiddenpowerflying,overheat": 692,
+    "69,choiceband,airlock,earthquake,extremespeed,hiddenpowerflying,rockslide": 677,
+    "69,choiceband,airlock,earthquake,extremespeed,hiddenpowerflying,overheat": 668,
+    "69,lumberry,airlock,dragondance,earthquake,hiddenpowerflying,rockslide": 589
+  },
+  "regice": {
+    "79,leftovers,clearbody,explosion,icebeam,thunderbolt,thunderwave": 722,
+    "79,leftovers,clearbody,icebeam,protect,thunderbolt,toxic": 1383,
+    "79,leftovers,clearbody,icebeam,rest,sleeptalk,thunderbolt": 712
+  },
+  "regirock": {
+    "81,leftovers,clearbody,curse,earthquake,explosion,rockslide": 340,
+    "81,leftovers,clearbody,earthquake,explosion,rockslide,thunderwave": 442,
+    "81,leftovers,clearbody,earthquake,explosion,rockslide,toxic": 379,
+    "81,chestoberry,clearbody,earthquake,rest,rockslide,superpower": 281,
+    "81,leftovers,clearbody,curse,earthquake,rockslide,superpower": 230,
+    "81,chestoberry,clearbody,curse,earthquake,rest,rockslide": 287,
+    "81,choiceband,clearbody,earthquake,explosion,rockslide,superpower": 288,
+    "81,leftovers,clearbody,earthquake,rest,rockslide,sleeptalk": 544
+  },
+  "registeel": {
+    "78,leftovers,clearbody,rest,seismictoss,sleeptalk,toxic": 2808
+  },
+  "relicanth": {
+    "88,leftovers,swiftswim,earthquake,hiddenpowerflying,rockslide,toxic": 474,
+    "88,leftovers,swiftswim,earthquake,rest,rockslide,sleeptalk": 956,
+    "88,choiceband,rockhead,doubleedge,earthquake,hiddenpowerflying,rockslide": 448,
+    "88,leftovers,rockhead,doubleedge,earthquake,rockslide,toxic": 485,
+    "88,choiceband,swiftswim,doubleedge,earthquake,hiddenpowerflying,rockslide": 9,
+    "88,leftovers,swiftswim,doubleedge,earthquake,rockslide,toxic": 9
+  },
+  "rhydon": {
+    "83,choiceband,rockhead,doubleedge,earthquake,megahorn,rockslide": 1199,
+    "83,leftovers,rockhead,earthquake,megahorn,rockslide,swordsdance": 409,
+    "83,leftovers,rockhead,earthquake,rockslide,substitute,swordsdance": 401,
+    "83,leftovers,rockhead,earthquake,megahorn,rockslide,substitute": 406
+  },
+  "roselia": {
+    "97,leftovers,naturalcure,hiddenpowergrass,spikes,synthesis,toxic": 730,
+    "97,leftovers,naturalcure,hiddenpowerfire,magicalleaf,spikes,synthesis": 1486,
+    "97,leftovers,naturalcure,aromatherapy,hiddenpowergrass,spikes,synthesis": 665
+  },
+  "sableye": {
+    "91,leftovers,keeneye,recover,seismictoss,shadowball,toxic": 1471,
+    "91,leftovers,keeneye,knockoff,recover,seismictoss,toxic": 1470
+  },
+  "salamence": {
+    "73,choiceband,intimidate,brickbreak,doubleedge,earthquake,hiddenpowerflying": 233,
+    "73,lumberry,intimidate,dragondance,earthquake,hiddenpowerflying,rockslide": 682,
+    "73,choiceband,intimidate,earthquake,fireblast,hiddenpowerflying,rockslide": 232,
+    "73,choiceband,intimidate,doubleedge,earthquake,hiddenpowerflying,rockslide": 238,
+    "73,choiceband,intimidate,brickbreak,earthquake,hiddenpowerflying,rockslide": 218,
+    "73,lumberry,intimidate,dragondance,earthquake,fireblast,hiddenpowerflying": 659,
+    "73,choiceband,intimidate,doubleedge,earthquake,fireblast,hiddenpowerflying": 216,
+    "73,choiceband,intimidate,brickbreak,earthquake,fireblast,hiddenpowerflying": 203
+  },
+  "sandslash": {
+    "85,salacberry,sandveil,earthquake,hiddenpowerbug,rockslide,swordsdance": 1049,
+    "85,leftovers,sandveil,earthquake,hiddenpowerbug,rockslide,toxic": 660,
+    "85,choiceband,sandveil,earthquake,hiddenpowerbug,rapidspin,rockslide": 583,
+    "85,leftovers,sandveil,earthquake,rapidspin,rockslide,toxic": 741
+  },
+  "sceptile": {
+    "82,leftovers,overgrow,earthquake,leafblade,thunderpunch,toxic": 319,
+    "82,leftovers,overgrow,hiddenpowerfire,leafblade,leechseed,substitute": 474,
+    "82,petayaberry,overgrow,hiddenpowerice,leafblade,substitute,thunderpunch": 1011,
+    "82,leftovers,overgrow,hiddenpowerice,leafblade,leechseed,substitute": 486,
+    "82,leftovers,overgrow,earthquake,hiddenpowerice,leafblade,toxic": 310,
+    "82,leftovers,overgrow,earthquake,hiddenpowerice,leafblade,thunderpunch": 298
+  },
+  "scizor": {
+    "82,leftovers,swarm,agility,batonpass,silverwind,steelwing": 390,
+    "82,leftovers,swarm,batonpass,silverwind,steelwing,swordsdance": 260,
+    "82,leftovers,swarm,morningsun,silverwind,steelwing,swordsdance": 244,
+    "82,leftovers,swarm,hiddenpowerground,morningsun,steelwing,swordsdance": 247,
+    "82,salacberry,swarm,hiddenpowerground,silverwind,steelwing,swordsdance": 466,
+    "82,choiceband,swarm,batonpass,hiddenpowerground,silverwind,steelwing": 347,
+    "82,leftovers,swarm,agility,batonpass,hiddenpowerground,steelwing": 345,
+    "82,leftovers,swarm,batonpass,hiddenpowerground,steelwing,swordsdance": 226,
+    "82,leftovers,swarm,agility,hiddenpowerground,silverwind,steelwing": 356
+  },
+  "scyther": {
+    "81,leftovers,swarm,aerialace,batonpass,hiddenpowerground,swordsdance": 1248,
+    "81,lumberry,swarm,aerialace,hiddenpowerground,silverwind,swordsdance": 581,
+    "81,liechiberry,swarm,aerialace,hiddenpowerground,silverwind,swordsdance": 606
+  },
+  "seaking": {
+    "90,petayaberry,swiftswim,hiddenpowergrass,hydropump,icebeam,raindance": 584,
+    "90,leftovers,swiftswim,hiddenpowerelectric,hydropump,megahorn,raindance": 584,
+    "90,leftovers,swiftswim,hydropump,icebeam,megahorn,raindance": 467,
+    "90,leftovers,swiftswim,hiddenpowergrass,hydropump,megahorn,raindance": 565,
+    "90,petayaberry,swiftswim,hiddenpowerelectric,hydropump,icebeam,raindance": 540
+  },
+  "seviper": {
+    "88,leftovers,shedskin,crunch,earthquake,flamethrower,sludgebomb": 967,
+    "88,leftovers,shedskin,crunch,earthquake,hiddenpowergrass,sludgebomb": 973,
+    "88,leftovers,shedskin,earthquake,flamethrower,hiddenpowergrass,sludgebomb": 1015
+  },
+  "sharpedo": {
+    "85,petayaberry,roughskin,crunch,hydropump,icebeam,substitute": 451,
+    "85,petayaberry,roughskin,crunch,hiddenpowerelectric,hydropump,substitute": 445,
+    "85,choiceband,roughskin,doubleedge,earthquake,hiddenpowerflying,hydropump": 1330,
+    "85,petayaberry,roughskin,crunch,hiddenpowergrass,hydropump,substitute": 433
+  },
+  "shedinja": {
+    "100,lumberry,wonderguard,agility,hiddenpowerfighting,shadowball,silverwind": 498,
+    "100,lumberry,wonderguard,batonpass,hiddenpowerfighting,shadowball,toxic": 542,
+    "100,lumberry,wonderguard,agility,batonpass,hiddenpowerfighting,shadowball": 536,
+    "100,lumberry,wonderguard,hiddenpowerfighting,shadowball,silverwind,toxic": 566,
+    "100,lumberry,wonderguard,batonpass,hiddenpowerfighting,shadowball,silverwind": 453
+  },
+  "shiftry": {
+    "91,leftovers,earlybird,hiddenpowerdark,leechseed,substitute,toxic": 1373,
+    "91,salacberry,earlybird,brickbreak,explosion,shadowball,swordsdance": 1325,
+    "91,salacberry,chlorophyll,brickbreak,explosion,shadowball,swordsdance": 13,
+    "91,leftovers,chlorophyll,hiddenpowerdark,leechseed,substitute,toxic": 8
+  },
+  "shuckle": {
+    "98,leftovers,sturdy,encore,rest,toxic,wrap": 2932
+  },
+  "skarmory": {
+    "74,leftovers,keeneye,drillpeck,spikes,toxic,whirlwind": 865,
+    "74,leftovers,keeneye,drillpeck,protect,spikes,toxic": 911,
+    "74,leftovers,keeneye,protect,spikes,toxic,whirlwind": 840
+  },
+  "slaking": {
+    "78,choiceband,truant,earthquake,hyperbeam,return,shadowball": 1359,
+    "78,choiceband,truant,doubleedge,earthquake,hyperbeam,shadowball": 1391
+  },
+  "slowbro": {
+    "82,leftovers,owntempo,psychic,rest,sleeptalk,surf": 266,
+    "82,chestoberry,owntempo,calmmind,psychic,rest,surf": 861,
+    "82,leftovers,owntempo,calmmind,rest,sleeptalk,surf": 873,
+    "82,leftovers,owntempo,fireblast,icebeam,psychic,surf": 111,
+    "82,leftovers,owntempo,fireblast,psychic,surf,toxic": 105,
+    "82,leftovers,owntempo,fireblast,psychic,surf,thunderwave": 104,
+    "82,leftovers,owntempo,icebeam,psychic,surf,toxic": 125,
+    "82,leftovers,owntempo,icebeam,psychic,surf,thunderwave": 102
+  },
+  "slowking": {
+    "83,chestoberry,owntempo,calmmind,psychic,rest,surf": 869,
+    "83,leftovers,owntempo,icebeam,psychic,surf,thunderwave": 143,
+    "83,leftovers,owntempo,calmmind,rest,sleeptalk,surf": 844,
+    "83,leftovers,owntempo,icebeam,psychic,surf,toxic": 130,
+    "83,leftovers,owntempo,fireblast,icebeam,psychic,surf": 104,
+    "83,leftovers,owntempo,psychic,rest,sleeptalk,surf": 303,
+    "83,leftovers,owntempo,fireblast,psychic,surf,thunderwave": 121,
+    "83,leftovers,owntempo,fireblast,psychic,surf,toxic": 123
+  },
+  "smeargle": {
+    "89,leftovers,owntempo,encore,explosion,spikes,spore": 2839
+  },
+  "sneasel": {
+    "88,liechiberry,innerfocus,brickbreak,shadowball,substitute,swordsdance": 689,
+    "88,liechiberry,innerfocus,brickbreak,hiddenpowerflying,shadowball,swordsdance": 556,
+    "88,choiceband,innerfocus,brickbreak,doubleedge,hiddenpowerflying,shadowball": 430,
+    "88,lumberry,innerfocus,brickbreak,doubleedge,shadowball,swordsdance": 238,
+    "88,lumberry,innerfocus,brickbreak,hiddenpowerflying,shadowball,swordsdance": 591,
+    "88,liechiberry,innerfocus,brickbreak,doubleedge,shadowball,swordsdance": 202
+  },
+  "snorlax": {
+    "72,choiceband,immunity,earthquake,return,selfdestruct,shadowball": 474,
+    "72,leftovers,thickfat,bodyslam,curse,rest,sleeptalk": 965,
+    "72,chestoberry,thickfat,bodyslam,curse,earthquake,rest": 451,
+    "72,chestoberry,immunity,bodyslam,curse,earthquake,rest": 439,
+    "72,choiceband,immunity,bodyslam,earthquake,selfdestruct,shadowball": 488
+  },
+  "solrock": {
+    "84,choiceband,levitate,earthquake,explosion,overheat,rockslide": 449,
+    "84,leftovers,levitate,earthquake,protect,rockslide,toxic": 1367,
+    "84,choiceband,levitate,earthquake,overheat,rockslide,shadowball": 451,
+    "84,choiceband,levitate,earthquake,explosion,rockslide,shadowball": 457
+  },
+  "spinda": {
+    "100,leftovers,owntempo,protect,seismictoss,toxic,wish": 1263,
+    "100,leftovers,owntempo,protect,seismictoss,shadowball,toxic": 437,
+    "100,leftovers,owntempo,protect,seismictoss,substitute,toxic": 397,
+    "100,leftovers,owntempo,encore,protect,seismictoss,toxic": 439
+  },
+  "stantler": {
+    "83,leftovers,intimidate,earthquake,hypnosis,return,thunderbolt": 494,
+    "83,leftovers,intimidate,earthquake,return,thunderbolt,thunderwave": 455,
+    "83,leftovers,intimidate,earthquake,hypnosis,return,shadowball": 471,
+    "83,leftovers,intimidate,earthquake,return,shadowball,thunderwave": 477,
+    "83,choiceband,intimidate,earthquake,return,shadowball,thunderbolt": 476,
+    "83,leftovers,intimidate,earthquake,hypnosis,return,thunderwave": 494
+  },
+  "starmie": {
+    "75,leftovers,naturalcure,psychic,recover,surf,thunderbolt": 655,
+    "75,leftovers,naturalcure,icebeam,psychic,recover,surf": 671,
+    "75,leftovers,naturalcure,hydropump,icebeam,psychic,recover": 636,
+    "75,leftovers,naturalcure,hydropump,psychic,recover,thunderbolt": 628
+  },
+  "steelix": {
+    "83,leftovers,rockhead,earthquake,hiddenpowerrock,protect,toxic": 648,
+    "83,leftovers,rockhead,earthquake,hiddenpowerrock,irontail,toxic": 116,
+    "83,leftovers,rockhead,doubleedge,earthquake,protect,toxic": 631,
+    "83,chestoberry,rockhead,doubleedge,earthquake,irontail,rest": 101,
+    "83,leftovers,rockhead,earthquake,explosion,irontail,roar": 101,
+    "83,choiceband,rockhead,doubleedge,earthquake,explosion,irontail": 120,
+    "83,chestoberry,rockhead,earthquake,irontail,rest,roar": 97,
+    "83,choiceband,rockhead,earthquake,explosion,hiddenpowerrock,irontail": 98,
+    "83,leftovers,rockhead,doubleedge,earthquake,irontail,roar": 89,
+    "83,chestoberry,rockhead,earthquake,irontail,rest,toxic": 122,
+    "83,leftovers,rockhead,earthquake,explosion,irontail,toxic": 95,
+    "83,leftovers,rockhead,doubleedge,earthquake,irontail,toxic": 98,
+    "83,leftovers,rockhead,earthquake,hiddenpowerrock,irontail,roar": 90,
+    "83,chestoberry,rockhead,earthquake,hiddenpowerrock,irontail,rest": 97,
+    "83,choiceband,rockhead,doubleedge,earthquake,hiddenpowerrock,irontail": 85,
+    "83,leftovers,rockhead,earthquake,irontail,roar,toxic": 86
+  },
+  "sudowoodo": {
+    "92,leftovers,rockhead,brickbreak,earthquake,rockslide,toxic": 464,
+    "92,choiceband,rockhead,brickbreak,earthquake,explosion,rockslide": 458,
+    "92,choiceband,rockhead,brickbreak,doubleedge,earthquake,rockslide": 484,
+    "92,leftovers,rockhead,doubleedge,earthquake,rockslide,toxic": 466,
+    "92,leftovers,rockhead,earthquake,explosion,rockslide,toxic": 485,
+    "92,choiceband,rockhead,doubleedge,earthquake,explosion,rockslide": 438
+  },
+  "suicune": {
+    "74,leftovers,pressure,calmmind,icebeam,substitute,surf": 694,
+    "74,leftovers,pressure,calmmind,rest,sleeptalk,surf": 1433,
+    "74,chestoberry,pressure,calmmind,icebeam,rest,surf": 659
+  },
+  "sunflora": {
+    "99,leftovers,chlorophyll,hiddenpowerfire,razorleaf,synthesis,toxic": 713,
+    "99,leftovers,chlorophyll,hiddenpowerfire,solarbeam,sunnyday,synthesis": 1424,
+    "99,leftovers,chlorophyll,hiddenpowerfire,leechseed,razorleaf,synthesis": 752
+  },
+  "swalot": {
+    "88,leftovers,liquidooze,encore,shadowball,sludgebomb,toxic": 42,
+    "88,leftovers,liquidooze,encore,icebeam,sludgebomb,toxic": 40,
+    "88,leftovers,liquidooze,encore,hiddenpowerground,painsplit,sludgebomb": 53,
+    "88,leftovers,liquidooze,hiddenpowerground,icebeam,painsplit,sludgebomb": 80,
+    "88,leftovers,liquidooze,hiddenpowerground,shadowball,sludgebomb,yawn": 121,
+    "88,leftovers,liquidooze,icebeam,shadowball,sludgebomb,toxic": 106,
+    "88,leftovers,liquidooze,icebeam,painsplit,shadowball,sludgebomb": 106,
+    "88,leftovers,liquidooze,explosion,hiddenpowerground,icebeam,sludgebomb": 116,
+    "88,leftovers,liquidooze,icebeam,painsplit,sludgebomb,yawn": 67,
+    "88,leftovers,liquidooze,encore,hiddenpowerground,sludgebomb,yawn": 53,
+    "88,leftovers,liquidooze,encore,hiddenpowerground,shadowball,sludgebomb": 91,
+    "88,leftovers,liquidooze,hiddenpowerground,icebeam,sludgebomb,toxic": 123,
+    "88,leftovers,liquidooze,explosion,hiddenpowerground,sludgebomb,yawn": 45,
+    "88,leftovers,liquidooze,encore,icebeam,sludgebomb,yawn": 63,
+    "88,leftovers,liquidooze,icebeam,shadowball,sludgebomb,yawn": 115,
+    "88,leftovers,liquidooze,painsplit,shadowball,sludgebomb,toxic": 58,
+    "88,leftovers,liquidooze,encore,explosion,icebeam,sludgebomb": 67,
+    "88,leftovers,liquidooze,explosion,icebeam,shadowball,sludgebomb": 100,
+    "88,leftovers,liquidooze,encore,icebeam,painsplit,sludgebomb": 55,
+    "88,leftovers,liquidooze,hiddenpowerground,painsplit,shadowball,sludgebomb": 105,
+    "88,leftovers,liquidooze,painsplit,shadowball,sludgebomb,yawn": 63,
+    "88,choiceband,liquidooze,explosion,hiddenpowerground,shadowball,sludgebomb": 101,
+    "88,leftovers,liquidooze,hiddenpowerground,icebeam,sludgebomb,yawn": 78,
+    "88,leftovers,liquidooze,icebeam,painsplit,sludgebomb,toxic": 42,
+    "88,leftovers,liquidooze,explosion,icebeam,sludgebomb,yawn": 53,
+    "88,leftovers,liquidooze,encore,shadowball,sludgebomb,yawn": 48,
+    "88,leftovers,liquidooze,encore,explosion,shadowball,sludgebomb": 48,
+    "88,leftovers,liquidooze,encore,painsplit,shadowball,sludgebomb": 62,
+    "88,leftovers,liquidooze,explosion,shadowball,sludgebomb,toxic": 61,
+    "88,leftovers,liquidooze,encore,hiddenpowerground,icebeam,sludgebomb": 115,
+    "88,leftovers,liquidooze,hiddenpowerground,painsplit,sludgebomb,yawn": 66,
+    "88,leftovers,liquidooze,encore,explosion,hiddenpowerground,sludgebomb": 48,
+    "88,leftovers,liquidooze,explosion,hiddenpowerground,sludgebomb,toxic": 54,
+    "88,leftovers,liquidooze,hiddenpowerground,shadowball,sludgebomb,toxic": 89,
+    "88,leftovers,liquidooze,encore,hiddenpowerground,sludgebomb,toxic": 69,
+    "88,leftovers,liquidooze,encore,icebeam,shadowball,sludgebomb": 88,
+    "88,leftovers,liquidooze,hiddenpowerground,icebeam,shadowball,sludgebomb": 130,
+    "88,leftovers,liquidooze,hiddenpowerground,painsplit,sludgebomb,toxic": 50,
+    "88,leftovers,liquidooze,explosion,shadowball,sludgebomb,yawn": 46,
+    "88,leftovers,liquidooze,explosion,icebeam,sludgebomb,toxic": 68
+  },
+  "swampert": {
+    "79,leftovers,torrent,earthquake,icebeam,surf,toxic": 207,
+    "79,leftovers,torrent,earthquake,hydropump,refresh,toxic": 199,
+    "79,leftovers,torrent,earthquake,hydropump,protect,toxic": 433,
+    "79,leftovers,torrent,earthquake,refresh,surf,toxic": 205,
+    "79,leftovers,torrent,earthquake,hydropump,icebeam,toxic": 227,
+    "79,leftovers,torrent,earthquake,hydropump,rest,sleeptalk": 430,
+    "79,leftovers,torrent,earthquake,rest,sleeptalk,surf": 411,
+    "79,leftovers,torrent,earthquake,protect,surf,toxic": 385
+  },
+  "swellow": {
+    "80,choiceband,guts,aerialace,hiddenpowerground,quickattack,return": 656,
+    "80,choiceband,guts,aerialace,doubleedge,facade,hiddenpowerground": 622,
+    "80,choiceband,guts,aerialace,facade,hiddenpowerground,return": 601,
+    "80,choiceband,guts,aerialace,doubleedge,hiddenpowerground,quickattack": 636
+  },
+  "tangela": {
+    "95,leftovers,chlorophyll,hiddenpowergrass,leechseed,morningsun,toxic": 300,
+    "95,leftovers,chlorophyll,hiddenpowerfire,sleeppowder,solarbeam,sunnyday": 735,
+    "95,leftovers,chlorophyll,hiddenpowergrass,leechseed,morningsun,stunspore": 300,
+    "95,leftovers,chlorophyll,hiddenpowerfire,morningsun,solarbeam,sunnyday": 694,
+    "95,leftovers,chlorophyll,hiddenpowergrass,morningsun,sleeppowder,stunspore": 308,
+    "95,leftovers,chlorophyll,hiddenpowergrass,leechseed,morningsun,sleeppowder": 253,
+    "95,leftovers,chlorophyll,hiddenpowergrass,morningsun,sleeppowder,toxic": 286
+  },
+  "tauros": {
+    "76,choiceband,intimidate,doubleedge,earthquake,hiddenpowerghost,return": 2799
+  },
+  "tentacruel": {
+    "79,leftovers,liquidooze,icebeam,rapidspin,sludgebomb,surf": 187,
+    "79,leftovers,liquidooze,hydropump,icebeam,sludgebomb,toxic": 238,
+    "79,leftovers,clearbody,hydropump,icebeam,rapidspin,sludgebomb": 224,
+    "79,leftovers,clearbody,rapidspin,sludgebomb,surf,toxic": 215,
+    "79,leftovers,clearbody,hydropump,icebeam,sludgebomb,toxic": 238,
+    "79,leftovers,liquidooze,rapidspin,sludgebomb,surf,toxic": 195,
+    "79,leftovers,clearbody,hydropump,rapidspin,sludgebomb,toxic": 220,
+    "79,leftovers,liquidooze,hydropump,icebeam,rapidspin,sludgebomb": 217,
+    "79,leftovers,liquidooze,icebeam,sludgebomb,surf,toxic": 247,
+    "79,leftovers,clearbody,icebeam,rapidspin,sludgebomb,surf": 193,
+    "79,leftovers,liquidooze,hydropump,rapidspin,sludgebomb,toxic": 205,
+    "79,leftovers,clearbody,icebeam,sludgebomb,surf,toxic": 240
+  },
+  "togetic": {
+    "97,leftovers,serenegrace,protect,seismictoss,toxic,wish": 1270,
+    "97,leftovers,serenegrace,seismictoss,softboiled,thunderwave,toxic": 303,
+    "97,leftovers,serenegrace,encore,seismictoss,softboiled,toxic": 321,
+    "97,leftovers,serenegrace,charm,seismictoss,softboiled,toxic": 284,
+    "97,leftovers,serenegrace,flamethrower,seismictoss,softboiled,toxic": 319
+  },
+  "torkoal": {
+    "90,chestoberry,whitesmoke,flamethrower,hiddenpowergrass,rest,toxic": 704,
+    "90,leftovers,whitesmoke,explosion,flamethrower,hiddenpowergrass,toxic": 742,
+    "90,chestoberry,whitesmoke,fireblast,hiddenpowergrass,rest,toxic": 679,
+    "90,leftovers,whitesmoke,explosion,fireblast,hiddenpowergrass,toxic": 759
+  },
+  "tropius": {
+    "95,leftovers,chlorophyll,earthquake,hiddenpowerflying,swordsdance,synthesis": 1282,
+    "95,leftovers,chlorophyll,earthquake,hiddenpowerflying,synthesis,toxic": 638,
+    "95,leftovers,chlorophyll,hiddenpowerflying,leechseed,synthesis,toxic": 634
+  },
+  "typhlosion": {
+    "79,petayaberry,blaze,fireblast,hiddenpowerice,substitute,thunderpunch": 704,
+    "79,leftovers,blaze,earthquake,flamethrower,thunderpunch,toxic": 139,
+    "79,leftovers,blaze,earthquake,fireblast,thunderpunch,toxic": 152,
+    "79,leftovers,blaze,fireblast,hiddenpowerice,thunderpunch,toxic": 142,
+    "79,leftovers,blaze,flamethrower,hiddenpowerice,thunderpunch,toxic": 144,
+    "79,petayaberry,blaze,flamethrower,hiddenpowerice,substitute,thunderpunch": 739,
+    "79,leftovers,blaze,flamethrower,focuspunch,substitute,thunderpunch": 318,
+    "79,leftovers,blaze,fireblast,focuspunch,substitute,thunderpunch": 274,
+    "79,leftovers,blaze,earthquake,fireblast,hiddenpowerice,thunderpunch": 152,
+    "79,leftovers,blaze,earthquake,flamethrower,hiddenpowerice,thunderpunch": 146
+  },
+  "tyranitar": {
+    "74,leftovers,sandstream,crunch,earthquake,pursuit,rockslide": 89,
+    "74,leftovers,sandstream,crunch,fireblast,rockslide,thunderwave": 83,
+    "74,choiceband,sandstream,earthquake,fireblast,hiddenpowerflying,rockslide": 429,
+    "74,leftovers,sandstream,crunch,fireblast,pursuit,rockslide": 102,
+    "74,lumberry,sandstream,dragondance,earthquake,fireblast,rockslide": 443,
+    "74,leftovers,sandstream,crunch,icebeam,pursuit,rockslide": 90,
+    "74,leftovers,sandstream,earthquake,rest,rockslide,sleeptalk": 443,
+    "74,leftovers,sandstream,crunch,earthquake,rockslide,thunderwave": 95,
+    "74,leftovers,sandstream,crunch,fireblast,icebeam,rockslide": 94,
+    "74,lumberry,sandstream,dragondance,earthquake,hiddenpowerflying,rockslide": 468,
+    "74,leftovers,sandstream,crunch,icebeam,rockslide,thunderwave": 84,
+    "74,leftovers,sandstream,crunch,earthquake,icebeam,rockslide": 81,
+    "74,leftovers,sandstream,crunch,pursuit,rockslide,thunderwave": 99,
+    "74,leftovers,sandstream,crunch,earthquake,fireblast,rockslide": 87
+  },
+  "umbreon": {
+    "85,leftovers,synchronize,batonpass,protect,toxic,wish": 1499,
+    "85,leftovers,synchronize,hiddenpowerfire,protect,toxic,wish": 751,
+    "85,leftovers,synchronize,hiddenpowerground,protect,toxic,wish": 710
+  },
+  "unown": {
+    "100,choiceband,levitate,hiddenpowerfighting": 648,
+    "100,choiceband,levitate,hiddenpowerbug": 652,
+    "100,twistedspoon,levitate,hiddenpowerpsychic": 1367
+  },
+  "ursaring": {
+    "81,choiceband,guts,earthquake,focuspunch,hiddenpowerghost,return": 904,
+    "81,choiceband,guts,earthquake,facade,hiddenpowerghost,return": 930,
+    "81,leftovers,guts,earthquake,hiddenpowerghost,return,swordsdance": 942
+  },
+  "vaporeon": {
+    "79,leftovers,waterabsorb,protect,surf,toxic,wish": 1400,
+    "79,leftovers,waterabsorb,icebeam,protect,surf,wish": 1384
+  },
+  "venomoth": {
+    "87,leftovers,shielddust,psychic,signalbeam,sleeppowder,sludgebomb": 402,
+    "87,leftovers,shielddust,hiddenpowerfire,psychic,signalbeam,sludgebomb": 354,
+    "87,leftovers,shielddust,signalbeam,sleeppowder,sludgebomb,substitute": 137,
+    "87,leftovers,shielddust,batonpass,psychic,sludgebomb,substitute": 135,
+    "87,leftovers,shielddust,batonpass,sleeppowder,sludgebomb,substitute": 143,
+    "87,leftovers,shielddust,hiddenpowerfire,psychic,sleeppowder,sludgebomb": 356,
+    "87,leftovers,shielddust,hiddenpowerfire,sleeppowder,sludgebomb,substitute": 142,
+    "87,leftovers,shielddust,psychic,sleeppowder,sludgebomb,substitute": 137,
+    "87,leftovers,shielddust,batonpass,hiddenpowerfire,sludgebomb,substitute": 130,
+    "87,leftovers,shielddust,hiddenpowerfire,signalbeam,sleeppowder,sludgebomb": 355,
+    "87,leftovers,shielddust,hiddenpowerfire,psychic,sludgebomb,substitute": 137,
+    "87,leftovers,shielddust,hiddenpowerfire,signalbeam,sludgebomb,substitute": 134,
+    "87,leftovers,shielddust,psychic,signalbeam,sludgebomb,substitute": 125,
+    "87,leftovers,shielddust,batonpass,signalbeam,sludgebomb,substitute": 132
+  },
+  "venusaur": {
+    "81,leftovers,overgrow,earthquake,sleeppowder,sludgebomb,swordsdance": 496,
+    "81,leftovers,overgrow,hiddenpowergrass,leechseed,sludgebomb,substitute": 726,
+    "81,leftovers,overgrow,leechseed,sleeppowder,sludgebomb,substitute": 721,
+    "81,leftovers,overgrow,earthquake,sludgebomb,swordsdance,synthesis": 482,
+    "81,salacberry,overgrow,earthquake,hiddenpowerghost,sludgebomb,swordsdance": 493
+  },
+  "victreebel": {
+    "85,leftovers,chlorophyll,hiddenpowerground,magicalleaf,sludgebomb,synthesis": 438,
+    "85,leftovers,chlorophyll,hiddenpowerfire,sludgebomb,solarbeam,sunnyday": 979,
+    "85,leftovers,chlorophyll,hiddenpowerground,sleeppowder,sludgebomb,synthesis": 495,
+    "85,leftovers,chlorophyll,hiddenpowerground,sludgebomb,swordsdance,synthesis": 501,
+    "85,leftovers,chlorophyll,hiddenpowerground,sleeppowder,sludgebomb,swordsdance": 491
+  },
+  "vigoroth": {
+    "84,leftovers,vitalspirit,bulkup,earthquake,return,slackoff": 696,
+    "84,leftovers,vitalspirit,bulkup,return,shadowball,slackoff": 701,
+    "84,leftovers,vitalspirit,bodyslam,bulkup,earthquake,slackoff": 694,
+    "84,leftovers,vitalspirit,bodyslam,bulkup,shadowball,slackoff": 707
+  },
+  "vileplume": {
+    "85,leftovers,chlorophyll,aromatherapy,hiddenpowerfire,sludgebomb,synthesis": 528,
+    "85,leftovers,chlorophyll,hiddenpowergrass,sleeppowder,sludgebomb,synthesis": 650,
+    "85,leftovers,chlorophyll,aromatherapy,sleeppowder,sludgebomb,synthesis": 443,
+    "85,leftovers,chlorophyll,hiddenpowerfire,sleeppowder,sludgebomb,synthesis": 671,
+    "85,leftovers,chlorophyll,aromatherapy,hiddenpowergrass,sludgebomb,synthesis": 558
+  },
+  "volbeat": {
+    "93,leftovers,swarm,batonpass,icepunch,tailglow,thunderbolt": 2946
+  },
+  "wailord": {
+    "87,leftovers,waterveil,rest,sleeptalk,surf,toxic": 726,
+    "87,leftovers,waterveil,icebeam,rest,sleeptalk,surf": 705,
+    "87,leftovers,waterveil,hiddenpowergrass,icebeam,selfdestruct,surf": 429,
+    "87,leftovers,waterveil,icebeam,selfdestruct,surf,toxic": 487,
+    "87,leftovers,waterveil,hiddenpowergrass,icebeam,surf,toxic": 458
+  },
+  "walrein": {
+    "80,leftovers,thickfat,icebeam,protect,surf,toxic": 1328,
+    "80,leftovers,thickfat,icebeam,rest,sleeptalk,surf": 617,
+    "80,leftovers,thickfat,encore,icebeam,surf,toxic": 630
+  },
+  "weezing": {
+    "82,leftovers,levitate,explosion,fireblast,haze,sludgebomb": 367,
+    "82,leftovers,levitate,fireblast,painsplit,sludgebomb,toxic": 397,
+    "82,leftovers,levitate,fireblast,haze,sludgebomb,toxic": 350,
+    "82,leftovers,levitate,fireblast,haze,sludgebomb,willowisp": 323,
+    "82,leftovers,levitate,fireblast,haze,painsplit,sludgebomb": 344,
+    "82,leftovers,levitate,explosion,fireblast,sludgebomb,willowisp": 375,
+    "82,leftovers,levitate,explosion,fireblast,sludgebomb,toxic": 419,
+    "82,leftovers,levitate,fireblast,painsplit,sludgebomb,willowisp": 418
+  },
+  "whiscash": {
+    "83,leftovers,oblivious,earthquake,icebeam,surf,toxic": 642,
+    "83,leftovers,oblivious,earthquake,rest,sleeptalk,surf": 633,
+    "83,leftovers,oblivious,earthquake,icebeam,protect,toxic": 1215
+  },
+  "wigglytuff": {
+    "91,leftovers,cutecharm,protect,seismictoss,toxic,wish": 1006,
+    "91,leftovers,cutecharm,bodyslam,fireblast,protect,wish": 927,
+    "91,leftovers,cutecharm,doubleedge,protect,toxic,wish": 469,
+    "91,leftovers,cutecharm,doubleedge,protect,thunderwave,wish": 437
+  },
+  "wobbuffet": {
+    "81,leftovers,shadowtag,counter,destinybond,encore,mirrorcoat": 1
+  },
+  "xatu": {
+    "85,leftovers,synchronize,batonpass,calmmind,hiddenpowerfire,psychic": 463,
+    "85,leftovers,earlybird,calmmind,hiddenpowerfire,psychic,rest": 863,
+    "85,leftovers,synchronize,hiddenpowerfire,protect,psychic,wish": 447,
+    "85,leftovers,synchronize,protect,psychic,thunderwave,wish": 429,
+    "85,leftovers,synchronize,protect,psychic,toxic,wish": 415
+  },
+  "yanma": {
+    "91,leftovers,compoundeyes,aerialace,hiddenpowerground,hypnosis,toxic": 198,
+    "91,leftovers,compoundeyes,aerialace,hiddenpowerground,signalbeam,toxic": 211,
+    "91,liechiberry,compoundeyes,hiddenpowerflying,hypnosis,reversal,substitute": 621,
+    "91,leftovers,compoundeyes,aerialace,hiddenpowerground,hypnosis,signalbeam": 198,
+    "91,liechiberry,speedboost,hiddenpowerflying,reversal,shadowball,substitute": 602,
+    "91,leftovers,compoundeyes,aerialace,doubleedge,hiddenpowerground,hypnosis": 205,
+    "91,choiceband,speedboost,aerialace,doubleedge,hiddenpowerground,signalbeam": 211,
+    "91,leftovers,compoundeyes,aerialace,doubleedge,hiddenpowerground,toxic": 179
+  },
+  "zangoose": {
+    "79,leftovers,immunity,quickattack,return,shadowball,swordsdance": 935,
+    "79,choiceband,immunity,brickbreak,quickattack,return,shadowball": 944,
+    "79,salacberry,immunity,brickbreak,return,shadowball,swordsdance": 931
+  },
+  "zapdos": {
+    "74,leftovers,pressure,hiddenpowerice,rest,sleeptalk,thunderbolt": 885,
+    "74,leftovers,pressure,batonpass,hiddenpowerice,substitute,thunderbolt": 296,
+    "74,leftovers,pressure,hiddenpowerice,protect,thunderbolt,toxic": 885,
+    "74,leftovers,pressure,hiddenpowerice,substitute,thunderbolt,toxic": 284,
+    "74,leftovers,pressure,hiddenpowerice,substitute,thunderbolt,thunderwave": 287
+  }
+}
