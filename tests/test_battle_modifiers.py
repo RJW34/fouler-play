@@ -2812,6 +2812,23 @@ class TestEndVolatileStatus(unittest.TestCase):
 
         self.assertEqual([], self.battle.opponent.active.volatile_statuses)
 
+    def test_removes_yawn_volatile_duration(self):
+        self.battle.opponent.active.volatile_statuses = ["yawn"]
+        self.battle.opponent.active.volatile_status_durations[constants.YAWN] = 1
+        split_msg = [
+            "",
+            "-end",
+            "p2a: Caterpie",
+            "Yawn",
+            "[silent]",
+        ]
+        end_volatile_status(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+        self.assertEqual(
+            0, self.battle.opponent.active.volatile_status_durations[constants.YAWN]
+        )
+
     def test_removes_volatile_status_from_opponent(self):
         self.battle.opponent.active.volatile_statuses = ["encore"]
         split_msg = ["", "-end", "p2a: Caterpie", "Encore"]
@@ -4029,11 +4046,11 @@ class TestUpkeep(unittest.TestCase):
         self.assertEqual(2, self.battle.user.active.gen_3_consecutive_sleep_talks)
         self.assertEqual("sleeptalk", self.battle.user.last_used_move.move)
 
-    def test_swaps_out_yawn_for_yawnSleepThisTurn(self):
-        self.battle.user.active.volatile_statuses.append(constants.YAWN_SLEEP_THIS_TURN)
+    def test_increments_yawn_duration(self):
+        self.battle.user.active.volatile_statuses.append(constants.YAWN)
         upkeep(self.battle, "")
-        self.assertNotIn(
-            constants.YAWN_SLEEP_THIS_TURN, self.battle.user.active.volatile_statuses
+        self.assertEqual(
+            1, self.battle.user.active.volatile_status_durations[constants.YAWN]
         )
 
     def test_decrements_trickroom_in_upkeep(self):
@@ -4043,20 +4060,23 @@ class TestUpkeep(unittest.TestCase):
         self.assertEqual(4, self.battle.trick_room_turns_remaining)
 
     def test_swaps_out_yawn_for_yawnSleepThisTurn_opponent(self):
-        self.battle.opponent.active.volatile_statuses.append(
-            constants.YAWN_SLEEP_THIS_TURN
-        )
+        self.battle.opponent.active.volatile_statuses.append(constants.YAWN)
+        self.battle.opponent.active.volatile_status_durations[constants.YAWN] = 0
         upkeep(self.battle, "")
-        self.assertNotIn(
-            constants.YAWN_SLEEP_THIS_TURN,
+        self.assertIn(
+            constants.YAWN,
             self.battle.opponent.active.volatile_statuses,
+        )
+        self.assertEqual(
+            1, self.battle.opponent.active.volatile_status_durations[constants.YAWN]
         )
 
     def test_removes_yawnSleepNextTurn(self):
         self.battle.user.active.volatile_statuses.append(constants.YAWN)
+        self.battle.user.active.volatile_status_durations[constants.YAWN] = 1
         upkeep(self.battle, "")
-        self.assertIn(
-            constants.YAWN_SLEEP_THIS_TURN, self.battle.user.active.volatile_statuses
+        self.assertEqual(
+            0, self.battle.user.active.volatile_status_durations[constants.YAWN]
         )
         self.assertNotIn(constants.YAWN, self.battle.user.active.volatile_statuses)
 

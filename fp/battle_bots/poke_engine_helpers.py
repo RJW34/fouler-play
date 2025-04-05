@@ -179,6 +179,7 @@ def battler_to_poke_engine_side(
             confusion=battler.active.volatile_status_durations[constants.CONFUSION],
             lockedmove=battler.active.volatile_status_durations[constants.LOCKED_MOVE],
             encore=battler.active.volatile_status_durations["encore"],
+            yawn=battler.active.volatile_status_durations[constants.YAWN],
         ),
         substitute_health=substitute_health,
         attack_boost=battler.active.boosts[constants.ATTACK],
