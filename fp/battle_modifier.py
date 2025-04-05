@@ -306,6 +306,20 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
             )
             side.active.types = original_types
 
+        # if the target was transformed, reset its transformed attributes
+        if constants.TRANSFORM in side.active.volatile_statuses:
+            logger.info(
+                "{} was transformed. Resetting its transformed attributes".format(
+                    side.active.name
+                )
+            )
+            side.active.stats = calculate_stats(
+                side.active.base_stats, side.active.level
+            )
+            side.active.ability = side.active.original_ability
+            side.active.moves = []
+            side.active.types = pokedex[side.active.name][constants.TYPES]
+
         if (
             side.active.original_ability is not None
             and side.active.ability != side.active.original_ability
@@ -317,20 +331,6 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
             )
             side.active.ability = side.active.original_ability
             side.active.original_ability = None
-
-        # if the target was transformed, reset its transformed attributes
-        if constants.TRANSFORM in side.active.volatile_statuses:
-            logger.info(
-                "{} was transformed. Resetting its transformed attributes".format(
-                    side.active.name
-                )
-            )
-            side.active.stats = calculate_stats(
-                side.active.base_stats, side.active.level
-            )
-            side.active.ability = None
-            side.active.moves = []
-            side.active.types = pokedex[side.active.name][constants.TYPES]
 
         if split_msg[-1] == "[from] Baton Pass":
             side.baton_passing = False
@@ -2335,37 +2335,41 @@ def mega(battle, split_msg):
 
 def transform(battle, split_msg):
     if is_opponent(battle, split_msg):
-        transformed_into_name = battle.user.active.name
+        side = battle.opponent
+        other_side = battle.user
+    else:
+        side = battle.user
+        other_side = battle.opponent
 
-        battle_copy = deepcopy(battle)
-        battle.opponent.active.boosts = deepcopy(battle.user.active.boosts)
+    transformed_into_name = other_side.active.name
+    logger.info(
+        "{} transformed into {}".format(side.active.name, transformed_into_name)
+    )
+    side.active.boosts = deepcopy(other_side.active.boosts)
+    logger.info(
+        "Copied {}'s boosts: {}".format(side.active.name, dict(side.active.boosts))
+    )
 
-        if (
-            battle_copy.user.active.name == transformed_into_name
-            or battle_copy.user.active.name.startswith(transformed_into_name)
-        ):
-            transformed_into = battle_copy.user.active
-        else:
-            transformed_into = battle_copy.user.find_pokemon_in_reserves(
-                transformed_into_name
-            )
+    if constants.TRANSFORM not in side.active.volatile_statuses:
+        side.active.volatile_statuses.append(constants.TRANSFORM)
 
-        logger.info(
-            "Opponent {} transformed into {}".format(
-                battle.opponent.active.name, battle.user.active.name
-            )
+    transformed_into = other_side.active
+    side.active.stats = deepcopy(transformed_into.stats)
+    side.active.moves = deepcopy(transformed_into.moves)
+    side.active.types = deepcopy(transformed_into.types)
+    side.active.boosts = deepcopy(transformed_into.boosts)
+
+    for mv in side.active.moves:
+        mv.current_pp = 5
+
+    if split_msg[-1].startswith("[from]") and "ability:" in split_msg[-1]:
+        side.active.original_ability = normalize_name(
+            split_msg[-1].split("ability:")[-1].strip()
         )
-        battle.opponent.active.stats = deepcopy(transformed_into.stats)
-        battle.opponent.active.ability = deepcopy(transformed_into.ability)
-        battle.opponent.active.moves = deepcopy(transformed_into.moves)
-        battle.opponent.active.types = deepcopy(transformed_into.types)
-        battle.opponent.active.boosts = deepcopy(transformed_into.boosts)
+    elif side.active.ability is not None:
+        side.active.original_ability = side.active.ability
 
-        for mv in battle.opponent.active.moves:
-            mv.current_pp = 5
-
-        if constants.TRANSFORM not in battle.opponent.active.volatile_statuses:
-            battle.opponent.active.volatile_statuses.append(constants.TRANSFORM)
+    side.active.ability = deepcopy(transformed_into.ability)
 
 
 def turn(battle, split_msg):

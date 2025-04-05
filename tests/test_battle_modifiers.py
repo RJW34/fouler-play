@@ -754,9 +754,10 @@ class TestSwitchOrDrag(unittest.TestCase):
 
         self.assertEqual(expected_last_move, self.battle.opponent.last_used_move)
 
-    def test_ditto_switching_sets_ability_to_none(self):
+    def test_ditto_switching_sets_ability_to_imposter_via_original_ability(self):
         ditto = Pokemon("ditto", 100)
         ditto.ability = "some_ability"
+        ditto.original_ability = "imposter"
         ditto.volatile_statuses.append(constants.TRANSFORM)
         self.battle.opponent.active = ditto
         split_msg = ["", "switch", "p2a: weedle", "Weedle, L100, M", "100/100"]
@@ -765,7 +766,7 @@ class TestSwitchOrDrag(unittest.TestCase):
         if self.battle.opponent.reserve[0] != ditto:
             self.fail("Ditto was not moved to reserves")
 
-        self.assertIsNone(ditto.ability)
+        self.assertEqual("imposter", ditto.ability)
 
     def test_ditto_switching_sets_moves_to_empty_list(self):
         ditto = Pokemon("ditto", 100)
@@ -777,6 +778,20 @@ class TestSwitchOrDrag(unittest.TestCase):
         switch_or_drag(self.battle, split_msg)
 
         if self.battle.opponent.reserve[0] != ditto:
+            self.fail("Ditto was not moved to reserves")
+
+        self.assertEqual([], ditto.moves)
+
+    def test_ditto_switching_sets_moves_to_empty_list_for_user(self):
+        ditto = Pokemon("ditto", 100)
+        ditto.moves = [Move("tackle"), Move("stringshot")]
+        ditto.volatile_statuses.append(constants.TRANSFORM)
+        self.battle.user.active = ditto
+
+        split_msg = ["", "switch", "p1a: weedle", "Weedle, L100, M", "100/100"]
+        switch_or_drag(self.battle, split_msg)
+
+        if self.battle.user.reserve[0] != ditto:
             self.fail("Ditto was not moved to reserves")
 
         self.assertEqual([], ditto.moves)
@@ -3771,6 +3786,7 @@ class TestTransform(unittest.TestCase):
         transform(self.battle, split_msg)
 
         self.assertEqual(self.user_active_ability, self.battle.opponent.active.ability)
+        self.assertEqual("imposter", self.battle.opponent.active.original_ability)
 
     def test_transform_sets_moves_to_opposing_pokemons_moves(self):
         self.battle.user.active.moves = [
@@ -3855,6 +3871,20 @@ class TestTransform(unittest.TestCase):
         self.assertIn(
             constants.TRANSFORM, self.battle.opponent.active.volatile_statuses
         )
+
+    def test_transform_sets_volatile_for_bots_side(self):
+        self.battle.user.active.volatile_statuses = []
+        split_msg = [
+            "",
+            "-transform",
+            "p1a: Weedle",
+            "p1a: Weedle",
+            "[from] ability: Imposter",
+        ]
+
+        transform(self.battle, split_msg)
+
+        self.assertIn(constants.TRANSFORM, self.battle.user.active.volatile_statuses)
 
 
 class TestCant(unittest.TestCase):
