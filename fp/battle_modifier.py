@@ -2852,7 +2852,6 @@ def update_dataset_possibilities(
         in ["ditto", "shedinja", "terapagosterastal", "meloetta", "meloettapirouette"]
         or damage_dealt.move not in all_move_json
         or all_move_json[damage_dealt.move][constants.CATEGORY] == constants.STATUS
-        or "multihit" in all_move_json[damage_dealt.move]
         or "multiaccuracy" in all_move_json[damage_dealt.move]
         or damage_dealt.move.startswith(constants.HIDDEN_POWER)
         or damage_dealt.percent_damage == 0
