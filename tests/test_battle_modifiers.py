@@ -869,6 +869,21 @@ class TestHealOrDamage(unittest.TestCase):
         self.battle.opponent.active = self.opponent_active
         self.battle.user.active = self.user_active
 
+    def test_heal_from_healing_wish_clears_side_condition(self):
+        # |-heal|p1a: Caterpie|100/100|[from] move: Healing Wish
+        self.battle.opponent.side_conditions[constants.HEALING_WISH] = 1
+        split_msg = [
+            "",
+            "-heal",
+            "p2a: Caterpie",
+            "100/100",
+            "[from] move: Healing Wish",
+        ]
+        heal_or_damage(self.battle, split_msg)
+        self.assertEqual(
+            0, self.battle.opponent.side_conditions[constants.HEALING_WISH]
+        )
+
     def test_sets_ability_when_the_information_is_present(self):
         split_msg = [
             "",
@@ -1454,6 +1469,13 @@ class TestMove(unittest.TestCase):
         # nothing changes
         self.assertEqual("gyarados", self.battle.opponent.active.name)
         self.assertEqual("zoroarkhisui", self.battle.opponent.reserve[0].name)
+
+    def test_sets_healing_wish_side_condition_when_healing_wish_is_used(self):
+        split_msg = ["", "move", "p2a: Caterpie", "Healing Wish", "p2a: Caterpie"]
+        move(self.battle, split_msg)
+        self.assertEqual(
+            1, self.battle.opponent.side_conditions[constants.HEALING_WISH]
+        )
 
     def test_swordsdance_sets_burn_nullify_volatile_when_burned(self):
         self.battle.generation = "gen1"

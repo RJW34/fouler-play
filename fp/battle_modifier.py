@@ -606,6 +606,18 @@ def heal_or_damage(battle, split_msg):
         logger.info("Setting {}'s item to: {}".format(other_side.active.name, item))
         other_side.active.item = item
 
+    if (
+        len(split_msg) >= 5
+        and split_msg[-1].startswith("[from]")
+        and split_msg[-1].endswith("Healing Wish")
+    ):
+        logger.info(
+            "{} was healed from healing wish, setting side condition to 0".format(
+                side.active.name
+            )
+        )
+        side.side_conditions[constants.HEALING_WISH] = 0
+
     # set the ability for the other side (the side not taking damage, '-damage' only)
     if (
         len(split_msg) == 6
@@ -831,6 +843,12 @@ def move(battle, split_msg):
     if move_name == "struggle":
         logger.info("Not adding struggle to {}'s moves".format(pkmn.name))
         return
+
+    if move_name == "healingwish":
+        logger.info(
+            "{} used healingwish, setting side_condition to 1".format(pkmn.name)
+        )
+        side.side_conditions[constants.HEALING_WISH] = 1
 
     pkmn.moves_used_since_switch_in.add(move_name)
 
