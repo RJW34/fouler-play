@@ -2602,6 +2602,15 @@ class TestStartVolatileStatus(unittest.TestCase):
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
 
+    def test_sets_slowstart_duration_when_slowstart_activates(self):
+        split_msg = ["", "-start", "p2a: Caterpie", "Slow Start"]
+        start_volatile_status(self.battle, split_msg)
+
+        self.assertEqual(
+            6,
+            self.battle.opponent.active.volatile_status_durations[constants.SLOW_START],
+        )
+
     def test_volatile_status_is_set_on_opponent_pokemon(self):
         split_msg = ["", "-start", "p2a: Caterpie", "Encore"]
         start_volatile_status(self.battle, split_msg)
@@ -2833,6 +2842,24 @@ class TestEndVolatileStatus(unittest.TestCase):
         end_volatile_status(self.battle, split_msg)
 
         self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+
+    def test_removes_slowstart_volatile_duration(self):
+        self.battle.opponent.active.volatile_statuses = ["slowstart"]
+        self.battle.opponent.active.volatile_status_durations[constants.SLOW_START] = 1
+        split_msg = [
+            "",
+            "-end",
+            "p2a: Caterpie",
+            "Slow Start",
+            "[silent]",
+        ]
+        end_volatile_status(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+        self.assertEqual(
+            0,
+            self.battle.opponent.active.volatile_status_durations[constants.SLOW_START],
+        )
 
     def test_removes_yawn_volatile_duration(self):
         self.battle.opponent.active.volatile_statuses = ["yawn"]
@@ -3976,6 +4003,15 @@ class TestUpkeep(unittest.TestCase):
 
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
+
+    def test_decrements_slowstart_volatile_duration(self):
+        self.battle.user.active.volatile_statuses.append(constants.SLOW_START)
+        self.battle.user.active.volatile_status_durations[constants.SLOW_START] = 5
+        upkeep(self.battle, "")
+        self.assertEqual(
+            4,
+            self.battle.user.active.volatile_status_durations[constants.SLOW_START],
+        )
 
     def test_increments_lockedmove_end_of_turn(self):
         self.battle.opponent.active.volatile_statuses.append(constants.LOCKED_MOVE)

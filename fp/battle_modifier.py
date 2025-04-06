@@ -1222,6 +1222,10 @@ def start_volatile_status(battle, split_msg):
         )
         pkmn.substitute_hit = False
 
+    if volatile_status == constants.SLOW_START:
+        logger.info("{} started slow start - setting slow_start to 6".format(pkmn.name))
+        pkmn.volatile_status_durations[constants.SLOW_START] = 6
+
     if volatile_status == constants.CONFUSION:
         logger.info("{} got confused, no longer guessing lumberry".format(pkmn.name))
         pkmn.impossible_items.add("lumberry")
@@ -2267,6 +2271,14 @@ def upkeep(battle, _):
                     pkmn.volatile_status_durations[constants.YAWN],
                 )
             )
+        if constants.SLOW_START in pkmn.volatile_statuses:
+            pkmn.volatile_status_durations[constants.SLOW_START] -= 1
+            logger.info(
+                "Decremented slow start duration for {} to {}".format(
+                    pkmn.name, pkmn.volatile_status_durations[constants.SLOW_START]
+                )
+            )
+
         if (
             battle.generation == "gen3"
             and pkmn.status == constants.SLEEP
