@@ -983,9 +983,6 @@ def move(battle, split_msg):
     if move_name == "batonpass":
         side.baton_passing = True
 
-    if move_name == "shedtail":
-        side.shed_tailing = True
-
     # |move|p1a: Slaking|Earthquake|p2a: Heatran
     if pkmn.ability == "truant" or pkmn.name == "slaking":
         if "truant" not in pkmn.volatile_statuses:
@@ -1224,6 +1221,13 @@ def start_volatile_status(battle, split_msg):
         pkmn.volatile_statuses.append(volatile_status)
 
     if volatile_status == constants.SUBSTITUTE:
+        if split_msg[4] == "[from] move: Shed Tail":
+            logger.info(
+                "{} started a substitute from shed tail - setting shed_tailing to True".format(
+                    pkmn.name
+                )
+            )
+            side.shed_tailing = True
         logger.info(
             "{} started a substitute - setting substitute_hit to False".format(
                 pkmn.name
