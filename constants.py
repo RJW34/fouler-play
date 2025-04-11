@@ -198,10 +198,10 @@ SILK_TRAP = "silktrap"
 ENDURE = "endure"
 SPIKY_SHIELD = "spikyshield"
 DYNAMAX = "dynamax"
+SLOW_START = "slowstart"
 TERASTALLIZE = "terastallize"
 TRANSFORM = "transform"
 YAWN = "yawn"
-YAWN_SLEEP_THIS_TURN = "yawnsleepthisturn"
 
 PROTECT_VOLATILE_STATUSES = [PROTECT, BANEFUL_BUNKER, SPIKY_SHIELD, SILK_TRAP, ENDURE]
 

@@ -869,6 +869,21 @@ class TestHealOrDamage(unittest.TestCase):
         self.battle.opponent.active = self.opponent_active
         self.battle.user.active = self.user_active
 
+    def test_heal_from_healing_wish_clears_side_condition(self):
+        # |-heal|p1a: Caterpie|100/100|[from] move: Healing Wish
+        self.battle.opponent.side_conditions[constants.HEALING_WISH] = 1
+        split_msg = [
+            "",
+            "-heal",
+            "p2a: Caterpie",
+            "100/100",
+            "[from] move: Healing Wish",
+        ]
+        heal_or_damage(self.battle, split_msg)
+        self.assertEqual(
+            0, self.battle.opponent.side_conditions[constants.HEALING_WISH]
+        )
+
     def test_sets_ability_when_the_information_is_present(self):
         split_msg = [
             "",
@@ -1454,6 +1469,13 @@ class TestMove(unittest.TestCase):
         # nothing changes
         self.assertEqual("gyarados", self.battle.opponent.active.name)
         self.assertEqual("zoroarkhisui", self.battle.opponent.reserve[0].name)
+
+    def test_sets_healing_wish_side_condition_when_healing_wish_is_used(self):
+        split_msg = ["", "move", "p2a: Caterpie", "Healing Wish", "p2a: Caterpie"]
+        move(self.battle, split_msg)
+        self.assertEqual(
+            1, self.battle.opponent.side_conditions[constants.HEALING_WISH]
+        )
 
     def test_swordsdance_sets_burn_nullify_volatile_when_burned(self):
         self.battle.generation = "gen1"
@@ -2580,6 +2602,15 @@ class TestStartVolatileStatus(unittest.TestCase):
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
 
+    def test_sets_slowstart_duration_when_slowstart_activates(self):
+        split_msg = ["", "-start", "p2a: Caterpie", "Slow Start"]
+        start_volatile_status(self.battle, split_msg)
+
+        self.assertEqual(
+            6,
+            self.battle.opponent.active.volatile_status_durations[constants.SLOW_START],
+        )
+
     def test_volatile_status_is_set_on_opponent_pokemon(self):
         split_msg = ["", "-start", "p2a: Caterpie", "Encore"]
         start_volatile_status(self.battle, split_msg)
@@ -2811,6 +2842,41 @@ class TestEndVolatileStatus(unittest.TestCase):
         end_volatile_status(self.battle, split_msg)
 
         self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+
+    def test_removes_slowstart_volatile_duration(self):
+        self.battle.opponent.active.volatile_statuses = ["slowstart"]
+        self.battle.opponent.active.volatile_status_durations[constants.SLOW_START] = 1
+        split_msg = [
+            "",
+            "-end",
+            "p2a: Caterpie",
+            "Slow Start",
+            "[silent]",
+        ]
+        end_volatile_status(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+        self.assertEqual(
+            0,
+            self.battle.opponent.active.volatile_status_durations[constants.SLOW_START],
+        )
+
+    def test_removes_yawn_volatile_duration(self):
+        self.battle.opponent.active.volatile_statuses = ["yawn"]
+        self.battle.opponent.active.volatile_status_durations[constants.YAWN] = 1
+        split_msg = [
+            "",
+            "-end",
+            "p2a: Caterpie",
+            "Yawn",
+            "[silent]",
+        ]
+        end_volatile_status(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+        self.assertEqual(
+            0, self.battle.opponent.active.volatile_status_durations[constants.YAWN]
+        )
 
     def test_removes_volatile_status_from_opponent(self):
         self.battle.opponent.active.volatile_statuses = ["encore"]
@@ -3938,6 +4004,15 @@ class TestUpkeep(unittest.TestCase):
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
 
+    def test_decrements_slowstart_volatile_duration(self):
+        self.battle.user.active.volatile_statuses.append(constants.SLOW_START)
+        self.battle.user.active.volatile_status_durations[constants.SLOW_START] = 5
+        upkeep(self.battle, "")
+        self.assertEqual(
+            4,
+            self.battle.user.active.volatile_status_durations[constants.SLOW_START],
+        )
+
     def test_increments_lockedmove_end_of_turn(self):
         self.battle.opponent.active.volatile_statuses.append(constants.LOCKED_MOVE)
         self.battle.opponent.active.volatile_status_durations[constants.LOCKED_MOVE] = 0
@@ -4029,11 +4104,11 @@ class TestUpkeep(unittest.TestCase):
         self.assertEqual(2, self.battle.user.active.gen_3_consecutive_sleep_talks)
         self.assertEqual("sleeptalk", self.battle.user.last_used_move.move)
 
-    def test_swaps_out_yawn_for_yawnSleepThisTurn(self):
-        self.battle.user.active.volatile_statuses.append(constants.YAWN_SLEEP_THIS_TURN)
+    def test_increments_yawn_duration(self):
+        self.battle.user.active.volatile_statuses.append(constants.YAWN)
         upkeep(self.battle, "")
-        self.assertNotIn(
-            constants.YAWN_SLEEP_THIS_TURN, self.battle.user.active.volatile_statuses
+        self.assertEqual(
+            1, self.battle.user.active.volatile_status_durations[constants.YAWN]
         )
 
     def test_decrements_trickroom_in_upkeep(self):
@@ -4043,20 +4118,23 @@ class TestUpkeep(unittest.TestCase):
         self.assertEqual(4, self.battle.trick_room_turns_remaining)
 
     def test_swaps_out_yawn_for_yawnSleepThisTurn_opponent(self):
-        self.battle.opponent.active.volatile_statuses.append(
-            constants.YAWN_SLEEP_THIS_TURN
-        )
+        self.battle.opponent.active.volatile_statuses.append(constants.YAWN)
+        self.battle.opponent.active.volatile_status_durations[constants.YAWN] = 0
         upkeep(self.battle, "")
-        self.assertNotIn(
-            constants.YAWN_SLEEP_THIS_TURN,
+        self.assertIn(
+            constants.YAWN,
             self.battle.opponent.active.volatile_statuses,
+        )
+        self.assertEqual(
+            1, self.battle.opponent.active.volatile_status_durations[constants.YAWN]
         )
 
     def test_removes_yawnSleepNextTurn(self):
         self.battle.user.active.volatile_statuses.append(constants.YAWN)
+        self.battle.user.active.volatile_status_durations[constants.YAWN] = 1
         upkeep(self.battle, "")
-        self.assertIn(
-            constants.YAWN_SLEEP_THIS_TURN, self.battle.user.active.volatile_statuses
+        self.assertEqual(
+            0, self.battle.user.active.volatile_status_durations[constants.YAWN]
         )
         self.assertNotIn(constants.YAWN, self.battle.user.active.volatile_statuses)
 

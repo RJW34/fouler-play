@@ -612,6 +612,18 @@ def heal_or_damage(battle, split_msg):
         logger.info("Setting {}'s item to: {}".format(other_side.active.name, item))
         other_side.active.item = item
 
+    if (
+        len(split_msg) >= 5
+        and split_msg[-1].startswith("[from]")
+        and split_msg[-1].endswith("Healing Wish")
+    ):
+        logger.info(
+            "{} was healed from healing wish, setting side condition to 0".format(
+                side.active.name
+            )
+        )
+        side.side_conditions[constants.HEALING_WISH] = 0
+
     # set the ability for the other side (the side not taking damage, '-damage' only)
     if (
         len(split_msg) == 6
@@ -837,6 +849,12 @@ def move(battle, split_msg):
     if move_name == "struggle":
         logger.info("Not adding struggle to {}'s moves".format(pkmn.name))
         return
+
+    if move_name == "healingwish":
+        logger.info(
+            "{} used healingwish, setting side_condition to 1".format(pkmn.name)
+        )
+        side.side_conditions[constants.HEALING_WISH] = 1
 
     pkmn.moves_used_since_switch_in.add(move_name)
 
@@ -1213,6 +1231,10 @@ def start_volatile_status(battle, split_msg):
         )
         pkmn.substitute_hit = False
 
+    if volatile_status == constants.SLOW_START:
+        logger.info("{} started slow start - setting slow_start to 6".format(pkmn.name))
+        pkmn.volatile_status_durations[constants.SLOW_START] = 6
+
     if volatile_status == constants.CONFUSION:
         logger.info("{} got confused, no longer guessing lumberry".format(pkmn.name))
         pkmn.impossible_items.add("lumberry")
@@ -1280,6 +1302,11 @@ def end_volatile_status(battle, split_msg):
             "Removing the volatile status {} from {}".format(volatile_status, pkmn.name)
         )
         remove_volatile(pkmn, volatile_status)
+        if volatile_status in pkmn.volatile_status_durations:
+            pkmn.volatile_status_durations[volatile_status] = 0
+            logger.info(
+                "Setting {}'s {} duration to 0".format(pkmn.name, volatile_status)
+            )
         if volatile_status == constants.DYNAMAX:
             pkmn.hp /= 2
             pkmn.max_hp /= 2
@@ -2235,25 +2262,32 @@ def upkeep(battle, _):
 
         pkmn = side.active
         if constants.YAWN in pkmn.volatile_statuses:
+            previous_duration = pkmn.volatile_status_durations[constants.YAWN]
+            if previous_duration == 0:
+                pkmn.volatile_status_durations[constants.YAWN] = 1
+            elif previous_duration == 1:
+                pkmn.volatile_status_durations[constants.YAWN] = 0
+                remove_volatile(pkmn, constants.YAWN)
+                logger.info("Removed yawn volatile from {}".format(pkmn.name))
+            else:
+                raise ValueError(
+                    "Got yawn duration {} for {}".format(previous_duration, pkmn.name)
+                )
             logger.info(
-                "{} had {} at the end of the turn, swapping out for {}".format(
-                    pkmn.name, constants.YAWN, constants.YAWN_SLEEP_THIS_TURN
+                "{} had yawn at the end of the turn, changed duration from {} to {}".format(
+                    pkmn.name,
+                    previous_duration,
+                    pkmn.volatile_status_durations[constants.YAWN],
                 )
             )
-            pkmn.volatile_statuses = [
-                v for v in pkmn.volatile_statuses if v != constants.YAWN
-            ]
-            pkmn.volatile_statuses.append(constants.YAWN_SLEEP_THIS_TURN)
+        if constants.SLOW_START in pkmn.volatile_statuses:
+            pkmn.volatile_status_durations[constants.SLOW_START] -= 1
+            logger.info(
+                "Decremented slow start duration for {} to {}".format(
+                    pkmn.name, pkmn.volatile_status_durations[constants.SLOW_START]
+                )
+            )
 
-        elif constants.YAWN_SLEEP_THIS_TURN in pkmn.volatile_statuses:
-            logger.info(
-                "Removing {} from {}'s volatiles".format(
-                    constants.YAWN_SLEEP_THIS_TURN, pkmn.name
-                )
-            )
-            pkmn.volatile_statuses = [
-                v for v in pkmn.volatile_statuses if v != constants.YAWN_SLEEP_THIS_TURN
-            ]
         if (
             battle.generation == "gen3"
             and pkmn.status == constants.SLEEP
@@ -2839,7 +2873,6 @@ def update_dataset_possibilities(
         in ["ditto", "shedinja", "terapagosterastal", "meloetta", "meloettapirouette"]
         or damage_dealt.move not in all_move_json
         or all_move_json[damage_dealt.move][constants.CATEGORY] == constants.STATUS
-        or "multihit" in all_move_json[damage_dealt.move]
         or "multiaccuracy" in all_move_json[damage_dealt.move]
         or damage_dealt.move.startswith(constants.HIDDEN_POWER)
         or damage_dealt.percent_damage == 0
