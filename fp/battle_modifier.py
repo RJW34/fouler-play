@@ -1221,7 +1221,7 @@ def start_volatile_status(battle, split_msg):
         pkmn.volatile_statuses.append(volatile_status)
 
     if volatile_status == constants.SUBSTITUTE:
-        if split_msg[4] == "[from] move: Shed Tail":
+        if len(split_msg) >= 5 and split_msg[4] == "[from] move: Shed Tail":
             logger.info(
                 "{} started a substitute from shed tail - setting shed_tailing to True".format(
                     pkmn.name
