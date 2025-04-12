@@ -855,22 +855,41 @@ class TestSwitchOrDrag(unittest.TestCase):
     def test_shed_tail_switching_in_gets_shed_tailing_flag_set_to_false(self):
         self.battle.user.shed_tailing = True
 
-        split_msg = ["", "switch", "p1a: Pikachu", "Pikachu, L100, M", "100/100", "[from] Shed Tail"]
+        split_msg = [
+            "",
+            "switch",
+            "p1a: Pikachu",
+            "Pikachu, L100, M",
+            "100/100",
+            "[from] Shed Tail",
+        ]
         switch_or_drag(self.battle, split_msg)
 
         self.assertFalse(self.battle.user.shed_tailing)
 
     def test_shed_tail_switching_in_only_keeps_substitute(self):
-        self.battle.user.active.volatile_statuses = [constants.SUBSTITUTE, constants.LEECH_SEED]
+        self.battle.user.active.volatile_statuses = [
+            constants.SUBSTITUTE,
+            constants.LEECH_SEED,
+        ]
         self.battle.user.active.boosts[constants.SPEED] = 1
         self.battle.user.active.boosts[constants.ATTACK] = -2
 
-        split_msg = ["", "switch", "p1a: Pikachu", "Pikachu, L100, M", "100/100", "[from] Shed Tail"]
+        split_msg = [
+            "",
+            "switch",
+            "p1a: Pikachu",
+            "Pikachu, L100, M",
+            "100/100",
+            "[from] Shed Tail",
+        ]
         switch_or_drag(self.battle, split_msg)
 
         self.assertEqual(0, self.battle.user.active.boosts[constants.SPEED])
         self.assertEqual(0, self.battle.user.active.boosts[constants.ATTACK])
-        self.assertEqual([constants.SUBSTITUTE], self.battle.user.active.volatile_statuses)
+        self.assertEqual(
+            [constants.SUBSTITUTE], self.battle.user.active.volatile_statuses
+        )
 
 
 class TestHealOrDamage(unittest.TestCase):
