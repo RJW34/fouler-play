@@ -274,6 +274,14 @@ class TestSwitchOrDrag(unittest.TestCase):
         self.assertEqual("caterpie", self.battle.opponent.active.name)
         self.assertIn("intimidate", self.battle.opponent.active.impossible_abilities)
 
+    def test_does_not_add_pressure_to_impossible_abilities_gen3(self):
+        self.battle.generation = "gen3"
+        split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]
+        switch_or_drag(self.battle, split_msg)
+
+        self.assertEqual("caterpie", self.battle.opponent.active.name)
+        self.assertNotIn("pressure", self.battle.opponent.active.impossible_abilities)
+
     def test_does_not_add_impossible_ability_if_other_side_has_neutralizinggas(self):
         self.battle.user.active.ability = "neutralizinggas"
         split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]
