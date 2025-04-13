@@ -255,9 +255,9 @@ def sample_pokemon_moveset_with_known_pkmn_set(pkmn: Pokemon, pkmn_set: PokemonS
     # 2: Use SmogonSets to sample a moveset
     smogon_moves = [
         m
-        for m in SmogonSets.get_raw_pkmn_sets_from_pkmn_name(pkmn.name, pkmn.base_name)[
-            constants.MOVES
-        ]
+        for m in SmogonSets.get_raw_pkmn_sets_from_pkmn_name(
+            pkmn.name, pkmn.base_name
+        ).get(constants.MOVES, [])
         if m[0] not in pkmn_known_moves
     ]
     moves_adjusted_probabilities = adjust_probabilities_for_sampling(
