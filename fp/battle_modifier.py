@@ -741,7 +741,8 @@ def move(battle, split_msg):
             actual_zoroark = zoroark_from_reserves
 
         elif (
-            zoroark_from_reserves is None
+            battle.generation not in constants.NO_TEAM_PREVIEW_GENS
+            and zoroark_from_reserves is None
             and move_name
             in RandomBattleTeamDatasets.get_all_possible_moves(zoroark_hisui)
         ):
@@ -752,7 +753,8 @@ def move(battle, split_msg):
             side.reserve.append(actual_zoroark)
 
         elif (
-            zoroark_from_reserves is None
+            battle.generation not in constants.NO_TEAM_PREVIEW_GENS
+            and zoroark_from_reserves is None
             and move_name
             in RandomBattleTeamDatasets.get_all_possible_moves(zoroark_regular)
         ):
