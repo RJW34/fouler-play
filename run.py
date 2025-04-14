@@ -63,7 +63,7 @@ async def run_foul_play():
     wins = 0
     losses = 0
     while True:
-        team = load_team(FoulPlayConfig.team)
+        team, file_name = load_team(FoulPlayConfig.team)
         if FoulPlayConfig.bot_mode == constants.CHALLENGE_USER:
             await ps_websocket_client.challenge_user(
                 FoulPlayConfig.user_to_challenge, FoulPlayConfig.pokemon_mode, team
@@ -82,8 +82,10 @@ async def run_foul_play():
         winner = await pokemon_battle(ps_websocket_client, FoulPlayConfig.pokemon_mode)
         if winner == FoulPlayConfig.username:
             wins += 1
+            logger.info("Won with team: {}".format(file_name))
         else:
             losses += 1
+            logger.info("Lost with team: {}".format(file_name))
 
         logger.info("W: {}\tL: {}".format(wins, losses))
         check_dictionaries_are_unmodified(original_pokedex, original_move_json)
