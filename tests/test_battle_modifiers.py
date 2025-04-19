@@ -633,13 +633,15 @@ class TestSwitchOrDrag(unittest.TestCase):
         user_active = self.battle.user.active
         already_seen_pokemon = Pokemon("weedle", 100)
         self.battle.user.reserve.append(already_seen_pokemon)
-        user_active.volatile_statuses = ["flashfire", "encore"]
+        user_active.volatile_statuses = ["flashfire", "encore", "taunt"]
         user_active.volatile_status_durations["encore"] = 1
+        user_active.volatile_status_durations["taunt"] = 2
         split_msg = ["", "switch", "p1a: weedle", "Weedle, L100, M", "100/100"]
         switch_or_drag(self.battle, split_msg)
 
         self.assertEqual([], user_active.volatile_statuses)
         self.assertEqual(0, user_active.volatile_status_durations["encore"])
+        self.assertEqual(0, user_active.volatile_status_durations["taunt"])
 
     def test_already_seen_pokemon_is_the_same_object_as_the_one_in_the_reserve(self):
         already_seen_pokemon = Pokemon("weedle", 100)
@@ -1786,6 +1788,15 @@ class TestMove(unittest.TestCase):
             1, self.battle.opponent.active.volatile_status_durations["encore"]
         )
 
+    def test_increments_taunt_duration_when_using_move_having_been_taunted(self):
+        self.battle.opponent.active.volatile_statuses = [constants.TAUNT]
+        self.battle.opponent.active.volatile_status_durations[constants.TAUNT] = 0
+        split_msg = ["", "move", "p2a: Caterpie", "Tackle"]
+        move(self.battle, split_msg)
+        self.assertEqual(
+            1, self.battle.opponent.active.volatile_status_durations[constants.TAUNT]
+        )
+
     def test_removes_destinybond_if_it_exists_in_volatiles_when_using_destinybond(self):
         self.battle.opponent.active.volatile_statuses = ["destinybond"]
         split_msg = ["", "move", "p2a: Caterpie", "Destiny Bond"]
@@ -2924,6 +2935,24 @@ class TestEndVolatileStatus(unittest.TestCase):
         self.assertEqual(
             0,
             self.battle.opponent.active.volatile_status_durations[constants.SLOW_START],
+        )
+
+    def test_removes_taunt_volatile_duration(self):
+        self.battle.opponent.active.volatile_statuses = ["taunt"]
+        self.battle.opponent.active.volatile_status_durations[constants.TAUNT] = 1
+        split_msg = [
+            "",
+            "-end",
+            "p2a: Caterpie",
+            "Taunt",
+            "[silent]",
+        ]
+        end_volatile_status(self.battle, split_msg)
+
+        self.assertEqual([], self.battle.opponent.active.volatile_statuses)
+        self.assertEqual(
+            0,
+            self.battle.opponent.active.volatile_status_durations[constants.TAUNT],
         )
 
     def test_removes_yawn_volatile_duration(self):
@@ -4068,6 +4097,24 @@ class TestUpkeep(unittest.TestCase):
 
         self.user_active = Pokemon("weedle", 100)
         self.battle.user.active = self.user_active
+
+    def test_gen3_increments_taunt_duration_end_of_turn(self):
+        self.battle.generation = "gen3"
+        self.battle.opponent.active.volatile_statuses = [constants.TAUNT]
+        self.battle.opponent.active.volatile_status_durations[constants.TAUNT] = 0
+        upkeep(self.battle, "")
+        self.assertEqual(
+            1, self.battle.opponent.active.volatile_status_durations[constants.TAUNT]
+        )
+
+    def test_gen5_does_not_increment_taunt_duration_end_of_turn(self):
+        self.battle.generation = "gen5"
+        self.battle.opponent.active.volatile_statuses = [constants.TAUNT]
+        self.battle.opponent.active.volatile_status_durations[constants.TAUNT] = 0
+        upkeep(self.battle, "")
+        self.assertEqual(
+            0, self.battle.opponent.active.volatile_status_durations[constants.TAUNT]
+        )
 
     def test_decrements_slowstart_volatile_duration(self):
         self.battle.user.active.volatile_statuses.append(constants.SLOW_START)

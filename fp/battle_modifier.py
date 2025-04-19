@@ -846,6 +846,17 @@ def move(battle, split_msg):
             )
         )
 
+    if (
+        "taunt" in pkmn.volatile_statuses
+        and battle.generation not in constants.TAUNT_DURATION_INCREMENT_END_OF_TURN
+    ):
+        pkmn.volatile_status_durations[constants.TAUNT] += 1
+        logger.info(
+            "Incrementing taunt duration for {} to {}".format(
+                pkmn.name, pkmn.volatile_status_durations[constants.TAUNT]
+            )
+        )
+
     # remove volatile status if they have it
     # this is for preparation moves like Phantom Force
     if move_name in pkmn.volatile_statuses:
@@ -2191,6 +2202,18 @@ def upkeep(battle, _):
 
     for side in [battle.user, battle.opponent]:
         side_string = "opponent" if side == battle.opponent else "user"
+
+        if (
+            "taunt" in side.active.volatile_statuses
+            and battle.generation in constants.TAUNT_DURATION_INCREMENT_END_OF_TURN
+        ):
+            side.active.volatile_status_durations[constants.TAUNT] += 1
+            logger.info(
+                "Incrementing taunt duration for {} to {}".format(
+                    side_string,
+                    side.active.volatile_status_durations[constants.TAUNT],
+                )
+            )
 
         if constants.LOCKED_MOVE in side.active.volatile_statuses:
             side.active.volatile_status_durations[constants.LOCKED_MOVE] += 1
