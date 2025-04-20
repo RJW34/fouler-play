@@ -309,9 +309,10 @@ def sample_pokemon(pkmn: Pokemon):
     # 1: TeamDatasets is not emptied and `get_all_remaining_sets` returned at least one set
     # Note: TeamDatasets are not sampled according to their counts
     # because the counts are not indicative of the actual distribution of sets
-    # Also skip this step an amount of the time to get some variety
+    # Skip this step an amount of the time to get some variety
+    # if at least 1 move is known
     remaining_team_sets = TeamDatasets.get_all_remaining_sets(pkmn)
-    if remaining_team_sets and random.random() < 0.75:
+    if remaining_team_sets and (not pkmn.moves or random.random() < 0.75):
         sampled_set = deepcopy(random.choice(remaining_team_sets))
         populate_pkmn_from_set(pkmn, sampled_set, source="teamdatasets-full")
         return
@@ -392,9 +393,9 @@ def sample_standardbattle_pokemon(existing_pokemon: list[Pokemon]) -> Pokemon:
             existing_pokemon_names,
             SmogonSets.all_pkmn_counts,
         )
-        selected_pkmn_name = random.choices(
-            list(sample_weights.keys()), weights=list(sample_weights.values())
-        )[0]
+        keys = list(sample_weights.keys())[:50]
+        values = list(sample_weights.values())[:50]
+        selected_pkmn_name = random.choices(keys, weights=values)[0]
         if selected_pkmn_name in existing_pokemon_names:
             ok = False
 
