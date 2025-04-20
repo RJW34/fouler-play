@@ -63,18 +63,20 @@ async def run_foul_play():
     wins = 0
     losses = 0
     while True:
-        team, file_name = load_team(FoulPlayConfig.team)
+        team_export, team_dict, file_name = load_team(FoulPlayConfig.team)
         if FoulPlayConfig.bot_mode == constants.CHALLENGE_USER:
             await ps_websocket_client.challenge_user(
-                FoulPlayConfig.user_to_challenge, FoulPlayConfig.pokemon_mode, team
+                FoulPlayConfig.user_to_challenge,
+                FoulPlayConfig.pokemon_mode,
+                team_export,
             )
         elif FoulPlayConfig.bot_mode == constants.ACCEPT_CHALLENGE:
             await ps_websocket_client.accept_challenge(
-                FoulPlayConfig.pokemon_mode, team, FoulPlayConfig.room_name
+                FoulPlayConfig.pokemon_mode, team_export, FoulPlayConfig.room_name
             )
         elif FoulPlayConfig.bot_mode == constants.SEARCH_LADDER:
             await ps_websocket_client.search_for_match(
-                FoulPlayConfig.pokemon_mode, team
+                FoulPlayConfig.pokemon_mode, team_export
             )
         else:
             raise ValueError("Invalid Bot Mode: {}".format(FoulPlayConfig.bot_mode))

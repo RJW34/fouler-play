@@ -1,15 +1,15 @@
 import random
 import os
-from .team_converter import export_to_packed
+from .team_converter import export_to_packed, export_to_dict
 
-TEAM_JSON_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "teams")
+TEAM_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "teams")
 
 
 def load_team(name):
     if name is None:
         return "null"
 
-    path = os.path.join(TEAM_JSON_DIR, "{}".format(name))
+    path = os.path.join(TEAM_DIR, "{}".format(name))
     if os.path.isdir(path):
         team_file_names = list()
         for f in os.listdir(path):
@@ -24,6 +24,10 @@ def load_team(name):
         raise ValueError("Path must be file or dir: {}".format(name))
 
     with open(file_path, "r") as f:
-        team_json = f.read()
+        team_export = f.read()
 
-    return export_to_packed(team_json), os.path.basename(file_path)
+    return (
+        export_to_packed(team_export),
+        export_to_dict(team_export),
+        os.path.basename(file_path),
+    )
