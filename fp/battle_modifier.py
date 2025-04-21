@@ -524,6 +524,41 @@ def switch_or_drag(battle, split_msg, switch_or_drag="switch"):
             # gen3 pressure is not revealed on switch-in
             continue
 
+        if (
+            (
+                ability == "sandstream"
+                and battle.weather
+                in [constants.SAND, constants.HEAVY_RAIN, constants.DESOLATE_LAND]
+            )
+            or (
+                ability == "drought"
+                and battle.weather
+                in [constants.SUN, constants.HEAVY_RAIN, constants.DESOLATE_LAND]
+            )
+            or (
+                ability == "drizzle"
+                and battle.weather
+                in [constants.RAIN, constants.HEAVY_RAIN, constants.DESOLATE_LAND]
+            )
+            or (
+                ability == "snowwarning"
+                and battle.weather
+                in [
+                    constants.HAIL,
+                    constants.SNOW,
+                    constants.HEAVY_RAIN,
+                    constants.DESOLATE_LAND,
+                ]
+            )
+        ):
+            logger.info(
+                "Not adding {} to {}'s impossible abilities because the weather would not have triggered".format(
+                    ability,
+                    pkmn.name,
+                )
+            )
+            continue
+
         if ability not in pkmn.impossible_abilities and (
             other_side.active is not None
             and other_side.active.ability != "neutralizinggas"

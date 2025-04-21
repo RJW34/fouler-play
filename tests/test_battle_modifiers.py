@@ -274,6 +274,24 @@ class TestSwitchOrDrag(unittest.TestCase):
         self.assertEqual("caterpie", self.battle.opponent.active.name)
         self.assertIn("intimidate", self.battle.opponent.active.impossible_abilities)
 
+    def test_does_not_add_sandstream_to_impossible_abilities_if_sand_active(self):
+        split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]
+        self.battle.weather = constants.SAND
+        switch_or_drag(self.battle, split_msg)
+
+        self.assertEqual("caterpie", self.battle.opponent.active.name)
+        self.assertNotIn("sandstream", self.battle.opponent.active.impossible_abilities)
+
+    def test_does_not_add_sandstream_to_impossible_abilities_if_heavy_rain_is_active(
+        self,
+    ):
+        split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]
+        self.battle.weather = constants.HEAVY_RAIN
+        switch_or_drag(self.battle, split_msg)
+
+        self.assertEqual("caterpie", self.battle.opponent.active.name)
+        self.assertNotIn("sandstream", self.battle.opponent.active.impossible_abilities)
+
     def test_does_not_add_pressure_to_impossible_abilities_gen3(self):
         self.battle.generation = "gen3"
         split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]
