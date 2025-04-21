@@ -97,26 +97,15 @@ class BattleBot(Battle):
         opponent_active_num_moves = len(self.opponent.active.moves)
         in_time_pressure = self.time_remaining is not None and self.time_remaining <= 60
 
-        # team preview or opponent has no revealed moves
-        # search a lot of battles shallowly
-        if self.team_preview or (
-            self.opponent.active.hp > 0 and opponent_active_num_moves == 0
+        if (
+            self.team_preview
+            or (self.opponent.active.hp > 0 and opponent_active_num_moves == 0)
+            or opponent_active_num_moves < 3
         ):
-            num_battles_multiplier = 4 if in_time_pressure else 8
+            num_battles_multiplier = 1 if in_time_pressure else 2
             return FoulPlayConfig.parallelism * num_battles_multiplier, int(
-                FoulPlayConfig.search_time_ms // 4
+                FoulPlayConfig.search_time_ms
             )
-
-        # opponent has few pokemon remaining and few revealed moves on their active
-        # search many battles deeply if time allows
-        elif opponent_active_num_moves < 3:
-            search_time_divisor = 2 if in_time_pressure else 1
-            return FoulPlayConfig.parallelism * 2, int(
-                FoulPlayConfig.search_time_ms // search_time_divisor
-            )
-
-        # opponent has few pokemon remaining and lots of revealed moves on their active
-        # search few battles deeply
         else:
             return FoulPlayConfig.parallelism, FoulPlayConfig.search_time_ms
 
