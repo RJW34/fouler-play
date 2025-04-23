@@ -7,7 +7,7 @@ TEAM_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "teams")
 
 def load_team(name):
     if name is None:
-        return "null"
+        return "null", "", ""
 
     path = os.path.join(TEAM_DIR, "{}".format(name))
     if os.path.isdir(path):
