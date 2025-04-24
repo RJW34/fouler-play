@@ -14114,7 +14114,6 @@
         "priority": 0,
         "secondary": {
             "chance": 100,
-            "dustproof": true,
             "volatileStatus": "sparklingaria"
         },
         "target": "allAdjacent",
