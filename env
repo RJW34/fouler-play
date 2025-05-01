@@ -8,4 +8,4 @@ RUN_COUNT=1
 
 USER_TO_CHALLENGE=SomeOtherPerson
 TEAM_NAME=gen8/ou/clef_sand
-SAVE_REPLAY=False
+SAVE_REPLAY=Never
