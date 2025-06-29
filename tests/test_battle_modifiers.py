@@ -3,7 +3,13 @@ import json
 from collections import defaultdict
 
 import constants
-from data.pkmn_sets import TeamDatasets, RandomBattleTeamDatasets, PredictedPokemonSet, PokemonSet, PokemonMoveset
+from data.pkmn_sets import (
+    TeamDatasets,
+    RandomBattleTeamDatasets,
+    PredictedPokemonSet,
+    PokemonSet,
+    PokemonMoveset,
+)
 from fp.helpers import calculate_stats
 
 from fp.battle import Battle
@@ -1358,14 +1364,14 @@ class TestMove(unittest.TestCase):
                 pkmn_set=PokemonSet(
                     ability="illusion",
                     item="lifeorb",
-                    nature= "timid",
+                    nature="timid",
                     evs=(0, 0, 0, 252, 4, 252),
                     tera_type="ghost",
-                    count=1
+                    count=1,
                 ),
                 pkmn_moveset=PokemonMoveset(
                     moves=["nastyplot", "terablast", "shadowball", "protect"],
-                )
+                ),
             )
         ]
 
