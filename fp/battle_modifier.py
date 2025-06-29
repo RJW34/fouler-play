@@ -12,7 +12,7 @@ from data.pkmn_sets import (
     TeamDatasets,
     PredictedPokemonSet,
 )
-from fp.battle import Pokemon, Battler
+from fp.battle import Pokemon, Battler, Battle
 from fp.battle import LastUsedMove
 from fp.battle import DamageDealt
 from fp.battle import StatRange
@@ -3197,10 +3197,26 @@ def check_heavydutyboots(battle, msg_lines):
             side_to_check.active.impossible_items.add(constants.HEAVY_DUTY_BOOTS)
 
 
-def update_battle(battle, msg):
+def update_battle(battle: Battle, msg: str):
     msg_lines = msg.split("\n")
+    for line in msg_lines:
+        split_msg = line.split("|")
+        if len(split_msg) < 2:
+            continue
 
-    action = None
+        action = split_msg[1].strip()
+        if action == "request":
+            request(battle, split_msg)
+            process_battle_updates(battle)
+            return not battle.wait
+        else:
+            battle.msg_list.append(line)
+
+    return False
+
+
+def process_battle_updates(battle: Battle):
+    msg_lines = battle.msg_list
     check_speed_ranges(battle, msg_lines)
     for i, line in enumerate(msg_lines):
         split_msg = line.split("|")
@@ -3210,7 +3226,6 @@ def update_battle(battle, msg):
         action = split_msg[1].strip()
 
         battle_modifiers_lookup = {
-            "request": request,
             "switch": switch,
             "faint": faint,
             "-fail": fail,
@@ -3281,14 +3296,7 @@ def update_battle(battle, msg):
         elif action == "switch" and is_opponent(battle, split_msg):
             check_heavydutyboots(battle, msg_lines[i + 1 :])
 
-        if action == "turn":
-            return True
-
-    if action in ["inactive", "updatesearch", "c", "l", "j", "player"]:
-        return False
-
-    if action != "request":
-        return battle.force_switch
+    battle.msg_list.clear()
 
 
 async def async_update_battle(battle, msg):

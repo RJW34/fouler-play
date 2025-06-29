@@ -55,7 +55,7 @@ from fp.battle_modifier import check_heavydutyboots
 from fp.battle_modifier import get_damage_dealt
 from fp.battle_modifier import singleturn
 from fp.battle_modifier import transform
-from fp.battle_modifier import update_battle
+from fp.battle_modifier import process_battle_updates
 from fp.battle_modifier import upkeep
 from fp.battle_modifier import inactive
 
@@ -5497,32 +5497,32 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
 
     def test_basic_case_of_switching_in_and_not_taking_damage_sets_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.STEALTH_ROCK] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|90/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("heavydutyboots", self.battle.opponent.active.item)
 
     def test_parser_deals_with_empty_line(self):
         self.battle.opponent.side_conditions[constants.STEALTH_ROCK] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|90/100",
             "",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("heavydutyboots", self.battle.opponent.active.item)
 
     def test_parser_deals_with_empty_line_with_toxicspikes(self):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Pikachu|Pikachu, M|100/100",
             "",
             "|move|p1a: Caterpie|Tackle",
@@ -5530,7 +5530,7 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
             "",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("heavydutyboots", self.battle.opponent.active.item)
 
@@ -5551,13 +5551,13 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
         self,
     ):
         self.battle.opponent.side_conditions[constants.STEALTH_ROCK] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|switch|p1a: Weedle|Weedle, M|100/100",
             "|-damage|p1a: Weedle|88/100|[from] Stealth Rock",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("heavydutyboots", self.battle.opponent.active.item)
 
@@ -5565,14 +5565,14 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
         self,
     ):
         self.battle.opponent.side_conditions[constants.STEALTH_ROCK] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|-damage|p2a: Weedle|88/100|[from] Stealth Rock"
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
@@ -5580,14 +5580,14 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
         self,
     ):
         self.battle.opponent.side_conditions[constants.STEALTH_ROCK] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|-damage|p2a: Weedle|88/100|[from] Stealth Rock"
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertIn(
             constants.HEAVY_DUTY_BOOTS, self.battle.opponent.active.impossible_items
@@ -5595,37 +5595,37 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
 
     def test_not_taking_damage_from_spikes_sets_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.SPIKES] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("heavydutyboots", self.battle.opponent.active.item)
 
     def test_taking_damage_from_spikes_does_not_set_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.SPIKES] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|-damage|p2a: Weedle|88/100|[from] Spikes" "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_taking_damage_from_spikes_sets_heavydutyboots_to_impossible(self):
         self.battle.opponent.side_conditions[constants.SPIKES] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|-damage|p2a: Weedle|88/100|[from] Spikes" "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertIn(
             constants.HEAVY_DUTY_BOOTS, self.battle.opponent.active.impossible_items
@@ -5634,13 +5634,13 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
     def test_not_getting_poisoned_by_toxicspikes_sets_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
         self.battle.opponent.active = Pokemon("pikachu", 100)
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Pikachu|Pikachu, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Pikachu|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("heavydutyboots", self.battle.opponent.active.item)
 
@@ -5651,39 +5651,39 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
         pikachu = Pokemon("pikachu", 100)
         pikachu.status = constants.POISON
         self.battle.opponent.reserve.append(pikachu)
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Pikachu|Pikachu, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Pikachu|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_does_not_infer_headydutyboots_if_levitate_is_possible_with_tspikes(self):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
         self.battle.opponent.active = Pokemon("azelf", 100)
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Azelf|Azelf, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Azelf|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_does_not_infer_headydutyboots_if_levitate_is_possible_with_spikes(self):
         self.battle.opponent.side_conditions[constants.SPIKES] = 1
         self.battle.opponent.active = Pokemon("azelf", 100)
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Azelf|Azelf, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Azelf|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
@@ -5692,27 +5692,27 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
     ):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
         self.battle.opponent.active = Pokemon("pikachu", 100)
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Pikachu|Pikachu, M|100/100",
             "|-status|p2a: Pikachu|tox",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Pikachu|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_getting_toxiced_by_toxic_afterwards_still_sets_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
         self.battle.opponent.active = Pokemon("pikachu", 100)
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Pikachu|Pikachu, M|100/100",
             "|move|p1a: Caterpie|Toxic",
             "|-status|p2a: Pikachu|tox",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("heavydutyboots", self.battle.opponent.active.item)
 
@@ -5720,37 +5720,37 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
         self,
     ):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p1a: Pikachu|Pikachu, M|100/100",
             "|switch|p2a: Pikachu|Pikachu, M|100/100",
             "|",
             "|-status|p2a: Pikachu|tox|[from] item: Toxic Orb",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("toxicorb", self.battle.opponent.active.item)
 
     def test_having_airballoon_does_notcause_a_heavydutyboost_inferral(self):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
 
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Pikachu|Pikachu, M|100/100",
             "|-item|p2a: Pikachu|Air Balloon",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("airballoon", self.battle.opponent.active.item)
 
     def test_flying_type_does_not_trigger_heavydutyboots_check_on_toxicspikes(self):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
 
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Pidgey|Pidgey, M|100/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
@@ -5764,11 +5764,11 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
         self.battle.opponent.reserve.append(caterpie)
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
 
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Caterpie|Caterpie, M|100/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
@@ -5782,11 +5782,11 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
         self.battle.opponent.reserve.append(caterpie)
         self.battle.opponent.side_conditions[constants.SPIKES] = 1
 
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Caterpie|Caterpie, M|100/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
@@ -5798,36 +5798,36 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
         self.battle.opponent.reserve.append(caterpie)
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
 
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Caterpie|Caterpie, M|100/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_getting_poisoned_by_toxicspikes_does_not_set_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.TOXIC_SPIKES] = 1
         self.battle.opponent.active = Pokemon("pikachu", 100)
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Pikachu|Pikachu, M|100/100",
             "|-status|p2a: Pikachu|psn",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Pikachu|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_nothing_is_set_when_there_are_no_hazards_on_the_field(self):
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
@@ -5836,39 +5836,39 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
     ):
         # clefable could have magicguard so HDB should not be set even though no damage was taken on switch
         self.battle.opponent.active = Pokemon("Clefable", 100)
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Clefable|Clefable, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Clefable|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_being_caught_in_stickyweb_does_not_set_set_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.STICKY_WEB] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|-activate|p2a: Weedle|move: Sticky Web",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_being_caught_in_stickyweb_sets_heavydutyboots_to_impossible(self):
         self.battle.opponent.side_conditions[constants.STICKY_WEB] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|-activate|p2a: Weedle|move: Sticky Web",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertIn(
             constants.HEAVY_DUTY_BOOTS, self.battle.opponent.active.impossible_items
@@ -5876,13 +5876,13 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
 
     def test_not_being_caught_in_stickyweb_sets_item_to_heavydutyboots(self):
         self.battle.opponent.side_conditions[constants.STICKY_WEB] = 1
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Weedle|Weedle, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Weedle|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertEqual("heavydutyboots", self.battle.opponent.active.item)
 
@@ -5891,13 +5891,13 @@ class TestCheckHeavyDutyBoots(unittest.TestCase):
     ):
         self.battle.opponent.side_conditions[constants.SPIKES] = 1
         self.battle.opponent.reserve.append(Pokemon("Clefable", 100))
-        messages = [
+        self.battle.msg_list = [
             "|switch|p2a: Clefable|Clefable, M|100/100",
             "|move|p1a: Caterpie|Tackle",
             "|-damage|p2a: Clefable|78/100",
         ]
 
-        update_battle(self.battle, "\n".join(messages))
+        process_battle_updates(self.battle)
 
         self.assertNotEqual("heavydutyboots", self.battle.opponent.active.item)
         self.assertNotIn("heavydutyboots", self.battle.opponent.active.impossible_items)
@@ -6432,16 +6432,16 @@ class TestInactiveOff(unittest.TestCase):
 
     def test_turns_timer_off(self):
         self.battle.time_remaining = 60
-        msg = (
-            "|move|p2a: Caterpie|Tackle|\n"
-            "|-damage|p1a: Caterpie|186/252\n"
-            "|move|p1a: Caterpie|Tackle|\n"
-            "|-damage|p2a: Caterpie|85/100\n"
-            "|upkeep\n"
-            "|inactiveoff|Battle timer is now OFF.\n"  # this line is being tested
-            "|turn|4"
-        )
-        update_battle(self.battle, msg)
+        self.battle.msg_list = [
+            "|move|p2a: Caterpie|Tackle|",
+            "|-damage|p1a: Caterpie|186/252",
+            "|move|p1a: Caterpie|Tackle|",
+            "|-damage|p2a: Caterpie|85/100",
+            "|upkeep",
+            "|inactiveoff|Battle timer is now OFF.",  # this line is being tested
+            "|turn|4",
+        ]
+        process_battle_updates(self.battle)
         self.assertIsNone(self.battle.time_remaining)
 
 
@@ -6819,8 +6819,8 @@ class TestNoInit(unittest.TestCase):
         self.battle.battle_tag = "original_tag"
         new_battle_tag = "new_battle_tag"
 
-        msg = "|noinit|rename|{}".format(new_battle_tag)
+        self.battle.msg_list = ["|noinit|rename|{}".format(new_battle_tag)]
 
-        update_battle(self.battle, msg)
+        process_battle_updates(self.battle)
 
         self.assertEqual(self.battle.battle_tag, new_battle_tag)

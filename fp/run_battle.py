@@ -9,9 +9,9 @@ from data.pkmn_sets import RandomBattleTeamDatasets, TeamDatasets
 from data.pkmn_sets import SmogonSets
 import constants
 from config import FoulPlayConfig, SaveReplay
-from fp.battle import LastUsedMove, Pokemon
+from fp.battle import LastUsedMove, Pokemon, Battle
 from fp.battle_bots.helpers import format_decision
-from fp.battle_modifier import async_update_battle
+from fp.battle_modifier import async_update_battle, process_battle_updates
 from fp.helpers import normalize_name
 
 from fp.websocket_client import PSWebsocketClient
@@ -37,7 +37,7 @@ def extract_battle_factory_tier_from_msg(msg):
 
 async def async_pick_move(battle):
     battle_copy = deepcopy(battle)
-    if battle_copy.request_json:
+    if not battle_copy.team_preview:
         battle_copy.user.update_from_request_json(battle_copy.request_json)
 
     loop = asyncio.get_event_loop()
@@ -91,73 +91,77 @@ async def get_battle_tag_and_opponent(ps_websocket_client: PSWebsocketClient):
             return battle_tag, opponent_name
 
 
-async def initialize_battle_with_tag(
-    ps_websocket_client: PSWebsocketClient, set_request_json=True
+async def start_battle_common(
+    ps_websocket_client: PSWebsocketClient, pokemon_battle_type
 ):
-    battle_module = importlib.import_module(
-        "fp.battle_bots.{}.main".format(FoulPlayConfig.battle_bot_module)
-    )
-
     battle_tag, opponent_name = await get_battle_tag_and_opponent(ps_websocket_client)
-
     if FoulPlayConfig.log_to_file:
         FoulPlayConfig.file_log_handler.do_rollover(
             "{}_{}.log".format(battle_tag, opponent_name)
         )
 
+    battle = importlib.import_module(
+        "fp.battle_bots.{}.main".format(FoulPlayConfig.battle_bot_module)
+    ).BattleBot(battle_tag)
+    battle.opponent.account_name = opponent_name
+    battle.generation = pokemon_battle_type[:4]
+
+    # wait until the opponent's identifier is received. This will be `p1` or `p2`.
+    #
+    # e.g.
+    # '>battle-gen9randombattle-44733
+    # |player|p1|OpponentName|2|'
     while True:
         msg = await ps_websocket_client.receive_message()
-        split_msg = msg.split("|")
-        if split_msg[1].strip() == "request" and split_msg[2].strip():
-            user_json = json.loads(split_msg[2].strip("'"))
-            user_id = user_json[constants.SIDE][constants.ID]
-            opponent_id = constants.ID_LOOKUP[user_id]
-            battle = battle_module.BattleBot(battle_tag)
-            battle.opponent.name = opponent_id
-            battle.opponent.account_name = opponent_name
+        if "|player|" in msg and battle.opponent.account_name in msg:
+            battle.opponent.name = msg.split("|")[2]
+            battle.user.name = constants.ID_LOOKUP[battle.opponent.name]
+            break
 
-            if set_request_json:
-                battle.request_json = user_json
-
-            return battle, opponent_id, user_json
+    return battle, msg
 
 
-async def read_messages_until_first_pokemon_is_seen(
-    ps_websocket_client, battle, opponent_id, user_json
+async def get_first_request_json(
+    ps_websocket_client: PSWebsocketClient, battle: Battle
 ):
-    # keep reading messages until the opponent's first pokemon is seen
-    # this is run when starting non team-preview battles
     while True:
         msg = await ps_websocket_client.receive_message()
-        if constants.START_STRING in msg:
-            split_msg = msg.split(constants.START_STRING)[-1].split("\n")
-            for line in split_msg:
-                if opponent_id in line and constants.SWITCH_STRING in line:
-                    battle.start_non_team_preview_battle(user_json, line)
-
-                # don't update the battle if the line contains a switch (this would be the bot's switch)
-                # the first switch-in of randombattles will be handled by `start_non_team_preview_battle`
-                elif battle.started and not line.startswith("|switch|"):
-                    await async_update_battle(battle, line)
-
+        msg_split = msg.split("|")
+        if msg_split[1].strip() == "request" and msg_split[2].strip():
+            user_json = json.loads(msg_split[2].strip("'"))
+            battle.request_json = user_json
+            battle.user.initialize_first_turn_user_from_json(user_json)
+            battle.rqid = user_json[constants.RQID]
             return
 
 
 async def start_random_battle(
     ps_websocket_client: PSWebsocketClient, pokemon_battle_type
 ):
-    battle, opponent_id, user_json = await initialize_battle_with_tag(
-        ps_websocket_client
-    )
+    battle, msg = await start_battle_common(ps_websocket_client, pokemon_battle_type)
     battle.battle_type = constants.RANDOM_BATTLE
-    battle.generation = pokemon_battle_type[:4]
     RandomBattleTeamDatasets.initialize(battle.generation)
 
-    await read_messages_until_first_pokemon_is_seen(
-        ps_websocket_client, battle, opponent_id, user_json
-    )
+    while True:
+        if constants.START_STRING in msg:
+            battle.started = True
 
-    # first move needs to be picked here
+            # hold onto some messages to apply after we get the request JSON
+            # omit the bot's switch-in message because we won't need that
+            # parsing the request JSON will set the bot's active pkmn
+            battle.msg_list = [
+                m
+                for m in msg.split(constants.START_STRING)[1].strip().split("\n")
+                if not (m.startswith("|switch|{}".format(battle.user.name)))
+            ]
+            break
+        msg = await ps_websocket_client.receive_message()
+
+    await get_first_request_json(ps_websocket_client, battle)
+
+    # apply the messages that were held onto
+    process_battle_updates(battle)
+
     best_move = await async_pick_move(battle)
     await ps_websocket_client.send_message(battle.battle_tag, best_move)
 
@@ -167,34 +171,45 @@ async def start_random_battle(
 async def start_standard_battle(
     ps_websocket_client: PSWebsocketClient, pokemon_battle_type
 ):
-    battle, opponent_id, user_json = await initialize_battle_with_tag(
-        ps_websocket_client, set_request_json=False
-    )
+    battle, msg = await start_battle_common(ps_websocket_client, pokemon_battle_type)
     if "battlefactory" in pokemon_battle_type:
         battle.battle_type = constants.BATTLE_FACTORY
     else:
         battle.battle_type = constants.STANDARD_BATTLE
-    battle.generation = pokemon_battle_type[:4]
 
     if battle.generation in constants.NO_TEAM_PREVIEW_GENS:
-        await read_messages_until_first_pokemon_is_seen(
-            ps_websocket_client, battle, opponent_id, user_json
-        )
+        while True:
+            if constants.START_STRING in msg:
+                battle.started = True
+
+                # hold onto some messages to apply after we get the request JSON
+                # omit the bot's switch-in message because we won't need that
+                # parsing the request JSON will set the bot's active pkmn
+                battle.msg_list = [
+                    m
+                    for m in msg.split(constants.START_STRING)[1].strip().split("\n")
+                    if not (m.startswith("|switch|{}".format(battle.user.name)))
+                ]
+                break
+            msg = await ps_websocket_client.receive_message()
+
+        await get_first_request_json(ps_websocket_client, battle)
+
         unique_pkmn_names = set(
-            [p.name for p in (battle.opponent.reserve + battle.user.reserve)]
-            + [battle.user.active.name, battle.opponent.active.name]
+            [p.name for p in battle.user.reserve] + [battle.user.active.name]
         )
         SmogonSets.initialize(
             FoulPlayConfig.smogon_stats or pokemon_battle_type, unique_pkmn_names
         )
         TeamDatasets.initialize(pokemon_battle_type, unique_pkmn_names)
 
-        # first move needs to be picked here
+        # apply the messages that were held onto
+        process_battle_updates(battle)
+
         best_move = await async_pick_move(battle)
         await ps_websocket_client.send_message(battle.battle_tag, best_move)
 
     else:
-        msg = ""
         while constants.START_TEAM_PREVIEW not in msg:
             msg = await ps_websocket_client.receive_message()
 
@@ -208,11 +223,12 @@ async def start_standard_battle(
             split_line = line.split("|")
             if (
                 split_line[1] == constants.TEAM_PREVIEW_POKE
-                and split_line[2].strip() == opponent_id
+                and split_line[2].strip() == battle.opponent.name
             ):
                 opponent_pokemon.append(split_line[3])
 
-        battle.initialize_team_preview(user_json, opponent_pokemon, pokemon_battle_type)
+        await get_first_request_json(ps_websocket_client, battle)
+        battle.initialize_team_preview(opponent_pokemon, pokemon_battle_type)
         battle.during_team_preview()
 
         unique_pkmn_names = set(
@@ -220,6 +236,7 @@ async def start_standard_battle(
         )
 
         if battle.battle_type == constants.BATTLE_FACTORY:
+            battle.battle_type = constants.BATTLE_FACTORY
             tier_name = extract_battle_factory_tier_from_msg(msg)
             logger.info("Battle Factory Tier: {}".format(tier_name))
             TeamDatasets.initialize(
@@ -228,6 +245,7 @@ async def start_standard_battle(
                 battle_factory_tier_name=tier_name,
             )
         else:
+            battle.battle_type = constants.STANDARD_BATTLE
             SmogonSets.initialize(
                 FoulPlayConfig.smogon_stats or pokemon_battle_type, unique_pkmn_names
             )

@@ -84,9 +84,9 @@ class Battle(ABC):
         self.time_remaining = None
 
         self.request_json = None
+        self.msg_list = []
 
-    def initialize_team_preview(self, user_json, opponent_pokemon, battle_type):
-        self.user.initialize_first_turn_user_from_json(user_json)
+    def initialize_team_preview(self, opponent_pokemon, battle_type):
         self.user.reserve.insert(0, self.user.active)
         self.user.active = None
 
@@ -108,7 +108,6 @@ class Battle(ABC):
             self.opponent.reserve.append(pokemon)
 
         self.started = True
-        self.rqid = user_json[constants.RQID]
 
     def during_team_preview(self): ...
 

@@ -113,16 +113,16 @@ def fill_in_standardbattle_unknowns(pkmn: Pokemon):
         pkmn, match_traits=False
     )
 
-    if predicted_team_set and pkmn.moves:
+    if predicted_team_set:
         predicted_set = predicted_team_set
         source = "team_datasets"
-    elif predicted_team_set_no_ability_item_match and pkmn.moves:
+    elif predicted_team_set_no_ability_item_match:
         predicted_set = predicted_team_set_no_ability_item_match
         source = "team_datasets_no_trait_match"
-    elif predicted_smogon_sets and pkmn.moves:
+    elif predicted_smogon_sets:
         predicted_set = predicted_smogon_sets
         source = "smogon_stats"
-    elif predicted_smogon_sets_no_trait_match and pkmn.moves:
+    elif predicted_smogon_sets_no_trait_match:
         predicted_set = predicted_smogon_sets_no_trait_match
         source = "smogon_stats_no_trait_match"
     else:
