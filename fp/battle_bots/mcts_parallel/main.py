@@ -72,16 +72,6 @@ class BattleBot(Battle):
             and self.opponent.active.hp > 0
             and opponent_active_num_moves == 0
         ):
-            num_battles_multiplier = 4 if in_time_pressure else 8
-            return FoulPlayConfig.parallelism * num_battles_multiplier, int(
-                FoulPlayConfig.search_time_ms // 4
-            )
-
-        # if less than 5 pkmn are revealed or if the opponent's active has not used a move yet
-        # try to search many battles if time allows
-        elif revealed_pkmn < 5 or (
-            self.opponent.active.hp > 0 and opponent_active_num_moves == 0
-        ):
             num_battles_multiplier = 2 if in_time_pressure else 4
             return FoulPlayConfig.parallelism * num_battles_multiplier, int(
                 FoulPlayConfig.search_time_ms // 2
