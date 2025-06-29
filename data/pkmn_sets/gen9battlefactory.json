@@ -1131,17 +1131,6 @@
       "dark|tintedlens|blackglasses|jolly|0,252,0,0,4,252|firstimpression|knockoff|swordsdance|suckerpunch": 7.5,
       "dark|tintedlens|blackglasses|jolly|0,252,0,0,4,252|protect|knockoff|swordsdance|suckerpunch": 7.5
     },
-    "weavile": {
-      "ghost|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|tripleaxel|knockoff|iceshard": 10.0,
-      "ghost|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|tripleaxel|knockoff|lowkick": 10.0,
-      "ghost|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|iciclecrash|knockoff|iceshard": 10.0,
-      "ghost|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|iciclecrash|knockoff|lowkick": 10.0,
-      "dark|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|tripleaxel|knockoff|iceshard": 10.0,
-      "dark|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|tripleaxel|knockoff|lowkick": 10.0,
-      "dark|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|iciclecrash|knockoff|iceshard": 10.0,
-      "dark|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|iciclecrash|knockoff|lowkick": 10.0,
-      "ice|pickpocket|heavydutyboots|jolly|0,252,4,0,0,252|swordsdance|tripleaxel|knockoff|iceshard": 20.0
-    },
     "greninja": {
       "water|protean|choicespecs|timid|0,0,0,252,4,252|darkpulse|surf|icebeam|sludgewave": 16.75,
       "water|protean|choicespecs|timid|0,0,0,252,4,252|darkpulse|surf|icebeam|spikes": 16.75,
@@ -1307,22 +1296,6 @@
       "water|sturdy|rockyhelmet|bold|252,0,208,0,0,48|bodypress|roost|spikes|irondefense": 12.5,
       "dragon|sturdy|rockyhelmet|impish|252,0,200,0,0,56|bodypress|roost|spikes|bravebird": 25.0,
       "water|sturdy|rockyhelmet|impish|252,0,200,0,0,56|bodypress|roost|spikes|bravebird": 25.0
-    },
-    "tinkaton": {
-      "flying|moldbreaker|leftovers|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|stealthrock": 6.25,
-      "flying|moldbreaker|leftovers|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|thunderwave": 6.25,
-      "ghost|moldbreaker|leftovers|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|stealthrock": 6.25,
-      "ghost|moldbreaker|leftovers|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|thunderwave": 6.25,
-      "dark|moldbreaker|leftovers|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|stealthrock": 6.25,
-      "dark|moldbreaker|leftovers|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|thunderwave": 6.25,
-      "dragon|moldbreaker|leftovers|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|stealthrock": 6.25,
-      "dragon|moldbreaker|leftovers|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|thunderwave": 6.25,
-      "ghost|pickpocket|airballoon|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|stealthrock": 8.333333333333334,
-      "ghost|pickpocket|airballoon|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|thunderwave": 8.333333333333334,
-      "dark|pickpocket|airballoon|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|stealthrock": 8.333333333333334,
-      "dark|pickpocket|airballoon|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|thunderwave": 8.333333333333334,
-      "dragon|pickpocket|airballoon|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|stealthrock": 8.333333333333334,
-      "dragon|pickpocket|airballoon|impish|252,0,232,0,0,24|gigatonhammer|encore|knockoff|thunderwave": 8.333333333333334
     },
     "enamorustherian": {
       "fairy|overcoat|heavydutyboots|modest|84,0,0,252,0,172|moonblast|earthpower|drainingkiss|mysticalfire": 25.0,
@@ -1788,16 +1761,6 @@
       "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|defog": 5.555555555555555,
       "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|flamethrower": 5.555555555555555,
       "water|levitate|heavydutyboots|bold|252,0,216,0,0,40|strangesteam|painsplit|willowisp|taunt": 5.555555555555555
-    },
-    "zoroarkhisui": {
-      "fairy|illusion|choicespecs|timid|0,0,0,252,4,252|shadowball|terablast|flamethrower|trick": 10.0,
-      "fairy|illusion|choicespecs|timid|0,0,0,252,4,252|shadowball|terablast|flamethrower|grassknot": 10.0,
-      "fairy|illusion|choicespecs|timid|0,0,0,252,4,252|shadowball|terablast|flamethrower|uturn": 10.0,
-      "ghost|illusion|choicespecs|timid|0,0,0,252,4,252|shadowball|hypervoice|flamethrower|trick": 10.0,
-      "ghost|illusion|choicespecs|timid|0,0,0,252,4,252|shadowball|hypervoice|flamethrower|grassknot": 10.0,
-      "ghost|illusion|choicespecs|timid|0,0,0,252,4,252|shadowball|hypervoice|flamethrower|uturn": 10.0,
-      "ghost|illusion|choicescarf|timid|0,0,0,252,4,252|shadowball|hypervoice|flamethrower|trick": 20.0,
-      "ghost|illusion|choicescarf|timid|0,0,0,252,4,252|shadowball|hypervoice|uturn|trick": 20.0
     },
     "amoonguss": {
       "fairy|regenerator|rockyhelmet|bold|248,0,252,0,8,0|stunspore|gigadrain|sludgebomb|foulplay": 5.555555555555555,
@@ -2513,20 +2476,6 @@
       "ground|download|lifeorb|modest|0,0,0,252,4,252|terablast|thunderbolt|shadowball|agility": 10.0,
       "fighting|download|lifeorb|modest|0,0,0,252,4,252|terablast|triattack|shadowball|agility": 5.0
     },
-    "registeel": {
-      "ghost|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|earthquake|thunderwave": 12.5,
-      "fairy|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|earthquake|thunderwave": 12.5,
-      "dragon|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|earthquake|thunderwave": 12.5,
-      "water|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|earthquake|thunderwave": 12.5,
-      "ghost|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|bodypress|irondefense": 6.25,
-      "ghost|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|bodypress|thunderwave": 6.25,
-      "fairy|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|bodypress|irondefense": 6.25,
-      "fairy|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|bodypress|thunderwave": 6.25,
-      "dragon|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|bodypress|irondefense": 6.25,
-      "dragon|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|bodypress|thunderwave": 6.25,
-      "water|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|bodypress|irondefense": 6.25,
-      "water|clearbody|leftovers|careful|252,0,4,0,252,0|heavyslam|stealthrock|bodypress|thunderwave": 6.25
-    },
     "scyther": {
       "electric|technician|heavydutyboots|jolly|0,252,0,0,4,252|swordsdance|dualwingbeat|closecombat|trailblaze": 25.0,
       "fighting|technician|heavydutyboots|jolly|0,252,0,0,4,252|swordsdance|dualwingbeat|closecombat|trailblaze": 25.0,
@@ -3203,13 +3152,6 @@
       "ghost|aftermath|blackglasses|adamant|0,252,0,0,4,252|gunkshot|knockoff|suckerpunch|toxic": 2.7777777777777777,
       "ghost|aftermath|blackglasses|adamant|0,252,0,0,4,252|gunkshot|knockoff|suckerpunch|toxicspikes": 2.7777777777777777
     },
-    "toxtricity": {
-      "normal|punkrock|throatspray|modest|0,0,0,252,4,252|overdrive|boomburst|shiftgear|sludgebomb": 17.5,
-      "normal|punkrock|throatspray|modest|0,0,0,252,4,252|overdrive|boomburst|shiftgear|snarl": 17.5,
-      "normal|punkrock|choicespecs|modest|0,0,0,252,4,252|overdrive|boomburst|voltswitch|snarl": 35.0,
-      "normal|punkrock|choicescarf|timid|0,0,0,252,4,252|overdrive|boomburst|voltswitch|snarl": 15.0,
-      "normal|punkrock|choicescarf|timid|0,0,0,252,4,252|overdrive|boomburst|voltswitch|sludgebomb": 15.0
-    },
     "bruxish": {
       "psychic|strongjaw|choicescarf|jolly|0,252,0,0,4,252|psychicfangs|wavecrash|flipturn|crunch": 5.833333333333333,
       "psychic|strongjaw|choicescarf|jolly|0,252,0,0,4,252|psychicfangs|wavecrash|flipturn|icefang": 5.833333333333333,
@@ -3221,23 +3163,6 @@
       "water|strongjaw|choiceband|jolly|0,252,0,0,4,252|psychicfangs|wavecrash|flipturn|aquajet": 17.5,
       "water|dazzling|heavydutyboots|jolly|0,252,0,0,4,252|psychicfangs|swordsdance|wavecrash|aquajet": 15.0,
       "water|dazzling|mysticwater|jolly|0,252,0,0,4,252|psychicfangs|swordsdance|wavecrash|aquajet": 15.0
-    },
-    "copperajah": {
-      "ghost|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|whirlwind|knockoff|stealthrock": 6.25,
-      "ghost|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|whirlwind|knockoff|protect": 6.25,
-      "water|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|whirlwind|knockoff|stealthrock": 6.25,
-      "water|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|whirlwind|knockoff|protect": 6.25,
-      "ground|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|whirlwind|knockoff|earthquake": 2.7777777777777777,
-      "ground|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|stealthrock|knockoff|earthquake": 2.7777777777777777,
-      "ground|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|protect|knockoff|earthquake": 2.7777777777777777,
-      "ghost|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|whirlwind|knockoff|earthquake": 2.7777777777777777,
-      "ghost|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|stealthrock|knockoff|earthquake": 2.7777777777777777,
-      "ghost|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|protect|knockoff|earthquake": 2.7777777777777777,
-      "water|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|whirlwind|knockoff|earthquake": 2.7777777777777777,
-      "water|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|stealthrock|knockoff|earthquake": 2.7777777777777777,
-      "water|heavymetal|leftovers|careful|252,4,0,0,252,0|heavyslam|protect|knockoff|earthquake": 2.7777777777777777,
-      "fairy|sheerforce|assaultvest|adamant|0,192,0,0,192,124|ironhead|knockoff|earthquake|playrough": 25.0,
-      "ground|sheerforce|assaultvest|adamant|0,192,0,0,192,124|ironhead|knockoff|earthquake|playrough": 25.0
     },
     "goodra": {
       "poison|sapsipper|heavydutyboots|timid|0,0,0,252,4,252|dracometeor|flamethrower|sludgebomb|toxic": 12.5,
