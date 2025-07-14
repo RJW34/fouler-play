@@ -10926,6 +10926,27 @@
         "target": "normal",
         "type": "poison"
     },
+    "polarflare": {
+        "accuracy": 100,
+        "basePower": 75,
+        "category": "special",
+        "flags": {
+            "defrost": 1,
+            "mirror": 1,
+            "nosketch": 1,
+            "protect": 1
+        },
+        "id": "polarflare",
+        "name": "Polar Flare",
+        "pp": 10,
+        "priority": 0,
+        "secondary": {
+            "chance": 10,
+            "status": "frz"
+        },
+        "target": "allAdjacentFoes",
+        "type": "fire"
+    },
     "pollenpuff": {
         "accuracy": 100,
         "basePower": 90,
