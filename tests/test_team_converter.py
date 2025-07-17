@@ -16,6 +16,14 @@ class TestSinglePokemonExportToDict(unittest.TestCase):
             "nature": "",
             "shiny": "",
             "tera_type": "",
+            "ivs": {
+                "hp": "",
+                "atk": "",
+                "def": "",
+                "spa": "",
+                "spd": "",
+                "spe": "",
+            },
             "evs": {
                 "hp": "",
                 "atk": "",

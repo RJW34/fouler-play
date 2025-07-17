@@ -46,6 +46,14 @@ def single_pokemon_export_to_dict(pkmn_export_string):
         "moves": [],
         "shiny": "",
         "nature": "",
+        "ivs": {
+            "hp": "",
+            "atk": "",
+            "def": "",
+            "spa": "",
+            "spd": "",
+            "spe": "",
+        },
         "evs": {
             "hp": "",
             "atk": "",
@@ -88,6 +96,13 @@ def single_pokemon_export_to_dict(pkmn_export_string):
                 amount = normalize_name(ev.split(" ")[0])
                 stat = normalize_name(ev.split(" ")[1])
                 pkmn_dict["evs"][stat] = amount
+        elif line.startswith("IVs: "):
+            ivs = line.split("IVs: ")[-1]
+            for iv in ivs.split("/"):
+                iv = iv.strip()
+                amount = normalize_name(iv.split(" ")[0])
+                stat = normalize_name(iv.split(" ")[1])
+                pkmn_dict["ivs"][stat] = amount
         elif line.endswith("Nature"):
             pkmn_dict["nature"] = normalize_name(line.split("Nature")[0])
         elif line.startswith("-"):
