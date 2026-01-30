@@ -19,9 +19,10 @@ import os
 # Load environment variables
 load_dotenv()
 
-# Discord webhook URL (from .env)
-DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")
-DISCORD_FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL")
+# Discord webhook URLs (from .env)
+DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")  # For project updates
+DISCORD_BATTLES_WEBHOOK = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")  # For battle notifications
+DISCORD_FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL")  # For turn reviews
 
 # Import replay analyzer and turn reviewer
 sys.path.append(str(Path(__file__).parent))
@@ -47,9 +48,19 @@ class BotMonitor:
         self.turn_reviewer = TurnReviewer()
         self.posted_replays = set()  # Track posted replays to avoid duplicates
         
-    async def send_discord_message(self, message, use_feedback_channel=False):
-        """Send instant notification via Discord webhook"""
-        webhook_url = DISCORD_FEEDBACK_WEBHOOK if use_feedback_channel else DISCORD_WEBHOOK
+    async def send_discord_message(self, message, channel="project"):
+        """Send instant notification via Discord webhook
+        
+        Args:
+            message: Message content
+            channel: "project" (dev updates), "battles" (live feed), or "feedback" (turn reviews)
+        """
+        if channel == "battles":
+            webhook_url = DISCORD_BATTLES_WEBHOOK
+        elif channel == "feedback":
+            webhook_url = DISCORD_FEEDBACK_WEBHOOK
+        else:
+            webhook_url = DISCORD_WEBHOOK
         
         if not webhook_url:
             print(f"[MONITOR] No webhook configured: {message}")
@@ -60,8 +71,7 @@ class BotMonitor:
             try:
                 async with session.post(webhook_url, json=payload) as resp:
                     if resp.status == 204:
-                        channel_name = "feedback" if use_feedback_channel else "project"
-                        print(f"[MONITOR] Sent to {channel_name}: {message[:50]}...")
+                        print(f"[MONITOR] Sent to {channel}: {message[:50]}...")
                     else:
                         print(f"[MONITOR] Failed ({resp.status}): {message[:50]}...")
             except Exception as e:
@@ -107,7 +117,7 @@ class BotMonitor:
                 )
             
             # Extract critical turns for review
-            await self.send_discord_message("🔍 **Extracting critical decision points...**", use_feedback_channel=True)
+            await self.send_discord_message("🔍 **Extracting critical decision points...**", channel="feedback")
             
             turn_messages = await loop.run_in_executor(
                 None,
@@ -119,10 +129,10 @@ class BotMonitor:
             # Post each critical turn to FEEDBACK channel as a separate message
             if turn_messages:
                 for turn_msg in turn_messages:
-                    await self.send_discord_message(turn_msg, use_feedback_channel=True)
+                    await self.send_discord_message(turn_msg, channel="feedback")
                     await asyncio.sleep(1)  # Slight delay between messages
             else:
-                await self.send_discord_message("ℹ️ No critical decision points identified", use_feedback_channel=True)
+                await self.send_discord_message("ℹ️ No critical decision points identified", channel="feedback")
                 
         except Exception as e:
             print(f"[MONITOR] Error analyzing loss: {e}")
@@ -146,7 +156,8 @@ class BotMonitor:
                 self.current_battle = battle_id
                 link = f"https://play.pokemonshowdown.com/{battle_id}"
                 await self.send_discord_message(
-                    f"🎮 **Battle started vs {opponent}**\n{link}"
+                    f"🎮 **Battle started vs {opponent}**\n{link}",
+                    channel="battles"
                 )
             
             # Detect winner
@@ -169,7 +180,8 @@ class BotMonitor:
                     self.last_result = "lost"
                 
                 await self.send_discord_message(
-                    f"{emoji} **{result}!** Record: {self.wins}W - {self.losses}L"
+                    f"{emoji} **{result}!** Record: {self.wins}W - {self.losses}L",
+                    channel="battles"
                 )
             
             # Detect battle end with team
@@ -191,13 +203,15 @@ class BotMonitor:
                     self.current_replay = replay_url
                     
                     await self.send_discord_message(
-                        f"🔗 **Replay:** {replay_url}"
+                        f"🔗 **Replay:** {replay_url}",
+                        channel="battles"
                     )
                     
                     # If this was a loss, analyze it automatically
                     if self.last_result == "lost":
                         await self.send_discord_message(
-                            "🔍 **Analyzing loss for improvement opportunities...**"
+                            "🔍 **Analyzing loss for improvement opportunities...**",
+                            channel="battles"
                         )
                         await self.analyze_loss_async(replay_url)
     
@@ -229,7 +243,7 @@ class BotMonitor:
             cwd=cwd
         )
         
-        await self.send_discord_message("🚀 **Fouler Play bot starting...**")
+        await self.send_discord_message("🚀 **Fouler Play bot starting...**", channel="battles")
         
         # Monitor output
         await self.monitor_output(self.process.stdout)
