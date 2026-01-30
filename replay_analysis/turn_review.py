@@ -42,7 +42,7 @@ class TurnReviewer:
         critical_turns = []
         log_lines = replay_data.get("log", "").split("\n")
         
-        bot_name = "LEBOTJAMESXD001"
+        bot_name = "LEBOTJAMESXD002"  # Current bot account
         current_turn = 0
         
         # Track game state
@@ -52,6 +52,15 @@ class TurnReviewer:
         opp_team = {}
         field_conditions = []
         turn_events = {}  # Turn -> events
+        
+        # Initialize turn 0 for pre-battle events
+        turn_events[0] = {
+            "moves": [],
+            "switches": [],
+            "faints": [],
+            "hazards": [],
+            "damage": []
+        }
         
         for line in log_lines:
             line = line.strip()
@@ -74,6 +83,16 @@ class TurnReviewer:
                 pokemon = parts[2].split(":")[1].strip().split(",")[0]
                 hp_info = parts[3] if len(parts) > 3 else "100/100"
                 
+                # Ensure turn exists in dictionary
+                if current_turn not in turn_events:
+                    turn_events[current_turn] = {
+                        "moves": [],
+                        "switches": [],
+                        "faints": [],
+                        "hazards": [],
+                        "damage": []
+                    }
+                
                 if player == "p1":  # Bot
                     bot_active = pokemon
                     turn_events[current_turn]["switches"].append(("bot", pokemon))
@@ -87,6 +106,16 @@ class TurnReviewer:
                 player = parts[2].split(":")[0]
                 move = parts[3].lower()
                 
+                # Ensure turn exists
+                if current_turn not in turn_events:
+                    turn_events[current_turn] = {
+                        "moves": [],
+                        "switches": [],
+                        "faints": [],
+                        "hazards": [],
+                        "damage": []
+                    }
+                
                 if player == "p1":
                     turn_events[current_turn]["moves"].append(("bot", move))
                 else:
@@ -98,6 +127,16 @@ class TurnReviewer:
                 player = parts[2].split(":")[0]
                 pokemon = parts[2].split(":")[1].strip()
                 
+                # Ensure turn exists
+                if current_turn not in turn_events:
+                    turn_events[current_turn] = {
+                        "moves": [],
+                        "switches": [],
+                        "faints": [],
+                        "hazards": [],
+                        "damage": []
+                    }
+                
                 if player == "p1":
                     turn_events[current_turn]["faints"].append(("bot", pokemon))
                 else:
@@ -105,6 +144,16 @@ class TurnReviewer:
                     
             # Track hazards
             elif "|-sidestart|" in line and ("Stealth Rock" in line or "Spikes" in line):
+                # Ensure turn exists
+                if current_turn not in turn_events:
+                    turn_events[current_turn] = {
+                        "moves": [],
+                        "switches": [],
+                        "faints": [],
+                        "hazards": [],
+                        "damage": []
+                    }
+                
                 if "p1" in line:
                     field_conditions.append(f"Bot has hazards")
                     turn_events[current_turn]["hazards"].append("bot")
