@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260130_160219",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2529629145",
+  "replay_id": "gen9ou-2529629145",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 68,
+      "description": "Primarina fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 96,
+      "description": "Heatran fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 128,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    }
+  ]
+}

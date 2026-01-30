@@ -27,6 +27,7 @@ from fp.helpers import (
     is_neutral_effectiveness,
 )
 from fp.battle import boost_multiplier_lookup
+from fp.movepool_tracker import record_move
 
 
 logger = logging.getLogger(__name__)
@@ -834,6 +835,11 @@ def move(battle, split_msg):
 
             # the rest of this function uses `pkmn`, so we need to set it to the correct pkmn
             pkmn = actual_zoroark
+
+    # Track movepool usage (learns physical/special/mixed classification)
+    # Only track opponent moves (we already know our own movepool)
+    if is_opponent(battle, split_msg):
+        record_move(pkmn.name, move_name)
 
     if (
         any(msg == "[from]Sleep Talk" for msg in split_msg)
