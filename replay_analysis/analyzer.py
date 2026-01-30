@@ -142,60 +142,142 @@ class ReplayAnalyzer:
         mistakes = []
         log_lines = replay_data.get("log", "").split("\n")
         
-        # Parse replay into structured format
-        # This is a simplified version - full implementation would track:
-        # - Active Pokemon each turn
-        # - Revealed movesets/abilities/items
-        # - HP percentages
-        # - Field conditions
-        
         bot_name = "LEBOTJAMESXD001"
         current_turn = 0
-        opp_revealed_moves = set()
-        opp_revealed_ability = None
-        opp_has_substitute = False
         
+        # Tracking state
+        bot_team = {}  # Pokemon name -> current HP%
+        opp_team = {}
+        bot_active = None
+        opp_active = None
+        opp_revealed_moves = {}  # Pokemon -> set of moves
+        bot_moves_used = {}  # Track bot's move choices
+        field_hazards = {"bot": [], "opp": []}
+        turn_actions = []  # Track what happened each turn
+        
+        # Parse the entire replay first
         for line in log_lines:
             line = line.strip()
             
             if line.startswith("|turn|"):
                 current_turn = int(line.split("|")[2])
                 
-            # Track opponent's revealed moves
+            # Track switches
+            elif line.startswith("|switch|") or line.startswith("|drag|"):
+                parts = line.split("|")
+                player = parts[2].split(":")[0]
+                pokemon = parts[2].split(":")[1].strip()
+                
+                if player == "p1":  # Bot is p1
+                    bot_active = pokemon.split(",")[0]
+                else:
+                    opp_active = pokemon.split(",")[0]
+                    
+            # Track moves
             elif line.startswith("|move|"):
                 parts = line.split("|")
-                pokemon = parts[2]
-                move = parts[3].lower()
+                pokemon = parts[2].split(":")[1].strip() if ":" in parts[2] else parts[2]
+                move = parts[3].lower().replace(" ", "")
                 
-                if bot_name not in pokemon:
-                    opp_revealed_moves.add(move)
+                if "p1" in parts[2]:  # Bot's move
+                    if pokemon not in bot_moves_used:
+                        bot_moves_used[pokemon] = []
+                    bot_moves_used[pokemon].append((current_turn, move))
+                else:  # Opponent's move
+                    if pokemon not in opp_revealed_moves:
+                        opp_revealed_moves[pokemon] = set()
+                    opp_revealed_moves[pokemon].add(move)
                     
-                    # Check for setup vs phazer
-                    setup_moves = ["swordsdance", "dragondance", "calmmind", "nastyplot", "bulkup", "curse"]
-                    phaze_moves = ["whirlwind", "roar", "dragontail", "circlethrow"]
-                    
-                    if move in setup_moves and any(pm in opp_revealed_moves for pm in phaze_moves):
-                        mistakes.append(MistakePattern(
-                            category="setup_vs_phazer",
-                            turn=current_turn,
-                            description=f"Used {move} when opponent has phazing move",
-                            severity="major",
-                            suggested_fix="Add/increase penalty for setup vs revealed phazers"
-                        ))
-                        
-            # Track abilities
-            elif "|-ability|" in line and bot_name not in line:
+            # Track damage
+            elif line.startswith("|-damage|"):
                 parts = line.split("|")
                 if len(parts) >= 3:
-                    opp_revealed_ability = parts[3].lower()
+                    pokemon = parts[2].split(":")[1].strip() if ":" in parts[2] else parts[2]
+                    hp_info = parts[3]
                     
-            # Track Substitute
-            elif "|-start|" in line and "Substitute" in line:
-                if bot_name not in line:
-                    opp_has_substitute = True
-            elif "|-end|" in line and "Substitute" in line:
-                if bot_name not in line:
-                    opp_has_substitute = False
+                    # Check for excessive damage taken
+                    if "p1" in parts[2] and "/" in hp_info:
+                        # Bot took damage - analyze if it was avoidable
+                        pass
+                        
+            # Track faints
+            elif line.startswith("|faint|"):
+                parts = line.split("|")
+                pokemon = parts[2].split(":")[1].strip() if ":" in parts[2] else parts[2]
+                
+                if "p1" in parts[2]:  # Bot's Pokemon fainted
+                    # This is a critical event - should have switched earlier?
+                    mistakes.append(MistakePattern(
+                        category="pokemon_fainted",
+                        turn=current_turn,
+                        description=f"{pokemon} fainted - possible switching error",
+                        severity="major",
+                        suggested_fix="Improve switching logic to preserve Pokemon"
+                    ))
+                    
+            # Track hazards
+            elif "|-sidestart|" in line and "Stealth Rock" in line:
+                if "p1" in line:
+                    field_hazards["bot"].append("stealthrock")
+                else:
+                    field_hazards["opp"].append("stealthrock")
+                    
+        # Strategic analysis
+        
+        # 1. Did we get hazards up?
+        if len(field_hazards["opp"]) == 0:
+            mistakes.append(MistakePattern(
+                category="no_hazards_set",
+                turn=current_turn,
+                description="Never set up hazards (critical for chip damage)",
+                severity="major",
+                suggested_fix="Increase hazard priority in scoring"
+            ))
+            
+        # 2. Did opponent set hazards and we didn't remove them?
+        if len(field_hazards["bot"]) > 0:
+            mistakes.append(MistakePattern(
+                category="hazards_not_removed",
+                turn=current_turn,
+                description="Opponent set hazards, bot didn't remove them",
+                severity="minor",
+                suggested_fix="Add defog/rapid spin priority when hazards are up"
+            ))
+            
+        # 3. Check for early setup attempts
+        for pokemon, moves in bot_moves_used.items():
+            setup_moves = {"swordsdance", "dragondance", "calmmind", "nastyplot", "bulkup", "curse"}
+            for turn, move in moves:
+                if move in setup_moves and turn < 10:
+                    # Early setup is often risky
+                    mistakes.append(MistakePattern(
+                        category="early_setup",
+                        turn=turn,
+                        description=f"Attempted {move} on turn {turn} (too early?)",
+                        severity="minor",
+                        suggested_fix="Delay setup until opponent is weakened"
+                    ))
+                    
+        # 4. Check for lack of switching
+        total_switches = sum(1 for moves in bot_moves_used.values() if len(moves) > 1)
+        if total_switches < 3 and current_turn > 15:
+            mistakes.append(MistakePattern(
+                category="insufficient_switching",
+                turn=current_turn,
+                description=f"Only {total_switches} switches in {current_turn} turns",
+                severity="major",
+                suggested_fix="Reduce switch penalty, increase matchup awareness"
+            ))
+            
+        # If we found NO mistakes but we LOST, that's a problem
+        if len(mistakes) == 0:
+            mistakes.append(MistakePattern(
+                category="undetected_strategic_error",
+                turn=current_turn,
+                description="Lost battle but no obvious tactical mistakes detected - likely deeper strategic issue",
+                severity="critical",
+                suggested_fix="Improve overall decision quality, review MCTS scoring weights"
+            ))
                     
         return mistakes
     

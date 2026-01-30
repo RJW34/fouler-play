@@ -82,6 +82,7 @@ class _FoulPlayConfig:
     room_name: str
     log_level: str
     log_to_file: bool
+    playstyle: str = "balance"  # Team playstyle: hyper_offense, bulky_offense, balance, fat, stall
     stdout_log_handler: logging.StreamHandler
     file_log_handler: Optional[CustomRotatingFileHandler]
 
@@ -158,6 +159,12 @@ class _FoulPlayConfig:
             action="store_true",
             help="When enabled, DEBUG logs will be written to a file in the logs/ directory",
         )
+        parser.add_argument(
+            "--playstyle",
+            default="auto",
+            choices=["auto", "hyper_offense", "bulky_offense", "balance", "fat", "stall"],
+            help="Team playstyle (auto = detect from team name)",
+        )
 
         args = parser.parse_args()
         self.websocket_uri = args.websocket_uri
@@ -177,6 +184,7 @@ class _FoulPlayConfig:
         self.room_name = args.room_name
         self.log_level = args.log_level
         self.log_to_file = args.log_to_file
+        self.playstyle = args.playstyle
 
         self.validate_config()
 
