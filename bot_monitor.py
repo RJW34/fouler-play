@@ -21,10 +21,12 @@ load_dotenv()
 
 # Discord webhook URL (from .env)
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")
+DISCORD_FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL")
 
-# Import replay analyzer
+# Import replay analyzer and turn reviewer
 sys.path.append(str(Path(__file__).parent))
 from replay_analysis.analyzer import ReplayAnalyzer
+from replay_analysis.turn_review import TurnReviewer
 
 # Patterns to detect in bot output
 BATTLE_START_PATTERN = re.compile(r'Initialized (battle-[\w-]+) against: (.+)')
@@ -42,19 +44,24 @@ class BotMonitor:
         self.current_replay = None
         self.last_result = None  # "won" or "lost"
         self.analyzer = ReplayAnalyzer()
+        self.turn_reviewer = TurnReviewer()
+        self.posted_replays = set()  # Track posted replays to avoid duplicates
         
-    async def send_discord_message(self, message):
+    async def send_discord_message(self, message, use_feedback_channel=False):
         """Send instant notification via Discord webhook"""
-        if not DISCORD_WEBHOOK:
+        webhook_url = DISCORD_FEEDBACK_WEBHOOK if use_feedback_channel else DISCORD_WEBHOOK
+        
+        if not webhook_url:
             print(f"[MONITOR] No webhook configured: {message}")
             return
             
         async with aiohttp.ClientSession() as session:
             payload = {"content": message}
             try:
-                async with session.post(DISCORD_WEBHOOK, json=payload) as resp:
+                async with session.post(webhook_url, json=payload) as resp:
                     if resp.status == 204:
-                        print(f"[MONITOR] Sent: {message[:50]}...")
+                        channel_name = "feedback" if use_feedback_channel else "project"
+                        print(f"[MONITOR] Sent to {channel_name}: {message[:50]}...")
                     else:
                         print(f"[MONITOR] Failed ({resp.status}): {message[:50]}...")
             except Exception as e:
@@ -65,6 +72,19 @@ class BotMonitor:
         try:
             # Run in executor to avoid blocking
             loop = asyncio.get_event_loop()
+            
+            # Fetch replay data once
+            replay_data = await loop.run_in_executor(
+                None,
+                self.analyzer.fetch_replay,
+                replay_url
+            )
+            
+            if not replay_data:
+                await self.send_discord_message("⚠️ **Analysis failed:** Could not fetch replay")
+                return
+            
+            # Run mistake analysis
             analysis = await loop.run_in_executor(
                 None,
                 self.analyzer.analyze_loss,
@@ -73,7 +93,7 @@ class BotMonitor:
             
             if analysis and analysis.get("mistakes_found", 0) > 0:
                 mistakes = analysis["mistakes_found"]
-                msg = f"📊 **Analysis complete:** Found {mistakes} improvement opportunity/ies"
+                msg = f"📊 **Analysis complete:** Found {mistakes} issue(s)"
                 
                 # List top mistakes
                 for mistake in analysis["mistakes"][:3]:  # Top 3
@@ -81,12 +101,33 @@ class BotMonitor:
                 
                 await self.send_discord_message(msg)
             else:
+                # If we lost but found no mistakes, that's itself a problem
                 await self.send_discord_message(
-                    "✅ **Analysis complete:** No obvious mistakes detected"
+                    "⚠️ **Analysis:** Couldn't identify specific mistakes (analyzer needs improvement)"
                 )
+            
+            # Extract critical turns for review
+            await self.send_discord_message("🔍 **Extracting critical decision points...**", use_feedback_channel=True)
+            
+            turn_messages = await loop.run_in_executor(
+                None,
+                self.turn_reviewer.analyze_and_post,
+                replay_data,
+                replay_url
+            )
+            
+            # Post each critical turn to FEEDBACK channel as a separate message
+            if turn_messages:
+                for turn_msg in turn_messages:
+                    await self.send_discord_message(turn_msg, use_feedback_channel=True)
+                    await asyncio.sleep(1)  # Slight delay between messages
+            else:
+                await self.send_discord_message("ℹ️ No critical decision points identified", use_feedback_channel=True)
                 
         except Exception as e:
             print(f"[MONITOR] Error analyzing loss: {e}")
+            import traceback
+            traceback.print_exc()
             await self.send_discord_message(
                 f"⚠️ **Analysis failed:** {str(e)[:100]}"
             )
@@ -143,18 +184,22 @@ class BotMonitor:
             if match:
                 replay_id = match.group(1)
                 replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
-                self.current_replay = replay_url
                 
-                await self.send_discord_message(
-                    f"🔗 **Replay:** {replay_url}"
-                )
-                
-                # If this was a loss, analyze it automatically
-                if self.last_result == "lost":
+                # Only post if we haven't already posted this replay
+                if replay_url not in self.posted_replays:
+                    self.posted_replays.add(replay_url)
+                    self.current_replay = replay_url
+                    
                     await self.send_discord_message(
-                        "🔍 **Analyzing loss for improvement opportunities...**"
+                        f"🔗 **Replay:** {replay_url}"
                     )
-                    await self.analyze_loss_async(replay_url)
+                    
+                    # If this was a loss, analyze it automatically
+                    if self.last_result == "lost":
+                        await self.send_discord_message(
+                            "🔍 **Analyzing loss for improvement opportunities...**"
+                        )
+                        await self.analyze_loss_async(replay_url)
     
     async def run_bot(self):
         """Run the bot process and monitor it"""
@@ -165,10 +210,11 @@ class BotMonitor:
             "--ps-password", "LeBotPassword2026!",
             "--bot-mode", "search_ladder",
             "--pokemon-format", "gen9ou",
-            "--team-name", "gen9/ou",  # Will pick random team from gen9/ou folder
+            "--team-name", "gen9/ou/fat-team-1-stall",  # Fat team for 1700+ push
+            "--playstyle", "fat",
             "--search-time-ms", "2000",
             "--run-count", "999999",
-            "--save-replay", "always"
+            "--save-replay", "on_loss"  # Only save losses for analysis
         ]
         
         # Ensure we're in the right directory
