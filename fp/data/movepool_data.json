@@ -1,0 +1,42 @@
+{
+  "gliscor": {
+    "pokemon_name": "gliscor",
+    "physical_moves": [
+      "facade",
+      "earthquake"
+    ],
+    "special_moves": [],
+    "status_moves": [
+      "protect",
+      "toxic"
+    ],
+    "times_seen": 1,
+    "threat_category": "physical_only"
+  },
+  "gholdengo": {
+    "pokemon_name": "gholdengo",
+    "physical_moves": [],
+    "special_moves": [
+      "makeitrain",
+      "shadowball"
+    ],
+    "status_moves": [
+      "recover"
+    ],
+    "times_seen": 1,
+    "threat_category": "special_only"
+  },
+  "dragapult": {
+    "pokemon_name": "dragapult",
+    "physical_moves": [
+      "uturn",
+      "dragondarts"
+    ],
+    "special_moves": [
+      "shadowball"
+    ],
+    "status_moves": [],
+    "times_seen": 1,
+    "threat_category": "mixed"
+  }
+}
