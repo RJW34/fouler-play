@@ -1,0 +1,422 @@
+# Offensive Moves - Common competitive attacking moves
+
+# Psychic-type
+psychic:
+  power: 90
+  accuracy: 100
+  type: psychic
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: stat_change
+      stat: spdef
+      chance: 0.1
+      stages: -1
+  tags: [reliable, special_attacker]
+
+psyshock:
+  power: 80
+  accuracy: 100
+  type: psychic
+  category: special
+  priority: 0
+  pp: 10
+  notes: "Deals damage using target's Defense stat instead of Sp. Def"
+  tags: [reliable, special_attacker, anti_special_wall]
+
+# Water-type
+scald:
+  power: 80
+  accuracy: 100
+  type: water
+  category: special
+  priority: 0
+  pp: 15
+  effects:
+    - type: status
+      condition: burn
+      chance: 0.3
+  tags: [reliable, burn_chance, special_attacker, defensive]
+
+hydro_pump:
+  power: 110
+  accuracy: 80
+  type: water
+  category: special
+  priority: 0
+  pp: 5
+  tags: [high_power, risky, special_attacker]
+
+surf:
+  power: 90
+  accuracy: 100
+  type: water
+  category: special
+  priority: 0
+  pp: 15
+  tags: [reliable, special_attacker, balanced]
+
+# Fire-type
+flamethrower:
+  power: 90
+  accuracy: 100
+  type: fire
+  category: special
+  priority: 0
+  pp: 15
+  effects:
+    - type: status
+      condition: burn
+      chance: 0.1
+  tags: [reliable, special_attacker]
+
+fire_blast:
+  power: 110
+  accuracy: 85
+  type: fire
+  category: special
+  priority: 0
+  pp: 5
+  effects:
+    - type: status
+      condition: burn
+      chance: 0.1
+  tags: [high_power, risky, special_attacker]
+
+flare_blitz:
+  power: 120
+  accuracy: 100
+  type: fire
+  category: physical
+  priority: 0
+  pp: 15
+  effects:
+    - type: recoil
+      percent: 0.33
+    - type: status
+      condition: burn
+      chance: 0.1
+  tags: [high_power, recoil, physical_attacker]
+
+# Electric-type
+thunderbolt:
+  power: 90
+  accuracy: 100
+  type: electric
+  category: special
+  priority: 0
+  pp: 15
+  effects:
+    - type: status
+      condition: paralysis
+      chance: 0.1
+  tags: [reliable, special_attacker]
+
+thunder:
+  power: 110
+  accuracy: 70
+  type: electric
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: status
+      condition: paralysis
+      chance: 0.3
+  notes: "100% accuracy in rain"
+  tags: [high_power, risky, special_attacker, weather_dependent]
+
+volt_switch:
+  power: 70
+  accuracy: 100
+  type: electric
+  category: special
+  priority: 0
+  pp: 20
+  effects:
+    - type: pivot
+  tags: [reliable, special_attacker, momentum, pivot]
+
+# Grass-type
+energy_ball:
+  power: 90
+  accuracy: 100
+  type: grass
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: stat_change
+      stat: spdef
+      chance: 0.1
+      stages: -1
+  tags: [reliable, special_attacker]
+
+giga_drain:
+  power: 75
+  accuracy: 100
+  type: grass
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: drain
+      percent: 0.5
+  tags: [reliable, special_attacker, recovery]
+
+# Ice-type
+ice_beam:
+  power: 90
+  accuracy: 100
+  type: ice
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: status
+      condition: freeze
+      chance: 0.1
+  tags: [reliable, special_attacker, coverage]
+
+blizzard:
+  power: 110
+  accuracy: 70
+  type: ice
+  category: special
+  priority: 0
+  pp: 5
+  effects:
+    - type: status
+      condition: freeze
+      chance: 0.1
+  notes: "100% accuracy in hail/snow"
+  tags: [high_power, risky, special_attacker, weather_dependent]
+
+# Fighting-type
+close_combat:
+  power: 120
+  accuracy: 100
+  type: fighting
+  category: physical
+  priority: 0
+  pp: 5
+  effects:
+    - type: stat_change
+      stat: def
+      stages: -1
+      user: true
+    - type: stat_change
+      stat: spdef
+      stages: -1
+      user: true
+  tags: [high_power, physical_attacker, risky]
+
+drain_punch:
+  power: 75
+  accuracy: 100
+  type: fighting
+  category: physical
+  priority: 0
+  pp: 10
+  effects:
+    - type: drain
+      percent: 0.5
+  tags: [reliable, physical_attacker, recovery]
+
+# Dark-type
+knock_off:
+  power: 65
+  accuracy: 100
+  type: dark
+  category: physical
+  priority: 0
+  pp: 20
+  effects:
+    - type: remove_item
+  notes: "1.5x power if target has item"
+  tags: [reliable, physical_attacker, utility, item_removal]
+
+sucker_punch:
+  power: 70
+  accuracy: 100
+  type: dark
+  category: physical
+  priority: 1
+  pp: 5
+  notes: "Fails if opponent doesn't use attacking move"
+  tags: [priority, physical_attacker, prediction]
+
+# Dragon-type
+draco_meteor:
+  power: 130
+  accuracy: 90
+  type: dragon
+  category: special
+  priority: 0
+  pp: 5
+  effects:
+    - type: stat_change
+      stat: spatk
+      stages: -2
+      user: true
+  tags: [nuke, special_attacker, hit_and_run]
+
+outrage:
+  power: 120
+  accuracy: 100
+  type: dragon
+  category: physical
+  priority: 0
+  pp: 10
+  effects:
+    - type: rampage
+      duration: [2, 3]
+    - type: confusion
+      after_rampage: true
+  tags: [high_power, physical_attacker, risky, locks_in]
+
+# Steel-type
+iron_head:
+  power: 80
+  accuracy: 100
+  type: steel
+  category: physical
+  priority: 0
+  pp: 15
+  effects:
+    - type: flinch
+      chance: 0.3
+  tags: [reliable, physical_attacker, flinch]
+
+flash_cannon:
+  power: 80
+  accuracy: 100
+  type: steel
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: stat_change
+      stat: spdef
+      chance: 0.1
+      stages: -1
+  tags: [reliable, special_attacker]
+
+# Fairy-type
+moonblast:
+  power: 95
+  accuracy: 100
+  type: fairy
+  category: special
+  priority: 0
+  pp: 15
+  effects:
+    - type: stat_change
+      stat: spatk
+      chance: 0.3
+      stages: -1
+  tags: [reliable, special_attacker]
+
+play_rough:
+  power: 90
+  accuracy: 90
+  type: fairy
+  category: physical
+  priority: 0
+  pp: 10
+  effects:
+    - type: stat_change
+      stat: atk
+      chance: 0.1
+      stages: -1
+  tags: [high_power, physical_attacker, slightly_risky]
+
+# Ground-type
+earthquake:
+  power: 100
+  accuracy: 100
+  type: ground
+  category: physical
+  priority: 0
+  pp: 10
+  tags: [reliable, physical_attacker, high_power]
+
+earth_power:
+  power: 90
+  accuracy: 100
+  type: ground
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: stat_change
+      stat: spdef
+      chance: 0.1
+      stages: -1
+  tags: [reliable, special_attacker]
+
+# Rock-type
+stone_edge:
+  power: 100
+  accuracy: 80
+  type: rock
+  category: physical
+  priority: 0
+  pp: 5
+  notes: "High critical hit ratio"
+  tags: [high_power, risky, physical_attacker, high_crit]
+
+# Flying-type
+brave_bird:
+  power: 120
+  accuracy: 100
+  type: flying
+  category: physical
+  priority: 0
+  pp: 15
+  effects:
+    - type: recoil
+      percent: 0.33
+  tags: [high_power, recoil, physical_attacker]
+
+# Poison-type
+sludge_bomb:
+  power: 90
+  accuracy: 100
+  type: poison
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: status
+      condition: poison
+      chance: 0.3
+  tags: [reliable, special_attacker]
+
+# Ghost-type
+shadow_ball:
+  power: 80
+  accuracy: 100
+  type: ghost
+  category: special
+  priority: 0
+  pp: 15
+  effects:
+    - type: stat_change
+      stat: spdef
+      chance: 0.2
+      stages: -1
+  tags: [reliable, special_attacker]
+
+# Bug-type
+u_turn:
+  power: 70
+  accuracy: 100
+  type: bug
+  category: physical
+  priority: 0
+  pp: 20
+  effects:
+    - type: pivot
+  tags: [reliable, physical_attacker, momentum, pivot]

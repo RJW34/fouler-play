@@ -1,0 +1,418 @@
+# Status and Utility Moves
+
+# Entry Hazards
+stealth_rock:
+  power: 0
+  accuracy: null
+  type: rock
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: hazard
+      hazard_type: stealth_rock
+  removal: [rapid_spin, defog, magic_bounce]
+  tags: [entry_hazard, must_have, game_changer]
+  notes: "Deals 1/8 to 1/2 max HP based on Rock weakness/resistance"
+
+spikes:
+  power: 0
+  accuracy: null
+  type: ground
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: hazard
+      hazard_type: spikes
+      stackable: true
+      max_layers: 3
+  removal: [rapid_spin, defog, magic_bounce]
+  tags: [entry_hazard, stall]
+  notes: "1/8 max HP per layer. Does not affect Flying types or Levitate"
+
+toxic_spikes:
+  power: 0
+  accuracy: null
+  type: poison
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: hazard
+      hazard_type: toxic_spikes
+      stackable: true
+      max_layers: 2
+  removal: [rapid_spin, defog, magic_bounce, grounded_poison_type]
+  tags: [entry_hazard, stall]
+  notes: "1 layer = poison, 2 layers = badly poison"
+
+sticky_web:
+  power: 0
+  accuracy: null
+  type: bug
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: hazard
+      hazard_type: sticky_web
+    - type: stat_change
+      stat: spe
+      stages: -1
+      on_switch: true
+  removal: [rapid_spin, defog, magic_bounce]
+  tags: [entry_hazard, speed_control]
+
+# Hazard Removal
+rapid_spin:
+  power: 50
+  accuracy: 100
+  type: normal
+  category: physical
+  priority: 0
+  pp: 40
+  effects:
+    - type: hazard_removal
+      side: user
+    - type: stat_change
+      stat: spe
+      stages: 1
+      user: true
+  tags: [hazard_removal, utility, speed_boost]
+
+defog:
+  power: 0
+  accuracy: null
+  type: flying
+  category: status
+  priority: 0
+  pp: 15
+  effects:
+    - type: hazard_removal
+      side: both
+    - type: stat_change
+      stat: evasion
+      stages: -1
+  tags: [hazard_removal, utility]
+
+# Setup Moves
+swords_dance:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: stat_change
+      stat: atk
+      stages: 2
+      user: true
+  tags: [setup, physical_attacker, sweeper]
+
+dragon_dance:
+  power: 0
+  accuracy: null
+  type: dragon
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: stat_change
+      stat: atk
+      stages: 1
+      user: true
+    - type: stat_change
+      stat: spe
+      stages: 1
+      user: true
+  tags: [setup, physical_attacker, sweeper, speed_boost]
+
+nasty_plot:
+  power: 0
+  accuracy: null
+  type: dark
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: stat_change
+      stat: spatk
+      stages: 2
+      user: true
+  tags: [setup, special_attacker, sweeper]
+
+calm_mind:
+  power: 0
+  accuracy: null
+  type: psychic
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: stat_change
+      stat: spatk
+      stages: 1
+      user: true
+    - type: stat_change
+      stat: spdef
+      stages: 1
+      user: true
+  tags: [setup, special_attacker, sweeper, bulk_up]
+
+bulk_up:
+  power: 0
+  accuracy: null
+  type: fighting
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: stat_change
+      stat: atk
+      stages: 1
+      user: true
+    - type: stat_change
+      stat: def
+      stages: 1
+      user: true
+  tags: [setup, physical_attacker, bulk_up]
+
+shell_smash:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: 0
+  pp: 15
+  effects:
+    - type: stat_change
+      stat: def
+      stages: -1
+      user: true
+    - type: stat_change
+      stat: spdef
+      stages: -1
+      user: true
+    - type: stat_change
+      stat: atk
+      stages: 2
+      user: true
+    - type: stat_change
+      stat: spatk
+      stages: 2
+      user: true
+    - type: stat_change
+      stat: spe
+      stages: 2
+      user: true
+  tags: [setup, sweeper, risky, glass_cannon]
+
+# Status Infliction
+will_o_wisp:
+  power: 0
+  accuracy: 85
+  type: fire
+  category: status
+  priority: 0
+  pp: 15
+  effects:
+    - type: status
+      condition: burn
+  tags: [status_move, burn, physical_nerf]
+
+thunder_wave:
+  power: 0
+  accuracy: 90
+  type: electric
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: status
+      condition: paralysis
+  tags: [status_move, paralysis, speed_control]
+
+toxic:
+  power: 0
+  accuracy: 90
+  type: poison
+  category: status
+  priority: 0
+  pp: 10
+  effects:
+    - type: status
+      condition: badly_poison
+  tags: [status_move, stall, toxic]
+
+spore:
+  power: 0
+  accuracy: 100
+  type: grass
+  category: status
+  priority: 0
+  pp: 15
+  effects:
+    - type: status
+      condition: sleep
+  tags: [status_move, sleep, broken]
+  common_holders: [amoonguss, breloom]
+
+sleep_powder:
+  power: 0
+  accuracy: 75
+  type: grass
+  category: status
+  priority: 0
+  pp: 15
+  effects:
+    - type: status
+      condition: sleep
+  tags: [status_move, sleep, risky]
+
+# Phazing
+roar:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: -6
+  pp: 20
+  effects:
+    - type: force_switch
+  tags: [phazing, anti_setup, negative_priority]
+
+whirlwind:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: -6
+  pp: 20
+  effects:
+    - type: force_switch
+  tags: [phazing, anti_setup, negative_priority]
+
+dragon_tail:
+  power: 60
+  accuracy: 90
+  type: dragon
+  category: physical
+  priority: -6
+  pp: 10
+  effects:
+    - type: force_switch
+  tags: [phazing, anti_setup, negative_priority, physical_attacker]
+
+# Recovery
+recover:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: 0
+  pp: 5
+  effects:
+    - type: heal
+      percent: 0.5
+  tags: [recovery, stall]
+
+roost:
+  power: 0
+  accuracy: null
+  type: flying
+  category: status
+  priority: 0
+  pp: 5
+  effects:
+    - type: heal
+      percent: 0.5
+    - type: lose_flying_type
+      duration: 1
+  tags: [recovery, stall, type_change]
+
+slack_off:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: 0
+  pp: 5
+  effects:
+    - type: heal
+      percent: 0.5
+  tags: [recovery, stall]
+
+# Utility
+taunt:
+  power: 0
+  accuracy: 100
+  type: dark
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: taunt
+      duration: 3
+  tags: [utility, anti_setup, anti_stall]
+
+trick:
+  power: 0
+  accuracy: 100
+  type: psychic
+  category: status
+  priority: 0
+  pp: 10
+  effects:
+    - type: swap_items
+  tags: [utility, item_manipulation]
+
+switcheroo:
+  power: 0
+  accuracy: 100
+  type: dark
+  category: status
+  priority: 0
+  pp: 10
+  effects:
+    - type: swap_items
+  tags: [utility, item_manipulation]
+
+encore:
+  power: 0
+  accuracy: 100
+  type: normal
+  category: status
+  priority: 0
+  pp: 5
+  effects:
+    - type: encore
+      duration: 3
+  tags: [utility, lock_in, prediction]
+
+# Defensive
+substitute:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: 0
+  pp: 10
+  effects:
+    - type: substitute
+      hp_cost: 0.25
+  countered_by: [sound_moves, infiltrator_ability]
+  tags: [defensive, setup, stall]
+
+protect:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: 4
+  pp: 10
+  effects:
+    - type: protect
+  notes: "Fails if used consecutively"
+  tags: [defensive, priority, scouting]

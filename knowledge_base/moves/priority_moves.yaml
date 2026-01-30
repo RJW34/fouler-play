@@ -1,0 +1,167 @@
+# Priority Moves - Moves that go first regardless of Speed
+
+extreme_speed:
+  power: 80
+  accuracy: 100
+  type: normal
+  category: physical
+  priority: 2
+  pp: 5
+  tags: [priority, physical_attacker, reliable]
+  common_holders: [dragonite, lucario, arcanine]
+
+aqua_jet:
+  power: 40
+  accuracy: 100
+  type: water
+  category: physical
+  priority: 1
+  pp: 20
+  tags: [priority, physical_attacker, weak]
+  common_holders: [azumarill, kabutops]
+
+mach_punch:
+  power: 40
+  accuracy: 100
+  type: fighting
+  category: physical
+  priority: 1
+  pp: 30
+  tags: [priority, physical_attacker, weak]
+  common_holders: [breloom, conkeldurr, hitmonchan]
+
+ice_shard:
+  power: 40
+  accuracy: 100
+  type: ice
+  category: physical
+  priority: 1
+  pp: 30
+  tags: [priority, physical_attacker, weak]
+  common_holders: [weavile, mamoswine]
+
+bullet_punch:
+  power: 40
+  accuracy: 100
+  type: steel
+  category: physical
+  priority: 1
+  pp: 30
+  tags: [priority, physical_attacker, weak]
+  common_holders: [scizor, metagross, lucario]
+
+shadow_sneak:
+  power: 40
+  accuracy: 100
+  type: ghost
+  category: physical
+  priority: 1
+  pp: 30
+  tags: [priority, physical_attacker, weak]
+  common_holders: [mimikyu, banette]
+
+sucker_punch:
+  power: 70
+  accuracy: 100
+  type: dark
+  category: physical
+  priority: 1
+  pp: 5
+  notes: "Fails if opponent doesn't use attacking move"
+  tags: [priority, physical_attacker, prediction, risky]
+  common_holders: [absol, bisharp, mawile]
+
+accelerock:
+  power: 40
+  accuracy: 100
+  type: rock
+  category: physical
+  priority: 1
+  pp: 20
+  tags: [priority, physical_attacker, weak]
+  common_holders: [lycanroc]
+
+vacuum_wave:
+  power: 40
+  accuracy: 100
+  type: fighting
+  category: special
+  priority: 1
+  pp: 30
+  tags: [priority, special_attacker, weak]
+  common_holders: [lucario]
+
+water_shuriken:
+  power: 15
+  accuracy: 100
+  type: water
+  category: special
+  priority: 1
+  pp: 20
+  notes: "Hits 2-5 times. Always crits with Battle Bond Greninja"
+  tags: [priority, special_attacker, multi_hit]
+  common_holders: [greninja]
+
+# Protective priority
+protect:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: 4
+  pp: 10
+  effects:
+    - type: protect
+  notes: "Fails if used consecutively"
+  tags: [priority, defensive, protect]
+
+detect:
+  power: 0
+  accuracy: null
+  type: fighting
+  category: status
+  priority: 4
+  pp: 5
+  effects:
+    - type: protect
+  notes: "Same as Protect but Fighting-type"
+  tags: [priority, defensive, protect]
+
+quick_guard:
+  power: 0
+  accuracy: null
+  type: fighting
+  category: status
+  priority: 3
+  pp: 15
+  effects:
+    - type: protect
+      scope: team
+      condition: priority_moves_only
+  tags: [priority, defensive, team_support]
+
+# Utility priority
+fake_out:
+  power: 40
+  accuracy: 100
+  type: normal
+  category: physical
+  priority: 3
+  pp: 10
+  effects:
+    - type: flinch
+      chance: 1.0
+  notes: "Only works on first turn after switching in"
+  tags: [priority, physical_attacker, flinch, first_turn_only]
+  common_holders: [ambipom, mienshao, raichu]
+
+first_impression:
+  power: 90
+  accuracy: 100
+  type: bug
+  category: physical
+  priority: 2
+  pp: 10
+  notes: "Only works on first turn after switching in"
+  tags: [priority, physical_attacker, high_power, first_turn_only]
+  common_holders: [golisopod]
