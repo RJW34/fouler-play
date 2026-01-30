@@ -23,6 +23,20 @@ def format_decision(battle, decision):
     # Formats a decision for communication with Pokemon-Showdown
     # If the move can be used as a Z-Move, it will be
 
+    # Final safety: if force_switch is active, the decision MUST be a switch
+    if battle.force_switch and not decision.startswith(constants.SWITCH_STRING + " "):
+        logger.error(
+            "format_decision called with move '%s' during force_switch! "
+            "This should have been caught earlier.",
+            decision,
+        )
+        # Pick any alive reserve Pokemon
+        for pkmn in battle.user.reserve:
+            if pkmn.hp > 0:
+                decision = "{} {}".format(constants.SWITCH_STRING, pkmn.name)
+                logger.warning("Emergency switch override to: %s", pkmn.name)
+                break
+
     if decision.startswith(constants.SWITCH_STRING + " "):
         switch_pokemon = decision.split("switch ")[-1]
         for pkmn in battle.user.reserve:
@@ -86,12 +100,33 @@ async def async_pick_move(battle):
     loop = asyncio.get_event_loop()
     with concurrent.futures.ThreadPoolExecutor() as pool:
         best_move = await loop.run_in_executor(pool, find_best_move, battle_copy)
+
+    # Safety check: if force_switch is active but MCTS returned a move, override with a switch
+    if battle.force_switch and not best_move.startswith(constants.SWITCH_STRING + " "):
+        logger.warning(
+            "force_switch is active but MCTS returned move '%s' - forcing a switch",
+            best_move,
+        )
+        best_move = _get_best_switch(battle_copy)
+
     battle.user.last_selected_move = LastUsedMove(
         battle.user.active.name,
         best_move.removesuffix("-tera").removesuffix("-mega"),
         battle.turn,
     )
     return format_decision(battle_copy, best_move)
+
+
+def _get_best_switch(battle):
+    """Pick the best available switch-in when forced to switch."""
+    alive_reserves = [p for p in battle.user.reserve if p.hp > 0]
+    if alive_reserves:
+        # Pick the Pokemon with the highest HP percentage as a reasonable default
+        best = max(alive_reserves, key=lambda p: p.hp / p.max_hp)
+        logger.info("Force-switch fallback: switching to %s", best.name)
+        return "{} {}".format(constants.SWITCH_STRING, best.name)
+    # Should never reach here if there are alive reserves, but just in case
+    raise ValueError("No alive Pokemon to switch to during force_switch")
 
 
 async def handle_team_preview(battle, ps_websocket_client):
