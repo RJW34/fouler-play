@@ -204,7 +204,7 @@ class BotMonitor:
     async def run_bot(self):
         """Run the bot process and monitor it"""
         cmd = [
-            "python", "run.py",
+            "venv/bin/python", "run.py",
             "--websocket-uri", "wss://sim3.psim.us/showdown/websocket",
             "--ps-username", "LEBOTJAMESXD001",
             "--ps-password", "LeBotPassword2026!",
@@ -212,7 +212,7 @@ class BotMonitor:
             "--pokemon-format", "gen9ou",
             "--team-name", "gen9/ou/fat-team-1-stall",  # Fat team for 1700+ push
             "--playstyle", "fat",
-            "--search-time-ms", "500",  # Reduced from 2000 to prevent timeouts
+            "--search-time-ms", "2000",
             "--run-count", "999999",
             "--save-replay", "always"  # Save all replays
         ]
