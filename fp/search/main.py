@@ -14,6 +14,7 @@ from constants import (
     # Status-boosted abilities (Guts, Marvel Scale, etc.)
     POKEMON_STATUS_BACKFIRES,
     STATUS_INFLICTING_MOVES,
+    PURE_STATUS_MOVES,
     # Poison Heal
     POKEMON_COMMONLY_POISON_HEAL,
     TOXIC_POISON_MOVES,
@@ -311,10 +312,10 @@ def apply_ability_penalties(
         penalty = 1.0  # No penalty by default
         reason = None
 
-        # Already has status: NEVER use status moves (they will fail)
-        if ability_state.has_status and move_name in STATUS_INFLICTING_MOVES:
-            penalty = min(penalty, ABILITY_PENALTY_SEVERE)
-            reason = "Opponent already has a status condition"
+        # Already has status: NEVER use pure status moves (they will fail)
+        if ability_state.has_status and move_name in PURE_STATUS_MOVES:
+            penalty = min(penalty, 0.01)  # Near-zero: move literally fails
+            reason = "Opponent already has a status condition (move will fail)"
 
         # Unaware: penalize offensive stat boosting moves
         if ability_state.has_unaware and move_name in OFFENSIVE_STAT_BOOST_MOVES:
@@ -632,6 +633,8 @@ def find_best_move(battle: Battle) -> str:
         detected_abilities.append("Substitute")
     if ability_state.has_contact_punish:
         detected_abilities.append("Contact Punishment (Iron Barbs/Rough Skin/Rocky Helmet)")
+    if ability_state.has_status:
+        detected_abilities.append("Already statused (pure status moves will fail)")
 
     if detected_abilities:
         logger.info(
