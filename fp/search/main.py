@@ -525,6 +525,15 @@ def _get_fallback_move(battle: Battle) -> str:
     Emergency fallback: pick the first available move without MCTS.
     Used when MCTS times out to avoid forfeiting the turn.
     """
+    # If force_switch is active, we MUST switch - don't try moves
+    if battle.force_switch:
+        for pkmn in battle.user.reserve:
+            if pkmn.hp > 0:
+                logger.warning(f"Timeout fallback (force_switch): switching to {pkmn.name}")
+                return f"switch {pkmn.name}"
+        logger.error("Timeout fallback: force_switch active but no alive reserves!")
+        return "switch 1"  # Last resort, server will reject but better than a move
+
     if battle.user.active is not None:
         for move in battle.user.active.moves:
             if hasattr(move, "disabled") and move.disabled:
@@ -536,7 +545,7 @@ def _get_fallback_move(battle: Battle) -> str:
             return move_name
 
     # If no moves available, try switching
-    for i, pkmn in enumerate(battle.user.reserve):
+    for pkmn in battle.user.reserve:
         if pkmn.hp > 0:
             logger.warning(f"Timeout fallback: switching to {pkmn.name}")
             return f"switch {pkmn.name}"
