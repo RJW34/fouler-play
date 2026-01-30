@@ -1,0 +1,263 @@
+# Competitive Items - Common items used in competitive Pokemon
+
+# Consumable survival items
+focus_sash:
+  type: survival
+  effect: survive_ohko
+  description: "Survives a one-hit KO from full HP with 1 HP remaining"
+  common_holders:
+    - breloom
+    - alakazam
+    - rampardos
+    - weavile
+    - gengar
+    - infernape
+  countered_by:
+    - multi_hit_moves
+    - priority_moves
+    - entry_hazards
+  notes: "Only works at full HP"
+  tags: [survival, consumable, offensive]
+
+focus_band:
+  type: survival
+  effect: chance_survive_ohko
+  description: "10% chance to survive a KO with 1 HP"
+  notes: "Much less reliable than Focus Sash"
+  tags: [survival, rng, rarely_used]
+
+# Status orbs
+flame_orb:
+  type: status_orb
+  effect: burn_self
+  description: "Burns the holder at end of turn"
+  common_holders:
+    - conkeldurr
+    - guts_users
+  synergizes_with:
+    - guts
+    - quick_feet
+    - marvel_scale
+  tags: [status_synergy, orb]
+
+toxic_orb:
+  type: status_orb
+  effect: poison_self
+  description: "Badly poisons the holder at end of turn"
+  common_holders:
+    - gliscor
+    - breloom
+  synergizes_with:
+    - poison_heal
+    - guts
+    - quick_feet
+  tags: [status_synergy, orb]
+
+# Choice items
+choice_band:
+  type: choice
+  effect: boost_attack_lock_move
+  description: "1.5x Attack but locks into first move used"
+  common_holders:
+    - dragonite
+    - tyranitar
+    - haxorus
+  drawback: "Must switch to change moves"
+  tags: [choice, physical_attacker, lock_in, top_tier]
+
+choice_scarf:
+  type: choice
+  effect: boost_speed_lock_move
+  description: "1.5x Speed but locks into first move used"
+  common_holders:
+    - garchomp
+    - latios
+    - hydreigon
+    - landorus
+  drawback: "Must switch to change moves"
+  tags: [choice, speed_boost, lock_in, top_tier]
+
+choice_specs:
+  type: choice
+  effect: boost_spatk_lock_move
+  description: "1.5x Sp. Atk but locks into first move used"
+  common_holders:
+    - latios
+    - magnezone
+    - chandelure
+  drawback: "Must switch to change moves"
+  tags: [choice, special_attacker, lock_in, top_tier]
+
+# Life orb
+life_orb:
+  type: power_boost
+  effect: boost_all_moves_recoil
+  description: "1.3x damage but lose 10% max HP each hit"
+  common_holders:
+    - garchomp
+    - latios
+    - salamence
+    - lucario
+  drawback: "Recoil damage"
+  tags: [power_boost, recoil, top_tier]
+
+# Leftovers
+leftovers:
+  type: recovery
+  effect: heal_per_turn
+  description: "Restores 1/16 max HP each turn"
+  common_holders:
+    - toxapex
+    - ferrothorn
+    - chansey
+    - snorlax
+  tags: [recovery, stall, top_tier]
+
+# Type-boosting items
+muscle_band:
+  type: type_boost
+  effect: boost_physical_moves
+  description: "1.1x power for physical moves"
+  tags: [power_boost, physical_attacker, rarely_used]
+
+wise_glasses:
+  type: type_boost
+  effect: boost_special_moves
+  description: "1.1x power for special moves"
+  tags: [power_boost, special_attacker, rarely_used]
+
+# Resistance berries
+sitrus_berry:
+  type: recovery_berry
+  effect: heal_low_hp
+  description: "Restores 1/4 max HP when below 50% HP"
+  common_holders:
+    - defensive_pokemon
+  tags: [recovery, berry, defensive]
+
+lum_berry:
+  type: status_berry
+  effect: cure_status
+  description: "Cures any status condition"
+  common_holders:
+    - offensive_sweepers
+  tags: [status_cure, berry, utility]
+
+# Weakness berries
+occa_berry:
+  type: weakness_berry
+  effect: halve_fire_once
+  description: "Halves damage from super effective Fire-type move once"
+  tags: [berry, defensive, situational]
+
+# Mental herb
+mental_herb:
+  type: utility
+  effect: cure_taunt_encore
+  description: "Cures Taunt, Encore, Torment, Disable, Cursed Body, Heal Block"
+  common_holders:
+    - setup_sweepers
+  tags: [utility, anti_taunt, consumable]
+
+# Assault vest
+assault_vest:
+  type: defensive
+  effect: boost_spdef_no_status
+  description: "1.5x Sp. Def but cannot use status moves"
+  common_holders:
+    - conkeldurr
+    - goodra
+    - azumarill
+  drawback: "Cannot use status moves"
+  tags: [defensive, special_wall, top_tier]
+
+# Rocky helmet
+rocky_helmet:
+  type: defensive
+  effect: damage_on_contact
+  description: "Damages attacker for 1/6 max HP on contact moves"
+  common_holders:
+    - ferrothorn
+    - garchomp
+  tags: [defensive, chip_damage]
+
+# Red card
+red_card:
+  type: utility
+  effect: force_switch_when_hit
+  description: "Forces attacker to switch when holder is hit"
+  tags: [utility, disruption, situational]
+
+# Eject button
+eject_button:
+  type: utility
+  effect: switch_self_when_hit
+  description: "Holder switches out when hit"
+  tags: [utility, momentum, situational]
+
+# Air balloon
+air_balloon:
+  type: utility
+  effect: ground_immunity_until_hit
+  description: "Grants Ground immunity until hit by a move"
+  common_holders:
+    - heatran
+    - excadrill
+  tags: [utility, ground_immunity, consumable]
+
+# King's rock
+kings_rock:
+  type: utility
+  effect: flinch_chance
+  description: "Attacking moves gain 10% flinch chance"
+  notes: "Only applies to moves without flinch chance"
+  tags: [utility, flinch, rarely_used]
+
+# Expert belt
+expert_belt:
+  type: power_boost
+  effect: boost_super_effective
+  description: "1.2x damage on super effective hits"
+  common_holders:
+    - mixed_attackers
+    - coverage_users
+  tags: [power_boost, super_effective]
+
+# Wide lens
+wide_lens:
+  type: utility
+  effect: boost_accuracy
+  description: "Increases move accuracy by 10%"
+  notes: "Rarely used; most prefer other items"
+  tags: [utility, accuracy, rarely_used]
+
+# Black sludge
+black_sludge:
+  type: recovery
+  effect: heal_poison_types
+  description: "Restores 1/16 max HP for Poison types; damages others"
+  common_holders:
+    - toxapex
+    - amoonguss
+  tags: [recovery, poison_only]
+
+# Heavy-duty boots
+heavy_duty_boots:
+  type: utility
+  effect: hazard_immunity
+  description: "Immune to entry hazards (Stealth Rock, Spikes, etc.)"
+  common_holders:
+    - volcarona
+    - corviknight
+    - zapdos
+  tags: [utility, hazard_immunity, top_tier]
+
+# Weakness policy
+weakness_policy:
+  type: setup
+  effect: boost_on_super_effective
+  description: "Raises Attack and Sp. Atk by 2 stages when hit by super effective move"
+  common_holders:
+    - dragonite
+    - salamence
+  tags: [setup, consumable, risky]

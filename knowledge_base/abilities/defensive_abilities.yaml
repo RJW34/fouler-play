@@ -1,0 +1,218 @@
+# Defensive Abilities - Abilities that provide defensive utility
+
+levitate:
+  effect: ground_immunity
+  description: "Grants immunity to Ground-type moves"
+  common_holders:
+    - latios
+    - latias
+    - hydreigon
+    - rotom
+    - gengar
+    - bronzong
+  countered_by:
+    - mold_breaker
+    - gravity
+    - smack_down
+  tags: [immunity, ground_immunity, common]
+
+water_absorb:
+  effect: water_immunity_heal
+  description: "Immune to Water moves; restores 1/4 max HP when hit by Water"
+  common_holders:
+    - vaporeon
+    - jellicent
+    - mantine
+  countered_by:
+    - mold_breaker
+  tags: [immunity, water_immunity, recovery]
+
+storm_drain:
+  effect: water_immunity_boost
+  description: "Immune to Water moves; raises Sp. Atk by 1 when hit by Water"
+  common_holders:
+    - gastrodon
+    - cradily
+  countered_by:
+    - mold_breaker
+  tags: [immunity, water_immunity, boost]
+
+volt_absorb:
+  effect: electric_immunity_heal
+  description: "Immune to Electric moves; restores 1/4 max HP when hit by Electric"
+  common_holders:
+    - jolteon
+    - lanturn
+  countered_by:
+    - mold_breaker
+  tags: [immunity, electric_immunity, recovery]
+
+lightning_rod:
+  effect: electric_immunity_boost
+  description: "Immune to Electric moves; raises Sp. Atk by 1 when hit by Electric"
+  common_holders:
+    - raichu
+    - seaking
+    - marowak_alola
+  countered_by:
+    - mold_breaker
+  tags: [immunity, electric_immunity, boost]
+
+flash_fire:
+  effect: fire_immunity_boost
+  description: "Immune to Fire moves; powers up Fire moves by 50% when hit"
+  common_holders:
+    - heatran
+    - chandelure
+    - arcanine
+    - flareon
+  countered_by:
+    - mold_breaker
+  tags: [immunity, fire_immunity, boost]
+
+sap_sipper:
+  effect: grass_immunity_boost
+  description: "Immune to Grass moves; raises Attack by 1 when hit by Grass"
+  common_holders:
+    - azumarill
+    - bouffalant
+  countered_by:
+    - mold_breaker
+  tags: [immunity, grass_immunity, boost]
+
+magic_bounce:
+  effect: reflect_status
+  description: "Reflects status moves back at the user"
+  common_holders:
+    - espeon
+    - xatu
+    - mega_sableye
+  notes: "NOT countered by Mold Breaker"
+  tags: [immunity, status_immunity, reflect, top_tier]
+
+thick_fat:
+  effect: fire_ice_resistance
+  description: "Halves damage from Fire and Ice moves"
+  common_holders:
+    - snorlax
+    - mamoswine
+    - mega_venusaur
+  countered_by:
+    - mold_breaker
+  tags: [resistance, bulk]
+
+multiscale:
+  effect: half_damage_full_hp
+  description: "Halves damage when at full HP"
+  common_holders:
+    - dragonite
+    - lugia
+  countered_by:
+    - mold_breaker
+  tags: [damage_reduction, full_hp_dependent, top_tier]
+
+fur_coat:
+  effect: double_defense
+  description: "Doubles Defense stat"
+  common_holders:
+    - furfrou
+  countered_by:
+    - mold_breaker
+  tags: [stat_boost, physical_wall]
+
+filter:
+  effect: reduce_super_effective
+  description: "Reduces damage from super effective moves by 25%"
+  common_holders:
+    - aggron
+    - mega_aggron
+  countered_by:
+    - mold_breaker
+  tags: [damage_reduction, defensive]
+
+solid_rock:
+  effect: reduce_super_effective
+  description: "Reduces damage from super effective moves by 25%"
+  common_holders:
+    - rhyperior
+    - camerupt
+  countered_by:
+    - mold_breaker
+  tags: [damage_reduction, defensive]
+
+marvel_scale:
+  effect: boost_defense_when_statused
+  description: "Increases Defense by 50% when affected by status"
+  common_holders:
+    - milotic
+    - dragonair
+  tags: [status_synergy, defensive, conditional]
+  synergizes_with: [flame_orb, toxic_orb]
+
+regenerator:
+  effect: heal_on_switch
+  description: "Restores 1/3 max HP when switching out"
+  common_holders:
+    - toxapex
+    - amoonguss
+    - tornadus
+  tags: [recovery, switching, top_tier]
+
+poison_heal:
+  effect: heal_when_poisoned
+  description: "Restores 1/8 max HP when poisoned instead of taking damage"
+  common_holders:
+    - gliscor
+    - breloom
+  tags: [status_synergy, recovery, toxic_orb_combo]
+  synergizes_with: [toxic_orb]
+
+immunity:
+  effect: poison_immunity
+  description: "Cannot be poisoned"
+  common_holders:
+    - snorlax
+    - zangoose
+  tags: [status_immunity, situational]
+
+water_veil:
+  effect: burn_immunity
+  description: "Cannot be burned"
+  common_holders:
+    - goldeen
+    - seaking
+  tags: [status_immunity, situational]
+
+limber:
+  effect: paralysis_immunity
+  description: "Cannot be paralyzed"
+  common_holders:
+    - lopunny
+    - persian
+  tags: [status_immunity, situational]
+
+insomnia:
+  effect: sleep_immunity
+  description: "Cannot be put to sleep"
+  common_holders:
+    - hypno
+    - noctowl
+  tags: [status_immunity, situational]
+
+vital_spirit:
+  effect: sleep_immunity
+  description: "Cannot be put to sleep"
+  common_holders:
+    - primeape
+    - vigoroth
+  tags: [status_immunity, situational]
+
+prankster:
+  effect: priority_status_moves
+  description: "Status moves gain +1 priority"
+  common_holders:
+    - whimsicott
+    - sableye
+    - thundurus
+  notes: "Doesn't work on Dark-type opponents (Gen 7+)"
+  tags: [utility, priority, top_tier]
