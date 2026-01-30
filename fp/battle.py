@@ -343,7 +343,7 @@ class Battler:
                     constants.CAN_Z_MOVE
                 ][index]
             except KeyError:
-                pass
+                logger.debug("No Z-move data for move index %d", index)
 
     def update_from_request_json(self, request_json):
         """

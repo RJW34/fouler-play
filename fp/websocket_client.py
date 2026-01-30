@@ -180,3 +180,20 @@ class PSWebsocketClient:
     async def save_replay(self, battle_tag):
         message = ["/savereplay"]
         await self.send_message(battle_tag, message)
+        
+        # Wait for the replay URL response
+        timeout = 10  # seconds
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            msg = await self.receive_message()
+            if "replay.pokemonshowdown.com" in msg:
+                # Extract and log the replay URL
+                import re
+                replay_match = re.search(r'https://replay\.pokemonshowdown\.com/([\w-]+)', msg)
+                if replay_match:
+                    replay_url = f"https://replay.pokemonshowdown.com/{replay_match.group(1)}"
+                    logger.info(f"Replay saved: {replay_url}")
+                    return replay_url
+        
+        logger.warning(f"No replay URL received for {battle_tag}")
+        return None

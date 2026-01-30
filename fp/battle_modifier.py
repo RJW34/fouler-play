@@ -1016,7 +1016,7 @@ def move(battle, split_msg):
             )
             pkmn.impossible_items.add("{}gem".format(move_type))
     except KeyError:
-        pass
+        logger.debug("Move '{}' not found in move JSON when checking gem for {}".format(move_name, pkmn.name))
 
     try:
         if (
@@ -1026,7 +1026,7 @@ def move(battle, split_msg):
             logger.info("Adding lockedmove to {}".format(pkmn.name))
             pkmn.volatile_statuses.append(constants.LOCKED_MOVE)
     except KeyError:
-        pass
+        logger.debug("Move '{}' has no self/volatileStatus for {}".format(move_name, pkmn.name))
 
     try:
         if all_move_json[move_name][constants.CATEGORY] == constants.STATUS:
@@ -1037,7 +1037,7 @@ def move(battle, split_msg):
             )
             pkmn.impossible_items.add(constants.ASSAULT_VEST)
     except KeyError:
-        pass
+        logger.debug("Move '{}' has no category for {}".format(move_name, pkmn.name))
 
     try:
         category = all_move_json[move_name][constants.CATEGORY]
