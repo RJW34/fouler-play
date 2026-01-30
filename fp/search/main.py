@@ -91,6 +91,7 @@ class OpponentAbilityState:
     has_phazing: bool = False  # Has revealed a phazing move
     has_substitute: bool = False  # Currently behind a Substitute
     has_contact_punish: bool = False  # Iron Barbs, Rough Skin, or Rocky Helmet
+    has_status: bool = False  # Already has a status condition
     pokemon_name: str = ""
     ability_known: bool = False
     ability_name: str = ""
@@ -257,6 +258,11 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     ):
         state.has_contact_punish = True
 
+    # Status detection - check if opponent already has a status condition
+    opponent_status = getattr(opponent, "status", None)
+    if opponent_status is not None:
+        state.has_status = True
+
     return state
 
 
@@ -289,6 +295,7 @@ def apply_ability_penalties(
             ability_state.has_phazing,
             ability_state.has_substitute,
             ability_state.has_contact_punish,
+            ability_state.has_status,
         ]
     ):
         return final_policy
@@ -303,6 +310,11 @@ def apply_ability_penalties(
 
         penalty = 1.0  # No penalty by default
         reason = None
+
+        # Already has status: NEVER use status moves (they will fail)
+        if ability_state.has_status and move_name in STATUS_INFLICTING_MOVES:
+            penalty = min(penalty, ABILITY_PENALTY_SEVERE)
+            reason = "Opponent already has a status condition"
 
         # Unaware: penalize offensive stat boosting moves
         if ability_state.has_unaware and move_name in OFFENSIVE_STAT_BOOST_MOVES:
