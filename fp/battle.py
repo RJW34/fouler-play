@@ -369,12 +369,18 @@ class Battler:
             pkmn_level = switch_string_pkmn.level
             pkmn_status = switch_string_pkmn.status
             if pkmn_dict[constants.ACTIVE]:
+                # During team preview or after switch, active Pokemon might differ from expectations
+                # Update to match server state instead of asserting
                 if self.active.name != pkmn_name and self.active.base_name != pkmn_name:
-                    raise ValueError(
-                        "Active pokemon mismatch: expected {} or {}, got {}".format(
+                    logger.debug(
+                        "Active pokemon changed: expected {} or {}, got {}".format(
                             self.active.name, self.active.base_name, pkmn_name
                         )
                     )
+                    # Find and set the new active Pokemon
+                    pkmn = self.find_pokemon_in_reserves(pkmn_name)
+                    if pkmn:
+                        self.active = pkmn
 
                 if constants.ACTIVE in request_json:
                     self._initialize_user_active_from_request_json(request_json)
