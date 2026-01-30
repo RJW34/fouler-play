@@ -171,6 +171,11 @@ POKEMON_COMMONLY_MAGIC_BOUNCE = {
     "diancie",      # Magic Bounce (Mega)
 }
 
+# Good as Gold: Blocks ALL status moves (cannot be hit by them)
+POKEMON_COMMONLY_GOOD_AS_GOLD = {
+    "gholdengo",    # Good as Gold is Gholdengo's only ability
+}
+
 # Competitive: Stat drops give +2 SpA
 POKEMON_COMMONLY_COMPETITIVE = {
     "milotic",      # Competitive or Marvel Scale
