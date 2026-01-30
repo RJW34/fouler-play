@@ -1,0 +1,182 @@
+# Common Battle Situations - Patterns that occur frequently in competitive play
+
+opponent_at_focus_sash:
+  description: "Opponent likely has Focus Sash and is at full HP"
+  detection:
+    - item_known_sash: true
+    - hp_percent: 1.0
+    - common_holders: [breloom, alakazam, rampardos]
+  optimal_response:
+    - priority: use_multi_hit
+      moves: [icicle_spear, rock_blast, bullet_seed]
+    - fallback: use_priority
+      moves: [extreme_speed, mach_punch, bullet_punch]
+  avoid:
+    - single_hit_ko_attempts
+  reasoning: "Sash will survive first hit; multi-hit or priority moves break through"
+
+opponent_behind_substitute:
+  description: "Opponent has Substitute up"
+  detection:
+    - volatile_status: substitute
+  optimal_response:
+    - priority: use_attacking_moves
+    - alternative: use_sound_moves
+      moves: [boomburst, hyper_voice]
+    - alternative: have_infiltrator
+  avoid:
+    - status_moves
+    - non_damaging_moves
+  reasoning: "Substitute blocks most status; sound moves/Infiltrator bypass it"
+
+low_hp_outsped:
+  description: "We're low HP and opponent is faster"
+  detection:
+    - our_hp_percent: <0.3
+    - speed_comparison: slower
+  optimal_response:
+    - priority: switch_out
+      reason: "Preserve Pokemon for later"
+    - fallback: use_priority_move
+      condition: "Have priority move that KOs"
+    - desperate: accept_trade
+      condition: "Can secure KO before fainting"
+  avoid:
+    - slow_moves
+    - setup_moves
+  reasoning: "Outsped + low HP = high KO risk; switch or priority is safest"
+
+speed_tie_critical:
+  description: "Speed tie situation where first move wins"
+  detection:
+    - speed_comparison: equal
+    - both_can_ko: true
+  optimal_response:
+    - priority: use_priority_move
+      reason: "Guarantees first strike"
+    - fallback: 50_50_prediction
+      moves: [strongest_available]
+  avoid:
+    - defensive_moves
+    - setup_moves
+  reasoning: "Speed ties are 50/50; priority guarantees win"
+
+opponent_setup_sweeper:
+  description: "Opponent is setting up (Swords Dance, Dragon Dance, etc.)"
+  detection:
+    - recent_setup_move: true
+    - stat_boosts: [atk, spatk, spe]
+  optimal_response:
+    - priority: phaze_immediately
+      moves: [roar, whirlwind, dragon_tail]
+    - alternative: status_inflict
+      moves: [will_o_wisp, thunder_wave]
+    - desperate: offensive_pressure
+      reason: "Try to KO before they sweep"
+  avoid:
+    - defensive_stalling
+    - allowing_more_setup
+  reasoning: "Setup sweepers snowball; stop momentum immediately"
+
+trapped_by_pursuit:
+  description: "Opponent has Pursuit and will trap us on switch"
+  detection:
+    - opponent_has_move: pursuit
+    - opponent_likely_pursuit: true
+  optimal_response:
+    - priority: stay_in_and_attack
+      reason: "Switching gives free 80 power hit"
+    - alternative: switch_to_resist
+      condition: "Switch-in resists Pursuit"
+  avoid:
+    - blind_switching
+  reasoning: "Pursuit does 2x damage on switch; staying in often better"
+
+weather_war_rain:
+  description: "Rain is up and both sides want weather control"
+  detection:
+    - weather: rain
+    - opponent_weather_setter: sun
+  optimal_response:
+    - priority: maintain_rain
+      reason: "Swift Swim/rain abusers active"
+    - alternative: remove_opponent_setter
+      moves: [knockout_weather_setter]
+  avoid:
+    - letting_weather_expire
+  reasoning: "Weather control wins games; protect your advantage"
+
+endgame_1v1:
+  description: "Final Pokemon matchup (1v1 endgame)"
+  detection:
+    - our_pokemon_remaining: 1
+    - opponent_pokemon_remaining: 1
+  optimal_response:
+    - priority: calculate_exact_damage
+      reason: "Every HP matters"
+    - fallback: play_for_speed_advantage
+      moves: [priority, fastest_move]
+  avoid:
+    - risky_predictions
+    - setup_moves_without_ko
+  reasoning: "1v1 endgame is pure calculation; no room for error"
+
+hazards_vs_defog:
+  description: "We have hazards up, opponent has Defog"
+  detection:
+    - our_hazards_active: [stealth_rock, spikes]
+    - opponent_has_move: defog
+  optimal_response:
+    - priority: prevent_defog
+      moves: [taunt, attack_on_predicted_defog]
+    - alternative: sacrifice_hazards
+      reason: "If forced, accept removal and reapply"
+  avoid:
+    - letting_free_defog
+  reasoning: "Hazards are setup investment; protect them when possible"
+
+revenge_kill_opportunity:
+  description: "Opponent just KO'd our Pokemon, we can revenge"
+  detection:
+    - our_pokemon_fainted: true
+    - switch_in_available: true
+  optimal_response:
+    - priority: revenge_with_scarf
+      condition: "Have Choice Scarf user"
+    - alternative: revenge_with_priority
+      moves: [extreme_speed, aqua_jet]
+    - fallback: revenge_with_resist
+      reason: "Take hit and KO back"
+  avoid:
+    - switching_to_weakness
+  reasoning: "Revenge killing preserves momentum"
+
+stall_vs_offense:
+  description: "Stall team facing hyper offense"
+  detection:
+    - our_team_type: stall
+    - opponent_team_type: offense
+  optimal_response:
+    - priority: spread_status
+      moves: [will_o_wisp, toxic]
+    - alternative: stack_hazards
+      moves: [stealth_rock, spikes]
+    - fallback: wear_down_gradually
+  avoid:
+    - trading_hits
+    - offensive_pressure
+  reasoning: "Stall wins through attrition, not trades"
+
+choice_locked:
+  description: "We're locked into a move by Choice item"
+  detection:
+    - our_item: [choice_band, choice_scarf, choice_specs]
+    - move_locked: true
+  optimal_response:
+    - priority: predict_switch
+      reason: "Opponent will likely switch to resist"
+    - alternative: accept_disadvantage
+      reason: "If predicted wrong, switch out"
+  avoid:
+    - staying_in_bad_matchup
+  reasoning: "Choice lock creates prediction scenario"
