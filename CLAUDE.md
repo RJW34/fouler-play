@@ -152,21 +152,15 @@ class OpponentAbilityState:
 - Detects when opponent has Substitute volatile status
 - Severely penalizes status-only moves that fail against Substitute
 
+### ✅ Contact Move Penalty System
+- Added `CONTACT_MOVES` set (120+ contact moves)
+- Detects Iron Barbs, Rough Skin abilities and Rocky Helmet item
+- Infers from common Pokemon (Ferrothorn, Garchomp, defensive Rocky Helmet holders)
+- Applies `ABILITY_PENALTY_LIGHT` (50% reduction) - contact moves still damage, just take recoil
+
 ---
 
 ## Next Steps for Implementation
-
-### 3. Contact Moves vs Rocky Helmet/Iron Barbs/Rough Skin (Medium Priority)
-
-**Problem**: Bot uses contact moves (Close Combat) against Rocky Helmet holders or Ferrothorn (Iron Barbs), taking unnecessary recoil.
-
-**Solution**:
-- Track revealed Rocky Helmet, Iron Barbs, Rough Skin
-- Add `CONTACT_MOVES` set
-- Add `POKEMON_COMMONLY_IRON_BARBS` (Ferrothorn)
-- Add `POKEMON_COMMONLY_ROUGH_SKIN` (Garchomp)
-- When facing these, prefer non-contact alternatives if available
-- Use lighter penalty (ABILITY_PENALTY_LIGHT) since contact moves still deal damage
 
 ### 4. Intimidate vs Defiant/Competitive (Medium Priority)
 
