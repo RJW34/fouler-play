@@ -1,0 +1,22 @@
+{
+  "timestamp": "20260130_170221",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2529672044-4pt3bxrtq5fdocy845ddvpivg69wx9epw",
+  "replay_id": "gen9ou-2529672044-4pt3bxrtq5fdocy845ddvpivg69wx9epw",
+  "mistakes_found": 2,
+  "mistakes": [
+    {
+      "category": "hazards_not_removed",
+      "turn": 43,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 2,
+      "description": "Attempted nastyplot on turn 2 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

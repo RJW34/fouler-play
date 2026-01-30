@@ -2,9 +2,9 @@
   "gliscor": {
     "pokemon_name": "gliscor",
     "physical_moves": [
+      "knockoff",
       "facade",
-      "earthquake",
-      "knockoff"
+      "earthquake"
     ],
     "special_moves": [],
     "status_moves": [
@@ -59,5 +59,104 @@
     "status_moves": [],
     "times_seen": 0,
     "threat_category": "special_only"
+  },
+  "blaziken": {
+    "pokemon_name": "blaziken",
+    "physical_moves": [
+      "earthquake"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "greninja": {
+    "pokemon_name": "greninja",
+    "physical_moves": [],
+    "special_moves": [],
+    "status_moves": [
+      "protect"
+    ],
+    "times_seen": 0,
+    "threat_category": "status_only"
+  },
+  "dragonite": {
+    "pokemon_name": "dragonite",
+    "physical_moves": [
+      "extremespeed",
+      "earthquake"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "incineroar": {
+    "pokemon_name": "incineroar",
+    "physical_moves": [
+      "earthquake",
+      "fakeout"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "darkrai": {
+    "pokemon_name": "darkrai",
+    "physical_moves": [
+      "knockoff",
+      "drainpunch"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "ogerponwellspring": {
+    "pokemon_name": "ogerponwellspring",
+    "physical_moves": [
+      "ivycudgel"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "landorustherian": {
+    "pokemon_name": "landorustherian",
+    "physical_moves": [],
+    "special_moves": [
+      "earthpower"
+    ],
+    "status_moves": [
+      "stealthrock",
+      "taunt"
+    ],
+    "times_seen": 0,
+    "threat_category": "special_only"
+  },
+  "kingambit": {
+    "pokemon_name": "kingambit",
+    "physical_moves": [],
+    "special_moves": [],
+    "status_moves": [
+      "swordsdance"
+    ],
+    "times_seen": 0,
+    "threat_category": "status_only"
+  },
+  "greattusk": {
+    "pokemon_name": "greattusk",
+    "physical_moves": [
+      "closecombat",
+      "headlongrush"
+    ],
+    "special_moves": [],
+    "status_moves": [
+      "bulkup"
+    ],
+    "times_seen": 0,
+    "threat_category": "physical_only"
   }
 }

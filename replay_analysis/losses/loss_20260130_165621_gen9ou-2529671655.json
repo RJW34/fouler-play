@@ -1,0 +1,15 @@
+{
+  "timestamp": "20260130_165621",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2529671655",
+  "replay_id": "gen9ou-2529671655",
+  "mistakes_found": 1,
+  "mistakes": [
+    {
+      "category": "no_hazards_set",
+      "turn": 2,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    }
+  ]
+}

@@ -164,7 +164,7 @@ class BotMonitor:
             match = WINNER_PATTERN.search(line)
             if match:
                 winner = match.group(1).strip()
-                if winner == "LEBOTJAMESXD001":
+                if winner == "LEBOTJAMESXD002":
                     self.wins += 1
                     emoji = "🎉"
                     result = "Won"

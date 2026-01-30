@@ -1,0 +1,22 @@
+{
+  "timestamp": "20260130_170401",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2529675389-yim6eqcvukxn7ug1naaxg5fp1d56t8epw",
+  "replay_id": "gen9ou-2529675389-yim6eqcvukxn7ug1naaxg5fp1d56t8epw",
+  "mistakes_found": 2,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 7,
+      "description": "Grimmsnarl fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 7,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    }
+  ]
+}
