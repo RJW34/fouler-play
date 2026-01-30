@@ -212,9 +212,9 @@ class BotMonitor:
             "--pokemon-format", "gen9ou",
             "--team-name", "gen9/ou/fat-team-1-stall",  # Fat team for 1700+ push
             "--playstyle", "fat",
-            "--search-time-ms", "2000",
+            "--search-time-ms", "500",  # Reduced from 2000 to prevent timeouts
             "--run-count", "999999",
-            "--save-replay", "on_loss"  # Only save losses for analysis
+            "--save-replay", "always"  # Save all replays
         ]
         
         # Ensure we're in the right directory

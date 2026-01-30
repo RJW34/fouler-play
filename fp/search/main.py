@@ -29,6 +29,8 @@ from constants import (
     # Magic Bounce
     POKEMON_COMMONLY_MAGIC_BOUNCE,
     MAGIC_BOUNCE_REFLECTED_MOVES,
+    # Good as Gold
+    POKEMON_COMMONLY_GOOD_AS_GOLD,
     # Competitive/Defiant
     POKEMON_STAT_DROP_BACKFIRES,
     STAT_LOWERING_MOVES,
@@ -83,6 +85,7 @@ class OpponentAbilityState:
     has_flash_fire: bool = False
     has_levitate: bool = False
     has_magic_bounce: bool = False
+    has_good_as_gold: bool = False  # Blocks ALL status moves
     has_competitive_defiant: bool = False  # Competitive or Defiant
     has_focus_sash: bool = False  # Focus Sash item
     has_phazing: bool = False  # Has revealed a phazing move
@@ -201,6 +204,11 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     # Magic Bounce - NOT affected by Mold Breaker for reflected moves
     state.has_magic_bounce = _check_ability_or_pokemon(
         ability, name, base_name, {"magicbounce"}, POKEMON_COMMONLY_MAGIC_BOUNCE
+    )
+
+    # Good as Gold - Blocks ALL status moves (not affected by Mold Breaker)
+    state.has_good_as_gold = _check_ability_or_pokemon(
+        ability, name, base_name, {"goodasgold"}, POKEMON_COMMONLY_GOOD_AS_GOLD
     )
 
     # Competitive/Defiant
@@ -337,6 +345,11 @@ def apply_ability_penalties(
         if ability_state.has_magic_bounce and move_name in MAGIC_BOUNCE_REFLECTED_MOVES:
             penalty = min(penalty, ABILITY_PENALTY_SEVERE)
             reason = "Magic Bounce (moves reflect back)"
+
+        # Good as Gold: NEVER use status moves (they're completely blocked)
+        if ability_state.has_good_as_gold and move_name in MAGIC_BOUNCE_REFLECTED_MOVES:
+            penalty = min(penalty, ABILITY_PENALTY_SEVERE)
+            reason = "Good as Gold (status moves blocked)"
 
         # Competitive/Defiant: penalize stat-lowering moves
         if (
