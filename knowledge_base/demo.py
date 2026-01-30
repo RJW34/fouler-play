@@ -72,11 +72,21 @@ def main():
     print(f"   Pivot moves: {', '.join(pivot_moves.keys())}")
     print()
     
-    # 8. Show integration potential
-    print("8. Integration Example:")
+    # 8. Situation patterns
+    print("8. Situation Recognition:")
+    low_hp_outsped = kb.get_situation("low_hp_outsped")
+    if low_hp_outsped:
+        print(f"   Low HP + Outsped situation detected")
+        print(f"   Optimal: {low_hp_outsped.get('optimal_response', [{}])[0].get('priority')}")
+        print(f"   Reasoning: {low_hp_outsped.get('reasoning', '')[:60]}...")
+    print()
+    
+    # 9. Show integration potential
+    print("9. Integration Example:")
     print("   In MCTS scoring, you could:")
+    print("   - Detect situation patterns (low HP + outsped → use priority)")
     print("   - Check if opponent likely has Focus Sash (common holders)")
-    print("   - Avoid status moves vs Substitute (90% penalty)")
+    print("   - Avoid status moves vs Substitute (situation recognition)")
     print("   - Detect Mold Breaker and skip immunity penalties")
     print("   - Identify battle phase and adjust aggression")
     print("   - Score moves by tags (setup, priority, pivot)")
@@ -88,6 +98,7 @@ def main():
     print(f"   Items: {len(kb.items)}")
     print(f"   Matchups: {len(kb.matchups)}")
     print(f"   Strategies: {len(kb.strategies)}")
+    print(f"   Situations: {len(kb.situations)}")
 
 
 if __name__ == "__main__":
