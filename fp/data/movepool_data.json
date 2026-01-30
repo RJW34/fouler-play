@@ -3,13 +3,13 @@
     "pokemon_name": "gliscor",
     "physical_moves": [
       "knockoff",
-      "facade",
-      "earthquake"
+      "earthquake",
+      "facade"
     ],
     "special_moves": [],
     "status_moves": [
-      "toxic",
-      "protect"
+      "protect",
+      "toxic"
     ],
     "times_seen": 1,
     "threat_category": "physical_only"
@@ -18,10 +18,11 @@
     "pokemon_name": "gholdengo",
     "physical_moves": [],
     "special_moves": [
-      "makeitrain",
-      "shadowball"
+      "shadowball",
+      "makeitrain"
     ],
     "status_moves": [
+      "nastyplot",
       "recover"
     ],
     "times_seen": 1,
@@ -87,15 +88,18 @@
       "earthquake"
     ],
     "special_moves": [],
-    "status_moves": [],
+    "status_moves": [
+      "dragondance",
+      "roost"
+    ],
     "times_seen": 0,
     "threat_category": "physical_only"
   },
   "incineroar": {
     "pokemon_name": "incineroar",
     "physical_moves": [
-      "earthquake",
-      "fakeout"
+      "fakeout",
+      "earthquake"
     ],
     "special_moves": [],
     "status_moves": [],
@@ -108,14 +112,18 @@
       "knockoff",
       "drainpunch"
     ],
-    "special_moves": [],
+    "special_moves": [
+      "icebeam",
+      "darkpulse"
+    ],
     "status_moves": [],
     "times_seen": 0,
-    "threat_category": "physical_only"
+    "threat_category": "mixed"
   },
   "ogerponwellspring": {
     "pokemon_name": "ogerponwellspring",
     "physical_moves": [
+      "playrough",
       "ivycudgel"
     ],
     "special_moves": [],
@@ -125,32 +133,38 @@
   },
   "landorustherian": {
     "pokemon_name": "landorustherian",
-    "physical_moves": [],
+    "physical_moves": [
+      "uturn"
+    ],
     "special_moves": [
       "earthpower"
     ],
     "status_moves": [
-      "stealthrock",
-      "taunt"
+      "taunt",
+      "stealthrock"
     ],
     "times_seen": 0,
-    "threat_category": "special_only"
+    "threat_category": "mixed"
   },
   "kingambit": {
     "pokemon_name": "kingambit",
-    "physical_moves": [],
+    "physical_moves": [
+      "kowtowcleave"
+    ],
     "special_moves": [],
     "status_moves": [
       "swordsdance"
     ],
     "times_seen": 0,
-    "threat_category": "status_only"
+    "threat_category": "physical_only"
   },
   "greattusk": {
     "pokemon_name": "greattusk",
     "physical_moves": [
+      "knockoff",
       "closecombat",
-      "headlongrush"
+      "headlongrush",
+      "earthquake"
     ],
     "special_moves": [],
     "status_moves": [
@@ -158,5 +172,102 @@
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
+  },
+  "zamazenta": {
+    "pokemon_name": "zamazenta",
+    "physical_moves": [
+      "bodypress"
+    ],
+    "special_moves": [],
+    "status_moves": [
+      "irondefense",
+      "roar"
+    ],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "pecharunt": {
+    "pokemon_name": "pecharunt",
+    "physical_moves": [],
+    "special_moves": [
+      "malignantchain",
+      "shadowball"
+    ],
+    "status_moves": [
+      "partingshot"
+    ],
+    "times_seen": 0,
+    "threat_category": "special_only"
+  },
+  "tinglu": {
+    "pokemon_name": "tinglu",
+    "physical_moves": [
+      "earthquake"
+    ],
+    "special_moves": [],
+    "status_moves": [
+      "whirlwind",
+      "stealthrock",
+      "spikes"
+    ],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "kyurem": {
+    "pokemon_name": "kyurem",
+    "physical_moves": [],
+    "special_moves": [
+      "freezedry"
+    ],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "special_only"
+  },
+  "grimmsnarl": {
+    "pokemon_name": "grimmsnarl",
+    "physical_moves": [],
+    "special_moves": [],
+    "status_moves": [
+      "taunt",
+      "thunderwave",
+      "lightscreen"
+    ],
+    "times_seen": 0,
+    "threat_category": "status_only"
+  },
+  "ironhands": {
+    "pokemon_name": "ironhands",
+    "physical_moves": [
+      "closecombat",
+      "earthquake"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "deoxysspeed": {
+    "pokemon_name": "deoxysspeed",
+    "physical_moves": [],
+    "special_moves": [],
+    "status_moves": [
+      "taunt",
+      "lightscreen",
+      "reflect"
+    ],
+    "times_seen": 0,
+    "threat_category": "status_only"
+  },
+  "ironvaliant": {
+    "pokemon_name": "ironvaliant",
+    "physical_moves": [],
+    "special_moves": [
+      "moonblast"
+    ],
+    "status_moves": [
+      "calmmind"
+    ],
+    "times_seen": 0,
+    "threat_category": "special_only"
   }
 }

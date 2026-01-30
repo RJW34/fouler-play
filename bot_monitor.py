@@ -226,10 +226,11 @@ class BotMonitor:
             "--pokemon-format", "gen9ou",
             "--team-name", "gen9/ou/fat-team-1-stall",
             "--playstyle", "fat",
-            "--search-time-ms", "2000",
+            "--search-time-ms", "1500",  # Faster to avoid timeouts
+            "--search-parallelism", "1",  # Explicitly one battle at a time
             "--run-count", "999999",
             "--save-replay", "always",
-            "--log-level", "DEBUG"  # Keep DEBUG to see all logs
+            "--log-level", "INFO"  # Less verbose, focus on important info
         ]
         
         # Ensure we're in the right directory

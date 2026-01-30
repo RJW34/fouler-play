@@ -181,19 +181,54 @@ class PSWebsocketClient:
         message = ["/savereplay"]
         await self.send_message(battle_tag, message)
         
-        # Wait for the replay URL response
+        # Wait for the queryresponse|savereplay message
         timeout = 10  # seconds
         start_time = time.time()
         while time.time() - start_time < timeout:
             msg = await self.receive_message()
+            
+            # Check for direct replay URL (some server versions)
             if "replay.pokemonshowdown.com" in msg:
-                # Extract and log the replay URL
                 import re
                 replay_match = re.search(r'https://replay\.pokemonshowdown\.com/([\w-]+)', msg)
                 if replay_match:
                     replay_url = f"https://replay.pokemonshowdown.com/{replay_match.group(1)}"
                     logger.info(f"Replay saved: {replay_url}")
                     return replay_url
+            
+            # Handle queryresponse|savereplay|{JSON} format
+            if "|queryresponse|savereplay|" in msg:
+                try:
+                    json_str = msg.split("|queryresponse|savereplay|", 1)[1]
+                    replay_data = json.loads(json_str)
+                    
+                    # Upload the replay to create the public URL
+                    upload_url = "https://play.pokemonshowdown.com/~~showdown/action.php"
+                    post_data = {
+                        "act": "uploadreplay",
+                        "log": replay_data.get("log", ""),
+                        "id": replay_data.get("id", battle_tag),
+                    }
+                    
+                    resp = requests.post(upload_url, data=post_data, timeout=15)
+                    
+                    if resp.status_code == 200:
+                        # Response should contain the replay URL or ID
+                        replay_id = replay_data.get("id", battle_tag)
+                        replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+                        logger.info(f"Replay saved: {replay_url}")
+                        return replay_url
+                    else:
+                        logger.warning(f"Replay upload failed with status {resp.status_code}: {resp.text[:200]}")
+                        # Still return the URL - replay might exist anyway
+                        replay_id = replay_data.get("id", battle_tag)
+                        replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+                        logger.info(f"Replay URL (upload may have failed): {replay_url}")
+                        return replay_url
+                        
+                except (json.JSONDecodeError, KeyError, IndexError) as e:
+                    logger.warning(f"Failed to parse savereplay response: {e}")
+                    continue
         
         logger.warning(f"No replay URL received for {battle_tag}")
         return None
