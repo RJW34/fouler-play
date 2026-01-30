@@ -9,3 +9,4 @@ build/
 *.log
 data/smogon_cache/
 
+venv/

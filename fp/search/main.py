@@ -1,6 +1,7 @@
 import logging
 import random
-from concurrent.futures import ProcessPoolExecutor
+import time
+from concurrent.futures import ProcessPoolExecutor, TimeoutError as FuturesTimeoutError
 from copy import deepcopy
 from dataclasses import dataclass, field
 
@@ -34,6 +35,19 @@ from constants import (
     # Penalty values
     ABILITY_PENALTY_SEVERE,
     ABILITY_PENALTY_MEDIUM,
+    ABILITY_PENALTY_LIGHT,
+    # Mold Breaker
+    MOLD_BREAKER_ABILITIES,
+    # Focus Sash
+    POKEMON_COMMONLY_FOCUS_SASH,
+    MULTI_HIT_MOVES,
+    PRIORITY_MOVES,
+    # Setup vs Phazers
+    PHAZING_MOVES,
+    SETUP_MOVES,
+    # Substitute
+    STATUS_ONLY_MOVES,
+    INFILTRATOR_BYPASS,
 )
 from fp.battle import Battle
 from config import FoulPlayConfig
@@ -65,9 +79,13 @@ class OpponentAbilityState:
     has_levitate: bool = False
     has_magic_bounce: bool = False
     has_competitive_defiant: bool = False  # Competitive or Defiant
+    has_focus_sash: bool = False  # Focus Sash item
+    has_phazing: bool = False  # Has revealed a phazing move
+    has_substitute: bool = False  # Currently behind a Substitute
     pokemon_name: str = ""
     ability_known: bool = False
     ability_name: str = ""
+    at_full_hp: bool = True  # Whether opponent is at full HP (for Sash)
 
 
 def _check_ability_or_pokemon(
@@ -114,6 +132,13 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     state.ability_known = bool(ability)
     state.ability_name = ability or "unknown"
 
+    # Check if our Pokemon has Mold Breaker (ignores defensive abilities)
+    our_has_mold_breaker = False
+    if battle.user.active is not None:
+        our_ability = battle.user.active.ability
+        if our_ability and our_ability in MOLD_BREAKER_ABILITIES:
+            our_has_mold_breaker = True
+
     # Unaware
     state.has_unaware = _check_ability_or_pokemon(
         ability, name, base_name, {"unaware"}, POKEMON_COMMONLY_UNAWARE
@@ -133,35 +158,41 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
         ability, name, base_name, {"poisonheal"}, POKEMON_COMMONLY_POISON_HEAL
     )
 
-    # Water immunity
-    state.has_water_immunity = _check_ability_or_pokemon(
-        ability,
-        name,
-        base_name,
-        {"waterabsorb", "stormdrain", "dryskin"},
-        POKEMON_COMMONLY_WATER_IMMUNE,
-    )
+    # Type immunities - Mold Breaker bypasses these
+    if not our_has_mold_breaker:
+        # Water immunity
+        state.has_water_immunity = _check_ability_or_pokemon(
+            ability,
+            name,
+            base_name,
+            {"waterabsorb", "stormdrain", "dryskin"},
+            POKEMON_COMMONLY_WATER_IMMUNE,
+        )
 
-    # Electric immunity
-    state.has_electric_immunity = _check_ability_or_pokemon(
-        ability,
-        name,
-        base_name,
-        {"voltabsorb", "lightningrod", "motordrive"},
-        POKEMON_COMMONLY_ELECTRIC_IMMUNE,
-    )
+        # Electric immunity
+        state.has_electric_immunity = _check_ability_or_pokemon(
+            ability,
+            name,
+            base_name,
+            {"voltabsorb", "lightningrod", "motordrive"},
+            POKEMON_COMMONLY_ELECTRIC_IMMUNE,
+        )
 
-    # Flash Fire
-    state.has_flash_fire = _check_ability_or_pokemon(
-        ability, name, base_name, {"flashfire"}, POKEMON_COMMONLY_FLASH_FIRE
-    )
+        # Flash Fire
+        state.has_flash_fire = _check_ability_or_pokemon(
+            ability, name, base_name, {"flashfire"}, POKEMON_COMMONLY_FLASH_FIRE
+        )
 
-    # Levitate
-    state.has_levitate = _check_ability_or_pokemon(
-        ability, name, base_name, {"levitate"}, POKEMON_COMMONLY_LEVITATE
-    )
+        # Levitate
+        state.has_levitate = _check_ability_or_pokemon(
+            ability, name, base_name, {"levitate"}, POKEMON_COMMONLY_LEVITATE
+        )
+    else:
+        logger.info(
+            f"Our Pokemon has Mold Breaker - ignoring type-immunity abilities"
+        )
 
-    # Magic Bounce
+    # Magic Bounce - NOT affected by Mold Breaker for reflected moves
     state.has_magic_bounce = _check_ability_or_pokemon(
         ability, name, base_name, {"magicbounce"}, POKEMON_COMMONLY_MAGIC_BOUNCE
     )
@@ -174,6 +205,28 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
         {"competitive", "defiant"},
         POKEMON_STAT_DROP_BACKFIRES,
     )
+
+    # Focus Sash detection
+    item = getattr(opponent, "item", None)
+    if item == "focussash":
+        state.has_focus_sash = True
+    elif item in (None, "unknownitem", "") and name in POKEMON_COMMONLY_FOCUS_SASH:
+        state.has_focus_sash = True
+
+    # Check if opponent is at full HP (Sash only works at full HP)
+    state.at_full_hp = opponent.hp == opponent.max_hp
+
+    # Phazing detection - check if opponent has revealed phazing moves
+    for move in opponent.moves:
+        move_name = move.name if hasattr(move, "name") else str(move)
+        if move_name in PHAZING_MOVES:
+            state.has_phazing = True
+            break
+
+    # Substitute detection
+    volatile_statuses = getattr(opponent, "volatile_statuses", [])
+    if "substitute" in volatile_statuses:
+        state.has_substitute = True
 
     return state
 
@@ -191,7 +244,7 @@ def apply_ability_penalties(
 
     This function handles all ability-based move penalties in one pass.
     """
-    # Quick exit if no problematic abilities detected
+    # Quick exit if no problematic abilities/states detected
     if not any(
         [
             ability_state.has_unaware,
@@ -203,6 +256,9 @@ def apply_ability_penalties(
             ability_state.has_levitate,
             ability_state.has_magic_bounce,
             ability_state.has_competitive_defiant,
+            ability_state.has_focus_sash and ability_state.at_full_hp,
+            ability_state.has_phazing,
+            ability_state.has_substitute,
         ]
     ):
         return final_policy
@@ -268,6 +324,31 @@ def apply_ability_penalties(
             penalty = min(penalty, ABILITY_PENALTY_MEDIUM)
             reason = "Competitive/Defiant (stat drops boost them)"
 
+        # Focus Sash at full HP: boost multi-hit and priority moves
+        # We do this by penalizing non-multi-hit, non-priority moves slightly
+        if ability_state.has_focus_sash and ability_state.at_full_hp:
+            if move_name in MULTI_HIT_MOVES:
+                # Boost multi-hit moves (they break sash + deal damage)
+                penalty = min(penalty, 1.0)  # no penalty
+                # Actually boost by not penalizing - other moves get penalized
+            elif move_name in PRIORITY_MOVES:
+                # Priority is useful but doesn't break sash alone
+                penalty = min(penalty, 1.0)
+            elif move_name in SETUP_MOVES:
+                # Setup is fine against sash users (they're usually frail)
+                penalty = min(penalty, 1.0)
+            # Don't penalize regular attacks - sash is annoying but not game-losing
+
+        # Setup vs Phazers: penalize setup moves if opponent has phazing
+        if ability_state.has_phazing and move_name in SETUP_MOVES:
+            penalty = min(penalty, ABILITY_PENALTY_MEDIUM)
+            reason = "Phazer detected (setup boosts will be wasted)"
+
+        # Substitute: penalize status-only moves that fail against sub
+        if ability_state.has_substitute and move_name in STATUS_ONLY_MOVES:
+            penalty = min(penalty, ABILITY_PENALTY_SEVERE)
+            reason = "Substitute up (status moves fail)"
+
         # Apply the penalty
         new_weight = weight * penalty
         penalized_policy[move] = new_weight
@@ -331,13 +412,34 @@ def get_result_from_mcts(state: str, search_time_ms: int, index: int) -> MctsRes
     return res
 
 
+def _get_time_pressure_level(battle):
+    """Returns time pressure level: 0=none, 1=moderate (<60s), 2=critical (<30s), 3=emergency (<15s)"""
+    if battle.time_remaining is None:
+        return 0
+    if battle.time_remaining <= 15:
+        return 3
+    if battle.time_remaining <= 30:
+        return 2
+    if battle.time_remaining <= 60:
+        return 1
+    return 0
+
+
 def search_time_num_battles_randombattles(battle):
     revealed_pkmn = len(battle.opponent.reserve)
     if battle.opponent.active is not None:
         revealed_pkmn += 1
 
     opponent_active_num_moves = len(battle.opponent.active.moves)
-    in_time_pressure = battle.time_remaining is not None and battle.time_remaining <= 60
+    pressure = _get_time_pressure_level(battle)
+
+    # Emergency: minimal search
+    if pressure >= 3:
+        return FoulPlayConfig.parallelism, int(FoulPlayConfig.search_time_ms // 4)
+
+    # Critical: reduced search
+    if pressure >= 2:
+        return FoulPlayConfig.parallelism, int(FoulPlayConfig.search_time_ms // 2)
 
     # it is still quite early in the battle and the pkmn in front of us
     # hasn't revealed any moves: search a lot of battles shallowly
@@ -346,13 +448,13 @@ def search_time_num_battles_randombattles(battle):
         and battle.opponent.active.hp > 0
         and opponent_active_num_moves == 0
     ):
-        num_battles_multiplier = 2 if in_time_pressure else 4
+        num_battles_multiplier = 2 if pressure >= 1 else 4
         return FoulPlayConfig.parallelism * num_battles_multiplier, int(
             FoulPlayConfig.search_time_ms // 2
         )
 
     else:
-        num_battles_multiplier = 1 if in_time_pressure else 2
+        num_battles_multiplier = 1 if pressure >= 1 else 2
         return FoulPlayConfig.parallelism * num_battles_multiplier, int(
             FoulPlayConfig.search_time_ms
         )
@@ -360,14 +462,22 @@ def search_time_num_battles_randombattles(battle):
 
 def search_time_num_battles_standard_battle(battle):
     opponent_active_num_moves = len(battle.opponent.active.moves)
-    in_time_pressure = battle.time_remaining is not None and battle.time_remaining <= 60
+    pressure = _get_time_pressure_level(battle)
+
+    # Emergency: minimal search
+    if pressure >= 3:
+        return FoulPlayConfig.parallelism, int(FoulPlayConfig.search_time_ms // 4)
+
+    # Critical: reduced search
+    if pressure >= 2:
+        return FoulPlayConfig.parallelism, int(FoulPlayConfig.search_time_ms // 2)
 
     if (
         battle.team_preview
         or (battle.opponent.active.hp > 0 and opponent_active_num_moves == 0)
         or opponent_active_num_moves < 3
     ):
-        num_battles_multiplier = 1 if in_time_pressure else 2
+        num_battles_multiplier = 1 if pressure >= 1 else 2
         return FoulPlayConfig.parallelism * num_battles_multiplier, int(
             FoulPlayConfig.search_time_ms
         )
@@ -375,11 +485,59 @@ def search_time_num_battles_standard_battle(battle):
         return FoulPlayConfig.parallelism, FoulPlayConfig.search_time_ms
 
 
+# Maximum total time budget for a single decision (seconds)
+# Pokemon Showdown gives ~150s total per game, or ~45s per turn with timer on
+# We need to leave margin for network latency, state processing, etc.
+MAX_DECISION_TIME_SECONDS = 30
+# When in time pressure (<60s remaining), use a much tighter budget
+MAX_DECISION_TIME_PRESSURE_SECONDS = 8
+
+
+def _get_fallback_move(battle: Battle) -> str:
+    """
+    Emergency fallback: pick the first available move without MCTS.
+    Used when MCTS times out to avoid forfeiting the turn.
+    """
+    if battle.user.active is not None:
+        for move in battle.user.active.moves:
+            if hasattr(move, "disabled") and move.disabled:
+                continue
+            if hasattr(move, "current_pp") and move.current_pp <= 0:
+                continue
+            move_name = move.name if hasattr(move, "name") else str(move)
+            logger.warning(f"Timeout fallback: selecting {move_name}")
+            return move_name
+
+    # If no moves available, try switching
+    for i, pkmn in enumerate(battle.user.reserve):
+        if pkmn.hp > 0:
+            logger.warning(f"Timeout fallback: switching to {pkmn.name}")
+            return f"switch {pkmn.name}"
+
+    logger.error("Timeout fallback: no moves or switches available!")
+    return "splash"
+
+
 def find_best_move(battle: Battle) -> str:
+    start_time = time.time()
     battle = deepcopy(battle)
     if battle.team_preview:
         battle.user.active = battle.user.reserve.pop(0)
         battle.opponent.active = battle.opponent.reserve.pop(0)
+
+    # Determine time budget
+    in_time_pressure = battle.time_remaining is not None and battle.time_remaining <= 60
+    time_budget = (
+        MAX_DECISION_TIME_PRESSURE_SECONDS
+        if in_time_pressure
+        else MAX_DECISION_TIME_SECONDS
+    )
+
+    if in_time_pressure:
+        logger.warning(
+            f"TIME PRESSURE: {battle.time_remaining}s remaining, "
+            f"budget={time_budget}s"
+        )
 
     # Detect opponent's abilities before we start sampling
     # (sampling may change the ability, so check the original battle state)
@@ -405,6 +563,12 @@ def find_best_move(battle: Battle) -> str:
         detected_abilities.append("Magic Bounce")
     if ability_state.has_competitive_defiant:
         detected_abilities.append("Competitive/Defiant")
+    if ability_state.has_focus_sash and ability_state.at_full_hp:
+        detected_abilities.append("Focus Sash (full HP)")
+    if ability_state.has_phazing:
+        detected_abilities.append("Phazer")
+    if ability_state.has_substitute:
+        detected_abilities.append("Substitute")
 
     if detected_abilities:
         logger.info(
@@ -431,22 +595,63 @@ def find_best_move(battle: Battle) -> str:
     else:
         raise ValueError("Unsupported battle type: {}".format(battle.battle_type))
 
+    # Adjust search time if we're running low on time budget
+    elapsed = time.time() - start_time
+    remaining_budget = time_budget - elapsed - 2.0  # 2s safety margin
+    if remaining_budget <= 0:
+        logger.warning("No time left for MCTS, using fallback")
+        return _get_fallback_move(battle)
+
+    # Cap per-battle search time to fit within budget
+    max_per_battle_ms = int((remaining_budget * 1000) / max(num_battles / FoulPlayConfig.parallelism, 1))
+    if max_per_battle_ms < search_time_per_battle:
+        logger.info(
+            f"Reducing search time from {search_time_per_battle}ms to "
+            f"{max_per_battle_ms}ms to fit time budget"
+        )
+        search_time_per_battle = max(max_per_battle_ms, 10)  # minimum 10ms
+
     logger.info("Searching for a move using MCTS...")
     logger.info(
         "Sampling {} battles at {}ms each".format(num_battles, search_time_per_battle)
     )
-    with ProcessPoolExecutor(max_workers=FoulPlayConfig.parallelism) as executor:
-        futures = []
-        for index, (b, chance) in enumerate(battles):
-            fut = executor.submit(
-                get_result_from_mcts,
-                battle_to_poke_engine_state(b).to_string(),
-                search_time_per_battle,
-                index,
-            )
-            futures.append((fut, chance, index))
 
-    mcts_results = [(fut.result(), chance, index) for (fut, chance, index) in futures]
-    choice = select_move_from_mcts_results(mcts_results, ability_state=ability_state)
-    logger.info("Choice: {}".format(choice))
+    # Calculate timeout for the executor (remaining budget in seconds)
+    executor_timeout = time_budget - (time.time() - start_time) - 1.0
+
+    try:
+        with ProcessPoolExecutor(max_workers=FoulPlayConfig.parallelism) as executor:
+            futures = []
+            for index, (b, chance) in enumerate(battles):
+                fut = executor.submit(
+                    get_result_from_mcts,
+                    battle_to_poke_engine_state(b).to_string(),
+                    search_time_per_battle,
+                    index,
+                )
+                futures.append((fut, chance, index))
+
+        # Collect results with timeout
+        mcts_results = []
+        for fut, chance, index in futures:
+            try:
+                remaining = max(executor_timeout - (time.time() - start_time), 0.5)
+                result = fut.result(timeout=remaining)
+                mcts_results.append((result, chance, index))
+            except (FuturesTimeoutError, TimeoutError):
+                logger.warning(f"MCTS battle {index} timed out, skipping")
+            except Exception as e:
+                logger.warning(f"MCTS battle {index} failed: {e}")
+
+        if not mcts_results:
+            logger.warning("All MCTS searches failed/timed out, using fallback")
+            return _get_fallback_move(battle)
+
+        choice = select_move_from_mcts_results(mcts_results, ability_state=ability_state)
+    except Exception as e:
+        logger.error(f"MCTS search failed entirely: {e}")
+        return _get_fallback_move(battle)
+
+    elapsed_total = time.time() - start_time
+    logger.info(f"Choice: {choice} (decided in {elapsed_total:.1f}s)")
     return choice

@@ -124,33 +124,37 @@ class OpponentAbilityState:
 
 ---
 
+## Implemented Improvements (Round 2)
+
+### ✅ Timeout Protection (Critical)
+- Added total time budget system (`MAX_DECISION_TIME_SECONDS = 30s`, `8s` under pressure)
+- 3-tier time pressure detection: moderate (<60s), critical (<30s), emergency (<15s)
+- Emergency fallback move selection if MCTS times out entirely
+- Per-future timeout collection - partial results used if some battles timeout
+- Dynamic search time reduction when budget is tight
+
+### ✅ Mold Breaker Awareness
+- Detects if our Pokemon has Mold Breaker/Teravolt/Turboblaze
+- Skips type-immunity penalties (Levitate, Water Absorb, etc.) when we have Mold Breaker
+- Correctly still applies Magic Bounce penalties (Mold Breaker doesn't bypass reflected moves in the same way)
+
+### ✅ Focus Sash Detection
+- Added `POKEMON_COMMONLY_FOCUS_SASH` set (common leads, frail sweepers)
+- Added `MULTI_HIT_MOVES` and `PRIORITY_MOVES` sets
+- Detects known Focus Sash or infers from common holders
+- Only applies when opponent is at full HP (Sash requires full HP)
+
+### ✅ Setup vs Phazers
+- Detects revealed phazing moves (Roar, Whirlwind, Dragon Tail, Circle Throw, Yawn)
+- Penalizes setup/boosting moves with `ABILITY_PENALTY_MEDIUM` when phazer detected
+
+### ✅ Substitute Awareness
+- Detects when opponent has Substitute volatile status
+- Severely penalizes status-only moves that fail against Substitute
+
+---
+
 ## Next Steps for Implementation
-
-The following items were identified in the audit but not yet implemented:
-
-### 1. Focus Sash Detection (High Priority)
-
-**Problem**: Bot tries to OHKO Pokemon that have Focus Sash, wasting a turn.
-
-**Solution**:
-- Add `POKEMON_COMMONLY_FOCUS_SASH` (common leads, frail sweepers)
-- Add `MULTI_HIT_MOVES` set (Bullet Seed, Icicle Spear, etc.)
-- Add `PRIORITY_MOVES` set (Mach Punch, Aqua Jet, etc.)
-- When facing suspected Sash user at full HP:
-  - Boost priority of multi-hit moves (break Sash + deal damage)
-  - Boost priority of priority moves (can finish after Sash)
-  - Consider hazard damage (Sash won't activate if not full HP)
-
-### 2. Setup vs Phazers (Medium Priority)
-
-**Problem**: Bot uses setup moves (Swords Dance) when opponent has phazing moves (Roar, Whirlwind, Dragon Tail), which forces a switch and wastes the boosts.
-
-**Solution**:
-- Track if opponent has revealed phazing moves
-- Add `PHAZING_MOVES` set (Roar, Whirlwind, Dragon Tail, Circle Throw)
-- Add `SETUP_MOVES` set (all boosting moves)
-- When opponent has known phazer, penalize setup moves
-- Consider: only penalize if opponent is faster or has priority phazing
 
 ### 3. Contact Moves vs Rocky Helmet/Iron Barbs/Rough Skin (Medium Priority)
 

@@ -723,3 +723,190 @@ ABILITY_PENALTY_MEDIUM = 0.3
 
 # Light penalty (0.5) - Move is somewhat suboptimal
 ABILITY_PENALTY_LIGHT = 0.5
+
+
+# =============================================================================
+# MOLD BREAKER ABILITIES (ignore opponent's defensive abilities)
+# =============================================================================
+
+MOLD_BREAKER_ABILITIES = {
+    "moldbreaker",
+    "teravolt",
+    "turboblaze",
+}
+
+
+# =============================================================================
+# FOCUS SASH DETECTION
+# =============================================================================
+
+# Pokemon that commonly hold Focus Sash (frail leads, suicide leads, etc.)
+POKEMON_COMMONLY_FOCUS_SASH = {
+    # Common suicide leads
+    "azelf",
+    "froslass",
+    "garchomp",   # lead sets
+    "greninja",
+    "hawlucha",
+    "landorustherian",  # sometimes lead
+    "lycanrocdusk",
+    "mamoswine",
+    "smeargle",
+    # Frail setup sweepers
+    "alakazam",
+    "breloom",
+    "dugtrio",
+    "gengar",
+    "lucario",
+    "mimikyu",     # technically Disguise but similar principle
+    "ribombee",
+    "sneasler",
+    "weavile",
+    # Common endgame sash users
+    "cinderace",
+    "dragapult",
+    "ironvaliant",
+    "kingambit",
+}
+
+# Multi-hit moves that break through Focus Sash
+MULTI_HIT_MOVES = {
+    "armthrust",
+    "barrage",
+    "bonerush",
+    "bonemerang",
+    "bulletseed",
+    "cometpunch",
+    "doublehit",
+    "doublekick",
+    "doubleironbash",
+    "dualchop",
+    "dualwingbeat",
+    "furyattack",
+    "furyswipes",
+    "geargrind",
+    "iciclespear",
+    "mudshot",
+    "pinmissile",
+    "populationbomb",
+    "rockblast",
+    "scaleshot",
+    "surgingstrikes",
+    "tailslap",
+    "technoblast",
+    "triplekick",
+    "tripleaxel",
+    "twinbeam",
+    "twineedle",
+    "watershuriken",
+}
+
+# Priority moves (useful to finish off after Sash)
+PRIORITY_MOVES = {
+    "accelerock",
+    "aquajet",
+    "bulletpunch",
+    "extremespeed",
+    "fakeout",
+    "feint",
+    "firstimpression",
+    "grappleghost",
+    "iceshard",
+    "jetpunch",
+    "machpunch",
+    "quickattack",
+    "shadowsneak",
+    "suckerpunch",
+    "vacuumwave",
+    "watershuriken",
+}
+
+
+# =============================================================================
+# SETUP VS PHAZERS
+# =============================================================================
+
+# Phazing moves that force switches (wasting setup boosts)
+PHAZING_MOVES = {
+    "roar",
+    "whirlwind",
+    "dragontail",
+    "circlethrow",
+    "yawn",  # forces switch or sleep
+}
+
+# Setup/boosting moves that are wasted if phazed out
+SETUP_MOVES = {
+    # Physical boosts
+    "swordsdance",
+    "dragondance",
+    "bellydrum",
+    "bulkup",
+    "howl",
+    "honeclaws",
+    "shiftgear",
+    "victorydance",
+    "tidyup",
+    # Special boosts
+    "nastyplot",
+    "calmmind",
+    "tailglow",
+    "quiverdance",
+    "geomancy",
+    "torchsong",
+    # Mixed/other
+    "shellsmash",
+    "growth",
+    "workup",
+    "coil",
+    "curse",  # non-ghost
+    "irondefense",
+    "amnesia",
+    "agility",
+    "autotomize",
+    "rockpolish",
+    "cottonguard",
+    "cosmicpower",
+    "stockpile",
+    "acupressure",
+    "minimize",
+    "doubleteam",
+}
+
+
+# =============================================================================
+# SUBSTITUTE AWARENESS
+# =============================================================================
+
+# Status-only moves that fail against Substitute (non-damaging)
+STATUS_ONLY_MOVES = {
+    "toxic",
+    "willowisp",
+    "thunderwave",
+    "spore",
+    "sleeppowder",
+    "hypnosis",
+    "sing",
+    "glare",
+    "stunspore",
+    "poisonpowder",
+    "yawn",
+    "leechseed",
+    "taunt",
+    "encore",
+    "disable",
+    "attract",
+    "confuseray",
+    "swagger",
+    "flatter",
+    "torment",
+    "spite",
+    "grudge",
+    "nightmare",
+    "perishsong",
+    "curse",  # ghost variant
+    "superfang",  # goes through sub actually, but included for reference
+}
+
+# Moves/abilities that bypass Substitute
+INFILTRATOR_BYPASS = {"infiltrator"}
