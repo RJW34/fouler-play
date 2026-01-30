@@ -1,0 +1,76 @@
+# Type Matchup Patterns
+# Common switches, counters, and strategic considerations
+
+psychic_vs_fighting:
+  offensive_effectiveness: 2.0
+  common_switches:
+    - dark_types
+    - psychic_types
+    - ghost_types
+  dangerous_coverage:
+    - sucker_punch
+    - pursuit
+  strategy_notes: |
+    Fighting types are sitting ducks against Psychic.
+    Expect immediate switch or prediction plays.
+    
+water_vs_fire:
+  offensive_effectiveness: 2.0
+  common_switches:
+    - water_types
+    - dragon_types
+    - grass_types
+  dangerous_coverage:
+    - solar_beam
+    - thunder
+  strategy_notes: |
+    Fire types often carry coverage for Water.
+    Solar Beam setups common on sun teams.
+
+steel_vs_fairy:
+  offensive_effectiveness: 2.0
+  common_switches:
+    - fire_types
+    - ground_types
+    - fighting_types
+  defensive_advantage: true
+  strategy_notes: |
+    Steel resists Fairy. Many Steel types
+    can stay in and threaten with coverage.
+
+dragon_vs_dragon:
+  offensive_effectiveness: 2.0
+  speed_critical: true
+  common_patterns:
+    - scarf_wars
+    - priority_spam
+  dangerous_moves:
+    - draco_meteor
+    - outrage
+    - dragon_dance
+  strategy_notes: |
+    Dragon mirrors are speed wars.
+    First to move wins. Priority moves common.
+
+dark_vs_psychic:
+  offensive_effectiveness: 2.0
+  defensive_immunity: true
+  common_patterns:
+    - free_switch
+    - setup_opportunity
+  strategy_notes: |
+    Dark is immune to Psychic attacks.
+    Often a free turn to setup or attack.
+
+ground_vs_electric:
+  defensive_immunity: true
+  offensive_effectiveness: 2.0
+  common_patterns:
+    - pivot_out
+    - setup_turn
+  dangerous_coverage:
+    - ice_beam
+    - grass_moves
+  strategy_notes: |
+    Ground immune to Electric, but Electric
+    types often carry Ice Beam for coverage.

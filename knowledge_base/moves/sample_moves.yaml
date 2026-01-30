@@ -1,0 +1,94 @@
+# Sample Move Database
+# Demonstrates structured move knowledge for decision-making
+
+psychic:
+  power: 90
+  accuracy: 100
+  type: psychic
+  category: special
+  priority: 0
+  pp: 10
+  effects:
+    - type: stat_change
+      stat: spdef
+      chance: 0.1
+      stages: -1
+  tags:
+    - reliable
+    - special_attacker
+  common_holders:
+    - alakazam
+    - gardevoir
+    - mewtwo
+
+substitute:
+  power: 0
+  accuracy: null
+  type: normal
+  category: status
+  priority: 0
+  pp: 10
+  effects:
+    - type: substitute
+      hp_cost: 0.25
+  countered_by:
+    - sound_moves
+    - infiltrator_ability
+  tags:
+    - setup
+    - defensive
+    - stall
+
+scald:
+  power: 80
+  accuracy: 100
+  type: water
+  category: special
+  priority: 0
+  pp: 15
+  effects:
+    - type: status
+      condition: burn
+      chance: 0.3
+  tags:
+    - reliable
+    - burn_chance
+    - special_attacker
+  common_holders:
+    - toxapex
+    - slowbro
+    - rotom-wash
+
+stealth_rock:
+  power: 0
+  accuracy: null
+  type: rock
+  category: status
+  priority: 0
+  pp: 20
+  effects:
+    - type: hazard
+      hazard_type: stealth_rock
+  tags:
+    - entry_hazard
+    - must_have
+  removal:
+    - rapid_spin
+    - defog
+    - magic_bounce
+
+extreme_speed:
+  power: 80
+  accuracy: 100
+  type: normal
+  category: physical
+  priority: 2
+  pp: 5
+  tags:
+    - priority
+    - physical_attacker
+    - reliable
+  common_holders:
+    - dragonite
+    - lucario
+    - arcanine

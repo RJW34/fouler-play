@@ -1,0 +1,111 @@
+# Battle Phase Strategies
+# How to identify and respond to different battle states
+
+early_game:
+  turns: 1-5
+  characteristics:
+    - hazard_setting
+    - scouting_moves
+    - lead_positioning
+  priorities:
+    - identify_threats
+    - set_hazards
+    - maintain_momentum
+  common_patterns:
+    - stealth_rock_wars
+    - suicide_leads
+    - fast_taunt
+  strategy: |
+    Early turns focus on map control (hazards),
+    information gathering (scouting), and
+    positioning advantage.
+
+mid_game:
+  turns: 6-15
+  characteristics:
+    - core_Pokemon_battling
+    - strategic_switches
+    - damage_accumulation
+  priorities:
+    - win_key_matchups
+    - preserve_wincons
+    - chip_damage
+  common_patterns:
+    - pivoting_wars
+    - trap_attempts
+    - coverage_fishing
+  strategy: |
+    Middle game is about gaining positional
+    advantage while preserving your wincon
+    and eliminating theirs.
+
+late_game:
+  turns: 16-25
+  characteristics:
+    - few_Pokemon_remaining
+    - health_management_critical
+    - speed_tiers_decisive
+  priorities:
+    - protect_wincon
+    - eliminate_counters
+    - calculate_exact_damage
+  common_patterns:
+    - 1v1_scenarios
+    - endgame_sweeps
+    - priority_spam
+  strategy: |
+    Endgame precision matters. Every HP point
+    counts. Speed tiers and priority moves
+    decide games.
+
+cleanup:
+  turns: 25+
+  characteristics:
+    - one_side_dominant
+    - sweeper_active
+    - momentum_locked
+  priorities:
+    - dont_throw
+    - preserve_advantage
+    - smart_predictions
+  strategy: |
+    When ahead, don't get cocky. When behind,
+    force predictions. Games turn on
+    overconfidence.
+
+stall_phase:
+  characteristics:
+    - defensive_cores_active
+    - hazard_stacking
+    - PP_management
+    - residual_damage_focus
+  priorities:
+    - outlast_opponent
+    - hazard_control
+    - status_spreading
+  common_Pokemon:
+    - toxapex
+    - chansey
+    - ferrothorn
+  strategy: |
+    Stall teams win through attrition.
+    Don't engage in PP wars you'll lose.
+    Bring wallbreakers.
+
+hyper_offense:
+  characteristics:
+    - fast_Pokemon
+    - setup_sweepers
+    - high_damage_output
+  priorities:
+    - maintain_pressure
+    - prevent_setup
+    - speed_control
+  common_Pokemon:
+    - garchomp
+    - dragonite
+    - azumarill
+  strategy: |
+    HO teams snowball hard. Stop their
+    momentum early or get rolled.
+    Priority moves are your friend.
