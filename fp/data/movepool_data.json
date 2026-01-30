@@ -3,12 +3,13 @@
     "pokemon_name": "gliscor",
     "physical_moves": [
       "facade",
-      "earthquake"
+      "earthquake",
+      "knockoff"
     ],
     "special_moves": [],
     "status_moves": [
-      "protect",
-      "toxic"
+      "toxic",
+      "protect"
     ],
     "times_seen": 1,
     "threat_category": "physical_only"
@@ -29,8 +30,8 @@
   "dragapult": {
     "pokemon_name": "dragapult",
     "physical_moves": [
-      "uturn",
-      "dragondarts"
+      "dragondarts",
+      "uturn"
     ],
     "special_moves": [
       "shadowball"
@@ -38,5 +39,25 @@
     "status_moves": [],
     "times_seen": 1,
     "threat_category": "mixed"
+  },
+  "tinkaton": {
+    "pokemon_name": "tinkaton",
+    "physical_moves": [],
+    "special_moves": [],
+    "status_moves": [
+      "thunderwave"
+    ],
+    "times_seen": 0,
+    "threat_category": "status_only"
+  },
+  "vaporeon": {
+    "pokemon_name": "vaporeon",
+    "physical_moves": [],
+    "special_moves": [
+      "hydropump"
+    ],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "special_only"
   }
 }
