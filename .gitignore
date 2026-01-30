@@ -10,3 +10,5 @@ build/
 data/smogon_cache/
 
 venv/
+.env
+*.log
