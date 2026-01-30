@@ -208,6 +208,27 @@ POKEMON_STAT_DROP_BACKFIRES = POKEMON_COMMONLY_COMPETITIVE | POKEMON_COMMONLY_DE
 
 # Status moves that inflict non-volatile status conditions
 # These backfire against Guts/Marvel Scale/Quick Feet
+# Pure status moves that ONLY inflict a status condition (no damage).
+# These are completely wasted if the opponent already has a status.
+PURE_STATUS_MOVES = {
+    "toxic",
+    "willowisp",
+    "thunderwave",
+    "stunspore",
+    "glare",
+    "poisonpowder",
+    "poisongas",
+    "spore",
+    "sleeppowder",
+    "hypnosis",
+    "sing",
+    "grasswhistle",
+    "lovelykiss",
+    "yawn",
+    "darkvoid",
+    "nuzzle",  # does minor damage but primary purpose is paralysis
+}
+
 STATUS_INFLICTING_MOVES = {
     # Burn
     "willowisp",
