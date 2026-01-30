@@ -910,3 +910,166 @@ STATUS_ONLY_MOVES = {
 
 # Moves/abilities that bypass Substitute
 INFILTRATOR_BYPASS = {"infiltrator"}
+
+
+# =============================================================================
+# CONTACT MOVES VS ROCKY HELMET / IRON BARBS / ROUGH SKIN
+# =============================================================================
+
+# Contact moves that trigger Rocky Helmet, Iron Barbs, Rough Skin
+CONTACT_MOVES = {
+    # Common physical attacks
+    "closecombat",
+    "drainpunch",
+    "facade",
+    "firstimpression",
+    "fakeout",
+    "gigaimpact",
+    "hammerarm",
+    "hijumpkick",
+    "irontail",
+    "karatechop",
+    "knockoff",
+    "lastresort",
+    "lowkick",
+    "lowsweep",
+    "machpunch",
+    "megakick",
+    "megapunch",
+    "poweruppunch",
+    "quickattack",
+    "rapidspin",
+    "return",
+    "reversal",
+    "revenge",
+    "seismictoss",
+    "slam",
+    "strength",
+    "submission",
+    "superpower",
+    "tackle",
+    "takedown",
+    "vitalthrow",
+    "wakeupslap",
+    # Flying/Fairy/Dragon physical
+    "aerialace",
+    "airslash",  # not contact!
+    "bravebird",
+    "dualwingbeat",
+    "fly",
+    "hurricane",  # not contact!
+    "pluck",
+    "skyattack",
+    "wingattack",
+    "acrobatics",
+    "playrough",
+    "dracometeor",  # not contact!
+    "dragonascent",
+    "dragonclaw",
+    "dragontail",
+    "outrage",
+    # Dark/Ghost physical
+    "assurance",
+    "bite",
+    "crunch",
+    "darkestlariat",
+    "fling",
+    "knockoff",
+    "nightslash",
+    "payback",
+    "pursuit",
+    "suckerpunch",
+    "thief",
+    "wickedblow",
+    "astonish",
+    "lick",
+    "phantomforce",
+    "poltergeist",
+    "shadowclaw",
+    "shadowforce",
+    "shadowpunch",
+    "shadowsneak",
+    "spectralthief",
+    # Steel/Rock/Ground physical
+    "bulletpunch",
+    "flashcannon",  # not contact!
+    "heavyslam",
+    "ironhead",
+    "meteormash",
+    "steelbeam",  # not contact!
+    "earthquake",  # not contact!
+    "headsmash",
+    "rockslide",  # not contact!
+    "rockthrow",
+    "smackdown",
+    "stealthrock",  # not contact!
+    "stoneedge",  # not contact!
+    # Fire/Ice physical
+    "fireblast",  # not contact!
+    "firepunch",
+    "flamecharge",
+    "flamewheel",
+    "flareblitz",
+    "fusionflare",  # not contact!
+    "heatwave",  # not contact!
+    "icefang",
+    "icehammer",
+    "icepunch",
+    "iceshard",
+    "iciclecrash",
+    "iciclespear",
+    # Water/Grass/Electric physical
+    "aquajet",
+    "aquatail",
+    "crabhammer",
+    "liquidation",
+    "waterfall",
+    "bulldoze",
+    "hammerarm",
+    "leafblade",
+    "powerwhip",
+    "seedbomb",
+    "volttackle",
+    "wildcharge",
+    "thunderpunch",
+    "spark",
+    "fusionbolt",
+    # Bug physical
+    "attackorder",
+    "bugbite",
+    "leechlife",
+    "megahorn",
+    "pinmissile",
+    "xscissor",
+    "uturn",
+}
+
+# Pokemon that commonly have Iron Barbs (takes 1/8 HP from contact moves)
+POKEMON_COMMONLY_IRON_BARBS = {
+    "ferrothorn",
+    "toedscool",
+    "toedscruel",
+}
+
+# Pokemon that commonly have Rough Skin (takes 1/8 HP from contact moves)
+POKEMON_COMMONLY_ROUGH_SKIN = {
+    "garchomp",
+    "carvanha",
+    "sharpedo",
+    "sandaconda",
+    "dondozo",  # sometimes
+}
+
+# Rocky Helmet is an item, not an ability, so we infer from common holders
+POKEMON_COMMONLY_ROCKY_HELMET = {
+    "ferrothorn",
+    "skarmory",
+    "corviknight",
+    "garchomp",
+    "hippowdon",
+    "tangrowth",
+    "toxapex",
+    "landorustherian",
+    "ting-lu",
+    "clodsire",
+}

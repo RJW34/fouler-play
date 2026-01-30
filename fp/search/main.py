@@ -48,6 +48,11 @@ from constants import (
     # Substitute
     STATUS_ONLY_MOVES,
     INFILTRATOR_BYPASS,
+    # Contact Moves
+    CONTACT_MOVES,
+    POKEMON_COMMONLY_IRON_BARBS,
+    POKEMON_COMMONLY_ROUGH_SKIN,
+    POKEMON_COMMONLY_ROCKY_HELMET,
 )
 from fp.battle import Battle
 from config import FoulPlayConfig
@@ -82,6 +87,7 @@ class OpponentAbilityState:
     has_focus_sash: bool = False  # Focus Sash item
     has_phazing: bool = False  # Has revealed a phazing move
     has_substitute: bool = False  # Currently behind a Substitute
+    has_contact_punish: bool = False  # Iron Barbs, Rough Skin, or Rocky Helmet
     pokemon_name: str = ""
     ability_known: bool = False
     ability_name: str = ""
@@ -228,6 +234,21 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     if "substitute" in volatile_statuses:
         state.has_substitute = True
 
+    # Contact punishment detection (Iron Barbs, Rough Skin, Rocky Helmet)
+    # Check known ability
+    if ability and ability in {"ironbarbs", "roughskin"}:
+        state.has_contact_punish = True
+    # Check known item
+    elif item and item == "rockyhelmet":
+        state.has_contact_punish = True
+    # Infer from common Pokemon
+    elif (
+        name in POKEMON_COMMONLY_IRON_BARBS
+        or name in POKEMON_COMMONLY_ROUGH_SKIN
+        or name in POKEMON_COMMONLY_ROCKY_HELMET
+    ):
+        state.has_contact_punish = True
+
     return state
 
 
@@ -259,6 +280,7 @@ def apply_ability_penalties(
             ability_state.has_focus_sash and ability_state.at_full_hp,
             ability_state.has_phazing,
             ability_state.has_substitute,
+            ability_state.has_contact_punish,
         ]
     ):
         return final_policy
@@ -348,6 +370,11 @@ def apply_ability_penalties(
         if ability_state.has_substitute and move_name in STATUS_ONLY_MOVES:
             penalty = min(penalty, ABILITY_PENALTY_SEVERE)
             reason = "Substitute up (status moves fail)"
+
+        # Contact punishment: penalize contact moves vs Iron Barbs/Rough Skin/Rocky Helmet
+        if ability_state.has_contact_punish and move_name in CONTACT_MOVES:
+            penalty = min(penalty, ABILITY_PENALTY_LIGHT)
+            reason = f"{ability_state.pokemon_name} has contact punishment (Iron Barbs/Rough Skin/Rocky Helmet)"
 
         # Apply the penalty
         new_weight = weight * penalty
@@ -569,6 +596,8 @@ def find_best_move(battle: Battle) -> str:
         detected_abilities.append("Phazer")
     if ability_state.has_substitute:
         detected_abilities.append("Substitute")
+    if ability_state.has_contact_punish:
+        detected_abilities.append("Contact Punishment (Iron Barbs/Rough Skin/Rocky Helmet)")
 
     if detected_abilities:
         logger.info(
