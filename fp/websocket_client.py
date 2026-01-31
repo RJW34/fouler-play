@@ -33,7 +33,12 @@ class PSWebsocketClient:
         self.username = username
         self.password = password
         self.address = address
-        self.websocket = await websockets.connect(self.address)
+        self.websocket = await websockets.connect(
+            self.address,
+            ping_interval=20,  # Send ping every 20s to keep connection alive
+            ping_timeout=20,   # Wait 20s for pong before considering connection dead
+            close_timeout=10,  # Wait 10s for close handshake
+        )
         self.login_uri = (
             "https://play.pokemonshowdown.com/api/login"
             if password
@@ -41,6 +46,7 @@ class PSWebsocketClient:
         )
         # Message routing for concurrent battles
         self.battle_queues = {}  # battle_tag -> asyncio.Queue
+        self.pending_battle_messages = {}  # battle_tag -> list of msgs (pre-registration buffer)
         self.global_queue = asyncio.Queue()  # for non-battle messages (login, search, etc.)
         self.dispatcher_task = None
         self._dispatcher_running = False
@@ -79,10 +85,11 @@ class PSWebsocketClient:
                         await self.battle_queues[battle_tag].put(msg)
                         logger.debug(f"Routed message to battle {battle_tag}")
                     else:
-                        # Battle not registered yet, put in global queue
-                        # This happens for the initial battle creation messages
-                        await self.global_queue.put(msg)
-                        logger.debug(f"Battle {battle_tag} not registered, sent to global queue")
+                        # Battle not registered yet - buffer messages until registration
+                        if battle_tag not in self.pending_battle_messages:
+                            self.pending_battle_messages[battle_tag] = []
+                        self.pending_battle_messages[battle_tag].append(msg)
+                        logger.debug(f"Battle {battle_tag} not registered, buffered ({len(self.pending_battle_messages[battle_tag])} msgs)")
                 else:
                     # Non-battle message (login responses, search updates, etc.)
                     await self.global_queue.put(msg)
@@ -99,11 +106,26 @@ class PSWebsocketClient:
                 await asyncio.sleep(0.1)
 
     def register_battle(self, battle_tag):
-        """Register a new battle and create its message queue"""
+        """Register a new battle and create its message queue, flushing any buffered messages"""
         if battle_tag not in self.battle_queues:
             self.battle_queues[battle_tag] = asyncio.Queue()
-            logger.info(f"Registered battle queue: {battle_tag}")
+            # Flush any messages that arrived before registration
+            if battle_tag in self.pending_battle_messages:
+                buffered = self.pending_battle_messages.pop(battle_tag)
+                for msg in buffered:
+                    self.battle_queues[battle_tag].put_nowait(msg)
+                logger.info(f"Registered battle queue: {battle_tag} (flushed {len(buffered)} buffered messages)")
+            else:
+                logger.info(f"Registered battle queue: {battle_tag}")
         return self.battle_queues[battle_tag]
+
+    def get_pending_battle_tags(self):
+        """Return list of battle tags that have buffered messages but aren't registered yet"""
+        return list(self.pending_battle_messages.keys())
+
+    def peek_pending_messages(self, battle_tag):
+        """Get buffered messages for an unregistered battle without consuming them"""
+        return self.pending_battle_messages.get(battle_tag, [])
 
     def unregister_battle(self, battle_tag):
         """Remove a battle's message queue"""

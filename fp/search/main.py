@@ -609,9 +609,9 @@ def search_time_num_battles_standard_battle(battle):
 # Maximum total time budget for a single decision (seconds)
 # Pokemon Showdown gives ~150s total per game, or ~45s per turn with timer on
 # We need to leave margin for network latency, state processing, etc.
-MAX_DECISION_TIME_SECONDS = 30
+MAX_DECISION_TIME_SECONDS = 20  # Reduced from 30 to avoid timeout losses
 # When in time pressure (<60s remaining), use a much tighter budget
-MAX_DECISION_TIME_PRESSURE_SECONDS = 8
+MAX_DECISION_TIME_PRESSURE_SECONDS = 6  # Reduced from 8 for more safety margin
 
 
 def _get_fallback_move(battle: Battle) -> str:
