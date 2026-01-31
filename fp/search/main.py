@@ -93,6 +93,8 @@ class OpponentAbilityState:
     has_substitute: bool = False  # Currently behind a Substitute
     has_contact_punish: bool = False  # Iron Barbs, Rough Skin, or Rocky Helmet
     has_status: bool = False  # Already has a status condition
+    is_choice_locked: bool = False  # Opponent is choice-locked into a move
+    choice_locked_move: str = ""  # The move they're locked into
     pokemon_name: str = ""
     ability_known: bool = False
     ability_name: str = ""
@@ -264,6 +266,21 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     if opponent_status is not None:
         state.has_status = True
 
+    # Choice-lock detection
+    # If opponent has a choice item and we know their last move, they're locked
+    opp_battler = battle.opponent
+    opp_item = getattr(opponent, "item", None)
+    if opp_item in ("choiceband", "choicescarf", "choicespecs"):
+        last_move = opp_battler.last_used_move
+        if (
+            last_move
+            and last_move.pokemon_name == opponent.name
+            and last_move.move
+            and last_move.move not in ("trick", "switcheroo")
+        ):
+            state.is_choice_locked = True
+            state.choice_locked_move = last_move.move
+
     return state
 
 
@@ -297,6 +314,7 @@ def apply_ability_penalties(
             ability_state.has_substitute,
             ability_state.has_contact_punish,
             ability_state.has_status,
+            ability_state.is_choice_locked,
         ]
     ):
         return final_policy
@@ -397,6 +415,17 @@ def apply_ability_penalties(
             penalty = min(penalty, ABILITY_PENALTY_SEVERE)
             reason = "Substitute up (status moves fail)"
 
+        # Choice-lock exploitation: boost setup moves when opponent is locked
+        # MCTS already accounts for this somewhat, but we give an extra nudge
+        if ability_state.is_choice_locked and move_name in SETUP_MOVES:
+            # Don't boost if they also have phazing (unlikely with choice but safety)
+            if not ability_state.has_phazing:
+                penalty = min(penalty, 1.0)  # Ensure no penalty on setup
+                # Actually boost by 20% (multiply weight later if no other penalty)
+                if penalty >= 1.0:
+                    penalty = 1.2  # Slight boost to setup vs choice-locked
+                    reason = f"Choice-locked into {ability_state.choice_locked_move} (free setup opportunity)"
+
         # Contact punishment: penalize contact moves vs Iron Barbs/Rough Skin/Rocky Helmet
         if ability_state.has_contact_punish and move_name in CONTACT_MOVES:
             penalty = min(penalty, ABILITY_PENALTY_LIGHT)
@@ -423,6 +452,7 @@ def select_move_from_mcts_results(
     ability_state: OpponentAbilityState | None = None,
 ) -> str:
     final_policy = {}
+    score_policy = {}  # Track average scores for quality assessment
     for mcts_result, sample_chance, index in mcts_results:
         this_policy = max(mcts_result.side_one, key=lambda x: x.visits)
         logger.info(
@@ -435,24 +465,62 @@ def select_move_from_mcts_results(
             )
         )
         for s1_option in mcts_result.side_one:
+            visit_weight = sample_chance * (s1_option.visits / mcts_result.total_visits)
             final_policy[s1_option.move_choice] = final_policy.get(
                 s1_option.move_choice, 0
-            ) + (sample_chance * (s1_option.visits / mcts_result.total_visits))
+            ) + visit_weight
+
+            # Accumulate weighted average scores
+            if s1_option.visits > 0:
+                avg_score = s1_option.total_score / s1_option.visits
+                if s1_option.move_choice not in score_policy:
+                    score_policy[s1_option.move_choice] = (0.0, 0.0)
+                old_score, old_weight = score_policy[s1_option.move_choice]
+                score_policy[s1_option.move_choice] = (
+                    old_score + avg_score * visit_weight,
+                    old_weight + visit_weight,
+                )
+
+    # Blend visit-based policy with score-based quality (80% visits, 20% score)
+    # This helps break ties and prefer moves with higher expected value
+    blended_policy = {}
+    for move, visit_weight in final_policy.items():
+        if move in score_policy and score_policy[move][1] > 0:
+            weighted_score, total_weight = score_policy[move]
+            avg_score = weighted_score / total_weight
+            # Normalize score contribution: scores typically range 0-1
+            # Use it as a tiebreaker multiplier
+            score_bonus = max(0.0, min(avg_score, 1.0))
+            blended_policy[move] = visit_weight * (0.8 + 0.2 * score_bonus)
+        else:
+            blended_policy[move] = visit_weight
 
     # Apply ability-based penalties before sorting
     if ability_state:
-        final_policy = apply_ability_penalties(final_policy, ability_state)
+        blended_policy = apply_ability_penalties(blended_policy, ability_state)
 
-    final_policy = sorted(final_policy.items(), key=lambda x: x[1], reverse=True)
+    sorted_policy = sorted(blended_policy.items(), key=lambda x: x[1], reverse=True)
 
-    # Consider all moves that are close to the best move
-    highest_percentage = final_policy[0][1]
-    final_policy = [i for i in final_policy if i[1] >= highest_percentage * 0.75]
-    logger.info("Considered Choices:")
-    for i, policy in enumerate(final_policy):
+    logger.info("All Choices (post-blend, post-penalty):")
+    for i, (move, weight) in enumerate(sorted_policy):
+        logger.info(f"\t{round(weight * 100, 3)}%: {move}")
+
+    # Deterministic selection when one move is clearly dominant
+    if len(sorted_policy) >= 2:
+        best_weight = sorted_policy[0][1]
+        second_weight = sorted_policy[1][1]
+        if second_weight > 0 and best_weight / second_weight >= 1.5:
+            logger.info(f"Clear best move: {sorted_policy[0][0]} ({best_weight/second_weight:.1f}x better)")
+            return sorted_policy[0][0]
+
+    # Tighter threshold: only consider moves within 90% of best
+    highest_percentage = sorted_policy[0][1]
+    considered = [i for i in sorted_policy if i[1] >= highest_percentage * 0.90]
+    logger.info("Considered Choices (90% threshold):")
+    for i, policy in enumerate(considered):
         logger.info(f"\t{round(policy[1] * 100, 3)}%: {policy[0]}")
 
-    choice = random.choices(final_policy, weights=[p[1] for p in final_policy])[0]
+    choice = random.choices(considered, weights=[p[1] for p in considered])[0]
     return choice[0]
 
 
@@ -635,6 +703,8 @@ def find_best_move(battle: Battle) -> str:
         detected_abilities.append("Contact Punishment (Iron Barbs/Rough Skin/Rocky Helmet)")
     if ability_state.has_status:
         detected_abilities.append("Already statused (pure status moves will fail)")
+    if ability_state.is_choice_locked:
+        detected_abilities.append(f"Choice-locked into {ability_state.choice_locked_move}")
 
     if detected_abilities:
         logger.info(
