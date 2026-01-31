@@ -3,6 +3,7 @@ import asyncio
 import concurrent.futures
 from copy import deepcopy
 import logging
+import re
 
 from data.pkmn_sets import RandomBattleTeamDatasets, TeamDatasets
 from data.pkmn_sets import SmogonSets
@@ -158,24 +159,47 @@ async def handle_team_preview(battle, ps_websocket_client):
 
 
 async def get_battle_tag_and_opponent(ps_websocket_client: PSWebsocketClient):
+    """Wait for a battle to start and return its tag and opponent name"""
+    battle_tag_pattern = re.compile(r'^>(battle-[a-z0-9]+-\d+)')
+
     while True:
         msg = await ps_websocket_client.receive_message()
         split_msg = msg.split("|")
-        first_msg = split_msg[0]
-        if "battle" in first_msg:
-            battle_tag = first_msg.replace(">", "").strip()
+        first_line = msg.split("\n")[0]
+
+        # Check for battle tag in message
+        match = battle_tag_pattern.match(first_line)
+        if match:
+            battle_tag = match.group(1)
+            # Find opponent name in the message
+            for line in msg.split("\n"):
+                if "|player|" in line:
+                    parts = line.split("|")
+                    if len(parts) >= 4:
+                        player_name = parts[3]
+                        if player_name.lower() != FoulPlayConfig.username.lower():
+                            opponent_name = player_name
+                            logger.info("Initialized {} against: {}".format(battle_tag, opponent_name))
+                            return battle_tag, opponent_name
+
+            # If we found battle tag but not opponent yet, keep the tag and continue
             user_name = FoulPlayConfig.username
-            opponent_name = (
-                split_msg[4].replace(user_name, "").replace("vs.", "").strip()
-            )
-            logger.info("Initialized {} against: {}".format(battle_tag, opponent_name))
-            return battle_tag, opponent_name
+            # Try to extract from vs. format
+            if "vs." in msg:
+                opponent_name = msg.split("vs.")[1].split("|")[0].strip()
+                if opponent_name.lower() != user_name.lower():
+                    logger.info("Initialized {} against: {}".format(battle_tag, opponent_name))
+                    return battle_tag, opponent_name
 
 
 async def start_battle_common(
     ps_websocket_client: PSWebsocketClient, pokemon_battle_type
 ):
     battle_tag, opponent_name = await get_battle_tag_and_opponent(ps_websocket_client)
+
+    # Register the battle queue for message routing
+    ps_websocket_client.register_battle(battle_tag)
+
     if FoulPlayConfig.log_to_file:
         FoulPlayConfig.file_log_handler.do_rollover(
             "{}_{}.log".format(battle_tag, opponent_name)
@@ -192,11 +216,17 @@ async def start_battle_common(
     # '>battle-gen9randombattle-44733
     # |player|p1|OpponentName|2|'
     while True:
-        msg = await ps_websocket_client.receive_message()
+        msg = await ps_websocket_client.receive_battle_message(battle_tag)
         if "|player|" in msg and battle.opponent.account_name in msg:
-            battle.opponent.name = msg.split("|")[2]
-            battle.user.name = constants.ID_LOOKUP[battle.opponent.name]
-            break
+            for line in msg.split("\n"):
+                if "|player|" in line and battle.opponent.account_name in line:
+                    parts = line.split("|")
+                    if len(parts) >= 3:
+                        battle.opponent.name = parts[2]
+                        battle.user.name = constants.ID_LOOKUP[battle.opponent.name]
+                        break
+            if battle.opponent.name:
+                break
 
     return battle, msg
 
@@ -205,14 +235,20 @@ async def get_first_request_json(
     ps_websocket_client: PSWebsocketClient, battle: Battle
 ):
     while True:
-        msg = await ps_websocket_client.receive_message()
-        msg_split = msg.split("|")
-        if msg_split[1].strip() == "request" and msg_split[2].strip():
-            user_json = json.loads(msg_split[2].strip("'"))
-            battle.request_json = user_json
-            battle.user.initialize_first_turn_user_from_json(user_json)
-            battle.rqid = user_json[constants.RQID]
-            return
+        msg = await ps_websocket_client.receive_battle_message(battle.battle_tag)
+        msg_lines = msg.split("\n")
+        for line in msg_lines:
+            if "|request|" in line:
+                parts = line.split("|request|")
+                if len(parts) > 1 and parts[1].strip():
+                    try:
+                        user_json = json.loads(parts[1].strip("'"))
+                        battle.request_json = user_json
+                        battle.user.initialize_first_turn_user_from_json(user_json)
+                        battle.rqid = user_json[constants.RQID]
+                        return
+                    except json.JSONDecodeError:
+                        continue
 
 
 async def start_random_battle(
@@ -235,7 +271,7 @@ async def start_random_battle(
                 if not (m.startswith("|switch|{}".format(battle.user.name)))
             ]
             break
-        msg = await ps_websocket_client.receive_message()
+        msg = await ps_websocket_client.receive_battle_message(battle.battle_tag)
 
     await get_first_request_json(ps_websocket_client, battle)
 
@@ -272,7 +308,7 @@ async def start_standard_battle(
                     if not (m.startswith("|switch|{}".format(battle.user.name)))
                 ]
                 break
-            msg = await ps_websocket_client.receive_message()
+            msg = await ps_websocket_client.receive_battle_message(battle.battle_tag)
 
         await get_first_request_json(ps_websocket_client, battle)
 
@@ -292,7 +328,7 @@ async def start_standard_battle(
 
     else:
         while constants.START_TEAM_PREVIEW not in msg:
-            msg = await ps_websocket_client.receive_message()
+            msg = await ps_websocket_client.receive_battle_message(battle.battle_tag)
 
         preview_string_lines = msg.split(constants.START_TEAM_PREVIEW)[-1].split("\n")
 
@@ -303,7 +339,8 @@ async def start_standard_battle(
 
             split_line = line.split("|")
             if (
-                split_line[1] == constants.TEAM_PREVIEW_POKE
+                len(split_line) > 3
+                and split_line[1] == constants.TEAM_PREVIEW_POKE
                 and split_line[2].strip() == battle.opponent.name
             ):
                 opponent_pokemon.append(split_line[3])
@@ -352,17 +389,20 @@ async def start_battle(ps_websocket_client, pokemon_battle_type, team_dict):
 
 
 async def pokemon_battle(ps_websocket_client, pokemon_battle_type, team_dict):
+    """Run a single battle to completion. Returns (winner, battle_tag)."""
     battle = await start_battle(ps_websocket_client, pokemon_battle_type, team_dict)
+    battle_tag = battle.battle_tag
+
     while True:
-        msg = await ps_websocket_client.receive_message()
-        if battle_is_finished(battle.battle_tag, msg):
+        msg = await ps_websocket_client.receive_battle_message(battle_tag)
+        if battle_is_finished(battle_tag, msg):
             winner = (
                 msg.split(constants.WIN_STRING)[-1].split("\n")[0].strip()
                 if constants.WIN_STRING in msg
                 else None
             )
             logger.info("Winner: {}".format(winner))
-            await ps_websocket_client.send_message(battle.battle_tag, ["gg"])
+            await ps_websocket_client.send_message(battle_tag, ["gg"])
             if (
                 FoulPlayConfig.save_replay == SaveReplay.always
                 or (
@@ -374,11 +414,11 @@ async def pokemon_battle(ps_websocket_client, pokemon_battle_type, team_dict):
                     and winner == FoulPlayConfig.username
                 )
             ):
-                await ps_websocket_client.save_replay(battle.battle_tag)
-            await ps_websocket_client.leave_battle(battle.battle_tag)
-            return winner
+                await ps_websocket_client.save_replay(battle_tag)
+            await ps_websocket_client.leave_battle(battle_tag)
+            return winner, battle_tag
         else:
             action_required = await async_update_battle(battle, msg)
             if action_required and not battle.wait:
                 best_move = await async_pick_move(battle)
-                await ps_websocket_client.send_message(battle.battle_tag, best_move)
+                await ps_websocket_client.send_message(battle_tag, best_move)
