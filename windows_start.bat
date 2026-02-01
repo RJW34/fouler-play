@@ -10,7 +10,7 @@ echo ========================================
 echo.
 
 REM Change to fouler-play directory (adjust path if needed)
-set "PROJECT_DIR=C:\Users\Ryan\projects\fouler-play"
+set "PROJECT_DIR=D:\Projects with Claude\BAKUGO\fouler-play"
 
 if not exist "%PROJECT_DIR%" (
     echo ERROR: Project directory not found!
