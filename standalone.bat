@@ -56,17 +56,17 @@ if not exist "venv" (
 
 REM --- Build password arg ---
 set PW_ARG=
-if not "%PS_PASSWORD%"=="" set PW_ARG=--ps-password %PS_PASSWORD%
+if not "%PS_PASSWORD%"=="" set PW_ARG=--ps-password "%PS_PASSWORD%"
 
 REM --- Launch worker 1 ---
 echo   Starting battle worker 1...
-start /b python -u run.py --websocket-uri %PS_WEBSOCKET_URI% --ps-username %PS_USERNAME% %PW_ARG% --bot-mode search_ladder --pokemon-format %PS_FORMAT% --team-name %PS_TEAM% --search-time-ms %PS_SEARCH_TIME_MS% --run-count 999999 --save-replay always --log-level INFO
+start /b python -u run.py --websocket-uri "%PS_WEBSOCKET_URI%" --ps-username "%PS_USERNAME%" %PW_ARG% --bot-mode search_ladder --pokemon-format "%PS_FORMAT%" --team-name "%PS_TEAM%" --search-time-ms %PS_SEARCH_TIME_MS% --run-count 999999 --save-replay always --log-level INFO
 
 timeout /t 3 /nobreak >nul
 
 REM --- Launch worker 2 ---
 echo   Starting battle worker 2...
-start /b python -u run.py --websocket-uri %PS_WEBSOCKET_URI% --ps-username %PS_USERNAME% %PW_ARG% --bot-mode search_ladder --pokemon-format %PS_FORMAT% --team-name %PS_TEAM% --search-time-ms %PS_SEARCH_TIME_MS% --run-count 999999 --save-replay always --log-level INFO
+start /b python -u run.py --websocket-uri "%PS_WEBSOCKET_URI%" --ps-username "%PS_USERNAME%" %PW_ARG% --bot-mode search_ladder --pokemon-format "%PS_FORMAT%" --team-name "%PS_TEAM%" --search-time-ms %PS_SEARCH_TIME_MS% --run-count 999999 --save-replay always --log-level INFO
 
 echo.
 echo   Fouler Play running! 2 workers laddering as %PS_USERNAME%
