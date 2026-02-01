@@ -25,6 +25,28 @@ load_dotenv()
 PID_DIR = Path(__file__).parent / ".pids"
 PID_DIR.mkdir(exist_ok=True)
 
+# Active battles file (read by stream_server.py and BAKUGO's OBS)
+BATTLES_FILE = Path(__file__).parent / "active_battles.json"
+
+def write_active_battles(active_battles_dict):
+    """Write active battle IDs to shared JSON file for stream integration."""
+    battles = [
+        {
+            "id": bid,
+            "opponent": b.opponent,
+            "url": f"https://play.pokemonshowdown.com/{bid}",
+            "started": b.started_at.isoformat() if b.started_at else None,
+        }
+        for bid, b in active_battles_dict.items()
+        if b.result is None
+    ]
+    data = {
+        "battles": battles,
+        "count": len(battles),
+        "updated": datetime.now().isoformat(),
+    }
+    BATTLES_FILE.write_text(json.dumps(data, indent=2))
+
 # Discord webhook URLs (from .env)
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")  # For project updates
 DISCORD_BATTLES_WEBHOOK = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")  # For battle notifications
@@ -301,6 +323,7 @@ class BotMonitor:
                 battle_state = BattleState(battle_id, opponent, datetime.now())
                 self.active_battles[battle_id] = battle_state
                 self.last_battle_id = battle_id
+                write_active_battles(self.active_battles)
 
                 # Stream integration: go live on first battle
                 active_count = sum(1 for b in self.active_battles.values() if b.result is None)
@@ -365,6 +388,7 @@ class BotMonitor:
                     # Move to finished_battles and remove from active immediately
                     self.finished_battles[battle_id] = (opponent, result_key)
                     del self.active_battles[battle_id]
+                    write_active_battles(self.active_battles)
 
                     # Record for batch report (replay URL added later when detected)
                     self.record_batch_result(opponent, result_key)
