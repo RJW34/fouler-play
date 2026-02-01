@@ -320,7 +320,9 @@ class BotMonitor:
                 if not battle_id and len(self.active_battles) == 1:
                     battle_id = list(self.active_battles.keys())[0]
 
-                if winner == "LEBOTJAMESXD005":
+                # Load our username from env for comparison
+                our_username = os.getenv("PS_USERNAME", "LEBOTJAMESXD003")
+                if winner == our_username:
                     self.wins += 1
                     emoji = "🎉"
                     result = "Won"
@@ -451,13 +453,19 @@ class BotMonitor:
         - Target: 1700 ELO
         - Runs indefinitely (--run-count 999999)
         """
+        # Load credentials from environment
+        ps_username = os.getenv("PS_USERNAME", "LEBOTJAMESXD003")
+        ps_password = os.getenv("PS_PASSWORD", "LeBotPassword2026!")
+        ps_websocket_uri = os.getenv("PS_WEBSOCKET_URI", "wss://sim3.psim.us/showdown/websocket")
+        ps_format = os.getenv("PS_FORMAT", "gen9ou")
+        
         cmd = [
             "venv/bin/python", "-u", "run.py",  # -u for unbuffered output
-            "--websocket-uri", "wss://sim3.psim.us/showdown/websocket",
-            "--ps-username", "LEBOTJAMESXD005",
-            "--ps-password", "LeBotPassword2026!",
+            "--websocket-uri", ps_websocket_uri,
+            "--ps-username", ps_username,
+            "--ps-password", ps_password,
             "--bot-mode", "search_ladder",
-            "--pokemon-format", "gen9ou",
+            "--pokemon-format", ps_format,
             "--team-name", "gen9/ou/fat-team-1-stall",  # Single team (team-list has bug)
             "--search-time-ms", "3000",  # Reduced to stay under turn timer
             "--run-count", "999999",  # Run indefinitely until 1700 ELO
