@@ -231,6 +231,24 @@ class BotMonitor:
                     if current_battle in self.active_battles:
                         self.last_battle_id = current_battle
 
+            # Detect ELO stats (format: "W: 123  L: 45")
+            match = ELO_PATTERN.search(line)
+            if match:
+                wins = int(match.group(1))
+                losses = int(match.group(2))
+                total = wins + losses
+                win_rate = (wins / total * 100) if total > 0 else 0
+                
+                # Only report if this is new info (different from last known)
+                if wins != self.wins or losses != self.losses:
+                    self.wins = wins
+                    self.losses = losses
+                    
+                    await self.send_discord_message(
+                        f"📊 **Ladder Stats:** {wins}W - {losses}L ({win_rate:.1f}% win rate)",
+                        channel="battles"
+                    )
+
             # Detect worker count and report
             match = WORKER_PATTERN.search(line)
             if match:
@@ -302,7 +320,7 @@ class BotMonitor:
                 if not battle_id and len(self.active_battles) == 1:
                     battle_id = list(self.active_battles.keys())[0]
 
-                if winner == "LEBOTJAMESXD004":
+                if winner == "LEBOTJAMESXD005":
                     self.wins += 1
                     emoji = "🎉"
                     result = "Won"
@@ -436,7 +454,7 @@ class BotMonitor:
         cmd = [
             "venv/bin/python", "-u", "run.py",  # -u for unbuffered output
             "--websocket-uri", "wss://sim3.psim.us/showdown/websocket",
-            "--ps-username", "LEBOTJAMESXD004",
+            "--ps-username", "LEBOTJAMESXD005",
             "--ps-password", "LeBotPassword2026!",
             "--bot-mode", "search_ladder",
             "--pokemon-format", "gen9ou",
@@ -475,8 +493,21 @@ class BotMonitor:
             }, f)
         print(f"[MONITOR] Tracked bot process: PID {bot_pid}")
 
+        # Extract username from cmd
+        username = None
+        for i, arg in enumerate(cmd):
+            if arg == "--ps-username" and i + 1 < len(cmd):
+                username = cmd[i + 1]
+                break
+        
+        startup_msg = "🚀 **Fouler Play bot starting...**"
+        if username:
+            user_page = f"https://pokemonshowdown.com/users/{username.lower()}"
+            startup_msg += f"\n📊 **Account:** [{username}]({user_page})"
+            startup_msg += "\n⏳ *ELO stats will be posted once ladder data loads*"
+        
         await self.send_discord_message(
-            "🚀 **Fouler Play bot starting...**",
+            startup_msg,
             channel="battles"
         )
 
