@@ -11,6 +11,8 @@ import asyncio
 import re
 import sys
 import aiohttp
+import json
+import time
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -18,6 +20,10 @@ import os
 
 # Load environment variables
 load_dotenv()
+
+# Process tracking
+PID_DIR = Path(__file__).parent / ".pids"
+PID_DIR.mkdir(exist_ok=True)
 
 # Discord webhook URLs (from .env)
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")  # For project updates
@@ -28,6 +34,7 @@ DISCORD_FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL")  # For turn
 sys.path.append(str(Path(__file__).parent))
 from replay_analysis.analyzer import ReplayAnalyzer
 from replay_analysis.turn_review import TurnReviewer
+from streaming.stream_integration import start_stream, stop_stream, update_stream_status
 
 # Patterns to detect in bot output
 BATTLE_START_PATTERN = re.compile(r'Initialized (battle-[\w-]+) against: (.+)')
@@ -56,8 +63,11 @@ class BotMonitor:
         self.losses = 0
         # Track multiple active battles
         self.active_battles = {}  # battle_id -> BattleState
+        self.seen_battle_ids = set()  # Track ALL battles ever seen (prevents duplicates)
         self.last_winner = None  # for associating winner with replay
         self.last_battle_id = None  # for associating events
+        self.battle_message_map = {}  # Track most recent battle for each message stream
+        self.finished_battles = {}  # battle_id -> (opponent, result) for completed battles awaiting replay
         self.analyzer = ReplayAnalyzer()
         self.turn_reviewer = TurnReviewer()
         self.posted_replays = set()  # Track posted replays to avoid duplicates
@@ -182,11 +192,44 @@ class BotMonitor:
         # If multiple active and can't determine, return None
         return None
 
+    async def cleanup_stale_battles(self):
+        """Remove battles that have been active for >30 minutes (likely orphaned)"""
+        now = datetime.now()
+        stale_battles = []
+        
+        for battle_id, state in list(self.active_battles.items()):
+            age_minutes = (now - state.start_time).total_seconds() / 60
+            if age_minutes > 30:
+                stale_battles.append((battle_id, state))
+        
+        for battle_id, state in stale_battles:
+            await self.send_discord_message(
+                f"⚠️ **Cleaning up stale battle vs {state.opponent}** (active for {int((now - state.start_time).total_seconds() / 60)}min)",
+                channel="battles"
+            )
+            del self.active_battles[battle_id]
+    
     async def monitor_output(self, stream):
         """Monitor bot output line by line"""
+        last_cleanup = datetime.now()
+        
         async for line in stream:
+            # Periodic cleanup of stale battles (every 5 minutes)
+            if (datetime.now() - last_cleanup).total_seconds() > 300:
+                await self.cleanup_stale_battles()
+                last_cleanup = datetime.now()
+            
             line = line.decode('utf-8').strip()
             print(line)  # Echo to stdout
+
+            # Track which battle is currently outputting messages
+            # Pattern: "Received for battle battle-gen9ou-XXXXX:" or "DEBUG    Received for battle..."
+            if "Received for battle" in line:
+                match = BATTLE_TAG_PATTERN.search(line)
+                if match:
+                    current_battle = match.group(0)
+                    if current_battle in self.active_battles:
+                        self.last_battle_id = current_battle
 
             # Detect worker count and report
             match = WORKER_PATTERN.search(line)
@@ -208,17 +251,37 @@ class BotMonitor:
                 battle_id = match.group(1)
                 opponent = match.group(2)
 
+                # Skip if we've already seen this battle (prevents duplicates from log re-reading)
+                if battle_id in self.seen_battle_ids:
+                    continue
+
+                # Mark as seen
+                self.seen_battle_ids.add(battle_id)
+
                 # Create battle state
                 battle_state = BattleState(battle_id, opponent, datetime.now())
                 self.active_battles[battle_id] = battle_state
                 self.last_battle_id = battle_id
 
                 link = f"https://play.pokemonshowdown.com/{battle_id}"
-                active_count = len(self.active_battles)
+                # Count only battles that don't have results yet (truly active)
+                active_count = sum(1 for b in self.active_battles.values() if b.result is None)
 
                 await self.send_discord_message(
                     f"🎮 **Battle started vs {opponent}** ({active_count} active)\n{link}",
                     channel="battles"
+                )
+
+                # Stream integration: go live on first battle, update battle sources
+                if active_count == 1:
+                    await start_stream()
+                
+                # Update stream overlay with battle info
+                active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
+                battle_info = ", ".join(f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids)
+                await update_stream_status(
+                    wins=self.wins, losses=self.losses,
+                    status="Battling", battle_info=battle_info
                 )
 
             # Detect winner - need to associate with correct battle
@@ -228,13 +291,18 @@ class BotMonitor:
                 self.last_winner = winner
 
                 # Find the battle this belongs to
+                # First try to find battle tag in the line itself
                 battle_id = self.find_battle_for_event(line)
                 
-                # If we can't find the battle but only one is active, use that
+                # If not found, use the last battle we saw messages from
+                if not battle_id and self.last_battle_id and self.last_battle_id in self.active_battles:
+                    battle_id = self.last_battle_id
+                
+                # Last resort: if only one battle is active, use that
                 if not battle_id and len(self.active_battles) == 1:
                     battle_id = list(self.active_battles.keys())[0]
 
-                if winner == "LEBOTJAMESXD002":
+                if winner == "LEBOTJAMESXD004":
                     self.wins += 1
                     emoji = "🎉"
                     result = "Won"
@@ -249,15 +317,42 @@ class BotMonitor:
                     result = "Lost"
                     result_key = "lost"
 
+                    # Increment loss counter for improvement pipeline
+                    counter_file = Path("/tmp/fp-losses-since-deploy")
+                    try:
+                        count = int(counter_file.read_text().strip()) if counter_file.exists() else 0
+                        counter_file.write_text(str(count + 1))
+                    except (ValueError, OSError):
+                        counter_file.write_text("1")
+
                 # Update battle state if found
                 if battle_id and battle_id in self.active_battles:
-                    self.active_battles[battle_id].result = result_key
                     opponent = self.active_battles[battle_id].opponent
+                    
+                    # Move to finished_battles and remove from active immediately
+                    self.finished_battles[battle_id] = (opponent, result_key)
+                    del self.active_battles[battle_id]
+                    
+                    # Count truly active battles (no result yet)
                     active_count = len(self.active_battles)
+                    
                     await self.send_discord_message(
                         f"{emoji} **{result} vs {opponent}!** Record: {self.wins}W - {self.losses}L ({active_count} active)",
                         channel="battles"
                     )
+
+                    # Update stream overlay with remaining battles
+                    active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
+                    battle_info = ", ".join(f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids) if active_battle_ids else "Waiting..."
+                    await update_stream_status(
+                        wins=self.wins, losses=self.losses,
+                        status="Battling" if active_battle_ids else "Idle",
+                        battle_info=battle_info
+                    )
+                    
+                    # Stop stream if no more active battles
+                    if active_count == 0:
+                        await stop_stream()
                 else:
                     # Couldn't associate with a battle - still report it
                     await self.send_discord_message(
@@ -280,21 +375,15 @@ class BotMonitor:
 
                 # Extract battle_id from replay_id
                 # Replay URLs contain the battle tag, e.g. gen9ou-2529712238
+                # But battle_id has "battle-" prefix, e.g. battle-gen9ou-2529712238
                 battle_id = None
+                replay_suffix = replay_url.split('/')[-1]  # "gen9ou-2529712238"
                 
-                # First try exact substring match
-                for bid in self.active_battles:
-                    # Battle IDs often appear in replay URLs
-                    if bid in replay_url:
+                # Check finished_battles (battles that have completed)
+                for bid in self.finished_battles:
+                    if bid.replace("battle-", "") == replay_suffix:
                         battle_id = bid
                         break
-                
-                # If that fails, try to find most recently completed battle without replay
-                if not battle_id:
-                    for bid, state in self.active_battles.items():
-                        if state.result and not state.replay_url:
-                            battle_id = bid
-                            break
                 
                 # Last resort: use find_battle_for_event
                 if not battle_id:
@@ -304,50 +393,67 @@ class BotMonitor:
                 if replay_url not in self.posted_replays:
                     self.posted_replays.add(replay_url)
 
-                    battle_state = self.active_battles.get(battle_id)
-                    if battle_state:
-                        battle_state.replay_url = replay_url
-                        opponent = battle_state.opponent
+                    # Check if this was a finished battle
+                    if battle_id and battle_id in self.finished_battles:
+                        opponent, result = self.finished_battles[battle_id]
                         await self.send_discord_message(
                             f"🔗 **Replay (vs {opponent}):** {replay_url}",
                             channel="battles"
                         )
 
                         # If this was a loss, analyze it automatically
-                        if battle_state.result == "lost":
+                        if result == "lost":
                             await self.send_discord_message(
                                 f"🔍 **Analyzing loss vs {opponent}...**",
                                 channel="battles"
                             )
-                            # Run analysis in background to not block other battles
-                            asyncio.create_task(self.analyze_loss_async(replay_url, battle_state))
-
-                        # Clean up completed battle
-                        del self.active_battles[battle_id]
+                            # Create a minimal battle state for analysis
+                            class BattleStateStub:
+                                def __init__(self, bid, opp):
+                                    self.battle_id = bid
+                                    self.opponent = opp
+                            # Run analysis in background
+                            asyncio.create_task(self.analyze_loss_async(replay_url, BattleStateStub(battle_id, opponent)))
+                        
+                        # Clean up from finished_battles
+                        del self.finished_battles[battle_id]
                     else:
+                        # Battle not found - still post replay
                         await self.send_discord_message(
                             f"🔗 **Replay:** {replay_url}",
                             channel="battles"
                         )
 
     async def run_bot(self):
-        """Run the bot process and monitor it"""
+        """Run the bot process and monitor it
+        
+        Configuration:
+        - Uses 2 concurrent battle workers (MAX_CONCURRENT_BATTLES=2 in run.py)
+        - Rotates through 3 fat teams: stall, pivot, dondozo
+        - Target: 1700 ELO
+        - Runs indefinitely (--run-count 999999)
+        """
         cmd = [
             "venv/bin/python", "-u", "run.py",  # -u for unbuffered output
             "--websocket-uri", "wss://sim3.psim.us/showdown/websocket",
-            "--ps-username", "LEBOTJAMESXD002",
+            "--ps-username", "LEBOTJAMESXD004",
             "--ps-password", "LeBotPassword2026!",
             "--bot-mode", "search_ladder",
             "--pokemon-format", "gen9ou",
-            "--team-name", "gen9/ou",
-            "--search-time-ms", "1500",  # Faster to avoid timeouts
-            "--run-count", "999999",
+            "--team-name", "gen9/ou/fat-team-1-stall",  # Single team (team-list has bug)
+            "--search-time-ms", "3000",  # Reduced to stay under turn timer
+            "--run-count", "999999",  # Run indefinitely until 1700 ELO
             "--save-replay", "always",
-            "--log-level", "INFO"  # Less verbose, focus on important info
+            "--log-level", "INFO"  # Reduced verbosity so auto_stream can track battles
         ]
 
         # Ensure we're in the right directory
         cwd = Path(__file__).parent
+        
+        # Clean log file to prevent re-reading old battles
+        log_file = cwd / "monitor_output.log"
+        if log_file.exists():
+            log_file.unlink()
 
         # Activate venv and run
         self.process = await asyncio.create_subprocess_exec(
@@ -356,6 +462,18 @@ class BotMonitor:
             stderr=asyncio.subprocess.STDOUT,
             cwd=cwd
         )
+
+        # Track the spawned bot process
+        bot_pid = self.process.pid
+        pid_file = PID_DIR / "bot_main.pid"
+        with open(pid_file, 'w') as f:
+            json.dump({
+                'pid': bot_pid,
+                'name': 'bot_main',
+                'started_at': time.time(),
+                'command': ' '.join(cmd)
+            }, f)
+        print(f"[MONITOR] Tracked bot process: PID {bot_pid}")
 
         await self.send_discord_message(
             "🚀 **Fouler Play bot starting...**",
