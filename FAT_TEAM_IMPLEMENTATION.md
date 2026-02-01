@@ -188,7 +188,7 @@
 ```bash
 python run.py \
   --websocket-uri wss://sim3.psim.us/showdown/websocket \
-  --ps-username LEBOTJAMESXD001 \
+  --ps-username LEBOTJAMESXD005 \
   --ps-password LeBotPassword2026! \
   --bot-mode search_ladder \
   --pokemon-format gen9ou \
@@ -203,7 +203,7 @@ python run.py \
 ```bash
 python run.py \
   --websocket-uri wss://sim3.psim.us/showdown/websocket \
-  --ps-username LEBOTJAMESXD001 \
+  --ps-username LEBOTJAMESXD005 \
   --ps-password LeBotPassword2026! \
   --bot-mode search_ladder \
   --pokemon-format gen9ou \
@@ -218,7 +218,7 @@ python run.py \
 ```bash
 python run.py \
   --websocket-uri wss://sim3.psim.us/showdown/websocket \
-  --ps-username LEBOTJAMESXD001 \
+  --ps-username LEBOTJAMESXD005 \
   --ps-password LeBotPassword2026! \
   --bot-mode search_ladder \
   --pokemon-format gen9ou \

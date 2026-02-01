@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Fouler Play Overlay</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: transparent;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  color: white;
+  overflow: hidden;
+  width: 1920px;
+  height: 1080px;
+}
+
+/* ===== TOP BAR ===== */
+#top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  background: linear-gradient(180deg, rgba(12,12,18,0.95) 0%, rgba(12,12,18,0.88) 100%);
+  border-bottom: 2px solid rgba(239,68,68,0.6);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 0;
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+/* Logo */
+.logo {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-right: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon { font-size: 22px; }
+.logo-text {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Divider */
+.divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255,255,255,0.12);
+  margin: 0 20px;
+}
+
+/* Stats */
+.stat-group {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.45;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s ease;
+}
+
+.stat-elo .stat-value { color: #fbbf24; }
+.stat-wins .stat-value { color: #4ade80; }
+.stat-losses .stat-value { color: #f87171; }
+
+/* ELO change flash */
+.stat-value.flash-up {
+  color: #22c55e !important;
+  text-shadow: 0 0 12px rgba(34,197,94,0.6);
+}
+.stat-value.flash-down {
+  color: #ef4444 !important;
+  text-shadow: 0 0 12px rgba(239,68,68,0.6);
+}
+
+/* ELO delta badge */
+#elo-delta {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  margin-left: -2px;
+}
+#elo-delta.positive {
+  background: rgba(34,197,94,0.2);
+  color: #4ade80;
+  opacity: 1;
+}
+#elo-delta.negative {
+  background: rgba(239,68,68,0.2);
+  color: #f87171;
+  opacity: 1;
+}
+
+/* Win rate */
+.winrate {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+/* Status */
+.status-group {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b7280;
+  transition: background 0.3s ease;
+  position: relative;
+}
+#status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0;
+  animation: none;
+}
+#status-dot.battling {
+  background: #ef4444;
+}
+#status-dot.battling::after {
+  opacity: 0.4;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+#status-dot.searching {
+  background: #4ade80;
+}
+#status-dot.searching::after {
+  opacity: 0.3;
+  animation: pulse-ring 2s ease-out infinite;
+}
+#status-dot.idle {
+  background: #6b7280;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+#status-text {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+/* Format badge */
+.format-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: rgba(255,255,255,0.7);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ===== BOTTOM BAR ===== */
+#bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 36px;
+  background: linear-gradient(0deg, rgba(12,12,18,0.95) 0%, rgba(12,12,18,0.85) 100%);
+  border-top: 1px solid rgba(239,68,68,0.3);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 100;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+}
+
+#battle-info {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+#ticker {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.35;
+  letter-spacing: 0.5px;
+}
+
+/* Recent results strip */
+#recent-results {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 20px;
+}
+.result-pip {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.result-pip.win {
+  background: rgba(34,197,94,0.25);
+  border: 1px solid rgba(34,197,94,0.5);
+  color: #4ade80;
+}
+.result-pip.loss {
+  background: rgba(239,68,68,0.25);
+  border: 1px solid rgba(239,68,68,0.5);
+  color: #f87171;
+}
+
+/* Streak indicator */
+#streak {
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+#streak.active { opacity: 0.8; }
+#streak.win-streak { color: #4ade80; }
+#streak.loss-streak { color: #f87171; }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="logo">
+    <span class="logo-icon">⚔️</span>
+    <span class="logo-text">FOULER PLAY</span>
+  </div>
+  
+  <div class="divider"></div>
+  
+  <div class="stat-group">
+    <div class="stat stat-elo">
+      <span class="stat-label">ELO</span>
+      <span class="stat-value" id="elo">---</span>
+      <span id="elo-delta"></span>
+    </div>
+    
+    <div class="stat stat-wins">
+      <span class="stat-label">W</span>
+      <span class="stat-value" id="wins">0</span>
+    </div>
+    
+    <div class="stat stat-losses">
+      <span class="stat-label">L</span>
+      <span class="stat-value" id="losses">0</span>
+    </div>
+    
+    <span class="winrate" id="winrate"></span>
+  </div>
+  
+  <div class="status-group">
+    <div class="format-badge">GEN 9 OU</div>
+    <div id="status-dot" class="idle"></div>
+    <div id="status-text">IDLE</div>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <div id="battle-info">Waiting for battle...</div>
+  <div id="recent-results"></div>
+  <div id="streak"></div>
+  <div id="ticker">FOULER PLAY • AI Battle Bot • Gen 9 OU</div>
+</div>
+
+<script>
+let prevElo = null;
+let prevWins = 0;
+let prevLosses = 0;
+let recentResults = []; // 'W' or 'L', max 20
+
+function updateOverlay(data) {
+  const eloEl = document.getElementById('elo');
+  const winsEl = document.getElementById('wins');
+  const lossesEl = document.getElementById('losses');
+  const deltaEl = document.getElementById('elo-delta');
+  const dotEl = document.getElementById('status-dot');
+  const statusEl = document.getElementById('status-text');
+  const battleEl = document.getElementById('battle-info');
+  const winrateEl = document.getElementById('winrate');
+  
+  // ELO with change detection
+  const newElo = data.elo || '---';
+  if (prevElo !== null && newElo !== '---' && prevElo !== '---') {
+    const diff = parseInt(newElo) - parseInt(prevElo);
+    if (diff !== 0) {
+      deltaEl.textContent = (diff > 0 ? '+' : '') + diff;
+      deltaEl.className = diff > 0 ? 'positive' : 'negative';
+      eloEl.classList.add(diff > 0 ? 'flash-up' : 'flash-down');
+      setTimeout(() => {
+        eloEl.classList.remove('flash-up', 'flash-down');
+        deltaEl.style.opacity = '0';
+      }, 3000);
+    }
+  }
+  eloEl.textContent = newElo;
+  prevElo = newElo;
+  
+  // W/L tracking + recent results
+  const newWins = data.wins || 0;
+  const newLosses = data.losses || 0;
+  if (newWins > prevWins) {
+    for (let i = 0; i < newWins - prevWins; i++) recentResults.push('W');
+  }
+  if (newLosses > prevLosses) {
+    for (let i = 0; i < newLosses - prevLosses; i++) recentResults.push('L');
+  }
+  if (recentResults.length > 20) recentResults = recentResults.slice(-20);
+  prevWins = newWins;
+  prevLosses = newLosses;
+  
+  winsEl.textContent = newWins;
+  lossesEl.textContent = newLosses;
+  
+  // Win rate
+  const total = newWins + newLosses;
+  if (total > 0) {
+    winrateEl.textContent = Math.round((newWins / total) * 100) + '%';
+  }
+  
+  // Status dot
+  const status = (data.status || 'Idle').toLowerCase();
+  dotEl.className = '';
+  if (status.includes('battle') || status.includes('fighting')) {
+    dotEl.classList.add('battling');
+    statusEl.textContent = 'IN BATTLE';
+  } else if (status.includes('search')) {
+    dotEl.classList.add('searching');
+    statusEl.textContent = 'SEARCHING';
+  } else {
+    dotEl.classList.add('idle');
+    statusEl.textContent = 'IDLE';
+  }
+  
+  // Battle info
+  battleEl.textContent = data.battle_info || 'Waiting for battle...';
+  
+  // Recent results pips
+  const resultsEl = document.getElementById('recent-results');
+  resultsEl.innerHTML = recentResults.slice(-10).map(r => 
+    `<div class="result-pip ${r === 'W' ? 'win' : 'loss'}">${r}</div>`
+  ).join('');
+  
+  // Streak
+  const streakEl = document.getElementById('streak');
+  if (recentResults.length >= 2) {
+    const last = recentResults[recentResults.length - 1];
+    let count = 0;
+    for (let i = recentResults.length - 1; i >= 0 && recentResults[i] === last; i--) count++;
+    if (count >= 2) {
+      streakEl.textContent = count + (last === 'W' ? '🔥' : '💀');
+      streakEl.className = 'active ' + (last === 'W' ? 'win-streak' : 'loss-streak');
+    } else {
+      streakEl.className = '';
+    }
+  }
+}
+
+async function poll() {
+  try {
+    const resp = await fetch('/status');
+    const data = await resp.json();
+    updateOverlay(data);
+  } catch(e) {}
+}
+
+setInterval(poll, 2000);
+poll();
+</script>
+</body>
+</html>

@@ -57,6 +57,8 @@ class BattleState:
 
 
 class BotMonitor:
+    BATCH_SIZE = 10  # Report every N completed games
+
     def __init__(self):
         self.process = None
         self.wins = 0
@@ -72,6 +74,11 @@ class BotMonitor:
         self.turn_reviewer = TurnReviewer()
         self.posted_replays = set()  # Track posted replays to avoid duplicates
         self.num_workers = 0
+        # Batch reporting state
+        self.batch_results = []  # list of (opponent, result, replay_url)
+        self.batch_losses = []  # loss replay URLs for batch analysis
+        self.batch_wins_count = 0
+        self.batch_losses_count = 0
 
     async def send_discord_message(self, message, channel="project"):
         """Send instant notification via Discord webhook
@@ -102,6 +109,55 @@ class BotMonitor:
             except Exception as e:
                 print(f"[MONITOR] Error sending message: {e}")
 
+    async def flush_batch_report(self):
+        """Post a summary of the last BATCH_SIZE games to Discord."""
+        if not self.batch_results:
+            return
+
+        wins = self.batch_wins_count
+        losses = self.batch_losses_count
+        total = wins + losses
+        wr = (wins / total * 100) if total > 0 else 0
+
+        msg = f"📊 **Batch Report ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR)\n"
+        msg += f"**Overall Record:** {self.wins}W - {self.losses}L\n\n"
+
+        # List results
+        for opp, result, replay in self.batch_results:
+            emoji = "✅" if result == "won" else "💀" if result == "lost" else "🤝"
+            replay_link = f" — [replay]({replay})" if replay else ""
+            msg += f"{emoji} vs {opp}{replay_link}\n"
+
+        # Loss analysis summary
+        if self.batch_losses:
+            msg += f"\n🔍 **Analyzing {len(self.batch_losses)} loss(es)...**"
+
+        await self.send_discord_message(msg, channel="battles")
+
+        # Run loss analyses in background
+        for replay_url, opponent in self.batch_losses:
+            class BattleStateStub:
+                def __init__(self, opp):
+                    self.battle_id = "batch"
+                    self.opponent = opp
+            asyncio.create_task(self.analyze_loss_async(replay_url, BattleStateStub(opponent)))
+
+        # Reset batch
+        self.batch_results = []
+        self.batch_losses = []
+        self.batch_wins_count = 0
+        self.batch_losses_count = 0
+
+    def record_batch_result(self, opponent, result, replay_url=None):
+        """Add a game result to the current batch."""
+        self.batch_results.append((opponent, result, replay_url))
+        if result == "won":
+            self.batch_wins_count += 1
+        elif result == "lost":
+            self.batch_losses_count += 1
+            if replay_url:
+                self.batch_losses.append((replay_url, opponent))
+
     async def analyze_loss_async(self, replay_url, battle_state):
         """Analyze a loss replay in the background"""
         try:
@@ -116,8 +172,7 @@ class BotMonitor:
             )
 
             if not replay_data:
-                await self.send_discord_message(
-                    f"⚠️ **Analysis failed:** Could not fetch replay for battle vs {battle_state.opponent}"
+                print(f"[MONITOR] Could not fetch replay for battle vs {battle_state.opponent}"
                 )
                 return
 
@@ -128,26 +183,14 @@ class BotMonitor:
                 replay_url
             )
 
+            # Collect analysis results silently — summary goes in batch report
+            feedback_parts = []
+
             if analysis and analysis.get("mistakes_found", 0) > 0:
                 mistakes = analysis["mistakes_found"]
-                msg = f"📊 **Analysis (vs {battle_state.opponent}):** Found {mistakes} issue(s)"
-
-                # List top mistakes
-                for mistake in analysis["mistakes"][:3]:  # Top 3
-                    msg += f"\n• **{mistake['severity'].upper()}**: {mistake['description']}"
-
-                await self.send_discord_message(msg)
-            else:
-                # If we lost but found no mistakes, that's itself a problem
-                await self.send_discord_message(
-                    f"⚠️ **Analysis (vs {battle_state.opponent}):** Couldn't identify specific mistakes"
-                )
-
-            # Extract critical turns for review
-            await self.send_discord_message(
-                f"🔍 **Extracting critical decision points (vs {battle_state.opponent})...**",
-                channel="feedback"
-            )
+                feedback_parts.append(f"**vs {battle_state.opponent}:** {mistakes} issue(s)")
+                for mistake in analysis["mistakes"][:2]:
+                    feedback_parts.append(f"  • {mistake['severity'].upper()}: {mistake['description']}")
 
             turn_messages = await loop.run_in_executor(
                 None,
@@ -156,24 +199,18 @@ class BotMonitor:
                 replay_url
             )
 
-            # Post each critical turn to FEEDBACK channel as a separate message
-            if turn_messages:
-                for turn_msg in turn_messages:
-                    await self.send_discord_message(turn_msg, channel="feedback")
-                    await asyncio.sleep(1)  # Slight delay between messages
-            else:
-                await self.send_discord_message(
-                    f"ℹ️ No critical decision points identified (vs {battle_state.opponent})",
-                    channel="feedback"
-                )
+            # Post one combined feedback message per loss (not per turn)
+            if feedback_parts or turn_messages:
+                msg = "\n".join(feedback_parts)
+                if turn_messages:
+                    msg += f"\n📋 {len(turn_messages)} critical turn(s) identified"
+                await self.send_discord_message(msg, channel="feedback")
 
         except Exception as e:
             print(f"[MONITOR] Error analyzing loss: {e}")
             import traceback
             traceback.print_exc()
-            await self.send_discord_message(
-                f"⚠️ **Analysis failed (vs {battle_state.opponent}):** {str(e)[:100]}"
-            )
+            print(f"[MONITOR] Analysis failed (vs {battle_state.opponent}): {str(e)[:100]}")
 
     def find_battle_for_event(self, line):
         """Try to find which battle an event belongs to"""
@@ -203,10 +240,7 @@ class BotMonitor:
                 stale_battles.append((battle_id, state))
         
         for battle_id, state in stale_battles:
-            await self.send_discord_message(
-                f"⚠️ **Cleaning up stale battle vs {state.opponent}** (active for {int((now - state.start_time).total_seconds() / 60)}min)",
-                channel="battles"
-            )
+            print(f"[MONITOR] Cleaning up stale battle vs {state.opponent}")
             del self.active_battles[battle_id]
     
     async def monitor_output(self, stream):
@@ -239,29 +273,16 @@ class BotMonitor:
                 total = wins + losses
                 win_rate = (wins / total * 100) if total > 0 else 0
                 
-                # Only report if this is new info (different from last known)
+                # Track stats silently — batch report handles Discord
                 if wins != self.wins or losses != self.losses:
                     self.wins = wins
                     self.losses = losses
-                    
-                    await self.send_discord_message(
-                        f"📊 **Ladder Stats:** {wins}W - {losses}L ({win_rate:.1f}% win rate)",
-                        channel="battles"
-                    )
 
-            # Detect worker count and report
+            # Detect worker count silently
             match = WORKER_PATTERN.search(line)
             if match:
                 worker_id = int(match.group(1))
-                old_num_workers = self.num_workers
                 self.num_workers = max(self.num_workers, worker_id + 1)
-                
-                # Report when we've detected all workers starting
-                if old_num_workers == 0 and self.num_workers > 1:
-                    await self.send_discord_message(
-                        f"⚙️ **Running {self.num_workers} concurrent battle workers**",
-                        channel="battles"
-                    )
 
             # Detect battle start
             match = BATTLE_START_PATTERN.search(line)
@@ -281,19 +302,11 @@ class BotMonitor:
                 self.active_battles[battle_id] = battle_state
                 self.last_battle_id = battle_id
 
-                link = f"https://play.pokemonshowdown.com/{battle_id}"
-                # Count only battles that don't have results yet (truly active)
+                # Stream integration: go live on first battle
                 active_count = sum(1 for b in self.active_battles.values() if b.result is None)
-
-                await self.send_discord_message(
-                    f"🎮 **Battle started vs {opponent}** ({active_count} active)\n{link}",
-                    channel="battles"
-                )
-
-                # Stream integration: go live on first battle, update battle sources
                 if active_count == 1:
                     await start_stream()
-                
+
                 # Update stream overlay with battle info
                 active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
                 battle_info = ", ".join(f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids)
@@ -321,7 +334,7 @@ class BotMonitor:
                     battle_id = list(self.active_battles.keys())[0]
 
                 # Load our username from env for comparison
-                our_username = os.getenv("PS_USERNAME", "LEBOTJAMESXD003")
+                our_username = os.getenv("PS_USERNAME", "LEBOTJAMESXD005")
                 if winner == our_username:
                     self.wins += 1
                     emoji = "🎉"
@@ -348,20 +361,16 @@ class BotMonitor:
                 # Update battle state if found
                 if battle_id and battle_id in self.active_battles:
                     opponent = self.active_battles[battle_id].opponent
-                    
+
                     # Move to finished_battles and remove from active immediately
                     self.finished_battles[battle_id] = (opponent, result_key)
                     del self.active_battles[battle_id]
-                    
-                    # Count truly active battles (no result yet)
-                    active_count = len(self.active_battles)
-                    
-                    await self.send_discord_message(
-                        f"{emoji} **{result} vs {opponent}!** Record: {self.wins}W - {self.losses}L ({active_count} active)",
-                        channel="battles"
-                    )
+
+                    # Record for batch report (replay URL added later when detected)
+                    self.record_batch_result(opponent, result_key)
 
                     # Update stream overlay with remaining battles
+                    active_count = len(self.active_battles)
                     active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
                     battle_info = ", ".join(f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids) if active_battle_ids else "Waiting..."
                     await update_stream_status(
@@ -369,16 +378,13 @@ class BotMonitor:
                         status="Battling" if active_battle_ids else "Idle",
                         battle_info=battle_info
                     )
-                    
+
                     # Stop stream if no more active battles
                     if active_count == 0:
                         await stop_stream()
                 else:
-                    # Couldn't associate with a battle - still report it
-                    await self.send_discord_message(
-                        f"{emoji} **{result}!** Record: {self.wins}W - {self.losses}L (battle tracking lost)",
-                        channel="battles"
-                    )
+                    # Couldn't associate with a battle - still record it
+                    self.record_batch_result("Unknown", result_key)
 
             # Detect battle end with team
             match = BATTLE_END_PATTERN.search(line)
@@ -409,40 +415,32 @@ class BotMonitor:
                 if not battle_id:
                     battle_id = self.find_battle_for_event(line)
 
-                # Only post if we haven't already posted this replay
+                # Attach replay URL to the most recent batch result for this battle
                 if replay_url not in self.posted_replays:
                     self.posted_replays.add(replay_url)
 
-                    # Check if this was a finished battle
                     if battle_id and battle_id in self.finished_battles:
                         opponent, result = self.finished_battles[battle_id]
-                        await self.send_discord_message(
-                            f"🔗 **Replay (vs {opponent}):** {replay_url}",
-                            channel="battles"
-                        )
 
-                        # If this was a loss, analyze it automatically
+                        # Update the batch entry with the replay URL
+                        for i in range(len(self.batch_results) - 1, -1, -1):
+                            opp, res, url = self.batch_results[i]
+                            if opp == opponent and res == result and url is None:
+                                self.batch_results[i] = (opp, res, replay_url)
+                                break
+
+                        # Track loss replays for batch analysis
                         if result == "lost":
-                            await self.send_discord_message(
-                                f"🔍 **Analyzing loss vs {opponent}...**",
-                                channel="battles"
-                            )
-                            # Create a minimal battle state for analysis
-                            class BattleStateStub:
-                                def __init__(self, bid, opp):
-                                    self.battle_id = bid
-                                    self.opponent = opp
-                            # Run analysis in background
-                            asyncio.create_task(self.analyze_loss_async(replay_url, BattleStateStub(battle_id, opponent)))
-                        
-                        # Clean up from finished_battles
+                            # Update batch_losses with actual URL
+                            self.batch_losses = [(u, o) if u != replay_url else (u, o) for u, o in self.batch_losses]
+                            if not any(u == replay_url for u, _ in self.batch_losses):
+                                self.batch_losses.append((replay_url, opponent))
+
                         del self.finished_battles[battle_id]
-                    else:
-                        # Battle not found - still post replay
-                        await self.send_discord_message(
-                            f"🔗 **Replay:** {replay_url}",
-                            channel="battles"
-                        )
+
+                    # Flush batch if we've hit BATCH_SIZE
+                    if len(self.batch_results) >= self.BATCH_SIZE:
+                        await self.flush_batch_report()
 
     async def run_bot(self):
         """Run the bot process and monitor it
@@ -454,7 +452,7 @@ class BotMonitor:
         - Runs indefinitely (--run-count 999999)
         """
         # Load credentials from environment
-        ps_username = os.getenv("PS_USERNAME", "LEBOTJAMESXD003")
+        ps_username = os.getenv("PS_USERNAME", "LEBOTJAMESXD005")
         ps_password = os.getenv("PS_PASSWORD", "LeBotPassword2026!")
         ps_websocket_uri = os.getenv("PS_WEBSOCKET_URI", "wss://sim3.psim.us/showdown/websocket")
         ps_format = os.getenv("PS_FORMAT", "gen9ou")
@@ -477,7 +475,7 @@ class BotMonitor:
         cwd = Path(__file__).parent
         
         # Clean log file to prevent re-reading old battles
-        log_file = cwd / "monitor_output.log"
+        log_file = cwd / "monitor.log"
         if log_file.exists():
             log_file.unlink()
 
