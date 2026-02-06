@@ -2,7 +2,8 @@
 
 **Mission:** Reach 1700 ELO in gen9ou
 **Branch:** foulest-play
-**Updated:** 2026-02-06
+**Bot Account:** ALL CHUNG (ELO: 1167, GXE: 44.1%)
+**Updated:** 2026-02-06 17:40 EST
 
 ---
 
@@ -29,24 +30,27 @@
 ## DEKU Action Items
 
 ### Port Checklist (fresh fork from upstream 55fa9b4)
-- [ ] constants_pkg/ → penalty system (abilities, moves, strategy constants)
-- [ ] fp/search/main.py → MCTS + ability detection + penalty system + timeout protection
-- [ ] fp/search/endgame.py → endgame solver
-- [ ] fp/team_analysis.py → win condition identification
-- [ ] fp/decision_trace.py → decision logging
-- [ ] fp/opponent_model.py → opponent tendencies
-- [ ] fp/movepool_tracker.py → move tracking
-- [ ] fp/playstyle_config.py → team playstyle tuning
-- [ ] fp/search/move_validators.py → move validation
-- [ ] fp/battle.py additions → snapshot(), null checks, PP tracking
-- [ ] fp/battle_modifier.py additions → time parsing, movepool tracking
-- [ ] fp/run_battle.py extensions → streaming, battle tracking, traces
-- [ ] fp/search/standard_battles.py → weighted sampling
-- [ ] fp/search/helpers.py → sample_weight
+All modules ported and imports verified ✅
+- [x] constants_pkg/ → penalty system (abilities, moves, strategy constants)
+- [x] fp/search/main.py → MCTS + ability detection + penalty system + timeout protection
+- [x] fp/search/endgame.py → endgame solver
+- [x] fp/team_analysis.py → win condition identification
+- [x] fp/decision_trace.py → decision logging
+- [x] fp/opponent_model.py → opponent tendencies
+- [x] fp/movepool_tracker.py → move tracking
+- [x] fp/playstyle_config.py → team playstyle tuning
+- [x] fp/search/move_validators.py → move validation
+- [x] fp/battle.py additions → snapshot(), null checks, PP tracking
+- [x] fp/battle_modifier.py additions → time parsing, movepool tracking
+- [x] fp/run_battle.py extensions → streaming, battle tracking, traces
+- [x] fp/search/standard_battles.py → weighted sampling
+- [x] fp/search/helpers.py → sample_weight
+- [x] replay_analysis/team_performance.py → per-team win rates and weakness analysis
 
-### Build Missing Systems
-- [ ] replay_analysis/team_performance.py → reads battle_stats.json, outputs per-team win rates and weakness analysis
-- [ ] replay_analysis/ pipeline → feeds into developer loop analysis prompt
+### Build / Fix
+- [ ] Fix bot_monitor.py username — hardcoded "LEBOTJAMESXD005", should read from .env or use "ALL CHUNG"
+- [ ] Verify developer loop (`infrastructure/linux/developer_loop.sh`) works end-to-end
+- [ ] Wire team_performance.py output into developer loop analysis prompt
 
 ### Phase 2: Bayesian Set Inference (1450→1550)
 - [x] Weighted sampling by set count
@@ -71,30 +75,81 @@
 
 ## BAKUGO Action Items
 
-### Streaming Pipeline (streaming/ is EMPTY — build it)
-- [ ] streaming/serve_obs_page.py → HTTP server + obs-websocket client that sets OBS Browser Source URLs to live battle pages
-- [ ] streaming/obs_battles.html → fallback multi-battle display page (note: iframes blocked by Showdown, prefer direct OBS Browser Sources)
-- [ ] streaming/stream_overlay.html → ELO display, win/loss counter, team info for stream overlay
-- [ ] Verify OBS Browser Sources named "Battle Slot 1", "Battle Slot 2", "Battle Slot 3" exist in OBS scene
-- [ ] Verify .env has all OBS_* variables from .env.example
-- [ ] Test that battles display correctly on stream (no "Please visit showdown directly" errors)
-- [ ] URL format must be `https://play.pokemonshowdown.com/battle-gen9ou-XXXXXXX` — NEVER use `~~showdown`
+**READ THIS CAREFULLY — step-by-step instructions for getting the bot running on Windows.**
 
-### Bot Operation
-- [ ] Verify player_loop.bat is running and playing games
-- [ ] Install scheduled task: `infrastructure\windows\install_task.bat` (run as Admin)
-- [ ] Verify battle_stats.json is being pushed to GitHub after each batch
-- [ ] Verify elo_watchdog.py runs after deploys
+### 1. Pull Latest Code
+```powershell
+cd C:\Users\Ryan\projects\fouler-play   # or wherever your clone is
+git checkout foulest-play
+git pull origin foulest-play
+```
 
-### Environment
-- [ ] Ensure .env matches .env.example (all vars present)
-- [ ] Rust toolchain installed for poke-engine builds
-- [ ] Python venv set up with all requirements
+### 2. Environment Setup
+Copy `.env.example` to `.env` if you haven't, then fill in:
+```
+PS_USERNAME=ALL CHUNG
+PS_PASSWORD=<check with Ryan or existing .env>
+PS_WEBSOCKET_URI=wss://sim3.psim.us/showdown/websocket
+PS_FORMAT=gen9ou
+PS_BOT_MODE=search_ladder
+
+# OBS streaming (if OBS is set up)
+OBS_WS_HOST=localhost
+OBS_WS_PORT=4455
+OBS_BATTLE_SOURCES=Battle Slot 1,Battle Slot 2,Battle Slot 3
+
+# Discord webhooks (ask Ryan or check existing .env)
+DISCORD_WEBHOOK_URL=<project updates webhook>
+DISCORD_BATTLES_WEBHOOK_URL=<battle notifications webhook>
+DISCORD_FEEDBACK_WEBHOOK_URL=<turn review webhook>
+```
+
+### 3. Python Environment
+```powershell
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 4. poke-engine (Rust required)
+```powershell
+# Need Rust toolchain: https://rustup.rs/
+pip install poke-engine
+# If that fails, try: pip install poke-engine==0.3.0
+```
+
+### 5. Verify Bot Runs
+```powershell
+python run.py --ps-username "ALL CHUNG" --ps-password "<password>" --bot-mode search_ladder --pokemon-format gen9ou --team-name gen9/ou/fat-team-1-stall --search-time-ms 3000 --run-count 5 --save-replay always --log-level INFO
+```
+
+### 6. Install Player Loop as Scheduled Task
+```powershell
+# Run as Administrator:
+infrastructure\windows\install_task.bat
+schtasks /run /tn "FoulerPlayPlayerLoop"
+```
+
+### 7. Streaming Pipeline (streaming/ has files but needs OBS setup)
+- Verify OBS has Browser Sources named "Battle Slot 1", "Battle Slot 2", "Battle Slot 3"
+- URL format: `https://play.pokemonshowdown.com/battle-gen9ou-XXXXXXX`
+- **NEVER** use `~~showdown` in URLs — causes "Please visit showdown directly" errors
+- Test obs-websocket connection: `python streaming/obs_controller.py`
+- Start stream server: `python streaming/serve_obs_page.py`
+
+### 8. Verify Everything
+- [ ] Bot connects to Showdown and plays games
+- [ ] battle_stats.json is being written
+- [ ] Replays saved to replay_analysis/
+- [ ] OBS shows live battles (if streaming)
+- [ ] Player loop runs unattended
+- [ ] Push battle_stats.json after each batch: `git add battle_stats.json && git commit -m "data: battle stats" && git push origin foulest-play`
 
 ---
 
 ## Bug Reports
 <!-- When either machine finds a bug, note it here with date and description. The owning machine fixes it. -->
+- 2026-02-06: bot_monitor.py hardcodes USERNAME="LEBOTJAMESXD005" — needs to match current account "ALL CHUNG" (DEKU fixing)
 
 ---
 

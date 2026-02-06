@@ -21,6 +21,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import os
 import logging
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -92,7 +93,7 @@ class BattleState:
 
 
 class BotMonitor:
-    BATCH_SIZE = 9  # Report every N completed games
+    BATCH_SIZE = 25  # Report every N completed games
 
     def __init__(self):
         self._write_self_pid()
@@ -272,6 +273,36 @@ class BotMonitor:
                 pass
             await self.process.wait()
 
+    def fetch_current_ratings(self):
+        """Fetch current ELO, GXE, and Glicko from Pokemon Showdown user page."""
+        try:
+            username = os.getenv("PS_USERNAME", "ALL CHUNG").strip()
+            # Showdown URLs use lowercase, no spaces
+            url_name = username.lower().replace(" ", "")
+            r = requests.get(
+                f"https://pokemonshowdown.com/users/{url_name}",
+                timeout=10,
+            )
+            result = {}
+            fmt = os.getenv("PS_FORMAT", "gen9ou")
+            # ELO
+            elo_match = re.search(rf'{fmt}.*?<strong>(\d+)</strong>', r.text, re.DOTALL)
+            if elo_match:
+                result["elo"] = int(elo_match.group(1))
+            # GXE
+            gxe_match = re.search(rf'{fmt}.*?<td[^>]*>(\d+\.\d+)<small>%</small>', r.text, re.DOTALL)
+            if gxe_match:
+                result["gxe"] = float(gxe_match.group(1))
+            # Glicko
+            glicko_match = re.search(rf'{fmt}.*?<em>(\d+)<small>\s*(?:±|&#177;)\s*(\d+)</small></em>', r.text, re.DOTALL)
+            if glicko_match:
+                result["glicko"] = int(glicko_match.group(1))
+                result["glicko_dev"] = int(glicko_match.group(2))
+            return result if result else None
+        except Exception:
+            pass
+        return None
+
     async def flush_batch_report(self):
         """Post a summary of the last BATCH_SIZE games to Discord."""
         if not self.batch_results:
@@ -282,8 +313,18 @@ class BotMonitor:
         total = wins + losses
         wr = (wins / total * 100) if total > 0 else 0
 
+        # Fetch live ratings from Showdown
+        ratings = await asyncio.get_event_loop().run_in_executor(None, self.fetch_current_ratings)
+        if ratings:
+            elo_str = f"**ELO:** {ratings.get('elo', '?')}"
+            gxe_str = f"**GXE:** {ratings.get('gxe', '?')}%" if 'gxe' in ratings else ""
+            glicko_str = f"**Glicko:** {ratings.get('glicko', '?')}±{ratings.get('glicko_dev', '?')}" if 'glicko' in ratings else ""
+            rating_line = " | ".join(filter(None, [elo_str, gxe_str, glicko_str]))
+        else:
+            rating_line = "**ELO:** ?"
+
         msg = f"📊 **Batch Report ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR)\n"
-        msg += f"**Overall Record:** {self.wins}W - {self.losses}L\n\n"
+        msg += f"{rating_line} | **Overall Record:** {self.wins}W - {self.losses}L\n\n"
 
         # List results
         for opp, result, replay in self.batch_results:
