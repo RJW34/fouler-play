@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fouler Play Overlay</title>
+<style>
+/* Replay ref: gen9ou-2532358931 t7 (overlay legibility pass) */
+/* Use local Windows fonts to avoid external loads in OBS browser source */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: transparent;
+  font-family: 'Bahnschrift', 'Segoe UI Variable', 'Segoe UI', sans-serif;
+  color: white;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Mode: bottom-only (hide bottom bar and move top bar to bottom) */
+body.mode-bottom #top-bar {
+  top: auto;
+  bottom: 0;
+  border-bottom: none;
+  border-top: 2px solid rgba(239,68,68,0.6);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+}
+
+body.mode-bottom #bottom-bar {
+  display: none;
+}
+
+/* ===== TOP BAR ===== */
+#top-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 82px;
+  background: linear-gradient(180deg, rgba(16,16,26,0.99) 0%, rgba(8,8,16,0.96) 100%);
+  border-bottom: 2px solid rgba(239,68,68,0.95);
+  display: flex;
+  align-items: center;
+  padding: 5px 40px;
+  gap: 0;
+  z-index: 100;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.8);
+}
+
+#top-bar .bar-inner {
+  width: min(2400px, 96vw);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+/* Logo */
+.logo {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  margin-right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ef4444 0 50%, #f8fafc 50% 100%);
+  border: 2px solid rgba(0,0,0,0.75);
+  position: relative;
+  flex: 0 0 auto;
+}
+.logo-icon::before {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 50%;
+  height: 2px;
+  background: rgba(0,0,0,0.85);
+  transform: translateY(-1px);
+}
+.logo-icon::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f8fafc;
+  border: 2px solid rgba(0,0,0,0.85);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.logo-text {
+  font-family: 'Agency FB', 'Bahnschrift', 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 38px;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85), 0 0 12px rgba(239,68,68,0.35);
+}
+
+/* Divider */
+.divider {
+  width: 1px;
+  height: 44px;
+  background: rgba(255,255,255,0.16);
+  margin: 0 20px;
+}
+
+/* Stats */
+.stat-group {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.26);
+  padding: 8px 14px;
+  border-radius: 8px;
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.stat-label {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  opacity: 0.95;
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.stat-value {
+  font-size: 30px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s ease;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.7);
+}
+
+.stat-elo .stat-value { color: #ffe08a; }
+.stat-wins .stat-value {
+  color: #00ff84 !important;
+  text-shadow: 0 0 12px rgba(0,255,132,0.6);
+}
+#wins {
+  color: #3cff6d !important;
+  text-shadow: 0 0 10px rgba(0,255,132,0.85) !important;
+  -webkit-text-fill-color: #3cff6d !important;
+}
+.stat-losses .stat-value { color: #ffb3a7; }
+
+/* ELO change flash */
+.stat-value.flash-up {
+  color: #00ff84 !important;
+  text-shadow: 0 0 16px rgba(0,255,132,0.9);
+}
+.stat-value.flash-down {
+  color: #ef4444 !important;
+  text-shadow: 0 0 12px rgba(239,68,68,0.6);
+}
+
+/* ELO delta badge */
+#elo-delta {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  margin-left: -2px;
+}
+#elo-delta.positive {
+  background: rgba(0, 255, 132, 0.65);
+  color: #08301c;
+  border: 1px solid rgba(160,255,210,0.9);
+  opacity: 1;
+}
+#elo-delta.negative {
+  background: rgba(239,68,68,0.25);
+  color: #fca5a5;
+  opacity: 1;
+}
+#elo-delta.sync {
+  background: rgba(0, 255, 132, 0.3);
+  color: #c7ffe2;
+  border: 1px solid rgba(160,255,210,0.55);
+  opacity: 1;
+}
+
+/* Anti-flicker: hide rapid sync/delta elements */
+/* Replay refs: gen9ou-2532427290 t1; gen9ou-2532427320 t12 */
+#elo-delta,
+.hud-elo-delta,
+.meta-item.elo-sync {
+  display: none;
+}
+
+/* Win rate */
+.winrate {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0.6;
+  margin-left: 4px;
+}
+
+/* Status */
+.status-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b7280;
+  transition: background 0.3s ease;
+  position: relative;
+}
+#status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0;
+  animation: none;
+}
+#status-dot.battling {
+  background: #ef4444;
+}
+#status-dot.battling::after {
+  opacity: 0.4;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+#status-dot.searching {
+  background: #4ade80;
+}
+#status-dot.searching::after {
+  opacity: 0.3;
+  animation: pulse-ring 2s ease-out infinite;
+}
+#status-dot::after {
+  animation: none !important;
+  opacity: 0 !important;
+}
+#status-dot.idle {
+  background: #6b7280;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+#status-text {
+  font-size: 22px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.85;
+}
+
+/* Format badge */
+.format-badge {
+  font-size: 19px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 4px;
+  background: rgba(239,68,68,0.22);
+  border: 1px solid rgba(239,68,68,0.45);
+  color: rgba(255,255,255,0.9);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.meta-group {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+}
+.meta-label {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+}
+.meta-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #f8fafc;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.75);
+}
+
+/* ===== DEADSPACE HUD ===== */
+#deadspace-grid {
+  position: fixed;
+  left: 50%;
+  top: 40%;
+  bottom: 82px;
+  transform: translateX(-50%);
+  width: min(2300px, 94vw);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 26px;
+  z-index: 90;
+  pointer-events: none;
+  justify-items: stretch;
+}
+.dead-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+  align-items: stretch;
+  padding: 0 28% 0 4%;
+}
+.dead-column.col-left {
+  transform: translateX(-90px);
+}
+.dead-column.col-right {
+  transform: translateX(60px);
+}
+.dead-column.col-center {
+  transform: translateX(-15px);
+}
+.worker-pill {
+  background: rgba(10, 10, 18, 0.75);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 9px 14px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  width: 100%;
+}
+.worker-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.worker-label {
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.7);
+}
+.worker-opponent {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+.worker-status {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  background: rgba(148,163,184,0.2);
+  color: #cbd5f5;
+  flex: 0 0 auto;
+}
+.worker-status.active {
+  background: rgba(34,197,94,0.2);
+  color: #86efac;
+}
+.worker-status.idle {
+  background: rgba(148,163,184,0.2);
+  color: #cbd5f5;
+}
+.worker-status.searching {
+  background: rgba(250,204,21,0.2);
+  color: #fde68a;
+}
+.dead-card {
+  flex: 1;
+  background: rgba(12, 12, 20, 0.86);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 26px 28px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  width: 100%;
+}
+.hud-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.85);
+}
+.hud-elo-value {
+  font-size: 70px;
+  font-weight: 900;
+  color: #ffe08a;
+  text-shadow: 0 2px 14px rgba(0,0,0,0.85);
+}
+.hud-elo-delta {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  min-height: 18px;
+}
+.hud-record {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.hud-record .hud-w {
+  font-size: 54px;
+  font-weight: 900;
+  color: #3cff6d;
+  text-shadow: 0 0 14px rgba(0,255,132,0.6);
+}
+.hud-record .hud-l {
+  font-size: 54px;
+  font-weight: 900;
+  color: #ffb3a7;
+  text-shadow: 0 0 14px rgba(255,179,167,0.45);
+}
+.hud-record .hud-sep {
+  font-size: 30px;
+  opacity: 0.7;
+  margin: 0 4px;
+}
+.hud-sub {
+  font-size: 15px;
+  font-weight: 700;
+  opacity: 0.9;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.hud-status {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.9);
+}
+.hud-todo-text {
+  font-size: 20px;
+  font-weight: 800;
+  color: #f1f5f9;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  text-align: center;
+}
+
+/* ===== BOTTOM BAR ===== */
+#bottom-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 72px;
+  background: linear-gradient(0deg, rgba(14,14,24,0.98) 0%, rgba(8,8,16,0.96) 100%);
+  border-top: 1px solid rgba(239,68,68,0.85);
+  display: flex;
+  align-items: center;
+  padding: 5px 40px;
+  z-index: 100;
+  box-shadow: 0 -6px 24px rgba(0,0,0,0.7);
+}
+
+#bottom-bar .bar-inner {
+  width: min(2400px, 96vw);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+}
+
+#results-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+#battle-info {
+  font-size: 28px;
+  font-weight: 800;
+  opacity: 0.95;
+  color: #f8fafc;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  max-width: 1000px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+#ticker {
+  margin-left: 0;
+  font-size: 24px;
+  font-weight: 800;
+  opacity: 0.95;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 820px;
+}
+
+/* Recent results strip */
+#recent-results {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 0;
+}
+body.hide-recent #results-group {
+  display: none;
+}
+body.hide-recent #mid-streak,
+body.hide-recent #mid-form {
+  display: none;
+}
+.result-pip {
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  font-size: 15px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+.result-pip.win {
+  background: rgba(0, 255, 132, 0.5);
+  border: 1px solid rgba(160,255,210,0.85);
+  color: #eafff5;
+}
+.result-pip.loss {
+  background: rgba(239,68,68,0.25);
+  border: 1px solid rgba(239,68,68,0.5);
+  color: #f87171;
+}
+
+/* Streak indicator */
+#streak {
+  font-size: 34px;
+  font-weight: 900;
+  margin-left: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  transform: translateX(25px);
+}
+#streak.active { opacity: 0.8; }
+#streak.win-streak { color: #4ade80; }
+#streak.loss-streak { color: #f87171; }
+
+/* Todo */
+#todo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 0;
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.85;
+  color: #e2e8f0;
+}
+#todo .todo-label {
+  color: #fbbf24;
+  letter-spacing: 0.8px;
+}
+#todo .todo-text {
+  color: #f1f5f9;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <div class="bar-inner">
+    <div class="logo">
+      <span class="logo-icon" aria-hidden="true"></span>
+      <span class="logo-text">All Chung</span>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="meta-group">
+      <div class="meta-item">
+        <span class="meta-label">Active</span>
+        <span class="meta-value" id="active-count">0</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Session</span>
+        <span class="meta-value" id="session-record">0W-0L</span>
+      </div>
+      <div class="meta-item elo-sync">
+        <span class="meta-label">ELO Sync</span>
+        <span class="meta-value" id="elo-sync">--</span>
+      </div>
+    </div>
+
+    <div class="status-group">
+      <div class="format-badge">GEN 9 OU</div>
+      <div id="status-dot" class="idle"></div>
+      <div id="status-text">IDLE</div>
+    </div>
+  </div>
+</div>
+
+<div id="deadspace-grid">
+  <div class="dead-column col-left">
+    <div class="worker-pill" id="worker-1">
+      <div class="worker-left">
+        <div class="worker-label">Worker 1</div>
+        <div class="worker-opponent" id="worker-1-name">Idle</div>
+      </div>
+      <div class="worker-status idle" id="worker-1-status">Idle</div>
+    </div>
+    <div class="dead-card">
+      <div class="hud-label">TODAY</div>
+      <div class="hud-record">
+        <span class="hud-w" id="mid-wins">0</span>
+        <span class="hud-sep">-</span>
+        <span class="hud-l" id="mid-losses">0</span>
+      </div>
+      <div class="hud-sub" id="mid-winrate"></div>
+      <div class="hud-sub" id="mid-streak"></div>
+    </div>
+  </div>
+  <div class="dead-column col-center">
+    <div class="worker-pill" id="worker-2">
+      <div class="worker-left">
+        <div class="worker-label">Worker 2</div>
+        <div class="worker-opponent" id="worker-2-name">Idle</div>
+      </div>
+      <div class="worker-status idle" id="worker-2-status">Idle</div>
+    </div>
+    <div class="dead-card">
+      <div class="hud-label">NEXT FIX</div>
+      <div class="hud-todo-text" id="mid-todo">Pending replay review</div>
+      <div class="hud-sub" id="mid-form"></div>
+    </div>
+  </div>
+  <div class="dead-column col-right">
+    <div class="worker-pill" id="worker-3">
+      <div class="worker-left">
+        <div class="worker-label">Worker 3</div>
+        <div class="worker-opponent" id="worker-3-name">Idle</div>
+      </div>
+      <div class="worker-status idle" id="worker-3-status">Idle</div>
+    </div>
+    <div class="dead-card">
+      <div class="hud-label">ELO</div>
+      <div class="hud-elo-value" id="mid-elo">---</div>
+      <div class="hud-elo-delta" id="mid-elo-delta"></div>
+    </div>
+  </div>
+</div>
+
+<div id="bottom-bar">
+  <div class="bar-inner">
+    <div id="battle-info">Waiting for battle...</div>
+    <div id="results-group">
+      <div id="recent-results"></div>
+      <div id="streak"></div>
+    </div>
+    <div id="ticker">ALL CHUNG - Gen 9 OU Bot Development</div>
+  </div>
+</div>
+
+<script>
+let prevElo = null;
+let prevWins = 0;
+let prevLosses = 0;
+let lastResult = null; // 'W' or 'L'
+let recentResults = []; // 'W' or 'L', max 20
+let lastRecentKey = null;
+let lastStreakText = '';
+let lastStreakClass = '';
+let lastMidStreakText = '';
+let lastActiveBattles = [];
+const uiCache = new Map();
+const RECENT_STORAGE_KEY = 'fp_recent_results_v1';
+const COUNTER_STORAGE_KEY = 'fp_recent_counters_v1';
+const params = new URLSearchParams(window.location.search);
+const mode = params.get('mode');
+const showRecent = params.get('hide_recent') !== '1';
+if (mode === 'bottom') {
+  document.body.classList.add('mode-bottom');
+}
+if (!showRecent) {
+  document.body.classList.add('hide-recent');
+}
+loadRecentFromStorage();
+
+function setText(el, text, key = null) {
+  if (!el) return;
+  const cacheKey = key || `${el.id}:text`;
+  if (uiCache.get(cacheKey) !== text) {
+    el.textContent = text;
+    uiCache.set(cacheKey, text);
+  }
+}
+
+function setClass(el, className, key = null) {
+  if (!el) return;
+  const cacheKey = key || `${el.id}:class`;
+  if (uiCache.get(cacheKey) !== className) {
+    el.className = className;
+    uiCache.set(cacheKey, className);
+  }
+}
+
+function setStyle(el, prop, value, key = null) {
+  if (!el) return;
+  const cacheKey = key || `${el.id}:style:${prop}`;
+  if (uiCache.get(cacheKey) !== value) {
+    el.style[prop] = value;
+    uiCache.set(cacheKey, value);
+  }
+}
+
+function loadRecentFromStorage() {
+  try {
+    const rawResults = localStorage.getItem(RECENT_STORAGE_KEY);
+    if (rawResults) {
+      const parsed = JSON.parse(rawResults);
+      if (Array.isArray(parsed)) {
+        recentResults = parsed.filter((r) => r === 'W' || r === 'L').slice(-20);
+      }
+    }
+  } catch (e) {}
+  try {
+    const rawCounters = localStorage.getItem(COUNTER_STORAGE_KEY);
+    if (rawCounters) {
+      const parsed = JSON.parse(rawCounters);
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.prevWins === 'number') prevWins = parsed.prevWins;
+        if (typeof parsed.prevLosses === 'number') prevLosses = parsed.prevLosses;
+      }
+    }
+  } catch (e) {}
+}
+
+function saveRecentToStorage() {
+  try {
+    localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(recentResults.slice(-20)));
+    localStorage.setItem(COUNTER_STORAGE_KEY, JSON.stringify({ prevWins, prevLosses }));
+  } catch (e) {}
+}
+
+function appendRecentResults(winDelta, lossDelta) {
+  const wins = Math.max(0, winDelta || 0);
+  const losses = Math.max(0, lossDelta || 0);
+  if (wins === 0 && losses === 0) return;
+
+  const results = [];
+  if (wins > 0 && losses > 0) {
+    // Mixed batch results: alternate to avoid implying a long streak.
+    let next = lastResult ? (lastResult === 'W' ? 'L' : 'W') : (wins >= losses ? 'W' : 'L');
+    let wLeft = wins;
+    let lLeft = losses;
+    while (wLeft > 0 || lLeft > 0) {
+      if (next === 'W') {
+        if (wLeft > 0) {
+          results.push('W');
+          wLeft -= 1;
+        } else {
+          results.push('L');
+          lLeft -= 1;
+        }
+      } else {
+        if (lLeft > 0) {
+          results.push('L');
+          lLeft -= 1;
+        } else {
+          results.push('W');
+          wLeft -= 1;
+        }
+      }
+      next = next === 'W' ? 'L' : 'W';
+    }
+  } else if (wins > 0) {
+    for (let i = 0; i < wins; i++) results.push('W');
+  } else if (losses > 0) {
+    for (let i = 0; i < losses; i++) results.push('L');
+  }
+
+  if (results.length) {
+    recentResults = recentResults.concat(results);
+    lastResult = results[results.length - 1];
+  }
+}
+
+function normalizeBattles(battles) {
+  if (!Array.isArray(battles)) return [];
+  return battles.map((battle) => {
+    if (battle && typeof battle === 'object') return battle;
+    return { id: battle, opponent: null };
+  });
+}
+
+function buildBattleInfo(status, battles) {
+  const normalized = normalizeBattles(battles);
+  if (normalized.length) {
+    const hasOpponent = normalized.some((battle) => battle.opponent);
+    const allIdLike = normalized.every((battle) => (
+      typeof battle.id === 'string' && battle.id.startsWith('battle-')
+    ));
+    if (!hasOpponent && allIdLike && status && status.battle_info) {
+      return status.battle_info;
+    }
+    const names = normalized.map((battle) => battle.opponent || battle.id || 'Unknown');
+    return names.map((name) => (name.startsWith('vs ') ? name : `vs ${name}`)).join(', ');
+  }
+  return status.battle_info || 'Waiting for battle...';
+}
+
+function isStatusPayload(payload) {
+  if (!payload || typeof payload !== 'object') return false;
+  const keys = [
+    'elo',
+    'wins',
+    'losses',
+    'status',
+    'battle_info',
+    'today_wins',
+    'today_losses',
+    'daily_wins',
+    'daily_losses',
+  ];
+  return keys.some((key) => payload[key] !== undefined);
+}
+
+function updateOverlay(status, battles) {
+  const data = status || {};
+  const activeBattles = normalizeBattles(battles);
+  const eloEl = document.getElementById('elo');
+  const winsEl = document.getElementById('wins');
+  const lossesEl = document.getElementById('losses');
+  const deltaEl = document.getElementById('elo-delta');
+  const dotEl = document.getElementById('status-dot');
+  const statusEl = document.getElementById('status-text');
+  const battleEl = document.getElementById('battle-info');
+  const winrateEl = document.getElementById('winrate');
+  const midEloEl = document.getElementById('mid-elo');
+  const midEloDeltaEl = document.getElementById('mid-elo-delta');
+  const midWinsEl = document.getElementById('mid-wins');
+  const midLossesEl = document.getElementById('mid-losses');
+  const midWinrateEl = document.getElementById('mid-winrate');
+  const midStreakEl = document.getElementById('mid-streak');
+  const midTodoEl = document.getElementById('mid-todo');
+  const midFormEl = document.getElementById('mid-form');
+  const activeCountEl = document.getElementById('active-count');
+  const sessionRecordEl = document.getElementById('session-record');
+  const eloSyncEl = document.getElementById('elo-sync');
+  const worker1NameEl = document.getElementById('worker-1-name');
+  const worker2NameEl = document.getElementById('worker-2-name');
+  const worker3NameEl = document.getElementById('worker-3-name');
+  const worker1StatusEl = document.getElementById('worker-1-status');
+  const worker2StatusEl = document.getElementById('worker-2-status');
+  const worker3StatusEl = document.getElementById('worker-3-status');
+  
+  // ELO with change detection
+  const newElo = data.elo || '---';
+  if (prevElo !== null && newElo !== '---' && prevElo !== '---') {
+    const diff = Number(newElo) - Number(prevElo);
+    if (Number.isFinite(diff) && diff !== 0) {
+      const outOfOrder = (diff > 0 && lastResult === 'L') || (diff < 0 && lastResult === 'W');
+      if (deltaEl) {
+        deltaEl.textContent = (diff > 0 ? '+' : '') + diff;
+        deltaEl.className = outOfOrder ? 'sync' : (diff > 0 ? 'positive' : 'negative');
+      }
+      if (!outOfOrder && eloEl) {
+        eloEl.classList.add(diff > 0 ? 'flash-up' : 'flash-down');
+      }
+      setTimeout(() => {
+        if (eloEl) {
+          eloEl.classList.remove('flash-up', 'flash-down');
+        }
+        if (deltaEl) {
+          deltaEl.style.opacity = '0';
+        }
+      }, 3000);
+      if (midEloDeltaEl) {
+        setText(midEloDeltaEl, (diff > 0 ? '+' : '') + diff);
+        setStyle(midEloDeltaEl, 'color', diff > 0 ? '#3cff6d' : '#ffb3a7');
+      }
+    }
+  }
+  if (eloEl) {
+    setText(eloEl, newElo);
+  }
+  prevElo = newElo;
+  if (midEloEl) {
+    setText(midEloEl, newElo);
+  }
+  
+  // W/L tracking - use daily totals as primary display
+  const sessionWins = Number(data.wins || 0);
+  const sessionLosses = Number(data.losses || 0);
+  const hasDaily = hasDailyStats(data);
+  const todayWins = hasDaily ? Number(
+    data.today_wins ?? data.daily_wins ?? sessionWins
+  ) : null;
+  const todayLosses = hasDaily ? Number(
+    data.today_losses ?? data.daily_losses ?? sessionLosses
+  ) : null;
+
+  if (hasDaily) {
+    // Track deltas for recent results pip display (use daily totals to match displayed W/L)
+    if (todayWins < prevWins || todayLosses < prevLosses) {
+      // Reset on counter rollbacks/restarts
+      prevWins = todayWins;
+      prevLosses = todayLosses;
+      recentResults = [];
+      lastResult = null;
+    }
+    const winDelta = todayWins - prevWins;
+    const lossDelta = todayLosses - prevLosses;
+    appendRecentResults(winDelta, lossDelta);
+    if (recentResults.length > 20) recentResults = recentResults.slice(-20);
+    prevWins = todayWins;
+    prevLosses = todayLosses;
+    saveRecentToStorage();
+  }
+
+  // Display TODAY's totals as main stat (not session)
+  if (hasDaily) {
+    if (winsEl) {
+      setText(winsEl, todayWins);
+      setStyle(winsEl, 'color', '#3cff6d');
+      setStyle(winsEl, 'webkitTextFillColor', '#3cff6d');
+      setStyle(winsEl, 'textShadow', '0 0 10px rgba(0,255,132,0.85)');
+    }
+    if (lossesEl) {
+      setText(lossesEl, todayLosses);
+    }
+  }
+
+  // Win rate from daily totals
+  const total = hasDaily ? todayWins + todayLosses : 0;
+  if (hasDaily) {
+    if (winrateEl) {
+      if (total > 0) {
+        setText(winrateEl, Math.round((todayWins / total) * 100) + '%');
+      } else {
+        setText(winrateEl, '');
+      }
+    }
+    if (midWinrateEl) {
+      setText(midWinrateEl, total > 0 ? `Winrate ${Math.round((todayWins / total) * 100)}%` : '');
+    }
+  }
+
+  // Session stats (top bar)
+  const todayEl = document.getElementById('today-total');
+  if (todayEl) {
+    if (sessionWins > 0 || sessionLosses > 0) {
+      setText(todayEl, `Session: ${sessionWins}W-${sessionLosses}L`);
+    } else {
+      setText(todayEl, '');
+    }
+  }
+  if (sessionRecordEl) {
+    setText(sessionRecordEl, `${sessionWins}W-${sessionLosses}L`);
+  }
+
+  // Status dot
+  const hasActiveBattles = activeBattles.length > 0;
+  const statusRaw = data.status || '';
+  let statusValue = statusRaw.toLowerCase();
+  if (hasActiveBattles && (!statusValue || statusValue.includes('idle') || statusValue.includes('search'))) {
+    statusValue = 'battling';
+  } else if (!statusValue) {
+    statusValue = hasActiveBattles ? 'battling' : 'idle';
+  }
+  if (statusValue.includes('battle') || statusValue.includes('fighting')) {
+    setClass(dotEl, 'battling', 'status-dot');
+    setText(statusEl, 'IN BATTLE');
+  } else if (statusValue.includes('search')) {
+    setClass(dotEl, 'searching', 'status-dot');
+    setText(statusEl, 'SEARCHING');
+  } else {
+    setClass(dotEl, 'idle', 'status-dot');
+    setText(statusEl, 'IDLE');
+  }
+  
+  if (activeCountEl) {
+    setText(activeCountEl, String(activeBattles.length));
+  }
+  if (eloSyncEl) {
+    if (typeof data.elo_updated === 'number' && data.elo_updated > 0) {
+      const diff = Math.max(0, Math.floor(Date.now() / 1000 - data.elo_updated));
+      const mins = Math.floor(diff / 60);
+      const secs = diff % 60;
+      setText(eloSyncEl, mins > 0 ? `${mins}m ${secs}s` : `${secs}s`);
+    } else {
+      setText(eloSyncEl, '--');
+    }
+  }
+  if (battleEl) {
+    setText(battleEl, buildBattleInfo(data, activeBattles));
+  }
+  
+  // Recent results pips
+  const resultsEl = document.getElementById('recent-results');
+  if (resultsEl && showRecent) {
+    const recentSlice = recentResults.slice(-10);
+    const recentKey = recentSlice.join('');
+    if (recentKey !== lastRecentKey) {
+      resultsEl.innerHTML = recentSlice.map(r => 
+        `<div class="result-pip ${r === 'W' ? 'win' : 'loss'}">${r}</div>`
+      ).join('');
+      lastRecentKey = recentKey;
+    }
+  }
+  
+  // Streak
+  const streakEl = document.getElementById('streak');
+  if (showRecent) {
+    let streakText = '';
+    let streakClass = '';
+    if (recentResults.length >= 2) {
+      const last = recentResults[recentResults.length - 1];
+      let count = 0;
+      for (let i = recentResults.length - 1; i >= 0 && recentResults[i] === last; i--) count++;
+      if (count >= 2) {
+        streakText = count + (last === 'W' ? '🔥' : '💀');
+        streakClass = 'active ' + (last === 'W' ? 'win-streak' : 'loss-streak');
+      }
+    }
+    if (streakEl) {
+      if (streakText !== lastStreakText || streakClass !== lastStreakClass) {
+        streakEl.textContent = streakText;
+        streakEl.className = streakClass;
+        lastStreakText = streakText;
+        lastStreakClass = streakClass;
+      }
+    }
+    if (midStreakEl) {
+      let midText = '';
+      if (recentResults.length >= 2) {
+        const last = recentResults[recentResults.length - 1];
+        let count = 0;
+        for (let i = recentResults.length - 1; i >= 0 && recentResults[i] === last; i--) count++;
+        midText = count >= 2 ? `Streak ${count}${last === 'W' ? 'W' : 'L'}` : '';
+      }
+      if (midText !== lastMidStreakText) {
+        midStreakEl.textContent = midText;
+        lastMidStreakText = midText;
+      }
+    }
+  }
+  if (midFormEl && showRecent) {
+    const lastFive = recentResults.slice(-5);
+    setText(midFormEl, lastFive.length ? `Form ${lastFive.join('')}` : 'Form --');
+  }
+  if (hasDaily) {
+    if (midWinsEl) setText(midWinsEl, todayWins);
+    if (midLossesEl) setText(midLossesEl, todayLosses);
+  }
+  if (midTodoEl) {
+    const nextFix = typeof data.next_fix === 'string' ? data.next_fix.trim() : '';
+    if (nextFix) {
+      setText(midTodoEl, nextFix);
+    } else {
+      const current = midTodoEl.textContent || '';
+      if (!current.trim()) {
+        setText(midTodoEl, 'Pending replay review');
+      }
+    }
+  }
+
+  const slotMap = {};
+  for (const battle of activeBattles) {
+    if (!battle || typeof battle !== 'object') continue;
+    const slot = battle.slot ?? (battle.worker_id !== undefined ? battle.worker_id + 1 : null);
+    if (slot) {
+      slotMap[slot] = battle;
+    }
+  }
+  const slotStatus = statusValue.includes('search') ? 'Searching' : 'Idle';
+  const updateWorker = (slot, nameEl, statusEl) => {
+    if (!nameEl || !statusEl) return;
+    const battle = slotMap[slot];
+    if (battle) {
+      const opponent = battle.opponent || battle.id || 'Unknown';
+      setText(nameEl, opponent, `${nameEl.id}:text`);
+      setText(statusEl, 'Active', `${statusEl.id}:text`);
+      setClass(statusEl, 'worker-status active', `${statusEl.id}:class`);
+    } else {
+      setText(nameEl, 'Idle', `${nameEl.id}:text`);
+      setText(statusEl, slotStatus, `${statusEl.id}:text`);
+      setClass(statusEl, `worker-status ${slotStatus.toLowerCase()}`, `${statusEl.id}:class`);
+    }
+  };
+  updateWorker(1, worker1NameEl, worker1StatusEl);
+  updateWorker(2, worker2NameEl, worker2StatusEl);
+  updateWorker(3, worker3NameEl, worker3StatusEl);
+}
+
+let ws = null;
+let wsOnline = false;
+let reconnectDelay = 1000;
+let reconnectTimer = null;
+let statusFetchInFlight = false;
+
+const DAILY_KEYS = ['today_wins', 'today_losses', 'daily_wins', 'daily_losses'];
+
+function hasDailyStats(payload) {
+  if (!payload || typeof payload !== 'object') return false;
+  return DAILY_KEYS.some((key) => payload[key] !== undefined);
+}
+
+async function fetchStatusOnce() {
+  if (statusFetchInFlight) return;
+  statusFetchInFlight = true;
+  try {
+    const resp = await fetch(`/status?t=${Date.now()}`, { cache: 'no-store' });
+    if (resp.ok) {
+      const data = await resp.json();
+      handlePayload(data);
+    }
+  } catch (e) {}
+  statusFetchInFlight = false;
+}
+
+function getWsUrl() {
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${proto}://${window.location.host}/ws`;
+}
+
+function handlePayload(payload) {
+  if (!payload) return;
+  if (payload.status && typeof payload.status === 'object') {
+    const incoming = payload.battles || payload.active_battles;
+    const hasObjects = Array.isArray(incoming) && incoming.some((b) => b && typeof b === 'object');
+    if (hasObjects) lastActiveBattles = incoming;
+    updateOverlay(payload.status, hasObjects ? incoming : lastActiveBattles);
+    if (!hasDailyStats(payload.status)) {
+      fetchStatusOnce();
+    }
+    return;
+  }
+  if (!isStatusPayload(payload)) return;
+  const incoming = payload.battles || payload.active_battles;
+  const hasObjects = Array.isArray(incoming) && incoming.some((b) => b && typeof b === 'object');
+  if (hasObjects) lastActiveBattles = incoming;
+  updateOverlay(payload, hasObjects ? incoming : lastActiveBattles);
+  if (!hasDailyStats(payload)) {
+    fetchStatusOnce();
+  }
+}
+
+async function pollOnce() {
+  try {
+    const resp = await fetch(`/state?t=${Date.now()}`, { cache: 'no-store' });
+    if (resp.ok) {
+      const data = await resp.json();
+      handlePayload(data);
+      if (!hasDailyStats(data.status || data)) {
+        fetchStatusOnce();
+      }
+      return;
+    }
+  } catch (e) {}
+  try {
+    const resp = await fetch(`/status?t=${Date.now()}`, { cache: 'no-store' });
+    if (resp.ok) {
+      const data = await resp.json();
+      handlePayload(data);
+    }
+  } catch (e) {}
+}
+
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  wsOnline = false;
+  pollOnce();
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    connectWs();
+  }, reconnectDelay);
+  reconnectDelay = Math.min(reconnectDelay * 2, 10000);
+}
+
+function connectWs() {
+  try {
+    ws = new WebSocket(getWsUrl());
+  } catch (e) {
+    scheduleReconnect();
+    return;
+  }
+
+  ws.addEventListener('open', () => {
+    wsOnline = true;
+    reconnectDelay = 1000;
+  });
+
+  ws.addEventListener('message', (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg && msg.payload) {
+        handlePayload(msg.payload);
+      }
+    } catch (e) {}
+  });
+
+  ws.addEventListener('close', scheduleReconnect);
+  ws.addEventListener('error', () => {
+    try { ws.close(); } catch (e) {}
+  });
+}
+
+pollOnce();
+connectWs();
+setInterval(pollOnce, 2000);
+</script>
+</body>
+</html>
+

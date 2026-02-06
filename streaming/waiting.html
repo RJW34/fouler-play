@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0a;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Animated grid background */
+        .grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gridMove 20s linear infinite;
+        }
+        
+        @keyframes gridMove {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(40px); }
+        }
+        
+        /* Gradient overlay */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+        }
+        
+        /* Main content */
+        .content {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 80px;
+        }
+        
+        /* Top bar */
+        .top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%);
+            display: flex;
+            align-items: center;
+            padding: 0 60px;
+            border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: #fff;
+            text-transform: uppercase;
+        }
+        
+        .accent {
+            color: #ef4444;
+        }
+        
+        /* Center content */
+        .center {
+            text-align: center;
+        }
+        
+        .title {
+            font-size: 72px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -2px;
+            margin-bottom: 24px;
+            line-height: 1;
+        }
+        
+        .subtitle {
+            font-size: 32px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 60px;
+        }
+        
+        /* Status indicator */
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 20px 40px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .pulse {
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+        
+        .status-text {
+            font-size: 20px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+            letter-spacing: 0.5px;
+        }
+        
+        /* Bottom info */
+        .bottom-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 60px;
+            padding: 0 60px;
+            border-top: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: #ef4444;
+        }
+        
+        /* Corner accent */
+        .corner-accent {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle at top right, rgba(239, 68, 68, 0.2) 0%, transparent 70%);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="grid"></div>
+    <div class="overlay"></div>
+    <div class="corner-accent"></div>
+    
+    <div class="top-bar">
+        <div class="logo">FOULER <span class="accent">PLAY</span></div>
+    </div>
+    
+    <div class="content">
+        <div class="center">
+            <div class="title">STANDBY</div>
+            <div class="subtitle">Battle System Online</div>
+            <div class="status">
+                <div class="pulse"></div>
+                <div class="status-text">SEARCHING FOR OPPONENTS</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="bottom-bar">
+        <div class="stat">
+            <div class="stat-label">Format</div>
+            <div class="stat-value">OU</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Tier</div>
+            <div class="stat-value">GEN 9</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Mode</div>
+            <div class="stat-value">LADDER</div>
+        </div>
+    </div>
+    
+    <script>
+        // Update time every second (could show uptime or match countdown)
+        setInterval(() => {
+            // Future: could add dynamic stats here
+        }, 1000);
+    </script>
+</body>
+</html>

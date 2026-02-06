@@ -1,0 +1,41 @@
+# Re-export all constants for backward compatibility
+# Usage: `import constants` still works via the constants.py shim
+from constants_pkg.core import *  # noqa: F401,F403
+from constants_pkg.strategy import *  # noqa: F401,F403
+
+# Explicitly re-export from dynamic modules (already imported by strategy.py)
+from constants_pkg.move_flags import (  # noqa: F401
+    SOUND_MOVES,
+    POWDER_MOVES,
+    BULLET_MOVES,
+    WIND_MOVES,
+    GRASS_TYPE_MOVES,
+    DARK_TYPE_MOVES,
+    SELF_STAT_DROP_MOVES,
+    ALL_STATUS_MOVES,
+)
+
+from constants_pkg.pokemon_abilities import (  # noqa: F401
+    POKEMON_COMMONLY_CONTRARY,
+    POKEMON_COMMONLY_SAP_SIPPER,
+    POKEMON_COMMONLY_STURDY,
+    POKEMON_COMMONLY_DISGUISE,
+    POKEMON_COMMONLY_SOUNDPROOF,
+    POKEMON_COMMONLY_BULLETPROOF,
+    POKEMON_COMMONLY_OVERCOAT,
+    POKEMON_COMMONLY_EARTH_EATER,
+    POKEMON_COMMONLY_JUSTIFIED,
+    POKEMON_COMMONLY_STEAM_ENGINE,
+    POKEMON_COMMONLY_WIND_RIDER,
+    POKEMON_COMMONLY_WELL_BAKED_BODY,
+    POKEMON_COMMONLY_STAT_DROP_IMMUNE,
+    POKEMON_COMMONLY_MIRROR_ARMOR,
+    POKEMON_COMMONLY_FLUFFY,
+    POKEMON_COMMONLY_DRY_SKIN,
+    POKEMON_WITH_PRANKSTER,
+    POKEMON_WITH_INTIMIDATE,
+    POKEMON_COMMONLY_AIR_BALLOON,
+    POKEMON_COMMONLY_QUEENLY_MAJESTY,
+    POKEMON_COMMONLY_DAZZLING,
+    POKEMON_COMMONLY_ARMOR_TAIL,
+)

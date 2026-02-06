@@ -55,6 +55,14 @@ def populate_pkmn_from_set(
         pkmn.tera_type = set_.pkmn_set.tera_type
     log_pkmn_set(pkmn, source)
 
+    # Track sampling weight for probabilistic battle weighting
+    try:
+        set_weight = getattr(set_.pkmn_set, "count", 1) or 1
+        moveset_weight = getattr(set_.pkmn_moveset, "count", 1) or 1
+        pkmn.sample_weight = float(set_weight) * float(moveset_weight)
+    except Exception:
+        pkmn.sample_weight = 1.0
+
     # newly created moves have max PP
     # copy over the current pp from the known moves
     for known_move in known_pokemon_moves:

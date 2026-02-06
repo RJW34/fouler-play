@@ -1,6 +1,9 @@
+import logging
 import math
 import constants
 from config import FoulPlayConfig
+
+logger = logging.getLogger(__name__)
 
 natures = {
     "lonely": {"plus": constants.ATTACK, "minus": constants.DEFENSE},
@@ -70,7 +73,7 @@ def update_stats_from_nature(stats, nature):
         new_stats[natures[nature]["plus"]] *= 1.1
         new_stats[natures[nature]["minus"]] *= 0.9
     except KeyError:
-        pass
+        logger.debug("Unknown nature '%s', stats unchanged", nature)
 
     return new_stats
 

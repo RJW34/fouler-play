@@ -60,6 +60,7 @@ boost_multiplier_lookup = {
 class Battle:
     def __init__(self, battle_tag):
         self.battle_tag = battle_tag
+        self.worker_id = None
         self.user = Battler()
         self.opponent = Battler()
         self.weather = None
@@ -122,6 +123,61 @@ class Battle:
 
         self.started = True
         self.rqid = user_json[constants.RQID]
+
+    def snapshot(self):
+        def _snapshot_pokemon(pkmn):
+            if pkmn is None:
+                return None
+            return {
+                "name": pkmn.name,
+                "hp": pkmn.hp,
+                "max_hp": pkmn.max_hp,
+                "status": pkmn.status,
+                "types": list(pkmn.types) if pkmn.types else [],
+                "item": pkmn.item,
+                "ability": pkmn.ability,
+                "boosts": dict(pkmn.boosts),
+                "volatile_statuses": list(pkmn.volatile_statuses),
+                "tera": {
+                    "active": bool(pkmn.terastallized),
+                    "type": pkmn.tera_type,
+                },
+                "moves": [m.name for m in pkmn.moves] if getattr(pkmn, "moves", None) else [],
+                "fainted": not pkmn.is_alive(),
+            }
+
+        def _snapshot_battler(battler):
+            if battler is None:
+                return None
+            return {
+                "name": battler.name,
+                "account": battler.account_name,
+                "active": _snapshot_pokemon(battler.active),
+                "reserve": [_snapshot_pokemon(p) for p in battler.reserve],
+                "side_conditions": dict(battler.side_conditions),
+                "trapped": battler.trapped,
+                "baton_passing": battler.baton_passing,
+                "shed_tailing": battler.shed_tailing,
+                "wish": list(battler.wish) if battler.wish else [0, 0],
+                "future_sight": list(battler.future_sight) if battler.future_sight else [0, ""],
+            }
+
+        return {
+            "battle_tag": self.battle_tag,
+            "turn": self.turn,
+            "weather": self.weather,
+            "weather_turns": self.weather_turns_remaining,
+            "weather_source": self.weather_source,
+            "field": self.field,
+            "field_turns": self.field_turns_remaining,
+            "trick_room": self.trick_room,
+            "trick_room_turns": self.trick_room_turns_remaining,
+            "gravity": self.gravity,
+            "team_preview": self.team_preview,
+            "time_remaining": self.time_remaining,
+            "user": _snapshot_battler(self.user),
+            "opponent": _snapshot_battler(self.opponent),
+        }
 
     def mega_evolve_possible(self):
         return (
@@ -194,6 +250,7 @@ class Battler:
         self.account_name = None
 
         self.team_dict = None
+        self.team_plan = None
 
         # last_selected_move: The last move that was selected (Bot only)
         # last_used_move: The last move that was observed publicly (Bot and Opponent)
@@ -343,13 +400,23 @@ class Battler:
                     constants.CAN_Z_MOVE
                 ][index]
             except KeyError:
-                pass
+                logger.debug("No Z-move data for move index %d", index)
 
     def update_from_request_json(self, request_json):
         """
         Updates the battler's information based on the request JSON
         This should be called with a cloned battle/battler so that the original is not modified
         """
+        if self.active is None:
+            logger.warning("Active pokemon not initialized; rebuilding from request_json")
+            try:
+                self.initialize_first_turn_user_from_json(request_json)
+            except Exception as e:
+                logger.warning(f"Failed to initialize active from request_json: {e}")
+                return
+            if self.active is None:
+                logger.warning("Active pokemon still None after initialization; skipping update")
+                return
         try:
             trapped = request_json[constants.ACTIVE][0].get(constants.TRAPPED, False)
             maybe_trapped = request_json[constants.ACTIVE][0].get(
@@ -369,12 +436,18 @@ class Battler:
             pkmn_level = switch_string_pkmn.level
             pkmn_status = switch_string_pkmn.status
             if pkmn_dict[constants.ACTIVE]:
+                # During team preview or after switch, active Pokemon might differ from expectations
+                # Update to match server state instead of asserting
                 if self.active.name != pkmn_name and self.active.base_name != pkmn_name:
-                    raise ValueError(
-                        "Active pokemon mismatch: expected {} or {}, got {}".format(
+                    logger.debug(
+                        "Active pokemon changed: expected {} or {}, got {}".format(
                             self.active.name, self.active.base_name, pkmn_name
                         )
                     )
+                    # Find and set the new active Pokemon
+                    pkmn = self.find_pokemon_in_reserves(pkmn_name)
+                    if pkmn:
+                        self.active = pkmn
 
                 if constants.ACTIVE in request_json:
                     self._initialize_user_active_from_request_json(request_json)
@@ -389,7 +462,7 @@ class Battler:
             pkmn.index = index + 1
             pkmn.level = pkmn_level
             pkmn.status = pkmn_status
-            pkmn.nickname = self.active.extract_nickname_from_pokemonshowdown_string(
+            pkmn.nickname = Pokemon.extract_nickname_from_pokemonshowdown_string(
                 pkmn_dict[constants.IDENT]
             )
             pkmn.reviving = pkmn_dict.get(constants.REVIVING, False)
@@ -509,28 +582,78 @@ class Battler:
         # if a team_dict exists, meaning we are playing a format where we selected our own team,
         # set the nature/evs for each pokmeon
         if self.team_dict is not None:
-            team_dict_pkmn_names = [p["species"] for p in self.team_dict]
+            def canonicalize_species_name(species_name: str) -> str:
+                species_name = normalize_name(species_name)
+                info = pokedex.get(species_name)
+                if info:
+                    base_species = info.get("baseSpecies") or info.get("changesFrom")
+                    if base_species:
+                        return normalize_name(base_species)
+                return species_name
+
+            team_dict_pkmn_names = [normalize_name(p["species"]) for p in self.team_dict]
+            team_dict_canon = [canonicalize_species_name(p["species"]) for p in self.team_dict]
+            request_species = [
+                canonicalize_species_name(p.name) for p in [self.active] + self.reserve
+            ]
+            match_count = sum(1 for s in request_species if s in team_dict_pkmn_names or s in team_dict_canon)
+            # If the preview species don't align with the loaded team, ignore team_dict to avoid crashes.
+            if match_count < max(3, len(request_species) // 2):
+                logger.warning(
+                    "Team preview species do not match team_dict (matches=%s/%s); "
+                    "disabling team_dict for this battle",
+                    match_count,
+                    len(request_species),
+                )
+                self.team_dict = None
+                self.team_plan = None
+
+        if self.team_dict is not None:
+            team_by_species = {
+                normalize_name(p["species"]): p for p in self.team_dict
+            }
+            team_by_canon = {}
+            for p in self.team_dict:
+                canon = canonicalize_species_name(p["species"])
+                if canon not in team_by_canon:
+                    team_by_canon[canon] = p
+
             for pkmn in [self.active] + self.reserve:
+                pkmn_name = normalize_name(pkmn.name)
+                pkmn_base = normalize_name(pkmn.base_name) if pkmn.base_name else pkmn_name
+                pkmn_info = pokedex.get(pkmn_name, {})
                 pkmn_other_formes = [
-                    normalize_name(n) for n in pokedex[pkmn.name].get("otherFormes", [])
+                    normalize_name(n) for n in pkmn_info.get("otherFormes", [])
                 ]
-                if pkmn.name in team_dict_pkmn_names:
-                    team_dict_pkmn = next(
-                        p for p in self.team_dict if p["species"] == pkmn.name
+                base_species = pkmn_info.get("baseSpecies") or pkmn_info.get("changesFrom")
+                if base_species:
+                    base_species = normalize_name(base_species)
+                pkmn_canon = canonicalize_species_name(pkmn_name)
+
+                team_dict_pkmn = (
+                    team_by_species.get(pkmn_name)
+                    or team_by_species.get(pkmn_base)
+                    or team_by_canon.get(pkmn_name)
+                    or team_by_canon.get(pkmn_canon)
+                    or (team_by_species.get(base_species) if base_species else None)
+                    or (team_by_canon.get(base_species) if base_species else None)
+                )
+
+                if team_dict_pkmn is None:
+                    for other_forme in pkmn_other_formes:
+                        team_dict_pkmn = (
+                            team_by_species.get(other_forme)
+                            or team_by_canon.get(other_forme)
+                        )
+                        if team_dict_pkmn is not None:
+                            break
+
+                if team_dict_pkmn is None:
+                    logger.warning(
+                        "Could not find %s in team_dict; skipping EV/nature assignment",
+                        pkmn.name,
                     )
-                elif pkmn.base_name in team_dict_pkmn_names:
-                    team_dict_pkmn = next(
-                        p for p in self.team_dict if p["species"] == pkmn.base_name
-                    )
-                elif any(p in team_dict_pkmn_names for p in pkmn_other_formes):
-                    other_forme_in_team = next(
-                        p for p in pkmn_other_formes if p in team_dict_pkmn_names
-                    )
-                    team_dict_pkmn = next(
-                        p for p in self.team_dict if p["species"] == other_forme_in_team
-                    )
-                else:
-                    raise ValueError("Could not find {} in team_dict".format(pkmn.name))
+                    continue
                 pkmn.nature = team_dict_pkmn["nature"] or "serious"
                 pkmn.evs = (
                     int(team_dict_pkmn["evs"]["hp"] or 0),
@@ -589,6 +712,9 @@ class Pokemon:
         self.fainted = False
         self.reviving = False
         self.moves = []
+        # Track observed opponent move usage for PP estimation.
+        # Used for strategic PP tracking against the opponent.
+        self.opponent_move_uses = defaultdict(int)
         self.status = None
         self.volatile_statuses = []
         self.volatile_status_durations = defaultdict(lambda: 0)
@@ -607,6 +733,7 @@ class Pokemon:
         self.gen_3_consecutive_sleep_talks = 0
         self.impossible_items = set()
         self.impossible_abilities = set()
+        self.sample_weight = 1.0
 
     def get_mega_pkmn_info(self) -> list[tuple[str, str]]:
         # For avoiding Legends ZA megas: omit mega pokemon in the pokedex that have "gen": 9
@@ -709,6 +836,41 @@ class Pokemon:
         except KeyError:
             logger.warning("{} is not a known move".format(move_name))
             return None
+
+    def record_opponent_move(self, move_name: str, pp_cost: int = 1):
+        """Track observed opponent move usage for PP estimation."""
+        if not move_name:
+            return
+        move_name = normalize_name(move_name)
+        try:
+            cost = int(pp_cost)
+        except (TypeError, ValueError):
+            cost = 1
+        if cost <= 0:
+            cost = 1
+        self.opponent_move_uses[move_name] += cost
+
+    def estimate_pp_remaining(self, move_name: str):
+        """Estimate PP remaining for an opponent move.
+
+        Returns (min_remaining, max_remaining) based on base PP and max PP ups.
+        """
+        if not move_name:
+            return None, None
+        move_name = normalize_name(move_name)
+        move_data = all_move_json.get(move_name)
+        if move_data is None and move_name.startswith(constants.HIDDEN_POWER):
+            move_data = all_move_json.get(constants.HIDDEN_POWER)
+        if move_data is None and move_name.startswith("return"):
+            move_data = all_move_json.get("return")
+        if move_data is None:
+            return None, None
+        base_pp = int(move_data.get(constants.PP, 1))
+        max_pp = int(base_pp * 1.6)
+        used = int(self.opponent_move_uses.get(move_name, 0))
+        min_remaining = max(0, base_pp - used)
+        max_remaining = max(0, max_pp - used)
+        return min_remaining, max_remaining
 
     def remove_move(self, move_name: str):
         for mv in self.moves:

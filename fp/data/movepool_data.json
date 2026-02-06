@@ -1,0 +1,101 @@
+{
+  "caterpie": {
+    "pokemon_name": "caterpie",
+    "physical_moves": [
+      "scaleshot",
+      "acrobatics",
+      "earthquake",
+      "phantomforce",
+      "tackle"
+    ],
+    "special_moves": [],
+    "status_moves": [
+      "sleeptalk",
+      "dragondance",
+      "agility",
+      "meditate",
+      "healingwish",
+      "somerandomunknownmove",
+      "stringshot",
+      "destinybond",
+      "protect",
+      "swordsdance"
+    ],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "slaking": {
+    "pokemon_name": "slaking",
+    "physical_moves": [
+      "earthquake"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "gyarados": {
+    "pokemon_name": "gyarados",
+    "physical_moves": [
+      "struggle"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "tornadustherian": {
+    "pokemon_name": "tornadustherian",
+    "physical_moves": [
+      "struggle"
+    ],
+    "special_moves": [],
+    "status_moves": [
+      "nastyplot"
+    ],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "mawile": {
+    "pokemon_name": "mawile",
+    "physical_moves": [
+      "tackle"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "clefable": {
+    "pokemon_name": "clefable",
+    "physical_moves": [
+      "tackle"
+    ],
+    "special_moves": [],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "physical_only"
+  },
+  "zoroarkhisui": {
+    "pokemon_name": "zoroarkhisui",
+    "physical_moves": [
+      "poltergeist"
+    ],
+    "special_moves": [
+      "shadowball"
+    ],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "mixed"
+  },
+  "zoroark": {
+    "pokemon_name": "zoroark",
+    "physical_moves": [],
+    "special_moves": [
+      "darkpulse"
+    ],
+    "status_moves": [],
+    "times_seen": 0,
+    "threat_category": "special_only"
+  }
+}

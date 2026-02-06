@@ -1,0 +1,246 @@
+{
+  "generated_at": "unknown",
+  "loss_count": 10,
+  "improvements": [
+    {
+      "pattern": "Blissey fainted - possible switching error",
+      "frequency": 3,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530250755",
+        "https://replay.pokemonshowdown.com/gen9ou-2530220867",
+        "https://replay.pokemonshowdown.com/gen9ou-2530217759"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Zamazenta fainted - possible switching error",
+      "frequency": 3,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530250755",
+        "https://replay.pokemonshowdown.com/gen9ou-2530220867",
+        "https://replay.pokemonshowdown.com/gen9ou-2530217759"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Gliscor fainted - possible switching error",
+      "frequency": 3,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530250755",
+        "https://replay.pokemonshowdown.com/gen9ou-2530220867",
+        "https://replay.pokemonshowdown.com/gen9ou-2530217759"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Attempted swordsdance on turn 4 (too early?)",
+      "frequency": 3,
+      "severity": "minor",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530220867",
+        "https://replay.pokemonshowdown.com/gen9ou-2530217759",
+        "https://replay.pokemonshowdown.com/gen9ou-2529922624"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Gholdengo fainted - possible switching error",
+      "frequency": 2,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530250755",
+        "https://replay.pokemonshowdown.com/gen9ou-2530217759"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Skarmory fainted - possible switching error",
+      "frequency": 2,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530250755",
+        "https://replay.pokemonshowdown.com/gen9ou-2530217759"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Pecharunt fainted - possible switching error",
+      "frequency": 2,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530250755",
+        "https://replay.pokemonshowdown.com/gen9ou-2530217759"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Attempted calmmind on turn 7 (too early?)",
+      "frequency": 1,
+      "severity": "minor",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530250755"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Tyranitar fainted - possible switching error",
+      "frequency": 1,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530238587"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Garchomp fainted - possible switching error",
+      "frequency": 1,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530238587"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Attempted swordsdance on turn 2 (too early?)",
+      "frequency": 1,
+      "severity": "minor",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530238587"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Attempted swordsdance on turn 8 (too early?)",
+      "frequency": 1,
+      "severity": "minor",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530234133"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Only 2 switches in 19 turns",
+      "frequency": 1,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530234133"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Forest Horse fainted - possible switching error",
+      "frequency": 1,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530226603"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Tall Horse fainted - possible switching error",
+      "frequency": 1,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530226603"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Horned Horse fainted - possible switching error",
+      "frequency": 1,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530226603"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Clydesdale fainted - possible switching error",
+      "frequency": 1,
+      "severity": "major",
+      "covered_by_existing": null,
+      "needs_new_heuristic": true,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530226603"
+      ],
+      "suggested_action": "Add new detection/penalty in fp/search/main.py"
+    },
+    {
+      "pattern": "Opponent set hazards, bot didn't remove them",
+      "frequency": 5,
+      "severity": "minor",
+      "covered_by_existing": "hazard_removal",
+      "needs_new_heuristic": false,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530234133",
+        "https://replay.pokemonshowdown.com/gen9ou-2530220867",
+        "https://replay.pokemonshowdown.com/gen9ou-2530217759"
+      ],
+      "suggested_action": "Improve existing 'hazard_removal' heuristic"
+    },
+    {
+      "pattern": "Never set up hazards (critical for chip damage)",
+      "frequency": 3,
+      "severity": "major",
+      "covered_by_existing": "hazard_removal",
+      "needs_new_heuristic": false,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530234133",
+        "https://replay.pokemonshowdown.com/gen9ou-2529844209",
+        "https://replay.pokemonshowdown.com/gen9ou-2529675389-yim6eqcvukxn7ug1naaxg5fp1d56t8epw"
+      ],
+      "suggested_action": "Improve existing 'hazard_removal' heuristic"
+    },
+    {
+      "pattern": "Water Horse fainted - possible switching error",
+      "frequency": 1,
+      "severity": "major",
+      "covered_by_existing": "water_immunity",
+      "needs_new_heuristic": false,
+      "example_replays": [
+        "https://replay.pokemonshowdown.com/gen9ou-2530226603"
+      ],
+      "suggested_action": "Improve existing 'water_immunity' heuristic"
+    }
+  ],
+  "summary": {
+    "total_patterns": 20,
+    "uncovered": 17,
+    "covered_but_recurring": 3
+  }
+}

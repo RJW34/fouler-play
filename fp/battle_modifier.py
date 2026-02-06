@@ -27,6 +27,7 @@ from fp.helpers import (
     is_neutral_effectiveness,
 )
 from fp.battle import boost_multiplier_lookup
+from fp.movepool_tracker import record_move
 
 
 logger = logging.getLogger(__name__)
@@ -217,20 +218,72 @@ def request(battle, split_msg):
         battle.request_json = battle_json
 
 
-def inactive(battle, split_msg):
-    regex_string = r"(\d+) sec this turn"
-    if split_msg[2].startswith(constants.TIME_LEFT):
-        capture = re.search(regex_string, split_msg[2])
+def _parse_time_left_seconds(text: str) -> int | None:
+    if not text:
+        return None
+
+    lower = text.lower()
+    if "opponent" in lower:
+        return None
+
+    # Try mm:ss format first (e.g., "1:30")
+    match = re.search(r"(\d+)\s*:\s*(\d+)", text)
+    if match:
         try:
-            time_left = int(capture.group(1))
-            battle.time_remaining = time_left
-            logger.debug("Time left: {}".format(time_left))
+            minutes = int(match.group(1))
+            seconds = int(match.group(2))
+            return minutes * 60 + seconds
         except ValueError:
-            logger.warning("{} is not a valid int".format(capture.group(1)))
-        except AttributeError:
-            logger.warning(
-                "'{}' does not match the regex '{}'".format(split_msg[2], regex_string)
-            )
+            pass
+
+    # Try "X min Y sec" formats
+    minutes = 0
+    seconds = 0
+    match_min = re.search(r"(\d+)\s*min", lower)
+    match_sec = re.search(r"(\d+)\s*sec", lower)
+    try:
+        if match_min:
+            minutes = int(match_min.group(1))
+        if match_sec:
+            seconds = int(match_sec.group(1))
+        if match_min or match_sec:
+            return minutes * 60 + seconds
+    except ValueError:
+        pass
+
+    # Try plain seconds (e.g., "120 sec")
+    match = re.search(r"(\d+)\s*sec", lower)
+    if match:
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
+
+    # Last resort: any integer in the string
+    match = re.search(r"(\d+)", lower)
+    if match:
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
+
+    return None
+
+
+def inactive(battle, split_msg):
+    if len(split_msg) < 3:
+        return
+    text = split_msg[2]
+    if constants.TIME_LEFT not in text:
+        return
+
+    time_left = _parse_time_left_seconds(text)
+    if time_left is None:
+        logger.warning("Failed to parse time left from inactive msg: '%s'", text)
+        return
+
+    battle.time_remaining = time_left
+    logger.debug("Time left: %s", time_left)
 
 
 def inactiveoff(battle, _):
@@ -692,9 +745,12 @@ def heal_or_damage(battle, split_msg):
         pkmn.ability = ability
 
     # give that pokemon an item if this string specifies one
+    # Handles self-damage items like Life Orb: |-damage|p2a: Pokemon|90/100|[from] item: Life Orb
+    # And healing items like Leftovers: |-heal|p2a: Pokemon|95/100|[from] item: Leftovers
+    # Only set if item is currently unknown (don't overwrite None which means item was consumed/knocked off)
     if len(split_msg) == 5 and constants.ITEM in split_msg[4] and pkmn.item is not None:
         item = normalize_name(split_msg[4].split(constants.ITEM)[-1].strip(": "))
-        logger.info("Setting {}'s item to: {}".format(pkmn.name, item))
+        logger.info("Setting {}'s item to: {} (revealed by damage/heal)".format(pkmn.name, item))
         pkmn.item = item
 
     # gen 1 if you are trapping the opponent and hit yourself in confusion, the opponent is released
@@ -751,6 +807,10 @@ def move(battle, split_msg):
         side = battle.user
         pkmn = battle.user.active
         opposing_pkmn = battle.opponent.active
+
+    if pkmn is None:
+        logger.warning("Move received but active Pokemon is None; skipping move processing")
+        return
 
     move_name = normalize_name(split_msg[3].strip().lower())
 
@@ -834,6 +894,11 @@ def move(battle, split_msg):
 
             # the rest of this function uses `pkmn`, so we need to set it to the correct pkmn
             pkmn = actual_zoroark
+
+    # Track movepool usage (learns physical/special/mixed classification)
+    # Only track opponent moves (we already know our own movepool)
+    if is_opponent(battle, split_msg):
+        record_move(pkmn.name, move_name)
 
     if (
         any(msg == "[from]Sleep Talk" for msg in split_msg)
@@ -962,7 +1027,12 @@ def move(battle, split_msg):
     # add the move to it's moves if it hasn't been seen
     # decrement the PP by one
     # if the move is unknown, do nothing
-    pp_to_decrement = 2 if opposing_pkmn.ability == "pressure" else 1
+    pp_to_decrement = 2 if (opposing_pkmn and opposing_pkmn.ability == "pressure") else 1
+    if is_opponent(battle, split_msg):
+        try:
+            pkmn.record_opponent_move(move_name, pp_to_decrement)
+        except Exception:
+            pass
     move_object = pkmn.get_move(move_name)
     if move_object is None:
         new_move = pkmn.add_move(move_name)
@@ -1009,14 +1079,21 @@ def move(battle, split_msg):
         mv = all_move_json[move_name]
         move_type = mv[constants.TYPE]
         if mv[constants.CATEGORY] != constants.STATUS:
-            logger.info(
-                "{} used a {} move, removing {}gem from possible items".format(
-                    pkmn.name, move_type, move_type
+            is_gen9 = battle.generation == "gen9"
+            pkmn_gem = "{}gem".format(move_type)
+            
+            # In Gen 9, only Normal Gem is obtainable.
+            if is_gen9 and pkmn_gem != "normalgem":
+                pass
+            else:
+                logger.info(
+                    "{} used a {} move, removing {} from possible items".format(
+                        pkmn.name, move_type, pkmn_gem
+                    )
                 )
-            )
-            pkmn.impossible_items.add("{}gem".format(move_type))
+                pkmn.impossible_items.add(pkmn_gem)
     except KeyError:
-        pass
+        logger.debug("Move '{}' not found in move JSON when checking gem for {}".format(move_name, pkmn.name))
 
     try:
         if (
@@ -1026,7 +1103,7 @@ def move(battle, split_msg):
             logger.info("Adding lockedmove to {}".format(pkmn.name))
             pkmn.volatile_statuses.append(constants.LOCKED_MOVE)
     except KeyError:
-        pass
+        logger.debug("Move '{}' has no self/volatileStatus for {}".format(move_name, pkmn.name))
 
     try:
         if all_move_json[move_name][constants.CATEGORY] == constants.STATUS:
@@ -1037,7 +1114,7 @@ def move(battle, split_msg):
             )
             pkmn.impossible_items.add(constants.ASSAULT_VEST)
     except KeyError:
-        pass
+        logger.debug("Move '{}' has no category for {}".format(move_name, pkmn.name))
 
     try:
         category = all_move_json[move_name][constants.CATEGORY]
@@ -3270,6 +3347,68 @@ def check_heavydutyboots(battle, msg_lines):
             side_to_check.active.impossible_items.add(constants.HEAVY_DUTY_BOOTS)
 
 
+def check_rocky_helmet(battle, split_msg, msg_lines):
+    # Bot used a move. Check if opponent has Rocky Helmet.
+    if len(split_msg) < 5:
+        return
+
+    move_name = normalize_name(split_msg[3])
+    if move_name not in all_move_json:
+        return
+
+    try:
+        # Check generation validity (Rocky Helmet is Gen 5+)
+        if battle.generation and int(battle.generation.replace("gen", "")) < 5:
+            return
+    except ValueError:
+        pass
+
+    mv_data = all_move_json[move_name]
+    if not mv_data.get("flags", {}).get("contact"):
+        return
+
+    opponent = battle.opponent.active
+    if opponent.item != constants.UNKNOWN_ITEM:
+        return
+    if "rockyhelmet" in opponent.impossible_items:
+        return
+
+    # Check for damage message
+    took_helmet_damage = False
+    valid_hit = True
+    
+    for line in msg_lines:
+        s = line.split("|")
+        if len(s) < 2:
+            continue
+            
+        # Stop at next move/turn/upkeep
+        if s[1] in ["move", "turn", "upkeep", "faint"]:
+            break
+            
+        # |-damage|p1a: ...|[from] item: Rocky Helmet
+        if len(s) >= 5 and s[1] == "-damage" and "item: Rocky Helmet" in s[4]:
+             took_helmet_damage = True
+             break
+             
+        # Check for miss/protect
+        if s[1] in ["-miss", "-fail", "-immune", "cant"]:
+             valid_hit = False
+             break
+        if s[1] == "-activate" and "Protect" in line:
+             valid_hit = False
+             break
+
+    if took_helmet_damage:
+         logger.info(f"Rocky Helmet detected on {opponent.name}")
+         opponent.item = "rockyhelmet"
+         opponent.item_inferred = True
+    elif valid_hit:
+         # If we made contact and didn't take damage, they don't have it
+         logger.info(f"No Rocky Helmet damage on contact move against {opponent.name}. Adding to impossible items.")
+         opponent.impossible_items.add("rockyhelmet")
+
+
 def update_battle(battle: Battle, msg: str):
     msg_lines = msg.split("\n")
     for line in msg_lines:
@@ -3365,6 +3504,8 @@ def process_battle_updates(battle: Battle):
             damage_dealt = get_damage_dealt(battle, split_msg, msg_lines[i + 1 :])
             if damage_dealt:
                 update_dataset_possibilities(battle, damage_dealt, "damage_received")
+
+            check_rocky_helmet(battle, split_msg, msg_lines[i + 1 :])
 
         elif action == "switch" and is_opponent(battle, split_msg):
             check_heavydutyboots(battle, msg_lines[i + 1 :])
