@@ -336,7 +336,8 @@ def _sample_pokemon(pkmn: Pokemon):
     # if at least 1 move is known
     remaining_team_sets = TeamDatasets.get_all_remaining_sets(pkmn)
     if remaining_team_sets and (not pkmn.moves or random.random() < 0.75):
-        sampled_set = deepcopy(random.choice(remaining_team_sets))
+        weights = [max(1, s.pkmn_set.count) for s in remaining_team_sets]
+        sampled_set = deepcopy(random.choices(remaining_team_sets, weights=weights)[0])
         populate_pkmn_from_set(pkmn, sampled_set, source="teamdatasets-full")
         return
 
@@ -348,7 +349,8 @@ def _sample_pokemon(pkmn: Pokemon):
         if s.pkmn_set.set_makes_sense(pkmn) and smogon_set_makes_sense(s)
     ]
     if remaining_team_sets:
-        sampled_set = deepcopy(random.choice(remaining_team_sets).pkmn_set)
+        weights = [max(1, s.pkmn_set.count) for s in remaining_team_sets]
+        sampled_set = deepcopy(random.choices(remaining_team_sets, weights=weights)[0].pkmn_set)
         moves = sample_pokemon_moveset_with_known_pkmn_set(pkmn, sampled_set)
         sampled_set = PredictedPokemonSet(
             pkmn_set=sampled_set,
@@ -476,6 +478,7 @@ def sample_mega_evolution(battler: Battler, index: int):
 
 def prepare_battles(battle: Battle, num_battles: int) -> list[(Battle, float)]:
     sampled_battles = []
+    weights = []
     for index in range(num_battles):
         logger.info("Sampling battle {}".format(index))
         battle_copy = deepcopy(battle)
@@ -489,6 +492,17 @@ def prepare_battles(battle: Battle, num_battles: int) -> list[(Battle, float)]:
         if battle.generation in constants.NO_TEAM_PREVIEW_GENS:
             populate_standardbattle_unrevealed_pkmn(battle_copy)
         battle_copy.opponent.lock_moves()
-        sampled_battles.append((battle_copy, 1 / num_battles))
+        # Compute sampling weight from opponent sets (product of per-Pokemon weights)
+        battle_weight = 1.0
+        for pkmn in [battle_copy.opponent.active] + list(battle_copy.opponent.reserve):
+            if pkmn is None:
+                continue
+            battle_weight *= max(1.0, getattr(pkmn, "sample_weight", 1.0))
+        sampled_battles.append(battle_copy)
+        weights.append(battle_weight)
 
-    return sampled_battles
+    # Normalize weights
+    total = sum(weights) if weights else 0
+    if total <= 0:
+        return [(b, 1 / max(len(sampled_battles), 1)) for b in sampled_battles]
+    return [(b, w / total) for b, w in zip(sampled_battles, weights)]

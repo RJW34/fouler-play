@@ -1,0 +1,36 @@
+{
+  "allowed_modify": [
+    "fp/search/main.py",
+    "fp/search/standard_battles.py",
+    "fp/search/endgame.py",
+    "fp/search/move_validators.py",
+    "fp/search/helpers.py",
+    "fp/search/poke_engine_helpers.py",
+    "fp/playstyle_config.py",
+    "fp/team_analysis.py",
+    "fp/opponent_model.py",
+    "fp/decision_trace.py",
+    "fp/battle.py",
+    "fp/battle_modifier.py",
+    "constants.py",
+    "constants_pkg/*.py",
+    "replay_analysis/*.py",
+    "streaming/*.html",
+    "streaming/*.py",
+    "infrastructure/**/*",
+    "tests/**/*"
+  ],
+  "never_modify": [
+    "config.py",
+    "run.py",
+    ".env",
+    "CREDENTIALS.md",
+    "teams/**/*"
+  ],
+  "safety": {
+    "max_elo_drop_before_revert": 50,
+    "min_games_between_deploys": 15,
+    "require_test_pass": true,
+    "require_syntax_check": true
+  }
+}

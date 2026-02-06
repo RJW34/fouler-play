@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OBS Debug</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 12px;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.55);
+      color: #e5e7eb;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 12px;
+    }
+    .panel {
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 10px 12px;
+      background: rgba(6, 11, 25, 0.85);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+      max-width: 640px;
+    }
+    .title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #93c5fd;
+    }
+    .row { margin: 4px 0; }
+    .label { color: #9ca3af; }
+    .ok { color: #22c55e; }
+    .bad { color: #ef4444; }
+    .slot {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px dashed rgba(255,255,255,0.12);
+    }
+    .mono {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="title">OBS Debug Overlay</div>
+    <div class="row"><span class="label">Last Update:</span> <span id="last-update">--</span></div>
+    <div class="row"><span class="label">OBS WS:</span> <span id="obs-conn">--</span></div>
+    <div class="row"><span class="label">Sources:</span> <span id="obs-sources">--</span></div>
+    <div id="slots"></div>
+  </div>
+
+  <script>
+    function fmtTime(ts) {
+      if (!ts) return "--";
+      const d = new Date(ts * 1000);
+      return d.toLocaleTimeString();
+    }
+
+    function renderSlot(slot, data) {
+      const expected = data.expected?.[slot] || null;
+      const obs = data.obs || {};
+      const lastId = obs.last_ids?.[slot] || null;
+      const lastUrl = obs.last_urls?.[slot] || null;
+      const lastUpdate = obs.last_updates?.[slot] || null;
+      const lastStatus = obs.last_status?.[slot] || null;
+      const statusClass = lastStatus === "ok" ? "ok" : (lastStatus === "fail" ? "bad" : "");
+      return `
+        <div class="slot">
+          <div class="row"><span class="label">Slot ${slot} expected:</span> <span class="mono">${expected || "idle"}</span></div>
+          <div class="row"><span class="label">Slot ${slot} last id:</span> <span class="mono">${lastId || "none"}</span></div>
+          <div class="row"><span class="label">Slot ${slot} last url:</span> <span class="mono">${lastUrl || "none"}</span></div>
+          <div class="row"><span class="label">Slot ${slot} last set:</span> ${fmtTime(lastUpdate)} <span class="${statusClass}">${lastStatus || ""}</span></div>
+        </div>
+      `;
+    }
+
+    async function tick() {
+      try {
+        const resp = await fetch('/debug_state');
+        const data = await resp.json();
+        document.getElementById('last-update').textContent = fmtTime(data.updated);
+        const conn = data.obs?.connected ? "connected" : "disconnected";
+        const connClass = data.obs?.connected ? "ok" : "bad";
+        document.getElementById('obs-conn').innerHTML = `<span class="${connClass}">${conn}</span> (${data.obs?.host}:${data.obs?.port})`;
+        document.getElementById('obs-sources').textContent = (data.obs?.sources || []).join(", ") || "--";
+
+        const slotsEl = document.getElementById('slots');
+        const maxSlot = Math.max(3, Object.keys(data.expected || {}).length);
+        let html = "";
+        for (let i = 1; i <= maxSlot; i++) {
+          html += renderSlot(i, data);
+        }
+        slotsEl.innerHTML = html;
+      } catch (e) {
+        document.getElementById('obs-conn').innerHTML = '<span class="bad">error</span>';
+      }
+    }
+
+    setInterval(tick, 2000);
+    tick();
+  </script>
+</body>
+</html>

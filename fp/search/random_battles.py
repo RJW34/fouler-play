@@ -42,6 +42,7 @@ def prepare_random_battles(battle: Battle, num_battles: int) -> list[(Battle, fl
     revealed_pkmn_sets = get_all_remaining_sets_for_revealed_pkmn(deepcopy(battle))
 
     sampled_battles = []
+    weights = []
     for index in range(num_battles):
         logger.info("Sampling battle {}".format(index))
         battle_copy = deepcopy(battle)
@@ -65,9 +66,18 @@ def prepare_random_battles(battle: Battle, num_battles: int) -> list[(Battle, fl
 
         populate_randombattle_unrevealed_pkmn(battle_copy)
         battle_copy.opponent.lock_moves()
-        sampled_battles.append((battle_copy, 1 / num_battles))
+        battle_weight = 1.0
+        for pkmn in [battle_copy.opponent.active] + list(battle_copy.opponent.reserve):
+            if pkmn is None:
+                continue
+            battle_weight *= max(1.0, getattr(pkmn, "sample_weight", 1.0))
+        sampled_battles.append(battle_copy)
+        weights.append(battle_weight)
 
-    return sampled_battles
+    total = sum(weights) if weights else 0
+    if total <= 0:
+        return [(b, 1 / max(len(sampled_battles), 1)) for b in sampled_battles]
+    return [(b, w / total) for b, w in zip(sampled_battles, weights)]
 
 
 def sample_randombattle_pokemon(existing_pokemon: list[Pokemon]) -> Pokemon:

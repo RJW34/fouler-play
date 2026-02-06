@@ -1,15 +1,58 @@
-logs/
-.venv/
-venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
 dist/
-.idea/
-**/actual_states/*
-**/__pycache__/*
-creds
-*.xlsx
-*.txt
-suspect_decisions.py
-teams/teams
-data/smogon_stats_cache
-data/pkmn_sets_cache
-data/local_data
+build/
+.env
+.env.deku
+.env.*
+!.env.example
+venv/
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# PID files
+.pids/
+
+# Windows nul device artifact
+nul
+
+# Temp text files
+next_fix.txt
+READY.txt
+tmp_python_out.txt
+debug_output.txt
+debug_python_out.txt
+
+# OBS debug state files
+obs_debug_state*.json
+obs_filter_sim.json
+obs_state.json
+obs_import_test.txt
+obs_refresh_exit.txt
+obs_refresh_import.txt
+obs_refresh_test.txt
+obs_projector_screenshot.png
+diagnostics/obs_projector_capture.png
+
+# Smogon cache
+data/smogon_cache/
+
+# Runtime data
+active_battles.json
+daily_stats.json
+aiohttp_replay_check.json
+replay_check.json
+stream_status.json
+diagnostics/health_report.json
+
+# Console output fragments
+Bot
+Overlay
+Press
+Server
