@@ -1,0 +1,24 @@
+[Unit]
+Description=Fouler-Play Developer Loop (DEKU)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/fouler-play
+ExecStart=/bin/bash %h/fouler-play/infrastructure/linux/developer_loop.sh
+Restart=always
+RestartSec=30
+Environment=REPO_DIR=%h/fouler-play
+Environment=SLEEP_INTERVAL=1800
+
+# Logging
+StandardOutput=append:%h/fouler-play/infrastructure/linux/developer_loop.log
+StandardError=append:%h/fouler-play/infrastructure/linux/developer_loop.log
+
+# Safety limits
+MemoryMax=4G
+CPUQuota=80%
+
+[Install]
+WantedBy=default.target
