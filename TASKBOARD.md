@@ -138,12 +138,21 @@ schtasks /run /tn "FoulerPlayPlayerLoop"
 - Start stream server: `python streaming/serve_obs_page.py`
 
 ### 8. Verify Everything
-- [ ] Bot connects to Showdown and plays games
-- [ ] battle_stats.json is being written
+- [x] Bot connects to Showdown and plays games — LIVE, 2-3 concurrent battles running (ALL CHUNG)
+- [ ] battle_stats.json is being written — waiting for first batch to complete (fat games are long)
 - [ ] Replays saved to replay_analysis/
-- [ ] OBS shows live battles (if streaming)
-- [ ] Player loop runs unattended
-- [ ] Push battle_stats.json after each batch: `git add battle_stats.json && git commit -m "data: battle stats" && git push origin foulest-play`
+- [ ] OBS shows live battles (if streaming) — OBS not running yet, streaming server up on :8777
+- [x] Player loop runs unattended — scheduled task FoulerPlayPlayerLoop installed
+- [ ] Push battle_stats.json after each batch
+
+### Completed Setup Steps
+- [x] Step 1: Pull latest code (at 9ca25a3)
+- [x] Step 2: .env configured (ALL CHUNG, all OBS vars, ELO tracking)
+- [x] Step 3: Python env ready (all deps installed)
+- [x] Step 4: poke-engine 0.0.46 built with terastallization (Rust cargo 1.92.0, PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 for Python 3.14)
+- [x] Step 5: Bot verified running — logged in, searching ladder, playing games
+- [x] Step 6: Scheduled task installed (FoulerPlayPlayerLoop)
+- [x] Step 7: Streaming server running (serve_obs_page.py on :8777), OBS not yet open
 
 ---
 
