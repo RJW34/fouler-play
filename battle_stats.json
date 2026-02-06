@@ -1,0 +1,136 @@
+{
+  "battles": [
+    {
+      "battle_id": "gen9ou-2532435943",
+      "timestamp": "2025-02-01T14:30:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "win",
+      "rating_before": 1200,
+      "rating_after": 1215,
+      "opponent_pokemon": ["Landorus-Therian", "Dragapult", "Toxapex", "Corviknight", "Moltres", "Weavile"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532435943"
+    },
+    {
+      "battle_id": "gen9ou-2532435982",
+      "timestamp": "2025-02-01T15:00:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "loss",
+      "rating_before": 1215,
+      "rating_after": 1202,
+      "opponent_pokemon": ["Kingambit", "Great Tusk", "Gholdengo", "Zapdos", "Dragonite", "Toxapex"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532435982"
+    },
+    {
+      "battle_id": "gen9ou-2532438553",
+      "timestamp": "2025-02-01T15:30:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "win",
+      "rating_before": 1202,
+      "rating_after": 1218,
+      "opponent_pokemon": ["Landorus-Therian", "Zapdos", "Iron Valiant", "Slowking-Galar", "Ting-Lu", "Primarina"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532438553"
+    },
+    {
+      "battle_id": "gen9ou-2532439620",
+      "timestamp": "2025-02-01T16:00:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "loss",
+      "rating_before": 1218,
+      "rating_after": 1205,
+      "opponent_pokemon": ["Kingambit", "Landorus-Therian", "Dragapult", "Zapdos", "Toxapex", "Iron Valiant"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532439620"
+    },
+    {
+      "battle_id": "gen9ou-2532441142",
+      "timestamp": "2025-02-01T16:30:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "win",
+      "rating_before": 1205,
+      "rating_after": 1220,
+      "opponent_pokemon": ["Great Tusk", "Gholdengo", "Rillaboom", "Slowking-Galar", "Iron Moth", "Samurott-Hisui"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532441142"
+    },
+    {
+      "battle_id": "gen9ou-2532442809",
+      "timestamp": "2025-02-01T17:00:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "loss",
+      "rating_before": 1220,
+      "rating_after": 1207,
+      "opponent_pokemon": ["Kingambit", "Landorus-Therian", "Dragapult", "Zapdos", "Gholdengo", "Toxapex"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532442809"
+    },
+    {
+      "battle_id": "gen9ou-2532444210",
+      "timestamp": "2025-02-01T17:30:00",
+      "team_file": "gen9/ou/hyper-offense-1",
+      "result": "win",
+      "rating_before": 1207,
+      "rating_after": 1223,
+      "opponent_pokemon": ["Landorus-Therian", "Dragapult", "Iron Valiant", "Toxapex", "Corviknight", "Moltres"],
+      "bot_pokemon": ["Iron Valiant", "Dragapult", "Great Tusk", "Raging Bolt", "Iron Moth", "Ogerpon-Wellspring"],
+      "replay_id": "gen9ou-2532444210"
+    },
+    {
+      "battle_id": "gen9ou-2532444609",
+      "timestamp": "2025-02-01T18:00:00",
+      "team_file": "gen9/ou/hyper-offense-1",
+      "result": "win",
+      "rating_before": 1223,
+      "rating_after": 1239,
+      "opponent_pokemon": ["Kingambit", "Great Tusk", "Gholdengo", "Zapdos", "Dragonite", "Toxapex"],
+      "bot_pokemon": ["Iron Valiant", "Dragapult", "Great Tusk", "Raging Bolt", "Iron Moth", "Ogerpon-Wellspring"],
+      "replay_id": "gen9ou-2532444609"
+    },
+    {
+      "battle_id": "gen9ou-2532446104",
+      "timestamp": "2025-02-01T18:30:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "loss",
+      "rating_before": 1239,
+      "rating_after": 1225,
+      "opponent_pokemon": ["Kingambit", "Landorus-Therian", "Dragapult", "Gholdengo", "Toxapex", "Corviknight"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532446104"
+    },
+    {
+      "battle_id": "gen9ou-2532447663",
+      "timestamp": "2025-02-01T19:00:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "win",
+      "rating_before": 1225,
+      "rating_after": 1241,
+      "opponent_pokemon": ["Landorus-Therian", "Zapdos", "Iron Valiant", "Slowking-Galar", "Ting-Lu", "Primarina"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532447663"
+    },
+    {
+      "battle_id": "gen9ou-2532449077",
+      "timestamp": "2025-02-01T19:30:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "win",
+      "rating_before": 1241,
+      "rating_after": 1257,
+      "opponent_pokemon": ["Great Tusk", "Gholdengo", "Rillaboom", "Slowking-Galar", "Iron Moth", "Samurott-Hisui"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532449077"
+    },
+    {
+      "battle_id": "gen9ou-2532451229",
+      "timestamp": "2025-02-01T20:00:00",
+      "team_file": "gen9/ou/balance-team-1",
+      "result": "loss",
+      "rating_before": 1257,
+      "rating_after": 1243,
+      "opponent_pokemon": ["Kingambit", "Landorus-Therian", "Dragapult", "Zapdos", "Gholdengo", "Toxapex"],
+      "bot_pokemon": ["Gliscor", "Iron Valiant", "Gholdengo", "Great Tusk", "Raging Bolt", "Primarina"],
+      "replay_id": "gen9ou-2532451229"
+    }
+  ]
+}
