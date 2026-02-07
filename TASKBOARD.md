@@ -1,97 +1,179 @@
 # TASKBOARD.md - Fouler Play Coordination
 
-**Mission:** Reach 1700 ELO in gen9ou  
-**Branch:** foulest-play  
-**Updated:** 2026-02-06
+**Mission:** Reach 1700 ELO in gen9ou
+**Branch:** foulest-play
+**Bot Account:** ALL CHUNG (ELO: 1167, GXE: 44.1%)
+**Updated:** 2026-02-06 17:40 EST
 
-## Architecture
+---
 
-```
-DEKU (Linux/ubunztu)          BAKUGO (Windows)
-├── Code analysis             ├── Bot operation (player loop)
-├── Strategy improvements     ├── OBS/Twitch streaming
-├── Replay analysis           ├── poke-engine builds
-├── Upstream merge            ├── Battle data collection
-└── Decision system tuning    └── ELO monitoring
-```
+## Machine Ownership
 
-## Current Status
+### DEKU (Linux) owns:
+- Code analysis + strategy improvements
+- Replay analysis pipeline (`replay_analysis/`)
+- Developer loop (`infrastructure/linux/developer_loop.sh`)
+- Test suite maintenance
+- Upstream merge management
+- Porting improvements onto fresh fork
 
-### 🔴 ACTIVE: Fresh Fork + Port (DEKU)
-Starting from clean upstream (pmariglia/foul-play latest: 55fa9b4), porting our improvements.
+### BAKUGO (Windows) owns:
+- Bot operation (`infrastructure/windows/player_loop.bat`)
+- OBS + Twitch streaming (`streaming/`)
+- Battle data collection + push
+- poke-engine builds (Rust toolchain)
+- ELO monitoring + watchdog
+- Environment/credentials setup
 
-**What upstream gives us (that we were missing):**
-- poke-engine 0.0.46
-- Volatile status duration tracking
-- Better mega handling (Legends ZA filtering, alive checks)
-- Zoroark edge cases
-- Gen1-4 specific fixes
-- Guest login support
-- Team-list argument (rotate teams)
-- Guaranteed moves via pokedex.json
-- Better hidden power handling
-- Speed range stat tracking
-- Impossible abilities tracking per Pokemon
+---
 
-**What we're porting:**
-- [ ] constants_pkg/ → penalty system (abilities, moves, strategy constants)
-- [ ] fp/search/main.py → MCTS + ability detection + penalty system + timeout protection
-- [ ] fp/search/endgame.py → endgame solver
-- [ ] fp/team_analysis.py → win condition identification
-- [ ] fp/decision_trace.py → decision logging
-- [ ] fp/opponent_model.py → opponent tendencies
-- [ ] fp/movepool_tracker.py → move tracking
-- [ ] fp/playstyle_config.py → team playstyle tuning
-- [ ] fp/search/move_validators.py → move validation
-- [ ] fp/battle.py additions → snapshot(), null checks, PP tracking
-- [ ] fp/battle_modifier.py additions → time parsing, movepool tracking
-- [ ] fp/run_battle.py extensions → streaming, battle tracking, traces
-- [ ] fp/search/standard_battles.py → weighted sampling
-- [ ] fp/search/helpers.py → sample_weight
-- [ ] infrastructure/ → player/developer loops, elo watchdog
-- [ ] streaming/ → OBS/Twitch integration
-- [ ] replay_analysis/ → analysis pipeline
-- [ ] teams/ → fat-teams, vert-screens
+## DEKU Action Items
 
-### 🟡 PENDING: BAKUGO Setup
-- [ ] Register LADDERANNIHILATOR account
-- [ ] Configure .env per .env.example
-- [ ] Set up OBS browser source names
-- [ ] Install Rust toolchain for poke-engine builds
-- [ ] Pull fresh fork once DEKU pushes
+### Port Checklist (fresh fork from upstream 55fa9b4)
+All modules ported and imports verified ✅
+- [x] constants_pkg/ → penalty system (abilities, moves, strategy constants)
+- [x] fp/search/main.py → MCTS + ability detection + penalty system + timeout protection
+- [x] fp/search/endgame.py → endgame solver
+- [x] fp/team_analysis.py → win condition identification
+- [x] fp/decision_trace.py → decision logging
+- [x] fp/opponent_model.py → opponent tendencies
+- [x] fp/movepool_tracker.py → move tracking
+- [x] fp/playstyle_config.py → team playstyle tuning
+- [x] fp/search/move_validators.py → move validation
+- [x] fp/battle.py additions → snapshot(), null checks, PP tracking
+- [x] fp/battle_modifier.py additions → time parsing, movepool tracking
+- [x] fp/run_battle.py extensions → streaming, battle tracking, traces
+- [x] fp/search/standard_battles.py → weighted sampling
+- [x] fp/search/helpers.py → sample_weight
+- [x] replay_analysis/team_performance.py → per-team win rates and weakness analysis
 
-## 4-Phase Roadmap
+### Build / Fix
+- [ ] Fix bot_monitor.py username — hardcoded "LEBOTJAMESXD005", should read from .env or use "ALL CHUNG"
+- [ ] Verify developer loop (`infrastructure/linux/developer_loop.sh`) works end-to-end
+- [ ] Wire team_performance.py output into developer loop analysis prompt
 
-### Phase 1: Analytics + Tuning (1350→1450) ✅ MOSTLY DONE
-- [x] Penalty system for ability-aware decisions
-- [x] Timeout protection
-- [x] Focus Sash detection
-- [x] Setup vs Phazer awareness
-- [x] Substitute awareness
-- [x] Contact move penalties
-
-### Phase 2: Bayesian Set Inference (1450→1550) 🔄 PARTIAL
+### Phase 2: Bayesian Set Inference (1450→1550)
 - [x] Weighted sampling by set count
 - [ ] Speed range narrowing (upstream has infrastructure, need to USE it)
 - [ ] Bayesian updating as moves/items revealed
 - [ ] Track revealed information to update set probabilities
 
-### Phase 3: Switch Prediction (1550→1650) 🔄 PARTIAL
+### Phase 3: Switch Prediction (1550→1650)
 - [x] Win condition awareness
 - [x] Momentum tracking
 - [ ] PP tracking (infrastructure built, needs battle_modifier integration)
 - [ ] OpponentModel passive/sack tendencies
 - [ ] Switch prediction from type matchups
 
-### Phase 4: Archetype + Adaptive (1650→1700) ⬜ NOT STARTED
+### Phase 4: Archetype + Adaptive (1650→1700)
 - [x] Endgame solver
 - [ ] Team archetype classification
 - [ ] Game-phase awareness
 - [ ] Dynamic team selection
 
+---
+
+## BAKUGO Action Items
+
+**READ THIS CAREFULLY — step-by-step instructions for getting the bot running on Windows.**
+
+### 1. Pull Latest Code
+```powershell
+cd C:\Users\Ryan\projects\fouler-play   # or wherever your clone is
+git checkout foulest-play
+git pull origin foulest-play
+```
+
+### 2. Environment Setup
+Copy `.env.example` to `.env` if you haven't, then fill in:
+```
+PS_USERNAME=ALL CHUNG
+PS_PASSWORD=<check with Ryan or existing .env>
+PS_WEBSOCKET_URI=wss://sim3.psim.us/showdown/websocket
+PS_FORMAT=gen9ou
+PS_BOT_MODE=search_ladder
+
+# OBS streaming (if OBS is set up)
+OBS_WS_HOST=localhost
+OBS_WS_PORT=4455
+OBS_BATTLE_SOURCES=Battle Slot 1,Battle Slot 2,Battle Slot 3
+
+# Discord webhooks (ask Ryan or check existing .env)
+DISCORD_WEBHOOK_URL=<project updates webhook>
+DISCORD_BATTLES_WEBHOOK_URL=<battle notifications webhook>
+DISCORD_FEEDBACK_WEBHOOK_URL=<turn review webhook>
+```
+
+### 3. Python Environment
+```powershell
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 4. poke-engine (Rust required)
+```powershell
+# Need Rust toolchain: https://rustup.rs/
+pip install poke-engine
+# If that fails, try: pip install poke-engine==0.3.0
+```
+
+### 5. Verify Bot Runs
+```powershell
+python run.py --ps-username "ALL CHUNG" --ps-password "<password>" --bot-mode search_ladder --pokemon-format gen9ou --team-name gen9/ou/fat-team-1-stall --search-time-ms 3000 --run-count 5 --save-replay always --log-level INFO
+```
+
+### 6. Install Player Loop as Scheduled Task
+```powershell
+# Run as Administrator:
+infrastructure\windows\install_task.bat
+schtasks /run /tn "FoulerPlayPlayerLoop"
+```
+
+### 7. Streaming Pipeline (streaming/ has files but needs OBS setup)
+- Verify OBS has Browser Sources named "Battle Slot 1", "Battle Slot 2", "Battle Slot 3"
+- URL format: `https://play.pokemonshowdown.com/battle-gen9ou-XXXXXXX`
+- **NEVER** use `~~showdown` in URLs — causes "Please visit showdown directly" errors
+- Test obs-websocket connection: `python streaming/obs_controller.py`
+- Start stream server: `python streaming/serve_obs_page.py`
+
+### 8. Verify Everything
+- [x] Bot connects to Showdown and plays games — LIVE, 2-3 concurrent battles running (ALL CHUNG)
+- [ ] battle_stats.json is being written — waiting for first batch to complete (fat games are long)
+- [ ] Replays saved to replay_analysis/
+- [ ] OBS shows live battles (if streaming) — OBS not running yet, streaming server up on :8777
+- [x] Player loop runs unattended — scheduled task FoulerPlayPlayerLoop installed
+- [ ] Push battle_stats.json after each batch
+
+### Completed Setup Steps
+- [x] Step 1: Pull latest code (at 9ca25a3)
+- [x] Step 2: .env configured (ALL CHUNG, all OBS vars, ELO tracking)
+- [x] Step 3: Python env ready (all deps installed)
+- [x] Step 4: poke-engine 0.0.46 built with terastallization (Rust cargo 1.92.0, PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 for Python 3.14)
+- [x] Step 5: Bot verified running — logged in, searching ladder, playing games
+- [x] Step 6: Scheduled task installed (FoulerPlayPlayerLoop)
+- [x] Step 7: Streaming server running (serve_obs_page.py on :8777), OBS not yet open
+
+---
+
+## Bug Reports
+<!-- When either machine finds a bug, note it here with date and description. The owning machine fixes it. -->
+- 2026-02-06: bot_monitor.py hardcodes USERNAME="LEBOTJAMESXD005" — needs to match current account "ALL CHUNG" (DEKU fixing)
+
+---
+
 ## Communication Protocol
 
-- Push code changes to `foulest-play` branch
-- Update this TASKBOARD.md when completing items
-- DEKU pushes code, BAKUGO pushes battle data
+- Push code/data to `foulest-play` branch
+- Update this TASKBOARD.md when completing items (check the box: `[x]`)
+- DEKU pushes code changes, BAKUGO pushes battle data
 - Check `battle_stats.json` for performance tracking
+- If you need the other machine to act, write it under their Action Items section and push
+
+## Phase 1 (DONE)
+- [x] Penalty system for ability-aware decisions
+- [x] Timeout protection
+- [x] Focus Sash detection
+- [x] Setup vs Phazer awareness
+- [x] Substitute awareness
+- [x] Contact move penalties
