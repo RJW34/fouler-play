@@ -2366,7 +2366,7 @@ def upkeep(battle, _):
         )
         battle.field_turns_remaining = 3
 
-    if constants.ROOST in battle.user.active.volatile_statuses:
+    if battle.user.active is not None and constants.ROOST in battle.user.active.volatile_statuses:
         logger.info(
             "Removing 'roost' from {}'s volatiles".format(battle.user.active.name)
         )
@@ -2374,7 +2374,7 @@ def upkeep(battle, _):
             v for v in battle.user.active.volatile_statuses if v != constants.ROOST
         ]
 
-    if constants.ROOST in battle.opponent.active.volatile_statuses:
+    if battle.opponent.active is not None and constants.ROOST in battle.opponent.active.volatile_statuses:
         logger.info(
             "Removing 'roost' from {}'s volatiles".format(battle.opponent.active.name)
         )
