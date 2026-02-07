@@ -3390,8 +3390,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
 
     mcts_results = []
     try:
-        executor = ProcessPoolExecutor(max_workers=FoulPlayConfig.parallelism)
-        try:
+        with ProcessPoolExecutor(max_workers=FoulPlayConfig.parallelism) as executor:
             futures = []
             for index, (b, chance) in enumerate(battles):
                 fut = executor.submit(
@@ -3410,16 +3409,9 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                     mcts_results.append((result, chance, index))
                 except (FuturesTimeoutError, TimeoutError):
                     logger.warning(f"MCTS battle {index} timed out, skipping")
+                    fut.cancel()
                 except Exception as e:
                     logger.warning(f"MCTS battle {index} failed: {e}")
-        finally:
-            try:
-                executor.shutdown(wait=False, cancel_futures=True)
-            except Exception:
-                try:
-                    executor.shutdown(wait=False)
-                except Exception:
-                    pass
 
         if not mcts_results:
             logger.warning("All MCTS searches failed/timed out, using fallback")
