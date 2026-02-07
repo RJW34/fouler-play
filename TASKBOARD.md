@@ -148,6 +148,77 @@ Based on what you find, fix the single most impactful pattern. Examples:
 
 ---
 
+## COLLABORATIVE: Fix Streaming Overlay
+
+**Both DEKU and BAKUGO** need to work on this. The stream is partially broken — see issues below.
+
+**Accounts:** ALL CHUNG (BAKUGO/Windows) and BUGINTHECODE (DEKU/Linux). Both play on ladder. Stream runs on BAKUGO.
+
+### What's Wrong (from stream screenshot)
+
+1. **Center panel (Worker 2) shows OBS default page** — browser source URL not configured
+2. **Worker 1 shows "Unknown" opponent** — opponent name not propagating from battle hooks
+3. **ELO panel needs both accounts** — currently `serve_obs_page.py` only fetches one account's ELO (`SHOWDOWN_USER_ID` env var). Need to fetch and display ELO for BOTH ALL CHUNG and BUGINTHECODE
+4. **Stats mismatch** — header shows 24W-14L but Today panel shows 23-12. Root cause: overlay.html uses localStorage for win/loss tracking which drifts from `daily_stats.json`. The server-side `daily_stats.json` should be the single source of truth
+5. **Battles don't always hook in** — `send_stream_event()` in `run_battle.py` (line 424) silently fails if `serve_obs_page.py` isn't running. Events are fire-and-forget with no retry
+
+### BAKUGO Tasks (OBS + Config)
+
+1. **Ensure `serve_obs_page.py` is running BEFORE OBS launches.** Add to `player_loop.bat` or start manually:
+   ```
+   python streaming/serve_obs_page.py
+   ```
+2. **Configure OBS browser sources** — set these URLs:
+   - Left panel (Worker 1): `http://localhost:8777/obs?slot=1`
+   - Center panel (Worker 2): `http://localhost:8777/obs?slot=2`
+   - Right panel (Worker 3): `http://localhost:8777/obs?slot=3`
+   - Stats overlay: `http://localhost:8777/overlay`
+3. **Set `.env` variables** for ELO fetching:
+   ```
+   SHOWDOWN_USER_ID=allchung
+   SHOWDOWN_ACCOUNTS=allchung,buginthecode
+   ```
+   The `SHOWDOWN_ACCOUNTS` var is new — DEKU will add support for it.
+4. **Verify the stream** — after starting the server, open `http://localhost:8777/overlay` in a browser. Confirm ELO, worker pills, and stats all show correctly.
+
+### DEKU Tasks (Code Fixes)
+
+1. **Multi-account ELO in `streaming/serve_obs_page.py`:**
+   - Read `SHOWDOWN_ACCOUNTS` env var (comma-separated PS usernames)
+   - Modify `fetch_showdown_elo()` to accept a `user_id` parameter
+   - Store ELO per account in `_ladder_cache` (change from `{elo: X}` to `{accounts: {name: elo, ...}}`)
+   - Modify `build_state_payload()` to include `accounts_elo: {allchung: 1198, buginthecode: 1139}`
+
+2. **Multi-account ELO in `streaming/overlay.html`:**
+   - Replace the single `mid-elo` div with a loop over `accounts_elo`
+   - Display each account name + ELO value (e.g., "ALL CHUNG 1198 | BUGINTHECODE 1139")
+   - Apply the existing flash-up/flash-down animations per account
+
+3. **Fix stats source of truth:**
+   - In `overlay.html`, remove the localStorage-based win/loss inference logic
+   - Read `today_wins` / `today_losses` directly from the WebSocket `status` payload
+   - Recent results pips (W/L squares in bottom bar) should come from the server, not inferred from ELO changes
+
+4. **Fix opponent name in Worker pills:**
+   - In `overlay.html` `updateOverlay()`, the worker name update reads from `activeBattles[i].opponent`
+   - Verify that `active_battles.json` always includes the `opponent` field when a battle starts
+   - Check `run_battle.py` line ~1279: `opponent_name = battle.opponent.account_name` — ensure this resolves before the battle entry is written
+
+5. **Add retry to `send_stream_event()`** in `fp/run_battle.py` (line 424):
+   - Add 1 retry with 2s delay if first attempt fails
+   - Log a warning (not just debug) on failure so issues are visible
+
+### Verification
+After both agents push their changes:
+- [ ] `serve_obs_page.py` starts without errors
+- [ ] `http://localhost:8777/overlay` shows both account ELOs
+- [ ] `http://localhost:8777/obs?slot=1` shows battle view (not OBS default page)
+- [ ] Worker pills update with opponent names when battle starts
+- [ ] Today stats match between header and panel
+- [ ] `python -m pytest tests/ -v` passes
+
+---
+
 ## Bug Reports
 - 2026-02-06: Multiple files reference old bot accounts. Grep for "LEBOTJAMESXD" and fix to "ALL CHUNG":
   - `bot_monitor.py` — hardcoded USERNAME
