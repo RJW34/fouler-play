@@ -1,0 +1,79 @@
+[team_performance] Loading battle stats...
+[team_performance] Loaded 12 battle records.
+[team_performance] Parsing replay files...
+[team_performance] Parsed 22 replays.
+[team_performance] Building per-team statistics...
+[team_performance] Found 2 distinct team(s).
+[team_performance] JSON report written to /home/ryan/projects/fouler-play/replay_analysis/team_report.json
+
+========================================================================
+FOULER PLAY -- TEAM PERFORMANCE REPORT
+Generated: 2026-02-06T17:37:56.620966
+Total battles analysed: 12
+========================================================================
+
+------------------------------------------------------------------------
+TEAM: gen9/ou/balance-team-1
+------------------------------------------------------------------------
+  Games: 10  |  W/L: 5/5  |  Win Rate: 50.0% (95% CI: 23.7%-76.3%)
+  ELO Delta: +11  |  Trend: stable
+    Last 10: 5W/5L (50.0%)
+    Last 25: 5W/5L (50.0%)
+    Last 50: 5W/5L (50.0%)
+
+  Worst Matchups:
+    vs Kingambit             5L/5G  loss rate 100% (CI: 57%-100%) ***
+    vs Toxapex               5L/6G  loss rate 83% (CI: 44%-97%) ***
+    vs Dragapult             4L/5G  loss rate 80% (CI: 38%-96%) ***
+    vs Gholdengo             4L/6G  loss rate 67% (CI: 30%-90%)
+    vs Zapdos                4L/6G  loss rate 67% (CI: 30%-90%)
+
+  Per-Pokemon Performance:
+    Gliscor               games= 10  faints=  3 (30%)  KOs=  6 (60%)
+    Gholdengo             games= 10  faints=  1 (10%)  KOs=  0 (0%)
+    Raging Bolt           games= 10  faints=  0 (0%)  KOs=  0 (0%)
+    Iron Valiant          games= 10  faints=  0 (0%)  KOs=  0 (0%)
+    Great Tusk            games= 10  faints=  0 (0%)  KOs=  0 (0%)
+    Primarina             games= 10  faints=  0 (0%)  KOs=  0 (0%)
+
+  Win Rate by Opponent Rating:
+    1200-1299     5W/5L  WR 50% (CI: 24%-76%)
+
+------------------------------------------------------------------------
+TEAM: gen9/ou/hyper-offense-1
+------------------------------------------------------------------------
+  Games: 2  |  W/L: 2/0  |  Win Rate: 100.0% (95% CI: 34.2%-100.0%)
+  ELO Delta: +32  |  Trend: insufficient_data
+    Last 10: 2W/0L (100.0%)
+    Last 25: 2W/0L (100.0%)
+    Last 50: 2W/0L (100.0%)
+
+  Worst Matchups:
+    vs Toxapex               0L/2G  loss rate 0% (CI: 0%-66%)
+
+  Per-Pokemon Performance:
+    Ogerpon-Wellspring    games=  2  faints=  0 (0%)  KOs=  0 (0%)
+    Raging Bolt           games=  2  faints=  0 (0%)  KOs=  0 (0%)
+    Iron Valiant          games=  2  faints=  0 (0%)  KOs=  0 (0%)
+    Iron Moth             games=  2  faints=  0 (0%)  KOs=  0 (0%)
+    Great Tusk            games=  2  faints=  0 (0%)  KOs=  0 (0%)
+    Dragapult             games=  2  faints=  0 (0%)  KOs=  0 (0%)
+
+  Win Rate by Opponent Rating:
+    1200-1299     2W/0L  WR 100% (CI: 34%-100%)
+
+========================================================================
+RECOMMENDATIONS
+========================================================================
+
+  [gen9/ou/balance-team-1]
+    #1 Weakness: opponent_Kingambit
+    Detail:     Loses 100% of games when opponent has Kingambit (5L / 5G, 95% CI [57%, 100%])
+    Suggestion: Consider adding a dedicated check or counter for Kingambit to gen9/ou/balance-team-1, or avoid queuing this team when Kingambit is common in the meta.
+
+  [gen9/ou/hyper-offense-1]
+    No critical weakness identified.
+
+========================================================================
+END OF REPORT
+========================================================================

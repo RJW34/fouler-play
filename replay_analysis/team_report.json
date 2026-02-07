@@ -1,0 +1,409 @@
+{
+  "generated_at": "2026-02-06T17:37:56.620966",
+  "total_battles": 12,
+  "teams": {
+    "gen9/ou/balance-team-1": {
+      "games_played": 10,
+      "wins": 5,
+      "losses": 5,
+      "win_rate": 0.5,
+      "win_rate_ci_95": [
+        0.237,
+        0.763
+      ],
+      "elo_delta": 11,
+      "trend": "stable",
+      "last_10": {
+        "games": 10,
+        "wins": 5,
+        "win_rate": 0.5
+      },
+      "last_25": {
+        "games": 10,
+        "wins": 5,
+        "win_rate": 0.5
+      },
+      "last_50": {
+        "games": 10,
+        "wins": 5,
+        "win_rate": 0.5
+      },
+      "worst_matchups": [
+        {
+          "opponent_pokemon": "Kingambit",
+          "games": 5,
+          "wins": 0,
+          "losses": 5,
+          "loss_rate": 1.0,
+          "loss_rate_ci_95": [
+            0.566,
+            1.0
+          ]
+        },
+        {
+          "opponent_pokemon": "Toxapex",
+          "games": 6,
+          "wins": 1,
+          "losses": 5,
+          "loss_rate": 0.833,
+          "loss_rate_ci_95": [
+            0.436,
+            0.97
+          ]
+        },
+        {
+          "opponent_pokemon": "Dragapult",
+          "games": 5,
+          "wins": 1,
+          "losses": 4,
+          "loss_rate": 0.8,
+          "loss_rate_ci_95": [
+            0.376,
+            0.964
+          ]
+        },
+        {
+          "opponent_pokemon": "Gholdengo",
+          "games": 6,
+          "wins": 2,
+          "losses": 4,
+          "loss_rate": 0.667,
+          "loss_rate_ci_95": [
+            0.3,
+            0.903
+          ]
+        },
+        {
+          "opponent_pokemon": "Zapdos",
+          "games": 6,
+          "wins": 2,
+          "losses": 4,
+          "loss_rate": 0.667,
+          "loss_rate_ci_95": [
+            0.3,
+            0.903
+          ]
+        },
+        {
+          "opponent_pokemon": "Landorus-Therian",
+          "games": 7,
+          "wins": 3,
+          "losses": 4,
+          "loss_rate": 0.571,
+          "loss_rate_ci_95": [
+            0.25,
+            0.842
+          ]
+        },
+        {
+          "opponent_pokemon": "Corviknight",
+          "games": 2,
+          "wins": 1,
+          "losses": 1,
+          "loss_rate": 0.5,
+          "loss_rate_ci_95": [
+            0.095,
+            0.905
+          ]
+        },
+        {
+          "opponent_pokemon": "Great Tusk",
+          "games": 3,
+          "wins": 2,
+          "losses": 1,
+          "loss_rate": 0.333,
+          "loss_rate_ci_95": [
+            0.061,
+            0.792
+          ]
+        },
+        {
+          "opponent_pokemon": "Iron Valiant",
+          "games": 3,
+          "wins": 2,
+          "losses": 1,
+          "loss_rate": 0.333,
+          "loss_rate_ci_95": [
+            0.061,
+            0.792
+          ]
+        },
+        {
+          "opponent_pokemon": "Slowking-Galar",
+          "games": 4,
+          "wins": 4,
+          "losses": 0,
+          "loss_rate": 0.0,
+          "loss_rate_ci_95": [
+            0.0,
+            0.49
+          ]
+        }
+      ],
+      "pokemon_performance": {
+        "Gholdengo": {
+          "games": 10,
+          "faints": 1,
+          "faint_rate": 0.1,
+          "faint_rate_ci_95": [
+            0.018,
+            0.404
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.278
+          ]
+        },
+        "Raging Bolt": {
+          "games": 10,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.278
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.278
+          ]
+        },
+        "Iron Valiant": {
+          "games": 10,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.278
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.278
+          ]
+        },
+        "Gliscor": {
+          "games": 10,
+          "faints": 3,
+          "faint_rate": 0.3,
+          "faint_rate_ci_95": [
+            0.108,
+            0.603
+          ],
+          "kos": 6,
+          "ko_rate": 0.6,
+          "ko_rate_ci_95": [
+            0.313,
+            0.832
+          ]
+        },
+        "Great Tusk": {
+          "games": 10,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.278
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.278
+          ]
+        },
+        "Primarina": {
+          "games": 10,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.278
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.278
+          ]
+        }
+      },
+      "rating_brackets": {
+        "1200_1299": {
+          "range": "1200-1299",
+          "games": 10,
+          "wins": 5,
+          "losses": 5,
+          "win_rate": 0.5,
+          "win_rate_ci_95": [
+            0.237,
+            0.763
+          ]
+        }
+      }
+    },
+    "gen9/ou/hyper-offense-1": {
+      "games_played": 2,
+      "wins": 2,
+      "losses": 0,
+      "win_rate": 1.0,
+      "win_rate_ci_95": [
+        0.342,
+        1.0
+      ],
+      "elo_delta": 32,
+      "trend": "insufficient_data",
+      "last_10": {
+        "games": 2,
+        "wins": 2,
+        "win_rate": 1.0
+      },
+      "last_25": {
+        "games": 2,
+        "wins": 2,
+        "win_rate": 1.0
+      },
+      "last_50": {
+        "games": 2,
+        "wins": 2,
+        "win_rate": 1.0
+      },
+      "worst_matchups": [
+        {
+          "opponent_pokemon": "Toxapex",
+          "games": 2,
+          "wins": 2,
+          "losses": 0,
+          "loss_rate": 0.0,
+          "loss_rate_ci_95": [
+            0.0,
+            0.658
+          ]
+        }
+      ],
+      "pokemon_performance": {
+        "Ogerpon-Wellspring": {
+          "games": 2,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.658
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.658
+          ]
+        },
+        "Raging Bolt": {
+          "games": 2,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.658
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.658
+          ]
+        },
+        "Iron Valiant": {
+          "games": 2,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.658
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.658
+          ]
+        },
+        "Iron Moth": {
+          "games": 2,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.658
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.658
+          ]
+        },
+        "Great Tusk": {
+          "games": 2,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.658
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.658
+          ]
+        },
+        "Dragapult": {
+          "games": 2,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.658
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.658
+          ]
+        }
+      },
+      "rating_brackets": {
+        "1200_1299": {
+          "range": "1200-1299",
+          "games": 2,
+          "wins": 2,
+          "losses": 0,
+          "win_rate": 1.0,
+          "win_rate_ci_95": [
+            0.342,
+            1.0
+          ]
+        }
+      }
+    }
+  },
+  "recommendations": {
+    "gen9/ou/balance-team-1": {
+      "team_file": "gen9/ou/balance-team-1",
+      "weakness": "opponent_Kingambit",
+      "detail": "Loses 100% of games when opponent has Kingambit (5L / 5G, 95% CI [57%, 100%])",
+      "suggestion": "Consider adding a dedicated check or counter for Kingambit to gen9/ou/balance-team-1, or avoid queuing this team when Kingambit is common in the meta."
+    },
+    "gen9/ou/hyper-offense-1": {
+      "team_file": "gen9/ou/hyper-offense-1",
+      "weakness": null,
+      "detail": "No critical weakness identified.",
+      "suggestion": "Keep collecting data."
+    }
+  }
+}
