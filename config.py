@@ -22,12 +22,25 @@ class CustomFormatter(logging.Formatter):
 
 
 class CustomRotatingFileHandler(RotatingFileHandler):
-    def __init__(self, file_name, **kwargs):
+    def __init__(self, file_name, maxBytes=10*1024*1024, backupCount=3, **kwargs):
+        """
+        Custom rotating file handler with size limits.
+        
+        Args:
+            file_name: Base log file name
+            maxBytes: Maximum size in bytes before rotation (default 10MB)
+            backupCount: Number of backup files to keep (default 3)
+        """
         self.base_dir = "logs"
         if not os.path.exists(self.base_dir):
             os.mkdir(self.base_dir)
 
-        super().__init__("{}/{}".format(self.base_dir, file_name), **kwargs)
+        super().__init__(
+            "{}/{}".format(self.base_dir, file_name),
+            maxBytes=maxBytes,
+            backupCount=backupCount,
+            **kwargs
+        )
 
     def do_rollover(self, new_file_name):
         new_file_name = new_file_name.replace("/", "_")
