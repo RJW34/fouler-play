@@ -150,17 +150,74 @@ Based on what you find, fix the single most impactful pattern. Examples:
 
 ## COLLABORATIVE: Fix Streaming Overlay
 
-**Both DEKU and BAKUGO** need to work on this. The stream is partially broken — see issues below.
+**Both DEKU and BAKUGO** need to work on this. The stream is partially broken.
 
 **Accounts:** ALL CHUNG (BAKUGO/Windows) and BUGINTHECODE (DEKU/Linux). Both play on ladder. Stream runs on BAKUGO.
 
+### Target Layout (2 battles, not 3)
+
+We run **2 concurrent battles** (`MAX_CONCURRENT_BATTLES=2`). The stream is a 3-column layout:
+
+```
+┌──────────────────┬──────────────────┬──────────────────┐
+│   BATTLE 1       │   STATS CENTER   │   BATTLE 2       │
+│   (Worker 1)     │                  │   (Worker 2)     │
+│                  │   ELO            │                  │
+│   [PS iframe]    │   ALL CHUNG 1198 │   [PS iframe]    │
+│                  │   BUGINTHECODE   │                  │
+│                  │   1139           │                  │
+│   vs Opponent    │                  │   vs Opponent    │
+│                  │   TODAY 23-12    │                  │
+│                  │   Winrate 66%    │                  │
+│                  │   Streak 2L      │                  │
+│                  │                  │                  │
+│                  │   NEXT FIX       │                  │
+│                  │   [from todo]    │                  │
+└──────────────────┴──────────────────┴──────────────────┘
+Top bar: ALL CHUNG | Active: N | Session: NW-NL | GEN 9 OU | status
+Bottom bar: vs Opponent1, Opponent2 | [W][W][L][W][L] pips | streak
+```
+
+**The center column is NOT a battle slot.** It is the stats dashboard. There is no Worker 3. Remove it entirely from `obs_battles.html`.
+
 ### What's Wrong (from stream screenshot)
 
-1. **Center panel (Worker 2) shows OBS default page** — browser source URL not configured
+1. **Center panel shows OBS default page** — it was configured as a 3rd battle slot browser source, but should be the built-in stats panel
 2. **Worker 1 shows "Unknown" opponent** — opponent name not propagating from battle hooks
-3. **ELO panel needs both accounts** — currently `serve_obs_page.py` only fetches one account's ELO (`SHOWDOWN_USER_ID` env var). Need to fetch and display ELO for BOTH ALL CHUNG and BUGINTHECODE
-4. **Stats mismatch** — header shows 24W-14L but Today panel shows 23-12. Root cause: overlay.html uses localStorage for win/loss tracking which drifts from `daily_stats.json`. The server-side `daily_stats.json` should be the single source of truth
-5. **Battles don't always hook in** — `send_stream_event()` in `run_battle.py` (line 424) silently fails if `serve_obs_page.py` isn't running. Events are fire-and-forget with no retry
+3. **ELO panel needs both accounts** — `serve_obs_page.py` only fetches one account's ELO. Need both ALL CHUNG and BUGINTHECODE
+4. **Stats mismatch** — header shows 24W-14L but Today panel shows 23-12. Root cause: `overlay.html` uses localStorage for win/loss tracking which drifts from `daily_stats.json`. Server-side `daily_stats.json` should be the single source of truth
+5. **Battles don't always hook in** — `send_stream_event()` in `run_battle.py` (line 424) silently fails if `serve_obs_page.py` isn't running
+
+### DEKU Tasks (Code Fixes)
+
+**1. Merge the two HTML pages into one.**
+Currently there are two separate pages: `obs_battles.html` (battle iframes) and `overlay.html` (stats). These need to be ONE page served at `/obs`. The layout:
+- Left column: Battle 1 iframe + Worker 1 pill (opponent name, status)
+- Center column: Stats dashboard (ELO for both accounts, today W-L, winrate, streak, next fix). Take the stats content from `overlay.html`'s dead-card panels and put it here. This is NOT an iframe — it's part of the page.
+- Right column: Battle 2 iframe + Worker 2 pill
+- Top bar and bottom bar stay as-is from `overlay.html`
+- **Remove Worker 3 entirely** — no third battle slot
+
+**2. Multi-account ELO in `streaming/serve_obs_page.py`:**
+- Read new env var `SHOWDOWN_ACCOUNTS` (comma-separated PS usernames, e.g., `allchung,buginthecode`)
+- Modify `fetch_showdown_elo()` to accept a `user_id` parameter
+- Store ELO per account in `_ladder_cache` (change from `{elo: X}` to `{accounts: {name: elo, ...}}`)
+- Modify `build_state_payload()` to include `accounts_elo: {"allchung": 1198, "buginthecode": 1139}`
+- Keep the existing single `elo` field in the payload for backward compatibility (use the primary account)
+
+**3. Fix stats source of truth:**
+- In the merged page, do NOT use localStorage for win/loss counting
+- Read `today_wins` / `today_losses` directly from the WebSocket `status` payload (comes from `daily_stats.json`)
+- Recent results pips (W/L squares in bottom bar) should come from the server, not inferred from ELO changes
+
+**4. Fix opponent name in Worker pills:**
+- In `updateOverlay()`, worker name reads from `activeBattles[i].opponent`
+- Verify `active_battles.json` always includes the `opponent` field when a battle starts
+- Check `run_battle.py` line ~1279: `opponent_name = battle.opponent.account_name` — ensure this resolves before the entry is written
+
+**5. Add retry to `send_stream_event()`** in `fp/run_battle.py` (line 424):
+- Add 1 retry with 2s delay if first attempt fails
+- Log a warning (not just debug) on failure so issues are visible
 
 ### BAKUGO Tasks (OBS + Config)
 
@@ -168,53 +225,25 @@ Based on what you find, fix the single most impactful pattern. Examples:
    ```
    python streaming/serve_obs_page.py
    ```
-2. **Configure OBS browser sources** — set these URLs:
-   - Left panel (Worker 1): `http://localhost:8777/obs?slot=1`
-   - Center panel (Worker 2): `http://localhost:8777/obs?slot=2`
-   - Right panel (Worker 3): `http://localhost:8777/obs?slot=3`
-   - Stats overlay: `http://localhost:8777/overlay`
-3. **Set `.env` variables** for ELO fetching:
+2. **Set `MAX_CONCURRENT_BATTLES=2`** in `.env`
+3. **Configure OBS browser sources** — you only need TWO browser sources now:
+   - **Full stream page**: `http://localhost:8777/obs` (this is the merged page with battles + stats)
+   - OR if using separate sources: Left battle `http://localhost:8777/obs?slot=1`, Right battle `http://localhost:8777/obs?slot=2`
+   - **Remove the center browser source** — the center panel is built into the page, not a separate source
+4. **Set `.env` variables** for multi-account ELO:
    ```
    SHOWDOWN_USER_ID=allchung
    SHOWDOWN_ACCOUNTS=allchung,buginthecode
    ```
-   The `SHOWDOWN_ACCOUNTS` var is new — DEKU will add support for it.
-4. **Verify the stream** — after starting the server, open `http://localhost:8777/overlay` in a browser. Confirm ELO, worker pills, and stats all show correctly.
-
-### DEKU Tasks (Code Fixes)
-
-1. **Multi-account ELO in `streaming/serve_obs_page.py`:**
-   - Read `SHOWDOWN_ACCOUNTS` env var (comma-separated PS usernames)
-   - Modify `fetch_showdown_elo()` to accept a `user_id` parameter
-   - Store ELO per account in `_ladder_cache` (change from `{elo: X}` to `{accounts: {name: elo, ...}}`)
-   - Modify `build_state_payload()` to include `accounts_elo: {allchung: 1198, buginthecode: 1139}`
-
-2. **Multi-account ELO in `streaming/overlay.html`:**
-   - Replace the single `mid-elo` div with a loop over `accounts_elo`
-   - Display each account name + ELO value (e.g., "ALL CHUNG 1198 | BUGINTHECODE 1139")
-   - Apply the existing flash-up/flash-down animations per account
-
-3. **Fix stats source of truth:**
-   - In `overlay.html`, remove the localStorage-based win/loss inference logic
-   - Read `today_wins` / `today_losses` directly from the WebSocket `status` payload
-   - Recent results pips (W/L squares in bottom bar) should come from the server, not inferred from ELO changes
-
-4. **Fix opponent name in Worker pills:**
-   - In `overlay.html` `updateOverlay()`, the worker name update reads from `activeBattles[i].opponent`
-   - Verify that `active_battles.json` always includes the `opponent` field when a battle starts
-   - Check `run_battle.py` line ~1279: `opponent_name = battle.opponent.account_name` — ensure this resolves before the battle entry is written
-
-5. **Add retry to `send_stream_event()`** in `fp/run_battle.py` (line 424):
-   - Add 1 retry with 2s delay if first attempt fails
-   - Log a warning (not just debug) on failure so issues are visible
+5. **Verify** — open `http://localhost:8777/obs` in a browser. Confirm: 2 battle panels (left/right), stats center with both ELOs, correct today stats.
 
 ### Verification
 After both agents push their changes:
 - [ ] `serve_obs_page.py` starts without errors
-- [ ] `http://localhost:8777/overlay` shows both account ELOs
-- [ ] `http://localhost:8777/obs?slot=1` shows battle view (not OBS default page)
-- [ ] Worker pills update with opponent names when battle starts
-- [ ] Today stats match between header and panel
+- [ ] `http://localhost:8777/obs` shows 2 battle panels + center stats (no Worker 3)
+- [ ] Center panel displays both ALL CHUNG and BUGINTHECODE ELOs
+- [ ] Worker pills update with opponent names when battles start
+- [ ] Today stats in center panel match session record in top bar
 - [ ] `python -m pytest tests/ -v` passes
 
 ---
