@@ -64,8 +64,8 @@ BOT_DISPLAY_NAME = os.getenv("BOT_DISPLAY_NAME", "").strip()  # e.g. "🪲 DEKU"
 # Import replay analyzer and turn reviewer (commented out during upgrade)
 # from replay_analysis.analyzer import ReplayAnalyzer
 # from replay_analysis.turn_review import TurnReviewer
-# from streaming.stream_integration import start_stream, stop_stream, update_stream_status
-# from streaming.state_store import update_daily_stats
+from streaming.stream_integration import start_stream, stop_stream, update_stream_status
+from streaming.state_store import update_daily_stats
 
 # Patterns to detect in bot output
 # NOTE: Battle IDs can have alphanumeric hash suffixes like:
@@ -432,12 +432,12 @@ class BotMonitor:
                     battle_info = ", ".join(
                         f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids
                     ) if active_battle_ids else "Waiting..."
-                    # await update_stream_status(
-                #     wins=self.wins,
-                #     losses=self.losses,
-                #     status="Battling" if active_battle_ids else "Idle",
-                #     battle_info=battle_info,
-                # )
+                    await update_stream_status(
+                        wins=self.wins,
+                        losses=self.losses,
+                        status="Battling" if active_battle_ids else "Idle",
+                        battle_info=battle_info,
+                    )
 
             # Detect worker count silently
             match = WORKER_PATTERN.search(line)
@@ -522,7 +522,7 @@ class BotMonitor:
                 if winner == our_username:
                     if not self.session_rebase_enabled or self.session_base_wins is not None:
                         self.wins += 1
-                    # update_daily_stats(wins_delta=1)  # Track daily totals - disabled during upgrade
+                    update_daily_stats(wins_delta=1)  # Track daily totals
                     emoji = "🎉"
                     result = "Won"
                     result_key = "won"
@@ -533,7 +533,7 @@ class BotMonitor:
                 else:
                     if not self.session_rebase_enabled or self.session_base_wins is not None:
                         self.losses += 1
-                    # update_daily_stats(losses_delta=1)  # Track daily totals - disabled during upgrade
+                    update_daily_stats(losses_delta=1)  # Track daily totals
                     emoji = "💀"
                     result = "Lost"
                     result_key = "lost"
@@ -562,17 +562,17 @@ class BotMonitor:
                     # Couldn't associate with a battle - still record it
                     self.record_batch_result("Unknown", result_key)
 
-                # Always update stream overlay with remaining battles/stats (disabled during upgrade)
-                # active_count = len(self.active_battles)
-                # active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
-                # battle_info = ", ".join(
-                #     f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids
-                # ) if active_battle_ids else "Waiting..."
-                # await update_stream_status(
-                #     wins=self.wins, losses=self.losses,
-                #     status="Battling" if active_battle_ids else "Idle",
-                #     battle_info=battle_info
-                # )
+                # Always update stream overlay with remaining battles/stats
+                active_count = len(self.active_battles)
+                active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
+                battle_info = ", ".join(
+                    f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids
+                ) if active_battle_ids else "Waiting..."
+                await update_stream_status(
+                    wins=self.wins, losses=self.losses,
+                    status="Battling" if active_battle_ids else "Idle",
+                    battle_info=battle_info
+                )
 
                 # # Stop stream if no more active battles
                 # if active_count == 0:
