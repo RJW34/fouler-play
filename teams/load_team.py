@@ -2,7 +2,7 @@ import random
 import os
 from .team_converter import export_to_packed, export_to_dict
 
-TEAM_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "teams")
+TEAM_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TeamListIterator:
