@@ -693,8 +693,7 @@ body.hide-recent #mid-form {
     </div>
     <div class="dead-card">
       <div class="hud-label">ELO</div>
-      <div class="hud-elo-value" id="mid-elo">---</div>
-      <div class="hud-elo-delta" id="mid-elo-delta"></div>
+      <div id="accounts-elo-container"></div>
     </div>
   </div>
 </div>
@@ -711,7 +710,7 @@ body.hide-recent #mid-form {
 </div>
 
 <script>
-let prevElo = null;
+let prevElos = {}; // Track ELO per account
 let prevWins = 0;
 let prevLosses = 0;
 let lastResult = null; // 'W' or 'L'
@@ -903,39 +902,64 @@ function updateOverlay(status, battles) {
   const worker2StatusEl = document.getElementById('worker-2-status');
   const worker3StatusEl = document.getElementById('worker-3-status');
   
-  // ELO with change detection
-  const newElo = data.elo || '---';
-  if (prevElo !== null && newElo !== '---' && prevElo !== '---') {
-    const diff = Number(newElo) - Number(prevElo);
-    if (Number.isFinite(diff) && diff !== 0) {
-      const outOfOrder = (diff > 0 && lastResult === 'L') || (diff < 0 && lastResult === 'W');
-      if (deltaEl) {
-        deltaEl.textContent = (diff > 0 ? '+' : '') + diff;
-        deltaEl.className = outOfOrder ? 'sync' : (diff > 0 ? 'positive' : 'negative');
-      }
-      if (!outOfOrder && eloEl) {
-        eloEl.classList.add(diff > 0 ? 'flash-up' : 'flash-down');
-      }
-      setTimeout(() => {
-        if (eloEl) {
-          eloEl.classList.remove('flash-up', 'flash-down');
+  // Multi-account ELO with change detection
+  const accountsElo = data.accounts_elo || {};
+  const accountsEloContainer = document.getElementById('accounts-elo-container');
+  
+  if (accountsEloContainer && Object.keys(accountsElo).length > 0) {
+    accountsEloContainer.innerHTML = '';
+    for (const [account, elo] of Object.entries(accountsElo)) {
+      const accountDiv = document.createElement('div');
+      accountDiv.className = 'account-elo-row';
+      accountDiv.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0;';
+      
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'account-name';
+      nameSpan.textContent = account.toUpperCase();
+      nameSpan.style.cssText = 'font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8);';
+      
+      const eloSpan = document.createElement('span');
+      eloSpan.className = 'hud-elo-value';
+      eloSpan.textContent = elo || '---';
+      eloSpan.style.cssText = 'font-size: 28px; font-weight: 700;';
+      
+      // Check for ELO change
+      const prevElo = prevElos[account];
+      if (prevElo !== undefined && prevElo !== null && elo !== '---' && prevElo !== '---') {
+        const diff = Number(elo) - Number(prevElo);
+        if (Number.isFinite(diff) && diff !== 0) {
+          eloSpan.classList.add(diff > 0 ? 'flash-up' : 'flash-down');
+          setTimeout(() => {
+            eloSpan.classList.remove('flash-up', 'flash-down');
+          }, 3000);
         }
-        if (deltaEl) {
-          deltaEl.style.opacity = '0';
-        }
-      }, 3000);
-      if (midEloDeltaEl) {
-        setText(midEloDeltaEl, (diff > 0 ? '+' : '') + diff);
-        setStyle(midEloDeltaEl, 'color', diff > 0 ? '#3cff6d' : '#ffb3a7');
       }
+      prevElos[account] = elo;
+      
+      accountDiv.appendChild(nameSpan);
+      accountDiv.appendChild(eloSpan);
+      accountsEloContainer.appendChild(accountDiv);
     }
   }
+  
+  // Backward compat: update top bar ELO with primary account
+  const newElo = data.elo || '---';
   if (eloEl) {
     setText(eloEl, newElo);
   }
-  prevElo = newElo;
-  if (midEloEl) {
-    setText(midEloEl, newElo);
+  if (deltaEl) {
+    // Only show delta for primary account in top bar
+    const firstAccount = Object.keys(accountsElo)[0];
+    if (firstAccount && prevElos[firstAccount] !== undefined) {
+      const diff = Number(accountsElo[firstAccount]) - Number(prevElos[firstAccount]);
+      if (Number.isFinite(diff) && diff !== 0) {
+        deltaEl.textContent = (diff > 0 ? '+' : '') + diff;
+        deltaEl.className = (diff > 0 ? 'positive' : 'negative');
+        setTimeout(() => {
+          deltaEl.style.opacity = '0';
+        }, 3000);
+      }
+    }
   }
   
   // W/L tracking - use daily totals as primary display
