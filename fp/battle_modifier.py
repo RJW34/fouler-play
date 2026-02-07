@@ -2674,6 +2674,10 @@ def check_speed_ranges(battle, msg_lines):
             - the opponent COULD have prankster and it used a status move
             - Grassy Glide is used when Grassy Terrain is up
     """
+    # If either active Pokemon is None (e.g. fainted), skip speed range check
+    if battle.user.active is None or battle.opponent.active is None:
+        return
+
     for ln in msg_lines:
         # If either side switched this turn - don't do this check
         if ln.startswith("|switch|"):
