@@ -70,10 +70,39 @@ These systems are **complete and working**. Do not recreate them from scratch:
 ## DEKU Action Items
 
 ### Immediate: Diagnose the 50% Win Rate
+
+**Step 1 — Generate the report:**
+```bash
+python replay_analysis/team_performance.py
+```
+Study the output. Key things to look for:
+- Per-Pokemon faint rates: which of our Pokemon die most often? A wall dying every game means the bot isn't recovering or is staying in bad matchups.
+- Worst matchups: which opponent Pokemon cause the most losses? This tells you what the bot can't handle.
+- Is one team performing much worse than others? (fat-team-2-pivot is 44% — worst of the three)
+
+**Step 2 — Read 3-5 loss replays manually:**
+Look in `replay_analysis/` for `.json` replay files. Parse the `log` field — search for `|move|` and `|switch|` lines involving our side (p1 or p2 depending on `|player|` line matching "ALL CHUNG"). Look for these common fat/stall mistakes:
+- **Not using recovery:** Walls like Gliscor/Toxapex/Blissey should Recover/Roost when below ~60% HP. If the bot attacks instead of healing and then dies, recovery weighting is too low.
+- **Switching too aggressively:** Fat teams pivot, but excessive switching into hazards bleeds HP. Check if the bot switches more than ~40% of turns.
+- **Resisted moves:** Using Earthquake into a Flying type, or Fire move into Flash Fire. The MCTS should handle this but check if it's happening.
+- **No early hazards:** Stealth Rock should go up in the first 2-3 turns almost always with fat. If the bot never leads with its rocker, hazard priority is wrong.
+- **Not using status:** Toxic/Will-O-Wisp are core stall tools. If the bot rarely uses them, status move weighting may be too low for FAT playstyle.
+
+**Step 3 — Make ONE fix:**
+Based on what you find, fix the single most impactful pattern. Examples:
+- If recovery is underused: boost recovery weight in the FAT playstyle config or in the penalty system
+- If switching is excessive: check how `switch_penalty_multiplier` interacts with `apply_switch_penalties()`
+- If hazards aren't set: add early-game hazard priority logic
+- If status moves are ignored: check if Toxic/WoW are being deprioritized somewhere
+
+**Step 4 — Verify and push:**
 - [ ] Run team_performance.py, study the report for patterns
-- [ ] Review 10 recent losses — identify the #1 recurring mistake
+- [ ] Review 3-5 recent losses — identify the #1 recurring mistake
 - [ ] Implement a targeted fix for that mistake pattern
-- [ ] Verify fix doesn't break tests, push
+- [ ] `python -m pytest tests/ -v` — tests pass
+- [ ] `python -c "from fp.search.main import find_best_move; print('OK')"` — imports work
+- [ ] Update this TASKBOARD.md (check boxes, note what you found/fixed)
+- [ ] `git push origin foulest-play`
 
 ### Phase 2: Better Opponent Modeling (target: 1200 -> 1400)
 - [x] Weighted sampling by set count
