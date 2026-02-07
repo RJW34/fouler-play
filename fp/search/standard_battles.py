@@ -5,7 +5,7 @@ from copy import deepcopy
 import constants
 from data import all_move_json, pokedex
 from fp.search.helpers import populate_pkmn_from_set
-from fp.helpers import natures, normalize_name
+from fp.helpers import natures, normalize_name, calculate_stats
 from fp.battle import Pokemon, Battle, Battler
 from data.pkmn_sets import (
     SmogonSets,
@@ -195,6 +195,58 @@ def adjust_probabilities_for_sampling(move_rates, num_moves=4):
     return adjusted_rates
 
 
+def set_speed_compatible_with_range(pkmn: Pokemon, pkmn_set: PokemonSet) -> bool:
+    """
+    Check if a set's speed is compatible with the known speed_range.
+    Accounts for Choice Scarf (1.5x speed multiplier).
+    
+    Returns True if:
+    - No speed range constraint exists (min=0, max=inf)
+    - The set's calculated speed (with or without Choice Scarf) falls within range
+    """
+    # If no speed range constraint, accept all sets
+    if pkmn.speed_range.min == 0 and pkmn.speed_range.max == float("inf"):
+        return True
+    
+    # Calculate the speed this set would have
+    try:
+        base_stats = pokedex[pkmn.name][constants.BASESTATS]
+        # Assume max IVs (31) - we don't know opponent's IVs
+        # Level is usually 50 or 100, but we can get it from the Pokemon object
+        level = pkmn.level
+        
+        calculated_stats = calculate_stats(
+            base_stats, 
+            level, 
+            ivs=(31,) * 6, 
+            evs=pkmn_set.evs, 
+            nature=pkmn_set.nature
+        )
+        base_speed = calculated_stats[constants.SPEED]
+        
+        # Check if speed is compatible without item boost
+        if pkmn.speed_range.min <= base_speed <= pkmn.speed_range.max:
+            return True
+        
+        # Check if speed is compatible with Choice Scarf (1.5x)
+        if pkmn_set.item == "choicescarf":
+            scarf_speed = int(base_speed * 1.5)
+            if pkmn.speed_range.min <= scarf_speed <= pkmn.speed_range.max:
+                return True
+        
+        # If base speed is too high, check if the set MUST have Choice Scarf
+        # to be compatible (i.e., base_speed is above max, but with scarf it could work)
+        if base_speed > pkmn.speed_range.max and pkmn_set.item == "choicescarf":
+            # Scarf is needed but wouldn't help - reject
+            return False
+            
+        return False
+        
+    except (KeyError, IndexError):
+        # If we can't calculate speed, don't filter out the set
+        return True
+
+
 def get_filtered_sets(
     pkmn: Pokemon, remaining_sets: list[PokemonSet]
 ) -> list[PokemonSet]:
@@ -205,7 +257,7 @@ def get_filtered_sets(
                 pkmn_set=pkmn_set,
                 pkmn_moveset=PokemonMoveset(moves=tuple(m.name for m in pkmn.moves)),
             )
-        ):
+        ) and set_speed_compatible_with_range(pkmn, pkmn_set):
             filtered_sets.append(pkmn_set)
 
     return filtered_sets
@@ -335,6 +387,11 @@ def _sample_pokemon(pkmn: Pokemon):
     # Skip this step an amount of the time to get some variety
     # if at least 1 move is known
     remaining_team_sets = TeamDatasets.get_all_remaining_sets(pkmn)
+    # Filter by speed range compatibility
+    remaining_team_sets = [
+        s for s in remaining_team_sets 
+        if set_speed_compatible_with_range(pkmn, s.pkmn_set)
+    ]
     if remaining_team_sets and (not pkmn.moves or random.random() < 0.75):
         weights = [max(1, s.pkmn_set.count) for s in remaining_team_sets]
         sampled_set = deepcopy(random.choices(remaining_team_sets, weights=weights)[0])
@@ -346,7 +403,9 @@ def _sample_pokemon(pkmn: Pokemon):
     remaining_team_sets = [
         s
         for s in TeamDatasets.get_pkmn_sets_from_pkmn_name(pkmn)
-        if s.pkmn_set.set_makes_sense(pkmn) and smogon_set_makes_sense(s)
+        if s.pkmn_set.set_makes_sense(pkmn) 
+        and smogon_set_makes_sense(s)
+        and set_speed_compatible_with_range(pkmn, s.pkmn_set)
     ]
     if remaining_team_sets:
         weights = [max(1, s.pkmn_set.count) for s in remaining_team_sets]
