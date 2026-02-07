@@ -723,6 +723,15 @@ async def run_foul_play():
 
 
 if __name__ == "__main__":
+    # Prevent duplicate bot instances
+    try:
+        from process_lock import acquire_lock, release_lock
+        if not acquire_lock(username=FoulPlayConfig.pokemon_showdown_username if hasattr(FoulPlayConfig, 'pokemon_showdown_username') else "unknown"):
+            logger.error("Another bot instance is already running. Exiting.")
+            sys.exit(1)
+    except ImportError:
+        pass  # process_lock not available, continue without it
+
     try:
         asyncio.run(run_foul_play())
     except Exception:
