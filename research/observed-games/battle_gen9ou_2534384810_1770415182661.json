@@ -1,0 +1,185 @@
+{
+  "id": "battle-gen9ou-2534384810",
+  "p1": "omoqaqqwq",
+  "p2": "cn112205",
+  "minElo": 1627,
+  "startTime": 1770415023335,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Darkrai|Sludge Bomb|p2a: Ogerpon",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Darkrai|Focus Blast|p2a: Kyurem|[miss]",
+        "|move|p2a: Kyurem|Dragon Dance|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Darkrai",
+        "|switch|p1a: Zapdos|Zapdos-Galar|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Zapdos|Knock Off|p2a: Kyurem",
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Zapdos",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Kyurem|Dragon Dance|p2a: Kyurem",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Kyurem|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Ninetales|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Ogerpon|Encore||[still]",
+        "|move|p2a: Ninetales|Aurora Veil|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Ogerpon|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Dragonite|Dragonite, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Dragonite|Encore|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Dragonite",
+        "|switch|p1a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Polteageist|Polteageist|100/100",
+        "|move|p1a: Iron Crown|Psyshock|p2a: Polteageist"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Iron Crown|Psyshock|p2a: Polteageist",
+        "|switch|p2a: Raging Bolt|Raging Bolt|89/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Sandy Shocks|Sandy Shocks|100/100",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Sandy Shocks"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Sandy Shocks|Earth Power|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Calm Mind|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Sandy Shocks|Earth Power|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Sandy Shocks"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Sandy Shocks|Earth Power|p2a: Raging Bolt",
+        "|switch|p2a: Maushold|Maushold|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Sandy Shocks|Discharge|p2a: Maushold",
+        "|move|p2a: Maushold|Population Bomb|p1a: Sandy Shocks",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Maushold|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Ninetales|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": []
+    }
+  ],
+  "winner": "omoqaqqwq",
+  "endTime": 1770415182661,
+  "p1Team": [
+    "Zapdos-Galar",
+    "Ogerpon-Wellspring",
+    "Dragonite",
+    "Iron Crown",
+    "Sandy Shocks"
+  ],
+  "p2Team": [
+    "Kyurem",
+    "Ninetales-Alola",
+    "Raging Bolt",
+    "Polteageist",
+    "Maushold"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "zapdosgalar",
+      "ogerponwellspring",
+      "dragonite",
+      "ironcrown",
+      "sandyshocks"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "kyurem",
+      "ninetalesalola",
+      "ragingbolt",
+      "polteageist",
+      "maushold"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

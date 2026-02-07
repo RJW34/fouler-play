@@ -1,0 +1,368 @@
+{
+  "id": "battle-gen9ou-2534397817",
+  "p1": "Wozzathesexygod",
+  "p2": "boldenhauer",
+  "minElo": 1510,
+  "startTime": 1770416433427,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Morpeko|Aura Wheel|p1a: Tyranitar",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Morpeko"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Morpeko|Knock Off|p1a: Tyranitar",
+        "|move|p1a: Tyranitar|Ice Beam|p2a: Morpeko"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Morpeko|Reversal|p1a: Tyranitar",
+        "|switch|p2a: Sinistcha|Sinistcha-Masterpiece|100/100",
+        "|switch|p1a: Moltres|Moltres|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Gastrodon|Gastrodon, F|100/100",
+        "|move|p1a: Moltres|Flamethrower|p2a: Gastrodon"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Moltres|U-turn|p2a: Gastrodon",
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100|[from] U-turn",
+        "|move|p2a: Gastrodon|Spikes|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Tinkaton|Tinkaton, F|100/100",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Tinkaton"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|94/100",
+        "|move|p2a: Tinkaton|Stealth Rock|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Gastrodon|Gastrodon, F|86/100",
+        "|move|p1a: Moltres|Flamethrower|p2a: Gastrodon"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Moltres|U-turn|p2a: Gastrodon",
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100|[from] U-turn",
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|switch|p2a: Tinkaton|Tinkaton, F|88/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Tinkaton|Knock Off|p1a: Slowking",
+        "|move|p1a: Slowking|Flamethrower|p2a: Tinkaton"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Gastrodon|Gastrodon, F|71/100",
+        "|switch|p1a: Moltres|Moltres|88/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Gastrodon",
+        "|move|p2a: Gastrodon|Spikes|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Moltres|U-turn|p2a: Gastrodon",
+        "|switch|p1a: Slowking|Slowking-Galar, F|82/100|[from] U-turn",
+        "|move|p2a: Gastrodon|Recover|p2a: Gastrodon"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Gastrodon|Spikes|p1a: Slowking",
+        "|move|p1a: Slowking|Psyshock|p2a: Gastrodon"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Gastrodon|Earth Power|p1a: Slowking",
+        "|move|p1a: Slowking|Psyshock|p2a: Gastrodon"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|88/100",
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Gastrodon",
+        "|move|p2a: Gastrodon|Recover|p2a: Gastrodon"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Moltres",
+        "|move|p1a: Moltres|Roar|p2a: Gastrodon"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Tinkaton|Encore|p1a: Moltres",
+        "|move|p1a: Moltres|Roar|p2a: Tinkaton"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Excadrill|Excadrill, F|100/100",
+        "|move|p2a: Lycanroc|Psychic Fangs|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha-Masterpiece|100/100",
+        "|move|p1a: Excadrill|Rapid Spin|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Excadrill|Swords Dance|p1a: Excadrill",
+        "|move|p2a: Sinistcha|Strength Sap|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Excadrill|Iron Head|p2a: Sinistcha",
+        "|move|p2a: Sinistcha|Hex|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Excadrill|Iron Head|p2a: Sinistcha",
+        "|move|p2a: Sinistcha|Strength Sap|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Excadrill|Iron Head|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Excadrill|Iron Head|p2a: Sinistcha",
+        "|move|p2a: Sinistcha|Strength Sap|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Excadrill|Swords Dance|p1a: Excadrill",
+        "|move|p2a: Sinistcha|Hex|p1a: Excadrill",
+        "|switch|p1a: Moltres|Moltres|46/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Gastrodon|Gastrodon, F|98/100",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Gastrodon",
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Moltres",
+        "|move|p1a: Moltres|Roar|p2a: Gastrodon"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p2a: Gastrodon|Gastrodon, F|95/100",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Gastrodon",
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Gastrodon",
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Gastrodon",
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|39/100",
+        "|move|p2a: Gastrodon|Ice Beam|p1a: Slowking",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha-Masterpiece|100/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Sinistcha",
+        "|move|p2a: Sinistcha|Strength Sap|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|move|p2a: Sinistcha|Calm Mind|p2a: Sinistcha",
+        "|move|p1a: Zamazenta|Roar|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Tinkaton",
+        "|switch|p2a: Kilowattrel|Kilowattrel, M|100/100"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|20/100 frz",
+        "|move|p2a: Kilowattrel|Air Slash|p1a: Moltres",
+        "|switch|p1a: Hydrapple|Hydrapple, M|60/100"
+      ]
+    },
+    {
+      "turn": 43,
+      "events": [
+        "|move|p2a: Kilowattrel|Air Slash|p1a: Hydrapple",
+        "|switch|p1a: Zamazenta|Zamazenta|94/100"
+      ]
+    },
+    {
+      "turn": 44,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Kilowattrel",
+        "|move|p2a: Kilowattrel|Air Slash|p1a: Zamazenta"
+      ]
+    }
+  ],
+  "winner": "boldenhauer",
+  "endTime": 1770416773007,
+  "p1Team": [
+    "Moltres",
+    "Hydrapple",
+    "Slowking-Galar",
+    "Excadrill",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Sinistcha-Masterpiece",
+    "Gastrodon",
+    "Tinkaton",
+    "Kilowattrel"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "moltres",
+      "hydrapple",
+      "slowkinggalar",
+      "excadrill",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "sinistchamasterpiece",
+      "gastrodon",
+      "tinkaton",
+      "kilowattrel"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

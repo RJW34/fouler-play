@@ -1,0 +1,201 @@
+{
+  "id": "battle-gen9ou-2534365764",
+  "p1": "Petermannbuga",
+  "p2": "CandydoesTests",
+  "minElo": 1591,
+  "startTime": 1770413013251,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Silly Edna|U-turn|p2a: Hoopa",
+        "|switch|p1a: Olavo of Oak|Gholdengo|100/100|[from] U-turn",
+        "|switch|p2a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Tania secretária|Clefable, F, shiny|100/100",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Tania secretária"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Kingambit|Iron Head|p1a: Tania secretária"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Tania secretária",
+        "|switch|p1a: Khal Droggo|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Khal Droggo|Ice Spinner|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Zé Garimpeiro|Garganacl, M|100/100",
+        "|move|p2a: Zapdos|Roost|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Zé Garimpeiro",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Volt Switch",
+        "|move|p1a: Zé Garimpeiro|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Khal Droggo|Great Tusk|100/100",
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Khal Droggo"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Khal Droggo|Rapid Spin|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Zé Garimpeiro|Garganacl, M|89/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Zé Garimpeiro"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Zé Garimpeiro",
+        "|switch|p2a: Great Tusk|Great Tusk|73/100|[from] Volt Switch",
+        "|move|p1a: Zé Garimpeiro|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Serperior|Serperior, M|100/100",
+        "|switch|p1a: Khal Droggo|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Serperior|Substitute|p2a: Serperior",
+        "|move|p1a: Khal Droggo|Rapid Spin|p2a: Serperior"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Khal Droggo|Ice Spinner|p2a: Serperior",
+        "|move|p2a: Serperior|Glare|p1a: Khal Droggo"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Silly Edna|Dragapult, F|100/100",
+        "|move|p2a: Serperior|Substitute|p2a: Serperior"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Silly Edna|Dragon Darts|p2a: Serperior",
+        "|move|p2a: Serperior|Glare|p1a: Silly Edna"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Olavo of Oak|Gholdengo|100/100",
+        "|move|p2a: Serperior|Substitute|p2a: Serperior"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Olavo of Oak|Shadow Ball|p2a: Serperior",
+        "|move|p2a: Serperior|Leaf Storm|p1a: Olavo of Oak"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Kingambit|Kingambit, M|70/100",
+        "|move|p1a: Olavo of Oak|Shadow Ball|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Khal Droggo|Great Tusk, tera:Ice|100/100 par",
+        "|move|p2a: Kingambit|Iron Head|p1a: Khal Droggo"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": []
+    }
+  ],
+  "winner": "Petermannbuga",
+  "endTime": 1770413361145,
+  "p1Team": [
+    "Gholdengo",
+    "Clefable",
+    "Great Tusk",
+    "Garganacl",
+    "Dragapult"
+  ],
+  "p2Team": [
+    "Kingambit",
+    "Zapdos",
+    "Great Tusk",
+    "Serperior"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 3,
+    "team": [
+      "gholdengo",
+      "clefable",
+      "greattusk",
+      "garganacl",
+      "dragapult"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "kingambit",
+      "zapdos",
+      "greattusk",
+      "serperior"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

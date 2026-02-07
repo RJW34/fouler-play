@@ -1,0 +1,296 @@
+{
+  "id": "battle-gen9ou-2534391400",
+  "p1": "gokubatman2",
+  "p2": "EllenxD",
+  "minElo": 1570,
+  "startTime": 1770415743389,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Grimmsnarl|Taunt|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads, shiny|100/100",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Iron Treads",
+        "|switch|p2a: Garganacl|Garganacl, F|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Iron Treads|Earth Power|p2a: Garganacl",
+        "|move|p2a: Garganacl|Stealth Rock|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Iron Treads|Steel Beam|p2a: Garganacl",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: Iron Treads|Earth Power|p2a: Garganacl",
+        "|switch|p1a: Deoxys|Deoxys-Speed, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Deoxys|Substitute|p1a: Deoxys",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|100/100",
+        "|move|p1a: Deoxys|Nasty Plot|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Moltres",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Deoxys|Focus Blast|p2a: Iron Treads|[miss]",
+        "|move|p2a: Iron Treads|Rapid Spin|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Deoxys|Focus Blast|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Deoxys|Focus Blast|p2a: Iron Treads",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M, shiny|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Grimmsnarl|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Grimmsnarl|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Ogerpon|Knock Off|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Ogerpon|Encore|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Ogerpon|Knock Off|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Ogerpon|Power Whip|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap||[still]",
+        "|move|p2a: Ogerpon|Encore|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Raging Bolt|Thunderclap||[still]"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap||[still]",
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Raging Bolt",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Ogerpon|Encore||[still]"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|move|p2a: Pecharunt|Foul Play|p1a: Ogerpon",
+        "|switch|p1a: Raging Bolt|Raging Bolt|52/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Pecharunt",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Zamazenta|Body Press|p1a: Raging Bolt",
+        "|switch|p1a: Deoxys|Deoxys-Speed, shiny|28/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|50/100",
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Deoxys|Nasty Plot|p1a: Deoxys",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Deoxys",
+        "|switch|p1a: Ceruledge|Ceruledge, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Garganacl",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Zamazenta|Iron Defense|p2a: Zamazenta",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Ceruledge"
+      ]
+    }
+  ],
+  "winner": "EllenxD",
+  "endTime": 1770416211900,
+  "p1Team": [
+    "Iron Treads",
+    "Deoxys-Speed",
+    "Grimmsnarl",
+    "Raging Bolt",
+    "Ogerpon-Wellspring",
+    "Ceruledge"
+  ],
+  "p2Team": [
+    "Pecharunt",
+    "Garganacl",
+    "Moltres",
+    "Iron Treads",
+    "Ogerpon-Wellspring",
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "irontreads",
+      "deoxysspeed",
+      "grimmsnarl",
+      "ragingbolt",
+      "ogerponwellspring",
+      "ceruledge"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "pecharunt",
+      "garganacl",
+      "moltres",
+      "irontreads",
+      "ogerponwellspring",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

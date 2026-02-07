@@ -1,0 +1,281 @@
+{
+  "id": "battle-gen9ou-2534400033",
+  "p1": "peakelo",
+  "p2": "sminey",
+  "minElo": 1708,
+  "startTime": 1770416673435,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: Zapdos|Hurricane|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Weavile|Weavile, M|100/100",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Iron Treads|Earthquake|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Iron Treads|Ice Spinner|p2a: Zapdos",
+        "|move|p2a: Zapdos|Hurricane|p1a: Iron Treads|[miss]"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Iron Moth|Iron Moth|100/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Slowking",
+        "|move|p2a: Slowking|Psyshock|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Slowking",
+        "|move|p2a: Slowking|Psyshock|p1a: Iron Moth",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|62/100",
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Zapdos",
+        "|switch|p2a: Weavile|Weavile, M|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100 par",
+        "|move|p2a: Weavile|Triple Axel|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Weavile|Knock Off|p1a: Iron Treads",
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|71/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|100/100",
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Grimmsnarl|Taunt|p2a: Cinderace",
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Grimmsnarl",
+        "|switch|p1a: Ceruledge|Ceruledge, F|81/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Latios|Latios, M|100/100",
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Clefable|Clefable, F|100/100",
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Clefable",
+        "|move|p2a: Clefable|Moonblast|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Clefable",
+        "|switch|p2a: Cinderace|Cinderace, F|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch|p1a: Ceruledge",
+        "|switch|p1a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Latios|Latios, M|100/100",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Latios|Trick|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|65/100",
+        "|move|p1a: Latias|Draining Kiss|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|100/100",
+        "|move|p1a: Latias|Draining Kiss|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Cinderace",
+        "|move|p2a: Cinderace|U-turn|p1a: Latias",
+        "|switch|p2a: Slowking|Slowking-Galar, M|80/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Latias",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Slowking|[anim] Ivy Cudgel Water",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Ogerpon|Trailblaze|p2a: Slowking",
+        "|switch|p2a: Weavile|Weavile, M, tera:Ice|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Weavile|Ice Shard|p1a: Ogerpon"
+      ]
+    }
+  ],
+  "winner": "sminey",
+  "endTime": 1770416997443,
+  "p1Team": [
+    "Iron Treads",
+    "Iron Moth",
+    "Ceruledge",
+    "Grimmsnarl",
+    "Latias",
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Zapdos",
+    "Weavile",
+    "Slowking-Galar",
+    "Cinderace",
+    "Latios",
+    "Clefable"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "irontreads",
+      "ironmoth",
+      "ceruledge",
+      "grimmsnarl",
+      "latias",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 3,
+    "offenseCount": 0,
+    "team": [
+      "zapdos",
+      "weavile",
+      "slowkinggalar",
+      "cinderace",
+      "latios",
+      "clefable"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

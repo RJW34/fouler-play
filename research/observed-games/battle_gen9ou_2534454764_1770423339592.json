@@ -1,0 +1,231 @@
+{
+  "id": "battle-gen9ou-2534454764",
+  "p1": "mkenroyw",
+  "p2": "Beeman1000",
+  "minElo": 1517,
+  "startTime": 1770423093858,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Araquanid",
+        "|move|p2a: Araquanid|Sticky Web|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Araquanid|Endure|p2a: Araquanid",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Araquanid"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Kingambit|Kingambit, F|100/100",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Moltres|Will-O-Wisp|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Moltres",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Moltres",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, F|100/100",
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Primarina|Draining Kiss|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Primarina|[anim] Ivy Cudgel Water",
+        "|move|p1a: Primarina|Draining Kiss|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Mandibuzz|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Mandibuzz|[anim] Ivy Cudgel Water",
+        "|move|p1a: Mandibuzz|Defog|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Kyurem|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Kyurem|Ice Beam|p2a: Ogerpon",
+        "|switch|p2a: Kingambit|Kingambit, F|82/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|55/100",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Moltres",
+        "|switch|p1a: Excadrill|Excadrill, F|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Excadrill|Earthquake|p2a: Kingambit",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Excadrill",
+        "|switch|p1a: Kyurem|Kyurem|71/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|46/100 brn",
+        "|move|p1a: Kyurem|Ice Beam|p2a: Darkrai",
+        "|switch|p2a: Araquanid|Araquanid, M|1/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F|10/100",
+        "|move|p2a: Araquanid|Sticky Web|p1a: Mandibuzz"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Mandibuzz|Defog|p2a: Araquanid",
+        "|move|p2a: Araquanid|Surf|p1a: Mandibuzz",
+        "|switch|p1a: Kyurem|Kyurem|71/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Kyurem|Ice Beam|p2a: Araquanid",
+        "|switch|p2a: Kingambit|Kingambit, F, tera:Dark|36/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Kyurem",
+        "|switch|p1a: Tyranitar|Tyranitar, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, F, tera:Steel|24/100",
+        "|move|p2a: Great Tusk|Close Combat|p1a: Primarina",
+        "|switch|p1a: Tyranitar|Tyranitar, F|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Great Tusk|Close Combat|p1a: Tyranitar"
+      ]
+    }
+  ],
+  "winner": "Beeman1000",
+  "endTime": 1770423339592,
+  "p1Team": [
+    "Moltres",
+    "Primarina",
+    "Mandibuzz",
+    "Kyurem",
+    "Excadrill",
+    "Tyranitar"
+  ],
+  "p2Team": [
+    "Kingambit",
+    "Darkrai",
+    "Ogerpon-Wellspring",
+    "Araquanid",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "moltres",
+      "primarina",
+      "mandibuzz",
+      "kyurem",
+      "excadrill",
+      "tyranitar"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "kingambit",
+      "darkrai",
+      "ogerponwellspring",
+      "araquanid",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,20 @@
+{
+  "turn": 3,
+  "bot_choice": "unknown",
+  "why_critical": "Zamazenta went down vs Ceruledge (49% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 9% +1 def",
+  "opp_team": "Ceruledge 49% -1 def, +4 spe, +3 atk, +2 spa | Kingdra 100% | Glimmora 100% | Landorus-Therian 100% | Raging Bolt 100% | Iron Valiant 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530578146",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Ceruledge"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

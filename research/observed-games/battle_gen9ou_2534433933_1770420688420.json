@@ -1,0 +1,197 @@
+{
+  "id": "battle-gen9ou-2534433933",
+  "p1": "life wont change",
+  "p2": "Obling",
+  "minElo": 1654,
+  "startTime": 1770420543675,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Meowscarada|U-turn|p2a: Iron Moth",
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100|[from] U-turn",
+        "|move|p2a: Iron Moth|Agility|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Slowking",
+        "|move|p1a: Slowking|Surf|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Iron Moth|Sludge Wave|p1a: Slowking",
+        "|move|p1a: Slowking|Surf|p2a: Iron Moth",
+        "|switch|p2a: Roaring Sun|Salamence, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|move|p2a: Roaring Sun|Earthquake|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Roaring Sun|Dragon Dance|p2a: Roaring Sun",
+        "|move|p1a: Corviknight|U-turn|p2a: Roaring Sun",
+        "|switch|p1a: Dondozo|Dondozo, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Roaring Sun|Dual Wingbeat|p1a: Dondozo",
+        "|move|p1a: Dondozo|Body Press|p2a: Roaring Sun"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Roaring Sun|Outrage|p1a: Dondozo",
+        "|move|p1a: Dondozo|Body Press|p2a: Roaring Sun"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Roaring Sun|Outrage|p1a: Dondozo|[from] lockedmove",
+        "|move|p1a: Dondozo|Rest|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Roaring Sun|Outrage|p1a: Dondozo|[from] lockedmove"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Dondozo|Sleep Talk|p1a: Dondozo",
+        "|move|p1a: Dondozo|Body Press|p2: Roaring Sun|[from] move: Sleep Talk|[notarget]",
+        "|switch|p2a: Deoxys|Deoxys-Speed|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Deoxys|Stealth Rock|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Gholdengo|Nasty Plot|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Deoxys|Reflect|p2a: Deoxys",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Deoxys",
+        "|switch|p2a: Seconds|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|move|p2a: Seconds|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Corviknight|Iron Defense|p1a: Corviknight",
+        "|move|p2a: Seconds|Swords Dance|p2a: Seconds"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Corviknight|Iron Defense|p1a: Corviknight",
+        "|move|p2a: Seconds|Kowtow Cleave|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Faster|Latias, F|100/100",
+        "|move|p1a: Corviknight|Body Press|p2a: Faster"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Faster|Agility|p2a: Faster",
+        "|move|p1a: Corviknight|U-turn|p2a: Faster",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Faster|Calm Mind|p2a: Faster",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Faster"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Faster|Stored Power|p1a: Gholdengo"
+      ]
+    }
+  ],
+  "winner": "Obling",
+  "endTime": 1770420688419,
+  "p1Team": [
+    "Slowking-Galar",
+    "Corviknight",
+    "Dondozo",
+    "Gholdengo"
+  ],
+  "p2Team": [
+    "Salamence",
+    "Deoxys-Speed",
+    "Kingambit",
+    "Latias"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.75,
+    "fatCount": 3,
+    "offenseCount": 1,
+    "team": [
+      "slowkinggalar",
+      "corviknight",
+      "dondozo",
+      "gholdengo"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "salamence",
+      "deoxysspeed",
+      "kingambit",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

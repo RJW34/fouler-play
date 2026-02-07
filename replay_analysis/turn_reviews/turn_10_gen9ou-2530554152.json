@@ -1,0 +1,24 @@
+{
+  "turn": 10,
+  "bot_choice": "Knock Off",
+  "why_critical": "Gliscor went down vs Qwilfish (8% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 100% tox +10 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Overqwil 100% | Pelipper 100% | Qwilfish 8% | Iron Treads 100% | Orthworm 100% | Pecharunt 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530554152",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Qwilfish"
+    ],
+    [
+      "Different move than Knock Off",
+      "Could have forced switch or dealt more chip"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

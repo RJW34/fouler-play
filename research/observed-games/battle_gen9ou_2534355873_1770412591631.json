@@ -1,0 +1,247 @@
+{
+  "id": "battle-gen9ou-2534355873",
+  "p1": "MrsBergziege",
+  "p2": "PikachuRTM",
+  "minElo": 1532,
+  "startTime": 1770412203817,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Kyu|Dragon Dance|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Kyu|Icicle Spear|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Kyu|Scale Shot|p1a: Moltres",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Kyu|Icicle Spear|p1a: Iron Valiant",
+        "|move|p1a: Iron Valiant|Close Combat|p2a: Kyu",
+        "|switch|p2a: Mochi|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: Mochi|Foul Play|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: Mochi",
+        "|move|p2a: Mochi|Parting Shot|p1a: Iron Treads",
+        "|switch|p2a: Dønphan|Iron Treads|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Dønphan|Rapid Spin|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Dønphan|Stealth Rock|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|U-turn|p2a: Dønphan",
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Dønphan|Earthquake|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|79/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Dønphan|Knock Off|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Dønphan|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Mochi|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|95/100",
+        "|move|p2a: Mochi|Parting Shot|p1a: Iron Treads",
+        "|switch|p2a: Gałlade|Iron Valiant|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|65/100",
+        "|move|p2a: Gałlade|Knock Off|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Iron Valiant|Iron Valiant, tera:Steel|45/100",
+        "|move|p2a: Gałlade|Knock Off|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Gałlade|Knock Off|p1a: Iron Valiant",
+        "|switch|p1a: Slowking|Slowking-Galar, F|47/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Sam|Samurott-Hisui, M|100/100",
+        "|move|p1a: Slowking|Sludge Bomb|p2a: Sam"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|40/100",
+        "|move|p2a: Sam|Ceaseless Edge|p1a: Ogerpon",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Sam",
+        "|move|p2a: Sam|Knock Off|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Sam|Sucker Punch|p1a: Kyurem",
+        "|switch|p1a: Iron Treads|Iron Treads|98/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Mochi|Pecharunt|100/100",
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: Mochi"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: Mochi",
+        "|move|p2a: Mochi|Parting Shot|p1a: Iron Treads",
+        "|switch|p2a: Gałlade|Iron Valiant|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|68/100",
+        "|move|p2a: Gałlade|Knock Off|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Gałlade|Close Combat|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Iron Treads|Iron Treads|95/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Gałlade|Knock Off|p1a: Iron Treads",
+        "|move|p1a: Iron Treads|Earthquake|p2a: Gałlade"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|39/100",
+        "|move|p2a: Gałlade|Close Combat|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Gałlade|Close Combat|p1a: Slowking",
+        "|switch|p1a: Iron Treads|Iron Treads|64/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Gałlade|Close Combat|p1a: Iron Treads"
+      ]
+    }
+  ],
+  "winner": "PikachuRTM",
+  "endTime": 1770412591631,
+  "p1Team": [
+    "Slowking-Galar",
+    "Moltres",
+    "Iron Valiant",
+    "Iron Treads",
+    "Ogerpon-Wellspring",
+    "Kyurem"
+  ],
+  "p2Team": [
+    "Pecharunt",
+    "Iron Treads",
+    "Iron Valiant",
+    "Samurott-Hisui"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "slowkinggalar",
+      "moltres",
+      "ironvaliant",
+      "irontreads",
+      "ogerponwellspring",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "pecharunt",
+      "irontreads",
+      "ironvaliant",
+      "samurotthisui"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

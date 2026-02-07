@@ -1,0 +1,127 @@
+{
+  "id": "battle-gen9ou-2534367721",
+  "p1": "squigulousq",
+  "p2": "IamGlup",
+  "minElo": 1633,
+  "startTime": 1770413223265,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Deoxys",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads|100/100",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Iron Treads|Earth Power|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Iron Treads|Stealth Rock|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Iron Treads|Steel Beam|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2: Iron Treads|[notarget]",
+        "|switch|p2a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Dragapult|Tera Blast|p1a: Raging Bolt|[anim] Tera Blast Ghost",
+        "|switch|p1a: Araquanid|Araquanid, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Araquanid|Endure|p1a: Araquanid",
+        "|move|p2a: Dragapult|Tera Blast|p1a: Araquanid|[anim] Tera Blast Ghost"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Araquanid|Sticky Web|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Araquanid|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Ogerpon|Knock Off|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Gholdengo|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "IamGlup",
+  "endTime": 1770413400217,
+  "p1Team": [
+    "Raging Bolt",
+    "Araquanid",
+    "Gholdengo"
+  ],
+  "p2Team": [
+    "Iron Treads",
+    "Dragapult",
+    "Ogerpon-Wellspring"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ragingbolt",
+      "araquanid",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "irontreads",
+      "dragapult",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

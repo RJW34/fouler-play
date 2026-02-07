@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260201_120942",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530725286",
+  "replay_id": "gen9ou-2530725286",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 12,
+      "description": "Heatran fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 22,
+      "description": "Samurott fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 41,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    }
+  ]
+}

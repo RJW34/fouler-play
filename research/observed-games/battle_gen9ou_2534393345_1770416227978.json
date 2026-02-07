@@ -1,0 +1,224 @@
+{
+  "id": "battle-gen9ou-2534393345",
+  "p1": "uscboarder",
+  "p2": "suprya",
+  "minElo": 1699,
+  "startTime": 1770415953392,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Garchomp|Stealth Rock|p2a: Moltres",
+        "|move|p2a: Moltres|Scorching Sands|p1a: Garchomp"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Garchomp|Spikes|p2a: Moltres",
+        "|move|p2a: Moltres|Flamethrower|p1a: Garchomp"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Garchomp|Spikes|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Great Tusk|Knock Off|p1a: Garchomp",
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|100/100",
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Tornadus|Knock Off|p2a: Moltres",
+        "|move|p2a: Moltres|Roost|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Moltres|Scorching Sands|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Moltres",
+        "|move|p2a: Moltres|U-turn|p1a: Raging Bolt",
+        "|switch|p2a: Darkrai|Darkrai|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Decidueye|Decidueye-Hisui, M|100/100",
+        "|move|p2a: Darkrai|Ice Beam|p1a: Decidueye"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Decidueye",
+        "|switch|p1a: Raging Bolt|Raging Bolt|56/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|12/100",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2: Moltres|[notarget]",
+        "|switch|p2a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Iron Crown|Tachyon Cutter|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Iron Crown|Volt Switch|p1a: Raging Bolt",
+        "|switch|p2a: Garganacl|Garganacl, M|100/100|[from] Volt Switch",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Garganacl|[miss]"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100",
+        "|move|p2a: Garganacl|Stealth Rock|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: Tornadus|Knock Off|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Garganacl",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100|[from] U-turn",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Darkrai",
+        "|switch|p1a: Darkrai|Darkrai|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Darkrai|Nasty Plot|p1a: Darkrai",
+        "|move|p2a: Darkrai|Will-O-Wisp|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Iron Crown|Iron Crown|42/100",
+        "|move|p1a: Darkrai|Nasty Plot|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Darkrai",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Darkrai",
+        "|switch|p2a: Garganacl|Garganacl, M|86/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Garganacl|Protect||[still]",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Garganacl"
+      ]
+    }
+  ],
+  "winner": "uscboarder",
+  "endTime": 1770416227978,
+  "p1Team": [
+    "Tornadus-Therian",
+    "Raging Bolt",
+    "Decidueye-Hisui",
+    "Pecharunt",
+    "Darkrai"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Moltres",
+    "Darkrai",
+    "Iron Crown",
+    "Garganacl"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "tornadustherian",
+      "ragingbolt",
+      "decidueyehisui",
+      "pecharunt",
+      "darkrai"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "moltres",
+      "darkrai",
+      "ironcrown",
+      "garganacl"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,85 @@
+{
+  "id": "battle-gen9ou-2534384039",
+  "p1": "spiralcurriculum",
+  "p2": "suprya",
+  "minElo": 1639,
+  "startTime": 1770414933333,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M|100/100",
+        "|move|p1a: Hatterihanna|Nuzzle|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Garganacl|Salt Cure|p1a: Hatterihanna",
+        "|move|p1a: Hatterihanna|Psychic Noise|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Spring Cleaning|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Amoonguss|Amoonguss, F, shiny|100/100",
+        "|move|p1a: Spring Cleaning|Swords Dance|p1a: Spring Cleaning"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Spring Cleaning|Ivy Cudgel|p2a: Amoonguss|[anim] Ivy Cudgel Water",
+        "|move|p2a: Amoonguss|Foul Play|p1a: Spring Cleaning"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Spring Cleaning|Ivy Cudgel|p2a: Amoonguss|[anim] Ivy Cudgel Water",
+        "|move|p2a: Amoonguss|Foul Play|p1a: Spring Cleaning"
+      ]
+    }
+  ],
+  "winner": "suprya",
+  "endTime": 1770415066949,
+  "p1Team": [
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Garganacl",
+    "Amoonguss"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 1,
+    "fatCount": 2,
+    "offenseCount": 0,
+    "team": [
+      "garganacl",
+      "amoonguss"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

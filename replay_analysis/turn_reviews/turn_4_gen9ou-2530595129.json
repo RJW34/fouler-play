@@ -1,0 +1,22 @@
+{
+  "turn": 4,
+  "bot_choice": "unknown",
+  "why_critical": "Skarmory went down vs Barraskewda (88% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 81% +1 spa, +1 spd | Skarmory 20% | Pecharunt 100%",
+  "opp_team": "Ludicolo 100% | Barraskewda 88% | Pelipper 100% | Politoed 100% | Drednaw 100% | Blastoise 100%",
+  "field": [
+    "Weather: RainDance"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530595129",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Barraskewda"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

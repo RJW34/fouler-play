@@ -1,0 +1,43 @@
+{
+  "timestamp": "20260201_080000",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530616274",
+  "replay_id": "gen9ou-2530616274",
+  "mistakes_found": 5,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 44,
+      "description": "Great Tusk fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 54,
+      "description": "Dondozo fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 66,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 4,
+      "description": "Attempted curse on turn 4 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    },
+    {
+      "category": "early_setup",
+      "turn": 5,
+      "description": "Attempted curse on turn 5 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

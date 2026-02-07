@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260201_050349",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530561850",
+  "replay_id": "gen9ou-2530561850",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 12,
+      "description": "Rubiks cube fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 15,
+      "description": "Kamikaze fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 19,
+      "description": "Root of all evil fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    }
+  ]
+}

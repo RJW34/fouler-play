@@ -1,0 +1,24 @@
+{
+  "turn": 7,
+  "bot_choice": "Switched to Zamazenta",
+  "why_critical": "Switched to Zamazenta vs healthy Samurott-Hisui \u2014 long-term positioning play",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 51% -1 def | Pecharunt 100%",
+  "opp_team": "Azumarill 100% | Dragonite 100% | Ursaluna 100% | Raging Bolt 100% | Gholdengo 100% | Samurott-Hisui 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530657409",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Samurott-Hisui"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

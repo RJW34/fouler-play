@@ -1,0 +1,266 @@
+{
+  "id": "battle-gen9ou-2534367010",
+  "p1": "deSilentio",
+  "p2": "mysticryn",
+  "minElo": 1547,
+  "startTime": 1770413163256,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Dragonite|Extreme Speed|p1a: Arizona",
+        "|switch|p1a: Idaho|Hatterene, F|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|100/100",
+        "|move|p1a: Idaho|Nuzzle|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Nevada|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|100/100",
+        "|move|p1a: Nevada|Stealth Rock|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Idaho|Hatterene, F|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Idaho"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Oregon|Tornadus-Therian, M|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Oregon"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M, shiny|100/100",
+        "|move|p1a: Oregon|Bleakwind Storm|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Oregon|Knock Off|p2a: Garganacl",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Oregon"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Oregon|U-turn|p2a: Garganacl",
+        "|switch|p1a: Idaho|Hatterene, F|45/100|[from] U-turn",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Idaho"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: Idaho|Pain Split|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Idaho|Pain Split|p2a: Garganacl",
+        "|move|p2a: Garganacl|Recover|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: Idaho|Nuzzle|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Idaho|Pain Split|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Nevada|Iron Treads|100/100",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Nevada"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Oregon|Tornadus-Therian, M|90/100",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Oregon"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M, shiny|80/100",
+        "|move|p1a: Oregon|Knock Off|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Oregon|U-turn|p2a: Garganacl",
+        "|switch|p1a: Idaho|Hatterene, F|1/100|[from] U-turn",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Idaho",
+        "|switch|p1a: Washington|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Washington|Draco Meteor|p2a: Garganacl",
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Oregon|Tornadus-Therian, M|99/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Oregon"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Oregon",
+        "|switch|p1a: Washington|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|100/100 par",
+        "|move|p1a: Washington|Freeze-Dry|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Washington|Freeze-Dry|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Washington|Freeze-Dry|p2a: Slowking",
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|88/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Washington",
+        "|move|p1a: Washington|Freeze-Dry|p2a: Samurott",
+        "|switch|p2a: Dragonite|Dragonite, M, shiny, tera:Normal|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Washington|Freeze-Dry|p2a: Dragonite",
+        "|move|p2a: Dragonite|Earthquake|p1a: Washington",
+        "|switch|p1a: Nevada|Iron Treads|53/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Nevada|Rapid Spin|p2a: Dragonite",
+        "|move|p2a: Dragonite|Earthquake|p1a: Nevada",
+        "|switch|p1a: California|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: California|Swords Dance|p1a: California",
+        "|move|p2a: Dragonite|Earthquake|p1a: California"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: California|Bitter Blade|p2a: Dragonite",
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|84/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: California|Poltergeist|p2a: Great Tusk|[miss]",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: California"
+      ]
+    }
+  ],
+  "winner": "mysticryn",
+  "endTime": 1770413473589,
+  "p1Team": [
+    "Hatterene",
+    "Iron Treads",
+    "Tornadus-Therian",
+    "Kyurem",
+    "Ceruledge"
+  ],
+  "p2Team": [
+    "Slowking-Galar",
+    "Great Tusk",
+    "Garganacl",
+    "Gholdengo",
+    "Samurott-Hisui",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "hatterene",
+      "irontreads",
+      "tornadustherian",
+      "kyurem",
+      "ceruledge"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "slowkinggalar",
+      "greattusk",
+      "garganacl",
+      "gholdengo",
+      "samurotthisui",
+      "dragonite"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

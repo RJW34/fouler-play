@@ -1,0 +1,190 @@
+{
+  "id": "battle-gen9ou-2534363200",
+  "p1": "PixelPenguin2",
+  "p2": "apexacer",
+  "minElo": 1519,
+  "startTime": 1770412773239,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|100/100",
+        "|move|p1a: Clefable|Moonblast|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Clefable|Knock Off|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Clefable|Stealth Rock|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Clefable|Moonblast|p2a: Grimmsnarl",
+        "|move|p2a: Grimmsnarl|Spirit Break|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Grimmsnarl|Thunder Wave|p1a: Clefable",
+        "|move|p1a: Clefable|Moonblast|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Grimmsnarl|Spirit Break|p1a: Clefable",
+        "|move|p1a: Clefable|Moonblast|p2a: Grimmsnarl",
+        "|switch|p2a: Polteageist|Polteageist|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Blissey|Blissey, F|100/100",
+        "|move|p2a: Polteageist|Shell Smash|p2a: Polteageist"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Polteageist|Tera Blast|p1a: Blissey|[anim] Tera Blast Fighting",
+        "|move|p1a: Blissey|Calm Mind|p1a: Blissey"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Polteageist|Tera Blast|p1a: Blissey|[anim] Tera Blast Fighting",
+        "|switch|p1a: Skarmory|Skarmory, M|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Polteageist|Shadow Ball|p1a: Skarmory",
+        "|move|p1a: Skarmory|Whirlwind|p2a: Polteageist"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Mismagius|Mismagius, M|100/100",
+        "|move|p2a: Great Tusk|Close Combat|p1a: Mismagius"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Mismagius|Nasty Plot|p1a: Mismagius",
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Mismagius"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Mismagius|Nasty Plot|p1a: Mismagius",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Mismagius"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Polteageist|Polteageist, tera:Fighting|88/100",
+        "|move|p1a: Mismagius|Nasty Plot|p1a: Mismagius"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Mismagius|Draining Kiss|p2a: Polteageist",
+        "|switch|p2a: Indeedee|Indeedee, M|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Indeedee|Expanding Force|p1a: Mismagius",
+        "|move|p1a: Mismagius|Draining Kiss|p2a: Indeedee",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Mismagius",
+        "|move|p1a: Mismagius|Draining Kiss|p2a: Kyurem",
+        "|switch|p2a: Kingambit|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Mismagius|Draining Kiss|p2a: Kingambit",
+        "|switch|p2a: Great Tusk|Great Tusk|98/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Mismagius|Shadow Ball|p2a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "PixelPenguin2",
+  "endTime": 1770412948367,
+  "p1Team": [
+    "Blissey",
+    "Skarmory",
+    "Mismagius"
+  ],
+  "p2Team": [
+    "Grimmsnarl",
+    "Polteageist",
+    "Indeedee",
+    "Kyurem",
+    "Kingambit",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.6666666666666666,
+    "fatCount": 2,
+    "offenseCount": 0,
+    "team": [
+      "blissey",
+      "skarmory",
+      "mismagius"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "grimmsnarl",
+      "polteageist",
+      "indeedee",
+      "kyurem",
+      "kingambit",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

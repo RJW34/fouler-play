@@ -1,0 +1,235 @@
+{
+  "id": "battle-gen9ou-2534389655",
+  "p1": "GameProm4",
+  "p2": "Jamez",
+  "minElo": 1729,
+  "startTime": 1770415563372,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Darkrai|Knock Off|p1a: Primarina",
+        "|move|p1a: Primarina|Sparkling Aria|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Primarina",
+        "|move|p1a: Primarina|Sparkling Aria|p2a: Darkrai",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Pecharunt|Nasty Plot|p2a: Pecharunt",
+        "|move|p1a: Primarina|Sparkling Aria|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Primarina",
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Landorus|Earthquake|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Corviknight|U-turn|p2a: Ting-Lu",
+        "|switch|p1a: Iron Hands|Iron Hands|100/100|[from] U-turn",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Iron Hands"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Iron Hands|Ice Punch|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Clefable|Clefable, F|100/100",
+        "|move|p1a: Iron Hands|Ice Punch|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|move|p2a: Clefable|Moonblast|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Corviknight|U-turn|p2a: Gholdengo",
+        "|switch|p1a: Iron Hands|Iron Hands|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Gholdengo|Trick|p1a: Iron Hands",
+        "|move|p1a: Iron Hands|Earthquake|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Dragonite|Dragonite, F|100/100",
+        "|switch|p1a: Raging Bolt|Raging Bolt|25/100 tox"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Dragonite|Extreme Speed|p1a: Raging Bolt",
+        "|switch|p1a: Sinistcha|Sinistcha|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|2/100",
+        "|move|p1a: Sinistcha|Matcha Gotcha|p2a: Gholdengo",
+        "|switch|p2a: Clefable|Clefable, F|63/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Clefable|Calm Mind|p2a: Clefable",
+        "|move|p1a: Sinistcha|Calm Mind|p1a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Clefable|Calm Mind|p2a: Clefable",
+        "|move|p1a: Sinistcha|Shadow Ball|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p2a: Clefable|Moonlight|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Landorus|Earthquake|p2a: Clefable",
+        "|move|p2a: Clefable|Moonblast|p1a: Landorus",
+        "|switch|p1a: Sinistcha|Sinistcha|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Clefable|Moonlight|p2a: Clefable",
+        "|move|p1a: Sinistcha|Shadow Ball|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Clefable|Moonlight|p2a: Clefable",
+        "|move|p1a: Sinistcha|Matcha Gotcha|p2a: Clefable|[miss]"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Clefable|Moonblast|p1a: Sinistcha"
+      ]
+    }
+  ],
+  "winner": "Jamez",
+  "endTime": 1770415865429,
+  "p1Team": [
+    "Landorus-Therian",
+    "Raging Bolt",
+    "Iron Hands",
+    "Corviknight",
+    "Sinistcha"
+  ],
+  "p2Team": [
+    "Pecharunt",
+    "Ting-Lu",
+    "Clefable",
+    "Gholdengo",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "landorustherian",
+      "ragingbolt",
+      "ironhands",
+      "corviknight",
+      "sinistcha"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "pecharunt",
+      "tinglu",
+      "clefable",
+      "gholdengo",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

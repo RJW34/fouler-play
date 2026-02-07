@@ -1,0 +1,85 @@
+{
+  "id": "battle-gen9ou-2534385339",
+  "p1": "Ascendn",
+  "p2": "Bring it on mon",
+  "minElo": 1599,
+  "startTime": 1770415083338,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Gholdengo|Nasty Plot|p1a: Gholdengo",
+        "|move|p2a: Kyurem|Dragon Dance|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Kyurem|Tera Blast|p1a: Gholdengo|[anim] Tera Blast Fire",
+        "|switch|p1a: Glimmora|Glimmora, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Glimmora",
+        "|switch|p1a: Dragonite|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Dragonite",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Kyurem",
+        "|move|p2a: Kyurem|Tera Blast|p1a: Kingambit|[anim] Tera Blast Fire",
+        "|switch|p1a: Darkrai|Darkrai, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Darkrai"
+      ]
+    }
+  ],
+  "winner": "Bring it on mon",
+  "endTime": 1770415131229,
+  "p1Team": [
+    "Glimmora",
+    "Dragonite",
+    "Kingambit",
+    "Darkrai"
+  ],
+  "p2Team": [],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "glimmora",
+      "dragonite",
+      "kingambit",
+      "darkrai"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

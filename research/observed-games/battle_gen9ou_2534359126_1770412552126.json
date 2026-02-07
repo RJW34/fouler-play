@@ -1,0 +1,253 @@
+{
+  "id": "battle-gen9ou-2534359126",
+  "p1": "Noamm",
+  "p2": "staroregon",
+  "minElo": 1677,
+  "startTime": 1770412353227,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F|100/100",
+        "|move|p2a: Scizor|U-turn|p1a: Mandibuzz",
+        "|switch|p2a: Zapdos|Zapdos|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Zapdos|Volt Switch|p1a: Gholdengo",
+        "|switch|p2a: Garchomp|Garchomp, F|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Garchomp",
+        "|move|p2a: Garchomp|Swords Dance|p2a: Garchomp"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Scizor|Scizor, F|100/100",
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Scizor|Knock Off|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Scizor",
+        "|move|p2a: Scizor|Defog|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F|78/100",
+        "|move|p2a: Ogerpon|Knock Off|p1a: Mandibuzz"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Garchomp|Garchomp, F|31/100",
+        "|move|p1a: Mandibuzz|Roost|p1a: Mandibuzz"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Garchomp|Stealth Rock|p1a: Mandibuzz",
+        "|move|p1a: Mandibuzz|Foul Play|p2a: Garchomp",
+        "|switch|p2a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|68/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Gholdengo|[miss]"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Zapdos",
+        "|move|p2a: Zapdos|Volt Switch|p1a: Gholdengo",
+        "|switch|p2a: Okidogi|Okidogi, M|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Okidogi",
+        "|move|p2a: Okidogi|Knock Off|p1a: Gholdengo",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Okidogi",
+        "|move|p2a: Okidogi|Gunk Shot|p1a: Iron Valiant",
+        "|switch|p1a: Great Tusk|Great Tusk|86/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, F|100/100",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Okidogi|Okidogi, M|2/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2: Okidogi|[notarget]",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F|88/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Mandibuzz|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Lokix|Lokix, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, F|85/100",
+        "|move|p1a: Lokix|First Impression|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring-Tera, F, tera:Water|88/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Ogerpon|Power Whip|p1a: Alomomola",
+        "|switch|p1a: Lokix|Lokix, F|76/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, F|47/100",
+        "|move|p1a: Lokix|Leech Life|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Lokix|Leech Life|p2a: Ceruledge",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring-Tera, F, tera:Water|76/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|83/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Great Tusk|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Lokix|Lokix, F|80/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|58/100",
+        "|move|p1a: Lokix|Leech Life|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Lokix|Leech Life|p2a: Zapdos",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring-Tera, F, tera:Water|64/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Lokix|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "staroregon",
+  "endTime": 1770412552126,
+  "p1Team": [
+    "Mandibuzz",
+    "Gholdengo",
+    "Great Tusk",
+    "Iron Valiant",
+    "Lokix",
+    "Alomomola"
+  ],
+  "p2Team": [
+    "Zapdos",
+    "Garchomp",
+    "Scizor",
+    "Ogerpon-Wellspring",
+    "Okidogi",
+    "Ceruledge",
+    "Ogerpon-Wellspring-Tera"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 3,
+    "team": [
+      "mandibuzz",
+      "gholdengo",
+      "greattusk",
+      "ironvaliant",
+      "lokix",
+      "alomomola"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "zapdos",
+      "garchomp",
+      "scizor",
+      "ogerponwellspring",
+      "okidogi",
+      "ceruledge",
+      "ogerponwellspringtera"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

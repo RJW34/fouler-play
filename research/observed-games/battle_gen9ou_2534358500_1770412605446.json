@@ -1,0 +1,196 @@
+{
+  "id": "battle-gen9ou-2534358500",
+  "p1": "Free P&lestine",
+  "p2": "abGodc",
+  "minElo": 1611,
+  "startTime": 1770412293215,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Deoxys|Reflect|p1a: Deoxys",
+        "|move|p2a: Scizor|U-turn|p1a: Deoxys",
+        "|switch|p2a: Iron Moth|Iron Moth|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Deoxys",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Psychic Fangs|p2a: Iron Moth",
+        "|switch|p2a: Deoxys|Deoxys-Speed|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Deoxys|Stealth Rock|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Crunch|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Deoxys|Ice Beam|p1a: Zamazenta",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Darkrai|Darkrai|100/100",
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Darkrai|Sludge Bomb|p2a: Darkrai",
+        "|move|p2a: Darkrai|Focus Blast|p1a: Darkrai",
+        "|switch|p2a: Deoxys|Deoxys-Speed|12/100",
+        "|switch|p1a: Gholdengo|Gholdengo|94/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Deoxys|Psycho Boost|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Deoxys",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Gholdengo",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Great Tusk",
+        "|switch|p2a: Scizor|Scizor, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Close Combat|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Great Tusk",
+        "|switch|p1a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Dragonite",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Dragonite|Extreme Speed|p2a: Scizor",
+        "|switch|p2a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Dragonite|Tera Blast|p2a: Dragonite|[anim] Tera Blast Flying",
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Dragonite|Extreme Speed|p2a: Dragonite"
+      ]
+    }
+  ],
+  "winner": "Free P&lestine",
+  "endTime": 1770412605446,
+  "p1Team": [
+    "Zamazenta",
+    "Gholdengo",
+    "Darkrai",
+    "Great Tusk",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Iron Moth",
+    "Deoxys-Speed",
+    "Darkrai",
+    "Great Tusk",
+    "Scizor",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "zamazenta",
+      "gholdengo",
+      "darkrai",
+      "greattusk",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "ironmoth",
+      "deoxysspeed",
+      "darkrai",
+      "greattusk",
+      "scizor",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

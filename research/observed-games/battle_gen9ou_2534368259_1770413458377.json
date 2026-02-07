@@ -1,0 +1,180 @@
+{
+  "id": "battle-gen9ou-2534368259",
+  "p1": "jyvon12811",
+  "p2": "adamnadamn",
+  "minElo": 1618,
+  "startTime": 1770413283321,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Dragapult|Will-O-Wisp|p2a: Ogerpon|[miss]",
+        "|move|p2a: Ogerpon|Knock Off|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Dragapult|Will-O-Wisp|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|U-turn|p1a: Dragapult",
+        "|switch|p2a: Dragapult|Dragapult, F|100/100|[from] U-turn",
+        "|switch|p1a: Araquanid|Araquanid, M|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Araquanid",
+        "|move|p1a: Araquanid|Sticky Web|p2a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Enamorus|Enamorus, F|100/100",
+        "|move|p2a: Hydrapple|Giga Drain|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Ceruledge|Ceruledge, M|100/100",
+        "|switch|p2a: Corviknight|Corviknight, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge",
+        "|move|p2a: Corviknight|U-turn|p1a: Ceruledge",
+        "|switch|p2a: Ogerpon|Ogerpon-Cornerstone, F|100/100 brn|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Ceruledge|Close Combat|p2a: Ogerpon",
+        "|switch|p2a: Tyranitar|Tyranitar, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|100/100",
+        "|move|p1a: Ceruledge|Close Combat|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Corviknight",
+        "|switch|p2a: Excadrill|Excadrill, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Excadrill",
+        "|move|p2a: Excadrill|Earthquake|p1a: Ceruledge",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Excadrill|Earthquake|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Excadrill",
+        "|switch|p2a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Araquanid|Araquanid, M|67/100",
+        "|move|p2a: Dragapult|Will-O-Wisp|p1a: Araquanid"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Araquanid",
+        "|move|p1a: Araquanid|Surf|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Araquanid",
+        "|switch|p1a: Enamorus|Enamorus, F|76/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Enamorus",
+        "|switch|p2a: Tyranitar|Tyranitar, F|100/100|[from] U-turn",
+        "|move|p1a: Enamorus|Draining Kiss|p2a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Enamorus|Moonblast|p2a: Tyranitar",
+        "|switch|p2a: Dragapult|Dragapult, F|69/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Dragapult|Hex|p1a: Enamorus",
+        "|move|p1a: Enamorus|Draining Kiss|p2a: Dragapult"
+      ]
+    }
+  ],
+  "winner": "jyvon12811",
+  "endTime": 1770413458377,
+  "p1Team": [
+    "Araquanid",
+    "Enamorus",
+    "Ceruledge",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Dragapult",
+    "Corviknight",
+    "Ogerpon-Cornerstone",
+    "Tyranitar",
+    "Excadrill"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "araquanid",
+      "enamorus",
+      "ceruledge",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "dragapult",
+      "corviknight",
+      "ogerponcornerstone",
+      "tyranitar",
+      "excadrill"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

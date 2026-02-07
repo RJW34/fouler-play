@@ -1,0 +1,243 @@
+{
+  "id": "battle-gen9ou-2534416834",
+  "p1": "hawker_mk5",
+  "p2": "Yespoleon",
+  "minElo": 1671,
+  "startTime": 1770418533521,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Gengar|Toxic Spikes|p2a: Landorus",
+        "|move|p2a: Landorus|Earthquake|p1a: Gengar",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Heatran|Heatran, M|100/100",
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, M|100/100",
+        "|move|p2a: Heatran|Flash Cannon|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Primarina|Surf|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|100/100",
+        "|move|p2a: Ogerpon|Power Whip|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ogerpon|U-turn|p1a: Kyurem",
+        "|switch|p2a: Heatran|Heatran, M|97/100|[from] U-turn",
+        "|move|p1a: Kyurem|Scale Shot|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, M|78/100",
+        "|move|p2a: Heatran|Flash Cannon|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Primarina|Psychic Noise|p2a: Heatran",
+        "|move|p2a: Heatran|Flash Cannon|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Primarina|Moonblast|p2a: Heatran",
+        "|move|p2a: Heatran|Flash Cannon|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Primarina|Moonblast|p2a: Heatran",
+        "|move|p2a: Heatran|Flash Cannon|p1a: Primarina",
+        "|switch|p1a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Zapdos|Discharge|p2a: Heatran",
+        "|move|p2a: Heatran|Lava Plume|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Zapdos|Discharge|p2a: Heatran",
+        "|move|p2a: Heatran|Stealth Rock|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Zapdos|Discharge|p2a: Heatran",
+        "|switch|p2a: Landorus|Landorus-Therian, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Landorus|Rock Slide|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Landorus|Rock Slide|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F, shiny|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Hatterene"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|6/100",
+        "|move|p2a: Hatterene|Draining Kiss|p1a: Zapdos",
+        "|switch|p1a: Kyurem|Kyurem|33/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem",
+        "|move|p2a: Hatterene|Draining Kiss|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem",
+        "|move|p2a: Hatterene|Psychic Noise|p1a: Kyurem",
+        "|switch|p1a: Scizor|Scizor, M|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Scizor|Bullet Punch|p2a: Hatterene",
+        "|switch|p2a: Landorus|Landorus-Therian, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|88/100",
+        "|move|p2a: Landorus|Earthquake|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Scizor|Scizor, M|84/100",
+        "|move|p2a: Iron Valiant|Aura Sphere|p1a: Scizor"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Scizor|Bullet Punch|p2a: Iron Valiant",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|76/100 psn"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Scizor|Bullet Punch|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Scizor|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Great Tusk|Great Tusk|62/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Great Tusk|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "Yespoleon",
+  "endTime": 1770418993551,
+  "p1Team": [
+    "Kyurem",
+    "Primarina",
+    "Zapdos",
+    "Great Tusk",
+    "Scizor"
+  ],
+  "p2Team": [
+    "Heatran",
+    "Ogerpon-Wellspring",
+    "Landorus-Therian",
+    "Hatterene",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "kyurem",
+      "primarina",
+      "zapdos",
+      "greattusk",
+      "scizor"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "heatran",
+      "ogerponwellspring",
+      "landorustherian",
+      "hatterene",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

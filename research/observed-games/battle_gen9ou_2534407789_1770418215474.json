@@ -1,0 +1,599 @@
+{
+  "id": "battle-gen9ou-2534407789",
+  "p1": "Nardgo",
+  "p2": "Rika-Issue",
+  "minElo": 1509,
+  "startTime": 1770417513480,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p1a: Deoxys|Knock Off|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Deoxys|Spikes|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|100/100",
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Corviknight|U-turn|p2a: Ogerpon",
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|99/100",
+        "|move|p1a: Slowking|Future Sight|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Slowking|Future Sight|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Kyurem|Kyurem|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Kyurem|Substitute|p1a: Kyurem",
+        "|move|p2a: Slowking|Thunder Wave||[still]"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Kyurem|Earth Power|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|100/100",
+        "|move|p1a: Kyurem|Substitute|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Kyurem|Protect|p1a: Kyurem",
+        "|move|p2a: Zamazenta|Crunch|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Kyurem",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Kyurem|Protect|p1a: Kyurem",
+        "|move|p2a: Zamazenta|Close Combat|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|100/100",
+        "|move|p2a: Zamazenta|Close Combat|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Zamazenta|Crunch|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Alomomola",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2: Zamazenta|[notarget]",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Slowking",
+        "|move|p1a: Slowking|Thunder Wave|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|19/100",
+        "|move|p2a: Kyurem|Blizzard|p1a: Corviknight",
+        "|switch|p1a: Deoxys|Deoxys-Defense|76/100 psn"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|88/100",
+        "|move|p1a: Deoxys|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|53/100",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, M|100/100",
+        "|move|p2a: Ogerpon|Substitute|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Ogerpon|Horn Leech|p1a: Dondozo",
+        "|move|p1a: Dondozo|Body Press|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Ogerpon|Horn Leech|p1a: Dondozo",
+        "|move|p1a: Dondozo|Curse|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dondozo|[anim] Ivy Cudgel Water",
+        "|move|p1a: Dondozo|Waterfall|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dondozo|[anim] Ivy Cudgel Water",
+        "|move|p1a: Dondozo|Rest|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Kyurem|Kyurem, tera:Ice|100/100 par"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|58/100",
+        "|switch|p1a: Deoxys|Deoxys-Defense|58/100 psn"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|72/100",
+        "|move|p1a: Deoxys|Recover|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, M, tera:Fighting|100/100 slp",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dondozo|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dondozo|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dondozo|[anim] Ivy Cudgel Water",
+        "|move|p1a: Dondozo|Body Press|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, F|100/100",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|move|p2a: Dragapult|Will-O-Wisp|p1a: Alomomola",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|42/100",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, F|100/100",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Dragapult",
+        "|switch|p1a: Kyurem|Kyurem|26/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|move|p1a: Kyurem|Protect|p1a: Kyurem",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 43,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|86/100 brn",
+        "|move|p2a: Dragapult|Will-O-Wisp|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 44,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Dance|p2a: Dragapult",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 45,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|67/100",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 46,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, F|95/100",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 47,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, M, tera:Fighting|57/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 48,
+      "events": [
+        "|move|p2a: Dragapult|Will-O-Wisp|p1a: Dondozo",
+        "|move|p1a: Dondozo|Waterfall|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 49,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|91/100",
+        "|move|p1a: Dondozo|Rest|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 50,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M|69/100",
+        "|move|p2a: Slowking|Future Sight|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 51,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|72/100",
+        "|move|p1a: Slowking|Future Sight|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 52,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100 brn",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 53,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|switch|p1a: Deoxys|Deoxys-Defense|83/100 psn"
+      ]
+    },
+    {
+      "turn": 54,
+      "events": [
+        "|move|p1a: Deoxys|Spikes|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Great Tusk|Great Tusk|72/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 55,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, M, tera:Fighting|100/100 slp",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 56,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 57,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|94/100"
+      ]
+    },
+    {
+      "turn": 58,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Dragapult|Dragapult, F|86/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 59,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, M, tera:Fighting|84/100 slp",
+        "|move|p2a: Dragapult|Phantom Force||[still]"
+      ]
+    },
+    {
+      "turn": 60,
+      "events": [
+        "|move|p2a: Dragapult|Phantom Force|p1a: Dondozo|[from] lockedmove",
+        "|move|p1a: Dondozo|Waterfall|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 61,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|49/100 brn",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 62,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, M, tera:Fighting|68/100",
+        "|move|p2a: Dragapult|Will-O-Wisp|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 63,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Dondozo",
+        "|move|p1a: Dondozo|Rest|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 64,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|switch|p1a: Alomomola|Alomomola, F|42/100 brn"
+      ]
+    },
+    {
+      "turn": 65,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Kyurem|Kyurem, tera:Ice|100/100 par|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 66,
+      "events": [
+        "|move|p2a: Kyurem|Blizzard|p1a: Slowking",
+        "|move|p1a: Slowking|Future Sight|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 67,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 68,
+      "events": [
+        "|switch|p1a: Deoxys|Deoxys-Defense|58/100 psn",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 69,
+      "events": [
+        "|move|p1a: Deoxys|Recover|p1a: Deoxys",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 70,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, F|67/100",
+        "|move|p1a: Deoxys|Recover|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 71,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|switch|p1a: Alomomola|Alomomola, F|69/100 brn"
+      ]
+    },
+    {
+      "turn": 72,
+      "events": [
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 73,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|92/100",
+        "|move|p1a: Alomomola|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 74,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, M, tera:Fighting|100/100 slp",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dondozo|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 75,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dondozo|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 76,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dondozo|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 77,
+      "events": []
+    }
+  ],
+  "winner": "Rika-Issue",
+  "endTime": 1770418215474,
+  "p1Team": [
+    "Slowking-Galar",
+    "Corviknight",
+    "Kyurem",
+    "Alomomola",
+    "Deoxys-Defense",
+    "Dondozo"
+  ],
+  "p2Team": [
+    "Slowking-Galar",
+    "Great Tusk",
+    "Ogerpon-Wellspring",
+    "Zamazenta",
+    "Kyurem",
+    "Dragapult"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.6666666666666666,
+    "fatCount": 4,
+    "offenseCount": 0,
+    "team": [
+      "slowkinggalar",
+      "corviknight",
+      "kyurem",
+      "alomomola",
+      "deoxysdefense",
+      "dondozo"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "slowkinggalar",
+      "greattusk",
+      "ogerponwellspring",
+      "zamazenta",
+      "kyurem",
+      "dragapult"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

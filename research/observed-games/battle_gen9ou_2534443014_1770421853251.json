@@ -1,0 +1,302 @@
+{
+  "id": "battle-gen9ou-2534443014",
+  "p1": "laggybaggy516",
+  "p2": "kjfm30",
+  "minElo": 1518,
+  "startTime": 1770421653744,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, M|100/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Zapdos",
+        "|move|p2a: Zapdos|U-turn|p1a: Dragapult",
+        "|switch|p2a: Tyranitar|Tyranitar, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F, shiny|100/100",
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Mandibuzz|Foul Play|p2a: Slowking",
+        "|move|p2a: Slowking|Thunder Wave|p1a: Mandibuzz"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Enamorus|Moonblast|p1a: Great Tusk",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F, shiny|100/100 par",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Mandibuzz"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Enamorus|Enamorus, F|100/100",
+        "|move|p1a: Mandibuzz|Toxic|p2a: Enamorus|[miss]"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, F|100/100",
+        "|move|p2a: Enamorus|Moonblast|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Tyranitar|Tyranitar, M|100/100",
+        "|switch|p1a: Walking Wake|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|85/100",
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Slowking",
+        "|move|p2a: Slowking|Thunder Wave|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|39/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F, shiny|100/100 par",
+        "|move|p2a: Zapdos|U-turn|p1a: Mandibuzz",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Enamorus|Moonblast|p1a: Mandibuzz",
+        "|switch|p1a: Ninetales|Ninetales, F|63/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Tyranitar|Tyranitar, M|100/100",
+        "|move|p1a: Ninetales|Will-O-Wisp|p2a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Walking Wake|Walking Wake, tera:Water|76/100 par",
+        "|move|p2a: Tyranitar|Knock Off|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, F|57/100",
+        "|move|p2a: Tyranitar|Knock Off|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Ninetales|Healing Wish|p1a: Ninetales",
+        "|move|p2a: Tyranitar|Knock Off|p1: Ninetales|[notarget]",
+        "|switch|p1a: Walking Wake|Walking Wake, tera:Water|22/100 par"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|16/100",
+        "|move|p1a: Walking Wake|Substitute|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Zapdos",
+        "|switch|p2a: Tyranitar|Tyranitar, M|76/100 brn"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Tyranitar",
+        "|move|p2a: Tyranitar|Knock Off|p1a: Walking Wake",
+        "|switch|p2a: Slowking|Slowking-Galar, F, tera:Water|43/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, M|5/100",
+        "|move|p2a: Enamorus|Earth Power|p1a: Dragapult",
+        "|switch|p1a: Walking Wake|Walking Wake, tera:Water|70/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|75/100",
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Great Tusk",
+        "|switch|p2a: Slowking|Slowking-Galar, F, tera:Water|76/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Ceruledge|Ceruledge, F|94/100",
+        "|move|p2a: Slowking|Thunder Wave|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Pecharunt|Foul Play|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Foul Play|p1a: Ceruledge",
+        "|switch|p1a: Walking Wake|Walking Wake, tera:Water|63/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Pecharunt",
+        "|switch|p2a: Slowking|Slowking-Galar, F, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Walking Wake|Dragon Pulse|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": []
+    }
+  ],
+  "winner": "kjfm30",
+  "endTime": 1770421853251,
+  "p1Team": [
+    "Dragapult",
+    "Mandibuzz",
+    "Great Tusk",
+    "Ceruledge",
+    "Ninetales",
+    "Walking Wake"
+  ],
+  "p2Team": [
+    "Zapdos",
+    "Tyranitar",
+    "Slowking-Galar",
+    "Enamorus",
+    "Great Tusk",
+    "Pecharunt"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "dragapult",
+      "mandibuzz",
+      "greattusk",
+      "ceruledge",
+      "ninetales",
+      "walkingwake"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "zapdos",
+      "tyranitar",
+      "slowkinggalar",
+      "enamorus",
+      "greattusk",
+      "pecharunt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

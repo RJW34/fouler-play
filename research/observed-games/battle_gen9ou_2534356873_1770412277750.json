@@ -1,0 +1,278 @@
+{
+  "id": "battle-gen9ou-2534356873",
+  "p1": "icebrrg",
+  "p2": "Srita Kaguya",
+  "minElo": 1578,
+  "startTime": 1770412203817,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Trailblaze|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Ogerpon|Play Rough|p2a: Dragapult",
+        "|switch|p2a: Amoonguss|Amoonguss, M|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Glimmora|Glimmora, M|100/100",
+        "|move|p2a: Amoonguss|Sludge Bomb|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, F|100/100",
+        "|move|p1a: Glimmora|Meteor Beam||[still]"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Glimmora|Stealth Rock|p2a: Gliscor",
+        "|move|p2a: Gliscor|Earthquake|p1a: Glimmora",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|39/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Amoonguss|Amoonguss, M|100/100",
+        "|move|p1a: Ogerpon|Trailblaze|p2a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Deoxys|Deoxys-Speed|100/100",
+        "|move|p2a: Amoonguss|Sludge Bomb|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Deoxys|Light Screen|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Gholdengo|[miss]",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Amoonguss|Amoonguss, M|100/100",
+        "|move|p1a: Iron Treads|Knock Off|p2a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: Amoonguss",
+        "|move|p2a: Amoonguss|Foul Play|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, F|21/100 tox",
+        "|move|p1a: Iron Treads|Earthquake|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Iron Treads|Knock Off|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|39/100",
+        "|move|p2a: Gliscor|Stealth Rock|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Amoonguss|Amoonguss, M|76/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Amoonguss|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|46/100",
+        "|move|p2a: Amoonguss|Sludge Bomb|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: Amoonguss",
+        "|move|p2a: Amoonguss|Grass Knot|p1a: Iron Treads",
+        "|switch|p1a: Deoxys|Deoxys-Speed|7/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|94/100",
+        "|move|p1a: Deoxys|Reflect|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Deoxys|Light Screen|p1a: Deoxys",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Deoxys",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|39/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, F|46/100 tox",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Gliscor|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Amoonguss|Amoonguss, M|64/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Amoonguss|[anim] Ivy Cudgel Water",
+        "|move|p2a: Amoonguss|Sludge Bomb|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Amoonguss|[anim] Ivy Cudgel Water",
+        "|move|p2a: Amoonguss|Sludge Bomb|p1a: Ogerpon",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|100/100",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Zamazenta|Iron Defense|p2a: Zamazenta",
+        "|move|p1a: Kingambit|Tera Blast|p2a: Zamazenta|[anim] Tera Blast Fairy"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Kingambit|Tera Blast|p2a: Zamazenta|[anim] Tera Blast Fairy",
+        "|move|p2a: Zamazenta|Roar|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Zamazenta",
+        "|switch|p2a: Primarina|Primarina, F|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Zamazenta",
+        "|switch|p1a: Kingambit|Kingambit, M, tera:Fairy|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Primarina|Moonblast|p1a: Kingambit",
+        "|move|p1a: Kingambit|Tera Blast|p2a: Primarina|[anim] Tera Blast Fairy",
+        "|switch|p2a: Gholdengo|Gholdengo|88/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|switch|p2a: Amoonguss|Amoonguss, M|36/100",
+        "|move|p1a: Kingambit|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": []
+    }
+  ],
+  "winner": "icebrrg",
+  "endTime": 1770412277749,
+  "p1Team": [
+    "Glimmora",
+    "Ogerpon-Wellspring",
+    "Deoxys-Speed",
+    "Iron Treads",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Amoonguss",
+    "Gliscor",
+    "Gholdengo",
+    "Zamazenta",
+    "Primarina"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "glimmora",
+      "ogerponwellspring",
+      "deoxysspeed",
+      "irontreads",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "amoonguss",
+      "gliscor",
+      "gholdengo",
+      "zamazenta",
+      "primarina"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

@@ -1,0 +1,79 @@
+{
+  "id": "battle-gen9ou-2534398043",
+  "p1": "Bring it on mon",
+  "p2": "WhatTheFraax",
+  "minElo": 1629,
+  "startTime": 1770416463415,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Ting-Lu",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Kyurem",
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, M|100/100",
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Glimmora",
+        "|switch|p2a: Scizor|Scizor, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Kyurem",
+        "|move|p1a: Kyurem|Tera Blast|p2a: Scizor|[anim] Tera Blast Fire"
+      ]
+    }
+  ],
+  "winner": "Bring it on mon",
+  "endTime": 1770416533320,
+  "p1Team": [],
+  "p2Team": [
+    "Ting-Lu",
+    "Iron Valiant",
+    "Glimmora",
+    "Scizor"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "tinglu",
+      "ironvaliant",
+      "glimmora",
+      "scizor"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

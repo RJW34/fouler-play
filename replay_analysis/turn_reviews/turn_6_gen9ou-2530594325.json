@@ -1,0 +1,20 @@
+{
+  "turn": 6,
+  "bot_choice": "unknown",
+  "why_critical": "Pecharunt went down vs Iron Valiant (94% HP) \u2014 opponent has 5 Pokemon left",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 3% | Zamazenta 72% psn +1 def",
+  "opp_team": "Glimmora fainted | Dragapult 100% | Great Tusk 100% | Iron Valiant 94% tox | Ogerpon-Wellspring 100% | Iron Moth 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530594325",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Iron Valiant"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

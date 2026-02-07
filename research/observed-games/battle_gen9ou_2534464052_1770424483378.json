@@ -1,0 +1,196 @@
+{
+  "id": "battle-gen9ou-2534464052",
+  "p1": "scribeofrevocis",
+  "p2": "Pig Perfect",
+  "minElo": 1700,
+  "startTime": 1770424275230,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: City Boy|Earthquake|p2a: Sew What?",
+        "|move|p2a: Sew What?|Spikes|p1a: City Boy"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: City Boy|Earthquake|p2a: Sew What?",
+        "|switch|p2a: Sumo Smoker|Iron Hands|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: City Boy|Earthquake|p2a: Sumo Smoker",
+        "|move|p2a: Sumo Smoker|Supercell Slam|p1a: City Boy",
+        "|switch|p1a: The Greatest|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: The Greatest|Headlong Rush|p2a: Sumo Smoker",
+        "|move|p2a: Sumo Smoker|Ice Punch|p1a: The Greatest",
+        "|switch|p1a: Leaf|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Leaf|Ivy Cudgel|p2a: Sumo Smoker",
+        "|switch|p2a: Girl Reaper|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Past Accessories|Hatterene, F|100/100",
+        "|move|p2a: Girl Reaper|Focus Blast|p1a: Past Accessories"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: So Ein Mist|Kingambit, M|100/100",
+        "|move|p1a: Past Accessories|Mystical Fire|p2a: So Ein Mist"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: So Ein Mist|Iron Head|p1a: Past Accessories",
+        "|switch|p1a: Zappy|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Peak-Chu|Pawmot, M|100/100",
+        "|move|p1a: Zappy|Hurricane|p2a: Peak-Chu"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Peak-Chu|Revival Blessing|p2a: Peak-Chu",
+        "|move|p1a: Zappy|Hurricane|p2a: Peak-Chu|[miss]"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Sew What?|Pincurchin, M|50/100",
+        "|move|p1a: Zappy|Hurricane|p2a: Sew What?"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Zappy|Hurricane|p2a: Sew What?",
+        "|switch|p2a: Peak-Chu|Pawmot, M|18/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Peak-Chu|Double Shock|p1a: Zappy",
+        "|move|p1a: Zappy|Volt Switch|p2a: Peak-Chu",
+        "|switch|p1a: Leaf|Ogerpon, F|88/100|[from] Volt Switch",
+        "|switch|p2a: Girl Reaper|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Girl Reaper|Moonblast|p1a: Leaf",
+        "|switch|p1a: Zappy|Zapdos|47/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Girl Reaper|Moonblast|p1a: Zappy",
+        "|switch|p1a: El Gambito|Kingambit, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Iron Trunk|Iron Treads|100/100",
+        "|move|p1a: El Gambito|Swords Dance|p1a: El Gambito"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: El Gambito|Sucker Punch|p2a: Iron Trunk",
+        "|switch|p2a: So Ein Mist|Kingambit, M|55/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: El Gambito|Kowtow Cleave|p2a: So Ein Mist",
+        "|switch|p2a: Girl Reaper|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Girl Reaper|Focus Blast|p1a: El Gambito",
+        "|move|p1a: El Gambito|Iron Head|p2a: Girl Reaper"
+      ]
+    }
+  ],
+  "winner": "scribeofrevocis",
+  "endTime": 1770424483378,
+  "p1Team": [
+    "Great Tusk",
+    "Ogerpon",
+    "Hatterene",
+    "Zapdos",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Iron Hands",
+    "Iron Valiant",
+    "Kingambit",
+    "Pawmot",
+    "Pincurchin",
+    "Iron Treads"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "greattusk",
+      "ogerpon",
+      "hatterene",
+      "zapdos",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironhands",
+      "ironvaliant",
+      "kingambit",
+      "pawmot",
+      "pincurchin",
+      "irontreads"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,105 @@
+{
+  "id": "battle-gen9ou-2534457858",
+  "p1": "Dequavious IV",
+  "p2": "flan727",
+  "minElo": 1667,
+  "startTime": 1770423483875,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Bad apple",
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100|[from] U-turn",
+        "|move|p2a: Bad apple|Parting Shot|p1a: Slowking",
+        "|switch|p2a: Meowscarada|Meowscarada, M|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|100/100",
+        "|move|p2a: Meowscarada|Triple Axel|p1a: Zapdos",
+        "|switch|p1a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Bad apple|Pecharunt|97/100",
+        "|move|p1a: Ogerpon|U-turn|p2a: Bad apple",
+        "|switch|p1a: Hoopa|Hoopa-Unbound|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Dess|Ting-Lu|100/100",
+        "|move|p1a: Hoopa|Knock Off|p2a: Dess"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon, F|100/100",
+        "|move|p2a: Dess|Stealth Rock|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Dess",
+        "|switch|p1a: Hoopa|Hoopa-Unbound|100/100|[from] U-turn",
+        "|move|p2a: Dess|Ruination|p1a: Hoopa"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Hoopa|Hyperspace Fury|p2a: Dess",
+        "|move|p2a: Dess|Earthquake|p1a: Hoopa"
+      ]
+    }
+  ],
+  "winner": "flan727",
+  "endTime": 1770423610769,
+  "p1Team": [
+    "Slowking-Galar",
+    "Zapdos",
+    "Ogerpon",
+    "Hoopa-Unbound"
+  ],
+  "p2Team": [
+    "Meowscarada",
+    "Pecharunt",
+    "Ting-Lu"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "slowkinggalar",
+      "zapdos",
+      "ogerpon",
+      "hoopaunbound"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "meowscarada",
+      "pecharunt",
+      "tinglu"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

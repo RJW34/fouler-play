@@ -1,0 +1,192 @@
+{
+  "id": "battle-gen9ou-2534396147",
+  "p1": "PikachuRTM",
+  "p2": "gokubatman2",
+  "minElo": 1554,
+  "startTime": 1770416253413,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Grimmsnarl|Low Kick|p1a: Sam",
+        "|move|p1a: Sam|Knock Off|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Sam|Ceaseless Edge|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Grimmsnarl|Low Kick|p1a: Sam",
+        "|switch|p1a: Mochi|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Mochi|Malignant Chain|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads, shiny|100/100",
+        "|move|p1a: Mochi|Parting Shot|p2a: Iron Treads",
+        "|switch|p1a: Dønphan|Iron Treads|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Mochi|Pecharunt|100/100",
+        "|move|p2a: Iron Treads|Stealth Rock|p1a: Mochi"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Iron Treads|Earth Power|p1a: Mochi",
+        "|move|p1a: Mochi|Parting Shot|p2a: Iron Treads",
+        "|switch|p1a: Dønphan|Iron Treads|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Iron Treads|Earth Power|p1a: Dønphan",
+        "|move|p1a: Dønphan|Rapid Spin|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Dønphan|Earthquake|p2a: Iron Treads",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Dønphan|Stealth Rock|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Gałlade|Iron Valiant|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Gałlade|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Mochi|Pecharunt|56/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Mochi|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Kyu|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Ogerpon|Play Rough|p1a: Kyu|[miss]",
+        "|move|p1a: Kyu|Dragon Dance|p1a: Kyu"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Kyu|Scale Shot|p2a: Ogerpon",
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M, shiny|32/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Kyu|Icicle Spear|p2a: Grimmsnarl",
+        "|switch|p2a: Ceruledge|Ceruledge, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Kyu|Scale Shot|p2a: Ceruledge|[miss]",
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Kyu"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Ceruledge|Shadow Sneak|p1a: Kyu",
+        "|switch|p1a: Dønphan|Iron Treads|74/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Dønphan|Earthquake|p2a: Ceruledge",
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Dønphan",
+        "|switch|p1a: Derrick|Pikachu, M|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Derrick"
+      ]
+    }
+  ],
+  "winner": "gokubatman2",
+  "endTime": 1770416555581,
+  "p1Team": [
+    "Pecharunt",
+    "Iron Treads",
+    "Iron Valiant",
+    "Kyurem",
+    "Pikachu"
+  ],
+  "p2Team": [
+    "Iron Treads",
+    "Ogerpon-Wellspring",
+    "Grimmsnarl",
+    "Ceruledge"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "pecharunt",
+      "irontreads",
+      "ironvaliant",
+      "kyurem",
+      "pikachu"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "irontreads",
+      "ogerponwellspring",
+      "grimmsnarl",
+      "ceruledge"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

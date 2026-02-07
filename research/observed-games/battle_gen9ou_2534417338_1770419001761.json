@@ -1,0 +1,272 @@
+{
+  "id": "battle-gen9ou-2534417338",
+  "p1": "hyonparkdalton",
+  "p2": "Obling",
+  "minElo": 1693,
+  "startTime": 1770418593521,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Iron Moth",
+        "|move|p2a: Iron Moth|Agility|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Iron Moth|Sludge Wave|p1a: Cinderace",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Iron Moth",
+        "|switch|p2a: Deoxys|Deoxys-Speed|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Deoxys|Taunt|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Deoxys|Reflect|p2a: Deoxys",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Deoxys",
+        "|switch|p2a: V|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: V|Swords Dance|p2a: V",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: V"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Clefable|Clefable, M|100/100",
+        "|move|p2a: V|Play Rough|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Clefable|[anim] Ivy Cudgel Water",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: V|Horn Leech|p1a: Clefable",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Clefable|[anim] Ivy Cudgel Water",
+        "|move|p1a: Clefable|Flamethrower|p2a: V"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Clefable|[anim] Ivy Cudgel Water",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Clefable|[anim] Ivy Cudgel Water",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: V|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Rillaboom|Rillaboom, F|100/100",
+        "|move|p2a: V|Ivy Cudgel|p1a: Rillaboom|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Rillaboom|Grassy Glide|p2a: V",
+        "|move|p2a: V|Horn Leech|p1a: Rillaboom",
+        "|switch|p1a: Clefable|Clefable, M|68/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: V|Horn Leech|p1a: Clefable",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Clefable|[anim] Ivy Cudgel Water",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Clefable|[anim] Ivy Cudgel Water",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Clefable|[anim] Ivy Cudgel Water",
+        "|move|p1a: Clefable|Flamethrower|p2a: V"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: V|Horn Leech|p1a: Clefable",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: V|Swords Dance|p2a: V",
+        "|move|p1a: Clefable|Flamethrower|p2a: V"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: V|Horn Leech|p1a: Clefable",
+        "|move|p1a: Clefable|Flamethrower|p2a: V"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: V|Horn Leech|p1a: Clefable",
+        "|move|p1a: Clefable|Flamethrower|p2a: V"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: V|Horn Leech|p1a: Clefable",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: V",
+        "|move|p2a: V|Play Rough|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: V",
+        "|switch|p2a: Roaring Sun|Salamence, M|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Roaring Sun|Earthquake|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Roaring Sun|Dual Wingbeat|p1a: Great Tusk",
+        "|switch|p1a: Pecharunt|Pecharunt|43/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Roaring Sun|Earthquake|p1a: Pecharunt",
+        "|switch|p1a: Raging Bolt|Raging Bolt, tera:Fairy|2/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Roaring Sun",
+        "|move|p2a: Roaring Sun|Earthquake|p1a: Raging Bolt"
+      ]
+    }
+  ],
+  "winner": "Obling",
+  "endTime": 1770419001761,
+  "p1Team": [
+    "Raging Bolt",
+    "Clefable",
+    "Pecharunt",
+    "Rillaboom",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Deoxys-Speed",
+    "Ogerpon-Wellspring",
+    "Salamence"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "ragingbolt",
+      "clefable",
+      "pecharunt",
+      "rillaboom",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "deoxysspeed",
+      "ogerponwellspring",
+      "salamence"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

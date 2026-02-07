@@ -1,0 +1,57 @@
+{
+  "timestamp": "20260131_190709",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530335714",
+  "replay_id": "gen9ou-2530335714",
+  "mistakes_found": 7,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 5,
+      "description": "Gliscor fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 12,
+      "description": "Gholdengo fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 21,
+      "description": "Pecharunt fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 38,
+      "description": "Zamazenta fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 50,
+      "description": "Skarmory fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 51,
+      "description": "Blissey fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 51,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    }
+  ]
+}

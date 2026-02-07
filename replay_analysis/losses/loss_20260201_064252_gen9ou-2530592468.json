@@ -1,0 +1,15 @@
+{
+  "timestamp": "20260201_064252",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530592468",
+  "replay_id": "gen9ou-2530592468",
+  "mistakes_found": 1,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 6,
+      "description": "Skarmory fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    }
+  ]
+}

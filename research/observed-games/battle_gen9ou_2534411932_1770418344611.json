@@ -1,0 +1,307 @@
+{
+  "id": "battle-gen9ou-2534411932",
+  "p1": "kjfm30",
+  "p2": "Cyclosz",
+  "minElo": 1514,
+  "startTime": 1770417993505,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo, shiny|100/100",
+        "|move|p1a: Zapdos|Thunder Wave|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Zapdos|U-turn|p2a: Gholdengo",
+        "|switch|p1a: Tyranitar|Tyranitar, M|100/100|[from] U-turn",
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Rillaboom|Rillaboom, M, shiny|100/100",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Rillaboom",
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Tyranitar",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|100/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo, shiny|99/100",
+        "|move|p1a: Zapdos|Roost|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Zapdos|U-turn|p2a: Gholdengo",
+        "|switch|p1a: Enamorus|Enamorus, F|100/100|[from] U-turn",
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Enamorus|Earth Power|p2a: Gholdengo",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Enamorus",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Gholdengo",
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|100/100",
+        "|move|p2a: Ogerpon|U-turn|p1a: Zapdos",
+        "|switch|p2a: Glimmora|Glimmora, M, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Glimmora|Stealth Rock|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Glimmora|Earth Power|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Tyranitar|Tyranitar, M|81/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|43/100",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Samurott",
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Ogerpon|U-turn|p1a: Pecharunt",
+        "|switch|p2a: Glimmora|Glimmora, M, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Glimmora|Earth Power|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Glimmora|Earth Power|p1a: Slowking",
+        "|move|p1a: Slowking|Thunder Wave|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|90/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|88/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Zapdos|Hurricane|p2a: Glimmora",
+        "|move|p2a: Glimmora|Power Gem|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|switch|p1a: Zapdos|Zapdos|88/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Zapdos|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Slowking|Slowking-Galar, F|79/100|[from] U-turn",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100",
+        "|switch|p1a: Zapdos|Zapdos|88/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Ogerpon|U-turn|p1a: Zapdos",
+        "|switch|p2a: Raging Bolt|Raging Bolt|90/100|[from] U-turn",
+        "|move|p1a: Zapdos|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Great Tusk|Great Tusk|77/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, M, shiny, tera:Ghost|58/100 par",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Glimmora",
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|91/100",
+        "|move|p2a: Ogerpon|Rock Tomb|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|78/100",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, M|52/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Tyranitar",
+        "|switch|p1a: Slowking|Slowking-Galar, F|73/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Slowking",
+        "|move|p1a: Slowking|Sludge Bomb|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|75/100",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Zapdos",
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Zapdos",
+        "|switch|p1a: Pecharunt|Pecharunt|77/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": []
+    }
+  ],
+  "winner": "kjfm30",
+  "endTime": 1770418344611,
+  "p1Team": [
+    "Tyranitar",
+    "Zapdos",
+    "Enamorus",
+    "Great Tusk",
+    "Slowking-Galar",
+    "Pecharunt"
+  ],
+  "p2Team": [
+    "Gholdengo",
+    "Rillaboom",
+    "Samurott-Hisui",
+    "Ogerpon",
+    "Glimmora",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "tyranitar",
+      "zapdos",
+      "enamorus",
+      "greattusk",
+      "slowkinggalar",
+      "pecharunt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "gholdengo",
+      "rillaboom",
+      "samurotthisui",
+      "ogerpon",
+      "glimmora",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

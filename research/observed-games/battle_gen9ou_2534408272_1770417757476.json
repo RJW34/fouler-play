@@ -1,0 +1,129 @@
+{
+  "id": "battle-gen9ou-2534408272",
+  "p1": "Cyclosz",
+  "p2": "aq296",
+  "minElo": 1552,
+  "startTime": 1770417573489,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Rillaboom|Swords Dance|p1a: Rillaboom",
+        "|move|p2a: Garchomp|Stealth Rock|p1a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Rillaboom|Grassy Glide|p2a: Garchomp",
+        "|move|p2a: Garchomp|Dragon Tail|p1a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Heatran|Heatran, F|100/100",
+        "|move|p1a: Gholdengo|Dazzling Gleam|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Glimmora|Glimmora, M, shiny|100/100",
+        "|move|p2a: Heatran|Magma Storm|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Glimmora|Stealth Rock|p2a: Scizor",
+        "|move|p2a: Scizor|Knock Off|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Glimmora|Power Gem|p2a: Scizor",
+        "|move|p2a: Scizor|Knock Off|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Glimmora|Power Gem|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Glimmora",
+        "|switch|p1a: Samurott|Samurott-Hisui, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Garchomp|Garchomp, F|33/100",
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: Garchomp",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo, shiny|100/100",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "Cyclosz",
+  "endTime": 1770417757476,
+  "p1Team": [
+    "Glimmora",
+    "Samurott-Hisui",
+    "Gholdengo"
+  ],
+  "p2Team": [
+    "Heatran",
+    "Gholdengo",
+    "Garchomp",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "glimmora",
+      "samurotthisui",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "heatran",
+      "gholdengo",
+      "garchomp",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

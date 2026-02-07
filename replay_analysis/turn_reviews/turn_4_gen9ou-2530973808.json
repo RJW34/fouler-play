@@ -1,0 +1,24 @@
+{
+  "turn": 4,
+  "bot_choice": "Switched to Gholdengo",
+  "why_critical": "Switched to Gholdengo vs healthy Ting-Lu \u2014 long-term positioning play",
+  "bot_team": "Gliscor 100% tox +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 95% par | Pecharunt 100% | Zamazenta 100% +1 def",
+  "opp_team": "Hatterene 100% | Excadrill 100% | Ogerpon-Cornerstone 100% | Kyurem 100% | Ting-Lu 100% | Iron Valiant 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530973808",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Ting-Lu"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

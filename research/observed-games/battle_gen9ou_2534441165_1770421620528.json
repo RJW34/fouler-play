@@ -1,0 +1,115 @@
+{
+  "id": "battle-gen9ou-2534441165",
+  "p1": "wugui2026",
+  "p2": "kjfm30",
+  "minElo": 1577,
+  "startTime": 1770421413720,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: 格斗肥大|Crunch|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: 格斗肥大|Crunch|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Parting Shot|p1a: 格斗肥大",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: 我没带地震|Iron Treads|100/100",
+        "|move|p2a: Enamorus|Earth Power|p1a: 我没带地震",
+        "|switch|p1a: 钉子|Glimmora, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p1a: 钉子|Sludge Wave|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: 肥大|Dragonite, M|100/100",
+        "|move|p2a: Slowking|Future Sight|p1a: 肥大"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: 肥大|Earthquake|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: 格斗肥大|Zamazenta|100/100",
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: 格斗肥大"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|54/100",
+        "|move|p1a: 格斗肥大|Body Press|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": []
+    }
+  ],
+  "winner": "kjfm30",
+  "endTime": 1770421620528,
+  "p1Team": [
+    "Iron Treads",
+    "Glimmora",
+    "Dragonite",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Pecharunt",
+    "Enamorus",
+    "Slowking-Galar",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "irontreads",
+      "glimmora",
+      "dragonite",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "pecharunt",
+      "enamorus",
+      "slowkinggalar",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

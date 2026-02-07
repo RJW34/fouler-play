@@ -1,0 +1,297 @@
+{
+  "id": "battle-gen9ou-2534423165",
+  "p1": "n trademark",
+  "p2": "xdye",
+  "minElo": 1653,
+  "startTime": 1770419253568,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: 10 packs deep|Torkoal, F, shiny|100/100",
+        "|switch|p1a: Corviknight|Corviknight, M|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Corviknight|U-turn|p2a: 10 packs deep",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100|[from] U-turn",
+        "|move|p2a: 10 packs deep|Stealth Rock|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Gyatt in the hat",
+        "|switch|p2a: Old and horny|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|100/100",
+        "|move|p2a: Old and horny|Headlong Rush|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Old and horny|Temper Flare|p1a: Corviknight",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Dangerous flaps"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Dangerous flaps|U-turn|p1a: Slowking",
+        "|switch|p2a: RagingStormZoner|Raging Bolt|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: RagingStormZoner|Draco Meteor|p1a: Slowking",
+        "|switch|p1a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: 10 packs deep|Torkoal, F, shiny|96/100",
+        "|move|p1a: Dragapult|Dragon Darts|p2a: 10 packs deep"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny|87/100",
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Dangerous flaps"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Dangerous flaps",
+        "|move|p2a: Dangerous flaps|Will-O-Wisp|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Dangerous flaps",
+        "|move|p2a: Dangerous flaps|Morning Sun|p2a: Dangerous flaps"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|100/100",
+        "|move|p2a: Dangerous flaps|U-turn|p1a: Garganacl",
+        "|switch|p2a: Waking Bad|Walking Wake|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Waking Bad|Hydro Steam|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Waking Bad|Hydro Steam|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Waking Bad"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: RagingStormZoner|Raging Bolt|100/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: RagingStormZoner"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: 10 packs deep|Torkoal, F, shiny|51/100",
+        "|move|p1a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Old and horny|Great Tusk, shiny|84/100",
+        "|move|p1a: Garganacl|Stealth Rock|p2a: Old and horny"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Old and horny|Headlong Rush|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Old and horny"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: RagingStormZoner|Raging Bolt|75/100",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: RagingStormZoner|Draco Meteor|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, F|89/100 brn",
+        "|move|p2a: RagingStormZoner|Draco Meteor|p1a: Dragapult",
+        "|switch|p1a: Great Tusk|Great Tusk|84/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny, tera:Steel|72/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Dangerous flaps"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Dangerous flaps",
+        "|switch|p2a: 10 packs deep|Torkoal, F, shiny|51/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: 10 packs deep",
+        "|switch|p2a: Waking Bad|Walking Wake|60/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Waking Bad",
+        "|switch|p2a: Old and horny|Great Tusk, shiny|68/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Old and horny|Headlong Rush|p1a: Raging Bolt",
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Old and horny|Rapid Spin|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Old and horny"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: RagingStormZoner|Raging Bolt|63/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: RagingStormZoner"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: RagingStormZoner|Volt Switch|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p2a: Old and horny|Great Tusk, shiny|49/100",
+        "|switch|p1a: Great Tusk|Great Tusk|51/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Old and horny",
+        "|switch|p2a: RagingStormZoner|Raging Bolt|26/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: RagingStormZoner"
+      ]
+    }
+  ],
+  "winner": "n trademark",
+  "endTime": 1770419611220,
+  "p1Team": [
+    "Corviknight",
+    "Raging Bolt",
+    "Great Tusk",
+    "Slowking-Galar",
+    "Dragapult",
+    "Garganacl"
+  ],
+  "p2Team": [
+    "Torkoal",
+    "Hatterene",
+    "Great Tusk",
+    "Slither Wing",
+    "Raging Bolt",
+    "Walking Wake"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 3,
+    "offenseCount": 2,
+    "team": [
+      "corviknight",
+      "ragingbolt",
+      "greattusk",
+      "slowkinggalar",
+      "dragapult",
+      "garganacl"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "torkoal",
+      "hatterene",
+      "greattusk",
+      "slitherwing",
+      "ragingbolt",
+      "walkingwake"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

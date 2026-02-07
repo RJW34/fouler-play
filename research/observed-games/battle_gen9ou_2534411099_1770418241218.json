@@ -1,0 +1,202 @@
+{
+  "id": "battle-gen9ou-2534411099",
+  "p1": "MegaBaxShots",
+  "p2": "Poopoo mcnuts",
+  "minElo": 1614,
+  "startTime": 1770417903509,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, M|100/100",
+        "|move|p1a: Great Tusk|Close Combat|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Scizor|Scizor, M|100/100",
+        "|switch|p2a: Rotom|Rotom-Wash|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|100/100",
+        "|move|p2a: Rotom|Volt Switch|p1a: Hatterene",
+        "|switch|p2a: Scizor|Scizor, M|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Scizor|U-turn|p1a: Hatterene",
+        "|switch|p2a: Rotom|Rotom-Wash|100/100|[from] U-turn",
+        "|switch|p1a: Torkoal|Torkoal, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Venusaur|Venusaur, F|100/100",
+        "|move|p2a: Rotom|Volt Switch|p1a: Venusaur",
+        "|switch|p2a: Heatran|Heatran, F|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Walking Wake|Walking Wake|100/100",
+        "|move|p2a: Heatran|Magma Storm|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Rotom|Rotom-Wash|100/100",
+        "|move|p1a: Walking Wake|Flip Turn|p2a: Rotom",
+        "|switch|p1a: Venusaur|Venusaur, F|84/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, M|91/100",
+        "|move|p1a: Venusaur|Solar Beam||[still]"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Heatran|Heatran, F|100/100",
+        "|move|p1a: Venusaur|Solar Beam||[still]"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Walking Wake|Walking Wake|70/100",
+        "|move|p2a: Heatran|Magma Storm|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Rotom|Rotom-Wash|95/100",
+        "|move|p1a: Walking Wake|Flip Turn|p2a: Rotom",
+        "|switch|p1a: Venusaur|Venusaur, F|64/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Heatran|Heatran, F|88/100",
+        "|move|p1a: Venusaur|Weather Ball|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Torkoal|Torkoal, F|100/100",
+        "|move|p2a: Heatran|Stealth Rock|p1a: Torkoal"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Heatran|Earth Power|p1a: Torkoal",
+        "|switch|p1a: Walking Wake|Walking Wake|38/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Rotom|Rotom-Wash|90/100",
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Rotom"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, M|42/100",
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Weezing",
+        "|switch|p2a: Scizor|Scizor, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Walking Wake",
+        "|switch|p1a: Venusaur|Venusaur, F|64/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Scizor|Bullet Punch|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, M|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": []
+    }
+  ],
+  "winner": "Poopoo mcnuts",
+  "endTime": 1770418241218,
+  "p1Team": [
+    "Scizor",
+    "Hatterene",
+    "Torkoal",
+    "Venusaur",
+    "Walking Wake",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Weezing-Galar",
+    "Rotom-Wash",
+    "Scizor",
+    "Heatran",
+    "Gliscor"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "scizor",
+      "hatterene",
+      "torkoal",
+      "venusaur",
+      "walkingwake",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "weezinggalar",
+      "rotomwash",
+      "scizor",
+      "heatran",
+      "gliscor"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

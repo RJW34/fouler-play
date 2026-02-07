@@ -1,0 +1,20 @@
+{
+  "turn": 7,
+  "bot_choice": "Pecharunt fainted",
+  "why_critical": "\u274c Pecharunt fainted \u2014 should we have switched out earlier or chosen differently?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 44% | Zamazenta fainted",
+  "opp_team": "Ogerpon-Wellspring 100% | Scizor fainted | Ceruledge 38% -2 def, +2 spe | Dragonite 94% tox +1 atk, +1 spe | Iron Valiant 100% | Kingambit 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530457585",
+  "alternatives": [
+    [
+      "Switch out earlier",
+      "Preserve this Pokemon for later"
+    ],
+    [
+      "Different move",
+      "Better damage/utility before going down"
+    ]
+  ],
+  "feedback": null
+}

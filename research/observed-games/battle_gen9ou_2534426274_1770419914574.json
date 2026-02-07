@@ -1,0 +1,328 @@
+{
+  "id": "battle-gen9ou-2534426274",
+  "p1": "darkphoenix268",
+  "p2": "kaleor",
+  "minElo": 1537,
+  "startTime": 1770419643605,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Great Tusk|Knock Off|p2a: Alomomola",
+        "|move|p2a: Alomomola|Scald|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Great Tusk",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Tera Blast|p2a: Great Tusk|[anim] Tera Blast Fairy",
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Crawdaunt|Crawdaunt, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|15/100 brn",
+        "|move|p2a: Crawdaunt|Crabhammer|p1a: Great Tusk",
+        "|switch|p1a: Raging Bolt|Raging Bolt, tera:Fairy|39/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p1a: Raging Bolt|Thunderclap||[still]"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Slowking|Future Sight|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Slowking|Psychic Noise|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Crawdaunt|Crawdaunt, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|100/100",
+        "|move|p2a: Crawdaunt|Crabhammer|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Crawdaunt|Crabhammer|p1a: Kingambit|[miss]",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Crawdaunt"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Crawdaunt",
+        "|move|p2a: Crawdaunt|Crabhammer|p1a: Kingambit",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Slowking",
+        "|switch|p2a: Crawdaunt|Crawdaunt, F|31/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Crawdaunt|Crabhammer|p1a: Slowking",
+        "|switch|p1a: Raging Bolt|Raging Bolt, tera:Fairy|45/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Slowking",
+        "|move|p2a: Slowking|Future Sight|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Slowking",
+        "|switch|p2a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Dragapult",
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Raging Bolt",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Gholdengo",
+        "|switch|p2a: Crawdaunt|Crawdaunt, F|31/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Crawdaunt|Aqua Jet|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Crawdaunt",
+        "|switch|p2a: Alomomola|Alomomola, M|62/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|100/100",
+        "|move|p2a: Alomomola|Mirror Coat||[still]"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Zamazenta|Close Combat|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Zamazenta",
+        "|switch|p2a: Dragapult|Dragapult, M|48/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Dragapult|Draco Meteor|p1a: Zamazenta|[miss]",
+        "|move|p1a: Zamazenta|Close Combat|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Dragapult|Draco Meteor|p1a: Zamazenta",
+        "|switch|p1a: Gholdengo|Gholdengo|33/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Dragapult",
+        "|switch|p2a: Alomomola|Alomomola, M|37/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|100/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Corviknight",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Corviknight",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Corviknight",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Corviknight",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": []
+    }
+  ],
+  "winner": "kaleor",
+  "endTime": 1770419914574,
+  "p1Team": [
+    "Raging Bolt",
+    "Slowking-Galar",
+    "Great Tusk",
+    "Kingambit",
+    "Gholdengo",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Slowking-Galar",
+    "Crawdaunt",
+    "Alomomola",
+    "Dragapult",
+    "Corviknight"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "ragingbolt",
+      "slowkinggalar",
+      "greattusk",
+      "kingambit",
+      "gholdengo",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 3,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "slowkinggalar",
+      "crawdaunt",
+      "alomomola",
+      "dragapult",
+      "corviknight"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

@@ -1,0 +1,229 @@
+{
+  "id": "battle-gen9ou-2534373327",
+  "p1": "Log God Neo✈️_✈️",
+  "p2": "ohko_charjabug",
+  "minElo": 1531,
+  "startTime": 1770413823284,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Skraa|Skarmory, F|100/100",
+        "|move|p1a: DA LAST REX(3005)|Knock Off|p2a: Skraa"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: BLITZ SOME OPPS|Garchomp, M|100/100",
+        "|move|p2a: Skraa|Spikes|p1a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: BLITZ SOME OPPS|Stealth Rock|p2a: Skraa",
+        "|move|p2a: Skraa|Roost|p2a: Skraa"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: BLITZ SOME OPPS|Spikes|p2a: Skraa",
+        "|move|p2a: Skraa|Iron Defense|p2a: Skraa"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: BLITZ SOME OPPS|Spikes|p2a: Skraa",
+        "|move|p2a: Skraa|Spikes|p1a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: BLITZ SOME OPPS|Spikes|p2a: Skraa",
+        "|move|p2a: Skraa|Spikes|p1a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: OVO CHUBBS|Torkoal, M|100/100",
+        "|move|p2a: Skraa|Body Press|p1a: OVO CHUBBS"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Turd|Heatran, F|100/100",
+        "|move|p1a: OVO CHUBBS|Rapid Spin|p2a: Turd"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: DA LAST REX(3005)|Tyranitar, F|84/100",
+        "|move|p2a: Turd|Magma Storm|p1a: DA LAST REX(3005)"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Turd|Will-O-Wisp|p1a: DA LAST REX(3005)",
+        "|move|p1a: DA LAST REX(3005)|Dragon Tail|p2a: Turd"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Silly Wheel|Iron Treads|100/100",
+        "|move|p1a: DA LAST REX(3005)|Dragon Tail|p2a: Silly Wheel"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Turd|Earth Power|p1a: DA LAST REX(3005)",
+        "|move|p1a: DA LAST REX(3005)|Earthquake|p2a: Turd",
+        "|switch|p2a: Silly Wheel|Iron Treads|97/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: BLITZ SOME OPPS|Garchomp, M|100/100",
+        "|move|p2a: Silly Wheel|Rapid Spin|p1a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Silly Wheel|Ice Spinner|p1a: BLITZ SOME OPPS",
+        "|move|p1a: BLITZ SOME OPPS|Stealth Rock|p2a: Silly Wheel"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Silly Wheel|Earthquake|p1a: BLITZ SOME OPPS",
+        "|switch|p1a: OVO CHUBBS|Torkoal, M|70/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Silly Wheel|Earthquake|p1a: OVO CHUBBS",
+        "|move|p1a: OVO CHUBBS|Lava Plume|p2a: Silly Wheel",
+        "|switch|p2a: Madam Gazelle|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: DA LAST REX(3005)|Tyranitar, F|33/100 brn",
+        "|move|p2a: Madam Gazelle|Tachyon Cutter|p1a: DA LAST REX(3005)",
+        "|switch|p1a: FAT CHARIZARD|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: OVO CHUBBS|Torkoal, M|13/100",
+        "|move|p2a: Madam Gazelle|Tachyon Cutter|p1a: OVO CHUBBS",
+        "|switch|p1a: FAT CHARIZARD|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Madam Gazelle|Tachyon Cutter|p1a: FAT CHARIZARD",
+        "|move|p1a: FAT CHARIZARD|Dragon Dance|p1a: FAT CHARIZARD"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Skraa|Skarmory, F|100/100",
+        "|move|p1a: FAT CHARIZARD|Earthquake|p2a: Skraa"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: FAT CHARIZARD|Fire Punch|p2a: Skraa",
+        "|switch|p2a: King Pin|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: King Pin|Sucker Punch|p1a: FAT CHARIZARD",
+        "|move|p1a: FAT CHARIZARD|Fire Punch|p2a: King Pin",
+        "|switch|p2a: Madam Gazelle|Iron Crown|94/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: FAT CHARIZARD|Tera Blast|p2a: Madam Gazelle|[anim] Tera Blast Fairy",
+        "|switch|p2a: Cheese Man|Gholdengo|94/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: FAT CHARIZARD|Fire Punch|p2a: Cheese Man"
+      ]
+    }
+  ],
+  "winner": "Log God Neo✈️_✈️",
+  "endTime": 1770413946261,
+  "p1Team": [
+    "Garchomp",
+    "Torkoal",
+    "Tyranitar",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Skarmory",
+    "Heatran",
+    "Iron Treads",
+    "Iron Crown",
+    "Kingambit",
+    "Gholdengo"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "garchomp",
+      "torkoal",
+      "tyranitar",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "skarmory",
+      "heatran",
+      "irontreads",
+      "ironcrown",
+      "kingambit",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,206 @@
+{
+  "id": "battle-gen9ou-2534381700",
+  "p1": "Kissone",
+  "p2": "0c3an m4n",
+  "minElo": 1538,
+  "startTime": 1770414693322,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Ribombee|Moonblast|p2a: Si",
+        "|move|p2a: Si|Psychic|p1a: Ribombee"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Si|Draining Kiss|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Si|[anim] Ivy Cudgel Water",
+        "|move|p2a: Si|Nuzzle|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Risk of what?|Pelipper, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Thundurus|Thundurus-Therian, M|100/100",
+        "|move|p2a: Risk of what?|Hurricane|p1a: Thundurus"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Si|Hatterene, F, shiny|11/100",
+        "|move|p1a: Thundurus|Thunderbolt|p2a: Si",
+        "|switch|p2a: Sphyraena (Fih)|Barraskewda, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|69/100 par",
+        "|move|p2a: Sphyraena (Fih)|Poison Jab|p1a: Ogerpon",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Apernao|Crawdaunt, M, shiny|100/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Apernao"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Apernao|Aqua Jet|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Focus Blast|p2a: Apernao",
+        "|switch|p2a: Sphyraena (Fih)|Barraskewda, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Sphyraena (Fih)|Liquidation|p1a: Gholdengo",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Sphyraena (Fih)|Liquidation|p1a: Kyurem",
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Kyurem|Scale Shot|p2a: Sphyraena (Fih)|[miss]",
+        "|move|p2a: Sphyraena (Fih)|Liquidation|p1a: Kyurem",
+        "|switch|p1a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Risk of what?|Pelipper, M, shiny|100/100",
+        "|move|p1a: Enamorus|Moonblast|p2a: Risk of what?"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Enamorus|Substitute|p1a: Enamorus",
+        "|move|p2a: Risk of what?|Surf|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Enamorus|Substitute|p1a: Enamorus",
+        "|move|p2a: Risk of what?|Surf|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Enamorus|Substitute|p1a: Enamorus",
+        "|move|p2a: Risk of what?|Surf|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Enamorus|Substitute|p1a: Enamorus",
+        "|move|p2a: Risk of what?|Surf|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Enamorus|Moonblast|p2a: Risk of what?",
+        "|switch|p2a: Sphyraena (Fih)|Barraskewda, M, shiny, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Sphyraena (Fih)|Liquidation|p1a: Enamorus",
+        "|switch|p1a: Ribombee|Ribombee, M|43/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Sphyraena (Fih)|Liquidation|p1a: Ribombee",
+        "|switch|p1a: Thundurus|Thundurus-Therian, M|72/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Sphyraena (Fih)|Liquidation|p1a: Thundurus"
+      ]
+    }
+  ],
+  "winner": "0c3an m4n",
+  "endTime": 1770414812513,
+  "p1Team": [
+    "Ogerpon-Wellspring",
+    "Thundurus-Therian",
+    "Gholdengo",
+    "Kyurem",
+    "Enamorus",
+    "Ribombee"
+  ],
+  "p2Team": [
+    "Pelipper",
+    "Hatterene",
+    "Barraskewda",
+    "Crawdaunt"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ogerponwellspring",
+      "thundurustherian",
+      "gholdengo",
+      "kyurem",
+      "enamorus",
+      "ribombee"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "pelipper",
+      "hatterene",
+      "barraskewda",
+      "crawdaunt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260201_060215",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530579741",
+  "replay_id": "gen9ou-2530579741",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "no_hazards_set",
+      "turn": 19,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 19,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 4,
+      "description": "Attempted swordsdance on turn 4 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

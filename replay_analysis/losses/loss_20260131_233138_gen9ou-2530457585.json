@@ -1,0 +1,64 @@
+{
+  "timestamp": "20260131_233138",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530457585",
+  "replay_id": "gen9ou-2530457585",
+  "mistakes_found": 8,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 4,
+      "description": "Scizor fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 10,
+      "description": "Dragonite fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 14,
+      "description": "Ogerpon fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 15,
+      "description": "Ceruledge fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 16,
+      "description": "Iron Valiant fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 19,
+      "description": "Kingambit fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 19,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "early_setup",
+      "turn": 5,
+      "description": "Attempted dragondance on turn 5 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

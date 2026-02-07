@@ -1,0 +1,221 @@
+{
+  "id": "battle-gen9ou-2534377735",
+  "p1": "Smash BrOUs",
+  "p2": "DivJudgement",
+  "minElo": 1673,
+  "startTime": 1770414273301,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Dr. Mario"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Dr. Mario",
+        "|switch|p1a: Ganondorf|Drednaw, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Ganondorf",
+        "|move|p1a: Ganondorf|Shell Smash|p1a: Ganondorf"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p1a: Ganondorf|Liquidation|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Ganondorf|Liquidation|p2a: Slowking",
+        "|switch|p2a: Cinderace|Cinderace, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch||[still]",
+        "|move|p1a: Ganondorf|Shell Smash|p1a: Ganondorf"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch||[still]",
+        "|move|p1a: Ganondorf|Shell Smash|p1a: Ganondorf"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch||[still]",
+        "|move|p1a: Ganondorf|Shell Smash|p1a: Ganondorf"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch||[still]",
+        "|move|p1a: Ganondorf|Shell Smash|p1a: Ganondorf"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Ganondorf|Shell Smash|p1a: Ganondorf",
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Ganondorf",
+        "|switch|p1a: Wii Fit Trainer|Minior-Green|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Cinderace|U-turn|p1a: Wii Fit Trainer",
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100|[from] U-turn",
+        "|move|p1a: Wii Fit Trainer|Shell Smash|p1a: Wii Fit Trainer"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Wii Fit Trainer|Dazzling Gleam|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Throat Chop|p1a: Wii Fit Trainer"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Wii Fit Trainer|Dazzling Gleam|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Throat Chop|p1a: Wii Fit Trainer",
+        "|switch|p1a: Little Mac|Torterra, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Little Mac|Bullet Seed|p2a: Ting-Lu",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Little Mac",
+        "|move|p1a: Little Mac|Shell Smash|p1a: Little Mac"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Little Mac|Bullet Seed|p2a: Darkrai",
+        "|switch|p2a: Cinderace|Cinderace, F|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch|p1a: Little Mac",
+        "|switch|p1a: King Dedede|Blastoise, M|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Cinderace|U-turn|p1a: King Dedede",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100|[from] U-turn",
+        "|move|p1a: King Dedede|Shell Smash|p1a: King Dedede"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: King Dedede|Surf|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: King Dedede"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: King Dedede|Surf|p2a: Pecharunt",
+        "|switch|p2a: Cinderace|Cinderace, F|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch|p1a: King Dedede",
+        "|switch|p1a: Mr. Game & Watch|Polteageist|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Mr. Game & Watch",
+        "|move|p1a: Mr. Game & Watch|Shell Smash|p1a: Mr. Game & Watch"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Mr. Game & Watch|Shell Smash|p1a: Mr. Game & Watch",
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Mr. Game & Watch"
+      ]
+    }
+  ],
+  "winner": "DivJudgement",
+  "endTime": 1770414563252,
+  "p1Team": [
+    "Drednaw",
+    "Minior-Green",
+    "Torterra",
+    "Blastoise",
+    "Polteageist"
+  ],
+  "p2Team": [
+    "Slowking-Galar",
+    "Cinderace",
+    "Ting-Lu",
+    "Darkrai",
+    "Pecharunt"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "drednaw",
+      "miniorgreen",
+      "torterra",
+      "blastoise",
+      "polteageist"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "slowkinggalar",
+      "cinderace",
+      "tinglu",
+      "darkrai",
+      "pecharunt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,222 @@
+{
+  "id": "battle-gen9ou-2534361891",
+  "p1": "abGodc",
+  "p2": "Quaqrash",
+  "minElo": 1743,
+  "startTime": 1770412623228,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Barraskewda|Flip Turn|p2a: The Juggernaught",
+        "|switch|p1a: Pelipper|Pelipper, F|100/100|[from] Flip Turn",
+        "|move|p2a: The Juggernaught|Spikes|p1a: Pelipper"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, F|100/100",
+        "|move|p1a: Pelipper|U-turn|p2a: The Tyrant",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: The Tyrant",
+        "|move|p2a: The Tyrant|Low Kick|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: The Juggernaught|Chesnaught, F|87/100",
+        "|move|p1a: Iron Treads|Earthquake|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Spikes|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Iron Treads|Steel Beam|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Spikes|p1: Iron Treads",
+        "|switch|p1a: Pelipper|Pelipper, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: The Juggernaught|Synthesis|p2a: The Juggernaught",
+        "|move|p1a: Pelipper|U-turn|p2a: The Juggernaught",
+        "|switch|p1a: Kingdra|Kingdra, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, F|99/100",
+        "|move|p1a: Kingdra|Draco Meteor|p2a: The Tyrant"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Pelipper|Pelipper, F|84/100",
+        "|move|p2a: The Tyrant|Stealth Rock|p1a: Pelipper"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: The Juggernaught|Chesnaught, F|34/100",
+        "|move|p1a: Pelipper|U-turn|p2a: The Juggernaught",
+        "|switch|p1a: Barraskewda|Barraskewda, M|84/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Barraskewda|Liquidation|p2a: The Juggernaught",
+        "|switch|p2a: The Tyrant|Tyranitar, F|65/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: The Reigner|Tornadus-Therian, M|100/100",
+        "|move|p1a: Barraskewda|Liquidation|p2a: The Reigner",
+        "|switch|p2a: The Excalibur|Excadrill, F|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Goodra|Goodra-Hisui, F|100/100",
+        "|move|p2a: The Excalibur|Rock Slide|p1a: Goodra"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: The Excalibur|Earthquake|p1a: Goodra",
+        "|switch|p1a: Pelipper|Pelipper, F|67/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: The Excalibur|Rock Slide|p1a: Pelipper"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: The Golden Child|Gholdengo|100/100",
+        "|switch|p1a: Barraskewda|Barraskewda, M|33/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Barraskewda|Liquidation|p2a: The Golden Child",
+        "|switch|p2a: The Tyrant|Tyranitar, F|52/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: The Excalibur|Excadrill, F|97/100",
+        "|move|p1a: Barraskewda|Liquidation|p2a: The Excalibur",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100",
+        "|switch|p2a: The Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: The Valiant|Moonblast|p1a: Iron Valiant",
+        "|switch|p1a: Pelipper|Pelipper, F, tera:Ground|32/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: The Valiant|Moonblast|p1a: Pelipper",
+        "|switch|p1a: Kingdra|Kingdra, F|78/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, F|40/100",
+        "|move|p1a: Kingdra|Draco Meteor|p2a: The Tyrant",
+        "|switch|p2a: The Valiant|Iron Valiant, tera:Ghost|88/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: The Valiant|Moonblast|p1a: Kingdra"
+      ]
+    }
+  ],
+  "winner": "Quaqrash",
+  "endTime": 1770412919408,
+  "p1Team": [
+    "Pelipper",
+    "Iron Treads",
+    "Kingdra",
+    "Barraskewda",
+    "Goodra-Hisui",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Tyranitar",
+    "Chesnaught",
+    "Tornadus-Therian",
+    "Excadrill",
+    "Gholdengo",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "pelipper",
+      "irontreads",
+      "kingdra",
+      "barraskewda",
+      "goodrahisui",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "tyranitar",
+      "chesnaught",
+      "tornadustherian",
+      "excadrill",
+      "gholdengo",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

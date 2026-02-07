@@ -1,0 +1,26 @@
+{
+  "turn": 14,
+  "bot_choice": "Switched to Pecharunt",
+  "why_critical": "Switched to Pecharunt vs healthy Overqwil \u2014 long-term positioning play",
+  "bot_team": "Gliscor fainted | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 28% | Pecharunt 100%",
+  "opp_team": "Overqwil 88% | Pelipper 100% | Qwilfish fainted | Iron Treads 100% | Orthworm 100% | Pecharunt 100% +2 spa",
+  "field": [
+    "Weather: RainDance"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530554152",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gholdengo instead",
+      "Check if better defensive matchup vs Overqwil"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

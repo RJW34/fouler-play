@@ -1,0 +1,224 @@
+{
+  "id": "battle-gen9ou-2534426386",
+  "p1": "xdye",
+  "p2": "Ninfire",
+  "minElo": 1659,
+  "startTime": 1770419643605,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|switch|p2a: Kingambit|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|100/100",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Dangerous flaps"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, F|100/100",
+        "|move|p1a: Dangerous flaps|U-turn|p2a: Ceruledge",
+        "|switch|p1a: Waking Bad|Walking Wake|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Waking Bad",
+        "|move|p1a: Waking Bad|Hydro Steam|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Gyatt in the hat",
+        "|switch|p1a: RagingStormZoner|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Ceruledge|Shadow Sneak|p1a: RagingStormZoner",
+        "|move|p1a: RagingStormZoner|Volt Switch|p2a: Ceruledge",
+        "|switch|p1a: Waking Bad|Walking Wake|31/100|[from] Volt Switch",
+        "|switch|p2a: Walking Wake|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Waking Bad|Draco Meteor|p2a: Walking Wake",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|80/100",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Dangerous flaps"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Great Tusk|Temper Flare|p1a: Dangerous flaps",
+        "|move|p1a: Dangerous flaps|U-turn|p2a: Great Tusk",
+        "|switch|p1a: Old and horny|Great Tusk, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Old and horny",
+        "|move|p1a: Old and horny|Rapid Spin|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Old and horny",
+        "|move|p1a: Old and horny|Headlong Rush|p2a: Great Tusk",
+        "|switch|p2a: Kingambit|Kingambit, F|84/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: 10 packs deep|Torkoal, M, shiny|100/100",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: 10 packs deep"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Ninetales|Ninetales, M|100/100",
+        "|move|p1a: 10 packs deep|Body Press|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Ninetales|Healing Wish|p2a: Ninetales",
+        "|move|p1a: 10 packs deep|Stealth Rock|p2: Ninetales",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|27/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Gyatt in the hat"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Raging Bolt|Weather Ball|p1a: Gyatt in the hat",
+        "|switch|p1a: Old and horny|Great Tusk, shiny|9/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Old and horny|Headlong Rush|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Weather Ball|p1a: Old and horny",
+        "|switch|p1a: RagingStormZoner|Raging Bolt|61/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Kingambit|Kingambit, F|84/100",
+        "|move|p1a: RagingStormZoner|Volt Switch|p2a: Kingambit",
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|1/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Dangerous flaps|First Impression|p2a: Kingambit",
+        "|switch|p2a: Raging Bolt|Raging Bolt, tera:Flying|68/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Waking Bad|Walking Wake|31/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Waking Bad",
+        "|switch|p1a: RagingStormZoner|Raging Bolt|61/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: RagingStormZoner",
+        "|move|p1a: RagingStormZoner|Volt Switch|p2a: Raging Bolt"
+      ]
+    }
+  ],
+  "winner": "xdye",
+  "endTime": 1770419926116,
+  "p1Team": [
+    "Hatterene",
+    "Slither Wing",
+    "Walking Wake",
+    "Raging Bolt",
+    "Great Tusk",
+    "Torkoal"
+  ],
+  "p2Team": [
+    "Kingambit",
+    "Ceruledge",
+    "Walking Wake",
+    "Great Tusk",
+    "Ninetales",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "hatterene",
+      "slitherwing",
+      "walkingwake",
+      "ragingbolt",
+      "greattusk",
+      "torkoal"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "kingambit",
+      "ceruledge",
+      "walkingwake",
+      "greattusk",
+      "ninetales",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

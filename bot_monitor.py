@@ -64,23 +64,27 @@ BOT_DISPLAY_NAME = os.getenv("BOT_DISPLAY_NAME", "").strip()  # e.g. "🪲 DEKU"
 # Import replay analyzer and turn reviewer (commented out during upgrade)
 # from replay_analysis.analyzer import ReplayAnalyzer
 # from replay_analysis.turn_review import TurnReviewer
-# from streaming.stream_integration import start_stream, stop_stream, update_stream_status
-# from streaming.state_store import update_daily_stats
+from streaming.stream_integration import start_stream, stop_stream, update_stream_status
+from streaming.state_store import update_daily_stats
 
 # Patterns to detect in bot output
-# Matches "Battle started: battle-ID vs Opponent" OR "Registered battle queue: vs Opponent battle-ID"
+# NOTE: Battle IDs can have alphanumeric hash suffixes like:
+#   battle-gen9ou-2534534840-5w39ofnyucn5a7blb08thwjutgn7jyjpw
+# All patterns must use [a-z0-9-]+ (not \d+) for the trailing portion.
+BATTLE_ID_RE = r'battle-[a-z0-9]+-\d+(?:-[a-z0-9]+)?'  # reusable battle ID pattern
+
 BATTLE_START_PATTERN = re.compile(
-    r'(?:Initialized|Found pending|(?<!un)registered|Joining|Battle started).*?'
+    r'(?:Initialized|Found pending|(?<!un)registered|Joining|Battle started|Claimed).*?'
     r'(?:'
-    r'(battle-[a-z0-9-]+-\d+)(?:.*?against:\s*(.+)|.*?vs\s+(.+))'  # case 1: ID then opponent
+    r'(' + BATTLE_ID_RE + r')(?:.*?against:\s*(.+)|.*?vs\s+(.+))'  # case 1: ID then opponent
     r'|'
-    r'(?:vs\s+(.*?)\s+)?(battle-[a-z0-9-]+-\d+)'                    # case 2: vs opponent then ID
+    r'(?:vs\s+(.*?)\s+)?(' + BATTLE_ID_RE + r')'                    # case 2: vs opponent then ID
     r')', re.IGNORECASE)
 BATTLE_END_PATTERN = re.compile(r'(Won|Lost) with team: (.+)')
 REPLAY_PATTERN = re.compile(r'https://replay\.pokemonshowdown\.com/([\w-]+)')
 ELO_PATTERN = re.compile(r'W: (\d+)\s+L: (\d+)')
-WINNER_PATTERN = re.compile(r'(?:Battle finished: (battle-[\w-]+-\d+)\s+)?Winner: (.+)', re.IGNORECASE)
-BATTLE_TAG_PATTERN = re.compile(r'battle-[a-z0-9]+-\d+')
+WINNER_PATTERN = re.compile(r'(?:Battle finished: (' + BATTLE_ID_RE + r')\s+)?Winner: (.+)', re.IGNORECASE)
+BATTLE_TAG_PATTERN = re.compile(BATTLE_ID_RE)
 WORKER_PATTERN = re.compile(r'Battle worker (\d+) started')
 
 
@@ -95,7 +99,7 @@ class BattleState:
 
 
 class BotMonitor:
-    BATCH_SIZE = 9  # Report every N completed games
+    BATCH_SIZE = 3  # Report every N completed games
 
     def __init__(self):
         self._write_self_pid()
@@ -428,12 +432,12 @@ class BotMonitor:
                     battle_info = ", ".join(
                         f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids
                     ) if active_battle_ids else "Waiting..."
-                    # await update_stream_status(
-                #     wins=self.wins,
-                #     losses=self.losses,
-                #     status="Battling" if active_battle_ids else "Idle",
-                #     battle_info=battle_info,
-                # )
+                    await update_stream_status(
+                        wins=self.wins,
+                        losses=self.losses,
+                        status="Battling" if active_battle_ids else "Idle",
+                        battle_info=battle_info,
+                    )
 
             # Detect worker count silently
             match = WORKER_PATTERN.search(line)
@@ -518,7 +522,7 @@ class BotMonitor:
                 if winner == our_username:
                     if not self.session_rebase_enabled or self.session_base_wins is not None:
                         self.wins += 1
-                    # update_daily_stats(wins_delta=1)  # Track daily totals - disabled during upgrade
+                    update_daily_stats(wins_delta=1)  # Track daily totals
                     emoji = "🎉"
                     result = "Won"
                     result_key = "won"
@@ -529,7 +533,7 @@ class BotMonitor:
                 else:
                     if not self.session_rebase_enabled or self.session_base_wins is not None:
                         self.losses += 1
-                    # update_daily_stats(losses_delta=1)  # Track daily totals - disabled during upgrade
+                    update_daily_stats(losses_delta=1)  # Track daily totals
                     emoji = "💀"
                     result = "Lost"
                     result_key = "lost"
@@ -558,17 +562,17 @@ class BotMonitor:
                     # Couldn't associate with a battle - still record it
                     self.record_batch_result("Unknown", result_key)
 
-                # Always update stream overlay with remaining battles/stats (disabled during upgrade)
-                # active_count = len(self.active_battles)
-                # active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
-                # battle_info = ", ".join(
-                #     f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids
-                # ) if active_battle_ids else "Waiting..."
-                # await update_stream_status(
-                #     wins=self.wins, losses=self.losses,
-                #     status="Battling" if active_battle_ids else "Idle",
-                #     battle_info=battle_info
-                # )
+                # Always update stream overlay with remaining battles/stats
+                active_count = len(self.active_battles)
+                active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
+                battle_info = ", ".join(
+                    f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids
+                ) if active_battle_ids else "Waiting..."
+                await update_stream_status(
+                    wins=self.wins, losses=self.losses,
+                    status="Battling" if active_battle_ids else "Idle",
+                    battle_info=battle_info
+                )
 
                 # # Stop stream if no more active battles
                 # if active_count == 0:
@@ -594,8 +598,10 @@ class BotMonitor:
                 replay_suffix = replay_url.split('/')[-1]  # "gen9ou-2529712238"
                 
                 # Check finished_battles (battles that have completed)
+                # Try exact match first, then prefix match for hash-suffixed IDs
                 for bid in self.finished_battles:
-                    if bid.replace("battle-", "") == replay_suffix:
+                    bid_suffix = bid.replace("battle-", "", 1)
+                    if bid_suffix == replay_suffix or replay_suffix.startswith(bid_suffix) or bid_suffix.startswith(replay_suffix):
                         battle_id = bid
                         break
                 

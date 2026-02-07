@@ -1,0 +1,220 @@
+{
+  "id": "battle-gen9ou-2534425615",
+  "p1": "hyonparkdalton",
+  "p2": "Obling",
+  "minElo": 1673,
+  "startTime": 1770419553600,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Iron Moth|Iron Moth|100/100",
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Iron Moth",
+        "|switch|p2a: Deoxys|Deoxys-Speed|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Deoxys|Reflect|p2a: Deoxys",
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Deoxys",
+        "|switch|p2a: Roaring Sun|Salamence, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Clefable|Clefable, M|100/100",
+        "|move|p2a: Roaring Sun|Dragon Dance|p2a: Roaring Sun"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Roaring Sun|Dual Wingbeat|p1a: Clefable|[miss]",
+        "|move|p1a: Clefable|Moonblast|p2a: Roaring Sun"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Roaring Sun|Dual Wingbeat|p1a: Clefable|[miss]",
+        "|move|p1a: Clefable|Moonblast|p2a: Roaring Sun"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Roaring Sun|Dual Wingbeat|p1a: Clefable",
+        "|move|p1a: Clefable|Moonblast|p2a: Roaring Sun",
+        "|switch|p2a: V|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: V|Swords Dance|p2a: V"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|move|p1a: Pecharunt|Toxic|p2a: V"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Clefable|Clefable, M|65/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Clefable|Flamethrower|p2: V|[notarget]",
+        "|switch|p2a: Seconds|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Cinderace|Cinderace, M|100/100",
+        "|move|p2a: Seconds|Swords Dance|p2a: Seconds"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Seconds|Sucker Punch||[still]",
+        "|move|p1a: Cinderace|Will-O-Wisp|p2a: Seconds"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Seconds|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Seconds",
+        "|move|p2a: Seconds|Iron Head|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Seconds",
+        "|switch|p2a: Faster|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Clefable|Clefable, M|100/100",
+        "|move|p2a: Faster|Agility|p2a: Faster"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Faster|Calm Mind|p2a: Faster",
+        "|move|p1a: Clefable|Moonblast|p2a: Faster"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Faster|Draining Kiss|p1a: Clefable",
+        "|move|p1a: Clefable|Moonblast|p2a: Faster"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Faster|Stored Power|p1a: Clefable",
+        "|switch|p1a: Rillaboom|Rillaboom, F|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Rillaboom|Grassy Glide|p2a: Faster"
+      ]
+    }
+  ],
+  "winner": "hyonparkdalton",
+  "endTime": 1770419780184,
+  "p1Team": [
+    "Clefable",
+    "Pecharunt",
+    "Cinderace",
+    "Great Tusk",
+    "Rillaboom"
+  ],
+  "p2Team": [
+    "Iron Moth",
+    "Deoxys-Speed",
+    "Salamence",
+    "Ogerpon-Wellspring",
+    "Kingambit",
+    "Latias"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "clefable",
+      "pecharunt",
+      "cinderace",
+      "greattusk",
+      "rillaboom"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironmoth",
+      "deoxysspeed",
+      "salamence",
+      "ogerponwellspring",
+      "kingambit",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

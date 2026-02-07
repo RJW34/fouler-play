@@ -1,0 +1,20 @@
+{
+  "turn": 5,
+  "bot_choice": "unknown",
+  "why_critical": "Zamazenta went down vs Raging Bolt (77% HP) \u2014 opponent has 5 Pokemon left",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 30% +1 def",
+  "opp_team": "Ceruledge 100% | Cinderace 100% | Dragapult 100% | Raging Bolt 77% +1 spa, +1 spd | Ribombee fainted | Gholdengo 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530898035",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Raging Bolt"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

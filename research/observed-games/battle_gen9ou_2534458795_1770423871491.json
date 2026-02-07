@@ -1,0 +1,195 @@
+{
+  "id": "battle-gen9ou-2534458795",
+  "p1": "sdor16",
+  "p2": "WhatTheFraax",
+  "minElo": 1640,
+  "startTime": 1770423603893,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Hatterene",
+        "|move|p1a: Hatterene|Mystical Fire|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Landorus|U-turn|p1a: Hatterene",
+        "|switch|p2a: Ceruledge|Ceruledge, M|100/100|[from] U-turn",
+        "|move|p1a: Hatterene|Mystical Fire|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Hatterene",
+        "|switch|p1a: Garganacl|Garganacl, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|78/100",
+        "|move|p1a: Garganacl|Iron Defense|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Landorus|Taunt|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Landorus|Stealth Rock|p1a: Garganacl",
+        "|move|p1a: Garganacl|Body Press|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Landorus|Taunt|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Landorus",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Raging Bolt|Draco Meteor|p1a: Garganacl",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Kingambit|Kingambit, M|100/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Gholdengo|Focus Blast|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Raging Bolt",
+        "|switch|p2a: Ceruledge|Ceruledge, M|86/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Gholdengo",
+        "|switch|p1a: Rillaboom|Rillaboom, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Rillaboom",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Ceruledge",
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist||[still]",
+        "|move|p1a: Zamazenta|Crunch|p2a: Ceruledge",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Iron Valiant|Calm Mind|p2a: Iron Valiant",
+        "|move|p1a: Zamazenta|Heavy Slam|p2a: Iron Valiant",
+        "|switch|p2a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Zamazenta|Ice Fang|p2a: Dragonite",
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Dragonite|Earthquake|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Ice Fang|p2a: Dragonite"
+      ]
+    }
+  ],
+  "winner": "sdor16",
+  "endTime": 1770423871490,
+  "p1Team": [
+    "Garganacl",
+    "Gholdengo",
+    "Rillaboom",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Ceruledge",
+    "Landorus-Therian",
+    "Raging Bolt",
+    "Kingambit",
+    "Iron Valiant",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "garganacl",
+      "gholdengo",
+      "rillaboom",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ceruledge",
+      "landorustherian",
+      "ragingbolt",
+      "kingambit",
+      "ironvaliant",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

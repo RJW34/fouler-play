@@ -1,0 +1,85 @@
+{
+  "timestamp": "20260131_192146",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530343824",
+  "replay_id": "gen9ou-2530343824",
+  "mistakes_found": 11,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 13,
+      "description": "Ribombee fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 15,
+      "description": "Ninetales fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 19,
+      "description": "Great Tusk fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 25,
+      "description": "Typhlosion fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 46,
+      "description": "Rillaboom fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 47,
+      "description": "Trevenant fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 47,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 47,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 2,
+      "description": "Attempted calmmind on turn 2 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    },
+    {
+      "category": "early_setup",
+      "turn": 3,
+      "description": "Attempted calmmind on turn 3 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    },
+    {
+      "category": "early_setup",
+      "turn": 4,
+      "description": "Attempted calmmind on turn 4 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

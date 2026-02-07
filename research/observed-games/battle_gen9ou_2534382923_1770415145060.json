@@ -1,0 +1,243 @@
+{
+  "id": "battle-gen9ou-2534382923",
+  "p1": "SmokingDatZAZA",
+  "p2": "jarrodbennett",
+  "minElo": 1542,
+  "startTime": 1770414813337,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Ya Like Jazz?|Moonblast|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Ya Like Jazz?"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Ya Like Jazz?|Sticky Web|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Ya Like Jazz?"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Ya Like Jazz?|Moonblast|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Ya Like Jazz?"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Ya Like Jazz?|Moonblast|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Ya Like Jazz?",
+        "|switch|p2a: What's Up Doc?|Cinderace, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: What's Up Doc?|Court Change|p2a: What's Up Doc?",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: What's Up Doc?"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: What's Up Doc?",
+        "|switch|p2a: Slytherin|Serperior, M|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Slytherin|Leaf Storm|p1a: Great Tusk",
+        "|switch|p1a: Slowking|Slowking-Galar, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Come At Me Bro|Kingambit, M|100/100",
+        "|move|p1a: Slowking|Sludge Bomb|p2a: Come At Me Bro"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M, shiny|100/100",
+        "|move|p2a: Come At Me Bro|Iron Head|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Come At Me Bro",
+        "|move|p2a: Come At Me Bro|Low Kick|p1a: Kingambit",
+        "|switch|p1a: Enamorus|Enamorus, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Come At Me Bro|Sucker Punch|p1a: Enamorus",
+        "|move|p1a: Enamorus|Earth Power|p2a: Come At Me Bro"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, M, shiny|100/100",
+        "|move|p2a: Come At Me Bro|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Come At Me Bro|Sucker Punch||[still]",
+        "|move|p1a: Primarina|Substitute|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Come At Me Bro|Sucker Punch||[still]",
+        "|move|p1a: Primarina|Substitute|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Primarina|Substitute|p1a: Primarina",
+        "|move|p2a: Come At Me Bro|Iron Head|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Primarina|Moonblast|p2a: Come At Me Bro",
+        "|switch|p2a: Slytherin|Serperior, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M, shiny|100/100",
+        "|move|p2a: Slytherin|Leaf Storm|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Big Z|Empoleon, F|100/100",
+        "|move|p1a: Slowking|Psychic Noise|p2a: Big Z"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Big Z|Surf|p1a: Slowking",
+        "|move|p1a: Slowking|Flamethrower|p2a: Big Z"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, M, shiny|99/100",
+        "|move|p2a: Big Z|Surf|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Primarina|Whirlpool|p2a: Big Z",
+        "|move|p2a: Big Z|Grass Knot|p1a: Primarina",
+        "|switch|p1a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Big Z",
+        "|switch|p2a: Slytherin|Serperior, M|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Slytherin|Leaf Storm|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Slytherin"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Slytherin|Leaf Storm|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Slytherin",
+        "|switch|p2a: Kickin' Nugget|Hitmonlee, M|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Kickin' Nugget|Knock Off|p1a: Ogerpon",
+        "|switch|p1a: Enamorus|Enamorus, F, shiny|41/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Kickin' Nugget|Swords Dance|p2a: Kickin' Nugget",
+        "|move|p1a: Enamorus|Moonblast|p2a: Kickin' Nugget"
+      ]
+    }
+  ],
+  "winner": "SmokingDatZAZA",
+  "endTime": 1770415145060,
+  "p1Team": [
+    "Slowking-Galar",
+    "Kingambit",
+    "Enamorus",
+    "Primarina",
+    "Ogerpon"
+  ],
+  "p2Team": [
+    "Cinderace",
+    "Serperior",
+    "Kingambit",
+    "Empoleon",
+    "Hitmonlee"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "slowkinggalar",
+      "kingambit",
+      "enamorus",
+      "primarina",
+      "ogerpon"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "cinderace",
+      "serperior",
+      "kingambit",
+      "empoleon",
+      "hitmonlee"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

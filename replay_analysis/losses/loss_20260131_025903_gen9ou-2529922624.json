@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260131_025903",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2529922624",
+  "replay_id": "gen9ou-2529922624",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "hazards_not_removed",
+      "turn": 19,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 4,
+      "description": "Attempted swordsdance on turn 4 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    },
+    {
+      "category": "early_setup",
+      "turn": 5,
+      "description": "Attempted swordsdance on turn 5 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

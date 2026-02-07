@@ -1,0 +1,20 @@
+{
+  "turn": 14,
+  "bot_choice": "Used Swords Dance",
+  "why_critical": "\u274c Gliscor fainted \u2014 should we have switched out earlier or chosen differently?",
+  "bot_team": "Gliscor 14% tox +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta fainted",
+  "opp_team": "Ogerpon-Wellspring 23% | Raging Bolt 12% | Kingambit 100% | Meowscarada 100% | Gholdengo 100% | Ceruledge fainted",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530439577",
+  "alternatives": [
+    [
+      "Switch out earlier",
+      "Preserve this Pokemon for later"
+    ],
+    [
+      "Different move",
+      "Better damage/utility before going down"
+    ]
+  ],
+  "feedback": null
+}

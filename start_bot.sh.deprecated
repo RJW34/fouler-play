@@ -1,0 +1,28 @@
+#!/bin/bash
+# Fouler Play bot startup - AGGRESSIVE cleanup version
+
+PIDFILE="/tmp/fouler-play-bot.pid"
+WORKDIR="/home/ryan/projects/fouler-play"
+
+cd "$WORKDIR" || exit 1
+
+# AGGRESSIVE cleanup - kill everything
+pkill -9 -f "fouler-play.*run.py"
+pkill -9 -f "bot_monitor"
+sleep 2
+
+# Check if already running
+if [ -f "$PIDFILE" ]; then
+    rm "$PIDFILE"
+fi
+
+# Start bot monitor
+nohup venv/bin/python bot_monitor.py > monitor.log 2>&1 &
+MONITOR_PID=$!
+sleep 1
+
+# Save PID
+echo "$MONITOR_PID" > "$PIDFILE"
+
+echo "Started Fouler Play bot (Monitor PID: $MONITOR_PID)"
+echo "PID file: $PIDFILE"

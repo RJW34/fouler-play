@@ -1,0 +1,198 @@
+{
+  "id": "battle-gen9ou-2534407338",
+  "p1": "Johnny tots",
+  "p2": "Mimikyuster04",
+  "minElo": 1615,
+  "startTime": 1770417483483,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Klefki|Light Screen|p1a: Klefki",
+        "|move|p2a: Zapdos|Volt Switch|p1a: Klefki",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Klefki|Reflect|p1a: Klefki",
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100",
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Iron Valiant|Calm Mind|p1a: Iron Valiant",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Great Tusk",
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Grimmsnarl|Thunder Wave|p1a: Iron Valiant|[miss]",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Grimmsnarl",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Iron Valiant|Psyshock|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Iron Valiant",
+        "|switch|p1a: Klefki|Klefki, F|38/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Klefki|Reflect|p1a: Klefki",
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Klefki|Thunder Wave|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Clefable|Clefable, M|100/100",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Clefable|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Ogerpon|Play Rough|p1a: Kyurem",
+        "|switch|p1a: Cinderace|Cinderace, M|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Cinderace|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Klefki|Klefki, F|38/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Klefki|Light Screen|p1a: Klefki",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Klefki|Spikes|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Klefki|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Manaphy|Manaphy|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Manaphy",
+        "|move|p1a: Manaphy|Acid Armor|p1a: Manaphy"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Ogerpon|Play Rough|p1a: Manaphy",
+        "|move|p1a: Manaphy|Acid Armor|p1a: Manaphy"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Ogerpon|Play Rough|p1a: Manaphy"
+      ]
+    }
+  ],
+  "winner": "Mimikyuster04",
+  "endTime": 1770417608042,
+  "p1Team": [
+    "Iron Valiant",
+    "Klefki",
+    "Clefable",
+    "Kyurem",
+    "Cinderace",
+    "Manaphy"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Grimmsnarl",
+    "Ogerpon-Wellspring"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "ironvaliant",
+      "klefki",
+      "clefable",
+      "kyurem",
+      "cinderace",
+      "manaphy"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "greattusk",
+      "grimmsnarl",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

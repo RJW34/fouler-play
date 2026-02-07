@@ -1,0 +1,193 @@
+{
+  "id": "battle-gen9ou-2534371225",
+  "p1": "Kissone",
+  "p2": "Free P&lestine",
+  "minElo": 1554,
+  "startTime": 1770413583280,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Deoxys|Taunt|p1a: Ribombee",
+        "|move|p1a: Ribombee|Moonblast|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Deoxys|Stealth Rock|p1a: Ribombee",
+        "|move|p1a: Ribombee|Moonblast|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Ribombee|Moonblast|p2a: Deoxys",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Zamazenta|Stone Edge|p1a: Ribombee",
+        "|move|p1a: Ribombee|Stun Spore|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Ribombee|Sticky Web|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Ribombee",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Darkrai|Nasty Plot|p2a: Darkrai",
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Darkrai",
+        "|switch|p2a: Zamazenta|Zamazenta|91/100 par"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Zamazenta",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Gholdengo",
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Kyurem",
+        "|switch|p1a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Enamorus|Tera Blast|p2a: Gholdengo|[anim] Tera Blast Stellar",
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Enamorus",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Gholdengo",
+        "|switch|p2a: Dragonite|Dragonite, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Dragonite|Earthquake|p1a: Gholdengo",
+        "|switch|p1a: Thundurus|Thundurus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Dragonite|Extreme Speed|p1a: Thundurus",
+        "|move|p1a: Thundurus|Thunderbolt|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Dragonite|Extreme Speed|p1a: Thundurus",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Dragonite|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Great Tusk|[anim] Ivy Cudgel Water",
+        "|move|p2a: Great Tusk|Close Combat|p1a: Ogerpon"
+      ]
+    }
+  ],
+  "winner": "Free P&lestine",
+  "endTime": 1770413759402,
+  "p1Team": [
+    "Kyurem",
+    "Enamorus",
+    "Gholdengo",
+    "Thundurus-Therian",
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Zamazenta",
+    "Darkrai",
+    "Gholdengo",
+    "Dragonite",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "kyurem",
+      "enamorus",
+      "gholdengo",
+      "thundurustherian",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "zamazenta",
+      "darkrai",
+      "gholdengo",
+      "dragonite",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

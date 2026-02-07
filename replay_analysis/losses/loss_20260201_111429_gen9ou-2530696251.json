@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260201_111429",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530696251",
+  "replay_id": "gen9ou-2530696251",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 11,
+      "description": "Kingambit fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 75,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 9,
+      "description": "Attempted swordsdance on turn 9 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+{
+  "id": "battle-gen9ou-2534466188",
+  "p1": "portobellomushroom",
+  "p2": "ClRCUS MAXIMUS",
+  "minElo": 1867,
+  "startTime": 1770424500084,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Ribombee|Sticky Web|p1a: glim glam",
+        "|move|p1a: glim glam|Mortal Spin|p2a: Ribombee"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Ribombee|Sticky Web|p1a: glim glam",
+        "|move|p1a: glim glam|Mortal Spin|p2a: Ribombee"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Ribombee|Stun Spore|p1a: glim glam",
+        "|move|p1a: glim glam|Mortal Spin|p2a: Ribombee"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Ribombee|Sticky Web|p1a: glim glam",
+        "|move|p1a: glim glam|Mortal Spin|p2a: Ribombee"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Ribombee|Sticky Web|p1a: glim glam",
+        "|move|p1a: glim glam|Mortal Spin|p2a: Ribombee",
+        "|switch|p2a: Gholdengo|Gholdengo, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo",
+        "|move|p1a: glim glam|Stealth Rock|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Gholdengo|Psyshock|p1a: glim glam"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: glim glam",
+        "|switch|p1a: drank|Polteageist|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: drank",
+        "|move|p1a: drank|Shadow Ball|p2a: Gholdengo",
+        "|switch|p2a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Ogerpon|Knock Off|p1a: drank",
+        "|switch|p1a: which set?|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: which set?|Close Combat|p2a: Ogerpon",
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: which set?|Spirit Break|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: which set?"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: which set?|Close Combat|p2a: Great Tusk",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: which set?|Spirit Break|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: which set?"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: which set?",
+        "|switch|p1a: great donphan|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: great donphan|Headlong Rush|p2a: Raging Bolt",
+        "|switch|p2a: Ceruledge|Ceruledge, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: great donphan|Bulk Up|p1a: great donphan",
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: great donphan|Headlong Rush|p2a: Ceruledge",
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Ceruledge|Close Combat|p1a: great donphan",
+        "|switch|p1a: Dnite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Dnite",
+        "|move|p1a: Dnite|Earthquake|p2a: Ceruledge"
+      ]
+    }
+  ],
+  "winner": "portobellomushroom",
+  "endTime": 1770424682674,
+  "p1Team": [
+    "Polteageist",
+    "Iron Valiant",
+    "Great Tusk",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Gholdengo",
+    "Ogerpon-Cornerstone",
+    "Great Tusk",
+    "Raging Bolt",
+    "Ceruledge"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "polteageist",
+      "ironvaliant",
+      "greattusk",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "gholdengo",
+      "ogerponcornerstone",
+      "greattusk",
+      "ragingbolt",
+      "ceruledge"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

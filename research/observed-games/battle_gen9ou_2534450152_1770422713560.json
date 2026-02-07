@@ -1,0 +1,168 @@
+{
+  "id": "battle-gen9ou-2534450152",
+  "p1": "xdye",
+  "p2": "kjfm30",
+  "minElo": 1621,
+  "startTime": 1770422493819,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: RagingStormZoner|Draco Meteor|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: RagingStormZoner"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: 10 packs deep|Torkoal, M, shiny|100/100",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|move|p2a: Enamorus|Earth Power|p1a: Gyatt in the hat",
+        "|switch|p1a: Waking Bad|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Tyranitar|Tyranitar, M|100/100",
+        "|move|p1a: Waking Bad|Hydro Steam|p2a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Waking Bad|Hydro Steam|p2a: Tyranitar",
+        "|switch|p2a: Slowking|Slowking-Galar, F|71/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Old and horny|Great Tusk, shiny|100/100",
+        "|move|p2a: Slowking|Future Sight|p1a: Old and horny"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: RagingStormZoner|Raging Bolt|65/100",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Dangerous flaps",
+        "|switch|p1a: Waking Bad|Walking Wake|88/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F, tera:Water|98/100",
+        "|move|p1a: Waking Bad|Flip Turn|p2a: Slowking",
+        "|switch|p1a: RagingStormZoner|Raging Bolt|59/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|90/100",
+        "|move|p1a: RagingStormZoner|Draco Meteor|p2a: Great Tusk",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: 10 packs deep|Torkoal, M, shiny|100/100",
+        "|move|p2a: Enamorus|Moonblast|p1a: 10 packs deep"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|46/100",
+        "|move|p2a: Enamorus|Moonblast|p1a: Gyatt in the hat",
+        "|switch|p1a: Waking Bad|Walking Wake|88/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F, tera:Water|100/100",
+        "|move|p1a: Waking Bad|Draco Meteor|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: RagingStormZoner|Raging Bolt|59/100",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: RagingStormZoner|Thunderclap|p2a: Enamorus"
+      ]
+    }
+  ],
+  "winner": "xdye",
+  "endTime": 1770422713559,
+  "p1Team": [
+    "Torkoal",
+    "Hatterene",
+    "Walking Wake",
+    "Great Tusk",
+    "Raging Bolt",
+    "Slither Wing"
+  ],
+  "p2Team": [
+    "Enamorus",
+    "Tyranitar",
+    "Slowking-Galar",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "torkoal",
+      "hatterene",
+      "walkingwake",
+      "greattusk",
+      "ragingbolt",
+      "slitherwing"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "enamorus",
+      "tyranitar",
+      "slowkinggalar",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

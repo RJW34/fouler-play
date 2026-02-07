@@ -1,0 +1,150 @@
+{
+  "id": "battle-gen9ou-2534466288",
+  "p1": "lonelylitten94",
+  "p2": "WhatTheFraax",
+  "minElo": 1552,
+  "startTime": 1770424530085,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Walking Wake|Flip Turn|p2a: Raging Bolt",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Walking Wake|Walking Wake|100/100",
+        "|move|p2a: Landorus|Stealth Rock|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Walking Wake|Draco Meteor|p2a: Landorus",
+        "|move|p2a: Landorus|Earth Power|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Landorus",
+        "|move|p2a: Landorus|U-turn|p1a: Walking Wake",
+        "|switch|p2a: Dragonite|Dragonite, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Walking Wake|Flip Turn|p2a: Dragonite",
+        "|switch|p1a: Ninetales|Ninetales, M|100/100|[from] Flip Turn",
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|57/100",
+        "|move|p2a: Dragonite|Earthquake|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|3/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2: Landorus|[notarget]",
+        "|switch|p2a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Ceruledge",
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Ceruledge",
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Great Tusk",
+        "|switch|p1a: Whimsicott|Whimsicott, M|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Whimsicott",
+        "|switch|p1a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Iron Moth"
+      ]
+    }
+  ],
+  "winner": "WhatTheFraax",
+  "endTime": 1770424716814,
+  "p1Team": [
+    "Great Tusk",
+    "Walking Wake",
+    "Ninetales",
+    "Whimsicott",
+    "Iron Moth"
+  ],
+  "p2Team": [
+    "Raging Bolt",
+    "Landorus-Therian",
+    "Dragonite",
+    "Ceruledge"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "walkingwake",
+      "ninetales",
+      "whimsicott",
+      "ironmoth"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "ragingbolt",
+      "landorustherian",
+      "dragonite",
+      "ceruledge"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

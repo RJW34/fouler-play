@@ -1,0 +1,188 @@
+{
+  "id": "battle-gen9ou-2534423825",
+  "p1": "busto2412",
+  "p2": "valiums",
+  "minElo": 1513,
+  "startTime": 1770419343589,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Greninja|Surf|p2a: Glimmora",
+        "|move|p2a: Glimmora|Energy Ball|p1a: Greninja",
+        "|switch|p1a: Heatran|Heatran, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Glimmora|Meteor Beam||[still]",
+        "|move|p1a: Heatran|Stealth Rock|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Glimmora|Energy Ball|p1a: Heatran",
+        "|switch|p1a: Goodra|Goodra-Hisui, M|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Glimmora|Earth Power|p1a: Goodra",
+        "|move|p1a: Goodra|Flamethrower|p2a: Glimmora",
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Great Tusk|Knock Off|p1a: Goodra",
+        "|move|p1a: Goodra|Draco Meteor|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Great Tusk|Knock Off|p1a: Goodra",
+        "|switch|p1a: Zapdos|Zapdos, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Araquanid|Araquanid, F, shiny|100/100",
+        "|move|p1a: Zapdos|Heat Wave|p2a: Araquanid"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Araquanid|Endure|p2a: Araquanid",
+        "|move|p1a: Zapdos|Discharge|p2a: Araquanid"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Araquanid|Sticky Web|p1a: Zapdos",
+        "|move|p1a: Zapdos|Roost||[still]"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Zapdos|Discharge|p2a: Araquanid",
+        "|switch|p2a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Iron Crown|Calm Mind|p2a: Iron Crown",
+        "|move|p1a: Zapdos|Heat Wave|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Iron Crown|Psyshock|p1a: Zapdos",
+        "|move|p1a: Zapdos|Heat Wave|p2a: Iron Crown|[miss]"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Iron Crown|Calm Mind|p2a: Iron Crown",
+        "|move|p1a: Zapdos|Heat Wave|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Iron Crown|Psyshock|p1a: Zapdos",
+        "|move|p1a: Zapdos|Heat Wave|p2a: Iron Crown",
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|14/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Zapdos",
+        "|switch|p2a: Ceruledge|Ceruledge, F, shiny|100/100",
+        "|switch|p1a: Ursaluna|Ursaluna, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Ursaluna",
+        "|move|p1a: Ursaluna|Earthquake|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Ceruledge|Close Combat|p1a: Ursaluna",
+        "|move|p1a: Ursaluna|Fire Punch|p2a: Ceruledge",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100",
+        "|switch|p1a: Dragapult|Dragapult, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Dragapult|Tera Blast|p2a: Enamorus|[anim] Tera Blast Fairy"
+      ]
+    }
+  ],
+  "winner": "busto2412",
+  "endTime": 1770419640533,
+  "p1Team": [
+    "Heatran",
+    "Goodra-Hisui",
+    "Zapdos",
+    "Ursaluna",
+    "Dragapult"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Araquanid",
+    "Iron Crown",
+    "Ceruledge",
+    "Enamorus"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "heatran",
+      "goodrahisui",
+      "zapdos",
+      "ursaluna",
+      "dragapult"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "greattusk",
+      "araquanid",
+      "ironcrown",
+      "ceruledge",
+      "enamorus"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

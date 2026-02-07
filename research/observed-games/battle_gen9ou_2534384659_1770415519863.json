@@ -1,0 +1,323 @@
+{
+  "id": "battle-gen9ou-2534384659",
+  "p1": "BidoofGangsta",
+  "p2": "EllenxD",
+  "minElo": 1637,
+  "startTime": 1770415023335,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Dudunsparce|Stealth Rock|p2a: Garganacl",
+        "|move|p2a: Garganacl|Stealth Rock|p1a: Dudunsparce"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Dudunsparce|Earth Power|p2a: Garganacl",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Dudunsparce"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Scrafty|Scrafty, F|100/100",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Scrafty"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|100/100",
+        "|move|p1a: Scrafty|Knock Off|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100",
+        "|move|p2a: Moltres|U-turn|p1a: Tornadus",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Tornadus|Focus Blast|p2a: Iron Treads|[miss]",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Tornadus|Knock Off|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Ice Spinner|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Iron Treads",
+        "|switch|p1a: Dudunsparce|Dudunsparce, M|86/100|[from] U-turn",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Dudunsparce"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Iron Treads|Rapid Spin|p1a: Dudunsparce",
+        "|move|p1a: Dudunsparce|Glare|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Dudunsparce|Stealth Rock|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Dudunsparce|Earth Power|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Iron Treads|Rapid Spin|p1a: Dudunsparce",
+        "|move|p1a: Dudunsparce|Earth Power|p2a: Iron Treads",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dudunsparce|[anim] Ivy Cudgel Water",
+        "|move|p1a: Dudunsparce|Glare|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M|89/100",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Garganacl",
+        "|switch|p1a: Dudunsparce|Dudunsparce, M|25/100|[from] Parting Shot",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Dudunsparce",
+        "|switch|p1a: Scrafty|Scrafty, F|74/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|72/100",
+        "|move|p1a: Scrafty|Dragon Dance|p1a: Scrafty"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Scrafty|Dragon Dance|p1a: Scrafty",
+        "|move|p2a: Moltres|Flamethrower|p1a: Scrafty"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Scrafty|Rest|p1a: Scrafty",
+        "|move|p2a: Moltres|Flamethrower|p1a: Scrafty"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Scrafty|Knock Off|p2a: Moltres",
+        "|move|p2a: Moltres|Flamethrower|p1a: Scrafty"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Scrafty|Knock Off|p2a: Moltres",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Zamazenta|Body Press|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M|100/100",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Garganacl",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Ogerpon|Horn Leech|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|88/100",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Pecharunt|Foul Play|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Pecharunt|Foul Play|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Pecharunt",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M|100/100",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Garganacl",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] Parting Shot",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Garganacl",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Garganacl",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100 par"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Knock Off|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": []
+    }
+  ],
+  "winner": "BidoofGangsta",
+  "endTime": 1770415519863,
+  "p1Team": [
+    "Scrafty",
+    "Tornadus-Therian",
+    "Dudunsparce",
+    "Pecharunt",
+    "Ogerpon-Wellspring",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Moltres",
+    "Iron Treads",
+    "Ogerpon-Wellspring",
+    "Garganacl",
+    "Zamazenta",
+    "Pecharunt"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "scrafty",
+      "tornadustherian",
+      "dudunsparce",
+      "pecharunt",
+      "ogerponwellspring",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "moltres",
+      "irontreads",
+      "ogerponwellspring",
+      "garganacl",
+      "zamazenta",
+      "pecharunt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

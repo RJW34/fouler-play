@@ -1,0 +1,189 @@
+{
+  "id": "battle-gen9ou-2534396499",
+  "p1": "WhatTheFraax",
+  "p2": "CopiumBathTub",
+  "minElo": 1601,
+  "startTime": 1770416283422,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Walking Wake|Draco Meteor|p2a: Dragapult",
+        "|switch|p2a: Kyurem|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Cresselia|Cresselia, F|100/100",
+        "|move|p2a: Kyurem|Earth Power|p1a: Cresselia"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, F|100/100",
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Ninetales|Encore|p2a: Kyurem",
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Ninetales|Weather Ball|p2a: Kyurem",
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Ninetales|Weather Ball|p2a: Kyurem",
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Ninetales|Encore|p2a: Kyurem",
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Ninetales|Weather Ball|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Walking Wake|Walking Wake|100/100",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Walking Wake|Draco Meteor|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Ruination|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Ting-Lu|Whirlwind|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|switch|p2a: Corviknight|Corviknight, M|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Corviknight",
+        "|move|p2a: Corviknight|Body Press|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, F|100/100",
+        "|move|p2a: Corviknight|U-turn|p1a: Ninetales",
+        "|switch|p2a: Ting-Lu|Ting-Lu, tera:Water|71/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Weezing",
+        "|switch|p2a: Kyurem|Kyurem, shiny|57/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2a: Kyurem"
+      ]
+    }
+  ],
+  "winner": "WhatTheFraax",
+  "endTime": 1770416401290,
+  "p1Team": [
+    "Cresselia",
+    "Ninetales",
+    "Walking Wake",
+    "Great Tusk",
+    "Raging Bolt"
+  ],
+  "p2Team": [
+    "Kyurem",
+    "Ting-Lu",
+    "Corviknight",
+    "Weezing-Galar"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "cresselia",
+      "ninetales",
+      "walkingwake",
+      "greattusk",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "kyurem",
+      "tinglu",
+      "corviknight",
+      "weezinggalar"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

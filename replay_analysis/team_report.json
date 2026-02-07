@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-02-06T17:37:56.620966",
-  "total_battles": 12,
+  "generated_at": "2026-02-07T03:18:04.878755",
+  "total_battles": 114,
   "teams": {
     "gen9/ou/balance-team-1": {
       "games_played": 10,
@@ -141,13 +141,13 @@
         }
       ],
       "pokemon_performance": {
-        "Gholdengo": {
+        "Iron Valiant": {
           "games": 10,
-          "faints": 1,
-          "faint_rate": 0.1,
+          "faints": 0,
+          "faint_rate": 0.0,
           "faint_rate_ci_95": [
-            0.018,
-            0.404
+            0.0,
+            0.278
           ],
           "kos": 0,
           "ko_rate": 0.0,
@@ -171,13 +171,13 @@
             0.278
           ]
         },
-        "Iron Valiant": {
+        "Gholdengo": {
           "games": 10,
-          "faints": 0,
-          "faint_rate": 0.0,
+          "faints": 1,
+          "faint_rate": 0.1,
           "faint_rate_ci_95": [
-            0.0,
-            0.278
+            0.018,
+            0.404
           ],
           "kos": 0,
           "ko_rate": 0.0,
@@ -286,6 +286,21 @@
         }
       ],
       "pokemon_performance": {
+        "Iron Valiant": {
+          "games": 2,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.658
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.658
+          ]
+        },
         "Ogerpon-Wellspring": {
           "games": 2,
           "faints": 0,
@@ -316,37 +331,7 @@
             0.658
           ]
         },
-        "Iron Valiant": {
-          "games": 2,
-          "faints": 0,
-          "faint_rate": 0.0,
-          "faint_rate_ci_95": [
-            0.0,
-            0.658
-          ],
-          "kos": 0,
-          "ko_rate": 0.0,
-          "ko_rate_ci_95": [
-            0.0,
-            0.658
-          ]
-        },
         "Iron Moth": {
-          "games": 2,
-          "faints": 0,
-          "faint_rate": 0.0,
-          "faint_rate_ci_95": [
-            0.0,
-            0.658
-          ],
-          "kos": 0,
-          "ko_rate": 0.0,
-          "ko_rate_ci_95": [
-            0.0,
-            0.658
-          ]
-        },
-        "Great Tusk": {
           "games": 2,
           "faints": 0,
           "faint_rate": 0.0,
@@ -375,6 +360,21 @@
             0.0,
             0.658
           ]
+        },
+        "Great Tusk": {
+          "games": 2,
+          "faints": 0,
+          "faint_rate": 0.0,
+          "faint_rate_ci_95": [
+            0.0,
+            0.658
+          ],
+          "kos": 0,
+          "ko_rate": 0.0,
+          "ko_rate_ci_95": [
+            0.0,
+            0.658
+          ]
         }
       },
       "rating_brackets": {
@@ -390,6 +390,132 @@
           ]
         }
       }
+    },
+    "fat-team-1-stall": {
+      "games_played": 33,
+      "wins": 17,
+      "losses": 16,
+      "win_rate": 0.515,
+      "win_rate_ci_95": [
+        0.352,
+        0.675
+      ],
+      "elo_delta": 0,
+      "trend": "declining",
+      "last_10": {
+        "games": 10,
+        "wins": 4,
+        "win_rate": 0.4
+      },
+      "last_25": {
+        "games": 25,
+        "wins": 11,
+        "win_rate": 0.44
+      },
+      "last_50": {
+        "games": 33,
+        "wins": 17,
+        "win_rate": 0.515
+      },
+      "worst_matchups": [],
+      "pokemon_performance": {},
+      "rating_brackets": {
+        "below_1100": {
+          "range": "0-1099",
+          "games": 33,
+          "wins": 17,
+          "losses": 16,
+          "win_rate": 0.515,
+          "win_rate_ci_95": [
+            0.352,
+            0.675
+          ]
+        }
+      }
+    },
+    "fat-team-3-dondozo": {
+      "games_played": 33,
+      "wins": 15,
+      "losses": 18,
+      "win_rate": 0.455,
+      "win_rate_ci_95": [
+        0.298,
+        0.62
+      ],
+      "elo_delta": 0,
+      "trend": "declining",
+      "last_10": {
+        "games": 10,
+        "wins": 1,
+        "win_rate": 0.1
+      },
+      "last_25": {
+        "games": 25,
+        "wins": 10,
+        "win_rate": 0.4
+      },
+      "last_50": {
+        "games": 33,
+        "wins": 15,
+        "win_rate": 0.455
+      },
+      "worst_matchups": [],
+      "pokemon_performance": {},
+      "rating_brackets": {
+        "below_1100": {
+          "range": "0-1099",
+          "games": 33,
+          "wins": 15,
+          "losses": 18,
+          "win_rate": 0.455,
+          "win_rate_ci_95": [
+            0.298,
+            0.62
+          ]
+        }
+      }
+    },
+    "fat-team-2-pivot": {
+      "games_played": 36,
+      "wins": 19,
+      "losses": 17,
+      "win_rate": 0.528,
+      "win_rate_ci_95": [
+        0.37,
+        0.68
+      ],
+      "elo_delta": 0,
+      "trend": "declining",
+      "last_10": {
+        "games": 10,
+        "wins": 4,
+        "win_rate": 0.4
+      },
+      "last_25": {
+        "games": 25,
+        "wins": 15,
+        "win_rate": 0.6
+      },
+      "last_50": {
+        "games": 36,
+        "wins": 19,
+        "win_rate": 0.528
+      },
+      "worst_matchups": [],
+      "pokemon_performance": {},
+      "rating_brackets": {
+        "below_1100": {
+          "range": "0-1099",
+          "games": 36,
+          "wins": 19,
+          "losses": 17,
+          "win_rate": 0.528,
+          "win_rate_ci_95": [
+            0.37,
+            0.68
+          ]
+        }
+      }
     }
   },
   "recommendations": {
@@ -401,6 +527,24 @@
     },
     "gen9/ou/hyper-offense-1": {
       "team_file": "gen9/ou/hyper-offense-1",
+      "weakness": null,
+      "detail": "No critical weakness identified.",
+      "suggestion": "Keep collecting data."
+    },
+    "fat-team-1-stall": {
+      "team_file": "fat-team-1-stall",
+      "weakness": null,
+      "detail": "No critical weakness identified.",
+      "suggestion": "Keep collecting data."
+    },
+    "fat-team-3-dondozo": {
+      "team_file": "fat-team-3-dondozo",
+      "weakness": null,
+      "detail": "No critical weakness identified.",
+      "suggestion": "Keep collecting data."
+    },
+    "fat-team-2-pivot": {
+      "team_file": "fat-team-2-pivot",
       "weakness": null,
       "detail": "No critical weakness identified.",
       "suggestion": "Keep collecting data."

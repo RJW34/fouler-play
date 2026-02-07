@@ -1,0 +1,22 @@
+{
+  "timestamp": "20260201_054324",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530572700",
+  "replay_id": "gen9ou-2530572700",
+  "mistakes_found": 2,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 22,
+      "description": "Great Tusk fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 35,
+      "description": "Weezing fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    }
+  ]
+}

@@ -1,0 +1,419 @@
+{
+  "id": "battle-gen9ou-2534373912",
+  "p1": "Bring it on mon",
+  "p2": "FishOfTheSea",
+  "minElo": 1677,
+  "startTime": 1770413883288,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Ninetales|Aurora Veil|p1a: Ninetales",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Klefki|Klefki, M|100/100",
+        "|move|p2a: Slowking|Toxic Spikes|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Klefki|Thunder Wave|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Okidogi|Okidogi, M|100/100",
+        "|move|p2a: Slowking|Future Sight|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|100/100",
+        "|move|p1a: Okidogi|Knock Off|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Latias|Latias, F|100/100",
+        "|move|p2a: Skarmory|Spikes|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Latias|Aura Sphere|p2a: Skarmory",
+        "|move|p2a: Skarmory|Whirlwind|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100 par",
+        "|move|p1a: Ninetales|Encore||[still]"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Ninetales|Aurora Veil|p1a: Ninetales",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Ninetales",
+        "|switch|p1a: Maushold|Maushold-Four|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Skeledirge|Skeledirge, M|100/100",
+        "|move|p1a: Maushold|Tidy Up|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Klefki|Klefki, M|100/100",
+        "|move|p2a: Skeledirge|Will-O-Wisp|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Kommo-o|Kommo-o, F|100/100",
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100 par"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Kommo-o|Clangorous Soul|p1a: Kommo-o"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Kommo-o|Clangorous Soul|p1a: Kommo-o",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Clodsire|Clodsire, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Kommo-o|Boomburst|p2a: Clodsire",
+        "|move|p2a: Clodsire|Toxic|p1a: Kommo-o"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Kommo-o|Drain Punch|p2a: Clodsire",
+        "|move|p2a: Clodsire|Recover|p2a: Clodsire"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Kommo-o|Clanging Scales|p2a: Clodsire",
+        "|move|p2a: Clodsire|Stealth Rock|p1a: Kommo-o"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Maushold|Maushold-Four|88/100",
+        "|move|p2a: Clodsire|Recover|p2a: Clodsire"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Skeledirge|Skeledirge, M|100/100",
+        "|move|p1a: Maushold|Population Bomb|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Kommo-o|Kommo-o, F, tera:Normal|9/100 tox",
+        "|move|p2a: Skeledirge|Will-O-Wisp|p1: Kommo-o|[notarget]",
+        "|switch|p1a: Klefki|Klefki, M|94/100 brn"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100 par",
+        "|move|p1a: Klefki|Light Screen|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Klefki|Spikes|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Gliscor|Gliscor, M|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Klefki|Reflect|p1a: Klefki",
+        "|move|p2a: Gliscor|Swords Dance|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Maushold|Maushold-Four|76/100",
+        "|move|p2a: Gliscor|Swords Dance|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: Skeledirge|Skeledirge, M|100/100",
+        "|move|p1a: Maushold|Encore||[still]"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Klefki|Klefki, M|69/100 brn",
+        "|move|p2a: Skeledirge|Will-O-Wisp|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, M|100/100 tox",
+        "|move|p1a: Klefki|Spikes|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Maushold|Maushold-Four|64/100",
+        "|move|p2a: Gliscor|Swords Dance|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Skeledirge|Skeledirge, M|100/100",
+        "|move|p1a: Maushold|Population Bomb|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Maushold|Bite|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Maushold|Tidy Up|p1a: Maushold",
+        "|move|p2a: Skeledirge|Will-O-Wisp|p1a: Maushold|[miss]"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Maushold|Bite|p2a: Skeledirge",
+        "|move|p2a: Skeledirge|Will-O-Wisp|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Maushold|Encore|p2a: Skeledirge",
+        "|move|p2a: Skeledirge|Will-O-Wisp|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|42/100",
+        "|move|p1a: Maushold|Population Bomb|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|switch|p2a: Skeledirge|Skeledirge, M|42/100",
+        "|move|p1a: Maushold|Population Bomb|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p1a: Maushold|Bite|p2a: Skeledirge",
+        "|move|p2a: Skeledirge|Slack Off|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|move|p1a: Maushold|Population Bomb|p2a: Skeledirge",
+        "|move|p2a: Skeledirge|Slack Off|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|move|p1a: Maushold|Bite|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|move|p1a: Maushold|Encore|p2a: Skeledirge",
+        "|move|p2a: Skeledirge|Slack Off|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|move|p1a: Maushold|Bite|p2a: Skeledirge",
+        "|switch|p1a: Latias|Latias, F|90/100"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|switch|p2a: Clodsire|Clodsire, F|100/100",
+        "|move|p1a: Latias|Calm Mind|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|switch|p1a: Okidogi|Okidogi, M|90/100",
+        "|move|p2a: Clodsire|Toxic|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 43,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, M|100/100 tox",
+        "|move|p1a: Okidogi|Knock Off|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 44,
+      "events": [
+        "|switch|p1a: Klefki|Klefki, M|50/100 brn",
+        "|move|p2a: Gliscor|Knock Off|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 45,
+      "events": [
+        "|move|p1a: Klefki|Reflect|p1a: Klefki",
+        "|move|p2a: Gliscor|Swords Dance|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 46,
+      "events": [
+        "|switch|p1a: Latias|Latias, F|90/100",
+        "|move|p2a: Gliscor|Swords Dance|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 47,
+      "events": [
+        "|move|p1a: Latias|Agility|p1a: Latias",
+        "|move|p2a: Gliscor|Facade|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 48,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Gliscor|Facade|p1a: Latias",
+        "|switch|p1a: Okidogi|Okidogi, M|100/100"
+      ]
+    },
+    {
+      "turn": 49,
+      "events": [
+        "|move|p2a: Gliscor|Knock Off|p1a: Okidogi",
+        "|move|p1a: Okidogi|Bulk Up|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 50,
+      "events": [
+        "|move|p2a: Gliscor|Facade|p1a: Okidogi",
+        "|move|p1a: Okidogi|Drain Punch|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 51,
+      "events": [
+        "|move|p2a: Gliscor|Facade|p1a: Okidogi",
+        "|switch|p1a: Klefki|Klefki, M|27/100 brn"
+      ]
+    },
+    {
+      "turn": 52,
+      "events": []
+    }
+  ],
+  "winner": "FishOfTheSea",
+  "endTime": 1770414308348,
+  "p1Team": [
+    "Klefki",
+    "Okidogi",
+    "Latias",
+    "Maushold-Four",
+    "Kommo-o"
+  ],
+  "p2Team": [
+    "Skarmory",
+    "Slowking-Galar",
+    "Skeledirge",
+    "Clodsire",
+    "Gliscor"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "klefki",
+      "okidogi",
+      "latias",
+      "mausholdfour",
+      "kommoo"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.8,
+    "fatCount": 4,
+    "offenseCount": 0,
+    "team": [
+      "skarmory",
+      "slowkinggalar",
+      "skeledirge",
+      "clodsire",
+      "gliscor"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}
