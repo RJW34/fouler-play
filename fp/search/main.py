@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+import atexit
 from concurrent.futures import ProcessPoolExecutor, TimeoutError as FuturesTimeoutError
 from copy import deepcopy
 from dataclasses import dataclass, field, asdict
@@ -214,6 +215,46 @@ from fp.search.move_validators import filter_blocked_moves
 from fp.opponent_model import OPPONENT_MODEL
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# GLOBAL PROCESS POOL (CRITICAL FIX FOR ZOMBIE PROCESS LEAK)
+# =============================================================================
+# PROBLEM: Creating a new ProcessPoolExecutor for every move decision causes
+# worker processes to accumulate and leak memory over time.
+# SOLUTION: Use a single global executor that's reused across all battles.
+# =============================================================================
+
+_global_executor = None
+_executor_lock = None  # Will be initialized when needed (avoid threading import at module level)
+
+
+def _get_executor():
+    """Get or create the global ProcessPoolExecutor instance."""
+    global _global_executor, _executor_lock
+    
+    if _executor_lock is None:
+        import threading
+        _executor_lock = threading.Lock()
+    
+    with _executor_lock:
+        if _global_executor is None:
+            logger.info(f"Initializing global ProcessPoolExecutor with {FoulPlayConfig.parallelism} workers")
+            _global_executor = ProcessPoolExecutor(max_workers=FoulPlayConfig.parallelism)
+            # Register cleanup on exit
+            atexit.register(_shutdown_executor)
+    
+    return _global_executor
+
+
+def _shutdown_executor():
+    """Shutdown the global executor on program exit."""
+    global _global_executor
+    if _global_executor is not None:
+        logger.info("Shutting down global ProcessPoolExecutor...")
+        _global_executor.shutdown(wait=True, cancel_futures=True)
+        _global_executor = None
+        logger.info("Global ProcessPoolExecutor shut down cleanly")
 
 
 # =============================================================================
@@ -3390,28 +3431,29 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
 
     mcts_results = []
     try:
-        with ProcessPoolExecutor(max_workers=FoulPlayConfig.parallelism) as executor:
-            futures = []
-            for index, (b, chance) in enumerate(battles):
-                fut = executor.submit(
-                    get_result_from_mcts,
-                    battle_to_poke_engine_state(b).to_string(),
-                    search_time_per_battle,
-                    index,
-                )
-                futures.append((fut, chance, index))
+        # Use global executor instead of creating a new one (fixes zombie process leak)
+        executor = _get_executor()
+        futures = []
+        for index, (b, chance) in enumerate(battles):
+            fut = executor.submit(
+                get_result_from_mcts,
+                battle_to_poke_engine_state(b).to_string(),
+                search_time_per_battle,
+                index,
+            )
+            futures.append((fut, chance, index))
 
-            # Collect results with timeout
-            for fut, chance, index in futures:
-                try:
-                    remaining = max(executor_timeout - (time.time() - start_time), 0.5)
-                    result = fut.result(timeout=remaining)
-                    mcts_results.append((result, chance, index))
-                except (FuturesTimeoutError, TimeoutError):
-                    logger.warning(f"MCTS battle {index} timed out, skipping")
-                    fut.cancel()
-                except Exception as e:
-                    logger.warning(f"MCTS battle {index} failed: {e}")
+        # Collect results with timeout
+        for fut, chance, index in futures:
+            try:
+                remaining = max(executor_timeout - (time.time() - start_time), 0.5)
+                result = fut.result(timeout=remaining)
+                mcts_results.append((result, chance, index))
+            except (FuturesTimeoutError, TimeoutError):
+                logger.warning(f"MCTS battle {index} timed out, skipping")
+                fut.cancel()
+            except Exception as e:
+                logger.warning(f"MCTS battle {index} failed: {e}")
 
         if not mcts_results:
             logger.warning("All MCTS searches failed/timed out, using fallback")
