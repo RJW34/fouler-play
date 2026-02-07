@@ -24,15 +24,17 @@ def is_bot_process(pid: int) -> bool:
 
 
 def kill_stale_processes():
-    """Find and kill any stale bot processes from this directory."""
+    """Find and kill any stale bot processes from THIS directory only."""
+    our_dir = os.path.abspath(LOCK_DIR)
     killed = 0
     for proc in psutil.process_iter(["pid", "cmdline", "cwd"]):
         try:
             cmdline = " ".join(proc.info["cmdline"] or []).lower()
             if "run.py" in cmdline and "search_ladder" in cmdline:
                 cwd = proc.info.get("cwd", "")
-                # Kill if running from our directory or old directory
-                if "fouler-play" in (cwd or ""):
+                # Only kill processes running from OUR exact directory
+                # Never kill processes from other fouler-play installs (e.g. BAKUGO's)
+                if cwd and os.path.abspath(cwd) == our_dir:
                     if proc.pid != os.getpid():
                         proc.kill()
                         killed += 1
