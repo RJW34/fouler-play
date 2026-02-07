@@ -1,0 +1,24 @@
+{
+  "turn": 7,
+  "bot_choice": "Switched to Zamazenta",
+  "why_critical": "Switched to Zamazenta vs Dragapult (44% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 43% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Blaziken 100% | Dragapult 44% | Hatterene 100% | Samurott-Hisui 100% | Dragonite 100% | Iron Treads 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530572588",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Dragapult"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

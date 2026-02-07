@@ -1,0 +1,195 @@
+{
+  "id": "battle-gen9ou-2534449644",
+  "p1": "jyvon12811",
+  "p2": "200IQ GOAT",
+  "minElo": 1581,
+  "startTime": 1770422433780,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Glimmora|Power Gem|p1a: Araquanid",
+        "|move|p1a: Araquanid|Surf|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Araquanid",
+        "|switch|p1a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|100/100",
+        "|move|p1a: Enamorus|Moonblast|p2a: Zamazenta",
+        "|switch|p2a: Glimmora|Glimmora, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Glimmora|Stealth Rock|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Glimmora",
+        "|move|p2a: Glimmora|Mud Shot|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Glimmora|Mortal Spin|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Glimmora|Power Gem|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|100/100",
+        "|move|p2a: Glimmora|Mortal Spin|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Glimmora|Mud Shot|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Glimmora",
+        "|switch|p2a: Dragonite|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|10/100 psn",
+        "|move|p2a: Dragonite|Earthquake|p1a: Great Tusk",
+        "|switch|p1a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Dragapult|Draco Meteor|p2a: Dragonite",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Dragapult|Will-O-Wisp|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon",
+        "|move|p1a: Dragapult|Draco Meteor|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Dragapult",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Ogerpon",
+        "|switch|p2a: Kyurem|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Ceruledge",
+        "|move|p1a: Ceruledge|Close Combat|p2a: Kyurem",
+        "|switch|p2a: Kingambit|Kingambit, M|59/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Ceruledge",
+        "|switch|p1a: Kingambit|Kingambit, F|69/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Kingambit|Low Kick|p2a: Kingambit"
+      ]
+    }
+  ],
+  "winner": "jyvon12811",
+  "endTime": 1770422858726,
+  "p1Team": [
+    "Enamorus",
+    "Great Tusk",
+    "Kingambit",
+    "Dragapult",
+    "Ceruledge"
+  ],
+  "p2Team": [
+    "Zamazenta",
+    "Glimmora",
+    "Dragonite",
+    "Ogerpon-Wellspring",
+    "Kyurem",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "enamorus",
+      "greattusk",
+      "kingambit",
+      "dragapult",
+      "ceruledge"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "zamazenta",
+      "glimmora",
+      "dragonite",
+      "ogerponwellspring",
+      "kyurem",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

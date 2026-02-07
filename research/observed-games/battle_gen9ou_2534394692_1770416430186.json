@@ -1,0 +1,222 @@
+{
+  "id": "battle-gen9ou-2534394692",
+  "p1": "Bring it on mon",
+  "p2": "spiralcurriculum",
+  "minElo": 1640,
+  "startTime": 1770416073907,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Ninetales|Aurora Veil|p1a: Ninetales",
+        "|move|p2a: PawnHub|Iron Head|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Okidogi|Okidogi, M|100/100",
+        "|switch|p2a: Usain Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Usain Bolt|Volt Switch|p1a: Okidogi",
+        "|switch|p2a: Lando Norris|Landorus-Therian, M|100/100|[from] Volt Switch",
+        "|move|p1a: Okidogi|Knock Off|p2a: Lando Norris"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Latias|Latias, F|100/100",
+        "|move|p2a: Lando Norris|U-turn|p1a: Latias",
+        "|switch|p2a: Usain Bolt|Raging Bolt|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Usain Bolt|Draco Meteor|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Lando Norris|Landorus-Therian, M|49/100",
+        "|move|p1a: Latias|Aura Sphere|p2a: Lando Norris"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Lando Norris|Stealth Rock|p1a: Latias",
+        "|move|p1a: Latias|Aura Sphere|p2a: Lando Norris",
+        "|switch|p2a: PawnHub|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Latias|Aura Sphere|p2a: PawnHub",
+        "|switch|p2a: Spring Cleaning|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Spring Cleaning|Ivy Cudgel|p1a: Latias|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Klefki|Klefki, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Usain Bolt|Raging Bolt, tera:Fairy|100/100",
+        "|move|p1a: Klefki|Reflect|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Klefki|Light Screen|p1a: Klefki",
+        "|move|p2a: Usain Bolt|Thunderbolt|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Klefki|Thunder Wave|p2a: Usain Bolt",
+        "|move|p2a: Usain Bolt|Thunderbolt|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Klefki|Spikes|p2a: Usain Bolt"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Hatterihanna|Hatterene, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Klefki|Reflect||[still]",
+        "|move|p2a: Hatterihanna|Mystical Fire|p1a: Klefki",
+        "|switch|p1a: Ninetales|Ninetales-Alola, F|31/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Usain Bolt|Raging Bolt, tera:Fairy|100/100 par",
+        "|move|p1a: Ninetales|Aurora Veil|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ninetales|Misty Terrain|p1a: Ninetales",
+        "|move|p2a: Usain Bolt|Thunderbolt|p1a: Ninetales",
+        "|switch|p1a: Maushold|Maushold-Four|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Maushold|Tidy Up|p1a: Maushold",
+        "|move|p2a: Usain Bolt|Thunderbolt|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Maushold|Population Bomb|p2a: Usain Bolt",
+        "|switch|p2a: Off The Pooch|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Maushold|Population Bomb|p2a: Off The Pooch",
+        "|move|p2a: Off The Pooch|Body Press|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Maushold|Population Bomb|p2a: Off The Pooch",
+        "|switch|p2a: Spring Cleaning|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Maushold|Population Bomb|p2a: Spring Cleaning",
+        "|switch|p2a: Hatterihanna|Hatterene, F, shiny|88/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Maushold|Population Bomb|p2a: Hatterihanna"
+      ]
+    }
+  ],
+  "winner": "Bring it on mon",
+  "endTime": 1770416430185,
+  "p1Team": [
+    "Okidogi",
+    "Latias",
+    "Klefki",
+    "Ninetales-Alola",
+    "Maushold-Four"
+  ],
+  "p2Team": [
+    "Raging Bolt",
+    "Landorus-Therian",
+    "Kingambit",
+    "Ogerpon-Wellspring",
+    "Hatterene",
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "okidogi",
+      "latias",
+      "klefki",
+      "ninetalesalola",
+      "mausholdfour"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ragingbolt",
+      "landorustherian",
+      "kingambit",
+      "ogerponwellspring",
+      "hatterene",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

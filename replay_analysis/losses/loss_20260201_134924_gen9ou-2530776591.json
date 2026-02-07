@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260201_134924",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530776591",
+  "replay_id": "gen9ou-2530776591",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "no_hazards_set",
+      "turn": 35,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "early_setup",
+      "turn": 3,
+      "description": "Attempted swordsdance on turn 3 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    },
+    {
+      "category": "insufficient_switching",
+      "turn": 35,
+      "description": "Only 1 switches in 35 turns",
+      "severity": "major",
+      "suggested_fix": "Reduce switch penalty, increase matchup awareness"
+    }
+  ]
+}

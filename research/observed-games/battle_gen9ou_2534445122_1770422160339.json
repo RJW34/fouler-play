@@ -1,0 +1,191 @@
+{
+  "id": "battle-gen9ou-2534445122",
+  "p1": "wk? mafia",
+  "p2": "rookie22",
+  "minElo": 1652,
+  "startTime": 1770421893746,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Bene Gesserit|Volt Switch|p1a: Dragonite",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Volt Switch",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Dragonite|Ice Spinner|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Dragonite",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Bene Gesserit|Iron Crown|100/100",
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Bene Gesserit"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Bene Gesserit|Tachyon Cutter|p1a: Kyurem",
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|48/100",
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Great Tusk",
+        "|switch|p2a: Lisan Al Gaib|Keldeo|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Lisan Al Gaib|Vacuum Wave|p1a: Kyurem",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Bene Gesserit|Iron Crown|69/100",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Bene Gesserit|Psyshock|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Bene Gesserit",
+        "|move|p2a: Bene Gesserit|Psyshock|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Bene Gesserit",
+        "|switch|p2a: Meowscarada|Meowscarada, M|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Meowscarada",
+        "|move|p2a: Meowscarada|Triple Axel|p1a: Raging Bolt",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Meowscarada",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Ceruledge",
+        "|switch|p1a: Glimmora|Glimmora, M|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Glimmora",
+        "|move|p1a: Glimmora|Earth Power|p2a: Raging Bolt",
+        "|switch|p2a: Lisan Al Gaib|Keldeo|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Lisan Al Gaib|Surf|p1a: Glimmora",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Lisan Al Gaib",
+        "|switch|p2a: I'm the original.|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: I'm the original.",
+        "|move|p2a: I'm the original.|Tera Blast|p1a: Iron Valiant|[anim] Tera Blast Flying"
+      ]
+    }
+  ],
+  "winner": "rookie22",
+  "endTime": 1770422160338,
+  "p1Team": [
+    "Kyurem",
+    "Raging Bolt",
+    "Ceruledge",
+    "Glimmora",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Iron Crown",
+    "Keldeo",
+    "Meowscarada",
+    "Raging Bolt",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "kyurem",
+      "ragingbolt",
+      "ceruledge",
+      "glimmora",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "ironcrown",
+      "keldeo",
+      "meowscarada",
+      "ragingbolt",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

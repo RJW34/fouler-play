@@ -1,0 +1,64 @@
+{
+  "timestamp": "20260201_170025",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530875366",
+  "replay_id": "gen9ou-2530875366",
+  "mistakes_found": 8,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 6,
+      "description": "Venusaur fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 28,
+      "description": "Raging Bolt fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 49,
+      "description": "Ninetales fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 49,
+      "description": "Landorus fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 52,
+      "description": "Walking Wake fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 54,
+      "description": "Greninja fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 54,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 54,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    }
+  ]
+}

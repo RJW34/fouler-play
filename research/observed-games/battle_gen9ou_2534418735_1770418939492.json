@@ -1,0 +1,273 @@
+{
+  "id": "battle-gen9ou-2534418735",
+  "p1": "Common Krookodile",
+  "p2": "Log God Neo✈️_✈️",
+  "minElo": 1576,
+  "startTime": 1770418743527,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Toxicroak|Toxicroak, M|100/100",
+        "|move|p2a: KURAMA BLANCO|Freeze-Dry|p1a: Toxicroak"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|100/100",
+        "|move|p1a: Toxicroak|Toxic|p2a: OVO CHUBBS"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Pelipper|Pelipper, M|100/100",
+        "|switch|p2a: BIRD JESUS|Staraptor, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: BIRD JESUS|Double-Edge|p1a: Pelipper",
+        "|switch|p1a: Barraskewda|Barraskewda, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|94/100 tox",
+        "|move|p1a: Barraskewda|Flip Turn|p2a: OVO CHUBBS",
+        "|switch|p1a: Zapdos|Zapdos|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: DA LAST REX(3005)|Tyranitar, F|100/100",
+        "|move|p1a: Zapdos|Volt Switch|p2a: DA LAST REX(3005)",
+        "|switch|p1a: Toxicroak|Toxicroak, M|63/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|62/100 tox",
+        "|move|p1a: Toxicroak|Drain Punch|p2a: OVO CHUBBS"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|100/100",
+        "|move|p2a: OVO CHUBBS|Lava Plume|p1a: Hatterene",
+        "|switch|p1a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, M|100/100",
+        "|move|p1a: Zapdos|Volt Switch|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|64/100",
+        "|switch|p2a: BIRD JESUS|Staraptor, F, shiny|66/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: BIRD JESUS|Close Combat|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, M|100/100",
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|64/100",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|27/100 tox",
+        "|move|p1a: Hatterene|Draining Kiss|p2a: OVO CHUBBS"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Hatterene|Psychic Noise|p2a: OVO CHUBBS",
+        "|switch|p2a: BIRD JESUS|Staraptor, F, shiny|66/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: BIRD JESUS|Double-Edge|p1a: Hatterene",
+        "|switch|p1a: Barraskewda|Barraskewda, M|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, M|70/100",
+        "|move|p1a: Barraskewda|Flip Turn|p2a: BLITZ SOME OPPS",
+        "|switch|p1a: Zapdos|Zapdos|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: BIRD JESUS|Staraptor, F, shiny|16/100",
+        "|move|p1a: Zapdos|Weather Ball|p2: BIRD JESUS|[notarget]",
+        "|switch|p2a: KURAMA BLANCO|Ninetales-Alola, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|10/100",
+        "|move|p2a: KURAMA BLANCO|Blizzard|p1a: Iron Treads",
+        "|switch|p1a: Barraskewda|Barraskewda, M|72/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Barraskewda|Flip Turn|p2a: KURAMA BLANCO",
+        "|switch|p1a: Toxicroak|Toxicroak, M|52/100|[from] Flip Turn",
+        "|move|p2a: KURAMA BLANCO|Freeze-Dry|p1a: Toxicroak"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: KURAMA BLANCO|Freeze-Dry|p1a: Toxicroak",
+        "|switch|p1a: Barraskewda|Barraskewda, M|72/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, M|50/100",
+        "|move|p1a: Barraskewda|Flip Turn|p2a: BLITZ SOME OPPS",
+        "|switch|p1a: Zapdos|Zapdos|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Zapdos|Hurricane|p2a: BLITZ SOME OPPS",
+        "|switch|p2a: KURAMA BLANCO|Ninetales-Alola, F, shiny|26/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Zapdos|Hurricane|p2a: KURAMA BLANCO",
+        "|switch|p2a: DA LAST REX(3005)|Tyranitar, F|87/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Zapdos|Hurricane|p2a: DA LAST REX(3005)",
+        "|move|p2a: DA LAST REX(3005)|Knock Off|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Zapdos|Hurricane|p2a: DA LAST REX(3005)|[miss]",
+        "|move|p2a: DA LAST REX(3005)|Knock Off|p1a: Zapdos",
+        "|switch|p1a: Barraskewda|Barraskewda, M|43/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Barraskewda|Liquidation|p2a: DA LAST REX(3005)",
+        "|switch|p2a: FAT CHARIZARD|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Barraskewda|Liquidation|p2a: FAT CHARIZARD",
+        "|move|p2a: FAT CHARIZARD|Tera Blast|p1a: Barraskewda|[anim] Tera Blast Fairy"
+      ]
+    }
+  ],
+  "winner": "Log God Neo✈️_✈️",
+  "endTime": 1770418939492,
+  "p1Team": [
+    "Toxicroak",
+    "Pelipper",
+    "Barraskewda",
+    "Zapdos",
+    "Hatterene",
+    "Iron Treads"
+  ],
+  "p2Team": [
+    "Torkoal",
+    "Staraptor",
+    "Tyranitar",
+    "Garchomp",
+    "Ninetales-Alola",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "toxicroak",
+      "pelipper",
+      "barraskewda",
+      "zapdos",
+      "hatterene",
+      "irontreads"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "torkoal",
+      "staraptor",
+      "tyranitar",
+      "garchomp",
+      "ninetalesalola",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

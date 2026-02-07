@@ -1,0 +1,219 @@
+{
+  "id": "battle-gen9ou-2534430286",
+  "p1": "munny212",
+  "p2": "ClRCUS MAXIMUS",
+  "minElo": 1673,
+  "startTime": 1770420093623,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Glimmora|Sludge Wave|p2a: Ribombee",
+        "|move|p2a: Ribombee|Stun Spore|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Ribombee|Sticky Web|p1a: Glimmora",
+        "|move|p1a: Glimmora|Sludge Wave|p2a: Ribombee",
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Glimmora",
+        "|move|p1a: Glimmora|Sludge Wave|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Landorus"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Glimmora|Glimmora, F|88/100 par",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Glimmora",
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Landorus",
+        "|move|p1a: Landorus|Earth Power|p2a: Great Tusk",
+        "|switch|p2a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Landorus|[anim] Ivy Cudgel Rock",
+        "|move|p1a: Landorus|U-turn|p2a: Ogerpon",
+        "|switch|p1a: Cinderace|Cinderace, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Cinderace|Court Change|p1a: Cinderace",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Cinderace|[anim] Ivy Cudgel Rock"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Ogerpon",
+        "|switch|p2a: Ceruledge|Ceruledge, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|24/100",
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Landorus",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Kyurem|Earth Power|p2a: Ceruledge",
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Ceruledge|Shadow Sneak|p1a: Kyurem",
+        "|move|p1a: Kyurem|Earth Power|p2a: Ceruledge",
+        "|switch|p2a: Gholdengo|Gholdengo, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M|100/100",
+        "|move|p2a: Gholdengo|Focus Blast|p1a: Kingambit",
+        "|switch|p1a: Cinderace|Cinderace, M|5/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|72/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Kyurem",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo, shiny|100/100",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Iron Valiant|Shadow Ball|p2a: Gholdengo",
+        "|switch|p2a: Raging Bolt|Raging Bolt|76/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap||[still]",
+        "|move|p1a: Iron Valiant|Taunt|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Iron Valiant",
+        "|switch|p1a: Cinderace|Cinderace, M|5/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Cinderace|Sucker Punch|p2a: Raging Bolt"
+      ]
+    }
+  ],
+  "winner": "munny212",
+  "endTime": 1770420304743,
+  "p1Team": [
+    "Landorus-Therian",
+    "Glimmora",
+    "Cinderace",
+    "Kyurem",
+    "Kingambit",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Ogerpon-Cornerstone",
+    "Ceruledge",
+    "Gholdengo",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "landorustherian",
+      "glimmora",
+      "cinderace",
+      "kyurem",
+      "kingambit",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "ogerponcornerstone",
+      "ceruledge",
+      "gholdengo",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,57 @@
+{
+  "timestamp": "20260131_160647",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530250755",
+  "replay_id": "gen9ou-2530250755",
+  "mistakes_found": 7,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 13,
+      "description": "Blissey fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 14,
+      "description": "Zamazenta fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 15,
+      "description": "Gholdengo fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 21,
+      "description": "Gliscor fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 22,
+      "description": "Skarmory fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 23,
+      "description": "Pecharunt fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "early_setup",
+      "turn": 7,
+      "description": "Attempted calmmind on turn 7 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "id": "battle-gen9ou-2534356632",
+  "p1": "mizuuuwu",
+  "p2": "Enhydra_0",
+  "minElo": 1678,
+  "startTime": 1770412203817,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Garganacl",
+        "|move|p1a: Garganacl|Stealth Rock|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Garganacl",
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|100/100",
+        "|move|p1a: Darkrai|Sludge Bomb|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Samurott|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Samurott|Sucker Punch|p1a: Ogerpon",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Iron Valiant|Calm Mind|p1a: Iron Valiant",
+        "|move|p2a: Samurott|Flip Turn|p1a: Iron Valiant",
+        "|switch|p2a: Iron Crown|Iron Crown|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Iron Valiant|Shadow Ball|p2a: Iron Crown",
+        "|move|p2a: Iron Crown|Tachyon Cutter|p1a: Iron Valiant",
+        "|switch|p1a: Darkrai|Darkrai|91/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Iron Crown",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Iron Valiant|Vacuum Wave|p1a: Darkrai",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Pecharunt",
+        "|switch|p2a: Iron Valiant|Iron Valiant|94/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Great Tusk",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Kyurem",
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Iron Valiant",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Kyurem"
+      ]
+    }
+  ],
+  "winner": "Enhydra_0",
+  "endTime": 1770412377692,
+  "p1Team": [
+    "Darkrai",
+    "Ogerpon-Wellspring",
+    "Iron Valiant",
+    "Great Tusk",
+    "Kyurem"
+  ],
+  "p2Team": [
+    "Samurott-Hisui",
+    "Iron Crown",
+    "Iron Valiant",
+    "Pecharunt",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "darkrai",
+      "ogerponwellspring",
+      "ironvaliant",
+      "greattusk",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "samurotthisui",
+      "ironcrown",
+      "ironvaliant",
+      "pecharunt",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,188 @@
+{
+  "id": "battle-gen9ou-2534426880",
+  "p1": "Kyle16092",
+  "p2": "Jamez",
+  "minElo": 1715,
+  "startTime": 1770419703600,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Dragapult",
+        "|switch|p1a: Hoopa|Hoopa-Unbound|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Hoopa|Gunk Shot|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Dragonite|Dragonite, F|100/100",
+        "|move|p1a: Lokix|U-turn|p2a: Dragonite",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Dragonite|Roost|p2a: Dragonite",
+        "|move|p1a: Alomomola|Alluring Voice|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Alomomola|Scald|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Gholdengo",
+        "|switch|p1a: Hoopa|Hoopa-Unbound|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|81/100",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100 par"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Ting-Lu",
+        "|switch|p1a: Cinderace|Cinderace, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Cinderace|U-turn|p2a: Ting-Lu",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100 par|[from] U-turn",
+        "|move|p2a: Ting-Lu|Ruination|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Alomomola|Flip Turn|p2a: Ting-Lu",
+        "|switch|p1a: Cinderace|Cinderace, F|100/100|[from] Flip Turn",
+        "|move|p2a: Ting-Lu|Whirlwind|p1a: Cinderace"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Ting-Lu|Ruination|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Cinderace|Cinderace, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Cinderace|U-turn|p2a: Ting-Lu",
+        "|switch|p1a: Slowking|Slowking-Galar, F|84/100|[from] U-turn",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Darkrai|Knock Off|p1a: Slowking",
+        "|move|p1a: Slowking|Thunder Wave|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Cinderace|Cinderace, F|100/100",
+        "|move|p2a: Darkrai|Knock Off|p1a: Cinderace"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Cinderace|Court Change|p1a: Cinderace"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Cinderace|U-turn|p2a: Darkrai",
+        "|switch|p1a: Lokix|Lokix, M|100/100|[from] U-turn",
+        "|move|p2a: Darkrai|Knock Off|p1a: Lokix"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Lokix|U-turn|p2a: Darkrai",
+        "|switch|p1a: Hoopa|Hoopa-Unbound|100/100|[from] U-turn",
+        "|switch|p2a: Dragonite|Dragonite, F|91/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Hoopa|Hyperspace Fury|p2a: Dragonite"
+      ]
+    }
+  ],
+  "winner": "Kyle16092",
+  "endTime": 1770420123799,
+  "p1Team": [
+    "Hoopa-Unbound",
+    "Alomomola",
+    "Cinderace",
+    "Slowking-Galar",
+    "Lokix"
+  ],
+  "p2Team": [
+    "Ting-Lu",
+    "Dragonite",
+    "Gholdengo",
+    "Darkrai"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 0,
+    "team": [
+      "hoopaunbound",
+      "alomomola",
+      "cinderace",
+      "slowkinggalar",
+      "lokix"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "tinglu",
+      "dragonite",
+      "gholdengo",
+      "darkrai"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

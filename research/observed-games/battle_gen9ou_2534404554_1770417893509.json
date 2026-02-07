@@ -1,0 +1,482 @@
+{
+  "id": "battle-gen9ou-2534404554",
+  "p1": "suprya",
+  "p2": "GameProm4",
+  "minElo": 1686,
+  "startTime": 1770417153478,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|100/100",
+        "|move|p2a: Primarina|Ice Beam|p1a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|100/100",
+        "|move|p2a: Primarina|Ice Beam|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha|100/100",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Sinistcha|Matcha Gotcha|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Primarina|Primarina, M, shiny|100/100",
+        "|move|p1a: Moltres|Scorching Sands|p2a: Primarina"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|100/100",
+        "|move|p2a: Primarina|Moonblast|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Primarina|Moonblast|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Primarina|Moonblast|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Primarina|Moonblast|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Primarina|Moonblast|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha|100/100",
+        "|move|p1a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Iron Crown|Iron Crown|100/100",
+        "|move|p2a: Sinistcha|Matcha Gotcha|p1a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|100/100",
+        "|move|p1a: Iron Crown|Psychic Noise|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Iron Crown|Volt Switch|p2a: Corviknight",
+        "|switch|p1a: Moltres|Moltres|95/100|[from] Volt Switch",
+        "|move|p2a: Corviknight|U-turn|p1a: Moltres",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Great Tusk",
+        "|switch|p1a: Iron Crown|Iron Crown|89/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Iron Crown|Psychic Noise|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Iron Crown",
+        "|move|p1a: Iron Crown|Psychic Noise|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Iron Crown",
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Iron Hands|Iron Hands|100/100",
+        "|move|p1a: Darkrai|Ice Beam|p2a: Iron Hands"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: Iron Hands",
+        "|move|p2a: Iron Hands|Thunder Punch|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|42/100",
+        "|move|p2a: Iron Hands|Thunder Punch|p1a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Primarina|Primarina, M, shiny|82/100",
+        "|switch|p1a: Moltres|Moltres|91/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|78/100",
+        "|move|p2a: Primarina|Sparkling Aria|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|31/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Garganacl",
+        "|switch|p2a: Sinistcha|Sinistcha|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|91/100",
+        "|move|p2a: Sinistcha|Calm Mind|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Sinistcha|Shadow Ball|p1a: Moltres",
+        "|move|p1a: Moltres|Roar|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Moltres|Roost|p1a: Moltres",
+        "|move|p2a: Primarina|Moonblast|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Iron Hands|Iron Hands|54/100 brn",
+        "|move|p1a: Moltres|Flamethrower|p2a: Iron Hands"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Moltres|Scorching Sands|p2a: Iron Hands",
+        "|switch|p2a: Primarina|Primarina, M, shiny|82/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|70/100",
+        "|move|p2a: Primarina|Sparkling Aria|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha|100/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|switch|p1a: Darkrai|Darkrai|71/100",
+        "|move|p2a: Sinistcha|Shadow Ball|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|63/100",
+        "|switch|p2a: Corviknight|Corviknight, M|55/100 brn"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|55/100",
+        "|move|p2a: Corviknight|U-turn|p1a: Garganacl",
+        "|switch|p2a: Sinistcha|Sinistcha|79/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: Sinistcha|Calm Mind|p2a: Sinistcha",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|73/100",
+        "|move|p2a: Sinistcha|Shadow Ball|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|switch|p2a: Primarina|Primarina, M, shiny|82/100",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|63/100",
+        "|move|p2a: Primarina|Moonblast|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p1a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|89/100",
+        "|move|p2a: Landorus|Stone Edge|p1a: Moltres",
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|96/100"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|49/100 brn",
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|16/100"
+      ]
+    },
+    {
+      "turn": 43,
+      "events": [
+        "|move|p2a: Corviknight|U-turn|p1a: Garganacl",
+        "|switch|p2a: Primarina|Primarina, M, shiny|82/100|[from] U-turn",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 44,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|43/100 brn",
+        "|move|p1a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 45,
+      "events": [
+        "|move|p2a: Corviknight|Brave Bird|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Corviknight",
+        "|switch|p2a: Sinistcha|Sinistcha|63/100"
+      ]
+    },
+    {
+      "turn": 46,
+      "events": [
+        "|switch|p1a: Darkrai|Darkrai|51/100",
+        "|move|p2a: Sinistcha|Matcha Gotcha|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 47,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 48,
+      "events": [
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|100/100",
+        "|move|p2a: Landorus|U-turn|p1a: Amoonguss",
+        "|switch|p2a: Primarina|Primarina, M, shiny|82/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 49,
+      "events": [
+        "|move|p2a: Primarina|Shadow Ball|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Sludge Bomb|p2a: Primarina"
+      ]
+    },
+    {
+      "turn": 50,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|32/100",
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|75/100"
+      ]
+    },
+    {
+      "turn": 51,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Landorus|U-turn|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 52,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha|88/100",
+        "|move|p1a: Garganacl|Stealth Rock|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 53,
+      "events": [
+        "|switch|p1a: Darkrai|Darkrai|5/100",
+        "|move|p2a: Sinistcha|Calm Mind|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 54,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 55,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 56,
+      "events": [
+        "|switch|p2a: Primarina|Primarina, M, shiny|39/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Primarina"
+      ]
+    },
+    {
+      "turn": 57,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Primarina",
+        "|switch|p2a: Landorus|Landorus-Therian, M|32/100"
+      ]
+    },
+    {
+      "turn": 58,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|94/100",
+        "|move|p2a: Landorus|Earthquake|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 59,
+      "events": [
+        "|move|p2a: Landorus|Earthquake|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Landorus",
+        "|switch|p2a: Sinistcha|Sinistcha, tera:Poison|13/100"
+      ]
+    }
+  ],
+  "winner": "suprya",
+  "endTime": 1770417893509,
+  "p1Team": [
+    "Amoonguss",
+    "Garganacl",
+    "Moltres",
+    "Iron Crown",
+    "Great Tusk",
+    "Darkrai"
+  ],
+  "p2Team": [
+    "Sinistcha",
+    "Primarina",
+    "Corviknight",
+    "Raging Bolt",
+    "Iron Hands",
+    "Landorus-Therian"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "amoonguss",
+      "garganacl",
+      "moltres",
+      "ironcrown",
+      "greattusk",
+      "darkrai"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "sinistcha",
+      "primarina",
+      "corviknight",
+      "ragingbolt",
+      "ironhands",
+      "landorustherian"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

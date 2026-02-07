@@ -1,0 +1,24 @@
+{
+  "turn": 6,
+  "bot_choice": "Body Press",
+  "why_critical": "Skarmory went down vs Ursaluna (88% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 49% | Pecharunt 100% | Zamazenta 100% -1 spd",
+  "opp_team": "Hatterene 100% | Ursaluna 88% brn | Porygon2 28% +1 spa | Cresselia 100% | Iron Hands 100% | Volcanion 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530592468",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Ursaluna"
+    ],
+    [
+      "Different move than Body Press",
+      "Could have forced switch or dealt more chip"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

@@ -1,0 +1,20 @@
+{
+  "turn": 5,
+  "bot_choice": "Gliscor fainted",
+  "why_critical": "\u274c Gliscor fainted \u2014 should we have switched out earlier or chosen differently?",
+  "bot_team": "Gliscor 86% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 72% +1 def",
+  "opp_team": "Ninetales 100% | Walking Wake 100% | Corviknight 88% | Chansey 100% | Great Tusk 74% | Enamorus 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530335714",
+  "alternatives": [
+    [
+      "Switch out earlier",
+      "Preserve this Pokemon for later"
+    ],
+    [
+      "Different move",
+      "Better damage/utility before going down"
+    ]
+  ],
+  "feedback": null
+}

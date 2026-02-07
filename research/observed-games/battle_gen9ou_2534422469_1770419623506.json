@@ -1,0 +1,251 @@
+{
+  "id": "battle-gen9ou-2534422469",
+  "p1": "flan727",
+  "p2": "Jamez",
+  "minElo": 1794,
+  "startTime": 1770419193556,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Darkrai|Knock Off|p1a: Dess",
+        "|move|p1a: Dess|Stealth Rock|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Dess",
+        "|move|p1a: Dess|Ruination|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Dess",
+        "|move|p1a: Dess|Earthquake|p2a: Darkrai",
+        "|switch|p2a: Clefable|Clefable, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Clefable|Moonblast|p1a: Dess",
+        "|move|p1a: Dess|Ruination|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Agnes Tachyon|Iron Crown|100/100",
+        "|move|p2a: Clefable|Flamethrower|p1a: Agnes Tachyon"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Agnes Tachyon|Tachyon Cutter|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Bad apple|Malignant Chain|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Bad apple"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Bad apple|Malignant Chain|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Spikes|p1a: Bad apple"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Elephant|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Elephant|Headlong Rush|p2a: Ting-Lu",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Dess|Ting-Lu|3/100",
+        "|move|p2a: Pecharunt|Shadow Ball|p1: Dess|[notarget]",
+        "|switch|p1a: Agnes Tachyon|Iron Crown|39/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Agnes Tachyon|Tachyon Cutter|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Agnes Tachyon",
+        "|switch|p1a: Trans Rights|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Trans Rights|Knock Off|p2a: Gholdengo",
+        "|switch|p2a: Pecharunt|Pecharunt, tera:Ghost|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Trans Rights|Moonblast|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Trans Rights",
+        "|switch|p1a: Bad apple|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Dragonite|Dragonite, F|100/100",
+        "|move|p1a: Bad apple|Malignant Chain|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite",
+        "|move|p1a: Bad apple|Malignant Chain|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Dragonite|Roost|p2a: Dragonite",
+        "|move|p1a: Bad apple|Recover||[still]"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite",
+        "|move|p1a: Bad apple|Foul Play|p2a: Dragonite",
+        "|switch|p2a: Pecharunt|Pecharunt, tera:Ghost|56/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Bad apple",
+        "|move|p1a: Bad apple|Malignant Chain|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt",
+        "|move|p1a: Bad apple|Malignant Chain|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Bad apple",
+        "|move|p1a: Bad apple|Malignant Chain|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Bad apple",
+        "|switch|p1a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Ogerpon|Knock Off|p2a: Pecharunt",
+        "|switch|p2a: Clefable|Clefable, F|50/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Ogerpon|Knock Off|p2a: Clefable",
+        "|move|p2a: Clefable|Moonlight|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Elephant|Great Tusk|97/100",
+        "|move|p2a: Clefable|Moonblast|p1a: Elephant",
+        "|switch|p1a: Ogerpon|Ogerpon, F|76/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Clefable"
+      ]
+    }
+  ],
+  "winner": "flan727",
+  "endTime": 1770419623506,
+  "p1Team": [
+    "Iron Crown",
+    "Great Tusk",
+    "Ting-Lu",
+    "Iron Valiant",
+    "Pecharunt",
+    "Ogerpon"
+  ],
+  "p2Team": [
+    "Clefable",
+    "Ting-Lu",
+    "Pecharunt",
+    "Gholdengo",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "ironcrown",
+      "greattusk",
+      "tinglu",
+      "ironvaliant",
+      "pecharunt",
+      "ogerpon"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "clefable",
+      "tinglu",
+      "pecharunt",
+      "gholdengo",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

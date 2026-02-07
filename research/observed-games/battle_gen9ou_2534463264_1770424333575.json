@@ -1,0 +1,146 @@
+{
+  "id": "battle-gen9ou-2534463264",
+  "p1": "Lumew33",
+  "p2": "peakelo",
+  "minElo": 1598,
+  "startTime": 1770424275248,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Maushold|Encore|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, M|100/100",
+        "|move|p1a: Maushold|Tidy Up|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Maushold|Bite|p2a: Ceruledge",
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Maushold",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Ceruledge",
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Earth Power|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Hydrapple",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Alomomola|Aqua Jet|p2a: Ceruledge",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Magnezone|Magnezone|100/100",
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Magnezone|Volt Switch|p2a: Ogerpon",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] Volt Switch",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Great Tusk",
+        "|switch|p1a: Magnezone|Magnezone|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Magnezone|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Corviknight|Corviknight, M|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Corviknight|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Alomomola|Aqua Jet|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Alomomola|Aqua Jet|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Alomomola|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "peakelo",
+  "endTime": 1770424333575,
+  "p1Team": [
+    "Alomomola",
+    "Hydrapple",
+    "Magnezone",
+    "Great Tusk",
+    "Corviknight"
+  ],
+  "p2Team": [
+    "Ceruledge",
+    "Ogerpon-Wellspring"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "alomomola",
+      "hydrapple",
+      "magnezone",
+      "greattusk",
+      "corviknight"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "ceruledge",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

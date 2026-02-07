@@ -1,0 +1,159 @@
+{
+  "id": "battle-gen9ou-2534359364",
+  "p1": "Quaqrash",
+  "p2": "leontief47",
+  "minElo": 1823,
+  "startTime": 1770412383222,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Iron Treads|Stealth Rock|p1a: The Tyrant",
+        "|move|p1a: The Tyrant|Low Kick|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Iron Treads|Steel Beam|p1a: The Tyrant",
+        "|move|p1a: The Tyrant|Stealth Rock|p2: Iron Treads",
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: The Reigner|Tornadus-Therian, M|100/100",
+        "|move|p2a: Rillaboom|Wood Hammer|p1a: The Reigner"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: The Reigner",
+        "|switch|p1a: The Juggernaught|Chesnaught, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Rillaboom|U-turn|p1a: The Juggernaught",
+        "|switch|p2a: Hawlucha|Hawlucha, F|100/100|[from] U-turn",
+        "|move|p1a: The Juggernaught|Spikes|p2a: Hawlucha"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: The Tyrant|Tyranitar, M|69/100",
+        "|move|p2a: Hawlucha|Swords Dance|p2a: Hawlucha"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Hawlucha|Close Combat|p1a: The Tyrant",
+        "|move|p1a: The Tyrant|Ice Beam|p2a: Hawlucha",
+        "|switch|p2a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: The Juggernaught|Chesnaught, F|87/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: The Juggernaught|[anim] Ivy Cudgel Rock"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon",
+        "|move|p1a: The Juggernaught|Spikes|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Ogerpon|Power Whip|p1a: The Juggernaught",
+        "|move|p1a: The Juggernaught|Body Press|p2a: Ogerpon",
+        "|switch|p2a: Rillaboom|Rillaboom, F|56/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Rillaboom|U-turn|p1a: The Juggernaught",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100|[from] U-turn",
+        "|switch|p1a: The Golden Child|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: The Golden Child",
+        "|switch|p1a: The Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: The Valiant|Moonblast|p2a: Zamazenta",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: The Valiant|Moonblast|p2a: Raging Bolt"
+      ]
+    }
+  ],
+  "winner": "Quaqrash",
+  "endTime": 1770412547196,
+  "p1Team": [
+    "Tornadus-Therian",
+    "Chesnaught",
+    "Tyranitar",
+    "Gholdengo",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Rillaboom",
+    "Hawlucha",
+    "Ogerpon-Cornerstone",
+    "Zamazenta",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "tornadustherian",
+      "chesnaught",
+      "tyranitar",
+      "gholdengo",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "rillaboom",
+      "hawlucha",
+      "ogerponcornerstone",
+      "zamazenta",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

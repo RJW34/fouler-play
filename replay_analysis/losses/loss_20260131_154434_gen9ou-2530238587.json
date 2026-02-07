@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260131_154434",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530238587",
+  "replay_id": "gen9ou-2530238587",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 1,
+      "description": "Tyranitar fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 6,
+      "description": "Garchomp fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "early_setup",
+      "turn": 2,
+      "description": "Attempted swordsdance on turn 2 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

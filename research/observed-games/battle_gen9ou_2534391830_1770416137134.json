@@ -1,0 +1,304 @@
+{
+  "id": "battle-gen9ou-2534391830",
+  "p1": "CopiumBathTub",
+  "p2": "rillaMane",
+  "minElo": 1593,
+  "startTime": 1770415773382,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: peter parker",
+        "|move|p2a: peter parker|Sticky Web|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p2a: peter parker|Surf|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Weezing|Defog|p2a: peter parker",
+        "|move|p2a: peter parker|Surf|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Weezing|Toxic|p2a: peter parker",
+        "|move|p2a: peter parker|Sticky Web|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Weezing|Defog|p2a: peter parker",
+        "|move|p2a: peter parker|Endeavor|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: peter parker|Sticky Web|p1a: Weezing",
+        "|move|p1a: Weezing|Defog|p2a: peter parker",
+        "|switch|p2a: joe|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Weezing|Protect|p1a: Weezing",
+        "|move|p2a: joe|Nasty Plot|p2a: joe"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p2a: joe|Shadow Ball|p1a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: joe|Make It Rain|p1a: Ting-Lu",
+        "|move|p1a: Ting-Lu|Ruination|p2a: joe"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: lol|Kingambit, F|100/100",
+        "|move|p1a: Ting-Lu|Stealth Rock|p2a: lol"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|100/100",
+        "|move|p2a: lol|Swords Dance|p2a: lol"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: lol|Kowtow Cleave|p1a: Corviknight",
+        "|move|p1a: Corviknight|U-turn|p2a: lol",
+        "|switch|p1a: Weezing|Weezing-Galar, F|44/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: lol|Swords Dance|p2a: lol",
+        "|move|p1a: Weezing|Will-O-Wisp|p2a: lol"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: lol|Iron Head|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: lol|Kowtow Cleave|p1a: Alomomola",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, F|56/100",
+        "|move|p2a: lol|Swords Dance|p2a: lol"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Weezing|Protect|p1a: Weezing",
+        "|move|p2a: lol|Iron Head|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|21/100",
+        "|move|p2a: lol|Kowtow Cleave|p1a: Corviknight",
+        "|switch|p1a: Kyurem|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: lol|Sucker Punch||[still]",
+        "|move|p1a: Kyurem|Substitute|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Kyurem|Substitute|p1a: Kyurem",
+        "|move|p2a: lol|Kowtow Cleave|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Kyurem|Substitute|p1a: Kyurem",
+        "|move|p2a: lol|Iron Head|p1a: Kyurem",
+        "|switch|p2a: lamp|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: lamp|Sludge Wave|p1a: Kyurem",
+        "|switch|p1a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: lamp",
+        "|switch|p2a: charles james|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p2a: charles james|Calm Mind|p2a: charles james"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: charles james|Shadow Ball|p1a: Weezing",
+        "|move|p1a: Weezing|Toxic|p2a: charles james"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Weezing|Protect|p1a: Weezing",
+        "|move|p2a: charles james|Shadow Ball|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: Ting-Lu|Ting-Lu|51/100",
+        "|move|p2a: charles james|Shadow Ball|p1a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, F|57/100",
+        "|move|p2a: charles james|Moonblast|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Weezing|Protect|p1a: Weezing",
+        "|move|p2a: charles james|Moonblast|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: charles james|Moonblast|p1a: Weezing",
+        "|switch|p2a: joe|Gholdengo|51/100",
+        "|switch|p1a: Ting-Lu|Ting-Lu|45/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: joe|Make It Rain|p1a: Ting-Lu",
+        "|move|p1a: Ting-Lu|Earthquake|p2a: joe",
+        "|switch|p2a: raikou?|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: raikou?|Dragon Pulse|p1a: Ting-Lu",
+        "|switch|p1a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Dragapult|U-turn|p2a: raikou?",
+        "|switch|p1a: Alomomola|Alomomola, F|61/100|[from] U-turn",
+        "|move|p2a: raikou?|Dragon Pulse|p1a: Alomomola",
+        "|switch|p1a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Dragapult|Tera Blast|p2a: raikou?|[anim] Tera Blast Ghost"
+      ]
+    }
+  ],
+  "winner": "CopiumBathTub",
+  "endTime": 1770416137134,
+  "p1Team": [
+    "Weezing-Galar",
+    "Ting-Lu",
+    "Corviknight",
+    "Alomomola",
+    "Kyurem",
+    "Dragapult"
+  ],
+  "p2Team": [
+    "Gholdengo",
+    "Kingambit",
+    "Iron Moth",
+    "Iron Valiant",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "weezinggalar",
+      "tinglu",
+      "corviknight",
+      "alomomola",
+      "kyurem",
+      "dragapult"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.8,
+    "fatCount": 0,
+    "offenseCount": 4,
+    "team": [
+      "gholdengo",
+      "kingambit",
+      "ironmoth",
+      "ironvaliant",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

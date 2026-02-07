@@ -1,0 +1,263 @@
+{
+  "id": "battle-gen9ou-2534421207",
+  "p1": "n trademark",
+  "p2": "Obling",
+  "minElo": 1628,
+  "startTime": 1770419043557,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Deoxys|Taunt|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Deoxys|Stealth Rock|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Deoxys|Reflect|p2a: Deoxys",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Deoxys|Taunt|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: V|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: V"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: V|Swords Dance|p2a: V"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: V",
+        "|switch|p2a: Roaring Sun|Salamence, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|100/100",
+        "|move|p2a: Roaring Sun|Earthquake|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Iron Moth|Iron Moth|100/100",
+        "|move|p1a: Corviknight|Defog|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, F|100/100",
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Iron Moth|Dazzling Gleam|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Iron Moth|Dazzling Gleam|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Iron Moth|Dazzling Gleam|p1a: Garganacl",
+        "|move|p1a: Garganacl|Stealth Rock|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Iron Moth|Dazzling Gleam|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Iron Moth|Dazzling Gleam|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Iron Moth|Dazzling Gleam|p1a: Garganacl",
+        "|switch|p2a: Deoxys|Deoxys-Speed|20/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Deoxys|Stealth Rock|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Deoxys",
+        "|switch|p2a: Roaring Sun|Salamence, F|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Roaring Sun|Dragon Dance|p2a: Roaring Sun",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Roaring Sun"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Roaring Sun|Earthquake|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Roaring Sun|Outrage|p1a: Garganacl",
+        "|switch|p2a: Seconds|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Seconds|Iron Head|p1a: Garganacl",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Seconds",
+        "|move|p2a: Seconds|Iron Head|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Seconds",
+        "|switch|p2a: Faster|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Faster",
+        "|move|p2a: Faster|Agility|p2a: Faster"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Faster|Draining Kiss|p1a: Great Tusk",
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Faster|Calm Mind|p2a: Faster",
+        "|move|p1a: Slowking|Sludge Bomb|p2a: Faster"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Faster|Stored Power|p1a: Slowking",
+        "|switch|p1a: Corviknight|Corviknight, M|88/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Faster|Draining Kiss|p1a: Corviknight",
+        "|move|p1a: Corviknight|Brave Bird|p2a: Faster"
+      ]
+    }
+  ],
+  "winner": "n trademark",
+  "endTime": 1770419204781,
+  "p1Team": [
+    "Raging Bolt",
+    "Corviknight",
+    "Garganacl",
+    "Great Tusk",
+    "Slowking-Galar"
+  ],
+  "p2Team": [
+    "Ogerpon-Wellspring",
+    "Salamence",
+    "Iron Moth",
+    "Deoxys-Speed",
+    "Kingambit",
+    "Latias"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.6,
+    "fatCount": 3,
+    "offenseCount": 1,
+    "team": [
+      "ragingbolt",
+      "corviknight",
+      "garganacl",
+      "greattusk",
+      "slowkinggalar"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ogerponwellspring",
+      "salamence",
+      "ironmoth",
+      "deoxysspeed",
+      "kingambit",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

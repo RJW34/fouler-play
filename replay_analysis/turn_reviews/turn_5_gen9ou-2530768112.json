@@ -1,0 +1,24 @@
+{
+  "turn": 5,
+  "bot_choice": "Switched to Blissey",
+  "why_critical": "Switched to Blissey vs Zapdos (69% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 23% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 84% par +1 def",
+  "opp_team": "Tinkaton 100% | Great Tusk 76% | Garganacl 100% | Keldeo-Resolute 100% | Zapdos 69% | Dragapult 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530768112",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Zapdos"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

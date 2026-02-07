@@ -1,0 +1,24 @@
+{
+  "turn": 3,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "Switched to Gliscor vs Garchomp (72% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 80% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 88% -1 spd",
+  "opp_team": "Weavile 100% | Tyranitar 100% | Excadrill 100% | Okidogi 100% | Ogerpon-Wellspring 100% | Garchomp 72%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530979523",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gholdengo instead",
+      "Check if better defensive matchup vs Garchomp"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

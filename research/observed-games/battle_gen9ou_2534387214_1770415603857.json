@@ -1,0 +1,203 @@
+{
+  "id": "battle-gen9ou-2534387214",
+  "p1": "DiamondFury205",
+  "p2": "asifitneverhapen",
+  "minElo": 1526,
+  "startTime": 1770415293358,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Venusaur|Venusaur, M|100/100",
+        "|move|p1a: Salazzle|Knock Off|p2a: Venusaur"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Venusaur|Growth|p2a: Venusaur",
+        "|move|p1a: Salazzle|Overheat|p2a: Venusaur",
+        "|switch|p2a: Walking Wake|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Walking Wake|Hydro Steam|p1a: Salazzle",
+        "|move|p1a: Salazzle|Toxic|p2a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Walking Wake|Hydro Steam|p1a: Salazzle",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Walking Wake|Hydro Steam|p1a: Ceruledge",
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Walking Wake",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Ceruledge",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Great Tusk",
+        "|switch|p2a: Ninetales|Ninetales, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Kingambit|Kingambit, M|100/100",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch||[still]",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Great Tusk",
+        "|switch|p1a: Magnezone|Magnezone|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Magnezone|Tera Blast|p2a: Kingambit|[anim] Tera Blast Ground",
+        "|switch|p2a: Ninetales|Ninetales, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Ninetales|Healing Wish|p2a: Ninetales",
+        "|move|p1a: Magnezone|Tera Blast|p2: Ninetales|[notarget]",
+        "|switch|p2a: Raging Bolt|Raging Bolt|50/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Raging Bolt|Calm Mind|p2a: Raging Bolt",
+        "|move|p1a: Magnezone|Tera Blast|p2a: Raging Bolt|[anim] Tera Blast Ground"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Magnezone",
+        "|move|p1a: Magnezone|Tera Blast|p2a: Raging Bolt|[anim] Tera Blast Ground"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Magnezone",
+        "|switch|p1a: Hatterene|Hatterene, F|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Hatterene",
+        "|switch|p1a: Salamence|Salamence, M|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Salamence",
+        "|move|p1a: Salamence|Earthquake|p2a: Raging Bolt"
+      ]
+    }
+  ],
+  "winner": "DiamondFury205",
+  "endTime": 1770415603857,
+  "p1Team": [
+    "Ceruledge",
+    "Great Tusk",
+    "Magnezone",
+    "Hatterene",
+    "Salamence"
+  ],
+  "p2Team": [
+    "Venusaur",
+    "Walking Wake",
+    "Great Tusk",
+    "Ninetales",
+    "Raging Bolt",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ceruledge",
+      "greattusk",
+      "magnezone",
+      "hatterene",
+      "salamence"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "venusaur",
+      "walkingwake",
+      "greattusk",
+      "ninetales",
+      "ragingbolt",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

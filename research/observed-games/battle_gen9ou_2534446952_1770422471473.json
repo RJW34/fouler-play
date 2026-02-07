@@ -1,0 +1,211 @@
+{
+  "id": "battle-gen9ou-2534446952",
+  "p1": "WhatTheFraax",
+  "p2": "xdye",
+  "minElo": 1661,
+  "startTime": 1770422103765,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Waking Bad|Draco Meteor|p1a: Raging Bolt",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: 10 packs deep|Torkoal, F, shiny|100/100",
+        "|move|p1a: Iron Valiant|Calm Mind|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|move|p1a: Iron Valiant|Calm Mind|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Iron Valiant|Shadow Ball|p2a: Gyatt in the hat",
+        "|switch|p2a: Old and horny|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Old and horny",
+        "|move|p2a: Old and horny|Headlong Rush|p1a: Iron Valiant",
+        "|switch|p1a: Ceruledge|Ceruledge, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: RagingStormZoner|Raging Bolt|100/100",
+        "|move|p1a: Ceruledge|Poltergeist|p2a: RagingStormZoner"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p2a: RagingStormZoner|Thunderclap||[still]"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Waking Bad|Walking Wake|100/100",
+        "|move|p1a: Landorus|Stealth Rock|p2a: Waking Bad"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Waking Bad|Hydro Steam|p1a: Landorus",
+        "|switch|p1a: Dragonite|Dragonite, M|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny|100/100",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite",
+        "|move|p2a: Dangerous flaps|Will-O-Wisp|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite",
+        "|move|p2a: Dangerous flaps|U-turn|p1a: Dragonite",
+        "|switch|p2a: 10 packs deep|Torkoal, F, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: RagingStormZoner|Raging Bolt|50/100",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: RagingStormZoner|Thunderclap|p1a: Dragonite",
+        "|move|p1a: Dragonite|Earthquake|p2a: RagingStormZoner",
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny|88/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Dangerous flaps|First Impression|p1a: Dragonite",
+        "|move|p1a: Dragonite|Dragon Tail|p2a: Dangerous flaps",
+        "|switch|p1a: Ceruledge|Ceruledge, M|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Waking Bad|Walking Wake|100/100",
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Waking Bad"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Waking Bad",
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny|43/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Dangerous flaps|First Impression|p1a: Ceruledge",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Dangerous flaps",
+        "|switch|p2a: 10 packs deep|Torkoal, F, shiny|76/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge",
+        "|move|p2a: 10 packs deep|Earthquake|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Ceruledge|Poltergeist|p2a: 10 packs deep",
+        "|switch|p2a: Old and horny|Great Tusk, shiny, tera:Fire|37/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Old and horny"
+      ]
+    }
+  ],
+  "winner": "WhatTheFraax",
+  "endTime": 1770422471473,
+  "p1Team": [
+    "Raging Bolt",
+    "Iron Valiant",
+    "Ceruledge",
+    "Landorus-Therian",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Torkoal",
+    "Hatterene",
+    "Great Tusk",
+    "Raging Bolt",
+    "Walking Wake",
+    "Slither Wing"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ragingbolt",
+      "ironvaliant",
+      "ceruledge",
+      "landorustherian",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "torkoal",
+      "hatterene",
+      "greattusk",
+      "ragingbolt",
+      "walkingwake",
+      "slitherwing"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

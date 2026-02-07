@@ -1,0 +1,164 @@
+INFO     Logging in...
+INFO     Successfully logged in
+INFO     Message dispatcher started
+WARNING  Found 2 stale battles from previous session, forfeiting...
+INFO     Left stale battle: battle-gen9ou-2530195831
+INFO     Left stale battle: battle-gen9ou-2530191072
+INFO     Stale battle cleanup complete
+INFO     Starting 2 battle worker(s) with 2 concurrent battle limit
+INFO     Workers will search sequentially but play battles concurrently
+INFO     Battle worker 0 started
+INFO     Worker 0: Acquired search lock, searching for match...
+INFO     Searching for ranked gen9ou match
+INFO     Worker 0: Waiting for match...
+INFO     Battle worker 1 started
+INFO     Initialized battle-gen9ou-2530196112 against: Shajdjsna (with initial request)
+INFO     Worker 0: Matched! Battle battle-gen9ou-2530196112 vs Shajdjsna
+INFO     Worker 0: Released search lock, battle starting...
+INFO     Worker 0: Acquired battle slot (1 slots remaining)
+INFO     Initializing battle battle-gen9ou-2530196112 vs Shajdjsna from match...
+INFO     Registered battle queue: battle-gen9ou-2530196112 (flushed 5 buffered messages)
+INFO     Parsing player IDs from initial messages...
+INFO     Got player IDs from initial request: user=p2, opponent=p1
+INFO     Battle common setup complete, returning...
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/showdown_sets.json
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/pokemon_full_sets.json
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/replay_moves.json
+INFO     Opponent's gallade (ability: unknown) - detected: Competitive/Defiant
+INFO     Strategic context (turn ~False): 📌 Rocks not set (have setter)
+INFO     Sampling battle 0
+INFO     	        gallade   adamant,0,252,0,0,4,252    sharpness      lifeorb [agility, nightslash, psychocut, sacredsword] ttype=steel source=teamdatasets-full
+INFO     	       empoleon    modest,0,0,4,252,0,252  competitive  mysticwater [agility, airslash, hydropump, icebeam] ttype=water source=teamdatasets-full
+INFO     	        moltres     bold,248,0,248,0,0,12    flamebody heavydutyboots [flamethrower, roost, uturn, willowisp] ttype=steel source=teamdatasets-full
+INFO     	       clefable      calm,252,0,4,0,252,0   magicguard    leftovers [moonblast, moonlight, stealthrock, thunderwave] ttype=water source=teamdatasets-full
+INFO     	     ragingbolt   modest,88,0,0,252,0,168 protosynthesis    leftovers [dracometeor, thunderbolt, thunderclap, voltswitch] ttype=fairy source=teamdatasets-full
+INFO     	     irontreads    jolly,248,8,0,0,44,208   quarkdrive    leftovers [highhorsepower, knockoff, rapidspin, stealthrock] ttype=water source=teamdatasets-full
+INFO     Sampling battle 1
+INFO     	        gallade   adamant,0,252,0,0,4,252    sharpness      lifeorb [agility, nightslash, psychocut, sacredsword] ttype=steel source=teamdatasets-full
+INFO     	       empoleon    modest,0,0,4,252,0,252  competitive  mysticwater [agility, airslash, hydropump, icebeam] ttype=water source=teamdatasets-full
+INFO     	        moltres    bold,248,0,184,0,64,12    flamebody heavydutyboots [flamethrower, roar, roost, uturn] ttype=fairy source=teamdatasets-full
+INFO     	       clefable      calm,252,0,252,0,4,0      unaware    leftovers [chargebeam, cosmicpower, moonlight, storedpower] ttype=steel source=teamdatasets-full
+INFO     	     ragingbolt     timid,0,0,0,252,4,252 protosynthesis  choicescarf [dracometeor, thunderbolt, voltswitch, weatherball] ttype=fairy source=teamdatasets-full
+INFO     	     irontreads     hasty,0,252,0,4,0,252   quarkdrive boosterenergy [earthpower, icespinner, rapidspin, stealthrock] ttype=ghost source=teamdatasets-full
+INFO     Searching for a move using MCTS...
+INFO     Sampling 2 battles at 3000ms each
+INFO     Worker 1: Acquired search lock, searching for match...
+INFO     Searching for ranked gen9ou match
+INFO     Worker 1: Waiting for match...
+INFO     Initialized battle-gen9ou-2530196120 against: heavystorming (with initial request)
+INFO     Worker 1: Matched! Battle battle-gen9ou-2530196120 vs heavystorming
+INFO     Worker 1: Released search lock, battle starting...
+INFO     Worker 1: Acquired battle slot (0 slots remaining)
+INFO     Initializing battle battle-gen9ou-2530196120 vs heavystorming from match...
+INFO     Registered battle queue: battle-gen9ou-2530196120 (flushed 6 buffered messages)
+INFO     Parsing player IDs from initial messages...
+INFO     Got player IDs from initial request: user=p1, opponent=p2
+INFO     Battle common setup complete, returning...
+INFO     Iterations 0: 436000
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/showdown_sets.json
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/pokemon_full_sets.json
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/replay_moves.json
+INFO     Strategic context (turn ~False): 📌 Rocks not set (have setter)
+INFO     Sampling battle 0
+INFO     	  slowkinggalar     sassy,252,0,4,0,252,0  regenerator  colburberry [chillyreception, futuresight, sludgebomb, thunderwave] ttype=fairy source=teamdatasets-full
+INFO     	         eiscue     jolly,4,252,0,0,0,252      iceface   salacberry [flipturn, freezedry, bellydrum, liquidation] ttype=ice source=smogonsets
+INFO     	        moltres   modest,252,0,88,168,0,0    flamebody heavydutyboots [flamethrower, hurricane, roost, willowisp] ttype=poison source=teamdatasets-full
+INFO     	    goodrahisui    modest,0,0,0,252,4,252    sapsipper  assaultvest [dracometeor, fireblast, hydropump, thunder] ttype=water source=teamdatasets-full
+INFO     	       grafaiai   careful,252,4,0,0,252,0    prankster   airballoon [copycat, lowkick, poisonjab, knockoff] ttype=bug source=smogonsets
+INFO     Sampling battle 1
+INFO     	  slowkinggalar     sassy,248,0,8,0,252,0  regenerator  colburberry [chillyreception, futuresight, sludgebomb, surf] ttype=fairy source=teamdatasets-full
+INFO     	         eiscue    timid,40,0,0,252,0,216      iceface  sitrusberry [blizzard, freezedry, iciclespear, iciclecrash] ttype=ice source=smogonsets
+INFO     	        moltres     bold,248,0,248,0,0,12    flamebody heavydutyboots [flamethrower, roost, uturn, willowisp] ttype=ground source=teamdatasets-full
+INFO     	    goodrahisui    quiet,248,0,56,204,0,0    sapsipper    leftovers [dracometeor, heavyslam, knockoff, protect] ttype=fairy source=teamdatasets-full
+INFO     	       grafaiai   adamant,252,252,4,0,0,0    prankster  blacksludge [knockoff, lowkick, partingshot, toxic] ttype=bug source=smogonsets
+INFO     Searching for a move using MCTS...
+INFO     Sampling 2 battles at 3000ms each
+INFO     Iterations 1: 368000
+INFO     Iterations 0: 316000
+INFO     Policy 0: switch gliscor visited 93.49% avg_score=0.552 sample_chance_multiplier=0.5
+INFO     Policy 1: switch gliscor visited 87.74% avg_score=0.557 sample_chance_multiplier=0.5
+INFO     All Choices (post-blend, post-penalty):
+INFO     	82.542%: switch gliscor
+INFO     	3.16%: switch zamazenta
+INFO     	2.123%: switch blissey
+INFO     	1.717%: switch gholdengo
+INFO     	0.808%: switch pecharunt
+INFO     	0.654%: switch skarmory
+INFO     Clear best move: switch gliscor (26.1x better)
+INFO     Choice: switch gliscor (decided in 6.7s)
+INFO     Opponent has switched - clearing the last used move
+INFO     moltres switched in, adding boosterenergy to impossible items
+INFO     moltres switched in, adding airballoon to impossible items
+INFO     gliscor switched in, adding intimidate to impossible abilities
+INFO     gliscor switched in, adding pressure to impossible abilities
+INFO     gliscor switched in, adding neutralizinggas to impossible abilities
+INFO     gliscor switched in, adding sandstream to impossible abilities
+INFO     gliscor switched in, adding drought to impossible abilities
+INFO     gliscor switched in, adding drizzle to impossible abilities
+INFO     gliscor switched in, adding snowwarning to impossible abilities
+INFO     gliscor switched in, adding boosterenergy to impossible items
+INFO     gliscor switched in, adding airballoon to impossible items
+INFO     
+INFO     Turn: 1
+INFO     Strategic context (turn ~1): 📌 Rocks not set (have setter)
+INFO     Sampling battle 0
+INFO     	        moltres    bold,252,0,80,0,160,16    flamebody heavydutyboots [flamethrower, roost, scorchingsands, willowisp] ttype=fairy source=teamdatasets-full
+INFO     	        gallade   adamant,0,252,0,0,4,252    sharpness    leftovers [icepunch, psychocut, sacredsword] ttype=psychic source=smogonsets
+INFO     	       empoleon      calm,252,0,0,4,252,0  competitive   shucaberry [icebeam, surf, vacuumwave] ttype=water source=smogonsets
+INFO     	       clefable    modest,252,0,0,252,4,0      unaware  rockyhelmet [knockoff, moonblast, protect, wish] ttype=water source=smogonsets
+INFO     	     ragingbolt    modest,0,0,4,252,0,252 protosynthesis boosterenergy [calmmind, dragonpulse, thunderbolt] ttype=fairy source=smogonsets
+INFO     	     irontreads     jolly,252,0,0,0,4,252   quarkdrive boosterenergy [earthpower, knockoff, rapidspin] ttype=ground source=smogonsets
+INFO     Sampling battle 1
+INFO     	        moltres     bold,248,0,248,0,0,12    flamebody heavydutyboots [flamethrower, roar, roost, willowisp] ttype=dragon source=teamdatasets-full
+INFO     	        gallade     jolly,0,252,0,0,4,252    sharpness      lifeorb [icywind, nightslash, psychocut, sacredsword] ttype=dark source=smogonsets
+INFO     	       empoleon  modest,144,0,0,148,0,216  competitive  assaultvest [hydropump, icebeam] ttype=ghost source=smogonsets
+INFO     	       clefable      bold,252,0,252,0,4,0   magicguard    leftovers [knockoff, moonblast, moonlight] ttype=poison source=smogonsets
+INFO     	     ragingbolt    modest,252,0,0,252,4,0 protosynthesis      lifeorb [calmmind, thunderbolt, thunderclap] ttype=fairy source=smogonsets
+INFO     	     irontreads    jolly,56,8,0,0,252,192   quarkdrive    leftovers [earthquake, icespinner, knockoff, rapidspin] ttype=ice source=smogonsets
+INFO     Searching for a move using MCTS...
+INFO     Sampling 2 battles at 3000ms each
+INFO     Iterations 1: 165000
+INFO     Iterations 0: 105000
+INFO     Policy 0: switch pecharunt visited 62.27% avg_score=0.568 sample_chance_multiplier=0.5
+INFO     Policy 1: switch gliscor visited 52.14% avg_score=0.565 sample_chance_multiplier=0.5
+INFO     All Choices (post-blend, post-penalty):
+INFO     	35.465%: switch gliscor
+INFO     	34.543%: switch pecharunt
+INFO     	10.556%: switch gholdengo
+INFO     	6.973%: switch blissey
+INFO     	2.31%: switch zamazenta
+INFO     	1.326%: switch skarmory
+INFO     Considered Choices (90% threshold):
+INFO     	35.465%: switch gliscor
+INFO     	34.543%: switch pecharunt
+INFO     Choice: switch gliscor (decided in 7.1s)
+INFO     gliscor switched in, adding boosterenergy to impossible items
+INFO     gliscor switched in, adding airballoon to impossible items
+INFO     Opponent has switched - clearing the last used move
+INFO     slowkinggalar switched in, adding intimidate to impossible abilities
+INFO     slowkinggalar switched in, adding pressure to impossible abilities
+INFO     slowkinggalar switched in, adding neutralizinggas to impossible abilities
+INFO     slowkinggalar switched in, adding sandstream to impossible abilities
+INFO     slowkinggalar switched in, adding drought to impossible abilities
+INFO     slowkinggalar switched in, adding drizzle to impossible abilities
+INFO     slowkinggalar switched in, adding snowwarning to impossible abilities
+INFO     slowkinggalar switched in, adding boosterenergy to impossible items
+INFO     slowkinggalar switched in, adding airballoon to impossible items
+INFO     
+INFO     Turn: 1
+INFO     Strategic context (turn ~1): 📌 Rocks not set (have setter)
+INFO     Sampling battle 0
+INFO     	  slowkinggalar      calm,252,0,0,4,252,0  regenerator heavydutyboots [chillyreception, flamethrower, psyshock, thunderwave] ttype=dark source=teamdatasets-full
+INFO     	         eiscue   adamant,4,252,0,0,0,252      iceface  sitrusberry [bellydrum, liquidation, flipturn, auroraveil] ttype=ghost source=smogonsets
+INFO     	        moltres   modest,252,0,0,196,0,60    flamebody heavydutyboots [fireblast, hurricane, roost, scorchingsands] ttype=grass source=teamdatasets-full
+INFO     	    goodrahisui    quiet,248,0,56,204,0,0    sapsipper    leftovers [dracometeor, heavyslam, knockoff, protect] ttype=fairy source=teamdatasets-full
+INFO     	       grafaiai     brave,248,252,8,0,0,0    prankster    leftovers [encore, partingshot, toxic, uturn] ttype=poison source=smogonsets
+INFO     Sampling battle 1
+INFO     	  slowkinggalar    sassy,252,0,80,0,176,0  regenerator heavydutyboots [chillyreception, futuresight, surf, thunderwave] ttype=water source=teamdatasets-full
+INFO     	         eiscue   jolly,148,0,108,0,0,252      iceface   salacberry [bellydrum, icespinner, liquidation, endure] ttype=steel source=smogonsets
+INFO     	        moltres   modest,252,0,88,168,0,0    flamebody heavydutyboots [flamethrower, hurricane, roost, willowisp] ttype=poison source=teamdatasets-full
+INFO     	    goodrahisui    modest,0,0,0,252,4,252    sapsipper  assaultvest [dracometeor, fireblast, hydropump, thunder] ttype=water source=teamdatasets-full
+INFO     	       grafaiai     jolly,0,252,0,0,4,252    prankster  laggingtail [encore, knockoff, lowsweep, dig] ttype=poison source=smogonsets
+INFO     Searching for a move using MCTS...
+INFO     Sampling 2 battles at 3000ms each
+INFO     Iterations 1: 42000

@@ -1,0 +1,344 @@
+{
+  "id": "battle-gen9ou-2534361904",
+  "p1": "Free P&lestine",
+  "p2": "FishOfTheSea",
+  "minElo": 1640,
+  "startTime": 1770412623227,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Deoxys|Stealth Rock|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Deoxys|Light Screen|p1a: Deoxys",
+        "|move|p2a: Slowking|Future Sight|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Deoxys|Reflect|p1a: Deoxys",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Deoxys|Taunt||[still]",
+        "|move|p2a: Slowking|Future Sight|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Deoxys",
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Darkrai|Nasty Plot|p1a: Darkrai",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Clodsire|Clodsire, F|100/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Clodsire"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Darkrai|Ice Beam|p2a: Clodsire",
+        "|move|p2a: Clodsire|Recover|p2a: Clodsire"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Darkrai|Ice Beam|p2a: Clodsire",
+        "|move|p2a: Clodsire|Toxic|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Clodsire|Recover|p2a: Clodsire"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Gholdengo|Trick|p2a: Clodsire",
+        "|move|p2a: Clodsire|Earthquake|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Gholdengo|Recover|p1a: Gholdengo",
+        "|move|p2a: Clodsire|Earthquake|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|100/100",
+        "|move|p2a: Clodsire|Earthquake|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Skeledirge|Skeledirge, M|100/100",
+        "|move|p1a: Zamazenta|Close Combat|p2a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Skeledirge",
+        "|move|p2a: Skeledirge|Torch Song|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, M|100/100",
+        "|move|p1a: Zamazenta|Stone Edge|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Gliscor|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|100/100",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Great Tusk|Close Combat|p2a: Skarmory",
+        "|move|p2a: Skarmory|Roost|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Great Tusk|Close Combat|p2a: Skarmory",
+        "|move|p2a: Skarmory|Roost|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|29/100",
+        "|move|p2a: Skarmory|Roost|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Clodsire|Clodsire, F|100/100",
+        "|move|p1a: Gholdengo|Recover|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Clodsire",
+        "|move|p2a: Clodsire|Toxic|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Clodsire",
+        "|move|p2a: Clodsire|Toxic|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Gholdengo|Recover|p1a: Gholdengo",
+        "|move|p2a: Clodsire|Toxic|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Clodsire",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|25/100",
+        "|move|p2a: Zamazenta|Crunch|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, M|70/100 tox",
+        "|move|p1a: Zamazenta|Close Combat|p2a: Gliscor",
+        "|switch|p1a: Gholdengo|Gholdengo, tera:Ghost|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Gliscor",
+        "|switch|p2a: Zamazenta|Zamazenta, tera:Dark|100/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|51/100",
+        "|move|p2a: Zamazenta|Crunch|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: Zamazenta|Close Combat|p1a: Great Tusk",
+        "|switch|p1a: Dragonite|Dragonite, M|100/100"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|100/100",
+        "|switch|p1a: Gholdengo|Gholdengo, tera:Ghost|100/100"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Skarmory",
+        "|move|p2a: Skarmory|Spikes|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p1a: Gholdengo|Trick|p2a: Skarmory",
+        "|move|p2a: Skarmory|Spikes|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Skarmory",
+        "|switch|p2a: Zamazenta|Zamazenta, tera:Dark|100/100"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Gholdengo",
+        "|switch|p1a: Dragonite|Dragonite, M|100/100"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Dragonite",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|move|p2a: Zamazenta|Stone Edge|p1a: Dragonite"
+      ]
+    }
+  ],
+  "winner": "FishOfTheSea",
+  "endTime": 1770412921688,
+  "p1Team": [
+    "Darkrai",
+    "Gholdengo",
+    "Zamazenta",
+    "Great Tusk",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Clodsire",
+    "Skeledirge",
+    "Gliscor",
+    "Skarmory",
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "darkrai",
+      "gholdengo",
+      "zamazenta",
+      "greattusk",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.6,
+    "fatCount": 3,
+    "offenseCount": 0,
+    "team": [
+      "clodsire",
+      "skeledirge",
+      "gliscor",
+      "skarmory",
+      "zamazenta"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

@@ -1,0 +1,63 @@
+{
+  "id": "battle-gen9ou-2534370107",
+  "p1": "KANONDVERG",
+  "p2": "garg is back",
+  "minElo": 1551,
+  "startTime": 1770413463266,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Dragapult|U-turn|p2a: Ogerpon",
+        "|switch|p1a: Corviknight|Corviknight, F|100/100|[from] U-turn",
+        "|move|p2a: Ogerpon|U-turn|p1a: Corviknight",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": []
+    }
+  ],
+  "winner": "KANONDVERG",
+  "endTime": 1770413516045,
+  "p1Team": [
+    "Corviknight",
+    "Ting-Lu"
+  ],
+  "p2Team": [
+    "Gholdengo"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "corviknight",
+      "tinglu"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 1,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

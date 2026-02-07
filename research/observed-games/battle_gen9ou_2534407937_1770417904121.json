@@ -1,0 +1,267 @@
+{
+  "id": "battle-gen9ou-2534407937",
+  "p1": "uscboarder",
+  "p2": "Quaqrash",
+  "minElo": 1672,
+  "startTime": 1770417543482,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Pierce|Snowscape|p1a: Pierce",
+        "|move|p2a: The Tyrant|Stealth Rock|p1a: Pierce"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: The Golden Child|Gholdengo|100/100",
+        "|move|p1a: Pierce|Aurora Veil|p1a: Pierce"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Crouch|Raging Bolt|100/100",
+        "|move|p2a: The Golden Child|Nasty Plot|p2a: The Golden Child"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: The Golden Child|Make It Rain|p1a: Crouch",
+        "|move|p1a: Crouch|Thunderbolt|p2a: The Golden Child"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, M|100/100",
+        "|move|p1a: Crouch|Dragon Pulse|p2a: The Tyrant"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Glimmora|Glimmora, F|100/100",
+        "|move|p2a: The Tyrant|Ice Beam|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: The Golden Child|Gholdengo|20/100",
+        "|move|p1a: Glimmora|Stealth Rock|p2a: The Golden Child"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: The Excalibur|Excadrill, M|100/100",
+        "|move|p1a: Glimmora|Earth Power|p2a: The Excalibur"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: The Excalibur|Earthquake|p1a: Glimmora",
+        "|switch|p1a: BIG MAN|Blastoise, M|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: The Excalibur|Rapid Spin|p1a: BIG MAN",
+        "|move|p1a: BIG MAN|Shell Smash|p1a: BIG MAN"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, M|87/100",
+        "|move|p1a: BIG MAN|Surf|p2a: The Tyrant"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: BIG MAN|Shell Smash|p1a: BIG MAN",
+        "|move|p2a: The Tyrant|Knock Off|p1a: BIG MAN"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: The Golden Child|Gholdengo|20/100",
+        "|move|p1a: BIG MAN|Surf|p2a: The Golden Child",
+        "|switch|p1a: Pierce|Ninetales-Alola, M|100/100",
+        "|switch|p2a: The Reigner|Tornadus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: The Reigner|Taunt|p1a: Pierce"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Latias|Latias, F|100/100",
+        "|move|p2a: The Reigner|Knock Off|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: The Reigner|Taunt|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: The Reigner|Bleakwind Storm|p1a: Latias",
+        "|move|p1a: Latias|Stored Power|p2a: The Reigner"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, M|45/100",
+        "|move|p1a: Latias|Stored Power|p2a: The Tyrant"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Latias|Aura Sphere|p2a: The Tyrant",
+        "|switch|p2a: The Excalibur|Excadrill, M|97/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Pierce|Ninetales-Alola, M|76/100",
+        "|move|p2a: The Excalibur|Rock Slide|p1a: Pierce",
+        "|switch|p1a: Latias|Latias, F|17/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: The Reigner|Tornadus-Therian, M|54/100",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Latias|Stored Power|p2a: The Reigner",
+        "|move|p2a: The Reigner|Knock Off|p1a: Latias",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: The Reigner|Heat Wave|p1a: Kingambit",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch||[still]",
+        "|move|p2a: The Reigner|Taunt|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: The Reigner",
+        "|switch|p2a: The Juggernaught|Chesnaught, F|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Body Press|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Kingambit|Low Kick|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Body Press|p1: Kingambit|[notarget]",
+        "|switch|p1a: Crouch|Raging Bolt|40/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Crouch|Dragon Pulse|p2a: The Juggernaught",
+        "|switch|p2a: The Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Crouch|Thunderclap|p2a: The Valiant",
+        "|move|p2a: The Valiant|Moonblast|p1a: Crouch"
+      ]
+    }
+  ],
+  "winner": "Quaqrash",
+  "endTime": 1770417904121,
+  "p1Team": [
+    "Raging Bolt",
+    "Glimmora",
+    "Blastoise",
+    "Ninetales-Alola",
+    "Latias",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Gholdengo",
+    "Tyranitar",
+    "Excadrill",
+    "Tornadus-Therian",
+    "Chesnaught",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ragingbolt",
+      "glimmora",
+      "blastoise",
+      "ninetalesalola",
+      "latias",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "gholdengo",
+      "tyranitar",
+      "excadrill",
+      "tornadustherian",
+      "chesnaught",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

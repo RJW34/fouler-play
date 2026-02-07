@@ -1,0 +1,125 @@
+{
+  "id": "battle-gen9ou-2534368886",
+  "p1": "suprya",
+  "p2": "minhoto",
+  "minElo": 1561,
+  "startTime": 1770413343270,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Alomomola|Flip Turn|p2a: Slowking",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100|[from] Flip Turn",
+        "|move|p2a: Slowking|Trick|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Iron Treads|Knock Off|p2a: Slowking",
+        "|move|p2a: Slowking|Future Sight|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Corviknight|Corviknight, M|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|100/100",
+        "|move|p2a: Corviknight|Defog|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Corviknight|U-turn|p1a: Alomomola",
+        "|switch|p2a: Slowking|Slowking-Galar, F|86/100|[from] U-turn",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Slowking",
+        "|switch|p1a: Ursaluna|Ursaluna, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, F|100/100",
+        "|move|p1a: Ursaluna|Swords Dance|p1a: Ursaluna"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|71/100",
+        "|move|p1a: Ursaluna|Facade|p2a: Corviknight",
+        "|switch|p2a: Toxapex|Toxapex, M|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Ursaluna|Facade|p2a: Toxapex",
+        "|switch|p2a: Cinderace|Cinderace, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|85/100",
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": []
+    }
+  ],
+  "winner": "suprya",
+  "endTime": 1770413443118,
+  "p1Team": [
+    "Iron Treads",
+    "Alomomola",
+    "Ursaluna"
+  ],
+  "p2Team": [
+    "Corviknight",
+    "Slowking-Galar",
+    "Dondozo",
+    "Toxapex",
+    "Cinderace"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "irontreads",
+      "alomomola",
+      "ursaluna"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.8,
+    "fatCount": 4,
+    "offenseCount": 0,
+    "team": [
+      "corviknight",
+      "slowkinggalar",
+      "dondozo",
+      "toxapex",
+      "cinderace"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

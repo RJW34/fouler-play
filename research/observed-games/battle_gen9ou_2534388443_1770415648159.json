@@ -1,0 +1,325 @@
+{
+  "id": "battle-gen9ou-2534388443",
+  "p1": "MiaTaylor612",
+  "p2": "PikachuRTM",
+  "minElo": 1593,
+  "startTime": 1770415413361,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Gliscor|Protect|p1a: Gliscor",
+        "|move|p2a: Kyu|Dragon Dance|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Kyu|Dragon Dance|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Kyu|Tera Blast|p1a: Gholdengo|[anim] Tera Blast Fire",
+        "|move|p1a: Gholdengo|Thunder Wave|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Kyu|Icicle Spear|p1a: Gholdengo",
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Landorus|Earth Power|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Kyu|Icicle Spear|p1a: Landorus",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Iron Valiant|Close Combat|p2a: Kyu",
+        "|switch|p2a: Mochi|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Gliscor|Gliscor, M|100/100 tox",
+        "|move|p2a: Mochi|Malignant Chain|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Gliscor|Swords Dance|p1a: Gliscor",
+        "|move|p2a: Mochi|Parting Shot|p1a: Gliscor",
+        "|switch|p2a: Gałlade|Iron Valiant|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Articuno|Articuno|100/100",
+        "|move|p2a: Gałlade|Encore||[still]"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Sam|Samurott-Hisui, M|100/100",
+        "|move|p1a: Articuno|Freeze-Dry|p2a: Sam"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Sam|Knock Off|p1a: Articuno",
+        "|move|p1a: Articuno|U-turn|p2a: Sam",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Samurott|Samurott-Hisui, M|100/100",
+        "|move|p2a: Sam|Razor Shell|p1a: Samurott"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: Sam",
+        "|move|p2a: Sam|Ceaseless Edge|p1a: Samurott"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Sam|Ceaseless Edge|p1a: Samurott",
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: Sam",
+        "|switch|p2a: Dønphan|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Gliscor|Gliscor, M|100/100 tox",
+        "|move|p2a: Dønphan|Rapid Spin|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Gałlade|Iron Valiant|100/100",
+        "|move|p1a: Gliscor|Knock Off|p2a: Gałlade"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Gałlade|Moonblast|p1a: Gliscor",
+        "|move|p1a: Gliscor|Facade|p2a: Gałlade"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Articuno|Articuno|63/100",
+        "|move|p2a: Gałlade|Moonblast|p1a: Articuno"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Gałlade|Close Combat|p1a: Articuno",
+        "|switch|p1a: Gliscor|Gliscor, M|70/100 tox"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Gałlade|Moonblast|p1a: Gliscor",
+        "|move|p1a: Gliscor|Facade|p2a: Gałlade",
+        "|switch|p2a: Derrick|Pikachu, M|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Gliscor|Protect|p1a: Gliscor",
+        "|move|p2a: Derrick|Surf|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Samurott|Samurott-Hisui, M|4/100",
+        "|move|p2a: Derrick|Surf|p1: Samurott|[notarget]",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Dønphan|Iron Treads|90/100",
+        "|move|p1a: Iron Valiant|Knock Off|p2a: Dønphan"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Gliscor|Gliscor, M|50/100 tox",
+        "|switch|p2a: Mochi|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Gliscor|Protect|p1a: Gliscor",
+        "|move|p2a: Mochi|Parting Shot|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Gliscor|Swords Dance|p1a: Gliscor",
+        "|move|p2a: Mochi|Parting Shot|p1a: Gliscor",
+        "|switch|p2a: Derrick|Pikachu, M|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Gliscor|Protect|p1a: Gliscor",
+        "|move|p2a: Derrick|Surf|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Derrick|Surf|p1a: Gliscor",
+        "|move|p1a: Gliscor|Facade|p2a: Derrick",
+        "|switch|p2a: Mochi|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Gliscor|Protect|p1a: Gliscor",
+        "|move|p2a: Mochi|Parting Shot|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Gliscor|Swords Dance|p1a: Gliscor",
+        "|move|p2a: Mochi|Foul Play|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Gliscor|Protect|p1a: Gliscor",
+        "|move|p2a: Mochi|Foul Play|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Gliscor|Knock Off|p2a: Mochi",
+        "|move|p2a: Mochi|Foul Play|p1a: Gliscor",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Iron Valiant|Close Combat|p2a: Mochi",
+        "|move|p2a: Mochi|Recover|p2a: Mochi"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|switch|p2a: Dønphan|Iron Treads|60/100",
+        "|move|p1a: Iron Valiant|Encore||[still]"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|switch|p2a: Mochi|Pecharunt|100/100",
+        "|move|p1a: Iron Valiant|Close Combat|p2a: Mochi"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|move|p1a: Iron Valiant|Knock Off|p2a: Mochi",
+        "|move|p2a: Mochi|Malignant Chain|p1a: Iron Valiant"
+      ]
+    }
+  ],
+  "winner": "PikachuRTM",
+  "endTime": 1770415648159,
+  "p1Team": [
+    "Gholdengo",
+    "Landorus-Therian",
+    "Iron Valiant",
+    "Gliscor",
+    "Articuno",
+    "Samurott-Hisui"
+  ],
+  "p2Team": [
+    "Pecharunt",
+    "Iron Valiant",
+    "Samurott-Hisui",
+    "Iron Treads",
+    "Pikachu"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "gholdengo",
+      "landorustherian",
+      "ironvaliant",
+      "gliscor",
+      "articuno",
+      "samurotthisui"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "pecharunt",
+      "ironvaliant",
+      "samurotthisui",
+      "irontreads",
+      "pikachu"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

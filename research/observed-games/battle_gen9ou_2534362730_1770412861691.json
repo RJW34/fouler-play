@@ -1,0 +1,201 @@
+{
+  "id": "battle-gen9ou-2534362730",
+  "p1": "zehntimes",
+  "p2": "Bring it on mon",
+  "minElo": 1591,
+  "startTime": 1770412713239,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Klefki|Light Screen|p2a: Klefki",
+        "|move|p1a: Moltres|Flamethrower|p2a: Klefki"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Klefki|Reflect|p2a: Klefki",
+        "|move|p1a: Moltres|Flamethrower|p2a: Klefki",
+        "|switch|p2a: Kommo-o|Kommo-o, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Moltres|Air Slash|p2a: Kommo-o",
+        "|move|p2a: Kommo-o|Clangorous Soul|p2a: Kommo-o"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Kommo-o|Clanging Scales|p1a: Moltres",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Kommo-o|Drain Punch|p1a: Iron Treads",
+        "|move|p1a: Iron Treads|Earthquake|p2a: Kommo-o"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Kommo-o|Clanging Scales|p1a: Iron Treads",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Ninetales|Ninetales-Alola, M|100/100",
+        "|move|p1a: Raging Bolt|Thunderclap||[still]"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M, shiny|100/100",
+        "|move|p2a: Ninetales|Aurora Veil|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Kommo-o|Kommo-o, F|5/100",
+        "|move|p1a: Slowking|Toxic|p2a: Kommo-o",
+        "|switch|p2a: Maushold|Maushold-Four|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Maushold|Tidy Up|p2a: Maushold",
+        "|move|p1a: Slowking|Toxic|p2a: Maushold"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Slowking|Protect|p1a: Slowking",
+        "|move|p2a: Maushold|Population Bomb|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Maushold|Population Bomb|p1a: Slowking",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Maushold|Population Bomb|p1a: Raging Bolt",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Maushold|Population Bomb|p1a: Ogerpon",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Maushold",
+        "|switch|p2a: Ninetales|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Iron Valiant|Knock Off|p2a: Ninetales",
+        "|move|p2a: Ninetales|Aurora Veil|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Ninetales",
+        "|move|p2a: Ninetales|Encore|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Ninetales",
+        "|move|p2a: Ninetales|Freeze-Dry|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Ninetales",
+        "|move|p2a: Ninetales|Freeze-Dry|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Ninetales",
+        "|switch|p2a: Okidogi|Okidogi, M|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": []
+    }
+  ],
+  "winner": "Bring it on mon",
+  "endTime": 1770412861691,
+  "p1Team": [
+    "Iron Treads",
+    "Raging Bolt",
+    "Slowking-Galar",
+    "Ogerpon-Wellspring",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Kommo-o",
+    "Ninetales-Alola",
+    "Maushold-Four",
+    "Okidogi"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "irontreads",
+      "ragingbolt",
+      "slowkinggalar",
+      "ogerponwellspring",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "kommoo",
+      "ninetalesalola",
+      "mausholdfour",
+      "okidogi"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

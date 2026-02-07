@@ -1,0 +1,26 @@
+{
+  "turn": 10,
+  "bot_choice": "Earthquake",
+  "why_critical": "Gliscor went down vs Weezing-Galar (100% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 3% tox +6 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Weezing-Galar 100% | Gligar 100% | Cresselia 100% | Ogerpon-Cornerstone 100% | Torkoal 100% | Empoleon 100%",
+  "field": [
+    "Trick Room"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530561850",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Weezing-Galar"
+    ],
+    [
+      "Different move than Earthquake",
+      "Could have forced switch or dealt more chip"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

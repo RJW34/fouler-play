@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260201_175645",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530906944",
+  "replay_id": "gen9ou-2530906944",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 3,
+      "description": "Sonic fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 7,
+      "description": "Boom boom fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 12,
+      "description": "Hell fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    }
+  ]
+}

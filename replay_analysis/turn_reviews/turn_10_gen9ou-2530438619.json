@@ -1,0 +1,20 @@
+{
+  "turn": 10,
+  "bot_choice": "Switched to Zamazenta",
+  "why_critical": "\ud83d\udd04 Switched to Zamazenta vs Lokix \u2014 was this the right matchup?",
+  "bot_team": "Gliscor 36% tox +3 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 72% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Ninetales 100% | Raging Bolt 100% | Walking Wake 12% | Hatterene 100% | Landorus-Therian 100% | Lokix 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530438619",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Maintain offensive pressure"
+    ],
+    [
+      "Switch to different Pokemon",
+      "Better type matchup available"
+    ]
+  ],
+  "feedback": null
+}

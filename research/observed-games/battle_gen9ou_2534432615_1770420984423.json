@@ -1,0 +1,298 @@
+{
+  "id": "battle-gen9ou-2534432615",
+  "p1": "APNsBR",
+  "p2": "xdye",
+  "minElo": 1700,
+  "startTime": 1770420363652,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: 10 packs deep|Torkoal, M, shiny|100/100",
+        "|move|p1a: Alomomola|Flip Turn|p2a: 10 packs deep",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Old and horny|Great Tusk, shiny|100/100",
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2a: Old and horny"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Old and horny|Ice Spinner|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny|100/100",
+        "|move|p1a: Great Tusk|Earthquake|p2a: Dangerous flaps"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|move|p1a: Great Tusk|Earthquake|p2a: Gyatt in the hat",
+        "|switch|p2a: Waking Bad|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Waking Bad|Flip Turn|p1a: Alomomola",
+        "|switch|p2a: RagingStormZoner|Raging Bolt|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: RagingStormZoner|Draco Meteor|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: RagingStormZoner",
+        "|switch|p1a: Great Tusk|Great Tusk|71/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Great Tusk|Earthquake|p2a: RagingStormZoner",
+        "|move|p2a: RagingStormZoner|Draco Meteor|p1a: Great Tusk|[miss]"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Gyatt in the hat|Hatterene, F, shiny|68/100",
+        "|move|p1a: Great Tusk|Earthquake|p2a: Gyatt in the hat"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Great Tusk|Earthquake|p2a: Gyatt in the hat",
+        "|switch|p2a: Waking Bad|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Waking Bad|Draco Meteor|p1a: Great Tusk",
+        "|switch|p1a: Dragapult|Dragapult, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: 10 packs deep|Torkoal, M, shiny|91/100",
+        "|move|p1a: Dragapult|Dragon Darts|p2a: 10 packs deep"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny|87/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2a: Dangerous flaps",
+        "|move|p2a: Dangerous flaps|U-turn|p1a: Raging Bolt",
+        "|switch|p2a: Old and horny|Great Tusk, shiny|25/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|100/100",
+        "|move|p2a: Old and horny|Ice Spinner|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Zapdos|Roost|p1a: Zapdos",
+        "|move|p2a: Old and horny|Headlong Rush|p1a: Zapdos",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: Old and horny|Headlong Rush|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Dangerous flaps|Slither Wing, shiny|24/100",
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Dangerous flaps",
+        "|switch|p2a: 10 packs deep|Torkoal, M, shiny|48/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Zamazenta|Rest|p1a: Zamazenta",
+        "|move|p2a: 10 packs deep|Overheat|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: 10 packs deep",
+        "|switch|p2a: Waking Bad|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|58/100",
+        "|move|p2a: Waking Bad|Draco Meteor|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Waking Bad|Draco Meteor|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Waking Bad",
+        "|switch|p1a: Zamazenta|Zamazenta|53/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Waking Bad|Flip Turn|p1a: Zamazenta",
+        "|switch|p2a: Old and horny|Great Tusk, shiny|25/100 par|[from] Flip Turn",
+        "|move|p1a: Zamazenta|Rest|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Old and horny|Headlong Rush|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Old and horny|Headlong Rush|p1a: Zamazenta",
+        "|switch|p1a: Raging Bolt|Raging Bolt|76/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2a: Old and horny",
+        "|switch|p2a: RagingStormZoner|Raging Bolt|21/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: RagingStormZoner|Draco Meteor|p1a: Raging Bolt",
+        "|switch|p1a: Dragapult|Dragapult, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: RagingStormZoner",
+        "|switch|p2a: Waking Bad|Walking Wake|98/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|36/100",
+        "|move|p2a: Waking Bad|Draco Meteor|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Waking Bad|Hydro Steam|p1a: Alomomola",
+        "|switch|p1a: Dragapult|Dragapult, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Dragapult|Tera Blast|p2a: Waking Bad|[anim] Tera Blast Ghost"
+      ]
+    }
+  ],
+  "winner": "APNsBR",
+  "endTime": 1770420984423,
+  "p1Team": [
+    "Alomomola",
+    "Raging Bolt",
+    "Great Tusk",
+    "Dragapult",
+    "Zapdos",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Hatterene",
+    "Torkoal",
+    "Great Tusk",
+    "Slither Wing",
+    "Walking Wake",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "alomomola",
+      "ragingbolt",
+      "greattusk",
+      "dragapult",
+      "zapdos",
+      "zamazenta"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "hatterene",
+      "torkoal",
+      "greattusk",
+      "slitherwing",
+      "walkingwake",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

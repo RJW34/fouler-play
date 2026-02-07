@@ -1,0 +1,264 @@
+{
+  "id": "battle-gen9ou-2534447531",
+  "p1": "kjfm30",
+  "p2": "temporarylight",
+  "minElo": 1578,
+  "startTime": 1770422193767,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Great Tusk|Close Combat|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, F|100/100",
+        "|move|p2a: Zapdos|Roost|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Tyranitar",
+        "|switch|p2a: Hatterene|Hatterene, F|100/100|[from] Volt Switch",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Hatterene",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|100/100",
+        "|move|p2a: Great Tusk|Close Combat|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, M|100/100",
+        "|move|p1a: Zapdos|Roost|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Gliscor|Stealth Rock|p1a: Zapdos",
+        "|move|p1a: Zapdos|U-turn|p2a: Gliscor",
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Gliscor|Earthquake|p1a: Slowking",
+        "|move|p1a: Slowking|Future Sight|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Enamorus|Enamorus, F|100/100",
+        "|move|p2a: Gliscor|Earthquake|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Enamorus|Moonblast|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Enamorus|Moonblast|p2a: Gliscor",
+        "|switch|p2a: Weavile|Weavile, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|100/100",
+        "|move|p2a: Weavile|Triple Axel|p1a: Zapdos",
+        "|switch|p1a: Tyranitar|Tyranitar, F|76/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Tyranitar|Knock Off|p2a: Weavile",
+        "|move|p2a: Weavile|Triple Axel|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Weavile|Weavile, F|27/100 par",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Weavile",
+        "|switch|p2a: Zapdos|Zapdos|70/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, F|8/100",
+        "|move|p2a: Zapdos|Hurricane|p1: Tyranitar|[notarget]",
+        "|switch|p1a: Enamorus|Enamorus, F, tera:Fairy|76/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Enamorus|Moonblast|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M|71/100",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Slowking",
+        "|switch|p2a: Great Tusk|Great Tusk|68/100|[from] Parting Shot",
+        "|move|p1a: Slowking|Future Sight|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|49/100 par",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|70/100",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Zapdos|Roost|p2a: Zapdos",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Zapdos",
+        "|switch|p1a: Enamorus|Enamorus, F, tera:Fairy|63/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Enamorus|Moonblast|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Enamorus|Moonblast|p2a: Pecharunt",
+        "|switch|p2a: Zapdos|Zapdos|35/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Enamorus|Moonblast|p2a: Zapdos",
+        "|switch|p2a: Great Tusk|Great Tusk|68/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Enamorus|Moonblast|p2a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "kjfm30",
+  "endTime": 1770422450484,
+  "p1Team": [
+    "Great Tusk",
+    "Tyranitar",
+    "Zapdos",
+    "Slowking-Galar",
+    "Enamorus",
+    "Pecharunt"
+  ],
+  "p2Team": [
+    "Zapdos",
+    "Hatterene",
+    "Great Tusk",
+    "Gliscor",
+    "Weavile",
+    "Pecharunt"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "greattusk",
+      "tyranitar",
+      "zapdos",
+      "slowkinggalar",
+      "enamorus",
+      "pecharunt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "zapdos",
+      "hatterene",
+      "greattusk",
+      "gliscor",
+      "weavile",
+      "pecharunt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

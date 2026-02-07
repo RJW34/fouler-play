@@ -1,0 +1,322 @@
+{
+  "id": "battle-gen9ou-2534437878",
+  "p1": "xdye",
+  "p2": "life wont change",
+  "minElo": 1603,
+  "startTime": 1770421023710,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: She's Electric|Zapdos|100/100",
+        "|move|p1a: Dangerous flaps|Will-O-Wisp|p2a: She's Electric"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: 10 packs deep|Torkoal, M, shiny|100/100",
+        "|move|p2a: She's Electric|U-turn|p1a: 10 packs deep",
+        "|switch|p2a: Live Forever|Slowking-Galar, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: 10 packs deep|Stealth Rock|p2a: Live Forever",
+        "|move|p2a: Live Forever|Future Sight|p1a: 10 packs deep"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: 10 packs deep|Overheat|p2a: Live Forever",
+        "|move|p2a: Live Forever|Chilly Reception|p2a: Live Forever",
+        "|switch|p2a: Cha. Supernova|Kyurem|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|move|p2a: Cha. Supernova|Blizzard|p1a: Gyatt in the hat",
+        "|switch|p1a: Waking Bad|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Live Forever|Slowking-Galar, M|96/100",
+        "|move|p1a: Waking Bad|Flip Turn|p2a: Live Forever",
+        "|switch|p1a: Old and horny|Great Tusk, shiny|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: 10 packs deep|Torkoal, M, shiny|98/100",
+        "|switch|p2a: Wonderwall|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Live Forever|Slowking-Galar, M|100/100",
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Dangerous flaps|First Impression|p2a: Live Forever",
+        "|move|p2a: Live Forever|Chilly Reception|p2a: Live Forever",
+        "|switch|p2a: Wonderwall|Great Tusk|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Wonderwall|Stealth Rock|p1a: Dangerous flaps",
+        "|move|p1a: Dangerous flaps|Will-O-Wisp|p2a: Wonderwall"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Wonderwall|Rapid Spin|p1a: Dangerous flaps",
+        "|move|p1a: Dangerous flaps|U-turn|p2a: Wonderwall",
+        "|switch|p1a: Old and horny|Great Tusk, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Cast No Shadow|Dragapult, M|100/100",
+        "|move|p1a: Old and horny|Rapid Spin|p2a: Cast No Shadow"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: 10 packs deep|Torkoal, M, shiny|98/100",
+        "|move|p2a: Cast No Shadow|Will-O-Wisp|p1a: 10 packs deep"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Cast No Shadow|Hex|p1a: 10 packs deep",
+        "|move|p1a: 10 packs deep|Stealth Rock|p2a: Cast No Shadow"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Old and horny|Great Tusk, shiny|98/100",
+        "|move|p2a: Cast No Shadow|U-turn|p1a: Old and horny",
+        "|switch|p2a: She's Electric|Zapdos|94/100 brn|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Old and horny|Rapid Spin|p2a: She's Electric",
+        "|move|p2a: She's Electric|Hurricane|p1a: Old and horny"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Wonderwall|Great Tusk|62/100 brn",
+        "|switch|p1a: Waking Bad|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: She's Electric|Zapdos|65/100 brn",
+        "|move|p1a: Waking Bad|Hydro Steam|p2a: She's Electric",
+        "|switch|p2a: Live Forever|Slowking-Galar, M|98/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Waking Bad|Hydro Steam|p2a: Live Forever",
+        "|move|p2a: Live Forever|Chilly Reception|p2a: Live Forever",
+        "|switch|p2a: Cast No Shadow|Dragapult, M|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Cast No Shadow|U-turn|p1a: Waking Bad",
+        "|switch|p2a: Roll With It|Kingambit, M|100/100|[from] U-turn",
+        "|move|p1a: Waking Bad|Draco Meteor|p2a: Roll With It"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|93/100",
+        "|switch|p2a: Wonderwall|Great Tusk|56/100 brn"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Wonderwall|Stealth Rock|p1a: Dangerous flaps",
+        "|move|p1a: Dangerous flaps|U-turn|p2a: Wonderwall",
+        "|switch|p1a: Waking Bad|Walking Wake, tera:Ghost|90/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Live Forever|Slowking-Galar, M|95/100",
+        "|move|p1a: Waking Bad|Draco Meteor|p2a: Live Forever"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Waking Bad|Draco Meteor|p2a: Live Forever",
+        "|move|p2a: Live Forever|Chilly Reception|p2a: Live Forever",
+        "|switch|p2a: Roll With It|Kingambit, M|59/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|93/100",
+        "|switch|p2a: Cast No Shadow|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Cast No Shadow|Will-O-Wisp|p1a: Dangerous flaps",
+        "|move|p1a: Dangerous flaps|U-turn|p2a: Cast No Shadow",
+        "|switch|p1a: 10 packs deep|Torkoal, M, shiny|45/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Cast No Shadow|Dragon Darts|p1a: 10 packs deep",
+        "|switch|p1a: Waking Bad|Walking Wake, tera:Ghost|77/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p2a: Wonderwall|Great Tusk|32/100 brn",
+        "|move|p1a: Waking Bad|Hydro Steam|p2a: Wonderwall",
+        "|switch|p2a: Roll With It|Kingambit, M|59/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p1a: RagingStormZoner|Raging Bolt|100/100",
+        "|move|p2a: Roll With It|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: RagingStormZoner|Volt Switch|p2a: Roll With It",
+        "|switch|p1a: Waking Bad|Walking Wake, tera:Ghost|65/100|[from] Volt Switch",
+        "|switch|p2a: Live Forever|Slowking-Galar, M|65/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Waking Bad|Hydro Steam|p2a: Live Forever",
+        "|move|p2a: Live Forever|Chilly Reception|p2a: Live Forever",
+        "|switch|p2a: Cast No Shadow|Dragapult, M|91/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|81/100 brn",
+        "|move|p2a: Cast No Shadow|Hex|p1a: Dangerous flaps"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Dangerous flaps|First Impression|p2a: Cast No Shadow",
+        "|move|p2a: Cast No Shadow|Hex|p1a: Dangerous flaps",
+        "|switch|p1a: RagingStormZoner|Raging Bolt|88/100"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p2a: Cast No Shadow|Dragon Darts|p1a: RagingStormZoner",
+        "|switch|p1a: Waking Bad|Walking Wake, tera:Ghost|52/100"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p2a: Cast No Shadow|Hex|p1a: Waking Bad"
+      ]
+    }
+  ],
+  "winner": "life wont change",
+  "endTime": 1770421489692,
+  "p1Team": [
+    "Torkoal",
+    "Hatterene",
+    "Walking Wake",
+    "Great Tusk",
+    "Slither Wing",
+    "Raging Bolt"
+  ],
+  "p2Team": [
+    "Zapdos",
+    "Slowking-Galar",
+    "Kyurem",
+    "Great Tusk",
+    "Dragapult",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "torkoal",
+      "hatterene",
+      "walkingwake",
+      "greattusk",
+      "slitherwing",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 3,
+    "team": [
+      "zapdos",
+      "slowkinggalar",
+      "kyurem",
+      "greattusk",
+      "dragapult",
+      "kingambit"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

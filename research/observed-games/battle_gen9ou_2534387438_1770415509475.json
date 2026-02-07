@@ -1,0 +1,139 @@
+{
+  "id": "battle-gen9ou-2534387438",
+  "p1": "Rabzzz",
+  "p2": "Jamez",
+  "minElo": 1670,
+  "startTime": 1770415323375,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Pecharunt|Nasty Plot|p2a: Pecharunt",
+        "|move|p1a: Gliscor|Knock Off|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Gliscor",
+        "|move|p1a: Gliscor|Swords Dance|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|100/100",
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Pecharunt",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Alomomola|Flip Turn|p2a: Ting-Lu",
+        "|switch|p1a: Rillaboom|Rillaboom, F|100/100|[from] Flip Turn",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Dragonite|Dragonite, F|100/100",
+        "|move|p1a: Rillaboom|U-turn|p2a: Dragonite",
+        "|switch|p1a: Cinderace|Cinderace, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt, tera:Ghost|90/100",
+        "|move|p1a: Cinderace|Court Change|p1a: Cinderace"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Cinderace|U-turn|p2a: Pecharunt",
+        "|switch|p1a: Alomomola|Alomomola, M|100/100|[from] U-turn",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Pecharunt",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Rillaboom|Rillaboom, F|100/100",
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Rillaboom"
+      ]
+    }
+  ],
+  "winner": "Jamez",
+  "endTime": 1770415509474,
+  "p1Team": [
+    "Alomomola",
+    "Gholdengo",
+    "Rillaboom",
+    "Cinderace"
+  ],
+  "p2Team": [
+    "Ting-Lu",
+    "Dragonite",
+    "Pecharunt"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "alomomola",
+      "gholdengo",
+      "rillaboom",
+      "cinderace"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "tinglu",
+      "dragonite",
+      "pecharunt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

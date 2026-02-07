@@ -1,0 +1,191 @@
+{
+  "id": "battle-gen9ou-2534358142",
+  "p1": "pokemon prefect",
+  "p2": "dailysnail",
+  "minElo": 1514,
+  "startTime": 1770412233222,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Pelipper|U-turn|p1a: Hatterene",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100|[from] U-turn",
+        "|move|p1a: Hatterene|Trick Room|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Hatterene|Dazzling Gleam|p2a: Raging Bolt",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Ursaluna|Ursaluna, F|100/100",
+        "|move|p2a: Iron Treads|Steel Beam|p1a: Ursaluna"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Ursaluna|Facade|p2a: Iron Treads",
+        "|switch|p2a: Barraskewda|Barraskewda, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Barraskewda|Aqua Jet|p1a: Ursaluna",
+        "|move|p1a: Ursaluna|Facade|p2a: Barraskewda",
+        "|switch|p2a: Overqwil|Overqwil, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Overqwil|Crunch|p1a: Ursaluna",
+        "|switch|p1a: Cresselia|Cresselia, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Overqwil|Swords Dance|p2a: Overqwil",
+        "|move|p1a: Cresselia|Trick Room|p1a: Cresselia"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|90/100",
+        "|move|p2a: Overqwil|Crunch|p1a: Hatterene",
+        "|switch|p1a: Iron Hands|Iron Hands|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Iron Hands|Thunder Punch|p2a: Overqwil",
+        "|move|p2a: Overqwil|Gunk Shot|p1a: Iron Hands",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Overqwil",
+        "|switch|p2a: Pelipper|Pelipper, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Pelipper",
+        "|move|p2a: Pelipper|Weather Ball|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Porygon2|Porygon2|100/100",
+        "|move|p2a: Pelipper|Roost|p2a: Pelipper"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Pelipper|Weather Ball|p1a: Porygon2",
+        "|move|p1a: Porygon2|Trick Room|p1a: Porygon2"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Porygon2|Charge Beam|p2a: Pelipper",
+        "|move|p2a: Pelipper|Weather Ball|p1a: Porygon2"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Cresselia|Cresselia, F|100/100",
+        "|move|p2a: Pelipper|Weather Ball|p1a: Cresselia"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Pelipper|Weather Ball|p1a: Cresselia",
+        "|move|p1a: Cresselia|Lunar Dance|p1a: Cresselia",
+        "|switch|p1a: Kingambit|Kingambit, M|35/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Pelipper",
+        "|switch|p2a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Kingambit|Low Kick|p1a: Kingambit"
+      ]
+    }
+  ],
+  "winner": "dailysnail",
+  "endTime": 1770412520239,
+  "p1Team": [
+    "Ursaluna",
+    "Cresselia",
+    "Hatterene",
+    "Iron Hands",
+    "Kingambit",
+    "Porygon2"
+  ],
+  "p2Team": [
+    "Raging Bolt",
+    "Iron Treads",
+    "Barraskewda",
+    "Overqwil",
+    "Pelipper",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ursaluna",
+      "cresselia",
+      "hatterene",
+      "ironhands",
+      "kingambit",
+      "porygon"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ragingbolt",
+      "irontreads",
+      "barraskewda",
+      "overqwil",
+      "pelipper",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,315 @@
+{
+  "id": "battle-gen9ou-2534463388",
+  "p1": "jyvon12811",
+  "p2": "n trademark",
+  "minElo": 1665,
+  "startTime": 1770424275230,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Tyranitar",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|move|p1a: Tyranitar|Stealth Rock|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|100/100",
+        "|move|p1a: Moltres|Roar|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Moltres|Brave Bird|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Raging Bolt|Draco Meteor|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Excadrill|Excadrill, M|100/100",
+        "|move|p2a: Raging Bolt|Draco Meteor|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, F|51/100",
+        "|switch|p2a: Corviknight|Corviknight, M|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Corviknight|U-turn|p1a: Tyranitar",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|move|p1a: Tyranitar|Thunder Wave|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Tyranitar",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|88/100",
+        "|switch|p1a: Moltres|Moltres|72/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Pecharunt|Nasty Plot|p1a: Pecharunt",
+        "|move|p2a: Garganacl|Stealth Rock|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|81/100",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Slowking",
+        "|switch|p2a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Dragapult|Tera Blast|p1a: Pecharunt|[anim] Tera Blast Ghost",
+        "|switch|p1a: Tyranitar|Tyranitar, F|39/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|86/100",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, F|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|88/100",
+        "|move|p1a: Hydrapple|Nasty Plot|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Corviknight|Body Press|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Fickle Beam|p2a: Corviknight|[anim] Fickle Beam All Out"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Corviknight|Body Press|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Earth Power|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Corviknight|U-turn|p1a: Hydrapple",
+        "|switch|p2a: Raging Bolt|Raging Bolt|88/100|[from] U-turn",
+        "|move|p1a: Hydrapple|Earth Power|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, F|33/100",
+        "|move|p2a: Raging Bolt|Draco Meteor|p1a: Tyranitar",
+        "|switch|p2a: Great Tusk|Great Tusk|75/100",
+        "|switch|p1a: Excadrill|Excadrill, M|59/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Excadrill|Iron Head|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Excadrill",
+        "|switch|p1a: Moltres|Moltres|66/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|25/100",
+        "|switch|p1a: Alomomola|Alomomola, F|65/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Corviknight",
+        "|switch|p1a: Hydrapple|Hydrapple, F|50/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|66/100",
+        "|move|p2a: Corviknight|Body Press|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|100/100",
+        "|move|p1a: Moltres|Roar|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|100/100",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, F|77/100",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|62/100",
+        "|move|p1a: Hydrapple|Nasty Plot|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Corviknight|U-turn|p1a: Hydrapple",
+        "|switch|p2a: Great Tusk|Great Tusk|3/100|[from] U-turn",
+        "|move|p1a: Hydrapple|Fickle Beam|p2a: Great Tusk",
+        "|switch|p2a: Dragapult|Dragapult, M, tera:Ghost|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|63/100",
+        "|move|p2a: Dragapult|Tera Blast|p1a: Alomomola|[anim] Tera Blast Ghost",
+        "|switch|p1a: Moltres|Moltres|100/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|100/100",
+        "|switch|p1a: Hydrapple|Hydrapple, F|48/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Garganacl",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": []
+    }
+  ],
+  "winner": "n trademark",
+  "endTime": 1770424410360,
+  "p1Team": [
+    "Moltres",
+    "Alomomola",
+    "Excadrill",
+    "Tyranitar",
+    "Pecharunt",
+    "Hydrapple"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Garganacl",
+    "Raging Bolt",
+    "Corviknight",
+    "Slowking-Galar",
+    "Dragapult"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "moltres",
+      "alomomola",
+      "excadrill",
+      "tyranitar",
+      "pecharunt",
+      "hydrapple"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 3,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "garganacl",
+      "ragingbolt",
+      "corviknight",
+      "slowkinggalar",
+      "dragapult"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

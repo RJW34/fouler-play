@@ -1,0 +1,267 @@
+{
+  "id": "battle-gen9ou-2534364364",
+  "p1": "playa del akat",
+  "p2": "zehntimes",
+  "minElo": 1560,
+  "startTime": 1770412893241,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Ogerpon|U-turn|p1a: Samurott",
+        "|switch|p2a: Moltres|Moltres, shiny|100/100|[from] U-turn",
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: Moltres|[miss]"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Moltres|Air Slash|p1a: Samurott",
+        "|move|p1a: Samurott|Knock Off|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Samurott|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Samurott|Sucker Punch|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|U-turn|p1a: Samurott",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100|[from] U-turn",
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|40/100",
+        "|move|p1a: Landorus|Earth Power|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Landorus|[anim] Ivy Cudgel Water",
+        "|move|p1a: Landorus|Stealth Rock|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads|100/100",
+        "|move|p1a: Landorus|U-turn|p2a: Iron Treads",
+        "|switch|p1a: Scizor|Scizor, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Iron Treads|Rapid Spin|p1a: Scizor",
+        "|move|p1a: Scizor|Close Combat|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Scizor|Bullet Punch|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Stealth Rock|p1a: Scizor"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Scizor|Bullet Punch|p2a: Iron Treads",
+        "|switch|p2a: Moltres|Moltres, shiny|30/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100",
+        "|move|p2a: Moltres|Flamethrower|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|100/100",
+        "|move|p1a: Iron Valiant|Shadow Ball|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Iron Valiant|Shadow Ball|p2a: Slowking",
+        "|move|p2a: Slowking|Psychic Noise|p1a: Iron Valiant",
+        "|switch|p1a: Landorus|Landorus-Therian, M, tera:Water|71/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Landorus|Stealth Rock|p2a: Slowking",
+        "|move|p2a: Slowking|Toxic|p1a: Landorus"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Slowking|Protect|p2a: Slowking",
+        "|move|p1a: Landorus|Earth Power|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Moltres|Moltres, shiny|30/100",
+        "|move|p1a: Landorus|U-turn|p2: Moltres|[notarget]",
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|98/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Maushold|Maushold-Four|100/100",
+        "|move|p2a: Slowking|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Maushold|Encore|p2a: Slowking",
+        "|move|p2a: Slowking|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100",
+        "|move|p1a: Maushold|Tidy Up|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Maushold",
+        "|switch|p1a: Hatterene|Hatterene, F|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|100/100",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Hatterene|Nuzzle|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|23/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M, tera:Water|23/100 tox",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Landorus|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Scizor|Scizor, M|93/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|100/100 par",
+        "|move|p1a: Scizor|Bullet Punch|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Scizor|Knock Off|p2a: Slowking",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|100/100",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Hatterene",
+        "|switch|p1a: Scizor|Scizor, M|93/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Scizor",
+        "|move|p1a: Scizor|Knock Off|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": []
+    }
+  ],
+  "winner": "zehntimes",
+  "endTime": 1770413375368,
+  "p1Team": [
+    "Landorus-Therian",
+    "Scizor",
+    "Iron Valiant",
+    "Maushold-Four",
+    "Hatterene"
+  ],
+  "p2Team": [
+    "Moltres",
+    "Ogerpon-Wellspring",
+    "Raging Bolt",
+    "Iron Treads",
+    "Slowking-Galar",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "landorustherian",
+      "scizor",
+      "ironvaliant",
+      "mausholdfour",
+      "hatterene"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "moltres",
+      "ogerponwellspring",
+      "ragingbolt",
+      "irontreads",
+      "slowkinggalar",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

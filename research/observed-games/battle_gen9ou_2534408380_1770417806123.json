@@ -1,0 +1,215 @@
+{
+  "id": "battle-gen9ou-2534408380",
+  "p1": "Palm X",
+  "p2": "playa del akat",
+  "minElo": 1510,
+  "startTime": 1770417603487,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Primarina|Psychic Noise|p1a: Hatterene",
+        "|switch|p1a: Ninetales|Ninetales, M|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|71/100",
+        "|move|p2a: Primarina|Flip Turn|p1a: Hatterene",
+        "|switch|p2a: Maushold|Maushold-Four|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Maushold|Population Bomb|p1a: Hatterene",
+        "|switch|p1a: Blaziken|Blaziken, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Maushold|Tidy Up|p2a: Maushold",
+        "|move|p1a: Blaziken|Aura Sphere|p2a: Maushold",
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Blaziken|Overheat|p2a: Landorus",
+        "|move|p2a: Landorus|Stealth Rock|p1a: Blaziken"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Blaziken|Aura Sphere|p2a: Landorus",
+        "|switch|p2a: Primarina|Primarina, M|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Blaziken|Focus Energy|p1a: Blaziken",
+        "|move|p2a: Primarina|Moonblast|p1a: Blaziken"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Blaziken|Overheat|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Blaziken",
+        "|switch|p1a: Ninetales|Ninetales, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Ninetales|Encore|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Venusaur|Venusaur, M|100/100",
+        "|switch|p2a: Hatterene|Hatterene, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Venusaur|Sludge Bomb|p2a: Hatterene",
+        "|switch|p2a: Scizor|Scizor, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Venusaur",
+        "|move|p1a: Venusaur|Earth Power|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Venusaur",
+        "|switch|p1a: Great Tusk|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Scizor",
+        "|move|p2a: Scizor|Swords Dance|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Earthquake|p2a: Scizor",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Great Tusk|Earthquake|p2a: Iron Valiant",
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Great Tusk",
+        "|switch|p1a: Ninetales|Ninetales, M|52/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Iron Valiant|Shadow Ball|p1a: Ninetales",
+        "|move|p1a: Ninetales|Weather Ball|p2a: Iron Valiant",
+        "|switch|p2a: Primarina|Primarina, M|61/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Ninetales|Will-O-Wisp|p2a: Primarina",
+        "|move|p2a: Primarina|Psychic Noise|p1a: Ninetales",
+        "|switch|p1a: Walking Wake|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Walking Wake|Hydro Steam|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Walking Wake"
+      ]
+    }
+  ],
+  "winner": "playa del akat",
+  "endTime": 1770417806123,
+  "p1Team": [
+    "Ninetales",
+    "Hatterene",
+    "Blaziken",
+    "Venusaur",
+    "Great Tusk",
+    "Walking Wake"
+  ],
+  "p2Team": [
+    "Maushold-Four",
+    "Landorus-Therian",
+    "Primarina",
+    "Hatterene",
+    "Scizor",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ninetales",
+      "hatterene",
+      "blaziken",
+      "venusaur",
+      "greattusk",
+      "walkingwake"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "mausholdfour",
+      "landorustherian",
+      "primarina",
+      "hatterene",
+      "scizor",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

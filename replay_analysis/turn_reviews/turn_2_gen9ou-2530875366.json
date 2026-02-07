@@ -1,0 +1,26 @@
+{
+  "turn": 2,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "Switched to Gliscor vs healthy Landorus-Therian \u2014 long-term positioning play",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 78% -1 atk | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Greninja-* 100% | Walking Wake 100% | Venusaur 100% | Landorus-Therian 100% | Raging Bolt 100% | Ninetales 100% -2 spa",
+  "field": [
+    "Weather: SunnyDay"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530875366",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gholdengo instead",
+      "Check if better defensive matchup vs Landorus-Therian"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

@@ -1,0 +1,470 @@
+{
+  "id": "battle-gen9ou-2534356754",
+  "p1": "FishOfTheSea",
+  "p2": "suprya",
+  "minElo": 1676,
+  "startTime": 1770412203817,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Gliscor|Protect|p1a: Gliscor",
+        "|move|p2a: Weezing|Sludge Bomb|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Gliscor|Knock Off|p2a: Weezing",
+        "|move|p2a: Weezing|Will-O-Wisp|p1a: Gliscor|[miss]"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Weezing|Pain Split|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Weezing|Will-O-Wisp|p1a: Slowking",
+        "|move|p1a: Slowking|Future Sight|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, M|100/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Clodsire|Clodsire, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Clodsire",
+        "|switch|p2a: Corviknight|Corviknight, F|100/100|[from] U-turn",
+        "|move|p1a: Clodsire|Stealth Rock|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Skeledirge|Skeledirge, M|100/100",
+        "|move|p2a: Corviknight|U-turn|p1a: Skeledirge",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Skarmory|Skarmory, F|100/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Skarmory"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, M|100/100",
+        "|move|p1a: Skarmory|Roost|p1a: Skarmory"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Gliscor|Gliscor, F|94/100 tox",
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p1a: Gliscor|Knock Off|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100 brn",
+        "|move|p2a: Weezing|Will-O-Wisp|p1a: Slowking|[miss]"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M|72/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Skarmory|Skarmory, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Samurott|Knock Off|p1a: Skarmory",
+        "|move|p1a: Skarmory|Spikes|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Skarmory|Whirlwind|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Clodsire|Clodsire, F|89/100",
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Clodsire",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|move|p1a: Clodsire|Toxic|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Skarmory|Skarmory, F|77/100",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Skarmory"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, M|64/100",
+        "|move|p1a: Skarmory|Roost|p1a: Skarmory"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100 brn",
+        "|move|p2a: Dragapult|Flamethrower|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Dragapult|Hex|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Clodsire|Clodsire, F|58/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Clodsire",
+        "|switch|p2a: Great Tusk|Great Tusk|82/100 tox|[from] U-turn",
+        "|move|p1a: Clodsire|Recover|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, M|64/100",
+        "|switch|p1a: Skarmory|Skarmory, F|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Clodsire|Clodsire, F|97/100",
+        "|move|p2a: Dragapult|Flamethrower|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Clodsire",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|43/100|[from] U-turn",
+        "|move|p1a: Clodsire|Stealth Rock|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Skarmory|Skarmory, F|100/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Skarmory|[miss]"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|83/100",
+        "|move|p1a: Skarmory|Body Press|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|35/100 brn",
+        "|switch|p2a: Serperior|Serperior, M|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Serperior|Knock Off|p1a: Slowking",
+        "|switch|p1a: Skeledirge|Skeledirge, M|98/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Serperior|Glare|p1a: Skeledirge",
+        "|move|p1a: Skeledirge|Torch Song|p2a: Serperior"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M|43/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p1a: Skarmory|Skarmory, F|100/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Skarmory|[miss]"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|66/100",
+        "|move|p1a: Skarmory|Spikes|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p1a: Skeledirge|Skeledirge, M|98/100 par",
+        "|move|p2a: Weezing|Defog|p1a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p2a: Weezing|Pain Split|p1a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M|31/100",
+        "|move|p1a: Skeledirge|Torch Song|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, M|64/100",
+        "|switch|p1a: Skarmory|Skarmory, F|100/100"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|switch|p1a: Clodsire|Clodsire, F|74/100",
+        "|move|p2a: Dragapult|U-turn|p1a: Clodsire",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|19/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|switch|p1a: Skarmory|Skarmory, F|100/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Skarmory"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Skarmory",
+        "|move|p1a: Skarmory|Spikes|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, M|64/100",
+        "|move|p1a: Skarmory|Roost|p1a: Skarmory"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|switch|p1a: Clodsire|Clodsire, F|63/100",
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 43,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Clodsire",
+        "|switch|p2a: Great Tusk|Great Tusk|76/100 tox|[from] U-turn",
+        "|move|p1a: Clodsire|Recover|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 44,
+      "events": [
+        "|switch|p1a: Skeledirge|Skeledirge, M|71/100 par",
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 45,
+      "events": [
+        "|switch|p1a: Skarmory|Skarmory, F|100/100",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Skarmory"
+      ]
+    },
+    {
+      "turn": 46,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, M, tera:Ghost|51/100",
+        "|move|p1a: Skarmory|Spikes|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 47,
+      "events": [
+        "|switch|p1a: Clodsire|Clodsire, F|75/100",
+        "|move|p2a: Dragapult|Flamethrower|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 48,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Clodsire",
+        "|switch|p2a: Corviknight|Corviknight, F|93/100|[from] U-turn",
+        "|move|p1a: Clodsire|Recover|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 49,
+      "events": [
+        "|move|p2a: Corviknight|Brave Bird|p1a: Clodsire",
+        "|move|p1a: Clodsire|Stealth Rock|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 50,
+      "events": [
+        "|move|p2a: Corviknight|Brave Bird|p1a: Clodsire",
+        "|move|p1a: Clodsire|Recover|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 51,
+      "events": [
+        "|switch|p1a: Skeledirge|Skeledirge, M|71/100 par",
+        "|move|p2a: Corviknight|Brave Bird|p1a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 52,
+      "events": [
+        "|move|p2a: Corviknight|U-turn|p1a: Skeledirge",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|19/100|[from] U-turn",
+        "|move|p1a: Skeledirge|Slack Off|p1a: Skeledirge",
+        "|switch|p2a: Dragapult|Dragapult, M, tera:Ghost|51/100"
+      ]
+    },
+    {
+      "turn": 53,
+      "events": [
+        "|switch|p1a: Clodsire|Clodsire, F|64/100",
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 54,
+      "events": [
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Clodsire",
+        "|move|p1a: Clodsire|Recover|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 55,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Clodsire",
+        "|switch|p2a: Weezing|Weezing-Galar, F|87/100|[from] U-turn",
+        "|move|p1a: Clodsire|Recover|p1a: Clodsire"
+      ]
+    },
+    {
+      "turn": 56,
+      "events": [
+        "|switch|p1a: Skeledirge|Skeledirge, M|95/100 par",
+        "|move|p2a: Weezing|Defog|p1a: Skeledirge"
+      ]
+    },
+    {
+      "turn": 57,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|39/100 tox",
+        "|move|p1a: Skeledirge|Torch Song|p2a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "FishOfTheSea",
+  "endTime": 1770412595216,
+  "p1Team": [
+    "Slowking-Galar",
+    "Clodsire",
+    "Skeledirge",
+    "Skarmory",
+    "Gliscor"
+  ],
+  "p2Team": [
+    "Dragapult",
+    "Corviknight",
+    "Samurott-Hisui",
+    "Weezing-Galar",
+    "Great Tusk",
+    "Serperior"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.8,
+    "fatCount": 4,
+    "offenseCount": 0,
+    "team": [
+      "slowkinggalar",
+      "clodsire",
+      "skeledirge",
+      "skarmory",
+      "gliscor"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "dragapult",
+      "corviknight",
+      "samurotthisui",
+      "weezinggalar",
+      "greattusk",
+      "serperior"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

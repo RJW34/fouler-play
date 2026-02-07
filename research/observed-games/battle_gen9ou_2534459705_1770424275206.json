@@ -1,0 +1,448 @@
+{
+  "id": "battle-gen9ou-2534459705",
+  "p1": "wk? mafia",
+  "p2": "scribeofrevocis",
+  "minElo": 1694,
+  "startTime": 1770423723913,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Leaf|U-turn|p1a: Moltres",
+        "|switch|p2a: City Boy|Iron Boulder|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100",
+        "|move|p2a: City Boy|Close Combat|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Zappy|Zapdos|100/100",
+        "|move|p1a: Hydrapple|Fickle Beam|p2a: Zappy"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: Zappy|Hurricane|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Past Accessories|Hatterene, F|100/100",
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: Past Accessories",
+        "|move|p2a: Past Accessories|Stealth Rock|p1a: Iron Treads|[from] ability: Magic Bounce"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Leaf|Ogerpon, F|100/100",
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: Leaf"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Iron Treads|Knock Off|p2a: Leaf",
+        "|move|p2a: Leaf|Knock Off|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: The Greatest|Great Tusk|100/100",
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: The Greatest"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100",
+        "|move|p2a: The Greatest|Stealth Rock|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Past Accessories|Hatterene, F|100/100",
+        "|move|p1a: Hydrapple|Fickle Beam|p2a: Past Accessories"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Past Accessories|Nuzzle|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: The Greatest|Great Tusk|100/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Zappy|Zapdos|71/100",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Zappy"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Darkrai|Darkrai|100/100",
+        "|move|p2a: Zappy|Volt Switch|p1a: Darkrai",
+        "|switch|p2a: Past Accessories|Hatterene, F|88/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|76/100",
+        "|move|p2a: Past Accessories|Draining Kiss|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: Past Accessories",
+        "|move|p2a: Past Accessories|Mystical Fire|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100 par",
+        "|move|p2a: Past Accessories|Mystical Fire|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: City Boy|Iron Boulder|100/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Past Accessories|Hatterene, F|71/100",
+        "|move|p1a: Hydrapple|Nasty Plot|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Past Accessories",
+        "|move|p2a: Past Accessories|Draining Kiss|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100 par",
+        "|switch|p2a: The Greatest|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: The Greatest|Rapid Spin|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M|77/100",
+        "|move|p2a: The Greatest|Stealth Rock|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Past Accessories|Hatterene, F|73/100",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Past Accessories"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100 par",
+        "|move|p2a: Past Accessories|Draining Kiss|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: City Boy|Iron Boulder|88/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p2a: Zappy|Zapdos|55/100",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Zappy"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Zappy|Hurricane|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Fickle Beam|p2a: Zappy"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p1a: Darkrai|Darkrai|57/100",
+        "|move|p2a: Zappy|Roost|p2a: Zappy"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|switch|p2a: Past Accessories|Hatterene, F|61/100",
+        "|move|p1a: Darkrai|Ice Beam|p2a: Past Accessories"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Past Accessories"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Past Accessories",
+        "|switch|p2a: The Greatest|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: The Greatest",
+        "|move|p2a: The Greatest|Headlong Rush|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Darkrai|Ice Beam|p2a: The Greatest",
+        "|switch|p2a: El Gambito|Kingambit, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: El Gambito",
+        "|move|p2a: El Gambito|Iron Head|p1a: Darkrai",
+        "|switch|p1a: Moltres|Moltres|96/100"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|switch|p2a: City Boy|Iron Boulder|88/100",
+        "|move|p1a: Moltres|Roar|p2a: City Boy"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: El Gambito",
+        "|move|p2a: El Gambito|Swords Dance|p2a: El Gambito"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|move|p2a: El Gambito|Kowtow Cleave|p1a: Moltres",
+        "|move|p1a: Moltres|Roar|p2a: El Gambito"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|18/100",
+        "|move|p2a: City Boy|Mighty Cleave|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|move|p2a: City Boy|Mighty Cleave|p1a: Iron Treads",
+        "|switch|p1a: Hydrapple|Hydrapple, M|48/100"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|move|p2a: City Boy|Mighty Cleave|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: City Boy"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|20/100",
+        "|move|p2a: City Boy|Mighty Cleave|p1a: Moltres",
+        "|switch|p1a: Hydrapple|Hydrapple, M|62/100"
+      ]
+    },
+    {
+      "turn": 43,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100 par",
+        "|move|p2a: City Boy|Mighty Cleave|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 44,
+      "events": [
+        "|move|p2a: City Boy|Mighty Cleave|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Dragapult|Dragapult, M|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 45,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: City Boy",
+        "|switch|p2a: Zappy|Zapdos|60/100"
+      ]
+    },
+    {
+      "turn": 46,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Zappy",
+        "|move|p2a: Zappy|Roost|p2a: Zappy"
+      ]
+    },
+    {
+      "turn": 47,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|65/100 par",
+        "|move|p2a: Zappy|Thunder Wave|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 48,
+      "events": [
+        "|move|p2a: Zappy|Volt Switch|p1a: Slowking",
+        "|switch|p2a: Leaf|Ogerpon, F|49/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 49,
+      "events": [
+        "|move|p2a: Leaf|Knock Off|p1a: Slowking",
+        "|switch|p1a: Dragapult|Dragapult, M|88/100"
+      ]
+    },
+    {
+      "turn": 50,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Leaf",
+        "|switch|p2a: El Gambito|Kingambit, M, shiny, tera:Fire|80/100"
+      ]
+    },
+    {
+      "turn": 51,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: El Gambito",
+        "|move|p2a: El Gambito|Kowtow Cleave|p1a: Dragapult",
+        "|switch|p1a: Hydrapple|Hydrapple, M|95/100"
+      ]
+    },
+    {
+      "turn": 52,
+      "events": [
+        "|move|p2a: El Gambito|Kowtow Cleave|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Earth Power|p2a: El Gambito",
+        "|switch|p2a: Zappy|Zapdos|58/100"
+      ]
+    },
+    {
+      "turn": 53,
+      "events": [
+        "|move|p2a: Zappy|Hurricane|p1a: Hydrapple|[miss]",
+        "|move|p1a: Hydrapple|Nasty Plot|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 54,
+      "events": [
+        "|move|p2a: Zappy|Volt Switch|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Fickle Beam|p2a: Zappy"
+      ]
+    }
+  ],
+  "winner": "wk? mafia",
+  "endTime": 1770424275204,
+  "p1Team": [
+    "Moltres",
+    "Hydrapple",
+    "Iron Treads",
+    "Slowking-Galar",
+    "Darkrai",
+    "Dragapult"
+  ],
+  "p2Team": [
+    "Iron Boulder",
+    "Zapdos",
+    "Hatterene",
+    "Ogerpon",
+    "Great Tusk",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "moltres",
+      "hydrapple",
+      "irontreads",
+      "slowkinggalar",
+      "darkrai",
+      "dragapult"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "ironboulder",
+      "zapdos",
+      "hatterene",
+      "ogerpon",
+      "greattusk",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

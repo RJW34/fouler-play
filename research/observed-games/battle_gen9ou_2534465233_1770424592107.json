@@ -1,0 +1,144 @@
+{
+  "id": "battle-gen9ou-2534465233",
+  "p1": "flan727",
+  "p2": "flyingtaco42",
+  "minElo": 1776,
+  "startTime": 1770424380088,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Araquanid"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Pecharunt|Nasty Plot|p1a: Pecharunt",
+        "|move|p2a: Araquanid|Surf|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Araquanid",
+        "|move|p2a: Araquanid|Surf|p1a: Pecharunt",
+        "|switch|p1a: Ting-Lu|Ting-Lu|100/100",
+        "|switch|p2a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Ceruledge|Close Combat|p1a: Ting-Lu",
+        "|move|p1a: Ting-Lu|Ruination|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100",
+        "|move|p1a: Ting-Lu|Stealth Rock|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Iron Valiant|Ice Punch|p1a: Ting-Lu",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Iron Valiant",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Rapid Spin|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Gholdengo",
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Iron Treads",
+        "|switch|p2a: Raging Bolt|Raging Bolt|51/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Darkrai",
+        "|move|p1a: Darkrai|Ice Beam|p2a: Raging Bolt",
+        "|switch|p2a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Ceruledge|Shadow Sneak|p1a: Darkrai",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Ceruledge"
+      ]
+    }
+  ],
+  "winner": "flan727",
+  "endTime": 1770424592107,
+  "p1Team": [
+    "Ting-Lu",
+    "Gholdengo",
+    "Darkrai"
+  ],
+  "p2Team": [
+    "Ceruledge",
+    "Iron Valiant",
+    "Iron Treads",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6666666666666666,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "tinglu",
+      "gholdengo",
+      "darkrai"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ceruledge",
+      "ironvaliant",
+      "irontreads",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

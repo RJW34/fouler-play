@@ -1,0 +1,363 @@
+{
+  "id": "battle-gen9ou-2534401220",
+  "p1": "Wozzathesexygod",
+  "p2": "CopiumBathTub",
+  "minElo": 1525,
+  "startTime": 1770416793670,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Tyranitar",
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100|[from] U-turn",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, F|100/100",
+        "|move|p1a: Hydrapple|Nasty Plot|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Hydrapple",
+        "|switch|p2a: Corviknight|Corviknight, F|100/100|[from] U-turn",
+        "|move|p1a: Hydrapple|Fickle Beam|p2a: Corviknight|[anim] Fickle Beam All Out"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Hydrapple|Earth Power|p2a: Corviknight",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Hydrapple|Nasty Plot|p1a: Hydrapple",
+        "|move|p2a: Corviknight|U-turn|p1a: Hydrapple",
+        "|switch|p2a: Dragapult|Dragapult, F|95/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, F|49/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Tyranitar",
+        "|switch|p1a: Excadrill|Excadrill, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|100/100",
+        "|move|p1a: Excadrill|Iron Head|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Excadrill|Rapid Spin|p2a: Corviknight",
+        "|move|p2a: Corviknight|Body Press|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M, tera:Poison|87/100",
+        "|move|p2a: Corviknight|U-turn|p1a: Hydrapple",
+        "|switch|p2a: Dragapult|Dragapult, F|77/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Fickle Beam|p2a: Dragapult",
+        "|switch|p2a: Kyurem|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|44/100",
+        "|move|p2a: Kyurem|Earth Power|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Moltres",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Moltres",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Moltres",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Moltres",
+        "|move|p1a: Moltres|Flamethrower|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Moltres",
+        "|switch|p1a: Excadrill|Excadrill, F|46/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Excadrill",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|62/100",
+        "|move|p2a: Weezing|Will-O-Wisp|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|88/100",
+        "|move|p1a: Slowking|Flamethrower|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|100/100",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Ruination|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M, tera:Poison|58/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Hydrapple",
+        "|switch|p2a: Kyurem|Kyurem, shiny|81/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Hydrapple",
+        "|switch|p1a: Zamazenta|Zamazenta|46/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100",
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Alomomola",
+        "|move|p2a: Alomomola|Tickle|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: Alomomola|Wish|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|83/100 brn",
+        "|move|p2a: Weezing|Will-O-Wisp|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|17/100 brn",
+        "|move|p1a: Slowking|Flamethrower|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p2a: Ting-Lu|Earthquake|p1a: Slowking",
+        "|move|p1a: Slowking|Sludge Bomb|p2a: Ting-Lu",
+        "|switch|p2a: Kyurem|Kyurem, shiny, tera:Steel|93/100"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Slowking",
+        "|switch|p1a: Zamazenta|Zamazenta|48/100"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Kyurem",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|89/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: Corviknight|U-turn|p1a: Zamazenta",
+        "|switch|p2a: Weezing|Weezing-Galar, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Weezing",
+        "|move|p2a: Weezing|Toxic|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|92/100",
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Alomomola"
+      ]
+    }
+  ],
+  "winner": "CopiumBathTub",
+  "endTime": 1770417068212,
+  "p1Team": [
+    "Hydrapple",
+    "Moltres",
+    "Slowking-Galar",
+    "Tyranitar",
+    "Excadrill",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Ting-Lu",
+    "Dragapult",
+    "Corviknight",
+    "Kyurem",
+    "Weezing-Galar",
+    "Alomomola"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "hydrapple",
+      "moltres",
+      "slowkinggalar",
+      "tyranitar",
+      "excadrill",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "tinglu",
+      "dragapult",
+      "corviknight",
+      "kyurem",
+      "weezinggalar",
+      "alomomola"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

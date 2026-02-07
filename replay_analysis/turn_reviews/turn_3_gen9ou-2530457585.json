@@ -1,0 +1,20 @@
+{
+  "turn": 3,
+  "bot_choice": "Used Close Combat",
+  "why_critical": "\u274c Zamazenta fainted \u2014 should we have switched out earlier or chosen differently?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 72% +1 def",
+  "opp_team": "Ogerpon-Wellspring 100% | Scizor 91% | Ceruledge 38% -2 def, +2 spe | Dragonite 100% | Iron Valiant 100% | Kingambit 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530457585",
+  "alternatives": [
+    [
+      "Switch out earlier",
+      "Preserve this Pokemon for later"
+    ],
+    [
+      "Different move",
+      "Better damage/utility before going down"
+    ]
+  ],
+  "feedback": null
+}

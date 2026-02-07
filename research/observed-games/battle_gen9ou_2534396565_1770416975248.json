@@ -1,0 +1,261 @@
+{
+  "id": "battle-gen9ou-2534396565",
+  "p1": "suprya",
+  "p2": "Quaqrash",
+  "minElo": 1658,
+  "startTime": 1770416283422,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Darkrai|Ice Beam|p2a: The Reigner",
+        "|move|p2a: The Reigner|Bleakwind Storm|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|100/100",
+        "|move|p2a: The Reigner|Bleakwind Storm|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, F|100/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: The Tyrant"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: The Tyrant|Stealth Rock|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Great Tusk|Knock Off|p2a: The Tyrant",
+        "|move|p2a: The Tyrant|Ice Beam|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: The Juggernaught|Chesnaught, M|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: The Golden Child|Gholdengo|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: The Golden Child"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|switch|p2a: The Reigner|Tornadus-Therian, M|56/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: The Reigner|Knock Off|p1a: Moltres",
+        "|move|p1a: Moltres|Flamethrower|p2a: The Reigner",
+        "|switch|p2a: The Excalibur|Excadrill, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|25/100",
+        "|move|p2a: The Excalibur|Rock Slide|p1a: Great Tusk|[miss]"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Great Tusk|Close Combat|p2a: The Excalibur",
+        "|switch|p2a: The Juggernaught|Chesnaught, M|85/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Body Press|p1a: Great Tusk",
+        "|switch|p1a: Darkrai|Darkrai|49/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, F|52/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: The Tyrant"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|83/100",
+        "|move|p2a: The Tyrant|Low Kick|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Iron Crown|Iron Crown|100/100",
+        "|switch|p2a: The Golden Child|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Iron Crown|Volt Switch|p2a: The Golden Child",
+        "|switch|p1a: Moltres|Moltres|16/100|[from] Volt Switch",
+        "|move|p2a: The Golden Child|Make It Rain|p1: Moltres|[notarget]",
+        "|switch|p1a: Darkrai|Darkrai|43/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, F|43/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: The Tyrant"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Amoonguss|Amoonguss, F, shiny|100/100",
+        "|move|p2a: The Tyrant|Knock Off|p1a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: The Juggernaught|Chesnaught, M, tera:Ghost|85/100",
+        "|move|p1a: Amoonguss|Foul Play|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: The Juggernaught|Spikes|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Giga Drain|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: The Juggernaught|Synthesis|p2a: The Juggernaught",
+        "|move|p1a: Amoonguss|Giga Drain|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Iron Crown|Iron Crown|94/100",
+        "|move|p2a: The Juggernaught|Spikes|p1a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: The Golden Child|Gholdengo|75/100",
+        "|move|p1a: Iron Crown|Psychic Noise|p2a: The Golden Child"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Iron Crown|Tachyon Cutter|p2a: The Golden Child",
+        "|move|p2a: The Golden Child|Make It Rain|p1a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Iron Crown|Volt Switch|p2a: The Golden Child",
+        "|switch|p1a: Amoonguss|Amoonguss, F, shiny|100/100|[from] Volt Switch",
+        "|switch|p2a: The Tyrant|Tyranitar, F|18/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: The Tyrant|Ice Beam|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Giga Drain|p2a: The Tyrant",
+        "|switch|p2a: The Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: The Valiant|Shadow Ball|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Sludge Bomb|p2a: The Valiant",
+        "|switch|p2a: The Juggernaught|Chesnaught, M, tera:Ghost|44/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": []
+    }
+  ],
+  "winner": "suprya",
+  "endTime": 1770416975248,
+  "p1Team": [
+    "Garganacl",
+    "Great Tusk",
+    "Moltres",
+    "Darkrai",
+    "Iron Crown",
+    "Amoonguss"
+  ],
+  "p2Team": [
+    "Tyranitar",
+    "Chesnaught",
+    "Gholdengo",
+    "Tornadus-Therian",
+    "Excadrill",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "garganacl",
+      "greattusk",
+      "moltres",
+      "darkrai",
+      "ironcrown",
+      "amoonguss"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "tyranitar",
+      "chesnaught",
+      "gholdengo",
+      "tornadustherian",
+      "excadrill",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

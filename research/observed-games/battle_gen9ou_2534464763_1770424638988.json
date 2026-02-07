@@ -1,0 +1,269 @@
+{
+  "id": "battle-gen9ou-2534464763",
+  "p1": "Rabzzz",
+  "p2": "hey_rain_maker",
+  "minElo": 1682,
+  "startTime": 1770424320155,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Darkrai|Ice Beam|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Moltres",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Moltres",
+        "|move|p1a: Moltres|U-turn|p2a: Darkrai",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|U-turn|p2a: Darkrai",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Ogerpon|Horn Leech|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Play Rough|p1a: Raging Bolt",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Great Tusk|[anim] Ivy Cudgel Water",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, F|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Gliscor",
+        "|move|p2a: Gliscor|Knock Off|p1a: Great Tusk",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|48/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring-Tera, F, tera:Water|3/100",
+        "|move|p1a: Ogerpon|Synthesis|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|23/100",
+        "|move|p2a: Ogerpon|Horn Leech|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|98/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Ogerpon|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Cinderace|Cinderace, M|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|17/100",
+        "|move|p2a: Cinderace|Will-O-Wisp|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Cinderace|U-turn|p1a: Ting-Lu",
+        "|switch|p2a: Gliscor|Gliscor, F|33/100 tox|[from] U-turn",
+        "|move|p1a: Ting-Lu|Spikes|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Gliscor|Knock Off|p1a: Ting-Lu",
+        "|move|p1a: Ting-Lu|Whirlwind|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Cinderace|U-turn|p1a: Ting-Lu",
+        "|switch|p2a: Gliscor|Gliscor, F|45/100 tox|[from] U-turn",
+        "|move|p1a: Ting-Lu|Earthquake|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|17/100",
+        "|move|p2a: Gliscor|Stealth Rock|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Gliscor|Toxic|p1a: Moltres",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Gliscor|Knock Off|p1a: Moltres",
+        "|move|p1a: Moltres|Flamethrower|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Gliscor|Knock Off|p1a: Moltres",
+        "|move|p1a: Moltres|Flamethrower|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Gliscor|Knock Off|p1a: Moltres",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Gliscor|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Ting-Lu|Ting-Lu|15/100 brn|[from] U-turn",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Ting-Lu",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|88/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Ogerpon|Knock Off|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": []
+    }
+  ],
+  "winner": "hey_rain_maker",
+  "endTime": 1770424638988,
+  "p1Team": [
+    "Moltres",
+    "Ogerpon-Wellspring",
+    "Great Tusk",
+    "Pecharunt",
+    "Raging Bolt",
+    "Ting-Lu"
+  ],
+  "p2Team": [
+    "Ogerpon-Wellspring",
+    "Gliscor",
+    "Ogerpon-Wellspring-Tera",
+    "Cinderace",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "moltres",
+      "ogerponwellspring",
+      "greattusk",
+      "pecharunt",
+      "ragingbolt",
+      "tinglu"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "ogerponwellspring",
+      "gliscor",
+      "ogerponwellspringtera",
+      "cinderace",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

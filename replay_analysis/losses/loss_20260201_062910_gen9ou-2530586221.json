@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260201_062910",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530586221",
+  "replay_id": "gen9ou-2530586221",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 49,
+      "description": "Slowking fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 62,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 62,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    }
+  ]
+}

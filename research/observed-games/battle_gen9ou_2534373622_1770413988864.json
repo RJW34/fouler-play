@@ -1,0 +1,178 @@
+{
+  "id": "battle-gen9ou-2534373622",
+  "p1": "GameProm4",
+  "p2": "mysticryn",
+  "minElo": 1645,
+  "startTime": 1770413853287,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Landorus|U-turn|p2a: Dragonite",
+        "|switch|p1a: Primarina|Primarina, F, shiny|100/100|[from] U-turn",
+        "|move|p2a: Dragonite|Ice Spinner|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|100/100",
+        "|move|p1a: Primarina|Shadow Ball|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|switch|p2a: Garganacl|Garganacl, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Landorus|U-turn|p2a: Garganacl",
+        "|switch|p1a: Sinistcha|Sinistcha|100/100|[from] U-turn",
+        "|move|p2a: Garganacl|Stealth Rock|p1a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|83/100",
+        "|move|p1a: Sinistcha|Calm Mind|p1a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Sinistcha|Shadow Ball|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|100/100",
+        "|move|p1a: Sinistcha|Shadow Ball|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Sinistcha",
+        "|move|p1a: Sinistcha|Strength Sap|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Sinistcha",
+        "|move|p1a: Sinistcha|Matcha Gotcha|p2a: Samurott",
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|66/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Sinistcha|Shadow Ball|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Sinistcha|Matcha Gotcha|p2a: Slowking",
+        "|switch|p2a: Dragonite|Dragonite, M, shiny|93/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Dragonite|Ice Spinner|p1a: Sinistcha",
+        "|move|p1a: Sinistcha|Strength Sap|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Sinistcha|Shadow Ball|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|100/100",
+        "|switch|p1a: Iron Hands|Iron Hands|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Great Tusk|Knock Off|p1a: Corviknight",
+        "|move|p1a: Corviknight|Defog|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": []
+    }
+  ],
+  "winner": "GameProm4",
+  "endTime": 1770413988864,
+  "p1Team": [
+    "Primarina",
+    "Landorus-Therian",
+    "Sinistcha",
+    "Iron Hands",
+    "Corviknight"
+  ],
+  "p2Team": [
+    "Slowking-Galar",
+    "Garganacl",
+    "Samurott-Hisui",
+    "Dragonite",
+    "Gholdengo",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "primarina",
+      "landorustherian",
+      "sinistcha",
+      "ironhands",
+      "corviknight"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "slowkinggalar",
+      "garganacl",
+      "samurotthisui",
+      "dragonite",
+      "gholdengo",
+      "greattusk"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

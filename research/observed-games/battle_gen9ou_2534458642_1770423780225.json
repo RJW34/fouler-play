@@ -1,0 +1,169 @@
+{
+  "id": "battle-gen9ou-2534458642",
+  "p1": "2001civic",
+  "p2": "a jellyfish",
+  "minElo": 1851,
+  "startTime": 1770423573887,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Ribombee",
+        "|switch|p2a: muk punch|Muk-Alola, F, shiny|100/100|[from] U-turn",
+        "|move|p1a: Ribombee|Light Screen|p1a: Ribombee"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Ribombee|Reflect|p1a: Ribombee",
+        "|move|p2a: muk punch|Poison Jab|p1a: Ribombee"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|100/100",
+        "|move|p1a: Ribombee|Sticky Web|p2a: Hatterene",
+        "|move|p2a: Hatterene|Sticky Web|p1a: Ribombee|[from] ability: Magic Bounce"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Thundurus|Thundurus-Therian, M|100/100",
+        "|move|p2a: Hatterene|Psychic Noise|p1a: Thundurus"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: muk punch|Muk-Alola, F, shiny|100/100",
+        "|move|p1a: Thundurus|Nasty Plot|p1a: Thundurus"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Thundurus|Thunderbolt|p2a: muk punch",
+        "|move|p2a: muk punch|Poison Jab|p1a: Thundurus"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Thundurus|Thunderbolt|p2a: muk punch",
+        "|move|p2a: muk punch|Poison Jab|p1a: Thundurus"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Thundurus|Thunderbolt|p2a: muk punch",
+        "|switch|p2a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Dragapult|Hex|p1a: Thundurus",
+        "|switch|p1a: Okidogi|Okidogi, M|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Dragapult|Will-O-Wisp|p1a: Okidogi",
+        "|move|p1a: Okidogi|Bulk Up|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Okidogi",
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100|[from] U-turn",
+        "|move|p1a: Okidogi|Bulk Up|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Okidogi",
+        "|move|p1a: Okidogi|Bulk Up|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Okidogi",
+        "|move|p1a: Okidogi|Knock Off|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Landorus|Stealth Rock|p1a: Okidogi",
+        "|move|p1a: Okidogi|Drain Punch|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Okidogi",
+        "|move|p1a: Okidogi|Drain Punch|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Okidogi",
+        "|move|p1a: Okidogi|Drain Punch|p2a: Landorus",
+        "|switch|p2a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": []
+    }
+  ],
+  "winner": "a jellyfish",
+  "endTime": 1770423780225,
+  "p1Team": [
+    "Thundurus-Therian",
+    "Okidogi"
+  ],
+  "p2Team": [
+    "Muk-Alola",
+    "Hatterene",
+    "Dragapult",
+    "Landorus-Therian"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "thundurustherian",
+      "okidogi"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "mukalola",
+      "hatterene",
+      "dragapult",
+      "landorustherian"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,273 @@
+{
+  "id": "battle-gen9ou-2534367262",
+  "p1": "ba2ozknRR",
+  "p2": "Kissone",
+  "minElo": 1588,
+  "startTime": 1770413163256,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Ribombee|Stun Spore|p1a: Tinkaton",
+        "|move|p1a: Tinkaton|Gigaton Hammer|p2a: Ribombee"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Ribombee|Sticky Web|p1a: Tinkaton",
+        "|move|p1a: Tinkaton|Stealth Rock|p2a: Ribombee"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Ribombee|Moonblast|p1a: Tinkaton",
+        "|move|p1a: Tinkaton|Knock Off|p2a: Ribombee",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Tinkaton|Gigaton Hammer|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Tinkaton|Encore|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Tinkaton|Gigaton Hammer|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Tinkaton|Knock Off|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Tinkaton|Encore||[still]"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Tinkaton",
+        "|move|p1a: Tinkaton|Encore|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Tinkaton",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Kyurem",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|100/100",
+        "|move|p2a: Gholdengo|Focus Blast|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta, shiny|100/100",
+        "|move|p2a: Gholdengo|Recover|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Thundurus|Thundurus-Therian, M|100/100",
+        "|move|p1a: Zamazenta|Crunch|p2a: Thundurus"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|100/100",
+        "|move|p2a: Thundurus|Thunderbolt|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Alomomola|Aqua Jet|p2a: Thundurus",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt, tera:Dark|43/100",
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Enamorus|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Zamazenta|Zamazenta, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Ogerpon|Power Whip|p1a: Zamazenta|[miss]",
+        "|move|p1a: Zamazenta|Close Combat|p2a: Ogerpon",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|74/100",
+        "|move|p2a: Enamorus|Moonblast|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Enamorus|Substitute|p2a: Enamorus",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Enamorus",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|84/100",
+        "|move|p2a: Enamorus|Moonblast|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Enamorus|Tera Blast|p1a: Alomomola|[anim] Tera Blast Stellar",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Enamorus",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Enamorus|Moonblast|p1a: Great Tusk",
+        "|switch|p1a: Alomomola|Alomomola, M|71/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Enamorus|Moonblast|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Enamorus",
+        "|switch|p1a: Zamazenta|Zamazenta, shiny|100/100|[from] Flip Turn",
+        "|switch|p2a: Gholdengo|Gholdengo|86/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Gholdengo"
+      ]
+    }
+  ],
+  "winner": "ba2ozknRR",
+  "endTime": 1770413381393,
+  "p1Team": [
+    "Pecharunt",
+    "Alomomola",
+    "Zamazenta",
+    "Enamorus",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Kyurem",
+    "Gholdengo",
+    "Thundurus-Therian",
+    "Ogerpon-Wellspring",
+    "Enamorus"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "pecharunt",
+      "alomomola",
+      "zamazenta",
+      "enamorus",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "kyurem",
+      "gholdengo",
+      "thundurustherian",
+      "ogerponwellspring",
+      "enamorus"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

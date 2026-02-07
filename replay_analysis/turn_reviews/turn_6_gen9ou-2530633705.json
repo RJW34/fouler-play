@@ -1,0 +1,24 @@
+{
+  "turn": 6,
+  "bot_choice": "Switched to Blissey",
+  "why_critical": "Switched to Blissey vs Gholdengo (43% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 84% | Pecharunt 100%",
+  "opp_team": "Drifblim 100% | Great Tusk 100% | Samurott-Hisui 100% | Ogerpon 100% | Arcanine-Hisui 100% | Gholdengo 43% +2 spa, -1 spd",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530633705",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Gholdengo"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

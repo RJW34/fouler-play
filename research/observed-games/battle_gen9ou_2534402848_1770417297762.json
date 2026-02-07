@@ -1,0 +1,198 @@
+{
+  "id": "battle-gen9ou-2534402848",
+  "p1": "zokua",
+  "p2": "Mimikyuster04",
+  "minElo": 1550,
+  "startTime": 1770416973453,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Landorus|Earth Power|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Kingambit|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Kingambit|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Cinderace|Cinderace, M|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|100/100",
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Cinderace|U-turn|p2a: Grimmsnarl",
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100|[from] U-turn",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Landorus",
+        "|move|p1a: Landorus|Earth Power|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk",
+        "|move|p1a: Landorus|U-turn|p2a: Great Tusk",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Iron Valiant",
+        "|switch|p1a: Landorus|Landorus-Therian, M, tera:Water|89/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|28/100",
+        "|move|p1a: Landorus|Stealth Rock|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Glimmora|Glimmora, F|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Glimmora|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Cinderace|Cinderace, M|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk, tera:Ground|22/100",
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Great Tusk",
+        "|switch|p2a: Deoxys|Deoxys-Speed|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Deoxys|Psycho Boost|p1a: Cinderace",
+        "|move|p1a: Cinderace|U-turn|p2a: Deoxys",
+        "|switch|p1a: Kyurem|Kyurem|100/100|[from] U-turn",
+        "|switch|p2a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M, tera:Water|89/100",
+        "|move|p2a: Iron Crown|Focus Blast|p1a: Landorus"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Iron Crown|Volt Switch|p1a: Landorus",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100|[from] Volt Switch",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Kyurem",
+        "|move|p1a: Kyurem|Ice Beam|p2a: Iron Valiant",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|28/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Kyurem",
+        "|switch|p1a: Cinderace|Cinderace, M|20/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Cinderace|Sucker Punch|p2a: Ogerpon",
+        "|switch|p2a: Iron Crown|Iron Crown|94/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Iron Crown",
+        "|move|p2a: Iron Crown|Tachyon Cutter|p1a: Cinderace"
+      ]
+    }
+  ],
+  "winner": "Mimikyuster04",
+  "endTime": 1770417297762,
+  "p1Team": [
+    "Kingambit",
+    "Cinderace",
+    "Landorus-Therian",
+    "Iron Valiant",
+    "Glimmora",
+    "Kyurem"
+  ],
+  "p2Team": [
+    "Ogerpon-Wellspring",
+    "Grimmsnarl",
+    "Great Tusk",
+    "Deoxys-Speed",
+    "Iron Crown",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "kingambit",
+      "cinderace",
+      "landorustherian",
+      "ironvaliant",
+      "glimmora",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ogerponwellspring",
+      "grimmsnarl",
+      "greattusk",
+      "deoxysspeed",
+      "ironcrown",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,179 @@
+{
+  "id": "battle-gen9ou-2534399576",
+  "p1": "blockayethe1st",
+  "p2": "hollandaise hoe",
+  "minElo": 1501,
+  "startTime": 1770416613424,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Jormungandr",
+        "|move|p2a: Jormungandr|Leaf Storm|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Deoxys|Stealth Rock|p2a: Jormungandr",
+        "|move|p2a: Jormungandr|Leaf Storm|p1a: Deoxys",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Jormungandr|Leaf Storm|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Jormungandr"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Pecharunt|Hex|p2a: Jormungandr",
+        "|switch|p2a: Himothy|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Himothy",
+        "|move|p2a: Himothy|Headlong Rush|p1a: Pecharunt",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Kyurem|Draco Meteor|p2a: Himothy",
+        "|switch|p2a: Armstrong|Araquanid, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Kyurem|Draco Meteor|p2a: Armstrong",
+        "|move|p2a: Armstrong|Sticky Web|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Samurott|Samurott-Hisui, F|100/100",
+        "|move|p2a: Armstrong|Endeavor|p1a: Samurott"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: Armstrong",
+        "|switch|p2a: HELIOS One|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Samurott|Aqua Jet|p2a: HELIOS One",
+        "|move|p2a: HELIOS One|Fiery Dance|p1a: Samurott"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Samurott|Aqua Jet|p2a: HELIOS One",
+        "|switch|p2a: Aurelion|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Aurelion|Shadow Ball|p1a: Samurott",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Aurelion|Nasty Plot|p2a: Aurelion"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Aurelion|Shadow Ball|p1a: Gholdengo",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: The Equalizer|Kingambit, M|100/100",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: The Equalizer"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: The Equalizer",
+        "|move|p2a: The Equalizer|Iron Head|p1a: Kyurem",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Iron Valiant|Swords Dance|p1a: Iron Valiant",
+        "|move|p2a: The Equalizer|Iron Head|p1a: Iron Valiant"
+      ]
+    }
+  ],
+  "winner": "hollandaise hoe",
+  "endTime": 1770417051660,
+  "p1Team": [
+    "Pecharunt",
+    "Kyurem",
+    "Samurott-Hisui",
+    "Gholdengo",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Araquanid",
+    "Iron Moth",
+    "Gholdengo",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "pecharunt",
+      "kyurem",
+      "samurotthisui",
+      "gholdengo",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.8,
+    "fatCount": 0,
+    "offenseCount": 4,
+    "team": [
+      "greattusk",
+      "araquanid",
+      "ironmoth",
+      "gholdengo",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

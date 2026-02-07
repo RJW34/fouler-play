@@ -1,0 +1,101 @@
+{
+  "id": "battle-gen9ou-2534395712",
+  "p1": "Kissone",
+  "p2": "XYZ15",
+  "minElo": 1543,
+  "startTime": 1770416193403,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Ribombee|Ribombee, M|100/100",
+        "|move|p2a: OGER|Ivy Cudgel|p1a: Ribombee|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Dream|Landorus-Therian, M|100/100",
+        "|move|p1a: Ribombee|Sticky Web|p2a: Dream"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Ribombee|Moonblast|p2a: Dream",
+        "|move|p2a: Dream|U-turn|p1a: Ribombee",
+        "|switch|p2a: Scarlet|Scizor, F|100/100|[from] U-turn",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Scarlet",
+        "|move|p2a: Scarlet|U-turn|p1a: Gholdengo",
+        "|switch|p2a: Violet|Ceruledge, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Violet",
+        "|move|p2a: Violet|Bitter Blade|p1a: Gholdengo",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Violet",
+        "|move|p2a: Violet|Bitter Blade|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Violet|Bitter Blade|p1a: Kyurem"
+      ]
+    }
+  ],
+  "winner": "XYZ15",
+  "endTime": 1770416322150,
+  "p1Team": [
+    "Ribombee",
+    "Gholdengo",
+    "Kyurem"
+  ],
+  "p2Team": [
+    "Landorus-Therian",
+    "Scizor",
+    "Ceruledge"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ribombee",
+      "gholdengo",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "landorustherian",
+      "scizor",
+      "ceruledge"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

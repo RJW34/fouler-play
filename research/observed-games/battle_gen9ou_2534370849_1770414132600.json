@@ -1,0 +1,301 @@
+{
+  "id": "battle-gen9ou-2534370849",
+  "p1": "averyradiant",
+  "p2": "garg is back",
+  "minElo": 1539,
+  "startTime": 1770413554387,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Iron Moth|Iron Moth|100/100",
+        "|move|p1a: Moltres|U-turn|p2a: Iron Moth",
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Slowking|Thunder Wave|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|100/100",
+        "|move|p2a: Ogerpon|Spikes|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Ogerpon|U-turn|p1a: Kyurem",
+        "|switch|p2a: Weavile|Weavile, F|100/100|[from] U-turn",
+        "|move|p1a: Kyurem|Draco Meteor|p2a: Weavile",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|69/100",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Moltres",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Great Tusk",
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales-Alola, F|100/100",
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Ninetales",
+        "|switch|p1a: Kyurem|Kyurem|83/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Iron Moth|Iron Moth|95/100",
+        "|move|p1a: Kyurem|Blizzard|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Slowking|Thunder Wave|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Great Tusk|Great Tusk|48/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Great Tusk|Great Tusk|51/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|64/100",
+        "|switch|p2a: Rillaboom|Rillaboom, F|83/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Iron Moth|Iron Moth|62/100",
+        "|move|p1a: Kyurem|Earth Power|p2a: Iron Moth",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|64/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Slowking|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Slowking|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Great Tusk|Great Tusk|55/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Great Tusk|[anim] Ivy Cudgel Water",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p2a: Rillaboom|Rillaboom, F|89/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p1a: Attack Titan|Cetitan, F, shiny|100/100",
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Attack Titan"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Attack Titan|Ice Shard|p2a: Rillaboom",
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Attack Titan",
+        "|switch|p1a: Kyurem|Kyurem|52/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Kyurem",
+        "|move|p1a: Kyurem|Draco Meteor|p2a: Rillaboom",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|43/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Ogerpon|Power Whip|p1a: Kyurem",
+        "|switch|p1a: Great Tusk|Great Tusk, tera:Steel|24/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Great Tusk|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "garg is back",
+  "endTime": 1770414132600,
+  "p1Team": [
+    "Moltres",
+    "Slowking-Galar",
+    "Great Tusk",
+    "Kyurem",
+    "Ninetales-Alola",
+    "Cetitan"
+  ],
+  "p2Team": [
+    "Iron Moth",
+    "Gholdengo",
+    "Ogerpon-Wellspring",
+    "Weavile",
+    "Great Tusk",
+    "Rillaboom"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "moltres",
+      "slowkinggalar",
+      "greattusk",
+      "kyurem",
+      "ninetalesalola",
+      "cetitan"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6666666666666666,
+    "fatCount": 0,
+    "offenseCount": 4,
+    "team": [
+      "ironmoth",
+      "gholdengo",
+      "ogerponwellspring",
+      "weavile",
+      "greattusk",
+      "rillaboom"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

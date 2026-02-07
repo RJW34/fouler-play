@@ -1,0 +1,563 @@
+{
+  "id": "battle-gen9ou-2534438744",
+  "p1": "coast ghost",
+  "p2": "minhoto",
+  "minElo": 1511,
+  "startTime": 1770421113706,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Glimmora|Stealth Rock|p2a: Slowking",
+        "|move|p2a: Slowking|Future Sight|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Glimmora|Earth Power|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Cinderace|Cinderace, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Moltres|Moltres-Galar|100/100",
+        "|move|p2a: Cinderace|U-turn|p1a: Moltres",
+        "|switch|p2a: Toxapex|Toxapex, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Glimmora|Glimmora, F|100/100",
+        "|move|p2a: Toxapex|Toxic|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|100/100",
+        "|move|p1a: Glimmora|Meteor Beam||[still]"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Glimmora|Meteor Beam||[still]",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, F|100/100",
+        "|move|p1a: Glimmora|Meteor Beam|p2a: Dondozo|[from] lockedmove"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Glimmora|Meteor Beam||[still]",
+        "|move|p2a: Dondozo|Rest|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Glimmora|Meteor Beam|p2a: Dondozo|[from] lockedmove",
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Glimmora|[from] move: Sleep Talk"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Glimmora|Earth Power|p2a: Dondozo",
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Rest||[from] move: Sleep Talk|[still]"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Glimmora|Meteor Beam||[still]",
+        "|move|p2a: Dondozo|Rest|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Glimmora|Meteor Beam|p2a: Dondozo|[from] lockedmove",
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Glimmora|[from] move: Sleep Talk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Ogerpon|[from] move: Sleep Talk"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|100/100",
+        "|move|p1a: Ogerpon|Horn Leech|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Glimmora|Glimmora, F, tera:Ghost|32/100",
+        "|move|p2a: Cinderace|U-turn|p1a: Glimmora",
+        "|switch|p2a: Slowking|Slowking-Galar, F|88/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Glimmora|Earth Power|p2a: Slowking",
+        "|move|p2a: Slowking|Future Sight|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Toxapex|Toxapex, F|100/100",
+        "|move|p1a: Glimmora|Meteor Beam||[still]"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Glimmora|Meteor Beam|p2a: Toxapex|[from] lockedmove",
+        "|move|p2a: Toxapex|Liquidation|p1a: Glimmora",
+        "|switch|p1a: Moltres|Moltres-Galar|63/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|66/100",
+        "|move|p1a: Moltres|Agility|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Moltres|Nasty Plot|p1a: Moltres",
+        "|move|p2a: Corviknight|Defog|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Moltres|Fiery Wrath|p2a: Corviknight",
+        "|switch|p2a: Blissey|Blissey, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Moltres|Fiery Wrath|p2a: Blissey",
+        "|move|p2a: Blissey|Fire Blast|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Moltres|Fiery Wrath|p2a: Blissey",
+        "|move|p2a: Blissey|Fire Blast|p1a: Moltres",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|81/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Slowking|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Slowking|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Cinderace|Cinderace, F|65/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100",
+        "|move|p2a: Cinderace|U-turn|p1a: Ceruledge",
+        "|switch|p2a: Toxapex|Toxapex, F|40/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p2a: Blissey|Blissey, F|32/100",
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Blissey"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Deoxys|Deoxys-Speed|100/100",
+        "|switch|p2a: Toxapex|Toxapex, F|74/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Blissey|Blissey, F|32/100",
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Blissey"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Blissey"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, F|69/100 slp",
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|switch|p2a: Blissey|Blissey, F|18/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Ogerpon|Horn Leech|p2a: Blissey",
+        "|switch|p2a: Cinderace|Cinderace, F|65/100"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|100/100",
+        "|move|p2a: Cinderace|U-turn|p1a: Zamazenta",
+        "|switch|p2a: Dondozo|Dondozo, F|42/100 slp|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Dondozo",
+        "|move|p2a: Dondozo|Rest|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo|[from] move: Sleep Talk",
+        "|move|p1a: Zamazenta|Roar|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|switch|p2a: Toxapex|Toxapex, F|100/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Toxapex"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|switch|p1a: Deoxys|Deoxys-Speed|100/100",
+        "|move|p2a: Toxapex|Toxic|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, F|100/100 slp",
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Dondozo|[miss]"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Dondozo|[miss]",
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo|[from] move: Sleep Talk"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Deoxys",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|65/100",
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 43,
+      "events": [
+        "|move|p2a: Cinderace|U-turn|p1a: Ogerpon",
+        "|switch|p2a: Toxapex|Toxapex, F|100/100|[from] U-turn",
+        "|move|p1a: Ogerpon|Horn Leech|p2a: Toxapex"
+      ]
+    },
+    {
+      "turn": 44,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Toxapex|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Cinderace|Cinderace, F|65/100"
+      ]
+    },
+    {
+      "turn": 45,
+      "events": [
+        "|switch|p1a: Ceruledge|Ceruledge, F|91/100",
+        "|move|p2a: Cinderace|U-turn|p1a: Ceruledge",
+        "|switch|p2a: Dondozo|Dondozo, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 46,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|27/100",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 47,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Dondozo|[anim] Ivy Cudgel Water",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 48,
+      "events": [
+        "|move|p1a: Ogerpon|Play Rough|p2a: Dondozo",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 49,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|90/100",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 50,
+      "events": [
+        "|move|p2a: Dondozo|Liquidation|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Roar|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 51,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, F, tera:Dragon|85/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 52,
+      "events": [
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo",
+        "|move|p1a: Zamazenta|Roar|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 53,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, F, tera:Dragon|69/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 54,
+      "events": [
+        "|move|p2a: Dondozo|Rest|p2a: Dondozo",
+        "|move|p1a: Zamazenta|Roar|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 55,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, F, tera:Dragon|100/100 slp",
+        "|move|p1a: Zamazenta|Body Press|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 56,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Dondozo",
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Rest||[from] move: Sleep Talk|[still]"
+      ]
+    },
+    {
+      "turn": 57,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: Dondozo",
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Zamazenta|[from] move: Sleep Talk"
+      ]
+    },
+    {
+      "turn": 58,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: Dondozo|Rest|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 59,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Zamazenta|[from] move: Sleep Talk"
+      ]
+    },
+    {
+      "turn": 60,
+      "events": [
+        "|move|p2a: Dondozo|Sleep Talk|p2a: Dondozo",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo|[from] move: Sleep Talk",
+        "|move|p1a: Zamazenta|Roar|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 61,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, F, tera:Dragon|100/100 slp",
+        "|move|p1a: Zamazenta|Body Press|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 62,
+      "events": [
+        "|move|p1a: Zamazenta|Heavy Slam|p2a: Dondozo",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 63,
+      "events": [
+        "|move|p2a: Dondozo|Liquidation|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Roar|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 64,
+      "events": [
+        "|switch|p1a: Ceruledge|Ceruledge, F|80/100",
+        "|switch|p2a: Dondozo|Dondozo, F, tera:Dragon|86/100"
+      ]
+    },
+    {
+      "turn": 65,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|27/100",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 66,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 67,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 68,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: Dondozo|Curse|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 69,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|65/100",
+        "|move|p1a: Ogerpon|Play Rough|p2a: Cinderace"
+      ]
+    }
+  ],
+  "winner": "coast ghost",
+  "endTime": 1770421672328,
+  "p1Team": [
+    "Moltres-Galar",
+    "Glimmora",
+    "Ogerpon-Wellspring",
+    "Ceruledge",
+    "Deoxys-Speed",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Cinderace",
+    "Toxapex",
+    "Corviknight",
+    "Dondozo",
+    "Slowking-Galar",
+    "Blissey"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "moltresgalar",
+      "glimmora",
+      "ogerponwellspring",
+      "ceruledge",
+      "deoxysspeed",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.8333333333333334,
+    "fatCount": 5,
+    "offenseCount": 0,
+    "team": [
+      "cinderace",
+      "toxapex",
+      "corviknight",
+      "dondozo",
+      "slowkinggalar",
+      "blissey"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

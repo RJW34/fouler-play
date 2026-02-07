@@ -1,0 +1,275 @@
+{
+  "id": "battle-gen9ou-2534434849",
+  "p1": "JustRaffe",
+  "p2": "rookie22",
+  "minElo": 1712,
+  "startTime": 1770420633673,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|switch|p2a: Bene Gesserit|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, F|100/100",
+        "|move|p2a: Bene Gesserit|Volt Switch|p1a: Garganacl",
+        "|switch|p2a: Meowscarada|Meowscarada, F|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|move|p2a: Meowscarada|Knock Off|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Corviknight|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Hatterene|Hatterene, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Raging Bolt|Calm Mind|p2a: Raging Bolt",
+        "|move|p1a: Hatterene|Mystical Fire|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Bene Gesserit|Iron Crown|100/100",
+        "|switch|p1a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Bene Gesserit",
+        "|move|p2a: Bene Gesserit|Psyshock|p1a: Iron Moth",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|87/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Raging Bolt|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Ogerpon|Play Rough|p2a: Raging Bolt",
+        "|switch|p2a: Meowscarada|Meowscarada, F|84/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, M|100/100",
+        "|move|p2a: Meowscarada|Flower Trick|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Dragapult|Will-O-Wisp|p2a: Meowscarada",
+        "|move|p2a: Meowscarada|Knock Off|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Dragapult|Hex|p2a: Meowscarada",
+        "|switch|p2a: Bene Gesserit|Iron Crown|43/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Dragapult|U-turn|p2a: Bene Gesserit",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] U-turn",
+        "|move|p2a: Bene Gesserit|Tachyon Cutter|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: I'm the original.|Dragonite, F|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: I'm the original.|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Ogerpon|Play Rough|p2a: I'm the original.",
+        "|move|p2a: I'm the original.|Tera Blast|p1a: Ogerpon|[anim] Tera Blast Flying",
+        "|switch|p1a: Dragapult|Dragapult, M|18/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: I'm the original.",
+        "|switch|p2a: Lisan Al Gaib|Keldeo|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Lisan Al Gaib",
+        "|move|p2a: Lisan Al Gaib|Surf|p1a: Dragapult",
+        "|switch|p1a: Corviknight|Corviknight, F|73/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Lisan Al Gaib|Surf|p1a: Corviknight",
+        "|move|p1a: Corviknight|U-turn|p2a: Lisan Al Gaib",
+        "|switch|p1a: Garganacl|Garganacl, F|92/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Garganacl|Curse|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Great Tusk|Earthquake|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Bene Gesserit|Iron Crown|24/100",
+        "|move|p1a: Garganacl|Curse|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Bene Gesserit|Volt Switch|p1a: Garganacl",
+        "|switch|p2a: Great Tusk|Great Tusk|88/100|[from] Volt Switch",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Bene Gesserit|Iron Crown|24/100",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Bene Gesserit|Volt Switch|p1a: Garganacl",
+        "|switch|p2a: Great Tusk|Great Tusk|78/100|[from] Volt Switch",
+        "|move|p1a: Garganacl|Curse|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Great Tusk|Earthquake|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: Bene Gesserit|Iron Crown|24/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Bene Gesserit",
+        "|switch|p2a: Lisan Al Gaib|Keldeo|46/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Lisan Al Gaib|Aura Sphere|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Lisan Al Gaib"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Lisan Al Gaib|Aura Sphere|p1a: Garganacl",
+        "|switch|p2a: Great Tusk|Great Tusk|72/100",
+        "|switch|p1a: Hatterene|Hatterene, F|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Great Tusk|Earthquake|p1a: Hatterene",
+        "|move|p1a: Hatterene|Draining Kiss|p2a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "JustRaffe",
+  "endTime": 1770421083180,
+  "p1Team": [
+    "Corviknight",
+    "Garganacl",
+    "Hatterene",
+    "Iron Moth",
+    "Ogerpon-Wellspring",
+    "Dragapult"
+  ],
+  "p2Team": [
+    "Iron Crown",
+    "Meowscarada",
+    "Raging Bolt",
+    "Dragonite",
+    "Keldeo",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "corviknight",
+      "garganacl",
+      "hatterene",
+      "ironmoth",
+      "ogerponwellspring",
+      "dragapult"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironcrown",
+      "meowscarada",
+      "ragingbolt",
+      "dragonite",
+      "keldeo",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

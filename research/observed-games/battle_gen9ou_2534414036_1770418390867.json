@@ -1,0 +1,255 @@
+{
+  "id": "battle-gen9ou-2534414036",
+  "p1": "Mr Tpen",
+  "p2": "nushinator",
+  "minElo": 1816,
+  "startTime": 1770418233517,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Scizor",
+        "|switch|p1a: Glimmora|Glimmora, F|100/100|[from] U-turn",
+        "|move|p2a: Scizor|U-turn|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|switch|p2a: Scizor|Scizor, M|88/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Landorus|Taunt|p2a: Scizor",
+        "|move|p2a: Scizor|Knock Off|p1a: Landorus"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Landorus|Earthquake|p2a: Scizor",
+        "|move|p2a: Scizor|U-turn|p1a: Landorus",
+        "|switch|p2a: Tornadus|Tornadus-Therian, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Tornadus|Bleakwind Storm|p1a: Landorus",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|88/100 psn",
+        "|move|p1a: Kyurem|Ice Beam|p2a: Hatterene"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Kyurem|Ice Beam|p2a: Hatterene",
+        "|switch|p2a: Alomomola|Alomomola, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Alomomola|Wish|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Ogerpon|Knock Off|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Glimmora|Glimmora, F|85/100|[from] U-turn",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Glimmora"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|100/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Kyurem",
+        "|switch|p1a: Kingambit|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Kingambit",
+        "|move|p1a: Kingambit|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap||[still]",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Glimmora|Glimmora, F|12/100 par",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Glimmora",
+        "|switch|p2a: Scizor|Scizor, M|22/100",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Tornadus|Tornadus-Therian, M|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Tornadus|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Tornadus|Bleakwind Storm|p1a: Ogerpon|[miss]",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Tornadus|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Ting-Lu",
+        "|switch|p1a: Kingambit|Kingambit, F|39/100|[from] U-turn",
+        "|move|p2a: Ting-Lu|Earthquake|p1a: Kingambit",
+        "|switch|p1a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100",
+        "|move|p1a: Enamorus|Superpower|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Enamorus|Superpower|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Enamorus",
+        "|switch|p2a: Scizor|Scizor, M|22/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Enamorus",
+        "|move|p1a: Enamorus|Superpower|p2a: Scizor",
+        "|switch|p2a: Alomomola|Alomomola, F|92/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Enamorus|Superpower|p2a: Alomomola",
+        "|move|p2a: Alomomola|Scald|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu, tera:Water|79/100 psn",
+        "|move|p1a: Enamorus|Superpower|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Enamorus|Superpower|p2a: Ting-Lu",
+        "|switch|p2a: Alomomola|Alomomola, F|82/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Enamorus|Superpower|p2a: Alomomola",
+        "|move|p2a: Alomomola|Scald|p1a: Enamorus",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring-Tera, F, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Ogerpon|Taunt|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Ogerpon|Knock Off|p2a: Alomomola"
+      ]
+    }
+  ],
+  "winner": "Mr Tpen",
+  "endTime": 1770418390867,
+  "p1Team": [
+    "Glimmora",
+    "Landorus-Therian",
+    "Kyurem",
+    "Ogerpon-Wellspring",
+    "Kingambit",
+    "Enamorus",
+    "Ogerpon-Wellspring-Tera"
+  ],
+  "p2Team": [
+    "Scizor",
+    "Tornadus-Therian",
+    "Hatterene",
+    "Alomomola",
+    "Raging Bolt",
+    "Ting-Lu"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "glimmora",
+      "landorustherian",
+      "kyurem",
+      "ogerponwellspring",
+      "kingambit",
+      "enamorus",
+      "ogerponwellspringtera"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "scizor",
+      "tornadustherian",
+      "hatterene",
+      "alomomola",
+      "ragingbolt",
+      "tinglu"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

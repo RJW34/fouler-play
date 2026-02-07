@@ -1,0 +1,74 @@
+{
+  "id": "battle-gen9ou-2534369025",
+  "p1": "GameProm4",
+  "p2": "leontief47",
+  "minElo": 1675,
+  "startTime": 1770413373262,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Iron Treads|Stealth Rock|p1a: Landorus",
+        "|move|p1a: Landorus|Earthquake|p2a: Iron Treads",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Sinistcha|Sinistcha|100/100",
+        "|move|p2a: Zamazenta|Ice Fang|p1a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Sinistcha",
+        "|move|p1a: Sinistcha|Matcha Gotcha|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Sinistcha",
+        "|move|p1a: Sinistcha|Strength Sap|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": []
+    }
+  ],
+  "winner": "GameProm4",
+  "endTime": 1770413444241,
+  "p1Team": [
+    "Sinistcha"
+  ],
+  "p2Team": [
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "sinistcha"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

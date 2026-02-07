@@ -1,0 +1,22 @@
+{
+  "turn": 12,
+  "bot_choice": "Switched to Zamazenta",
+  "why_critical": "\ud83d\udd04 Switched to Zamazenta vs Tyranitar \u2014 was this the right matchup?",
+  "bot_team": "Gliscor 51% tox +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 35% +1 spa, +1 spd | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Tyranitar 88% | Dondozo 100% | Darkrai 55% | Orthworm 100% | Clefable 100% | Hatterene 81%",
+  "field": [
+    "Weather: Sandstorm"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530336872",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Maintain offensive pressure"
+    ],
+    [
+      "Switch to different Pokemon",
+      "Better type matchup available"
+    ]
+  ],
+  "feedback": null
+}

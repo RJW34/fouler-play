@@ -1,0 +1,245 @@
+{
+  "id": "battle-gen9ou-2534435349",
+  "p1": "peakelo",
+  "p2": "life wont change",
+  "minElo": 1621,
+  "startTime": 1770420723679,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl",
+        "|move|p2a: Meowscarada|Knock Off|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: Meowscarada|U-turn|p1a: Grimmsnarl",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Iron Moth|Iron Moth|100/100",
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Slowking",
+        "|move|p2a: Slowking|Future Sight|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, M|100/100",
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|74/100",
+        "|move|p1a: Iron Moth|Sludge Wave|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Slowking",
+        "|move|p2a: Slowking|Surf|p1a: Iron Moth",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, M|88/100",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Dondozo|Liquidation|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|100/100",
+        "|move|p1a: Ogerpon|Trailblaze|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: Corviknight|U-turn|p1a: Ogerpon",
+        "|switch|p2a: Dondozo|Dondozo, M|86/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Ogerpon|Trailblaze|p2a: Dondozo",
+        "|move|p2a: Dondozo|Body Press|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Dondozo|[anim] Ivy Cudgel Water",
+        "|move|p2a: Dondozo|Body Press|p1a: Ogerpon",
+        "|switch|p1a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|78/100",
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Grimmsnarl",
+        "|switch|p1a: Ceruledge|Ceruledge, F|91/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Dondozo|Dondozo, M|68/100",
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Dondozo",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Ceruledge",
+        "|switch|p1a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Meowscarada|Meowscarada, F|100/100",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Meowscarada|Knock Off|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|96/100",
+        "|move|p1a: Latias|Draining Kiss|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Latias|Stored Power|p2a: Corviknight",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Latias|Stored Power|p2a: Gholdengo"
+      ]
+    }
+  ],
+  "winner": "peakelo",
+  "endTime": 1770420964029,
+  "p1Team": [
+    "Iron Moth",
+    "Ceruledge",
+    "Ogerpon-Wellspring",
+    "Latias",
+    "Grimmsnarl"
+  ],
+  "p2Team": [
+    "Gholdengo",
+    "Slowking-Galar",
+    "Dondozo",
+    "Corviknight",
+    "Great Tusk",
+    "Meowscarada"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ironmoth",
+      "ceruledge",
+      "ogerponwellspring",
+      "latias",
+      "grimmsnarl"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 3,
+    "offenseCount": 3,
+    "team": [
+      "gholdengo",
+      "slowkinggalar",
+      "dondozo",
+      "corviknight",
+      "greattusk",
+      "meowscarada"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

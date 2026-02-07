@@ -1,0 +1,22 @@
+{
+  "turn": 12,
+  "bot_choice": "Gholdengo fainted",
+  "why_critical": "\u274c Gholdengo fainted \u2014 should we have switched out earlier or chosen differently?",
+  "bot_team": "Gliscor fainted | Gholdengo 87% +2 spa | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 56%",
+  "opp_team": "Ninetales 100% | Walking Wake 100% | Corviknight 71% | Chansey 100% | Great Tusk 74% | Enamorus 100%",
+  "field": [
+    "Weather: SunnyDay"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530335714",
+  "alternatives": [
+    [
+      "Switch out earlier",
+      "Preserve this Pokemon for later"
+    ],
+    [
+      "Different move",
+      "Better damage/utility before going down"
+    ]
+  ],
+  "feedback": null
+}
