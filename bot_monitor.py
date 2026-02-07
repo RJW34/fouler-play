@@ -744,7 +744,7 @@ class BotMonitor:
         name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
         startup_msg = f"🚀 **Fouler Play bot{name_tag} starting...**"
         if username:
-            user_page = f"https://pokemonshowdown.com/users/{username.lower()}"
+            user_page = f"https://pokemonshowdown.com/users/{username.lower().replace(' ', '')}"
             startup_msg += f"\n📊 **Account:** [{username}]({user_page})"
             startup_msg += "\n⏳ *ELO stats will be posted once ladder data loads*"
         
