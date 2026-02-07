@@ -463,8 +463,12 @@ class BotMonitor:
                 
                 opponent = re.sub(r'[^\w\s-]', '', raw_opp).strip()
 
-                # Skip if we've already seen this battle (prevents duplicates from log re-reading)
+                # If we've already seen this battle, update opponent if it was Unknown
                 if battle_id in self.seen_battle_ids:
+                    if opponent and opponent != "Unknown" and battle_id in self.active_battles:
+                        if self.active_battles[battle_id].opponent == "Unknown":
+                            self.active_battles[battle_id].opponent = opponent
+                            logging.info(f"Updated opponent for {battle_id}: {opponent}")
                     continue
 
                 # Mark as seen
