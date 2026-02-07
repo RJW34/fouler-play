@@ -5,7 +5,6 @@ Posts specific turns to Discord for expert feedback
 """
 
 import json
-import os
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,7 +44,7 @@ class TurnReviewer:
         critical_turns = []
         log_lines = replay_data.get("log", "").split("\n")
         
-        bot_name = os.getenv("PS_USERNAME", "ALL CHUNG").strip()
+        bot_name = "ALL CHUNG"
         current_turn = 0
         
         # Track game state

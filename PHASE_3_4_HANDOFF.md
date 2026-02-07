@@ -4,6 +4,11 @@
 > The only remaining item from this doc is **Phase 3.2 PP Tracking** (see bottom of file).
 > Do NOT re-implement anything marked as DONE below — it's already in the code.
 
+**Context**: This bot is an overnight team-testing service for fat/stall teams. These improvements
+help the bot play fat/stall correctly at higher ELO so the matchup data is meaningful for the player.
+PP tracking (3.2) is especially important for stall — knowing when the opponent's recovery is exhausted
+is a core stall skill.
+
 **Purpose**: If the previous agent ran out of tokens, read this document and continue implementing Phases 3 and 4 of the decision-making improvements.
 
 ## Completed Work
