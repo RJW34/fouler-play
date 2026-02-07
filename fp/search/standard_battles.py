@@ -5,7 +5,7 @@ from copy import deepcopy
 import constants
 from data import all_move_json, pokedex
 from fp.search.helpers import populate_pkmn_from_set
-from fp.helpers import natures, normalize_name, calculate_stats
+from fp.helpers import natures, normalize_name
 from fp.battle import Pokemon, Battle, Battler
 from data.pkmn_sets import (
     SmogonSets,
@@ -17,9 +17,121 @@ from data.pkmn_sets import (
     RAW_COUNT,
     TEAMMATES,
 )
-from fp.bayesian_sets import get_global_tracker
 
 logger = logging.getLogger(__name__)
+
+
+def bayesian_set_probabilities(pkmn: Pokemon, battle: Battle = None) -> list:
+    """
+    Calculate Bayesian posterior probabilities for each possible set given revealed information.
+    
+    Args:
+        pkmn: Pokemon to calculate probabilities for
+        battle: Battle context (optional, used for speed comparisons)
+    
+    Returns:
+        List of tuples (PredictedPokemonSet, probability)
+    """
+    # Gather all possible sets from both data sources
+    candidate_sets = []
+    
+    # Try TeamDatasets first
+    team_sets = TeamDatasets.get_all_remaining_sets(pkmn)
+    if team_sets:
+        candidate_sets.extend(team_sets)
+    
+    # Also include SmogonSets - get_all_remaining_sets returns PokemonSet (not Predicted)
+    # We need to convert them to PredictedPokemonSet with moves
+    smogon_sets = SmogonSets.get_all_remaining_sets(pkmn)
+    if smogon_sets:
+        # Convert PokemonSet to PredictedPokemonSet by sampling moves
+        for pkmn_set in smogon_sets:
+            # Create a minimal moveset with known moves
+            known_moves = tuple(m.name for m in pkmn.moves)
+            predicted_set = PredictedPokemonSet(
+                pkmn_set=pkmn_set,
+                pkmn_moveset=PokemonMoveset(moves=known_moves if known_moves else tuple())
+            )
+            if smogon_set_makes_sense(predicted_set):
+                candidate_sets.append(predicted_set)
+    
+    if not candidate_sets:
+        logger.debug(f"No candidate sets found for {pkmn.name}")
+        return []
+    
+    # Calculate prior probabilities from set frequencies
+    set_probs = []
+    total_count = sum(max(1, s.pkmn_set.count) for s in candidate_sets)
+    
+    for pkmn_set in candidate_sets:
+        prior = max(1, pkmn_set.pkmn_set.count) / total_count
+        set_probs.append((pkmn_set, prior))
+    
+    # Bayesian update: eliminate incompatible sets and renormalize
+    compatible_sets = []
+    
+    for pkmn_set, prob in set_probs:
+        is_compatible = True
+        
+        # Check revealed moves
+        for move in pkmn.moves:
+            if move.name not in pkmn_set.pkmn_moveset.moves:
+                # Handle hidden power specially
+                if move.name == constants.HIDDEN_POWER:
+                    hidden_power_possibilities = [
+                        f"{constants.HIDDEN_POWER}{p}{constants.HIDDEN_POWER_ACTIVE_MOVE_BASE_DAMAGE_STRING}"
+                        for p in pkmn.hidden_power_possibilities
+                    ]
+                    has_compatible_hp = any(
+                        hp_move in pkmn_set.pkmn_moveset.moves 
+                        for hp_move in hidden_power_possibilities
+                    )
+                    if not has_compatible_hp:
+                        is_compatible = False
+                        break
+                else:
+                    is_compatible = False
+                    break
+        
+        if not is_compatible:
+            continue
+        
+        # Check revealed item
+        if pkmn.item is not None and pkmn.item != constants.UNKNOWN_ITEM:
+            if not pkmn_set.pkmn_set.item_check(pkmn):
+                continue
+        
+        # Check revealed ability
+        if pkmn.ability is not None:
+            if not pkmn_set.pkmn_set.ability_check(pkmn):
+                continue
+        
+        # Check tera type if terastallized
+        if pkmn.terastallized and pkmn.tera_type:
+            if pkmn_set.pkmn_set.tera_type and pkmn_set.pkmn_set.tera_type != pkmn.tera_type:
+                continue
+        
+        # Check speed range
+        if not pkmn_set.pkmn_set.speed_check(pkmn):
+            continue
+        
+        # Check impossible items/abilities
+        if pkmn_set.pkmn_set.item in pkmn.impossible_items:
+            continue
+        if pkmn_set.pkmn_set.ability in pkmn.impossible_abilities:
+            continue
+        
+        compatible_sets.append((pkmn_set, prob))
+    
+    if not compatible_sets:
+        logger.debug(f"All sets eliminated by Bayesian filtering for {pkmn.name}")
+        return []
+    
+    # Renormalize probabilities
+    total_prob = sum(prob for _, prob in compatible_sets)
+    compatible_sets = [(pkmn_set, prob / total_prob) for pkmn_set, prob in compatible_sets]
+    
+    return compatible_sets
 
 
 TRICKABLE_ITEMS = {
@@ -196,58 +308,6 @@ def adjust_probabilities_for_sampling(move_rates, num_moves=4):
     return adjusted_rates
 
 
-def set_speed_compatible_with_range(pkmn: Pokemon, pkmn_set: PokemonSet) -> bool:
-    """
-    Check if a set's speed is compatible with the known speed_range.
-    Accounts for Choice Scarf (1.5x speed multiplier).
-    
-    Returns True if:
-    - No speed range constraint exists (min=0, max=inf)
-    - The set's calculated speed (with or without Choice Scarf) falls within range
-    """
-    # If no speed range constraint, accept all sets
-    if pkmn.speed_range.min == 0 and pkmn.speed_range.max == float("inf"):
-        return True
-    
-    # Calculate the speed this set would have
-    try:
-        base_stats = pokedex[pkmn.name][constants.BASESTATS]
-        # Assume max IVs (31) - we don't know opponent's IVs
-        # Level is usually 50 or 100, but we can get it from the Pokemon object
-        level = pkmn.level
-        
-        calculated_stats = calculate_stats(
-            base_stats, 
-            level, 
-            ivs=(31,) * 6, 
-            evs=pkmn_set.evs, 
-            nature=pkmn_set.nature
-        )
-        base_speed = calculated_stats[constants.SPEED]
-        
-        # Check if speed is compatible without item boost
-        if pkmn.speed_range.min <= base_speed <= pkmn.speed_range.max:
-            return True
-        
-        # Check if speed is compatible with Choice Scarf (1.5x)
-        if pkmn_set.item == "choicescarf":
-            scarf_speed = int(base_speed * 1.5)
-            if pkmn.speed_range.min <= scarf_speed <= pkmn.speed_range.max:
-                return True
-        
-        # If base speed is too high, check if the set MUST have Choice Scarf
-        # to be compatible (i.e., base_speed is above max, but with scarf it could work)
-        if base_speed > pkmn.speed_range.max and pkmn_set.item == "choicescarf":
-            # Scarf is needed but wouldn't help - reject
-            return False
-            
-        return False
-        
-    except (KeyError, IndexError):
-        # If we can't calculate speed, don't filter out the set
-        return True
-
-
 def get_filtered_sets(
     pkmn: Pokemon, remaining_sets: list[PokemonSet]
 ) -> list[PokemonSet]:
@@ -258,7 +318,7 @@ def get_filtered_sets(
                 pkmn_set=pkmn_set,
                 pkmn_moveset=PokemonMoveset(moves=tuple(m.name for m in pkmn.moves)),
             )
-        ) and set_speed_compatible_with_range(pkmn, pkmn_set):
+        ):
             filtered_sets.append(pkmn_set)
 
     return filtered_sets
@@ -364,65 +424,49 @@ def pokemon_guaranteed_move(pkmn: Pokemon):
             pkmn.add_move(required_move)
 
 
-def sample_pokemon(pkmn: Pokemon, use_bayesian: bool = True):
+def sample_pokemon(pkmn: Pokemon, battle: Battle = None):
     if not pkmn.mega_name:
-        _sample_pokemon(pkmn, use_bayesian=use_bayesian)
+        _sample_pokemon(pkmn, battle)
         return
 
     # the ability of a mega pokemon that has not yet mega-evolved
     # needs to be sampled from its non-mega version
     pkmn_without_mega = deepcopy(pkmn)
     pkmn_without_mega.mega_name = None
-    _sample_pokemon(pkmn_without_mega, use_bayesian=use_bayesian)
+    _sample_pokemon(pkmn_without_mega, battle)
     pkmn.ability = pkmn_without_mega.ability
-    _sample_pokemon(pkmn, use_bayesian=use_bayesian)
+    _sample_pokemon(pkmn, battle)
 
 
-def _sample_pokemon(pkmn: Pokemon, use_bayesian: bool = True):
+def _sample_pokemon(pkmn: Pokemon, battle: Battle = None):
     pokemon_guaranteed_move(pkmn)
     set_most_likely_hidden_power(pkmn)
 
-    # NEW: Try Bayesian sampling first if enabled
-    if use_bayesian:
-        tracker = get_global_tracker()
+    # Use Bayesian inference to get probability distribution over sets
+    bayesian_probs = bayesian_set_probabilities(pkmn, battle)
+    
+    if bayesian_probs:
+        # Sample from the Bayesian probability distribution
+        sets_list = [s for s, _ in bayesian_probs]
+        probs_list = [p for _, p in bayesian_probs]
+        sampled_set = deepcopy(random.choices(sets_list, weights=probs_list)[0])
         
-        # Update tracker with all known information about this Pokemon
-        tracker.update_from_pokemon(pkmn)
+        # Determine source based on where the set came from
+        if sampled_set in TeamDatasets.get_pkmn_sets_from_pkmn_name(pkmn):
+            source = "bayesian-teamdatasets"
+        else:
+            source = "bayesian-smogonsets"
         
-        # Try to sample from Bayesian posterior
-        bayesian_set = tracker.sample_set(pkmn)
-        if bayesian_set is not None:
-            # Sample moves for this set
-            moves = sample_pokemon_moveset_with_known_pkmn_set(pkmn, bayesian_set)
-            sampled_set = PredictedPokemonSet(
-                pkmn_set=bayesian_set,
-                pkmn_moveset=PokemonMoveset(moves=moves),
-            )
-            # Store the Bayesian weight on the Pokemon for battle weighting
-            distribution = tracker.get_distribution(pkmn)
-            if distribution:
-                # Find the probability of the sampled set
-                for set_prob in distribution:
-                    if set_prob.pkmn_set == bayesian_set:
-                        pkmn.sample_weight = set_prob.probability
-                        break
-            
-            populate_pkmn_from_set(pkmn, sampled_set, source="bayesian")
-            logger.info(f"Sampled {pkmn.name} using Bayesian inference (weight: {getattr(pkmn, 'sample_weight', 1.0):.3f})")
-            return
+        populate_pkmn_from_set(pkmn, sampled_set, source=source)
+        return
 
-    # FALLBACK: Original sampling logic
+    # Fallback to original logic if Bayesian inference returns no results
     # 1: TeamDatasets is not emptied and `get_all_remaining_sets` returned at least one set
     # Note: TeamDatasets are not sampled according to their counts
     # because the counts are not indicative of the actual distribution of sets
     # Skip this step an amount of the time to get some variety
     # if at least 1 move is known
     remaining_team_sets = TeamDatasets.get_all_remaining_sets(pkmn)
-    # Filter by speed range compatibility
-    remaining_team_sets = [
-        s for s in remaining_team_sets 
-        if set_speed_compatible_with_range(pkmn, s.pkmn_set)
-    ]
     if remaining_team_sets and (not pkmn.moves or random.random() < 0.75):
         weights = [max(1, s.pkmn_set.count) for s in remaining_team_sets]
         sampled_set = deepcopy(random.choices(remaining_team_sets, weights=weights)[0])
@@ -434,9 +478,7 @@ def _sample_pokemon(pkmn: Pokemon, use_bayesian: bool = True):
     remaining_team_sets = [
         s
         for s in TeamDatasets.get_pkmn_sets_from_pkmn_name(pkmn)
-        if s.pkmn_set.set_makes_sense(pkmn) 
-        and smogon_set_makes_sense(s)
-        and set_speed_compatible_with_range(pkmn, s.pkmn_set)
+        if s.pkmn_set.set_makes_sense(pkmn) and smogon_set_makes_sense(s)
     ]
     if remaining_team_sets:
         weights = [max(1, s.pkmn_set.count) for s in remaining_team_sets]
@@ -564,13 +606,6 @@ def sample_mega_evolution(battler: Battler, index: int):
     )
     pkmn.item = mega_item
     pkmn.mega_name = mega_pkmn_name
-
-
-def clear_bayesian_tracker():
-    """Clear the global Bayesian tracker. Call this at the start of a new battle."""
-    from fp.bayesian_sets import reset_global_tracker
-    reset_global_tracker()
-    logger.info("Cleared Bayesian set tracker for new battle")
 
 
 def prepare_battles(battle: Battle, num_battles: int) -> list[(Battle, float)]:
