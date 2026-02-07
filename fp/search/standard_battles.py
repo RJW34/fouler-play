@@ -17,6 +17,7 @@ from data.pkmn_sets import (
     RAW_COUNT,
     TEAMMATES,
 )
+from fp.bayesian_sets import get_global_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -363,24 +364,54 @@ def pokemon_guaranteed_move(pkmn: Pokemon):
             pkmn.add_move(required_move)
 
 
-def sample_pokemon(pkmn: Pokemon):
+def sample_pokemon(pkmn: Pokemon, use_bayesian: bool = True):
     if not pkmn.mega_name:
-        _sample_pokemon(pkmn)
+        _sample_pokemon(pkmn, use_bayesian=use_bayesian)
         return
 
     # the ability of a mega pokemon that has not yet mega-evolved
     # needs to be sampled from its non-mega version
     pkmn_without_mega = deepcopy(pkmn)
     pkmn_without_mega.mega_name = None
-    _sample_pokemon(pkmn_without_mega)
+    _sample_pokemon(pkmn_without_mega, use_bayesian=use_bayesian)
     pkmn.ability = pkmn_without_mega.ability
-    _sample_pokemon(pkmn)
+    _sample_pokemon(pkmn, use_bayesian=use_bayesian)
 
 
-def _sample_pokemon(pkmn: Pokemon):
+def _sample_pokemon(pkmn: Pokemon, use_bayesian: bool = True):
     pokemon_guaranteed_move(pkmn)
     set_most_likely_hidden_power(pkmn)
 
+    # NEW: Try Bayesian sampling first if enabled
+    if use_bayesian:
+        tracker = get_global_tracker()
+        
+        # Update tracker with all known information about this Pokemon
+        tracker.update_from_pokemon(pkmn)
+        
+        # Try to sample from Bayesian posterior
+        bayesian_set = tracker.sample_set(pkmn)
+        if bayesian_set is not None:
+            # Sample moves for this set
+            moves = sample_pokemon_moveset_with_known_pkmn_set(pkmn, bayesian_set)
+            sampled_set = PredictedPokemonSet(
+                pkmn_set=bayesian_set,
+                pkmn_moveset=PokemonMoveset(moves=moves),
+            )
+            # Store the Bayesian weight on the Pokemon for battle weighting
+            distribution = tracker.get_distribution(pkmn)
+            if distribution:
+                # Find the probability of the sampled set
+                for set_prob in distribution:
+                    if set_prob.pkmn_set == bayesian_set:
+                        pkmn.sample_weight = set_prob.probability
+                        break
+            
+            populate_pkmn_from_set(pkmn, sampled_set, source="bayesian")
+            logger.info(f"Sampled {pkmn.name} using Bayesian inference (weight: {getattr(pkmn, 'sample_weight', 1.0):.3f})")
+            return
+
+    # FALLBACK: Original sampling logic
     # 1: TeamDatasets is not emptied and `get_all_remaining_sets` returned at least one set
     # Note: TeamDatasets are not sampled according to their counts
     # because the counts are not indicative of the actual distribution of sets
@@ -533,6 +564,13 @@ def sample_mega_evolution(battler: Battler, index: int):
     )
     pkmn.item = mega_item
     pkmn.mega_name = mega_pkmn_name
+
+
+def clear_bayesian_tracker():
+    """Clear the global Bayesian tracker. Call this at the start of a new battle."""
+    from fp.bayesian_sets import reset_global_tracker
+    reset_global_tracker()
+    logger.info("Cleared Bayesian set tracker for new battle")
 
 
 def prepare_battles(battle: Battle, num_battles: int) -> list[(Battle, float)]:
