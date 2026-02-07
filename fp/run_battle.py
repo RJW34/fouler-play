@@ -24,7 +24,7 @@ from fp.opponent_model import OPPONENT_MODEL
 from fp.helpers import type_effectiveness_modifier
 
 from fp.websocket_client import PSWebsocketClient
-from streaming.state_store import write_active_battles, read_active_battles
+from streaming.state_store import write_active_battles, read_active_battles, write_status, update_daily_stats
 from fp.team_analysis import analyze_team
 from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_MOVES
 from constants_pkg.strategy import SETUP_MOVES
@@ -1389,6 +1389,29 @@ async def pokemon_battle(
                     removed = True
             if removed:
                 await update_active_battles_file()
+
+            # Update stream overlay stats
+            try:
+                is_win = winner == FoulPlayConfig.username
+                if winner and winner != "None":
+                    update_daily_stats(
+                        wins_delta=1 if is_win else 0,
+                        losses_delta=0 if is_win else 1
+                    )
+                daily = __import__('streaming.state_store', fromlist=['read_daily_stats']).read_daily_stats()
+                battle_count = 0
+                async with _battles_lock:
+                    battle_count = len(_active_battles)
+                write_status({
+                    "wins": daily.get("wins", 0),
+                    "losses": daily.get("losses", 0),
+                    "today_wins": daily.get("wins", 0),
+                    "today_losses": daily.get("losses", 0),
+                    "status": "Searching" if battle_count == 0 else "Battling",
+                    "battle_info": f"vs {winner}" if not is_win and winner else "Searching...",
+                })
+            except Exception as e:
+                logger.warning(f"Failed to update stream status: {e}")
 
             # Signal battle end instantly
             await send_stream_event("BATTLE_END", {
