@@ -1,0 +1,325 @@
+{
+  "id": "battle-gen9ou-2534377062",
+  "p1": "StudiousShade",
+  "p2": "ba2ozknRR",
+  "minElo": 1639,
+  "startTime": 1770414213302,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Entei|Sacred Fire|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Tornadus",
+        "|switch|p2a: Tinkaton|Tinkaton, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Tinkaton",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|move|p2a: Tinkaton|Gigaton Hammer|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|98/100 brn",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Tornadus",
+        "|switch|p2a: Tinkaton|Tinkaton, F|96/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Tornadus|Heat Wave|p2a: Tinkaton",
+        "|move|p2a: Tinkaton|Gigaton Hammer|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Tornadus|Heat Wave|p2a: Tinkaton",
+        "|move|p2a: Tinkaton|Knock Off|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100 brn",
+        "|move|p1a: Tornadus|Heat Wave|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Alomomola|Aqua Jet|p1a: Tornadus",
+        "|switch|p1a: Kingambit|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Kingambit",
+        "|switch|p2a: Tinkaton|Tinkaton, F|21/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Tinkaton",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Kingambit",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100|[from] Parting Shot",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Enamorus"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Enamorus",
+        "|switch|p2a: Zamazenta|Zamazenta, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|100/100",
+        "|move|p2a: Zamazenta|Close Combat|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100 brn",
+        "|move|p1a: Hatterene|Future Sight|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Alomomola|Flip Turn|p1a: Hatterene",
+        "|switch|p2a: Zamazenta|Zamazenta, shiny|94/100|[from] Flip Turn",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|100/100",
+        "|move|p2a: Zamazenta|Close Combat|p1a: Kingambit",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|switch|p1a: Hatterene|Hatterene, F|77/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Hatterene",
+        "|move|p1a: Hatterene|Pain Split|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100 brn",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Hatterene|Future Sight|p2a: Alomomola",
+        "|move|p2a: Alomomola|Mirror Coat||[still]"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Dragonite|Dragonite, F|100/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Dragonite",
+        "|switch|p2a: Great Tusk|Great Tusk|61/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|67/100",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Great Tusk",
+        "|switch|p2a: Pecharunt|Pecharunt, tera:Dark|88/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|72/100",
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|33/100",
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Great Tusk",
+        "|switch|p1a: Entei|Entei|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Entei|Sacred Fire|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Entei"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Entei|Sacred Fire|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Entei|Sacred Fire|p2a: Pecharunt|[miss]",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Entei|Sacred Fire|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Entei|Sacred Fire|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt",
+        "|switch|p1a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Dragonite|Encore|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|91/100 brn",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite",
+        "|move|p2a: Alomomola|Play Rough|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Dragonite",
+        "|switch|p2a: Pecharunt|Pecharunt, tera:Dark|94/100 brn|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Dragonite|Tera Blast|p2a: Pecharunt|[anim] Tera Blast Flying",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Dragonite",
+        "|switch|p1a: Hatterene|Hatterene, F|23/100"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Hatterene"
+      ]
+    }
+  ],
+  "winner": "ba2ozknRR",
+  "endTime": 1770414405587,
+  "p1Team": [
+    "Tornadus-Therian",
+    "Great Tusk",
+    "Kingambit",
+    "Hatterene",
+    "Dragonite",
+    "Entei"
+  ],
+  "p2Team": [
+    "Alomomola",
+    "Tinkaton",
+    "Pecharunt",
+    "Enamorus",
+    "Zamazenta",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "tornadustherian",
+      "greattusk",
+      "kingambit",
+      "hatterene",
+      "dragonite",
+      "entei"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "alomomola",
+      "tinkaton",
+      "pecharunt",
+      "enamorus",
+      "zamazenta",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

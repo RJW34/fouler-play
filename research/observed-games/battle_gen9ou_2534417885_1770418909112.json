@@ -1,0 +1,82 @@
+{
+  "id": "battle-gen9ou-2534417885",
+  "p1": "icebrrg",
+  "p2": "jcxwxll",
+  "minElo": 1522,
+  "startTime": 1770418653525,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Dragonite|Dragonite, M|100/100",
+        "|move|p1a: Deoxys|Reflect|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: Dragonite|Tera Blast|p1a: Iron Treads|[anim] Tera Blast Flying"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Deoxys|Deoxys-Speed|100/100",
+        "|move|p1a: Iron Treads|Knock Off|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Iron Treads|Knock Off|p2a: Deoxys"
+      ]
+    }
+  ],
+  "winner": "icebrrg",
+  "endTime": 1770418909112,
+  "p1Team": [
+    "Iron Treads"
+  ],
+  "p2Team": [
+    "Dragonite",
+    "Deoxys-Speed"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "irontreads"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "dragonite",
+      "deoxysspeed"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

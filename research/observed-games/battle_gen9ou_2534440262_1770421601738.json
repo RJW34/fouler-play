@@ -1,0 +1,148 @@
+{
+  "id": "battle-gen9ou-2534440262",
+  "p1": "Maxicozie",
+  "p2": "peakelo",
+  "minElo": 1619,
+  "startTime": 1770421293745,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Toucannon|Beak Blast|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Toucannon|Beak Blast|p2a: Grimmsnarl",
+        "|switch|p2a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, F|100/100",
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Primarina",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Zamazenta|Psychic Fangs|p2a: Ceruledge",
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Zamazenta",
+        "|switch|p1a: Toucannon|Toucannon, M|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Toucannon",
+        "|switch|p1a: Dragonite|Dragonite, M|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Dragonite",
+        "|move|p1a: Dragonite|Scale Shot|p2a: Ceruledge",
+        "|switch|p2a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Dragonite",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Iron Treads",
+        "|move|p1a: Iron Treads|Earthquake|p2a: Iron Moth",
+        "|switch|p2a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Iron Treads|Knock Off|p2a: Latias",
+        "|move|p2a: Latias|Agility|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Iron Treads",
+        "|switch|p1a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Zapdos"
+      ]
+    }
+  ],
+  "winner": "peakelo",
+  "endTime": 1770421601738,
+  "p1Team": [
+    "Primarina",
+    "Zamazenta",
+    "Toucannon",
+    "Dragonite",
+    "Iron Treads",
+    "Zapdos"
+  ],
+  "p2Team": [
+    "Ceruledge",
+    "Iron Moth",
+    "Latias"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "primarina",
+      "zamazenta",
+      "toucannon",
+      "dragonite",
+      "irontreads",
+      "zapdos"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ceruledge",
+      "ironmoth",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

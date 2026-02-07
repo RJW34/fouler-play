@@ -1,0 +1,166 @@
+{
+  "id": "battle-gen9ou-2534378865",
+  "p1": "Mimikyuster04",
+  "p2": "rillaMane",
+  "minElo": 1593,
+  "startTime": 1770414393303,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Samurott|Knock Off|p2a: peter parker",
+        "|move|p2a: peter parker|Sticky Web|p1a: Samurott"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: peter parker",
+        "|move|p2a: peter parker|Lunge|p1a: Samurott"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: peter parker",
+        "|switch|p2a: lamp|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Samurott|Sucker Punch|p2a: lamp",
+        "|move|p2a: lamp|Sludge Wave|p1a: Samurott",
+        "|switch|p1a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: lamp|Fiery Dance|p1a: Iron Crown",
+        "|move|p1a: Iron Crown|Psychic Noise|p2a: lamp",
+        "|switch|p2a: joe|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: joe|Shadow Ball|p1a: Iron Crown",
+        "|switch|p1a: Dragonite|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: joe|Shadow Ball|p1a: Dragonite",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite",
+        "|move|p2a: joe|Make It Rain|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Dragonite|Roost|p1a: Dragonite",
+        "|move|p2a: joe|Nasty Plot|p2a: joe"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Dragonite|Roost|p1a: Dragonite",
+        "|move|p2a: joe|Shadow Ball|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Dragonite|Roost|p1a: Dragonite",
+        "|move|p2a: joe|Shadow Ball|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Dragonite|Roost|p1a: Dragonite",
+        "|move|p2a: joe|Shadow Ball|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk, shiny|100/100",
+        "|switch|p1a: Dragonite|Dragonite, M, shiny|24/100",
+        "|move|p2a: joe|Shadow Ball|p1a: Dragonite",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: joe|Shadow Ball|p1a: Pecharunt",
+        "|switch|p1a: Great Tusk|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: joe|Shadow Ball|p1a: Great Tusk",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: joe|Shadow Ball|p1a: Iron Valiant"
+      ]
+    }
+  ],
+  "winner": "rillaMane",
+  "endTime": 1770414700228,
+  "p1Team": [
+    "Iron Crown",
+    "Dragonite",
+    "Great Tusk",
+    "Pecharunt",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Iron Moth",
+    "Gholdengo"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironcrown",
+      "dragonite",
+      "greattusk",
+      "pecharunt",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 1,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironmoth",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

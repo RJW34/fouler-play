@@ -1,0 +1,389 @@
+{
+  "id": "battle-gen9ou-2534380186",
+  "p1": "Pudget Sound",
+  "p2": "MiaTaylor612",
+  "minElo": 1637,
+  "startTime": 1770414543318,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Articuno|U-turn|p1a: Garganacl",
+        "|switch|p2a: Gliscor|Gliscor, F|100/100|[from] U-turn",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Gliscor|Swords Dance|p2a: Gliscor",
+        "|move|p1a: Garganacl|Ice Punch|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100",
+        "|switch|p1a: Heatran|Heatran, M|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Landorus|Stealth Rock|p1a: Heatran",
+        "|move|p1a: Heatran|Stealth Rock|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Landorus|U-turn|p1a: Heatran",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|100/100|[from] U-turn",
+        "|move|p1a: Heatran|Magma Storm|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100",
+        "|move|p2a: Samurott|Flip Turn|p1a: Hydrapple",
+        "|switch|p2a: Articuno|Articuno|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|100/100",
+        "|move|p2a: Articuno|Roar|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Heatran|Heatran, M|97/100",
+        "|move|p2a: Articuno|Freeze-Dry|p1a: Heatran"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M|60/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Samurott|Flip Turn|p1a: Hydrapple",
+        "|switch|p2a: Articuno|Articuno|100/100|[from] Flip Turn",
+        "|move|p1a: Hydrapple|Draco Meteor|p2a: Articuno"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, M|100/100",
+        "|move|p2a: Articuno|Roar|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, M|100/100",
+        "|move|p2a: Articuno|Roar|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Heatran|Magma Storm|p2a: Articuno",
+        "|move|p2a: Articuno|Roar|p1a: Heatran"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Articuno|Roost|p2a: Articuno",
+        "|move|p1a: Weezing|Defog|p2a: Articuno"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Articuno|Freeze-Dry|p1a: Weezing",
+        "|move|p1a: Weezing|Will-O-Wisp|p2a: Articuno"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Heatran|Heatran, M|56/100",
+        "|move|p2a: Articuno|U-turn|p1a: Heatran",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|47/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, M|71/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Samurott|Flip Turn|p1a: Weezing",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100|[from] Flip Turn",
+        "|move|p1a: Weezing|Will-O-Wisp|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Weezing",
+        "|move|p1a: Weezing|Defog|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|88/100",
+        "|move|p2a: Gholdengo|Hex|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Heatran|Heatran, M|54/100",
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Heatran"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M|47/100",
+        "|move|p1a: Heatran|Stealth Rock|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Heatran",
+        "|move|p1a: Heatran|Earth Power|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p2a: Samurott|Flip Turn|p1a: Landorus",
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, M|46/100 par",
+        "|move|p2a: Landorus|Stealth Rock|p1a: Weezing"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p1a: Heatran|Heatran, M|8/100",
+        "|move|p2a: Landorus|Taunt|p1: Heatran|[notarget]",
+        "|switch|p1a: Weavile|Weavile, M|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, F|25/100 tox",
+        "|move|p1a: Weavile|Triple Axel|p2a: Gliscor",
+        "|switch|p2a: Gholdengo|Gholdengo|70/100 brn"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|switch|p1a: Weezing|Weezing-Galar, M|46/100 par",
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Weezing",
+        "|switch|p1a: Landorus|Landorus-Therian, M|57/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M|28/100",
+        "|move|p1a: Landorus|U-turn|p2a: Samurott",
+        "|switch|p1a: Garganacl|Garganacl, M|90/100|[from] U-turn",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: Iron Valiant|Encore|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|44/100",
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Landorus",
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|move|p2a: Iron Valiant|Encore|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, M|100/100",
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Hydrapple",
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|64/100 brn",
+        "|move|p1a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|88/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": [
+        "|move|p2a: Landorus|Taunt|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 43,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 44,
+      "events": [
+        "|switch|p1a: Weavile|Weavile, M|63/100",
+        "|move|p2a: Landorus|Earth Power|p1a: Weavile",
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|54/100",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|24/100"
+      ]
+    },
+    {
+      "turn": 45,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Garganacl"
+      ]
+    }
+  ],
+  "winner": "MiaTaylor612",
+  "endTime": 1770414762091,
+  "p1Team": [
+    "Heatran",
+    "Hydrapple",
+    "Garganacl",
+    "Weezing-Galar",
+    "Landorus-Therian",
+    "Weavile"
+  ],
+  "p2Team": [
+    "Gliscor",
+    "Landorus-Therian",
+    "Samurott-Hisui",
+    "Articuno",
+    "Gholdengo",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "heatran",
+      "hydrapple",
+      "garganacl",
+      "weezinggalar",
+      "landorustherian",
+      "weavile"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "gliscor",
+      "landorustherian",
+      "samurotthisui",
+      "articuno",
+      "gholdengo",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,305 @@
+{
+  "id": "battle-gen9ou-2534438228",
+  "p1": "scribeofrevocis",
+  "p2": "APNsBR",
+  "minElo": 1731,
+  "startTime": 1770421053704,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100",
+        "|move|p1a: Past Accessories|Psychic Noise|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Alomomola|Flip Turn|p1a: Past Accessories",
+        "|switch|p2a: Zapdos|Zapdos|100/100|[from] Flip Turn",
+        "|move|p1a: Past Accessories|Nuzzle|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Zapdos|Hurricane|p1a: Past Accessories|[miss]",
+        "|move|p1a: Past Accessories|Psychic Noise|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Zapdos|Hurricane|p1a: Past Accessories",
+        "|move|p1a: Past Accessories|Draining Kiss|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Past Accessories",
+        "|switch|p2a: Alomomola|Alomomola, F|100/100|[from] Volt Switch",
+        "|move|p1a: Past Accessories|Psychic Noise|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Alomomola|Flip Turn|p1a: Past Accessories",
+        "|switch|p2a: Dragapult|Dragapult, M, shiny|100/100|[from] Flip Turn",
+        "|move|p1a: Past Accessories|Psychic Noise|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Past Accessories",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|switch|p1a: Zappy|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100",
+        "|move|p1a: Zappy|Hurricane|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Zappy|Thunder Wave|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Zappy",
+        "|switch|p2a: Zapdos|Zapdos|36/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Zappy|Volt Switch|p2a: Zapdos",
+        "|switch|p1a: City Boy|Iron Boulder|100/100|[from] Volt Switch",
+        "|move|p2a: Zapdos|Roost|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: City Boy|Zen Headbutt|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: City Boy|Zen Headbutt|p2a: Great Tusk",
+        "|switch|p2a: Dragapult|Dragapult, M, shiny|48/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: The Greatest|Great Tusk|100/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: The Greatest"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100 par",
+        "|move|p1a: The Greatest|Stealth Rock|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Leaf|Ogerpon, F|100/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Leaf",
+        "|switch|p2a: Zapdos|Zapdos|58/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: City Boy|Iron Boulder|67/100",
+        "|move|p2a: Zapdos|Roost|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|100/100",
+        "|move|p1a: City Boy|Mighty Cleave|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|switch|p1a: The Greatest|Great Tusk|53/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: City Boy|Iron Boulder|67/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: City Boy"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: The Greatest|Great Tusk|53/100",
+        "|move|p2a: Raging Bolt|Thunderclap||[still]"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: The Greatest|Headlong Rush|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: The Greatest",
+        "|switch|p1a: City Boy|Iron Boulder|7/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: City Boy",
+        "|switch|p1a: Leaf|Ogerpon, F|83/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Leaf|Encore|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderclap||[still]"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Leaf|Knock Off|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Zappy|Zapdos|89/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Zappy"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Zappy",
+        "|switch|p2a: Dragapult|Dragapult, M, shiny|48/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Zappy",
+        "|switch|p1a: El Gambito|Kingambit, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|79/100",
+        "|move|p1a: El Gambito|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Zamazenta|Iron Defense|p2a: Zamazenta",
+        "|move|p1a: El Gambito|Iron Head|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Zamazenta|Iron Defense|p2a: Zamazenta",
+        "|move|p1a: El Gambito|Swords Dance|p1a: El Gambito"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Zamazenta|Body Press|p1a: El Gambito",
+        "|move|p1a: El Gambito|Iron Head|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: El Gambito|Sucker Punch||[still]",
+        "|move|p2a: Zamazenta|Rest|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: El Gambito|Sucker Punch|p2a: Zamazenta",
+        "|move|p2a: Zamazenta|Body Press|p1a: El Gambito",
+        "|switch|p1a: Leaf|Ogerpon, F|83/100"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p2a: Zamazenta|Body Press|p1a: Leaf"
+      ]
+    }
+  ],
+  "winner": "APNsBR",
+  "endTime": 1770421580972,
+  "p1Team": [
+    "Zapdos",
+    "Iron Boulder",
+    "Great Tusk",
+    "Ogerpon",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Alomomola",
+    "Zapdos",
+    "Dragapult",
+    "Great Tusk",
+    "Zamazenta",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "zapdos",
+      "ironboulder",
+      "greattusk",
+      "ogerpon",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "alomomola",
+      "zapdos",
+      "dragapult",
+      "greattusk",
+      "zamazenta",
+      "ragingbolt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

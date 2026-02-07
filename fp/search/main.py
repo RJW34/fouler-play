@@ -2075,6 +2075,7 @@ def apply_switch_penalties(
     policy: dict[str, float],
     battle: Battle,
     ability_state: OpponentAbilityState,
+    playstyle: Playstyle | None = None,
     trace_events: list[dict] | None = None,
 ) -> dict[str, float]:
     """
@@ -2084,9 +2085,16 @@ def apply_switch_penalties(
     - Type matchups
     - HP of switch target
     - Recovery moves available
+    - Playstyle modifiers (FAT/STALL teams have reduced penalties)
     """
     if battle is None or battle.user.active is None:
         return policy
+
+    # Get playstyle-specific switch penalty multiplier
+    switch_penalty_mult = 1.0
+    if playstyle is not None:
+        cfg = PlaystyleConfig.get_config(playstyle)
+        switch_penalty_mult = cfg.get("switch_penalty_multiplier", 1.0)
 
     adjusted_policy = {}
     penalties_applied = []
@@ -2235,6 +2243,20 @@ def apply_switch_penalties(
         if has_recovery:
             multiplier *= BOOST_SWITCH_HAS_RECOVERY
             reasons.append("has recovery")
+
+        # === PLAYSTYLE ADJUSTMENT ===
+        # For penalties (multiplier < 1.0), apply playstyle modulation
+        # FAT/STALL teams get less harsh penalties (0.6x = 60% of base penalty)
+        # HYPER_OFFENSE teams get harsher penalties (1.4x = 140% of base penalty)
+        if multiplier < 1.0 and switch_penalty_mult != 1.0:
+            # Convert penalty to "distance from 1.0"
+            penalty_magnitude = 1.0 - multiplier
+            # Adjust penalty magnitude by playstyle
+            adjusted_penalty_magnitude = penalty_magnitude * switch_penalty_mult
+            # Convert back to multiplier
+            multiplier = 1.0 - adjusted_penalty_magnitude
+            if switch_penalty_mult != 1.0:
+                reasons.append(f"playstyle {switch_penalty_mult:.1f}x")
 
         # Apply multiplier
         new_weight = weight * multiplier
@@ -2858,6 +2880,7 @@ def select_move_from_mcts_results(
             blended_policy,
             battle,
             ability_state,
+            playstyle=playstyle,
             trace_events=trace_events,
         )
 

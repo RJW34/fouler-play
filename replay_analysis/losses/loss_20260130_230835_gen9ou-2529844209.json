@@ -1,0 +1,22 @@
+{
+  "timestamp": "20260130_230835",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2529844209",
+  "replay_id": "gen9ou-2529844209",
+  "mistakes_found": 2,
+  "mistakes": [
+    {
+      "category": "no_hazards_set",
+      "turn": 16,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "insufficient_switching",
+      "turn": 16,
+      "description": "Only 2 switches in 16 turns",
+      "severity": "major",
+      "suggested_fix": "Reduce switch penalty, increase matchup awareness"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "turn": 6,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "\ud83d\udd04 Switched to Gliscor vs Ninetales \u2014 was this the right matchup?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% +3 spa, +3 spd | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Rillaboom 100% | Ninetales 76% | Great Tusk 100% | Typhlosion-Hisui 100% | Ribombee 100% | Trevenant 100%",
+  "field": [
+    "Weather: SunnyDay"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530343824",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Maintain offensive pressure"
+    ],
+    [
+      "Switch to different Pokemon",
+      "Better type matchup available"
+    ]
+  ],
+  "feedback": null
+}

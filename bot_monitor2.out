@@ -1,0 +1,190 @@
+INFO     Logging in...
+INFO     Successfully logged in
+INFO     Message dispatcher started
+WARNING  Found 3 stale battles from previous session, forfeiting...
+INFO     Left stale battle: battle-gen9ou-2530196112
+INFO     Left stale battle: battle-gen9ou-2530196120
+INFO     Left stale battle: battle-gen9ou-2530196196
+INFO     Stale battle cleanup complete
+INFO     Starting 2 battle worker(s) with 2 concurrent battle limit
+INFO     Workers will search sequentially but play battles concurrently
+INFO     Battle worker 0 started
+INFO     Worker 0: Acquired search lock, searching for match...
+INFO     Searching for ranked gen9ou match
+INFO     Worker 0: Waiting for match...
+INFO     Battle worker 1 started
+INFO     Initialized battle-gen9ou-2530196685 against: Hdjdjdkdkdkk (with initial request)
+INFO     Worker 0: Matched! Battle battle-gen9ou-2530196685 vs Hdjdjdkdkdkk
+INFO     Worker 0: Released search lock, battle starting...
+INFO     Worker 0: Acquired battle slot (1 slots remaining)
+INFO     Initializing battle battle-gen9ou-2530196685 vs Hdjdjdkdkdkk from match...
+INFO     Registered battle queue: battle-gen9ou-2530196685 (flushed 5 buffered messages)
+INFO     Parsing player IDs from initial messages...
+INFO     Got player IDs from initial request: user=p2, opponent=p1
+INFO     Battle common setup complete, returning...
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/showdown_sets.json
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/pokemon_full_sets.json
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/replay_moves.json
+INFO     Strategic context (turn ~False): 📌 Rocks not set (have setter)
+INFO     Sampling battle 0
+INFO     	          lokix  adamant,0,252,0,0,96,160   tintedlens   choiceband [firstimpression, leechlife, suckerpunch, uturn] ttype=bug source=teamdatasets-full
+INFO     	      cinderace     jolly,252,0,4,0,0,252        blaze heavydutyboots [courtchange, pyroball, uturn, willowisp] ttype=fairy source=teamdatasets-full
+INFO     	      greattusk   impish,248,8,192,0,0,60 protosynthesis  rockyhelmet [earthquake, icespinner, rapidspin, stealthrock] ttype=ground source=teamdatasets-full
+INFO     	      alomomola    sassy,20,0,236,0,252,0  regenerator  assaultvest [bodyslam, flipturn, icebeam, mirrorcoat] ttype=poison source=teamdatasets-full
+INFO     	       enamorus     hasty,0,0,0,252,4,252     contrary  choicescarf [earthpower, moonblast, superpower, terablast] source=teamdatasets-full
+INFO     	  slowkinggalar    modest,252,0,248,0,8,0  regenerator    leftovers [chillyreception, psyshock, sludgebomb, surf] ttype=water source=teamdatasets-full
+INFO     Sampling battle 1
+INFO     	          lokix   adamant,0,252,4,0,0,252   tintedlens   choiceband [firstimpression, knockoff, lunge, uturn] ttype=bug source=teamdatasets-full
+INFO     	      cinderace    jolly,224,32,0,0,0,252        blaze heavydutyboots [courtchange, pyroball, uturn, willowisp] ttype=ghost source=teamdatasets-full
+INFO     	      greattusk   impish,248,0,60,0,0,200 protosynthesis    leftovers [headlongrush, icespinner, rapidspin, stealthrock] ttype=steel source=teamdatasets-full
+INFO     	      alomomola   relaxed,4,0,252,0,252,0  regenerator heavydutyboots [flipturn, protect, scald, wish] ttype=flying source=teamdatasets-full
+INFO     	       enamorus    modest,0,0,0,252,4,252     contrary  choicespecs [earthpower, healingwish, moonblast, mysticalfire] ttype=fairy source=teamdatasets-full
+INFO     	  slowkinggalar    sassy,248,0,44,0,216,0  regenerator heavydutyboots [chillyreception, futuresight, sludgebomb, thunderwave] ttype=water source=teamdatasets-full
+INFO     Searching for a move using MCTS...
+INFO     Sampling 2 battles at 3000ms each
+INFO     Worker 1: Acquired search lock, searching for match...
+INFO     Searching for ranked gen9ou match
+INFO     Worker 1: Waiting for match...
+INFO     Initialized battle-gen9ou-2530196707 against: 98y7t6fugh (with initial request)
+INFO     Worker 1: Matched! Battle battle-gen9ou-2530196707 vs 98y7t6fugh
+INFO     Worker 1: Released search lock, battle starting...
+INFO     Worker 1: Acquired battle slot (0 slots remaining)
+INFO     Initializing battle battle-gen9ou-2530196707 vs 98y7t6fugh from match...
+INFO     Registered battle queue: battle-gen9ou-2530196707 (flushed 5 buffered messages)
+INFO     Parsing player IDs from initial messages...
+INFO     Got player IDs from initial request: user=p2, opponent=p1
+INFO     Battle common setup complete, returning...
+INFO     Iterations 0: 447000
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/showdown_sets.json
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/pokemon_full_sets.json
+INFO     Loaded from cache: /home/ryan/projects/fouler-play/data/pkmn_sets_cache/gen9ou/replay_moves.json
+INFO     Opponent's dondozo (ability: unknown) - detected: Unaware, Contact Punishment (Iron Barbs/Rough Skin/Rocky Helmet)
+INFO     Strategic context (turn ~False): 📌 Rocks not set (have setter)
+INFO     Sampling battle 0
+INFO     	        dondozo    impish,252,0,252,0,4,0      unaware heavydutyboots [curse, liquidation, rest, sleeptalk] ttype=fighting source=teamdatasets-full
+INFO     	        blissey      calm,4,0,252,0,252,0  naturalcure    leftovers [calmmind, seismictoss, softboiled, stealthrock] ttype=water source=teamdatasets-full
+INFO     	    corviknight    impish,248,0,252,0,8,0     pressure    leftovers [bravebird, defog, roost, uturn] ttype=dragon source=teamdatasets-full
+INFO     	   weezinggalar      bold,248,0,252,0,0,8 neutralizinggas    leftovers [defog, flamethrower, painsplit, willowisp] ttype=ghost source=teamdatasets-full
+INFO     	        gliscor    jolly,244,0,0,0,244,20   poisonheal     toxicorb [earthquake, knockoff, protect, swordsdance] ttype=fairy source=teamdatasets-full
+INFO     	        toxapex   impish,248,0,176,0,84,0  regenerator  blacksludge [banefulbunker, haze, infestation, recover] ttype=steel source=teamdatasets-full
+INFO     Sampling battle 1
+INFO     	        dondozo    impish,252,0,252,0,4,0      unaware heavydutyboots [bodypress, liquidation, rest, sleeptalk] ttype=steel source=teamdatasets-full
+INFO     	        blissey     calm,72,0,184,0,252,0  naturalcure heavydutyboots [calmmind, seismictoss, shadowball, softboiled] ttype=dark source=teamdatasets-full
+INFO     	    corviknight  impish,136,0,252,0,0,120     pressure  rockyhelmet [bodypress, irondefense, roost, uturn] ttype=fighting source=teamdatasets-full
+INFO     	   weezinggalar      bold,252,0,252,0,4,0 neutralizinggas   airballoon [defog, painsplit, sludgebomb, strangesteam] ttype=electric source=teamdatasets-full
+INFO     	        gliscor adamant,244,16,0,0,148,100   poisonheal     toxicorb [facade, knockoff, protect, swordsdance] ttype=normal source=teamdatasets-full
+INFO     	        toxapex      bold,248,0,252,0,0,8  regenerator heavydutyboots [haze, recover, toxic, toxicspikes] ttype=fairy source=teamdatasets-full
+INFO     Searching for a move using MCTS...
+INFO     Sampling 2 battles at 3000ms each
+INFO     Iterations 1: 425000
+INFO     Policy 0: switch pecharunt visited 52.89% avg_score=0.517 sample_chance_multiplier=0.5
+INFO     Policy 1: switch zamazenta visited 69.91% avg_score=0.528 sample_chance_multiplier=0.5
+INFO     All Choices (post-blend, post-penalty):
+INFO     	35.827%: switch zamazenta
+INFO     	26.506%: switch pecharunt
+INFO     	15.803%: switch gliscor
+INFO     	5.73%: switch gholdengo
+INFO     	3.579%: switch blissey
+INFO     	2.87%: switch skarmory
+INFO     Considered Choices (90% threshold):
+INFO     	35.827%: switch zamazenta
+INFO     Choice: switch zamazenta (decided in 6.7s)
+INFO     Opponent has switched - clearing the last used move
+INFO     slowkinggalar switched in, adding boosterenergy to impossible items
+INFO     slowkinggalar switched in, adding airballoon to impossible items
+INFO     pecharunt switched in, adding intimidate to impossible abilities
+INFO     pecharunt switched in, adding pressure to impossible abilities
+INFO     pecharunt switched in, adding neutralizinggas to impossible abilities
+INFO     pecharunt switched in, adding sandstream to impossible abilities
+INFO     pecharunt switched in, adding drought to impossible abilities
+INFO     pecharunt switched in, adding drizzle to impossible abilities
+INFO     pecharunt switched in, adding snowwarning to impossible abilities
+INFO     pecharunt switched in, adding boosterenergy to impossible items
+INFO     pecharunt switched in, adding airballoon to impossible items
+INFO     
+INFO     Turn: 1
+INFO     Strategic context (turn ~1): 📌 Rocks not set (have setter)
+INFO     Sampling battle 0
+INFO     	  slowkinggalar     sassy,252,0,8,0,248,0  regenerator  assaultvest [futuresight, sludgebomb] ttype=water source=smogonsets
+INFO     	          lokix   adamant,0,252,4,0,0,252   tintedlens   choiceband [firstimpression, uturn] ttype=bug source=smogonsets
+INFO     	      cinderace     jolly,0,252,0,0,4,252       libero      lifeorb [courtchange, highjumpkick, pyroball] ttype=fire source=smogonsets
+INFO     	      greattusk     jolly,0,252,0,0,4,252 protosynthesis heavydutyboots [bulkup, headlongrush, icespinner, rapidspin] ttype=ground source=smogonsets
+INFO     	      alomomola   relaxed,252,0,252,0,4,0  regenerator  rockyhelmet [flipturn, wish] ttype=fairy source=smogonsets
+INFO     	       enamorus     naive,0,4,0,252,0,252     contrary    leftovers [earthpower, moonblast, superpower] ttype=ground source=smogonsets
+INFO     Sampling battle 1
+INFO     	  slowkinggalar   relaxed,252,0,252,4,0,0  regenerator heavydutyboots [chillyreception, icebeam, sludgebomb] ttype=water source=smogonsets
+INFO     	          lokix     jolly,0,252,0,0,4,252   tintedlens      lifeorb [firstimpression, knockoff, uturn] ttype=bug source=smogonsets
+INFO     	      cinderace     jolly,0,252,0,0,4,252        blaze heavydutyboots [gunkshot, uturn] ttype=fire source=smogonsets
+INFO     	      greattusk     jolly,0,252,0,0,4,252 protosynthesis boosterenergy [headlongrush, icespinner, rapidspin, temperflare] ttype=steel source=smogonsets
+INFO     	      alomomola     sassy,252,0,4,0,252,0  regenerator  rockyhelmet [flipturn, scald] ttype=water source=smogonsets
+INFO     	       enamorus     timid,0,0,0,252,4,252     contrary  assaultvest [earthpower, moonblast, mysticalfire] ttype=fairy source=smogonsets
+INFO     Searching for a move using MCTS...
+INFO     Sampling 2 battles at 3000ms each
+INFO     Iterations 0: 451000
+INFO     Iterations 0: 369000
+INFO     Iterations 1: 340000
+INFO     Policy 0: switch gholdengo visited 85.51% avg_score=0.515 sample_chance_multiplier=0.5
+INFO     Policy 1: switch zamazenta visited 76.93% avg_score=0.496 sample_chance_multiplier=0.5
+INFO     All Choices (post-blend, post-penalty):
+INFO     	44.131%: switch gholdengo
+INFO     	35.407%: switch zamazenta
+INFO     	6.291%: switch gliscor
+INFO     	1.747%: switch pecharunt
+INFO     	1.311%: switch blissey
+INFO     	1.108%: switch skarmory
+INFO     Considered Choices (90% threshold):
+INFO     	44.131%: switch gholdengo
+INFO     Choice: switch gholdengo (decided in 7.7s)
+INFO     Opponent has switched - clearing the last used move
+INFO     gliscor switched in, adding boosterenergy to impossible items
+INFO     gliscor switched in, adding airballoon to impossible items
+INFO     gholdengo switched in, adding intimidate to impossible abilities
+INFO     gholdengo switched in, adding pressure to impossible abilities
+INFO     gholdengo switched in, adding neutralizinggas to impossible abilities
+INFO     gholdengo switched in, adding sandstream to impossible abilities
+INFO     gholdengo switched in, adding drought to impossible abilities
+INFO     gholdengo switched in, adding drizzle to impossible abilities
+INFO     gholdengo switched in, adding snowwarning to impossible abilities
+INFO     gholdengo switched in, adding boosterenergy to impossible items
+INFO     gholdengo switched in, adding airballoon to impossible items
+INFO     
+INFO     Turn: 1
+INFO     Opponent's gliscor (ability: unknown) - detected: Poison Heal
+INFO     Strategic context (turn ~1): 📌 Rocks not set (have setter)
+INFO     Sampling battle 0
+INFO     	        gliscor   careful,252,0,0,0,252,4   poisonheal     toxicorb [knockoff, protect, spikes, toxic] ttype=fairy source=teamdatasets-full
+INFO     	        dondozo    impish,248,8,252,0,0,0      unaware heavydutyboots [curse, liquidation, rest, sleeptalk] ttype=dragon source=teamdatasets-full
+INFO     	        blissey      bold,4,0,252,0,252,0  naturalcure    leftovers [calmmind, flamethrower, softboiled, stealthrock] ttype=dark source=teamdatasets-full
+INFO     	    corviknight     calm,248,0,0,0,60,200     pressure    leftovers [protect, roost, spite, substitute] ttype=dark source=teamdatasets-full
+INFO     	   weezinggalar     bold,252,0,240,0,0,16 neutralizinggas    leftovers [defog, painsplit, sludgebomb, willowisp] ttype=ghost source=teamdatasets-full
+INFO     	        toxapex    bold,252,0,144,0,112,0  regenerator  rockyhelmet [chillingwater, haze, recover, toxic] ttype=grass source=teamdatasets-full
+INFO     Sampling battle 1
+INFO     	        gliscor  careful,244,0,36,0,228,0   poisonheal     toxicorb [earthquake, knockoff, protect, spikes] ttype=water source=teamdatasets-full
+INFO     	        dondozo    impish,248,0,252,0,8,0      unaware    leftovers [avalanche, bodypress, rest, sleeptalk] ttype=dragon source=teamdatasets-full
+INFO     	        blissey      bold,252,0,252,0,4,0  naturalcure heavydutyboots [calmmind, seismictoss, softboiled, stealthrock] ttype=dark source=teamdatasets-full
+INFO     	    corviknight    impish,248,0,252,0,8,0     pressure  rockyhelmet [bravebird, defog, roost, uturn] ttype=grass source=teamdatasets-full
+INFO     	   weezinggalar     bold,252,0,240,0,0,16 neutralizinggas    leftovers [defog, painsplit, sludgebomb, willowisp] ttype=ghost source=teamdatasets-full
+INFO     	        toxapex      bold,248,0,8,0,252,0  regenerator  ejectbutton [haze, recover, toxic, toxicspikes] ttype=fairy source=teamdatasets-full
+INFO     Searching for a move using MCTS...
+INFO     Sampling 2 battles at 3000ms each
+INFO     Iterations 1: 43000
+INFO     Policy 0: switch gliscor visited 26.83% avg_score=0.507 sample_chance_multiplier=0.5
+INFO     Policy 1: partingshot visited 31.24% avg_score=0.55 sample_chance_multiplier=0.5
+INFO     All Choices (post-blend, post-penalty):
+INFO     	22.498%: partingshot
+INFO     	14.674%: switch gliscor
+INFO     	11.401%: toxic
+INFO     	9.132%: shadowball
+INFO     	8.239%: switch gholdengo
+INFO     	7.226%: switch blissey
+INFO     	4.649%: switch zamazenta
+INFO     	4.505%: recover
+INFO     	3.49%: switch skarmory
+INFO     	2.323%: toxic-tera
+INFO     	0.891%: partingshot-tera
+INFO     	0.742%: shadowball-tera
+INFO     	0.386%: recover-tera
+INFO     Clear best move: partingshot (1.5x better)
+INFO     Choice: partingshot (decided in 8.1s)
+INFO     Iterations 0: 58000
+INFO     Iterations 1: 658000

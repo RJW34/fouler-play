@@ -1,0 +1,194 @@
+{
+  "id": "battle-gen9ou-2534390508",
+  "p1": "suprya",
+  "p2": "cn112205",
+  "minElo": 1631,
+  "startTime": 1770415653376,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Iron Crown|Future Sight|p2a: Ninetales",
+        "|move|p2a: Ninetales|Aurora Veil|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Iron Crown|Volt Switch|p2a: Darkrai",
+        "|switch|p1a: Garganacl|Garganacl, M|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Darkrai|Taunt|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Darkrai|Nasty Plot|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Moltres",
+        "|move|p1a: Moltres|U-turn|p2a: Darkrai",
+        "|switch|p1a: Garganacl|Garganacl, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Garganacl",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|100/100",
+        "|move|p2a: Great Tusk|Knock Off|p1a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Ninetales|Ninetales-Alola, M, tera:Water|100/100",
+        "|move|p1a: Amoonguss|Sludge Bomb|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Ninetales|Aurora Veil|p2a: Ninetales",
+        "|move|p1a: Amoonguss|Giga Drain|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Kyurem|Kyurem|100/100",
+        "|switch|p1a: Moltres|Moltres|33/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Moltres",
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: Kyurem",
+        "|move|p2a: Kyurem|Dragon Dance|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Iron Crown|Iron Crown|100/100",
+        "|move|p2a: Kyurem|Dragon Dance|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Iron Crown",
+        "|move|p1a: Iron Crown|Tachyon Cutter|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Iron Crown",
+        "|move|p1a: Iron Crown|Tachyon Cutter|p2a: Kyurem",
+        "|switch|p2a: Great Tusk|Great Tusk|84/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Iron Crown|Psychic Noise|p2a: Great Tusk",
+        "|switch|p2a: Polteageist|Polteageist|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Iron Crown|Volt Switch|p2a: Polteageist",
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|100/100|[from] Volt Switch",
+        "|move|p2a: Polteageist|Shell Smash|p2a: Polteageist"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Polteageist|Shadow Ball|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Foul Play|p2a: Polteageist"
+      ]
+    }
+  ],
+  "winner": "suprya",
+  "endTime": 1770415872031,
+  "p1Team": [
+    "Garganacl",
+    "Moltres",
+    "Amoonguss",
+    "Darkrai",
+    "Iron Crown"
+  ],
+  "p2Team": [
+    "Darkrai",
+    "Great Tusk",
+    "Ninetales-Alola",
+    "Kyurem",
+    "Polteageist"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "garganacl",
+      "moltres",
+      "amoonguss",
+      "darkrai",
+      "ironcrown"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "darkrai",
+      "greattusk",
+      "ninetalesalola",
+      "kyurem",
+      "polteageist"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

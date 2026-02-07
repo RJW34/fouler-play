@@ -1,0 +1,300 @@
+{
+  "id": "battle-gen9ou-2534392481",
+  "p1": "Mimikyuster04",
+  "p2": "smithwick1",
+  "minElo": 1576,
+  "startTime": 1770415863390,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Tornadus|Knock Off|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Knock Off|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Tornadus|Heat Wave|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Ice Spinner|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M|100/100",
+        "|move|p1a: Tornadus|Heat Wave|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Garganacl",
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100|[from] U-turn",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Slowking",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Zamazenta|Substitute|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M|95/100",
+        "|move|p1a: Iron Treads|Earthquake|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: Iron Treads|Volt Switch|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: Garganacl",
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Iron Treads|Ice Spinner|p2a: Rillaboom",
+        "|move|p2a: Rillaboom|Wood Hammer|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|54/100",
+        "|switch|p2a: Iron Treads|Iron Treads|16/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Tornadus|Heat Wave|p2a: Iron Treads",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Kyurem",
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100|[from] U-turn",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Slowking|Sludge Bomb|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Kyurem|Earth Power|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Kyurem|Protect|p2a: Kyurem",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Kyurem",
+        "|switch|p1a: Kyurem|Kyurem|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|100/100",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|88/100",
+        "|move|p2a: Zamazenta|Crunch|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Rillaboom|Rillaboom, F|14/100",
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Rillaboom",
+        "|switch|p2a: Kyurem|Kyurem, tera:Ground|93/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Kyurem",
+        "|switch|p1a: Alomomola|Alomomola, F|63/100|[from] U-turn",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|8/100",
+        "|move|p2a: Kyurem|Earth Power|p1a: Iron Treads",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|68/100",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: Kyurem|Kyurem, tera:Ground|100/100",
+        "|switch|p1a: Zamazenta|Zamazenta|76/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Zamazenta|Substitute|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Pecharunt",
+        "|switch|p2a: Zamazenta|Zamazenta|32/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Zamazenta|Close Combat|p2a: Zamazenta",
+        "|switch|p2a: Kyurem|Kyurem, tera:Ground|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Zamazenta|Close Combat|p2a: Kyurem",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Zamazenta",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Kyurem|Protect|p2a: Kyurem",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Kyurem",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Kyurem"
+      ]
+    }
+  ],
+  "winner": "Mimikyuster04",
+  "endTime": 1770416229245,
+  "p1Team": [
+    "Slowking-Galar",
+    "Zamazenta",
+    "Iron Treads",
+    "Tornadus-Therian",
+    "Alomomola",
+    "Kyurem"
+  ],
+  "p2Team": [
+    "Garganacl",
+    "Pecharunt",
+    "Rillaboom",
+    "Iron Treads",
+    "Kyurem",
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 0,
+    "team": [
+      "slowkinggalar",
+      "zamazenta",
+      "irontreads",
+      "tornadustherian",
+      "alomomola",
+      "kyurem"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "garganacl",
+      "pecharunt",
+      "rillaboom",
+      "irontreads",
+      "kyurem",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

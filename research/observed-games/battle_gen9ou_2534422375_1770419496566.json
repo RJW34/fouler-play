@@ -1,0 +1,172 @@
+{
+  "id": "battle-gen9ou-2534422375",
+  "p1": "averyradiant",
+  "p2": "Crooksieee",
+  "minElo": 1538,
+  "startTime": 1770419163558,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|100/100",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Great Tusk|Knock Off|p2a: Skarmory",
+        "|move|p2a: Skarmory|Spikes|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Skarmory|Roost|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, F|100/100",
+        "|move|p1a: Moltres|U-turn|p2a: Glimmora",
+        "|switch|p1a: Great Tusk|Great Tusk|84/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Rillaboom|Knock Off|p1a: Slowking",
+        "|switch|p1a: Ninetales|Ninetales-Alola, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Tyranitar|Tyranitar, F|100/100",
+        "|move|p1a: Ninetales|Aurora Veil||[still]"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|53/100 psn",
+        "|move|p2a: Tyranitar|Knock Off|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Skarmory",
+        "|move|p2a: Skarmory|Spikes|p1a: Great Tusk",
+        "|switch|p1a: Ninetales|Ninetales-Alola, F|88/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Attack Titan|Cetitan, M, shiny|100/100",
+        "|switch|p2a: Tyranitar|Tyranitar, F|96/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Attack Titan|Belly Drum|p1a: Attack Titan",
+        "|move|p2a: Tyranitar|Low Kick|p1a: Attack Titan"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Attack Titan|Icicle Crash|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Attack Titan|Icicle Crash|p2a: Gholdengo",
+        "|switch|p1a: Ninetales|Ninetales-Alola, F|76/100",
+        "|switch|p2a: Rillaboom|Rillaboom, F|78/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|100/100",
+        "|switch|p2a: Tyranitar|Tyranitar, F|95/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": []
+    }
+  ],
+  "winner": "Crooksieee",
+  "endTime": 1770419496566,
+  "p1Team": [
+    "Moltres",
+    "Great Tusk",
+    "Slowking-Galar",
+    "Ninetales-Alola",
+    "Cetitan",
+    "Kyurem"
+  ],
+  "p2Team": [
+    "Skarmory",
+    "Glimmora",
+    "Rillaboom",
+    "Tyranitar",
+    "Gholdengo"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "moltres",
+      "greattusk",
+      "slowkinggalar",
+      "ninetalesalola",
+      "cetitan",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "skarmory",
+      "glimmora",
+      "rillaboom",
+      "tyranitar",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

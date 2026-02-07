@@ -1,0 +1,99 @@
+{
+  "id": "battle-gen9ou-2534452174",
+  "p1": "BirdTactics",
+  "p2": "55Havoc55",
+  "minElo": 1570,
+  "startTime": 1770422763804,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Joe Birden|Hurricane|p2a: Ursaluna",
+        "|move|p2a: Ursaluna|Double-Edge|p1a: Joe Birden",
+        "|switch|p1a: Samurott Nightcore|Samurott-Hisui, F|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Samurott Nightcore|Knock Off|p2a: Ursaluna",
+        "|switch|p2a: Scizor|Scizor, M|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Samurott Nightcore|Ceaseless Edge|p2a: Scizor",
+        "|move|p2a: Scizor|U-turn|p1a: Samurott Nightcore",
+        "|switch|p2a: Primarina|Primarina, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Samurott Nightcore|Knock Off|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Samurott Nightcore",
+        "|switch|p1a: Sands of hat|Hatterene, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Primarina|Substitute|p2a: Primarina",
+        "|move|p1a: Sands of hat|Nuzzle|p2a: Primarina"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Primarina|Moonblast|p1a: Sands of hat",
+        "|move|p1a: Sands of hat|Draining Kiss|p2a: Primarina"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Phineas|Dragapult, F, shiny|100/100",
+        "|move|p2a: Primarina|Moonblast|p1a: Phineas"
+      ]
+    }
+  ],
+  "winner": "55Havoc55",
+  "endTime": 1770422869412,
+  "p1Team": [
+    "Samurott-Hisui",
+    "Hatterene",
+    "Dragapult"
+  ],
+  "p2Team": [
+    "Scizor",
+    "Primarina"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "samurotthisui",
+      "hatterene",
+      "dragapult"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "scizor",
+      "primarina"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

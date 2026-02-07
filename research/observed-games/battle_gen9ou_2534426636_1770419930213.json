@@ -1,0 +1,240 @@
+{
+  "id": "battle-gen9ou-2534426636",
+  "p1": "n trademark",
+  "p2": "icebrrg",
+  "minElo": 1650,
+  "startTime": 1770419673616,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, M|100/100",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Glimmora|Mortal Spin|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Great Tusk|Close Combat|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Deoxys|Deoxys-Speed|26/100",
+        "|switch|p1a: Corviknight|Corviknight, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Deoxys|Taunt|p1a: Corviknight",
+        "|move|p1a: Corviknight|U-turn|p2a: Deoxys",
+        "|switch|p1a: Dragapult|Dragapult, F|100/100|[from] U-turn",
+        "|switch|p2a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|move|p2a: Kingambit|Swords Dance|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Corviknight|Iron Defense|p1a: Corviknight",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Corviknight|Body Press|p2a: Kingambit",
+        "|switch|p2a: Glimmora|Glimmora, M|60/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|72/100 psn",
+        "|move|p2a: Glimmora|Meteor Beam||[still]"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Glimmora",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Iron Treads|Earthquake|p1a: Great Tusk",
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|68/100",
+        "|move|p2a: Iron Treads|Knock Off|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Iron Treads|Volt Switch|p1a: Corviknight",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|15/100|[from] Volt Switch",
+        "|move|p1a: Corviknight|Roost|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, F|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Dragapult|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads|84/100",
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Volt Switch|p1a: Dragapult",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, F|100/100",
+        "|move|p2a: Zamazenta|Iron Defense|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p2a: Zamazenta|Roar|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Zamazenta|Iron Defense|p2a: Zamazenta",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Zamazenta|[miss]"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Zamazenta|Body Press|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Zamazenta",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|15/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Ogerpon|[miss]"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Raging Bolt|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Corviknight|Corviknight, F|75/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Corviknight|[anim] Ivy Cudgel Water",
+        "|move|p1a: Corviknight|Body Press|p2a: Ogerpon",
+        "|switch|p2a: Iron Treads|Iron Treads|8/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Iron Treads|Volt Switch|p1a: Corviknight",
+        "|move|p1a: Corviknight|Body Press|p2a: Iron Treads"
+      ]
+    }
+  ],
+  "winner": "n trademark",
+  "endTime": 1770419930213,
+  "p1Team": [
+    "Great Tusk",
+    "Corviknight",
+    "Dragapult",
+    "Slowking-Galar",
+    "Garganacl"
+  ],
+  "p2Team": [
+    "Glimmora",
+    "Ogerpon-Wellspring",
+    "Deoxys-Speed",
+    "Kingambit",
+    "Iron Treads",
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.6,
+    "fatCount": 3,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "corviknight",
+      "dragapult",
+      "slowkinggalar",
+      "garganacl"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "glimmora",
+      "ogerponwellspring",
+      "deoxysspeed",
+      "kingambit",
+      "irontreads",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

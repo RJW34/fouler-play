@@ -1,0 +1,175 @@
+{
+  "id": "battle-gen9ou-2534391539",
+  "p1": "peakelo",
+  "p2": "uscboarder",
+  "minElo": 1700,
+  "startTime": 1770415743388,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Grimmsnarl|Taunt|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Grimmsnarl",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Ceruledge",
+        "|switch|p2a: Darkrai|Darkrai|100/100|[from] Parting Shot",
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Garchomp|Garchomp, F|100/100",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Garchomp",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Iron Treads|Ice Spinner|p2a: Garchomp",
+        "|move|p2a: Garchomp|Stealth Rock|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: Garchomp",
+        "|move|p2a: Garchomp|Spikes|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: Garchomp",
+        "|switch|p2a: Decidueye|Decidueye-Hisui, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Decidueye|Triple Arrows|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Decidueye|Triple Arrows|p1a: Iron Treads",
+        "|switch|p1a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Pecharunt",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Iron Moth",
+        "|move|p1a: Iron Moth|Dazzling Gleam|p2a: Raging Bolt",
+        "|switch|p2a: Tornadus|Tornadus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Iron Moth|Sludge Wave|p2a: Tornadus",
+        "|switch|p2a: Decidueye|Decidueye-Hisui, F|95/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Decidueye",
+        "|switch|p2a: Darkrai|Darkrai|65/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Darkrai"
+      ]
+    }
+  ],
+  "winner": "peakelo",
+  "endTime": 1770415921439,
+  "p1Team": [
+    "Ceruledge",
+    "Iron Treads",
+    "Iron Moth"
+  ],
+  "p2Team": [
+    "Darkrai",
+    "Garchomp",
+    "Decidueye-Hisui",
+    "Pecharunt",
+    "Raging Bolt",
+    "Tornadus-Therian"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ceruledge",
+      "irontreads",
+      "ironmoth"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "darkrai",
+      "garchomp",
+      "decidueyehisui",
+      "pecharunt",
+      "ragingbolt",
+      "tornadustherian"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

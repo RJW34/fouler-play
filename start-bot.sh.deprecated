@@ -1,0 +1,14 @@
+#!/bin/bash
+cd /home/ryan/projects/fouler-play
+venv/bin/python -u run.py \
+  --websocket-uri wss://sim3.psim.us/showdown/websocket \
+  --ps-username LEBOTJAMESXD003 \
+  --ps-password LeBotPassword2026! \
+  --bot-mode search_ladder \
+  --pokemon-format gen9ou \
+  --team-list fat-teams.list \
+  --search-time-ms 5000 \
+  --run-count 999999 \
+  --save-replay always \
+  --log-level DEBUG \
+  > monitor.log 2>&1

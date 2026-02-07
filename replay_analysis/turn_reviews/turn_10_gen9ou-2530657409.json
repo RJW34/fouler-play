@@ -1,0 +1,20 @@
+{
+  "turn": 10,
+  "bot_choice": "unknown",
+  "why_critical": "Zamazenta went down vs Dragonite (100% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 51% -1 def | Pecharunt 100% | Zamazenta 24% -1 spd",
+  "opp_team": "Azumarill 100% | Dragonite 100% | Ursaluna 100% | Raging Bolt 100% | Gholdengo 100% | Samurott-Hisui 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530657409",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Dragonite"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

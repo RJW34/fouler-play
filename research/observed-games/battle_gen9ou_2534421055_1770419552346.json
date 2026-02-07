@@ -1,0 +1,359 @@
+{
+  "id": "battle-gen9ou-2534421055",
+  "p1": "hyonparkdalton",
+  "p2": "hawker_mk5",
+  "minElo": 1667,
+  "startTime": 1770419013541,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Rillaboom|Rillaboom, F|100/100",
+        "|move|p2a: Zapdos|Volt Switch|p1a: Rillaboom",
+        "|switch|p2a: Scizor|Scizor, M|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Scizor|U-turn|p1a: Great Tusk",
+        "|switch|p2a: Zapdos|Zapdos|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Raging Bolt",
+        "|switch|p2a: Primarina|Primarina, F|100/100|[from] Volt Switch",
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Primarina",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Raging Bolt",
+        "|switch|p1a: Clefable|Clefable, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Gengar|Gengar, M|100/100",
+        "|move|p1a: Clefable|Moonblast|p2a: Gengar"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Cinderace|Cinderace, M|100/100",
+        "|move|p2a: Gengar|Sludge Bomb|p1a: Cinderace"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Gengar|Sludge Bomb|p1a: Cinderace",
+        "|switch|p1a: Clefable|Clefable, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Clefable|Calm Mind|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Zapdos|Discharge|p1a: Clefable",
+        "|move|p1a: Clefable|Calm Mind|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Zapdos|Discharge|p1a: Clefable",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Zapdos|Discharge|p1a: Clefable",
+        "|move|p1a: Clefable|Moonlight|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Zapdos|Discharge|p1a: Clefable",
+        "|move|p1a: Clefable|Calm Mind|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Zapdos|Discharge|p1a: Clefable"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Clefable",
+        "|switch|p2a: Gengar|Gengar, M|77/100|[from] Volt Switch",
+        "|switch|p1a: Rillaboom|Rillaboom, F|90/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Gengar|Sludge Bomb|p1a: Rillaboom",
+        "|move|p1a: Rillaboom|Knock Off|p2a: Gengar",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Rillaboom|Grassy Glide|p2a: Kyurem",
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Rillaboom",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Scizor|Scizor, M|100/100",
+        "|move|p1a: Pecharunt|Toxic|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Scizor",
+        "|switch|p1a: Great Tusk|Great Tusk|85/100|[from] Parting Shot",
+        "|move|p2a: Scizor|Knock Off|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Great Tusk",
+        "|switch|p2a: Scizor|Scizor, M|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Great Tusk",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Toxic|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p2a: Kyurem|Kyurem|84/100",
+        "|move|p1a: Pecharunt|Toxic|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: Scizor|Scizor, M|84/100",
+        "|move|p1a: Pecharunt|Toxic|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Scizor",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Scizor",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 38,
+      "events": [
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 39,
+      "events": [
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|move|p2a: Scizor|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 40,
+      "events": [
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Scizor",
+        "|switch|p2a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 41,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Pecharunt",
+        "|switch|p2a: Kyurem|Kyurem|78/100 tox|[from] Volt Switch",
+        "|move|p1a: Pecharunt|Toxic|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 42,
+      "events": []
+    }
+  ],
+  "winner": "hawker_mk5",
+  "endTime": 1770419552346,
+  "p1Team": [
+    "Rillaboom",
+    "Great Tusk",
+    "Raging Bolt",
+    "Clefable",
+    "Cinderace",
+    "Pecharunt"
+  ],
+  "p2Team": [
+    "Scizor",
+    "Zapdos",
+    "Primarina",
+    "Great Tusk",
+    "Gengar",
+    "Kyurem"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "rillaboom",
+      "greattusk",
+      "ragingbolt",
+      "clefable",
+      "cinderace",
+      "pecharunt"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "scizor",
+      "zapdos",
+      "primarina",
+      "greattusk",
+      "gengar",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

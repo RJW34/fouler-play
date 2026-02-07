@@ -1,0 +1,260 @@
+{
+  "id": "battle-gen9ou-2534416257",
+  "p1": "Jamez",
+  "p2": "peakelo",
+  "minElo": 1726,
+  "startTime": 1770418473532,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Ting-Lu|Stealth Rock|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Grimmsnarl|Low Kick|p1a: Ting-Lu",
+        "|move|p1a: Ting-Lu|Spikes|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Iron Treads|Stealth Rock|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Iron Treads|Earthquake|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Nasty Plot|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Iron Treads|Earthquake|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|100/100",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Grimmsnarl|Taunt|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Grimmsnarl",
+        "|switch|p2a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Iron Moth",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Iron Treads|Earthquake|p1a: Pecharunt",
+        "|switch|p1a: Ting-Lu|Ting-Lu|55/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Iron Treads|Rapid Spin|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Gholdengo|Trick|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Gholdengo",
+        "|switch|p1a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, F|100/100",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Ceruledge|Shadow Sneak|p1a: Dragonite",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Dragonite|Earthquake|p2a: Ceruledge",
+        "|switch|p2a: Iron Treads|Iron Treads|97/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Dragonite|Roost|p1a: Dragonite",
+        "|move|p2a: Iron Treads|Ice Spinner|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Ting-Lu|Ting-Lu|49/100",
+        "|move|p2a: Iron Treads|Ice Spinner|p1a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Iron Treads|Ice Spinner|p1a: Ting-Lu",
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Ogerpon",
+        "|switch|p2a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Latias",
+        "|move|p2a: Latias|Agility|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Latias|Draining Kiss|p1a: Darkrai",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Latias|Draining Kiss|p1a: Darkrai",
+        "|switch|p1a: Dragonite|Dragonite, F|73/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Dragonite|Extreme Speed|p2a: Latias",
+        "|switch|p2a: Iron Treads|Iron Treads, tera:Water|82/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Dragonite|Extreme Speed|p2a: Iron Treads",
+        "|move|p2a: Iron Treads|Ice Spinner|p1a: Dragonite",
+        "|switch|p1a: Clefable|Clefable, F|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Iron Treads|Ice Spinner|p1a: Clefable",
+        "|move|p1a: Clefable|Moonblast|p2a: Iron Treads"
+      ]
+    }
+  ],
+  "winner": "Jamez",
+  "endTime": 1770419064234,
+  "p1Team": [
+    "Pecharunt",
+    "Ting-Lu",
+    "Gholdengo",
+    "Dragonite",
+    "Darkrai",
+    "Clefable"
+  ],
+  "p2Team": [
+    "Grimmsnarl",
+    "Iron Moth",
+    "Iron Treads",
+    "Ceruledge",
+    "Ogerpon-Wellspring",
+    "Latias"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "pecharunt",
+      "tinglu",
+      "gholdengo",
+      "dragonite",
+      "darkrai",
+      "clefable"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "grimmsnarl",
+      "ironmoth",
+      "irontreads",
+      "ceruledge",
+      "ogerponwellspring",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,322 @@
+{
+  "id": "battle-gen9ou-2534377217",
+  "p1": "Bring it on mon",
+  "p2": "MiaTaylor612",
+  "minElo": 1658,
+  "startTime": 1770414213301,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Klefki|Reflect|p1a: Klefki",
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p1a: Klefki|Light Screen|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Latias|Latias, F|100/100",
+        "|move|p2a: Landorus|Stealth Rock|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Articuno|Articuno|100/100",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Latias|Stored Power|p2a: Articuno",
+        "|move|p2a: Articuno|Roar|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Klefki|Klefki, F|92/100",
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Gholdengo|Hex|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Gholdengo|Hex|p1a: Klefki",
+        "|switch|p1a: Ninetales|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Ninetales|Misty Terrain|p1a: Ninetales",
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Articuno|Articuno|85/100",
+        "|move|p1a: Ninetales|Aurora Veil|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Ninetales|Freeze-Dry|p2a: Articuno",
+        "|move|p2a: Articuno|Roar|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales-Alola, M|76/100",
+        "|move|p2a: Articuno|Roost|p2a: Articuno"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Ninetales|Encore|p2a: Articuno",
+        "|move|p2a: Articuno|Roost||[still]"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Maushold|Maushold-Four|100/100",
+        "|switch|p2a: Gholdengo|Gholdengo|81/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Maushold|Tidy Up|p1a: Maushold",
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p1a: Maushold|Tidy Up|p1a: Maushold"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Landorus|Taunt|p1a: Maushold",
+        "|move|p1a: Maushold|Population Bomb|p2a: Landorus",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100",
+        "|switch|p1a: Ninetales|Ninetales-Alola, M|51/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Latias|Latias, F|88/100",
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Articuno|Articuno|100/100",
+        "|switch|p1a: Ninetales|Ninetales-Alola, M|51/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Ninetales|Aurora Veil|p1a: Ninetales",
+        "|move|p2a: Articuno|U-turn|p1a: Ninetales",
+        "|switch|p2a: Gholdengo|Gholdengo|81/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Ninetales|Misty Terrain|p1a: Ninetales",
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Okidogi|Okidogi, M|100/100",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Samurott|Flip Turn|p1a: Okidogi",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100|[from] Flip Turn",
+        "|move|p1a: Okidogi|Bulk Up|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Latias|Latias, F|57/100",
+        "|move|p2a: Iron Valiant|Encore||[still]"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M|100/100",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Latias|Aura Sphere|p2a: Samurott",
+        "|move|p2a: Samurott|Aqua Cutter|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Latias|Aura Sphere|p2a: Samurott",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Samurott|Aqua Jet|p1a: Latias",
+        "|switch|p1a: Ninetales|Ninetales-Alola, M|44/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Ninetales|Freeze-Dry|p2a: Samurott",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Ninetales",
+        "|switch|p1a: Kyurem|Kyurem, shiny|76/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Kyurem",
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Kyurem|Tera Blast|p2a: Iron Valiant|[anim] Tera Blast Fire",
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Kyurem",
+        "|switch|p1a: Okidogi|Okidogi, M|96/100"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|81/100",
+        "|move|p1a: Okidogi|Knock Off|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Okidogi",
+        "|move|p1a: Okidogi|Knock Off|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: Gholdengo|Hex|p1a: Okidogi",
+        "|move|p1a: Okidogi|Facade|p2a: Gholdengo",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|17/100"
+      ]
+    },
+    {
+      "turn": 37,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Okidogi"
+      ]
+    }
+  ],
+  "winner": "MiaTaylor612",
+  "endTime": 1770414450391,
+  "p1Team": [
+    "Latias",
+    "Klefki",
+    "Ninetales-Alola",
+    "Maushold-Four",
+    "Okidogi",
+    "Kyurem"
+  ],
+  "p2Team": [
+    "Landorus-Therian",
+    "Articuno",
+    "Gholdengo",
+    "Iron Valiant",
+    "Samurott-Hisui"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "latias",
+      "klefki",
+      "ninetalesalola",
+      "mausholdfour",
+      "okidogi",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "landorustherian",
+      "articuno",
+      "gholdengo",
+      "ironvaliant",
+      "samurotthisui"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,26 @@
+{
+  "turn": 16,
+  "bot_choice": "Earthquake",
+  "why_critical": "Gliscor went down vs Garganacl (75% HP) \u2014 opponent has 5 Pokemon left",
+  "bot_team": "Gliscor 20% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 93% | Pecharunt 100%",
+  "opp_team": "Gliscor 87% | Toxapex 100% | Tyranitar fainted | Pecharunt 100% | Cyclizar 41% +1 spe | Garganacl 75%",
+  "field": [
+    "Weather: Sandstorm"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530883459",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Garganacl"
+    ],
+    [
+      "Different move than Earthquake",
+      "Could have forced switch or dealt more chip"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

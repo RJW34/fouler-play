@@ -1,0 +1,246 @@
+{
+  "id": "battle-gen9ou-2534374202",
+  "p1": "jyvon12811",
+  "p2": "Rabzzz",
+  "minElo": 1644,
+  "startTime": 1770413913283,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Zamazenta|Stone Edge|p1a: Araquanid",
+        "|move|p1a: Araquanid|Sticky Web|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100",
+        "|move|p1a: Araquanid|Pounce|p2a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, F|100/100",
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100",
+        "|move|p1a: Dragapult|Draco Meteor|p2a: Alomomola|[miss]"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Dragapult|Will-O-Wisp|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Dragapult",
+        "|switch|p2a: Gliscor|Gliscor, M|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Enamorus|Enamorus, F|100/100",
+        "|move|p2a: Gliscor|Knock Off|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Enamorus|Substitute|p1a: Enamorus",
+        "|move|p2a: Gliscor|Facade|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Enamorus|Moonblast|p2a: Gliscor",
+        "|move|p2a: Gliscor|Facade|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Enamorus|Moonblast|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Enamorus|Moonblast|p2a: Gliscor",
+        "|move|p2a: Gliscor|Facade|p1a: Enamorus",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge",
+        "|move|p2a: Gliscor|Knock Off|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Gliscor",
+        "|switch|p2a: Rillaboom|Rillaboom, F|82/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Ceruledge",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, F|71/100",
+        "|switch|p2a: Cinderace|Cinderace, M|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M|100/100",
+        "|switch|p2a: Alomomola|Alomomola, F|100/100 brn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Kingambit",
+        "|switch|p2a: Cinderace|Cinderace, M|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Cinderace|Will-O-Wisp|p1a: Kingambit|[miss]",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Cinderace",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Araquanid|Araquanid, F|41/100",
+        "|move|p2a: Gholdengo|Trick|p1a: Araquanid"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100 brn",
+        "|switch|p1a: Dragapult|Dragapult, F|77/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Dragapult|Will-O-Wisp|p2a: Alomomola",
+        "|move|p2a: Alomomola|Mirror Coat||[still]"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M|100/100",
+        "|move|p2a: Alomomola|Mirror Coat||[still]"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Kingambit",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Kingambit|Low Kick|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Gholdengo",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Kingambit",
+        "|move|p1a: Kingambit|Low Kick|p2a: Zamazenta",
+        "|switch|p2a: Rillaboom|Rillaboom, F, tera:Grass|88/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Rillaboom"
+      ]
+    }
+  ],
+  "winner": "jyvon12811",
+  "endTime": 1770414366354,
+  "p1Team": [
+    "Dragapult",
+    "Enamorus",
+    "Ceruledge",
+    "Kingambit",
+    "Araquanid"
+  ],
+  "p2Team": [
+    "Rillaboom",
+    "Alomomola",
+    "Gliscor",
+    "Cinderace",
+    "Gholdengo",
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "dragapult",
+      "enamorus",
+      "ceruledge",
+      "kingambit",
+      "araquanid"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "rillaboom",
+      "alomomola",
+      "gliscor",
+      "cinderace",
+      "gholdengo",
+      "zamazenta"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

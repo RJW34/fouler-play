@@ -1,0 +1,226 @@
+{
+  "id": "battle-gen9ou-2534362006",
+  "p1": "Enhydra_0",
+  "p2": "suprya",
+  "minElo": 1699,
+  "startTime": 1770412653257,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Swampert|Swampert, F|100/100",
+        "|move|p1a: Iron Crown|Future Sight|p2a: Swampert"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Samurott|Samurott-Hisui, M, shiny|100/100",
+        "|move|p2a: Swampert|Flip Turn|p1a: Samurott",
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Rillaboom|U-turn|p1a: Samurott",
+        "|switch|p2a: Tinkaton|Tinkaton, F|100/100|[from] U-turn",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Swampert|Swampert, F|100/100",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Swampert"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Swampert",
+        "|move|p2a: Swampert|Ice Beam|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Swampert|Flip Turn|p1a: Pecharunt",
+        "|switch|p2a: Tinkaton|Tinkaton, F|80/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Tinkaton|Thunder Wave|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Tinkaton|Stealth Rock|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Tinkaton",
+        "|switch|p1a: Great Tusk|Great Tusk|10/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Tinkaton|Gigaton Hammer|p1a: Great Tusk",
+        "|switch|p1a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Iron Crown|Tachyon Cutter|p2a: Tinkaton",
+        "|move|p2a: Tinkaton|Thunder Wave|p1a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Swampert|Swampert, F|38/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Iron Crown|Future Sight|p2a: Swampert",
+        "|move|p2a: Swampert|Earthquake|p1a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Iron Crown|Psychic Noise|p2a: Swampert",
+        "|move|p2a: Swampert|Flip Turn|p1a: Iron Crown",
+        "|switch|p2a: Tinkaton|Tinkaton, F|61/100|[from] Flip Turn",
+        "|switch|p1a: Pecharunt|Pecharunt|90/100 par"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Tinkaton|Gigaton Hammer|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Tinkaton",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|56/100 par",
+        "|move|p2a: Tinkaton|Thunder Wave|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Rillaboom|Knock Off|p1a: Pecharunt",
+        "|switch|p1a: Dragonite|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Dragonite|Earthquake|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Dragonite|Earthquake|p2a: Pecharunt",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Dragonite|Tera Blast|p2a: Great Tusk|[anim] Tera Blast Flying",
+        "|switch|p2a: Swampert|Swampert, F|10/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Swampert|Flip Turn|p1a: Dragonite",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100|[from] Flip Turn",
+        "|switch|p1a: Iron Valiant|Iron Valiant|94/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Zamazenta|Heavy Slam|p1a: Iron Valiant"
+      ]
+    }
+  ],
+  "winner": "suprya",
+  "endTime": 1770413116934,
+  "p1Team": [
+    "Samurott-Hisui",
+    "Great Tusk",
+    "Pecharunt",
+    "Iron Crown",
+    "Iron Valiant",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Swampert",
+    "Rillaboom",
+    "Tinkaton",
+    "Pecharunt",
+    "Great Tusk",
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "samurotthisui",
+      "greattusk",
+      "pecharunt",
+      "ironcrown",
+      "ironvaliant",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "swampert",
+      "rillaboom",
+      "tinkaton",
+      "pecharunt",
+      "greattusk",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

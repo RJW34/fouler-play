@@ -1,0 +1,177 @@
+{
+  "id": "battle-gen9ou-2534400963",
+  "p1": "Yespoleon",
+  "p2": "desarmasangra",
+  "minElo": 1615,
+  "startTime": 1770416763870,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Walking Wake|Walking Wake|100/100",
+        "|move|p1a: Heatran|Stealth Rock|p2a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F, shiny|100/100",
+        "|move|p2a: Walking Wake|Draco Meteor|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Cresselia|Cresselia, F|100/100",
+        "|move|p1a: Hatterene|Nuzzle|p2a: Cresselia"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Torkoal|Torkoal, F|100/100",
+        "|switch|p1a: Heatran|Heatran, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Heatran|Earth Power|p2a: Torkoal",
+        "|move|p2a: Torkoal|Stealth Rock|p1a: Heatran"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Cresselia|Cresselia, F|85/100 par",
+        "|move|p1a: Heatran|Lava Plume|p2a: Cresselia"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Cresselia|Thunder Wave|p1a: Heatran",
+        "|move|p1a: Heatran|Lava Plume|p2a: Cresselia",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Heatran",
+        "|move|p1a: Heatran|Lava Plume|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Torkoal|Torkoal, F|2/100",
+        "|switch|p1a: Hatterene|Hatterene, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Venusaur|Venusaur, M|100/100",
+        "|move|p1a: Hatterene|Draining Kiss|p2a: Venusaur"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Slither Wing|Slither Wing|100/100",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Slither Wing"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Slither Wing|U-turn|p1a: Hatterene",
+        "|switch|p2a: Venusaur|Venusaur, M|89/100|[from] U-turn",
+        "|move|p1a: Hatterene|Draining Kiss|p2a: Venusaur"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Walking Wake|Walking Wake|100/100",
+        "|switch|p1a: Heatran|Heatran, M|100/100 par"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Walking Wake|Hydro Steam|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Venusaur|Venusaur, M|76/100",
+        "|move|p1a: Ogerpon|Knock Off|p2a: Venusaur"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Venusaur|Sludge Bomb|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|U-turn|p2a: Venusaur",
+        "|switch|p1a: Landorus|Landorus-Therian, M, shiny|100/100|[from] U-turn",
+        "|switch|p2a: Torkoal|Torkoal, F|2/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": []
+    }
+  ],
+  "winner": "Yespoleon",
+  "endTime": 1770416982881,
+  "p1Team": [
+    "Hatterene",
+    "Heatran",
+    "Ogerpon-Wellspring",
+    "Landorus-Therian"
+  ],
+  "p2Team": [
+    "Walking Wake",
+    "Cresselia",
+    "Torkoal",
+    "Great Tusk",
+    "Venusaur",
+    "Slither Wing"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "hatterene",
+      "heatran",
+      "ogerponwellspring",
+      "landorustherian"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "walkingwake",
+      "cresselia",
+      "torkoal",
+      "greattusk",
+      "venusaur",
+      "slitherwing"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

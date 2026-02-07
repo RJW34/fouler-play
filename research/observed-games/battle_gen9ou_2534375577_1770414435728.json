@@ -1,0 +1,216 @@
+{
+  "id": "battle-gen9ou-2534375577",
+  "p1": "apexacer",
+  "p2": "tiocheech",
+  "minElo": 1512,
+  "startTime": 1770414033295,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|100/100",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Kingambit|Iron Head|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Great Tusk|Earthquake|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Indeedee|Indeedee, M|100/100",
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Indeedee|Expanding Force|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Indeedee"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Indeedee|Expanding Force|p2a: Great Tusk",
+        "|switch|p2a: Meowscarada|Meowscarada, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|100/100",
+        "|move|p2a: Meowscarada|U-turn|p1a: Grimmsnarl",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl",
+        "|move|p2a: Ogerpon|Encore|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|100/100",
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|77/100",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|80/100",
+        "|move|p2a: Gholdengo|Focus Blast|p1a: Kingambit",
+        "|switch|p1a: Great Tusk|Great Tusk|67/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Meowscarada|Meowscarada, M|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Meowscarada"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|37/100",
+        "|move|p2a: Meowscarada|Flower Trick|p1a: Grimmsnarl",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|55/100",
+        "|move|p1a: Kyurem|Draco Meteor|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Kyurem",
+        "|switch|p1a: Polteageist|Polteageist|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Polteageist",
+        "|move|p1a: Polteageist|Shell Smash|p1a: Polteageist"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Polteageist|Shadow Ball|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Polteageist|Tera Blast|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Earthquake|p1a: Polteageist",
+        "|switch|p1a: Great Tusk|Great Tusk|67/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|12/100",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "tiocheech",
+  "endTime": 1770414435728,
+  "p1Team": [
+    "Kingambit",
+    "Great Tusk",
+    "Indeedee",
+    "Grimmsnarl",
+    "Kyurem",
+    "Polteageist"
+  ],
+  "p2Team": [
+    "Gholdengo",
+    "Great Tusk",
+    "Meowscarada",
+    "Ogerpon-Wellspring",
+    "Ting-Lu"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "kingambit",
+      "greattusk",
+      "indeedee",
+      "grimmsnarl",
+      "kyurem",
+      "polteageist"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "gholdengo",
+      "greattusk",
+      "meowscarada",
+      "ogerponwellspring",
+      "tinglu"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

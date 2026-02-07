@@ -1,0 +1,216 @@
+{
+  "id": "battle-gen9ou-2534361307",
+  "p1": "Noamm",
+  "p2": "mizuuuwu",
+  "minElo": 1658,
+  "startTime": 1770412563224,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Garganacl",
+        "|move|p2a: Garganacl|Explosion|p1a: Iron Valiant",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Gholdengo|Focus Blast|p2a: Darkrai|[miss]",
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Gholdengo",
+        "|switch|p1a: Lokix|Lokix, M|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100",
+        "|move|p1a: Lokix|U-turn|p2a: Iron Valiant",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Iron Valiant|Calm Mind|p2a: Iron Valiant",
+        "|move|p1a: Alomomola|Play Rough|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Alomomola",
+        "|move|p1a: Alomomola|Play Rough|p2a: Iron Valiant",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F|100/100",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Mandibuzz"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Mandibuzz|[anim] Ivy Cudgel Water",
+        "|move|p1a: Mandibuzz|Foul Play|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Ogerpon|Play Rough|p1a: Mandibuzz",
+        "|switch|p1a: Lokix|Lokix, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Lokix|First Impression|p2a: Ogerpon",
+        "|switch|p2a: Darkrai|Darkrai|91/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|97/100",
+        "|move|p2a: Darkrai|Sludge Bomb|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Darkrai|Sludge Bomb|p1a: Alomomola",
+        "|move|p1a: Alomomola|Play Rough|p2a: Darkrai|[miss]"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Darkrai",
+        "|switch|p1a: Lokix|Lokix, M|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Lokix|First Impression|p2a: Darkrai",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Great Tusk",
+        "|switch|p1a: Lokix|Lokix, M|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Lokix",
+        "|move|p1a: Lokix|Leech Life|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Lokix",
+        "|switch|p1a: Alomomola|Alomomola, F|50/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Alomomola|Aqua Jet|p2a: Great Tusk",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Kyurem|Dragon Dance|p2a: Kyurem",
+        "|move|p1a: Alomomola|Mirror Coat||[still]"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Alomomola"
+      ]
+    }
+  ],
+  "winner": "mizuuuwu",
+  "endTime": 1770412699704,
+  "p1Team": [
+    "Gholdengo",
+    "Lokix",
+    "Alomomola",
+    "Mandibuzz",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Darkrai",
+    "Iron Valiant",
+    "Ogerpon-Wellspring",
+    "Great Tusk",
+    "Kyurem"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "gholdengo",
+      "lokix",
+      "alomomola",
+      "mandibuzz",
+      "greattusk"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "darkrai",
+      "ironvaliant",
+      "ogerponwellspring",
+      "greattusk",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

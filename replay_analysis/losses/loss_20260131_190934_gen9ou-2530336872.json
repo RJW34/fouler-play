@@ -1,0 +1,29 @@
+{
+  "timestamp": "20260131_190934",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530336872",
+  "replay_id": "gen9ou-2530336872",
+  "mistakes_found": 3,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 17,
+      "description": "Tyranitar fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 46,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 46,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    }
+  ]
+}

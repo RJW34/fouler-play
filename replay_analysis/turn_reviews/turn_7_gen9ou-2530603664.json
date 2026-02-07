@@ -1,0 +1,26 @@
+{
+  "turn": 7,
+  "bot_choice": "Ice Fang",
+  "why_critical": "Zamazenta went down vs Tornadus-Therian (100% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 100% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey fainted | Skarmory 100% | Pecharunt 100% | Zamazenta 100% +1 def",
+  "opp_team": "Greninja-* 100% | Pelipper 100% | Blissey 100% | Tornadus-Therian 100% | Weezing-Galar 100% | Dondozo 100%",
+  "field": [
+    "Weather: RainDance"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530603664",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Tornadus-Therian"
+    ],
+    [
+      "Different move than Ice Fang",
+      "Could have forced switch or dealt more chip"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

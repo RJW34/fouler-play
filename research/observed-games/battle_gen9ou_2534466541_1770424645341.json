@@ -1,0 +1,106 @@
+{
+  "id": "battle-gen9ou-2534466541",
+  "p1": "lolcano46",
+  "p2": "eros maniac",
+  "minElo": 1524,
+  "startTime": 1770424560090,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Gengar|Shadow Ball|p2a: Deoxys",
+        "|switch|p2a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Cinderace|Cinderace, M|100/100",
+        "|move|p2a: Kingambit|Iron Head|p1a: Cinderace"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, M|100/100",
+        "|move|p1a: Cinderace|Will-O-Wisp|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Glimmora|Meteor Beam||[still]",
+        "|switch|p1a: Azelf|Azelf|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Azelf|Psychic|p2a: Glimmora",
+        "|switch|p2a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Azelf|Flamethrower|p2a: Kingambit",
+        "|switch|p2a: Salamence|Salamence, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Azelf|Dazzling Gleam|p2a: Salamence",
+        "|move|p2a: Salamence|Dragon Dance|p2a: Salamence"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Salamence|Dragon Dance|p2a: Salamence",
+        "|move|p1a: Azelf|Psychic|p2a: Salamence"
+      ]
+    }
+  ],
+  "winner": "lolcano46",
+  "endTime": 1770424645341,
+  "p1Team": [
+    "Cinderace",
+    "Ogerpon-Wellspring",
+    "Azelf"
+  ],
+  "p2Team": [
+    "Kingambit",
+    "Glimmora",
+    "Salamence"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "cinderace",
+      "ogerponwellspring",
+      "azelf"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "kingambit",
+      "glimmora",
+      "salamence"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

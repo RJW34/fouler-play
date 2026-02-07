@@ -1,0 +1,272 @@
+{
+  "id": "battle-gen9ou-2534396162",
+  "p1": "EllenxD",
+  "p2": "peakelo",
+  "minElo": 1656,
+  "startTime": 1770416253413,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Grimmsnarl|Taunt|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Grimmsnarl",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Iron Treads|Stealth Rock|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Iron Treads",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, M|100/100",
+        "|move|p1a: Iron Treads|Earthquake|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|100/100",
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Crunch|p2a: Ceruledge",
+        "|switch|p2a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Iron Moth|Dazzling Gleam|p1a: Zamazenta",
+        "|switch|p1a: Garganacl|Garganacl, F, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Iron Moth|Sludge Wave|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Iron Moth|Sludge Wave|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Iron Moth|Sludge Wave|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Iron Moth|Sludge Wave|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Iron Moth|Sludge Wave|p1a: Garganacl",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|97/100",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Iron Treads|Earthquake|p1a: Iron Treads",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|20/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Iron Treads|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Latias|[anim] Ivy Cudgel Water",
+        "|move|p2a: Latias|Agility|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Latias|Draining Kiss|p1a: Ogerpon",
+        "|switch|p1a: Garganacl|Garganacl, F, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Latias|Calm Mind|p2a: Latias",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|89/100",
+        "|move|p2a: Latias|Calm Mind|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Pecharunt",
+        "|switch|p1a: Moltres|Moltres|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Latias|Draining Kiss|p1a: Moltres",
+        "|move|p1a: Moltres|Flamethrower|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Latias|Draining Kiss|p1a: Moltres",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Moltres",
+        "|switch|p1a: Garganacl|Garganacl, F, tera:Water|94/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Latias|Stored Power|p1a: Garganacl"
+      ]
+    }
+  ],
+  "winner": "EllenxD",
+  "endTime": 1770416498171,
+  "p1Team": [
+    "Garganacl",
+    "Ogerpon-Wellspring",
+    "Pecharunt",
+    "Iron Treads",
+    "Zamazenta",
+    "Moltres"
+  ],
+  "p2Team": [
+    "Ogerpon-Wellspring",
+    "Iron Treads",
+    "Ceruledge",
+    "Iron Moth",
+    "Latias"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "garganacl",
+      "ogerponwellspring",
+      "pecharunt",
+      "irontreads",
+      "zamazenta",
+      "moltres"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ogerponwellspring",
+      "irontreads",
+      "ceruledge",
+      "ironmoth",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

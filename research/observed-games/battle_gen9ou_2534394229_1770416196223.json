@@ -1,0 +1,154 @@
+{
+  "id": "battle-gen9ou-2534394229",
+  "p1": "Yespoleon",
+  "p2": "MiaTaylor612",
+  "minElo": 1611,
+  "startTime": 1770416043396,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Gholdengo|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Ogerpon|Knock Off|p2a: Gholdengo",
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Gholdengo|Recover|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Gholdengo|Hex|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|U-turn|p2a: Gholdengo",
+        "|switch|p1a: Darkrai|Darkrai|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, F|100/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: Samurott|[miss]",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: Samurott|[miss]",
+        "|move|p2a: Samurott|Flip Turn|p1a: Darkrai",
+        "|switch|p2a: Articuno|Articuno|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Heatran|Heatran, M|100/100",
+        "|move|p2a: Articuno|Freeze-Dry|p1a: Heatran"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, F|84/100",
+        "|move|p1a: Heatran|Stealth Rock|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|34/100 par",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Ogerpon",
+        "|switch|p1a: Landorus|Landorus-Therian, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, F|100/100",
+        "|move|p1a: Landorus|U-turn|p2a: Gliscor",
+        "|switch|p1a: Darkrai|Darkrai|50/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Darkrai|Ice Beam|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, F|84/100",
+        "|move|p1a: Darkrai|Ice Beam|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: Samurott|[miss]",
+        "|move|p2a: Samurott|Aqua Cutter|p1a: Darkrai"
+      ]
+    }
+  ],
+  "winner": "Yespoleon",
+  "endTime": 1770416196216,
+  "p1Team": [
+    "Darkrai",
+    "Heatran",
+    "Ogerpon-Wellspring",
+    "Landorus-Therian"
+  ],
+  "p2Team": [
+    "Gholdengo",
+    "Samurott-Hisui",
+    "Articuno",
+    "Gliscor"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "darkrai",
+      "heatran",
+      "ogerponwellspring",
+      "landorustherian"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "gholdengo",
+      "samurotthisui",
+      "articuno",
+      "gliscor"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

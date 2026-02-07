@@ -1,0 +1,253 @@
+{
+  "id": "battle-gen9ou-2534363106",
+  "p1": "maxmoefoe pokemon",
+  "p2": "mizuuuwu",
+  "minElo": 1649,
+  "startTime": 1770412743239,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Kyurem|Protect|p1a: Kyurem",
+        "|move|p2a: Garganacl|Rock Blast|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Garganacl|Stealth Rock|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Gholdengo|Trick|p2a: Garganacl",
+        "|move|p2a: Garganacl|Earthquake|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Garganacl|Earthquake|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Iron Valiant|Calm Mind|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Iron Valiant|Shadow Ball|p1a: Moltres",
+        "|move|p1a: Moltres|Flamethrower|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Iron Valiant|Shadow Ball|p1a: Moltres",
+        "|move|p1a: Moltres|Flamethrower|p2a: Iron Valiant",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Moltres|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Ogerpon|Play Rough|p1a: Kyurem",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Ogerpon",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Kyurem|Protect|p1a: Kyurem",
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|100/100",
+        "|switch|p1a: Tyranitar|Tyranitar, F|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|79/100",
+        "|move|p2a: Garganacl|Earthquake|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Great Tusk",
+        "|switch|p1a: Kyurem|Kyurem|44/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|100/100",
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Kyurem|Protect|p1a: Kyurem",
+        "|move|p2a: Garganacl|Rock Blast|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|31/100",
+        "|move|p2a: Garganacl|Rock Blast|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Garganacl",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Gholdengo",
+        "|switch|p1a: Tyranitar|Tyranitar, F|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|7/100",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Great Tusk",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Tyranitar",
+        "|move|p1a: Tyranitar|Thunder Wave|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, F|100/100",
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Primarina|Draining Kiss|p2a: Kyurem",
+        "|move|p2a: Kyurem|Tera Blast|p1a: Primarina|[anim] Tera Blast Ghost"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Primarina|Moonblast|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Primarina|Draining Kiss|p2a: Kyurem",
+        "|switch|p2a: Darkrai|Darkrai|91/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Primarina",
+        "|move|p1a: Primarina|Moonblast|p2a: Darkrai"
+      ]
+    }
+  ],
+  "winner": "maxmoefoe pokemon",
+  "endTime": 1770413057904,
+  "p1Team": [
+    "Gholdengo",
+    "Great Tusk",
+    "Moltres",
+    "Kyurem",
+    "Tyranitar",
+    "Primarina"
+  ],
+  "p2Team": [
+    "Iron Valiant",
+    "Ogerpon-Wellspring",
+    "Darkrai",
+    "Garganacl",
+    "Great Tusk",
+    "Kyurem"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "gholdengo",
+      "greattusk",
+      "moltres",
+      "kyurem",
+      "tyranitar",
+      "primarina"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "ironvaliant",
+      "ogerponwellspring",
+      "darkrai",
+      "garganacl",
+      "greattusk",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

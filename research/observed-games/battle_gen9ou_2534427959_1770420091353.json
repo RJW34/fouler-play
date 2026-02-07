@@ -1,0 +1,232 @@
+{
+  "id": "battle-gen9ou-2534427959",
+  "p1": "TwinkleLittleStars",
+  "p2": "flan727",
+  "minElo": 1730,
+  "startTime": 1770419823624,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Ogerpon|U-turn|p1a: Ting-Lu",
+        "|move|p1a: Ting-Lu|Stealth Rock|p2a: Trans Rights"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Trans Rights|Moonblast|p1a: Ting-Lu",
+        "|move|p1a: Ting-Lu|Ruination|p2a: Trans Rights|[miss]"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Trans Rights|Moonblast|p1a: Ting-Lu",
+        "|switch|p1a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Trans Rights|Knock Off|p1a: Enamorus",
+        "|move|p1a: Enamorus|Moonblast|p2a: Trans Rights",
+        "|switch|p2a: Agnes Tachyon|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M, shiny|100/100",
+        "|move|p2a: Agnes Tachyon|Volt Switch|p1a: Kingambit",
+        "|switch|p2a: Elephant|Great Tusk|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Elephant|Headlong Rush|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Enamorus|Enamorus, F|76/100",
+        "|switch|p2a: Agnes Tachyon|Iron Crown|94/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Enamorus|Earth Power|p2a: Agnes Tachyon",
+        "|move|p2a: Agnes Tachyon|Volt Switch|p1a: Enamorus",
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100|[from] Volt Switch",
+        "|switch|p1a: Kingambit|Kingambit, M, shiny|73/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Ogerpon|U-turn|p1a: Kingambit",
+        "|switch|p2a: Dess|Ting-Lu|100/100|[from] U-turn",
+        "|move|p1a: Kingambit|Iron Head|p2a: Dess"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Dess|Earthquake|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: Dess|Stealth Rock|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Dess|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Ogerpon|Ogerpon, F|88/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M, shiny|54/100",
+        "|move|p2a: Ogerpon|U-turn|p1a: Kingambit",
+        "|switch|p2a: Elephant|Great Tusk|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Elephant|Headlong Rush|p1a: Kingambit",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|77/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Bad apple|Pecharunt|100/100",
+        "|move|p1a: Ogerpon|Power Whip|p2a: Bad apple"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Bad apple|[anim] Ivy Cudgel Water",
+        "|move|p2a: Bad apple|Parting Shot|p1a: Ogerpon",
+        "|switch|p2a: Ogerpon|Ogerpon, F|76/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Ogerpon|[anim] Ivy Cudgel Water",
+        "|move|p2a: Ogerpon|U-turn|p1a: Ogerpon",
+        "|switch|p2a: Elephant|Great Tusk|100/100|[from] U-turn",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Pecharunt|Nasty Plot|p1a: Pecharunt",
+        "|move|p2a: Elephant|Ice Spinner|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon, F|37/100",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Ogerpon|Rock Tomb|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Shadow Ball|p2a: Ogerpon",
+        "|switch|p2a: Agnes Tachyon|Iron Crown|28/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Agnes Tachyon|Tachyon Cutter|p1a: Pecharunt",
+        "|switch|p1a: Zamazenta|Zamazenta, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Agnes Tachyon",
+        "|switch|p2a: Bad apple|Pecharunt|56/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Bad apple",
+        "|move|p2a: Bad apple|Recover|p2a: Bad apple"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": []
+    }
+  ],
+  "winner": "flan727",
+  "endTime": 1770420091353,
+  "p1Team": [
+    "Enamorus",
+    "Kingambit",
+    "Pecharunt",
+    "Ogerpon-Wellspring",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Iron Crown",
+    "Great Tusk",
+    "Ogerpon",
+    "Ting-Lu",
+    "Pecharunt"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "enamorus",
+      "kingambit",
+      "pecharunt",
+      "ogerponwellspring",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironcrown",
+      "greattusk",
+      "ogerpon",
+      "tinglu",
+      "pecharunt"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,24 @@
+{
+  "turn": 8,
+  "bot_choice": "Switched to Blissey",
+  "why_critical": "Switched to Blissey vs Iron Moth (67% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 68% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 86% | Pecharunt 100% | Zamazenta fainted",
+  "opp_team": "Iron Moth 67% | Kingambit 100% | Dragonite 30% +1 atk, +1 spe | Ogerpon-Cornerstone 100% | Iron Valiant 100% | Raging Bolt 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530601470",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Iron Moth"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

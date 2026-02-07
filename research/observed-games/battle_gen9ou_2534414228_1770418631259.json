@@ -1,0 +1,283 @@
+{
+  "id": "battle-gen9ou-2534414228",
+  "p1": "icebrrg",
+  "p2": "Log God Neo✈️_✈️",
+  "minElo": 1552,
+  "startTime": 1770418233511,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Glimmora|Meteor Beam||[still]",
+        "|move|p2a: DA LAST REX(3005)|Earthquake|p1a: Glimmora",
+        "|switch|p1a: Deoxys|Deoxys-Speed|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Deoxys|Reflect|p1a: Deoxys",
+        "|move|p2a: DA LAST REX(3005)|Knock Off|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: DA LAST REX(3005)|Dragon Tail|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: DA LAST REX(3005)|[anim] Ivy Cudgel Water",
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Deoxys|Deoxys-Speed|40/100",
+        "|move|p2a: OVO CHUBBS|Will-O-Wisp|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Deoxys|Light Screen|p1a: Deoxys",
+        "|move|p2a: OVO CHUBBS|Rapid Spin|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: KURAMA BLANCO|Ninetales-Alola, F, shiny|100/100",
+        "|move|p1a: Deoxys|Psycho Boost|p2a: KURAMA BLANCO"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: KURAMA BLANCO",
+        "|move|p2a: KURAMA BLANCO|Blizzard|p1a: Deoxys",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: KURAMA BLANCO|Moonblast|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: KURAMA BLANCO",
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: OVO CHUBBS|Will-O-Wisp|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Zamazenta|Body Press|p2a: OVO CHUBBS",
+        "|move|p2a: OVO CHUBBS|Clear Smog|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: OVO CHUBBS|Lava Plume|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Roar|p2a: OVO CHUBBS"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, F|100/100",
+        "|move|p1a: Zamazenta|Crunch|p2a: BLITZ SOME OPPS",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|89/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: BIRD JESUS|Staraptor, F, shiny|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: BIRD JESUS|[anim] Ivy Cudgel Water",
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|65/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: OVO CHUBBS|[anim] Ivy Cudgel Water",
+        "|switch|p2a: FAT CHARIZARD|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Ogerpon|Play Rough|p2a: FAT CHARIZARD",
+        "|move|p2a: FAT CHARIZARD|Dragon Dance|p2a: FAT CHARIZARD"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: FAT CHARIZARD|Earthquake|p1a: Ogerpon",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: FAT CHARIZARD|Fire Punch|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: FAT CHARIZARD"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: FAT CHARIZARD",
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, F|94/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: BLITZ SOME OPPS|Spikes|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: BLITZ SOME OPPS",
+        "|switch|p1a: Iron Treads|Iron Treads|97/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Rest|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Rest|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Iron Treads|Knock Off|p2a: BLITZ SOME OPPS"
+      ]
+    }
+  ],
+  "winner": "Log God Neo✈️_✈️",
+  "endTime": 1770418631259,
+  "p1Team": [
+    "Deoxys-Speed",
+    "Iron Treads",
+    "Zamazenta",
+    "Ogerpon-Wellspring",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Torkoal",
+    "Ninetales-Alola",
+    "Garchomp",
+    "Staraptor",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "deoxysspeed",
+      "irontreads",
+      "zamazenta",
+      "ogerponwellspring",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "torkoal",
+      "ninetalesalola",
+      "garchomp",
+      "staraptor",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,20 @@
+{
+  "turn": 12,
+  "bot_choice": "unknown",
+  "why_critical": "Gliscor went down vs Gholdengo (100% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 32% tox +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta fainted",
+  "opp_team": "Gholdengo 100% | Weezing-Galar 100% | Darkrai 100% | Dragonite 100% | Heatran 100% | Ogerpon-Wellspring 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530560501",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Gholdengo"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

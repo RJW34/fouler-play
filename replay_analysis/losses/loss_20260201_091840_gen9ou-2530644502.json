@@ -1,0 +1,36 @@
+{
+  "timestamp": "20260201_091840",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530644502",
+  "replay_id": "gen9ou-2530644502",
+  "mistakes_found": 4,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 67,
+      "description": "Gholdengo fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 72,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 2,
+      "description": "Attempted swordsdance on turn 2 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    },
+    {
+      "category": "early_setup",
+      "turn": 3,
+      "description": "Attempted swordsdance on turn 3 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

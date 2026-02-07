@@ -1,0 +1,36 @@
+{
+  "timestamp": "20260201_120424",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530718791",
+  "replay_id": "gen9ou-2530718791",
+  "mistakes_found": 4,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 11,
+      "description": "Indeedee fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 15,
+      "description": "Ceruledge fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 25,
+      "description": "Deoxys fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 73,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    }
+  ]
+}

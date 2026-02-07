@@ -1,0 +1,247 @@
+{
+  "id": "battle-gen9ou-2534406561",
+  "p1": "Palm X",
+  "p2": "Meyton Panning",
+  "minElo": 1517,
+  "startTime": 1770417393485,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Dragapult|Tera Blast|p1a: Hatterene|[anim] Tera Blast Ghost",
+        "|switch|p1a: Ninetales|Ninetales, F|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Blaziken|Blaziken, F|100/100",
+        "|move|p2a: Dragapult|Tera Blast|p1a: Blaziken|[anim] Tera Blast Ghost",
+        "|switch|p1a: Venusaur|Venusaur, M|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p1a: Venusaur|Growth|p1a: Venusaur"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Venusaur|Earth Power|p2a: Weezing",
+        "|switch|p2a: Kyurem|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Venusaur|Sludge Bomb|p2a: Kyurem",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Venusaur",
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Venusaur|Giga Drain|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Earthquake|p1a: Venusaur"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Venusaur|Giga Drain|p2a: Ting-Lu",
+        "|switch|p2a: Corviknight|Corviknight, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Venusaur|Giga Drain|p2a: Corviknight",
+        "|move|p2a: Corviknight|Brave Bird|p1a: Venusaur",
+        "|switch|p1a: Walking Wake|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Walking Wake|Weather Ball|p2a: Corviknight",
+        "|move|p2a: Corviknight|U-turn|p1a: Walking Wake",
+        "|switch|p2a: Dragapult|Dragapult, F, tera:Ghost|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, F|100/100",
+        "|move|p2a: Dragapult|Tera Blast|p1a: Ninetales|[anim] Tera Blast Ghost",
+        "|switch|p1a: Great Tusk|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100",
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Alomomola|Tickle|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Great Tusk|Earthquake|p2a: Alomomola",
+        "|move|p2a: Alomomola|Tickle|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Alomomola",
+        "|move|p2a: Alomomola|Tickle|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Alomomola|Wish|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Alomomola|Tickle|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Alomomola|Tickle|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Alomomola",
+        "|move|p2a: Alomomola|Tickle|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Great Tusk",
+        "|switch|p2a: Corviknight|Corviknight, F|10/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Corviknight|Brave Bird|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Corviknight|U-turn|p1a: Great Tusk",
+        "|switch|p2a: Alomomola|Alomomola, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Great Tusk|Earthquake|p2a: Alomomola",
+        "|move|p2a: Alomomola|Tickle|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Great Tusk|Bulk Up|p1a: Great Tusk",
+        "|move|p2a: Alomomola|Tickle|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Great Tusk|Earthquake|p2a: Alomomola",
+        "|switch|p2a: Dragapult|Dragapult, F, tera:Ghost|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Great Tusk|Earthquake|p2a: Dragapult"
+      ]
+    }
+  ],
+  "winner": "Palm X",
+  "endTime": 1770417568855,
+  "p1Team": [
+    "Ninetales",
+    "Blaziken",
+    "Venusaur",
+    "Walking Wake",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Weezing-Galar",
+    "Kyurem",
+    "Ting-Lu",
+    "Corviknight",
+    "Dragapult",
+    "Alomomola"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ninetales",
+      "blaziken",
+      "venusaur",
+      "walkingwake",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "weezinggalar",
+      "kyurem",
+      "tinglu",
+      "corviknight",
+      "dragapult",
+      "alomomola"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

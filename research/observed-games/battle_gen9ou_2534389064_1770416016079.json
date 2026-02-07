@@ -1,0 +1,241 @@
+{
+  "id": "battle-gen9ou-2534389064",
+  "p1": "Yespoleon",
+  "p2": "Bring it on mon",
+  "minElo": 1587,
+  "startTime": 1770415503365,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Ninetales|Aurora Veil|p2a: Ninetales",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Ninetales|Encore|p1a: Heatran",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Ninetales",
+        "|switch|p2a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F, shiny|100/100",
+        "|move|p2a: Latias|Calm Mind|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Latias|Calm Mind|p2a: Latias",
+        "|move|p1a: Hatterene|Nuzzle|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Heatran|Heatran, F|100/100",
+        "|move|p2a: Latias|Stored Power|p1a: Heatran"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Heatran|Stealth Rock|p2a: Latias",
+        "|move|p2a: Latias|Agility|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Latias|Agility|p2a: Latias",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Darkrai",
+        "|move|p1a: Darkrai|Nasty Plot|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Darkrai",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Latias|Aura Sphere|p1a: Darkrai",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Latias",
+        "|switch|p2a: Klefki|Klefki, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Klefki|Thunder Wave|p1a: Darkrai|[miss]",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Klefki"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Klefki|Thunder Wave|p1a: Darkrai",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Klefki",
+        "|switch|p2a: Maushold|Maushold-Four|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Maushold|Tidy Up|p2a: Maushold",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Maushold",
+        "|switch|p2a: Kyurem|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Kyurem|Scale Shot|p1a: Darkrai|[miss]",
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Kyurem|Dragon Dance|p2a: Kyurem",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Darkrai",
+        "|move|p1a: Darkrai|Ice Beam|p2a: Kyurem",
+        "|switch|p2a: Okidogi|Okidogi, M|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Okidogi|Bulk Up|p2a: Okidogi",
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: Okidogi"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Okidogi|Knock Off|p1a: Darkrai",
+        "|switch|p1a: Heatran|Heatran, F|90/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Okidogi|Bulk Up|p2a: Okidogi",
+        "|move|p1a: Heatran|Earth Power|p2a: Okidogi"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Okidogi|Drain Punch|p1a: Heatran",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Okidogi"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Okidogi|Drain Punch|p1a: Heatran",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Okidogi",
+        "|move|p2a: Okidogi|Facade|p1a: Iron Valiant",
+        "|switch|p1a: Landorus|Landorus-Therian, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": []
+    }
+  ],
+  "winner": "Yespoleon",
+  "endTime": 1770416016079,
+  "p1Team": [
+    "Hatterene",
+    "Ogerpon-Wellspring",
+    "Heatran",
+    "Darkrai",
+    "Iron Valiant",
+    "Landorus-Therian"
+  ],
+  "p2Team": [
+    "Latias",
+    "Klefki",
+    "Maushold-Four",
+    "Kyurem",
+    "Okidogi"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "hatterene",
+      "ogerponwellspring",
+      "heatran",
+      "darkrai",
+      "ironvaliant",
+      "landorustherian"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "latias",
+      "klefki",
+      "mausholdfour",
+      "kyurem",
+      "okidogi"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

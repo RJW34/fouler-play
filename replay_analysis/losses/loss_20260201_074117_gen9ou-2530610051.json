@@ -1,0 +1,50 @@
+{
+  "timestamp": "20260201_074117",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530610051",
+  "replay_id": "gen9ou-2530610051",
+  "mistakes_found": 6,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 35,
+      "description": "Bum 3 fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 36,
+      "description": "THE GOATTTT fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 40,
+      "description": "Bum 5 fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 42,
+      "description": "Bum 2 fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 44,
+      "description": "Bum 4 fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 47,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    }
+  ]
+}

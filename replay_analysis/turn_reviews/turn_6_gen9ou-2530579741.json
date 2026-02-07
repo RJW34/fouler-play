@@ -1,0 +1,26 @@
+{
+  "turn": 6,
+  "bot_choice": "Switched to Pecharunt",
+  "why_critical": "Switched to Pecharunt vs healthy Rillaboom \u2014 long-term positioning play",
+  "bot_team": "Gliscor 89% tox +2 atk, -1 spe | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 100% -1 spd",
+  "opp_team": "Weavile 100% | Gengar 100% | Rillaboom 100% +1 atk, +1 def | Hatterene 72% -1 def | Kilowattrel 100% | Heatran 13%",
+  "field": [
+    "Terrain: Grassy Terrain"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530579741",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Rillaboom"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

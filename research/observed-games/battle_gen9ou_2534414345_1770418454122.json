@@ -1,0 +1,274 @@
+{
+  "id": "battle-gen9ou-2534414345",
+  "p1": "peakelo",
+  "p2": "uscboarder",
+  "minElo": 1642,
+  "startTime": 1770418263516,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: Glimmora",
+        "|move|p2a: Glimmora|Stealth Rock|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: Glimmora",
+        "|move|p2a: Glimmora|Earth Power|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Iron Treads|Ice Spinner|p2a: Glimmora",
+        "|switch|p2a: Pierce|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Pierce|Blizzard|p1a: Iron Treads",
+        "|switch|p1a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Pierce",
+        "|move|p2a: Pierce|Aurora Veil|p2a: Pierce"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Iron Moth|Substitute|p1a: Iron Moth",
+        "|move|p2a: Pierce|Encore|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: BIG MAN|Blastoise, F|100/100",
+        "|move|p1a: Iron Moth|Substitute|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Iron Moth|Substitute|p1a: Iron Moth",
+        "|move|p2a: BIG MAN|Shell Smash|p2a: BIG MAN"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: BIG MAN|Surf|p1a: Iron Moth",
+        "|move|p1a: Iron Moth|Substitute|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: BIG MAN|Surf|p1a: Iron Moth",
+        "|move|p1a: Iron Moth|Substitute|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: BIG MAN|Surf|p1a: Iron Moth",
+        "|move|p1a: Iron Moth|Sludge Wave|p2a: BIG MAN"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: BIG MAN|Ice Beam|p1a: Iron Moth",
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: BIG MAN|Shell Smash|p2a: BIG MAN"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: BIG MAN|Surf|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: BIG MAN|Ice Beam|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Trailblaze|p2a: BIG MAN",
+        "|switch|p2a: Crouch|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Ogerpon|Play Rough|p2a: Crouch",
+        "|move|p2a: Crouch|Thunderbolt|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Crouch|Thunderclap|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Play Rough|p2a: Crouch",
+        "|switch|p2a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Ogerpon|Play Rough|p2a: Latias",
+        "|move|p2a: Latias|Agility|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Ogerpon",
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|88/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Grimmsnarl|Taunt|p2a: Latias",
+        "|move|p2a: Latias|Aura Sphere|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: Latias|Aura Sphere|p1a: Grimmsnarl",
+        "|switch|p1a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Latias",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Latias|Calm Mind|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Latias|Calm Mind|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Latias",
+        "|move|p2a: Latias|Calm Mind|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Latias|Stored Power|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Latias",
+        "|move|p2a: Latias|Stored Power|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Latias",
+        "|switch|p2a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Latias",
+        "|move|p1a: Latias|Draining Kiss|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Kingambit",
+        "|switch|p2a: Pierce|Ninetales-Alola, M|22/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: Pierce"
+      ]
+    }
+  ],
+  "winner": "peakelo",
+  "endTime": 1770418454122,
+  "p1Team": [
+    "Iron Moth",
+    "Grimmsnarl",
+    "Ogerpon-Wellspring",
+    "Latias"
+  ],
+  "p2Team": [
+    "Ninetales-Alola",
+    "Blastoise",
+    "Raging Bolt",
+    "Latias",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ironmoth",
+      "grimmsnarl",
+      "ogerponwellspring",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ninetalesalola",
+      "blastoise",
+      "ragingbolt",
+      "latias",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

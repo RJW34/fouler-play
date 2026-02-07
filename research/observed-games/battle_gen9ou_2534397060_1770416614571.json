@@ -1,0 +1,208 @@
+{
+  "id": "battle-gen9ou-2534397060",
+  "p1": "zehntimes",
+  "p2": "XYZ15",
+  "minElo": 1554,
+  "startTime": 1770416343408,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: OGER",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100|[from] U-turn",
+        "|move|p2a: OGER|U-turn|p1a: Raging Bolt",
+        "|switch|p2a: Dream|Landorus-Therian, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Moltres|Moltres, shiny|100/100",
+        "|move|p2a: Dream|Stealth Rock|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Tera shard|Glimmora, M|100/100",
+        "|move|p1a: Moltres|U-turn|p2a: Tera shard",
+        "|switch|p1a: Slowking|Slowking-Galar, F, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Scarlet|Scizor, F|100/100",
+        "|move|p1a: Slowking|Psychic Noise|p2a: Scarlet"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Slowking|Protect|p1a: Slowking",
+        "|move|p2a: Scarlet|Knock Off|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: Scarlet|Knock Off|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Dream|Landorus-Therian, M|100/100",
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: Dream"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: Dream",
+        "|move|p2a: Dream|Earth Power|p1a: Iron Treads",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Dream|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Scarlet|Scizor, F|83/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: OGER|Ogerpon-Wellspring, F|31/100",
+        "|move|p1a: Ogerpon|Knock Off|p2a: OGER",
+        "|switch|p2a: Tera shard|Glimmora, M|96/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F, shiny|100/100",
+        "|move|p2a: Tera shard|Stealth Rock|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Violet|Ceruledge, F|100/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Violet|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Tera shard|Glimmora, M, tera:Grass|83/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Tera shard",
+        "|switch|p1a: Slowking|Slowking-Galar, F, shiny|100/100|[from] U-turn",
+        "|move|p2a: Tera shard|Spikes|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Tera shard|Spikes|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Moltres|Moltres, shiny|84/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Tera shard",
+        "|switch|p2a: Paradox|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F, shiny|100/100",
+        "|move|p2a: Paradox|Knock Off|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Paradox|Knock Off|p1a: Slowking",
+        "|switch|p1a: Moltres|Moltres, shiny|84/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Paradox|Knock Off|p1a: Moltres",
+        "|move|p1a: Moltres|Air Slash|p2a: Paradox",
+        "|switch|p2a: Scarlet|Scizor, F|71/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Scarlet|Bullet Punch|p1a: Moltres",
+        "|move|p1a: Moltres|Flamethrower|p2a: Scarlet"
+      ]
+    }
+  ],
+  "winner": "zehntimes",
+  "endTime": 1770416614571,
+  "p1Team": [
+    "Raging Bolt",
+    "Moltres",
+    "Slowking-Galar",
+    "Iron Treads",
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Landorus-Therian",
+    "Glimmora",
+    "Scizor",
+    "Ogerpon-Wellspring",
+    "Ceruledge",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "ragingbolt",
+      "moltres",
+      "slowkinggalar",
+      "irontreads",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "landorustherian",
+      "glimmora",
+      "scizor",
+      "ogerponwellspring",
+      "ceruledge",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

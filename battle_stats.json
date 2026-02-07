@@ -1741,6 +1741,13 @@
       "team_file": "fat-team-1-stall",
       "result": "win",
       "replay_id": "battle-gen9ou-2535017073"
+    },
+    {
+      "battle_id": "battle-gen9ou-2535019608",
+      "timestamp": "2026-02-07T22:40:35.221284+00:00",
+      "team_file": "fat-team-1-stall",
+      "result": "win",
+      "replay_id": "battle-gen9ou-2535019608"
     }
   ]
 }

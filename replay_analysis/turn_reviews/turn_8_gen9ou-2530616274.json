@@ -1,0 +1,24 @@
+{
+  "turn": 8,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "Switched to Gliscor vs Dondozo (41% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 96% tox +2 atk, -1 def | Gholdengo 100% | Zamazenta-* 100% | Blissey 55% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Glimmora 100% | Ceruledge 100% | Great Tusk 100% | Thundurus-Therian 100% | Iron Moth 100% | Dondozo 41% tox -2 spe, +1 atk, +2 def, -1 spa",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530616274",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gholdengo instead",
+      "Check if better defensive matchup vs Dondozo"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

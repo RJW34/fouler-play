@@ -1,0 +1,171 @@
+{
+  "id": "battle-gen9ou-2534442877",
+  "p1": "peakelo",
+  "p2": "DivJudgement",
+  "minElo": 1663,
+  "startTime": 1770421623734,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Grimmsnarl|Taunt|p2a: Slowking",
+        "|switch|p1a: Ceruledge|Ceruledge, M|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|100/100",
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Cinderace|Court Change|p2a: Cinderace",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch||[still]",
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch||[still]",
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Cinderace|Sucker Punch|p1a: Ceruledge",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Cinderace",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Ceruledge|Poltergeist|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Ceruledge",
+        "|switch|p1a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Iron Moth|Dazzling Gleam|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Earthquake|p1a: Iron Moth",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Earthquake|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Iron Treads|Ice Spinner|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Earthquake|p1a: Iron Treads",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Slowking|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Darkrai|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "peakelo",
+  "endTime": 1770421765995,
+  "p1Team": [
+    "Ceruledge",
+    "Iron Moth",
+    "Iron Treads",
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Cinderace",
+    "Pecharunt",
+    "Ting-Lu",
+    "Slowking-Galar",
+    "Darkrai"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ceruledge",
+      "ironmoth",
+      "irontreads",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "cinderace",
+      "pecharunt",
+      "tinglu",
+      "slowkinggalar",
+      "darkrai"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

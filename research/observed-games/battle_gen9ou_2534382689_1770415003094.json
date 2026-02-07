@@ -1,0 +1,234 @@
+{
+  "id": "battle-gen9ou-2534382689",
+  "p1": "MiaTaylor612",
+  "p2": "omoqaqqwq",
+  "minElo": 1644,
+  "startTime": 1770414813338,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Sandy Shocks|Stealth Rock|p1a: Samurott",
+        "|move|p1a: Samurott|Aqua Cutter|p2a: Sandy Shocks"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Samurott|Aqua Jet|p2a: Sandy Shocks",
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Iron Jugulis|Iron Jugulis|100/100",
+        "|move|p1a: Gholdengo|Thunder Wave|p2a: Iron Jugulis"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Articuno|Articuno|100/100",
+        "|move|p2a: Iron Jugulis|Earth Power|p1a: Articuno"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Iron Jugulis|Hurricane|p1a: Articuno",
+        "|move|p1a: Articuno|Roar|p2a: Iron Jugulis"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Scizor|Scizor, M|100/100",
+        "|move|p1a: Articuno|Roost|p1a: Articuno"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p2a: Scizor|Knock Off|p1a: Landorus"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Manaphy|Manaphy|100/100",
+        "|move|p1a: Landorus|Stealth Rock|p2a: Manaphy"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Manaphy|Tail Glow|p2a: Manaphy",
+        "|move|p1a: Landorus|U-turn|p2a: Manaphy",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Iron Valiant|Encore|p2a: Manaphy",
+        "|move|p2a: Manaphy|Tail Glow|p2a: Manaphy"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Iron Jugulis|Iron Jugulis|100/100 par",
+        "|move|p1a: Iron Valiant|Close Combat|p2a: Iron Jugulis"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Iron Valiant|Knock Off|p2a: Iron Jugulis",
+        "|switch|p2a: Scizor|Scizor, M|84/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|64/100",
+        "|switch|p2a: Latios|Latios, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Landorus|Taunt|p2a: Latios"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Gliscor|Gliscor, F|100/100",
+        "|move|p2a: Latios|Stored Power|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Scizor|Scizor, M|72/100",
+        "|move|p1a: Gliscor|Swords Dance|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Gliscor",
+        "|move|p1a: Gliscor|Knock Off|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Gliscor|Knock Off|p2a: Scizor",
+        "|switch|p2a: Manaphy|Manaphy|81/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Manaphy|Ice Beam|p1a: Gliscor",
+        "|switch|p1a: Samurott|Samurott-Hisui, M|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Manaphy|Energy Ball|p1a: Samurott",
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: Manaphy"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Manaphy|Energy Ball|p1a: Samurott",
+        "|move|p1a: Samurott|Ceaseless Edge|p2a: Manaphy"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Manaphy|Energy Ball|p1a: Samurott",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Iron Valiant|Knock Off|p2a: Manaphy",
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Iron Valiant",
+        "|move|p1a: Iron Valiant|Close Combat|p2a: Ogerpon"
+      ]
+    }
+  ],
+  "winner": "MiaTaylor612",
+  "endTime": 1770415003094,
+  "p1Team": [
+    "Gholdengo",
+    "Articuno",
+    "Landorus-Therian",
+    "Iron Valiant",
+    "Gliscor",
+    "Samurott-Hisui"
+  ],
+  "p2Team": [
+    "Ogerpon",
+    "Iron Jugulis",
+    "Scizor",
+    "Manaphy",
+    "Latios"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "gholdengo",
+      "articuno",
+      "landorustherian",
+      "ironvaliant",
+      "gliscor",
+      "samurotthisui"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ogerpon",
+      "ironjugulis",
+      "scizor",
+      "manaphy",
+      "latios"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

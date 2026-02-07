@@ -1,0 +1,15 @@
+{
+  "timestamp": "20260201_080614",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530619298",
+  "replay_id": "gen9ou-2530619298",
+  "mistakes_found": 1,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 20,
+      "description": "Gholdengo fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    }
+  ]
+}

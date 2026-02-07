@@ -1,0 +1,133 @@
+{
+  "id": "battle-gen9ou-2534413174",
+  "p1": "slysly",
+  "p2": "Obling",
+  "minElo": 1579,
+  "startTime": 1770418113510,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Deoxys|Taunt|p1a: Excadrill",
+        "|move|p1a: Excadrill|Rapid Spin|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Deoxys|Reflect|p2a: Deoxys",
+        "|move|p1a: Excadrill|Rapid Spin|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Excadrill|Iron Head|p2a: Deoxys",
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Roaring Sun|Salamence, M|100/100",
+        "|move|p1a: Excadrill|Iron Head|p2a: Roaring Sun"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Excadrill|Tera Blast|p2a: Roaring Sun|[anim] Tera Blast Fairy",
+        "|move|p2a: Roaring Sun|Earthquake|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Excadrill|Tera Blast|p2a: Roaring Sun|[anim] Tera Blast Fairy",
+        "|switch|p2a: V|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|move|p2a: V|Horn Leech|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: V|Swords Dance|p2a: V",
+        "|move|p1a: Corviknight|Bulk Up|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Corviknight|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Hippowdon|Hippowdon, M|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: V|Ivy Cudgel|p1a: Hippowdon|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Excadrill|Excadrill, F, tera:Fairy|41/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Excadrill|Tera Blast|p2a: V|[anim] Tera Blast Fairy",
+        "|move|p2a: V|Horn Leech|p1a: Excadrill",
+        "|switch|p1a: Alomomola|Alomomola, L99, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: V|Horn Leech|p1a: Alomomola"
+      ]
+    }
+  ],
+  "winner": "Obling",
+  "endTime": 1770418319014,
+  "p1Team": [
+    "Corviknight",
+    "Hippowdon",
+    "Excadrill",
+    "Alomomola"
+  ],
+  "p2Team": [
+    "Salamence",
+    "Ogerpon-Wellspring"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.75,
+    "fatCount": 3,
+    "offenseCount": 0,
+    "team": [
+      "corviknight",
+      "hippowdon",
+      "excadrill",
+      "alomomola"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "salamence",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

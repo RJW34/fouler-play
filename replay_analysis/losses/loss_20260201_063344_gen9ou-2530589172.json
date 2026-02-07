@@ -1,0 +1,50 @@
+{
+  "timestamp": "20260201_063344",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530589172",
+  "replay_id": "gen9ou-2530589172",
+  "mistakes_found": 6,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 10,
+      "description": "Nue fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 23,
+      "description": "Max Elephant fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 29,
+      "description": "Potential Man fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 34,
+      "description": "Mahoraga fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 34,
+      "description": "Round Deer fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 43,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "turn": 16,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "Switched to Gliscor vs Raging Bolt (76% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 42% | Pecharunt 100% | Zamazenta fainted",
+  "opp_team": "Azumarill 100% | Dragonite 100% | Ursaluna 100% | Raging Bolt 76% | Gholdengo 100% | Samurott-Hisui 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530657409",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gholdengo instead",
+      "Check if better defensive matchup vs Raging Bolt"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

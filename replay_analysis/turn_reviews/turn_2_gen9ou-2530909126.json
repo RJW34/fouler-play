@@ -1,0 +1,24 @@
+{
+  "turn": 2,
+  "bot_choice": "Switched to Gholdengo",
+  "why_critical": "Switched to Gholdengo vs healthy Garchomp \u2014 long-term positioning play",
+  "bot_team": "Gliscor 36% tox +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Garchomp 91% | Gardevoir 100% | Rillaboom 100% | Milotic 100% | Zapdos 100% | Polteageist 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530909126",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Garchomp"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

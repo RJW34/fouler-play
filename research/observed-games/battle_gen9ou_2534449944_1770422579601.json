@@ -1,0 +1,120 @@
+{
+  "id": "battle-gen9ou-2534449944",
+  "p1": "shindig42",
+  "p2": "temporarylight",
+  "minElo": 1537,
+  "startTime": 1770422493820,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Great Tusk|Iron Head|p2a: Weavile",
+        "|switch|p2a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Zapdos|Volt Switch|p1a: Raging Bolt",
+        "|switch|p2a: Gliscor|Gliscor, F|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Gliscor|Toxic|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Dragon Pulse|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Gliscor|Gliscor, M|100/100",
+        "|move|p2a: Gliscor|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Gliscor|Swords Dance|p1a: Gliscor",
+        "|move|p2a: Gliscor|Stealth Rock|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Gliscor|Swords Dance|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Gliscor|Knock Off|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Foul Play|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Gliscor|Knock Off|p2a: Zapdos",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Gliscor|Protect|p1a: Gliscor",
+        "|move|p2a: Great Tusk|Close Combat|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Gliscor|Facade|p2a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "shindig42",
+  "endTime": 1770422579601,
+  "p1Team": [
+    "Raging Bolt",
+    "Gliscor"
+  ],
+  "p2Team": [
+    "Zapdos",
+    "Gliscor",
+    "Pecharunt",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "ragingbolt",
+      "gliscor"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "zapdos",
+      "gliscor",
+      "pecharunt",
+      "greattusk"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

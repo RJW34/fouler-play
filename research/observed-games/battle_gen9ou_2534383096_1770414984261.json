@@ -1,0 +1,130 @@
+{
+  "id": "battle-gen9ou-2534383096",
+  "p1": "0c3an m4n",
+  "p2": "DiamondFury205",
+  "minElo": 1523,
+  "startTime": 1770414843327,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Flip Turn|p2a: Salazzle",
+        "|switch|p1a: Si|Hatterene, F, shiny|100/100|[from] Flip Turn",
+        "|move|p2a: Salazzle|Knock Off|p1a: Si"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Salazzle|Sludge Wave|p1a: Si",
+        "|switch|p1a: Risk of what?|Pelipper, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Salazzle|Toxic|p1a: Risk of what?",
+        "|move|p1a: Risk of what?|U-turn|p2a: Salazzle",
+        "|switch|p1a: Sphyraena (Fih)|Barraskewda, M, shiny|100/100|[from] U-turn",
+        "|switch|p2a: Ceruledge|Ceruledge, M|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Flip Turn|p2a: Ceruledge",
+        "|switch|p1a: El papu|Slither Wing, shiny|100/100|[from] Flip Turn",
+        "|move|p2a: Ceruledge|Poltergeist|p1a: El papu"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: El papu|First Impression|p2a: Ceruledge",
+        "|switch|p2a: Salamence|Salamence, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Salamence|Outrage|p1a: El papu",
+        "|switch|p1a: Sphyraena (Fih)|Barraskewda, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Flip Turn|p2a: Salamence",
+        "|switch|p1a: Apernao|Crawdaunt, M, shiny|100/100|[from] Flip Turn",
+        "|move|p2a: Salamence|Outrage|p1a: Apernao|[from] lockedmove",
+        "|switch|p1a: Sphyraena (Fih)|Barraskewda, M, shiny, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Liquidation|p2a: Salamence",
+        "|switch|p2a: Hatterene|Hatterene, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Liquidation|p2a: Hatterene",
+        "|switch|p2a: Magnezone|Magnezone|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Liquidation|p2a: Magnezone"
+      ]
+    }
+  ],
+  "winner": "0c3an m4n",
+  "endTime": 1770414984261,
+  "p1Team": [
+    "Hatterene",
+    "Pelipper",
+    "Barraskewda",
+    "Slither Wing",
+    "Crawdaunt"
+  ],
+  "p2Team": [
+    "Ceruledge",
+    "Salamence",
+    "Hatterene",
+    "Magnezone"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "hatterene",
+      "pelipper",
+      "barraskewda",
+      "slitherwing",
+      "crawdaunt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "ceruledge",
+      "salamence",
+      "hatterene",
+      "magnezone"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

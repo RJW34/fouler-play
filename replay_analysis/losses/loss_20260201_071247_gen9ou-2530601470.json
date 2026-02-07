@@ -1,0 +1,50 @@
+{
+  "timestamp": "20260201_071247",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530601470",
+  "replay_id": "gen9ou-2530601470",
+  "mistakes_found": 6,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 3,
+      "description": "Ogerpon fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 20,
+      "description": "Iron Moth fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 35,
+      "description": "Iron Valiant fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 35,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 35,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 4,
+      "description": "Attempted dragondance on turn 4 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

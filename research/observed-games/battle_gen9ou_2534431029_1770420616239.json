@@ -1,0 +1,225 @@
+{
+  "id": "battle-gen9ou-2534431029",
+  "p1": "life wont change",
+  "p2": "rookie22",
+  "minElo": 1654,
+  "startTime": 1770420183687,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Lisan Al Gaib|Vacuum Wave|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Bene Gesserit|Iron Crown|100/100",
+        "|move|p1a: Slowking|Future Sight|p2a: Bene Gesserit"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Bene Gesserit|Psyshock|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Meowscarada|Meowscarada, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Meowscarada|U-turn|p2a: Great Tusk",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100|[from] U-turn",
+        "|switch|p2a: Meowscarada|Meowscarada, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|switch|p1a: Corviknight|Corviknight, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|89/100",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|89/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Meowscarada|Meowscarada, F|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Meowscarada"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|100/100",
+        "|move|p2a: Meowscarada|Knock Off|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Corviknight|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Meowscarada|Meowscarada, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Lisan Al Gaib|Keldeo|100/100",
+        "|move|p1a: Meowscarada|Triple Axel|p2a: Lisan Al Gaib|[miss]"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, F|100/100",
+        "|move|p2a: Lisan Al Gaib|Surf|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Lisan Al Gaib|Surf|p1a: Dondozo",
+        "|move|p1a: Dondozo|Body Press|p2a: Lisan Al Gaib"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Meowscarada|Meowscarada, F|100/100",
+        "|move|p2a: Lisan Al Gaib|Surf|p1a: Meowscarada"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|95/100",
+        "|move|p1a: Meowscarada|Flower Trick|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Meowscarada|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Gholdengo|Gholdengo|44/100|[from] U-turn",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Gholdengo",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Great Tusk",
+        "|switch|p1a: Meowscarada|Meowscarada, F|40/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Meowscarada",
+        "|move|p1a: Meowscarada|Flower Trick|p2a: Raging Bolt",
+        "|switch|p2a: Lisan Al Gaib|Keldeo|70/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Lisan Al Gaib|Vacuum Wave|p1a: Meowscarada",
+        "|switch|p1a: Slowking|Slowking-Galar, F|63/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": []
+    }
+  ],
+  "winner": "rookie22",
+  "endTime": 1770420616239,
+  "p1Team": [
+    "Slowking-Galar",
+    "Meowscarada",
+    "Gholdengo",
+    "Corviknight",
+    "Great Tusk",
+    "Dondozo"
+  ],
+  "p2Team": [
+    "Iron Crown",
+    "Great Tusk",
+    "Meowscarada",
+    "Raging Bolt",
+    "Keldeo"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 3,
+    "offenseCount": 3,
+    "team": [
+      "slowkinggalar",
+      "meowscarada",
+      "gholdengo",
+      "corviknight",
+      "greattusk",
+      "dondozo"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironcrown",
+      "greattusk",
+      "meowscarada",
+      "ragingbolt",
+      "keldeo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

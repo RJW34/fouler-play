@@ -1,0 +1,229 @@
+{
+  "id": "battle-gen9ou-2534417336",
+  "p1": "n trademark",
+  "p2": "MegaBaxShots",
+  "minElo": 1608,
+  "startTime": 1770418593521,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Garganacl|Flamethrower|p2a: Scizor",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|100/100",
+        "|move|p2a: Great Tusk|Knock Off|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|100/100",
+        "|move|p1a: Alomomola|Scald|p2a: Hatterene"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Alomomola|Flip Turn|p2a: Hatterene",
+        "|switch|p1a: Garganacl|Garganacl, M|100/100|[from] Flip Turn",
+        "|move|p2a: Hatterene|Nuzzle|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Torkoal|Torkoal, F|100/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Torkoal"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Venusaur|Venusaur, F|100/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Venusaur"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Venusaur|Growth|p2a: Venusaur"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Venusaur|Weather Ball|p1a: Pecharunt",
+        "|switch|p1a: Garganacl|Garganacl, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Venusaur|Solar Beam||[still]"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|100/100",
+        "|move|p2a: Venusaur|Solar Beam||[still]",
+        "|switch|p1a: Alomomola|Alomomola, M|100/100",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Walking Wake|Walking Wake|100/100",
+        "|move|p1a: Alomomola|Scald|p2a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Walking Wake|Dragon Pulse|p1a: Alomomola",
+        "|move|p1a: Alomomola|Mirror Coat|p2a: Walking Wake",
+        "|switch|p2a: Torkoal|Torkoal, F|72/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Great Tusk",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Horn Leech|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|84/100",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|73/100",
+        "|move|p1a: Alomomola|Scald|p2a: Hatterene"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Alomomola|Flip Turn|p2a: Hatterene",
+        "|switch|p1a: Garganacl|Garganacl, M|100/100|[from] Flip Turn",
+        "|move|p2a: Hatterene|Draining Kiss|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Garganacl|Salt Cure|p2a: Hatterene",
+        "|move|p2a: Hatterene|Psyshock|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk, tera:Ice|56/100",
+        "|move|p1a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Torkoal|Torkoal, F|72/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Torkoal"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Garganacl|Stealth Rock|p2a: Torkoal",
+        "|move|p2a: Torkoal|Stealth Rock|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk, tera:Ice|15/100",
+        "|move|p1a: Garganacl|Protect||[still]"
+      ]
+    }
+  ],
+  "winner": "n trademark",
+  "endTime": 1770418868374,
+  "p1Team": [
+    "Alomomola",
+    "Garganacl",
+    "Pecharunt",
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Hatterene",
+    "Torkoal",
+    "Venusaur",
+    "Walking Wake"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 2,
+    "offenseCount": 0,
+    "team": [
+      "alomomola",
+      "garganacl",
+      "pecharunt",
+      "ogerponwellspring"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "greattusk",
+      "hatterene",
+      "torkoal",
+      "venusaur",
+      "walkingwake"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

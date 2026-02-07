@@ -1,0 +1,320 @@
+{
+  "id": "battle-gen9ou-2534403389",
+  "p1": "Zapy364",
+  "p2": "Quaqrash",
+  "minElo": 1677,
+  "startTime": 1770417033451,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Raging Bolt|Volt Switch|p2a: The Tyrant",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] Volt Switch",
+        "|move|p2a: The Tyrant|Stealth Rock|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: The Juggernaught|Chesnaught, F|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Body Press|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Spikes|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Great Tusk|Knock Off|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Spikes|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Synthesis|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Great Tusk|Knock Off|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Spikes|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Synthesis|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|100/100",
+        "|move|p2a: The Juggernaught|Synthesis|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, F|80/100",
+        "|move|p1a: Zapdos|U-turn|p2a: The Tyrant",
+        "|switch|p1a: Primarina|Primarina, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: The Reigner|Tornadus-Therian, M|100/100",
+        "|move|p1a: Primarina|Moonblast|p2a: The Reigner"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: The Reigner|Bleakwind Storm|p1a: Primarina|[miss]",
+        "|move|p1a: Primarina|Surf|p2a: The Reigner",
+        "|switch|p2a: The Excalibur|Excadrill, M|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|56/100",
+        "|move|p2a: The Excalibur|Earthquake|p1a: Great Tusk",
+        "|switch|p1a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: The Excalibur|Rapid Spin|p1a: Zapdos",
+        "|move|p1a: Zapdos|U-turn|p2a: The Excalibur",
+        "|switch|p1a: Primarina|Primarina, F|45/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: The Golden Child|Gholdengo|100/100",
+        "|move|p1a: Primarina|Surf|p2a: The Golden Child"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: The Golden Child|Thunderbolt|p1a: Primarina",
+        "|switch|p1a: Zapdos|Zapdos|86/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: The Golden Child|Recover|p2a: The Golden Child",
+        "|move|p1a: Zapdos|Hurricane|p2a: The Golden Child"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: The Tyrant|Tyranitar, F|54/100",
+        "|move|p1a: Zapdos|U-turn|p2a: The Tyrant",
+        "|switch|p1a: Ogerpon|Ogerpon-Cornerstone, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: The Juggernaught|Chesnaught, F, tera:Ghost|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: The Juggernaught|[anim] Ivy Cudgel Rock"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: The Juggernaught|Body Press|p1a: Ogerpon",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: The Golden Child|Gholdengo|47/100",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: The Golden Child",
+        "|switch|p2a: The Excalibur|Excadrill, M|89/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: The Excalibur|Swords Dance|p2a: The Excalibur",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: The Excalibur"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|86/100",
+        "|move|p2a: The Excalibur|Rock Slide|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: The Excalibur|Rock Slide|p1a: Zapdos",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: The Juggernaught|Chesnaught, F, tera:Ghost|56/100",
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: The Juggernaught|Knock Off|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: The Juggernaught|Synthesis|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: The Juggernaught|Body Press|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Roar|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p2a: The Juggernaught|Chesnaught, F, tera:Ghost|100/100",
+        "|move|p1a: Zamazenta|Crunch|p2a: The Juggernaught"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Body Press|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: The Juggernaught",
+        "|move|p2a: The Juggernaught|Body Press|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: The Juggernaught",
+        "|switch|p2a: The Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: The Valiant|Encore|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Crunch|p2a: The Valiant"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p2a: The Valiant|Shadow Ball|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Crunch|p2a: The Valiant"
+      ]
+    },
+    {
+      "turn": 35,
+      "events": [
+        "|move|p2a: The Valiant|Shadow Ball|p1a: Zamazenta",
+        "|switch|p1a: Raging Bolt|Raging Bolt|57/100"
+      ]
+    },
+    {
+      "turn": 36,
+      "events": [
+        "|move|p2a: The Valiant|Moonblast|p1a: Raging Bolt"
+      ]
+    }
+  ],
+  "winner": "Quaqrash",
+  "endTime": 1770417459861,
+  "p1Team": [
+    "Great Tusk",
+    "Zapdos",
+    "Primarina",
+    "Ogerpon-Cornerstone",
+    "Raging Bolt",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Chesnaught",
+    "Tyranitar",
+    "Tornadus-Therian",
+    "Excadrill",
+    "Gholdengo",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "greattusk",
+      "zapdos",
+      "primarina",
+      "ogerponcornerstone",
+      "ragingbolt",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "chesnaught",
+      "tyranitar",
+      "tornadustherian",
+      "excadrill",
+      "gholdengo",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

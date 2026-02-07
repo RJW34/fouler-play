@@ -1,0 +1,20 @@
+{
+  "turn": 2,
+  "bot_choice": "Switched to Pecharunt",
+  "why_critical": "\ud83d\udd04 Switched to Pecharunt vs Araquanid \u2014 was this the right matchup?",
+  "bot_team": "Gliscor 100% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Araquanid 84% | Raging Bolt 100% | Iron Moth 100% | Great Tusk 100% | Gholdengo 100% | Kingambit 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530328263",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Maintain offensive pressure"
+    ],
+    [
+      "Switch to different Pokemon",
+      "Better type matchup available"
+    ]
+  ],
+  "feedback": null
+}

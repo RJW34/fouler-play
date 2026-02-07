@@ -1,0 +1,43 @@
+{
+  "timestamp": "20260201_055544",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530578146",
+  "replay_id": "gen9ou-2530578146",
+  "mistakes_found": 5,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 7,
+      "description": "Ceruledge fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 19,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 19,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 1,
+      "description": "Attempted bulkup on turn 1 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    },
+    {
+      "category": "insufficient_switching",
+      "turn": 19,
+      "description": "Only 2 switches in 19 turns",
+      "severity": "major",
+      "suggested_fix": "Reduce switch penalty, increase matchup awareness"
+    }
+  ]
+}

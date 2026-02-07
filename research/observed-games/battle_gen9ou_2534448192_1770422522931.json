@@ -1,0 +1,229 @@
+{
+  "id": "battle-gen9ou-2534448192",
+  "p1": "55Havoc55",
+  "p2": "Pig Perfect",
+  "minElo": 1568,
+  "startTime": 1770422253787,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: Sew What?|Spikes|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Latias|Psychic|p2a: Sew What?",
+        "|move|p2a: Sew What?|Thunder Wave|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Sew What?|Memento|p1a: Latias",
+        "|switch|p2a: Iron Trunk|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Iron Trunk|Stealth Rock|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: So Ein Mist|Kingambit, F|100/100",
+        "|move|p1a: Latias|Psychic|p2a: So Ein Mist"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Ursaluna|Ursaluna, M|100/100",
+        "|move|p2a: So Ein Mist|Kowtow Cleave|p1a: Ursaluna"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Iron Trunk|Iron Treads|100/100",
+        "|move|p1a: Ursaluna|Headlong Rush|p2a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Latias|Latias, F|100/100 par",
+        "|move|p2a: Iron Trunk|Earthquake|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Iron Trunk|Ice Spinner|p1a: Latias",
+        "|move|p1a: Latias|Aura Sphere|p2a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Iron Trunk|Ice Spinner|p1a: Latias",
+        "|switch|p1a: Scizor|Scizor, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Iron Trunk|Earthquake|p1a: Scizor",
+        "|move|p1a: Scizor|Defog|p2a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Iron Trunk|Stealth Rock|p1a: Scizor",
+        "|move|p1a: Scizor|Knock Off|p2a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Scizor|Bullet Punch|p2a: Iron Trunk",
+        "|switch|p2a: Peak-Chu|Pawmot, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Peak-Chu|Revival Blessing|p2a: Peak-Chu",
+        "|move|p1a: Scizor|Defog|p2a: Peak-Chu"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Ursaluna|Ursaluna, M|44/100",
+        "|move|p2a: Peak-Chu|Revival Blessing|p2a: Peak-Chu"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, F|100/100",
+        "|move|p2a: Peak-Chu|Ice Punch|p1a: Dragapult",
+        "|switch|p1a: Heatran|Heatran, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Sew What?|Pincurchin, M|50/100",
+        "|move|p1a: Heatran|Earth Power|p2a: Sew What?",
+        "|switch|p2a: Iron Trunk|Iron Treads|50/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Ursaluna|Ursaluna, M|44/100",
+        "|move|p2a: Iron Trunk|Earthquake|p1a: Ursaluna"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Iron Trunk|Earthquake|p1a: Ursaluna",
+        "|switch|p1a: Primarina|Primarina, F|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Iron Trunk|Earthquake|p1a: Primarina",
+        "|move|p1a: Primarina|Substitute|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Iron Trunk|Earthquake|p1a: Primarina",
+        "|move|p1a: Primarina|Hyper Voice|p2a: Iron Trunk",
+        "|switch|p2a: Peak-Chu|Pawmot, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Peak-Chu|Double Shock|p1a: Primarina",
+        "|switch|p1a: Heatran|Heatran, M|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Sumo Smoker|Iron Hands|100/100",
+        "|move|p1a: Heatran|Lava Plume|p2a: Sumo Smoker"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Scizor|Scizor, F|52/100",
+        "|move|p2a: Sumo Smoker|Drain Punch|p1a: Scizor"
+      ]
+    }
+  ],
+  "winner": "Pig Perfect",
+  "endTime": 1770422522930,
+  "p1Team": [
+    "Ursaluna",
+    "Latias",
+    "Scizor",
+    "Dragapult",
+    "Heatran",
+    "Primarina"
+  ],
+  "p2Team": [
+    "Iron Treads",
+    "Kingambit",
+    "Pawmot",
+    "Pincurchin",
+    "Iron Hands"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ursaluna",
+      "latias",
+      "scizor",
+      "dragapult",
+      "heatran",
+      "primarina"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "irontreads",
+      "kingambit",
+      "pawmot",
+      "pincurchin",
+      "ironhands"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

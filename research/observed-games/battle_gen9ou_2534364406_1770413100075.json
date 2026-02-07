@@ -1,0 +1,272 @@
+{
+  "id": "battle-gen9ou-2534364406",
+  "p1": "imprisonpaulgeorge",
+  "p2": "Bring it on mon",
+  "minElo": 1610,
+  "startTime": 1770412893240,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Ninetales|Aurora Veil|p2a: Ninetales",
+        "|move|p1a: Starblaze|Magma Storm|p2a: Ninetales|[miss]"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Latias|Latias, F|100/100",
+        "|move|p1a: Starblaze|Taunt|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Starscream|Dragapult, M|100/100",
+        "|move|p2a: Latias|Aura Sphere|p1a: Starscream"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Klefki|Klefki, M|100/100",
+        "|move|p1a: Starscream|Draco Meteor|p2a: Klefki"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Starlink|Bronzong, shiny|100/100",
+        "|switch|p2a: Kommo-o|Kommo-o, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Kommo-o|Clangorous Soul|p2a: Kommo-o",
+        "|move|p1a: Starlink|Psychic Noise|p2a: Kommo-o"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Starscream|Dragapult, M|100/100",
+        "|move|p2a: Kommo-o|Clangorous Soul|p2a: Kommo-o"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Kommo-o|Clanging Scales|p1a: Starscream",
+        "|move|p1a: Starscream|Tera Blast|p2a: Kommo-o|[anim] Tera Blast Fairy",
+        "|switch|p2a: Klefki|Klefki, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Starblaze|Heatran, M|100/100",
+        "|move|p2a: Klefki|Thunder Wave|p1a: Starblaze"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Klefki|Light Screen|p2a: Klefki",
+        "|move|p1a: Starblaze|Magma Storm|p2a: Klefki",
+        "|switch|p2a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Latias|Calm Mind|p2a: Latias",
+        "|move|p1a: Starblaze|Taunt|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Starlink|Bronzong, shiny|100/100",
+        "|move|p2a: Latias|Stored Power|p1a: Starlink"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Latias|Aura Sphere|p1a: Starlink",
+        "|move|p1a: Starlink|Iron Head|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Starblaze|Heatran, M|100/100 par",
+        "|move|p2a: Latias|Aura Sphere|p1a: Starblaze"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Latias|Agility|p2a: Latias",
+        "|move|p1a: Starblaze|Taunt|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Latias|Aura Sphere|p1a: Starblaze",
+        "|move|p1a: Starblaze|Magma Storm|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Latias|Aura Sphere|p1a: Starblaze",
+        "|switch|p1a: Starforce|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Starforce",
+        "|move|p1a: Starforce|Play Rough|p2a: Latias",
+        "|switch|p2a: Ninetales|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Ninetales|Freeze-Dry|p1a: Starforce",
+        "|switch|p1a: Starlink|Bronzong, shiny|66/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Ninetales|Aurora Veil|p2a: Ninetales",
+        "|move|p1a: Starlink|Iron Head|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Ninetales|Freeze-Dry|p1a: Starlink",
+        "|move|p1a: Starlink|Psychic Noise|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Ninetales|Freeze-Dry|p1a: Starlink",
+        "|move|p1a: Starlink|Iron Head|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Ninetales|Freeze-Dry|p1a: Starlink",
+        "|move|p1a: Starlink|Psychic Noise|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Ninetales|Encore|p1a: Starlink",
+        "|move|p1a: Starlink|Psychic Noise|p2a: Ninetales",
+        "|switch|p2a: Maushold|Maushold-Four|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Starscream|Dragapult, M, tera:Fairy|100/100",
+        "|move|p2a: Maushold|Tidy Up|p2a: Maushold"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Maushold|Population Bomb|p1a: Starscream",
+        "|switch|p1a: Starlink|Bronzong, shiny|71/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Maushold|Bite|p1a: Starlink"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Maushold|Bite|p1a: Starlink",
+        "|switch|p1a: Stardrum|Rillaboom, M|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Stardrum|Grassy Glide|p2a: Maushold",
+        "|move|p2a: Maushold|Population Bomb|p1a: Stardrum",
+        "|switch|p1a: Starburst|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Maushold|Population Bomb|p1a: Starburst"
+      ]
+    }
+  ],
+  "winner": "Bring it on mon",
+  "endTime": 1770413100075,
+  "p1Team": [
+    "Dragapult",
+    "Bronzong",
+    "Heatran",
+    "Ogerpon-Wellspring",
+    "Rillaboom",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Latias",
+    "Klefki",
+    "Kommo-o",
+    "Ninetales-Alola",
+    "Maushold-Four"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "dragapult",
+      "bronzong",
+      "heatran",
+      "ogerponwellspring",
+      "rillaboom",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "latias",
+      "klefki",
+      "kommoo",
+      "ninetalesalola",
+      "mausholdfour"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

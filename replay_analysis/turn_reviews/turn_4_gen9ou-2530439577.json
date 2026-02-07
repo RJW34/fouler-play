@@ -1,0 +1,20 @@
+{
+  "turn": 4,
+  "bot_choice": "Zamazenta fainted",
+  "why_critical": "\u274c Zamazenta fainted \u2014 should we have switched out earlier or chosen differently?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 20% -1 spd",
+  "opp_team": "Ogerpon-Wellspring 100% | Raging Bolt 100% | Kingambit 100% | Meowscarada 100% | Gholdengo 100% | Ceruledge fainted",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530439577",
+  "alternatives": [
+    [
+      "Switch out earlier",
+      "Preserve this Pokemon for later"
+    ],
+    [
+      "Different move",
+      "Better damage/utility before going down"
+    ]
+  ],
+  "feedback": null
+}

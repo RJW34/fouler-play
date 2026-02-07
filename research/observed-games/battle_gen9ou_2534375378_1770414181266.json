@@ -1,0 +1,276 @@
+{
+  "id": "battle-gen9ou-2534375378",
+  "p1": "StudiousShade",
+  "p2": "Srita Kaguya",
+  "minElo": 1563,
+  "startTime": 1770414033296,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Tornadus|Knock Off|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Gliscor",
+        "|move|p2a: Gliscor|Stealth Rock|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Gliscor",
+        "|move|p2a: Gliscor|Ice Fang|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Gliscor",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|move|p2a: Gliscor|Ice Fang|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, F|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M|100/100",
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|100/100",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|100/100",
+        "|move|p2a: Zamazenta|Body Press|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Hatterene|Future Sight|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M|82/100",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Gholdengo",
+        "|switch|p2a: Primarina|Primarina, M|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100",
+        "|move|p2a: Primarina|Moonblast|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Tornadus|Knock Off|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Primarina",
+        "|switch|p1a: Entei|Entei|100/100|[from] U-turn",
+        "|move|p2a: Primarina|Surf|p1a: Entei",
+        "|switch|p1a: Great Tusk|Great Tusk|79/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Primarina",
+        "|move|p2a: Primarina|Surf|p1a: Great Tusk",
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|34/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Tornadus",
+        "|switch|p1a: Kingambit|Kingambit, M|21/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Primarina",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, F|88/100",
+        "|switch|p1a: Hatterene|Hatterene, F|77/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M|27/100",
+        "|move|p2a: Dragapult|Shadow Ball|p1a: Kingambit",
+        "|switch|p1a: Dragonite|Dragonite, M|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Amoonguss|Amoonguss, F|100/100",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Dragonite|Tera Blast|p2a: Amoonguss|[anim] Tera Blast Flying",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Dragonite|Tera Blast|p2a: Zamazenta|[anim] Tera Blast Flying",
+        "|move|p2a: Zamazenta|Roar|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, M|79/100 tox",
+        "|move|p1a: Hatterene|Future Sight|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: Dragonite|Dragonite, M, tera:Flying|100/100",
+        "|move|p2a: Gliscor|Stealth Rock|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, F|76/100",
+        "|move|p1a: Dragonite|Encore||[still]",
+        "|switch|p2a: Gliscor|Gliscor, M|91/100 tox"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite",
+        "|move|p2a: Gliscor|Ice Fang|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": []
+    }
+  ],
+  "winner": "StudiousShade",
+  "endTime": 1770414181266,
+  "p1Team": [
+    "Great Tusk",
+    "Kingambit",
+    "Hatterene",
+    "Tornadus-Therian",
+    "Entei",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Dragapult",
+    "Zamazenta",
+    "Gholdengo",
+    "Primarina",
+    "Amoonguss",
+    "Gliscor"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "kingambit",
+      "hatterene",
+      "tornadustherian",
+      "entei",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "dragapult",
+      "zamazenta",
+      "gholdengo",
+      "primarina",
+      "amoonguss",
+      "gliscor"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

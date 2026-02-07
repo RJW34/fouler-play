@@ -1,0 +1,307 @@
+{
+  "id": "battle-gen9ou-2534374407",
+  "p1": "n trademark",
+  "p2": "Mimikyuster04",
+  "minElo": 1596,
+  "startTime": 1770413913283,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Iron Crown|Psychic Noise|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Iron Crown|Volt Switch|p1a: Alomomola",
+        "|switch|p2a: Samurott|Samurott-Hisui, F, shiny|100/100|[from] Volt Switch",
+        "|move|p1a: Alomomola|Scald|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Samurott|Flip Turn|p1a: Alomomola",
+        "|switch|p2a: Iron Crown|Iron Crown|100/100|[from] Flip Turn",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Iron Crown",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Ogerpon|Shadow Ball|p2a: Iron Crown",
+        "|switch|p2a: Samurott|Samurott-Hisui, F, shiny|94/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Samurott|Knock Off|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Great Tusk|Close Combat|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, F|100/100",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Garganacl",
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|100/100|[from] Parting Shot",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Garganacl",
+        "|move|p1a: Garganacl|Stealth Rock|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Garganacl",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Garganacl|Stealth Rock||[still]"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Garganacl",
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|62/100|[from] Parting Shot",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|88/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Pecharunt|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Ogerpon|Encore|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Recover|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|8/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Great Tusk|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Ogerpon",
+        "|switch|p1a: Pecharunt|Pecharunt|42/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Iron Valiant|Shadow Ball|p1a: Pecharunt",
+        "|switch|p1a: Alomomola|Alomomola, F|81/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Alomomola",
+        "|move|p1a: Alomomola|Mirror Coat|p2a: Iron Valiant",
+        "|switch|p2a: Samurott|Samurott-Hisui, F, shiny|94/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Alomomola",
+        "|move|p1a: Alomomola|Scald|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Samurott|Flip Turn|p1a: Alomomola",
+        "|switch|p2a: Dragonite|Dragonite, M, shiny|100/100|[from] Flip Turn",
+        "|switch|p1a: Garganacl|Garganacl, F|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Garganacl|Trick|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, F, shiny|77/100",
+        "|move|p1a: Garganacl|Shadow Ball|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Garganacl|Grass Knot|p2a: Samurott",
+        "|switch|p2a: Dragonite|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Garganacl|Shadow Ball|p2a: Dragonite",
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Dragonite|Earthquake|p1a: Garganacl",
+        "|switch|p1a: Great Tusk|Great Tusk|86/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Dragonite|Earthquake|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Dragonite",
+        "|switch|p2a: Pecharunt|Pecharunt|88/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Great Tusk",
+        "|switch|p1a: Garganacl|Garganacl, F|44/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Garganacl",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Pecharunt"
+      ]
+    }
+  ],
+  "winner": "n trademark",
+  "endTime": 1770414264172,
+  "p1Team": [
+    "Alomomola",
+    "Ogerpon-Wellspring",
+    "Great Tusk",
+    "Garganacl",
+    "Pecharunt"
+  ],
+  "p2Team": [
+    "Samurott-Hisui",
+    "Iron Crown",
+    "Pecharunt",
+    "Great Tusk",
+    "Iron Valiant",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "alomomola",
+      "ogerponwellspring",
+      "greattusk",
+      "garganacl",
+      "pecharunt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "samurotthisui",
+      "ironcrown",
+      "pecharunt",
+      "greattusk",
+      "ironvaliant",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

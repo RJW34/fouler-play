@@ -1,0 +1,43 @@
+{
+  "timestamp": "20260201_084536",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530633705",
+  "replay_id": "gen9ou-2530633705",
+  "mistakes_found": 5,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 11,
+      "description": "Gholdengo fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 15,
+      "description": "Samurott fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 23,
+      "description": "Arcanine fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 29,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    },
+    {
+      "category": "early_setup",
+      "turn": 5,
+      "description": "Attempted nastyplot on turn 5 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

@@ -1,0 +1,229 @@
+{
+  "id": "battle-gen9ou-2534447256",
+  "p1": "shindig42",
+  "p2": "Palm X",
+  "minElo": 1513,
+  "startTime": 1770422163769,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|100/100",
+        "|move|p1a: Darkrai|Sludge Bomb|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Cinderace",
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Gliscor|Gliscor, M|100/100",
+        "|move|p2a: Slowking|Psyshock|p1a: Gliscor"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Gliscor|Knock Off|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Kyurem|Kyurem|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Gliscor|Knock Off|p2a: Kyurem",
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Gliscor|Facade|p2a: Kyurem",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Gliscor",
+        "|switch|p1a: Heatran|Heatran, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Heatran",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, F|100/100",
+        "|move|p2a: Kyurem|Earth Power|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|45/100",
+        "|move|p1a: Corviknight|Body Press|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Corviknight|Brave Bird|p2a: Slowking",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk",
+        "|move|p1a: Corviknight|Brave Bird|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Corviknight",
+        "|move|p1a: Corviknight|Brave Bird|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk",
+        "|move|p1a: Corviknight|Brave Bird|p2a: Great Tusk",
+        "|switch|p2a: Kingambit|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Corviknight|Body Press|p2a: Kingambit",
+        "|move|p2a: Kingambit|Iron Head|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Corviknight",
+        "|switch|p1a: Heatran|Heatran, F|94/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Kyurem|Kyurem|61/100",
+        "|move|p1a: Heatran|Magma Storm|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Heatran",
+        "|move|p1a: Heatran|Stealth Rock|p2a: Kyurem",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Enamorus|Healing Wish|p2a: Enamorus",
+        "|move|p1a: Heatran|Flash Cannon|p2: Enamorus|[notarget]",
+        "|switch|p2a: Kingambit|Kingambit, F|23/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch||[still]",
+        "|move|p1a: Heatran|Will-O-Wisp|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Heatran",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Kingambit",
+        "|move|p2a: Kingambit|Swords Dance|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Kingambit"
+      ]
+    }
+  ],
+  "winner": "shindig42",
+  "endTime": 1770422442961,
+  "p1Team": [
+    "Gliscor",
+    "Heatran",
+    "Corviknight",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Enamorus",
+    "Cinderace",
+    "Slowking-Galar",
+    "Kyurem",
+    "Great Tusk",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "fat",
+    "confidence": 0.5,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "gliscor",
+      "heatran",
+      "corviknight",
+      "greattusk"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "enamorus",
+      "cinderace",
+      "slowkinggalar",
+      "kyurem",
+      "greattusk",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

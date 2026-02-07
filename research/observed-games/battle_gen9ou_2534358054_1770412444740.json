@@ -1,0 +1,147 @@
+{
+  "id": "battle-gen9ou-2534358054",
+  "p1": "xfyr3x",
+  "p2": "desarmasangra",
+  "minElo": 1584,
+  "startTime": 1770412233222,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Pelipper|Pelipper, F|100/100",
+        "|move|p2a: Slither Wing|Close Combat|p1a: Pelipper"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Torkoal|Torkoal, M|100/100",
+        "|move|p1a: Pelipper|U-turn|p2a: Torkoal",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Cresselia|Cresselia, F|100/100",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Cresselia|[miss]"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Cresselia|Ice Beam|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Cresselia",
+        "|switch|p2a: Slither Wing|Slither Wing|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Pelipper|Pelipper, F|57/100",
+        "|move|p2a: Slither Wing|Close Combat|p1a: Pelipper"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Rillaboom|Rillaboom, F|100/100",
+        "|move|p2a: Slither Wing|Close Combat|p1a: Rillaboom",
+        "|switch|p1a: Barraskewda|Barraskewda, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Torkoal|Torkoal, M|98/100",
+        "|move|p1a: Barraskewda|Flip Turn|p2a: Torkoal",
+        "|switch|p1a: Raging Bolt|Raging Bolt|67/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Venusaur|Venusaur, M|100/100",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Venusaur",
+        "|switch|p2a: Slither Wing|Slither Wing|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Barraskewda|Barraskewda, F|100/100",
+        "|move|p2a: Slither Wing|Close Combat|p1a: Barraskewda",
+        "|switch|p1a: Raging Bolt|Raging Bolt|79/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Slither Wing|Close Combat|p1a: Raging Bolt",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Walking Wake|Walking Wake|100/100",
+        "|move|p1a: Iron Treads|Volt Switch|p2a: Walking Wake",
+        "|switch|p1a: Pelipper|Pelipper, F|16/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Walking Wake|Hydro Steam|p1a: Pelipper"
+      ]
+    }
+  ],
+  "winner": "desarmasangra",
+  "endTime": 1770412444740,
+  "p1Team": [
+    "Pelipper",
+    "Raging Bolt",
+    "Rillaboom",
+    "Barraskewda",
+    "Iron Treads"
+  ],
+  "p2Team": [
+    "Torkoal",
+    "Cresselia",
+    "Slither Wing",
+    "Venusaur",
+    "Walking Wake"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "pelipper",
+      "ragingbolt",
+      "rillaboom",
+      "barraskewda",
+      "irontreads"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "torkoal",
+      "cresselia",
+      "slitherwing",
+      "venusaur",
+      "walkingwake"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

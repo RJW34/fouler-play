@@ -1,0 +1,150 @@
+{
+  "id": "battle-gen9ou-2534465875",
+  "p1": "Be11ringer",
+  "p2": "CopiumBathTub",
+  "minElo": 1517,
+  "startTime": 1770424470080,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Hoopa|Hoopa-Unbound|100/100",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Hoopa"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|100/100",
+        "|move|p1a: Hoopa|Knock Off|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Hoopa|Hyperspace Fury|p2a: Corviknight",
+        "|switch|p2a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Araquanid|Araquanid, F|100/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Araquanid"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Araquanid",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Weezing|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Weezing|Will-O-Wisp|p1a: Gholdengo|[miss]"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Weezing|Protect|p2a: Weezing",
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Gholdengo|Nasty Plot|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Gholdengo|Focus Blast|p2a: Ting-Lu",
+        "|switch|p2a: Kyurem|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Kyurem|Substitute|p2a: Kyurem",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": []
+    }
+  ],
+  "winner": "Be11ringer",
+  "endTime": 1770424577667,
+  "p1Team": [
+    "Hoopa-Unbound",
+    "Araquanid",
+    "Gholdengo",
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Corviknight",
+    "Dragapult",
+    "Ting-Lu",
+    "Weezing-Galar",
+    "Kyurem"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "hoopaunbound",
+      "araquanid",
+      "gholdengo",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "corviknight",
+      "dragapult",
+      "tinglu",
+      "weezinggalar",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,302 @@
+{
+  "id": "battle-gen9ou-2534365117",
+  "p1": "PikachuRTM",
+  "p2": "PixelPenguin2",
+  "minElo": 1519,
+  "startTime": 1770412953251,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Dønphan|Iron Treads|100/100",
+        "|switch|p2a: Blissey|Blissey, F|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|100/100",
+        "|move|p1a: Dønphan|Knock Off|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Dønphan|Stealth Rock|p2a: Skarmory",
+        "|move|p2a: Skarmory|Spikes|p1a: Dønphan"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Dønphan|Rapid Spin|p2a: Skarmory",
+        "|move|p2a: Skarmory|Body Press|p1a: Dønphan"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Sam|Samurott-Hisui, M|100/100",
+        "|move|p2a: Skarmory|Spikes|p1a: Sam"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Sam|Ceaseless Edge|p2a: Skarmory",
+        "|move|p2a: Skarmory|Roost|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Clefable|Clefable, M|100/100",
+        "|move|p1a: Sam|Knock Off|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Sam|Razor Shell|p2a: Clefable",
+        "|move|p2a: Clefable|Knock Off|p1a: Sam"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Weezing|Weezing-Galar, F|100/100",
+        "|move|p1a: Sam|Ceaseless Edge|p2a: Weezing"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Sam|Knock Off|p2a: Weezing",
+        "|move|p2a: Weezing|Will-O-Wisp|p1a: Sam"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Mochi|Pecharunt|100/100",
+        "|move|p2a: Weezing|Defog|p1a: Mochi"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|94/100",
+        "|move|p1a: Mochi|Parting Shot|p2a: Skarmory",
+        "|switch|p1a: Derrick|Pikachu, M|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Kyu|Kyurem, shiny|100/100",
+        "|switch|p2a: Blissey|Blissey, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Kyu|Dragon Dance|p1a: Kyu",
+        "|move|p2a: Blissey|Seismic Toss|p1a: Kyu"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|94/100",
+        "|move|p1a: Kyu|Icicle Spear|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Kyu|Icicle Spear|p2a: Skarmory",
+        "|switch|p2a: Clefable|Clefable, M|46/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Kyu|Icicle Spear|p2a: Clefable",
+        "|move|p2a: Clefable|Moonblast|p1a: Kyu"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Kyu|Icicle Spear|p2a: Clefable",
+        "|switch|p2a: Blissey|Blissey, F|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Kyu|Icicle Spear|p2a: Blissey",
+        "|move|p2a: Blissey|Seismic Toss|p1a: Kyu",
+        "|switch|p1a: Gałlade|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Gałlade|Close Combat|p2a: Blissey",
+        "|switch|p2a: Weezing|Weezing-Galar, F|73/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Gałlade|Moonblast|p2a: Weezing",
+        "|move|p2a: Weezing|Strange Steam|p1a: Gałlade",
+        "|switch|p1a: Dønphan|Iron Treads|54/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Dønphan|Knock Off|p2a: Weezing",
+        "|move|p2a: Weezing|Will-O-Wisp|p1a: Dønphan"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Dønphan|Stealth Rock|p2a: Weezing",
+        "|move|p2a: Weezing|Pain Split|p1a: Dønphan"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, F|100/100",
+        "|move|p1a: Dønphan|Earthquake|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Dønphan|Knock Off|p2a: Gliscor",
+        "|move|p2a: Gliscor|Swords Dance|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Sam|Samurott-Hisui, M|87/100 brn",
+        "|move|p2a: Gliscor|Earthquake|p1a: Sam"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Gliscor|Earthquake|p1a: Sam",
+        "|switch|p1a: Mochi|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Gliscor|Earthquake|p1a: Mochi",
+        "|move|p1a: Mochi|Foul Play|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Gliscor|Knock Off|p1a: Mochi",
+        "|move|p1a: Mochi|Foul Play|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Mochi|Foul Play|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Gliscor|Earthquake|p1a: Mochi",
+        "|move|p1a: Mochi|Foul Play|p2a: Gliscor",
+        "|switch|p2a: Mismagius|Mismagius, F|100/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Mismagius|Draining Kiss|p1a: Mochi",
+        "|switch|p1a: Dønphan|Iron Treads|45/100 brn"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Dønphan|Knock Off|p2a: Mismagius",
+        "|move|p2a: Mismagius|Nasty Plot|p2a: Mismagius"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Dønphan|Knock Off|p2a: Mismagius"
+      ]
+    }
+  ],
+  "winner": "PikachuRTM",
+  "endTime": 1770413410878,
+  "p1Team": [
+    "Iron Treads",
+    "Samurott-Hisui",
+    "Pecharunt",
+    "Pikachu",
+    "Kyurem",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Blissey",
+    "Skarmory",
+    "Clefable",
+    "Weezing-Galar",
+    "Gliscor",
+    "Mismagius"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "irontreads",
+      "samurotthisui",
+      "pecharunt",
+      "pikachu",
+      "kyurem",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.6666666666666666,
+    "fatCount": 4,
+    "offenseCount": 0,
+    "team": [
+      "blissey",
+      "skarmory",
+      "clefable",
+      "weezinggalar",
+      "gliscor",
+      "mismagius"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}
