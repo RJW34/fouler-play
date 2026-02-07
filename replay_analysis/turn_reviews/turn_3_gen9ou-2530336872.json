@@ -1,0 +1,22 @@
+{
+  "turn": 3,
+  "bot_choice": "Switched to Blissey",
+  "why_critical": "\ud83d\udd04 Switched to Blissey vs Hatterene \u2014 was this the right matchup?",
+  "bot_team": "Gliscor 51% tox +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Tyranitar 100% | Dondozo 100% | Darkrai 100% | Orthworm 100% | Clefable 100% | Hatterene 91%",
+  "field": [
+    "Trick Room"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530336872",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Maintain offensive pressure"
+    ],
+    [
+      "Switch to different Pokemon",
+      "Better type matchup available"
+    ]
+  ],
+  "feedback": null
+}

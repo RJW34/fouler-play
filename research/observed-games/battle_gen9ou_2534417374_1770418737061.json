@@ -1,0 +1,180 @@
+{
+  "id": "battle-gen9ou-2534417374",
+  "p1": "Common Krookodile",
+  "p2": "Mimikyuster04",
+  "minElo": 1611,
+  "startTime": 1770418593521,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|100/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Iron Treads|Volt Switch|p2a: Ogerpon",
+        "|switch|p1a: Toxicroak|Toxicroak, F|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Toxicroak|Toxic|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|100/100",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Hatterene",
+        "|switch|p1a: Barraskewda|Barraskewda, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Barraskewda|Flip Turn|p2a: Great Tusk",
+        "|switch|p1a: Zapdos|Zapdos|100/100|[from] Flip Turn",
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Zapdos|Volt Switch|p2a: Grimmsnarl",
+        "|switch|p1a: Toxicroak|Toxicroak, F|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Toxicroak|Encore|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Iron Crown|Iron Crown|100/100",
+        "|move|p1a: Toxicroak|Knock Off|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|81/100",
+        "|move|p2a: Iron Crown|Agility|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Iron Crown|Tachyon Cutter|p1a: Hatterene",
+        "|switch|p1a: Iron Treads|Iron Treads|83/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Iron Crown|Stored Power|p1a: Iron Treads",
+        "|move|p1a: Iron Treads|Earthquake|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Iron Crown|Stored Power|p1a: Iron Treads",
+        "|switch|p1a: Pelipper|Pelipper, M|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Iron Crown|Agility|p2a: Iron Crown",
+        "|move|p1a: Pelipper|U-turn|p2a: Iron Crown",
+        "|switch|p1a: Barraskewda|Barraskewda, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Iron Crown|Stored Power|p1a: Barraskewda",
+        "|switch|p1a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Iron Crown|Stored Power|p1a: Zapdos",
+        "|switch|p1a: Toxicroak|Toxicroak, F|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Iron Crown|Stored Power|p1a: Toxicroak",
+        "|switch|p1a: Pelipper|Pelipper, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Iron Crown|Stored Power|p1a: Pelipper"
+      ]
+    }
+  ],
+  "winner": "Mimikyuster04",
+  "endTime": 1770418737061,
+  "p1Team": [
+    "Iron Treads",
+    "Toxicroak",
+    "Hatterene",
+    "Barraskewda",
+    "Zapdos",
+    "Pelipper"
+  ],
+  "p2Team": [
+    "Ogerpon-Wellspring",
+    "Great Tusk",
+    "Grimmsnarl",
+    "Iron Crown"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "irontreads",
+      "toxicroak",
+      "hatterene",
+      "barraskewda",
+      "zapdos",
+      "pelipper"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ogerponwellspring",
+      "greattusk",
+      "grimmsnarl",
+      "ironcrown"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,24 @@
+{
+  "turn": 5,
+  "bot_choice": "Ice Fang",
+  "why_critical": "Zamazenta went down vs Dragonite (56% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 68% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% | Zamazenta 57% -1 spd",
+  "opp_team": "Iron Moth 100% | Kingambit 100% | Dragonite 56% +1 atk, +1 spe | Ogerpon-Cornerstone 100% | Iron Valiant 100% | Raging Bolt 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530601470",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Dragonite"
+    ],
+    [
+      "Different move than Ice Fang",
+      "Could have forced switch or dealt more chip"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

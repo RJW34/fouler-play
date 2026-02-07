@@ -1,0 +1,259 @@
+{
+  "id": "battle-gen9ou-2534381340",
+  "p1": "Noamm",
+  "p2": "Cubavision",
+  "minElo": 1545,
+  "startTime": 1770414663322,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|100/100",
+        "|move|p1a: Lokix|U-turn|p2a: Corviknight",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Corviknight",
+        "|move|p2a: Corviknight|Brave Bird|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Corviknight|Brave Bird|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Clodsire|Clodsire, F|100/100",
+        "|move|p1a: Gholdengo|Trick|p2a: Clodsire"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|48/100",
+        "|move|p2a: Clodsire|Spikes|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|66/100",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|81/100",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Clodsire|Clodsire, F|100/100",
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Clodsire"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|32/100",
+        "|move|p2a: Clodsire|Spikes|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|81/100",
+        "|move|p2a: Sinistcha|Matcha Gotcha|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Clodsire|Clodsire, F|62/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Clodsire"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Clodsire",
+        "|switch|p2a: Weavile|Weavile, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F|100/100",
+        "|move|p2a: Weavile|Knock Off|p1a: Mandibuzz"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|87/100",
+        "|move|p1a: Mandibuzz|U-turn|p2a: Corviknight",
+        "|switch|p1a: Gholdengo|Gholdengo|61/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Blissey|Blissey, F|100/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Blissey"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Blissey|Stealth Rock|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha|100/100",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Sinistcha",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|73/100",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Blissey|Blissey, F|100/100",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Blissey"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Blissey|Seismic Toss|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Blissey|Seismic Toss|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Blissey",
+        "|switch|p1a: Lokix|Lokix, M|84/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|29/100",
+        "|move|p1a: Lokix|Knock Off|p2a: Corviknight",
+        "|switch|p2a: Weavile|Weavile, M|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Mandibuzz|Mandibuzz, F|70/100",
+        "|move|p2a: Weavile|Swords Dance|p2a: Weavile"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Weavile|Triple Axel|p1a: Mandibuzz",
+        "|switch|p1a: Gholdengo|Gholdengo|61/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Weavile|Triple Axel|p1a: Gholdengo",
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|78/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Weavile|Triple Axel|p1a: Iron Valiant",
+        "|switch|p1a: Great Tusk|Great Tusk|32/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Weavile|Low Kick|p1a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "Cubavision",
+  "endTime": 1770415018610,
+  "p1Team": [
+    "Great Tusk",
+    "Gholdengo",
+    "Mandibuzz",
+    "Alomomola",
+    "Iron Valiant",
+    "Lokix"
+  ],
+  "p2Team": [
+    "Corviknight",
+    "Clodsire",
+    "Sinistcha",
+    "Weavile",
+    "Blissey"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 3,
+    "team": [
+      "greattusk",
+      "gholdengo",
+      "mandibuzz",
+      "alomomola",
+      "ironvaliant",
+      "lokix"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.6,
+    "fatCount": 3,
+    "offenseCount": 0,
+    "team": [
+      "corviknight",
+      "clodsire",
+      "sinistcha",
+      "weavile",
+      "blissey"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

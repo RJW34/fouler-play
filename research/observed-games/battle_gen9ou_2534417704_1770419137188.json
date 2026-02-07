@@ -1,0 +1,244 @@
+{
+  "id": "battle-gen9ou-2534417704",
+  "p1": "0c3an m4n",
+  "p2": "averyradiant",
+  "minElo": 1556,
+  "startTime": 1770418623522,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Flip Turn|p2a: Ninetales",
+        "|switch|p1a: Si|Hatterene, F, shiny|100/100|[from] Flip Turn",
+        "|move|p2a: Ninetales|Freeze-Dry|p1a: Si"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p1a: Si|Nuzzle|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Si|Psychic|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Si"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Si|Psychic|p2a: Slowking",
+        "|move|p2a: Slowking|Future Sight|p1a: Si"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Si|Psychic|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|100/100",
+        "|move|p1a: Si|Psychic|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Risk of what?|Pelipper, F, shiny|100/100",
+        "|move|p2a: Moltres|U-turn|p1a: Risk of what?",
+        "|switch|p2a: Ninetales|Ninetales-Alola, M|60/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Ninetales|Freeze-Dry|p1a: Risk of what?",
+        "|switch|p1a: Sphyraena (Fih)|Barraskewda, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Liquidation|p2a: Ninetales",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Liquidation|p2a: Kyurem",
+        "|move|p2a: Kyurem|Draco Meteor|p1a: Sphyraena (Fih)|[miss]"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, F|42/100 par",
+        "|move|p1a: Sphyraena (Fih)|Liquidation|p2a: Slowking",
+        "|switch|p2a: Kyurem|Kyurem|69/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Si|Hatterene, F, shiny|5/100",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Si",
+        "|switch|p1a: El papu|Slither Wing, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|52/100",
+        "|move|p1a: El papu|U-turn|p2a: Moltres",
+        "|switch|p1a: Berdly|Quaquaval, M, shiny|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Berdly|Aqua Step|p2a: Moltres",
+        "|move|p2a: Moltres|Roost|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Berdly|Swords Dance|p1a: Berdly",
+        "|move|p2a: Moltres|U-turn|p1a: Berdly",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Berdly|Aqua Step|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Berdly",
+        "|switch|p1a: Sphyraena (Fih)|Barraskewda, F, shiny, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Attack Titan|Cetitan, M, shiny|100/100",
+        "|move|p1a: Sphyraena (Fih)|Flip Turn|p2a: Attack Titan",
+        "|switch|p1a: El papu|Slither Wing, shiny|91/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Attack Titan|Ice Shard|p1a: El papu",
+        "|move|p1a: El papu|Close Combat|p2a: Attack Titan",
+        "|switch|p2a: Kyurem|Kyurem|69/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: El papu",
+        "|switch|p1a: Sphyraena (Fih)|Barraskewda, F, shiny, tera:Water|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|50/100",
+        "|move|p1a: Sphyraena (Fih)|Close Combat|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Close Combat|p2a: Great Tusk",
+        "|switch|p2a: Moltres|Moltres, tera:Fairy|67/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Apernao|Crawdaunt, M, shiny|100/100",
+        "|move|p2a: Moltres|Will-O-Wisp|p1a: Apernao|[miss]"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Moltres|Will-O-Wisp|p1a: Apernao|[miss]",
+        "|move|p1a: Apernao|Crabhammer|p2a: Moltres",
+        "|switch|p2a: Kyurem|Kyurem|69/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Apernao",
+        "|switch|p1a: Sphyraena (Fih)|Barraskewda, F, shiny, tera:Water|68/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Sphyraena (Fih)|Close Combat|p2a: Kyurem"
+      ]
+    }
+  ],
+  "winner": "0c3an m4n",
+  "endTime": 1770419137187,
+  "p1Team": [
+    "Hatterene",
+    "Pelipper",
+    "Barraskewda",
+    "Slither Wing",
+    "Quaquaval",
+    "Crawdaunt"
+  ],
+  "p2Team": [
+    "Slowking-Galar",
+    "Moltres",
+    "Ninetales-Alola",
+    "Kyurem",
+    "Great Tusk",
+    "Cetitan"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "hatterene",
+      "pelipper",
+      "barraskewda",
+      "slitherwing",
+      "quaquaval",
+      "crawdaunt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "slowkinggalar",
+      "moltres",
+      "ninetalesalola",
+      "kyurem",
+      "greattusk",
+      "cetitan"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

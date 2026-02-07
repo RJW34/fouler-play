@@ -1,0 +1,20 @@
+{
+  "turn": 2,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "\ud83d\udd04 Switched to Gliscor vs Great Tusk \u2014 was this the right matchup?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Primarina 100% | Great Tusk 100% | Enamorus 100% | Slowking-Galar 100% | Ogerpon 100% | Kingambit 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530321278",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Maintain offensive pressure"
+    ],
+    [
+      "Switch to different Pokemon",
+      "Better type matchup available"
+    ]
+  ],
+  "feedback": null
+}

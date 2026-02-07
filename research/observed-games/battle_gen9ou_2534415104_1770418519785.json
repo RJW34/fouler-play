@@ -1,0 +1,201 @@
+{
+  "id": "battle-gen9ou-2534415104",
+  "p1": "Obling",
+  "p2": "GameProm4",
+  "minElo": 1674,
+  "startTime": 1770418353518,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Deoxys|Light Screen|p1a: Deoxys",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Deoxys|Reflect|p1a: Deoxys",
+        "|move|p2a: Raging Bolt|Calm Mind|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Deoxys|Taunt|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Deoxys",
+        "|switch|p1a: Roaring Sun|Salamence, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Roaring Sun|Outrage|p2a: Raging Bolt",
+        "|switch|p2a: Primarina|Primarina, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Roaring Sun|Outrage|p2a: Primarina|[from] lockedmove",
+        "|move|p2a: Primarina|Moonblast|p1a: Roaring Sun",
+        "|switch|p1a: V|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|100/100",
+        "|move|p1a: V|Swords Dance|p1a: V"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: V|Swords Dance|p1a: V",
+        "|move|p2a: Corviknight|Brave Bird|p1a: V"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: V|Ivy Cudgel|p2a: Corviknight|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Landorus|U-turn|p1a: V",
+        "|switch|p2a: Iron Hands|Iron Hands|100/100|[from] U-turn",
+        "|switch|p1a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: Iron Hands",
+        "|move|p2a: Iron Hands|Earthquake|p1a: Iron Moth",
+        "|switch|p1a: Seconds|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Seconds|Swords Dance|p1a: Seconds",
+        "|move|p2a: Iron Hands|Thunder Punch|p1a: Seconds"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Seconds|Kowtow Cleave|p2a: Iron Hands",
+        "|move|p2a: Iron Hands|Thunder Punch|p1a: Seconds"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Seconds|Kowtow Cleave|p2a: Iron Hands",
+        "|switch|p2a: Primarina|Primarina, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Seconds|Sucker Punch|p2a: Primarina",
+        "|move|p2a: Primarina|Moonblast|p1a: Seconds",
+        "|switch|p1a: Faster|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Faster|Agility|p1a: Faster",
+        "|move|p2a: Primarina|Moonblast|p1a: Faster"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Faster|Draining Kiss|p2a: Primarina",
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Faster|Calm Mind|p1a: Faster",
+        "|move|p2a: Landorus|Earthquake|p1a: Faster"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Sinistcha|Sinistcha|100/100",
+        "|move|p1a: Faster|Draining Kiss|p2a: Sinistcha"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Faster|Calm Mind|p1a: Faster",
+        "|move|p2a: Sinistcha|Matcha Gotcha|p1a: Faster"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Faster|Draining Kiss|p2a: Sinistcha"
+      ]
+    }
+  ],
+  "winner": "Obling",
+  "endTime": 1770418519785,
+  "p1Team": [
+    "Salamence",
+    "Ogerpon-Wellspring",
+    "Iron Moth",
+    "Kingambit",
+    "Latias"
+  ],
+  "p2Team": [
+    "Primarina",
+    "Corviknight",
+    "Landorus-Therian",
+    "Iron Hands",
+    "Sinistcha"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "salamence",
+      "ogerponwellspring",
+      "ironmoth",
+      "kingambit",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "primarina",
+      "corviknight",
+      "landorustherian",
+      "ironhands",
+      "sinistcha"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

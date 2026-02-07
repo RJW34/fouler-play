@@ -1,0 +1,36 @@
+{
+  "timestamp": "20260201_071946",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530604354",
+  "replay_id": "gen9ou-2530604354",
+  "mistakes_found": 4,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 15,
+      "description": "Ting-Lu fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 27,
+      "description": "Gholdengo fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "early_setup",
+      "turn": 4,
+      "description": "Attempted dragondance on turn 4 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    },
+    {
+      "category": "early_setup",
+      "turn": 5,
+      "description": "Attempted dragondance on turn 5 (too early?)",
+      "severity": "minor",
+      "suggested_fix": "Delay setup until opponent is weakened"
+    }
+  ]
+}

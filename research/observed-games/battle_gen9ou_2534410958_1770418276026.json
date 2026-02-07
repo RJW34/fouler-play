@@ -1,0 +1,196 @@
+{
+  "id": "battle-gen9ou-2534410958",
+  "p1": "zokua",
+  "p2": "Crooksieee",
+  "minElo": 1531,
+  "startTime": 1770417873511,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|100/100",
+        "|move|p1a: Landorus|Stealth Rock|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Landorus|Taunt|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Landorus|U-turn|p2a: Skarmory",
+        "|switch|p1a: Kyurem|Kyurem|100/100|[from] U-turn",
+        "|move|p2a: Skarmory|Body Press|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Kyurem|Ice Beam|p2a: Skarmory",
+        "|move|p2a: Skarmory|Body Press|p1a: Kyurem",
+        "|switch|p1a: Landorus|Landorus-Therian, M|84/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Landorus|Taunt|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Landorus|Earth Power|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Knock Off|p1a: Landorus"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Landorus|Earth Power|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Landorus"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Landorus",
+        "|move|p1a: Landorus|Earth Power|p2a: Great Tusk",
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Landorus",
+        "|switch|p1a: Cinderace|Cinderace, M|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, M|100/100",
+        "|move|p1a: Cinderace|Court Change|p1a: Cinderace"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|100/100",
+        "|move|p2a: Glimmora|Earth Power|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Glimmora",
+        "|move|p2a: Glimmora|Earth Power|p1a: Kingambit",
+        "|switch|p1a: Glimmora|Glimmora, F|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|23/100",
+        "|move|p1a: Glimmora|Earth Power|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100",
+        "|move|p2a: Skarmory|Roost|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Iron Valiant|Calm Mind|p1a: Iron Valiant",
+        "|move|p2a: Skarmory|Spikes|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Tyranitar|Tyranitar, F|100/100",
+        "|move|p1a: Iron Valiant|Shadow Ball|p2a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Iron Valiant|Shadow Ball|p2a: Gholdengo",
+        "|switch|p2a: Rillaboom|Rillaboom, F|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Rillaboom|Grassy Glide|p1a: Iron Valiant"
+      ]
+    }
+  ],
+  "winner": "Crooksieee",
+  "endTime": 1770418276026,
+  "p1Team": [
+    "Kyurem",
+    "Landorus-Therian",
+    "Cinderace",
+    "Kingambit",
+    "Glimmora",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Skarmory",
+    "Great Tusk",
+    "Rillaboom",
+    "Glimmora",
+    "Tyranitar",
+    "Gholdengo"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "kyurem",
+      "landorustherian",
+      "cinderace",
+      "kingambit",
+      "glimmora",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "skarmory",
+      "greattusk",
+      "rillaboom",
+      "glimmora",
+      "tyranitar",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,104 @@
+{
+  "id": "battle-gen9ou-2534420327",
+  "p1": "ljdarkrai_meme",
+  "p2": "icebrrg",
+  "minElo": 1609,
+  "startTime": 1770418953537,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Iron Treads|Knock Off|p1a: Tyranitar",
+        "|move|p1a: Tyranitar|Low Kick|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, F|100/100",
+        "|switch|p1a: Toxapex|Toxapex, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Glimmora|Meteor Beam||[still]",
+        "|switch|p1a: Excadrill|Excadrill, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Excadrill|Substitute|p1a: Excadrill",
+        "|move|p2a: Glimmora|Earth Power|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Excadrill|Earthquake|p2a: Glimmora",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Tornadus|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "icebrrg",
+  "endTime": 1770419132595,
+  "p1Team": [
+    "Iron Valiant",
+    "Toxapex",
+    "Excadrill",
+    "Tornadus-Therian"
+  ],
+  "p2Team": [
+    "Glimmora",
+    "Ogerpon-Wellspring"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "ironvaliant",
+      "toxapex",
+      "excadrill",
+      "tornadustherian"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "glimmora",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

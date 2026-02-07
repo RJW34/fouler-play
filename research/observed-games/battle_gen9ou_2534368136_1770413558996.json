@@ -1,0 +1,243 @@
+{
+  "id": "battle-gen9ou-2534368136",
+  "p1": "Free P&lestine",
+  "p2": "maxmoefoe pokemon",
+  "minElo": 1602,
+  "startTime": 1770413253263,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Deoxys|Reflect|p1a: Deoxys",
+        "|move|p2a: Tyranitar|Knock Off|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Deoxys|Stealth Rock|p2a: Tyranitar",
+        "|move|p2a: Tyranitar|Knock Off|p1a: Deoxys",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Zamazenta|Crunch|p2a: Tyranitar",
+        "|move|p2a: Tyranitar|Thunder Wave|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Tyranitar|Stealth Rock|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|100/100",
+        "|move|p1a: Zamazenta|Close Combat|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Moltres|U-turn|p1a: Zamazenta",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|move|p1a: Zamazenta|Stone Edge|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|72/100",
+        "|move|p1a: Gholdengo|Trick|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|55/100 par",
+        "|move|p2a: Moltres|Flamethrower|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Primarina|Primarina, M|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Zamazenta|Close Combat|p2a: Primarina",
+        "|move|p2a: Primarina|Draining Kiss|p1a: Zamazenta",
+        "|switch|p1a: Gholdengo|Gholdengo|94/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Primarina",
+        "|move|p2a: Primarina|Psychic Noise|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Primarina",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Kyurem|Earth Power|p1a: Gholdengo",
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Kyurem|Protect|p2a: Kyurem",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Tyranitar|Tyranitar, F|82/100",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Tyranitar|Ice Beam|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|72/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Moltres",
+        "|switch|p2a: Great Tusk|Great Tusk|92/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Great Tusk",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Gholdengo",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Great Tusk",
+        "|switch|p1a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Kyurem|Kyurem|88/100",
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Dragonite|Tera Blast|p2a: Kyurem|[anim] Tera Blast Flying",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Dragonite|Earthquake|p2a: Kyurem",
+        "|switch|p2a: Gholdengo|Gholdengo, tera:Fairy|11/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Dragonite|Extreme Speed|p2a: Gholdengo",
+        "|switch|p2a: Tyranitar|Tyranitar, F|55/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Dragonite|Earthquake|p2a: Tyranitar"
+      ]
+    }
+  ],
+  "winner": "Free P&lestine",
+  "endTime": 1770413558996,
+  "p1Team": [
+    "Zamazenta",
+    "Gholdengo",
+    "Darkrai",
+    "Great Tusk",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Moltres",
+    "Great Tusk",
+    "Primarina",
+    "Kyurem",
+    "Tyranitar",
+    "Gholdengo"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "zamazenta",
+      "gholdengo",
+      "darkrai",
+      "greattusk",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "moltres",
+      "greattusk",
+      "primarina",
+      "kyurem",
+      "tyranitar",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

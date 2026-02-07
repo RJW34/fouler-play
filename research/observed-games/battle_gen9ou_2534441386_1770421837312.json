@@ -1,0 +1,275 @@
+{
+  "id": "battle-gen9ou-2534441386",
+  "p1": "byuself",
+  "p2": "Pig Perfect",
+  "minElo": 1552,
+  "startTime": 1770421443722,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Sew What?|Spikes|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Sew What?",
+        "|move|p2a: Sew What?|Spikes|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Iron Trunk|Iron Treads|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Iron Trunk|Earthquake|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Lilligant|Lilligant-Hisui, F|100/100",
+        "|move|p2a: Iron Trunk|Rapid Spin|p1a: Lilligant"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Iron Trunk|Earthquake|p1a: Lilligant",
+        "|move|p1a: Lilligant|Close Combat|p2a: Iron Trunk",
+        "|switch|p2a: Peak-Chu|Pawmot, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Venusaur|Venusaur, M|100/100",
+        "|move|p2a: Peak-Chu|Mach Punch|p1a: Venusaur"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Sew What?|Pincurchin, F, tera:Ghost|30/100",
+        "|move|p1a: Venusaur|Earth Power|p2a: Sew What?",
+        "|switch|p2a: Peak-Chu|Pawmot, F|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Peak-Chu|Revival Blessing|p2a: Peak-Chu",
+        "|move|p1a: Venusaur|Earth Power|p2a: Peak-Chu",
+        "|switch|p2a: Girl Reaper|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Girl Reaper|Psyshock|p1a: Venusaur",
+        "|switch|p1a: Ninetales|Ninetales, M|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Sew What?|Pincurchin, F|50/100",
+        "|move|p1a: Ninetales|Weather Ball|p2a: Sew What?",
+        "|switch|p2a: Sumo Smoker|Iron Hands|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Walking Wake|Walking Wake|100/100",
+        "|move|p2a: Sumo Smoker|Supercell Slam|p1a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Walking Wake|Draco Meteor|p2a: Sumo Smoker",
+        "|move|p2a: Sumo Smoker|Drain Punch|p1a: Walking Wake",
+        "|switch|p1a: Great Tusk|Great Tusk|49/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Sumo Smoker",
+        "|switch|p2a: Girl Reaper|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Girl Reaper|Focus Blast|p1a: Great Tusk",
+        "|switch|p1a: Lilligant|Lilligant-Hisui, F|27/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: So Ein Mist|Kingambit, M|100/100",
+        "|move|p1a: Lilligant|Solar Blade||[still]"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, M|100/100",
+        "|move|p2a: So Ein Mist|Kowtow Cleave|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: So Ein Mist|Sucker Punch||[still]",
+        "|move|p1a: Ninetales|Encore|p2a: So Ein Mist"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|100/100",
+        "|switch|p2a: Girl Reaper|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: So Ein Mist|Kingambit, M|91/100",
+        "|move|p1a: Kingambit|Iron Head|p2a: So Ein Mist"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Kingambit|Iron Head|p2a: So Ein Mist",
+        "|move|p2a: So Ein Mist|Iron Head|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: So Ein Mist|Sucker Punch|p1a: Kingambit",
+        "|move|p1a: Kingambit|Iron Head|p2a: So Ein Mist"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, M|6/100",
+        "|switch|p2a: Girl Reaper|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Girl Reaper|Moonblast|p1a: Ninetales",
+        "|switch|p1a: Lilligant|Lilligant-Hisui, F|17/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: So Ein Mist|Kingambit, M|41/100",
+        "|move|p1a: Lilligant|Solar Blade||[still]"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|49/100",
+        "|move|p2a: So Ein Mist|Kowtow Cleave|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: So Ein Mist|Sucker Punch||[still]",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit",
+        "|move|p2a: So Ein Mist|Swords Dance|p2a: So Ein Mist"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: So Ein Mist|Sucker Punch||[still]",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: So Ein Mist|Sucker Punch|p1a: Kingambit"
+      ]
+    }
+  ],
+  "winner": "Pig Perfect",
+  "endTime": 1770421837312,
+  "p1Team": [
+    "Great Tusk",
+    "Lilligant-Hisui",
+    "Venusaur",
+    "Ninetales",
+    "Walking Wake",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Iron Treads",
+    "Pawmot",
+    "Pincurchin",
+    "Iron Valiant",
+    "Iron Hands",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "lilliganthisui",
+      "venusaur",
+      "ninetales",
+      "walkingwake",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "irontreads",
+      "pawmot",
+      "pincurchin",
+      "ironvaliant",
+      "ironhands",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

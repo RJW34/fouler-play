@@ -1,0 +1,236 @@
+{
+  "id": "battle-gen9ou-2534413567",
+  "p1": "GameProm4",
+  "p2": "Mimikyuster04",
+  "minElo": 1650,
+  "startTime": 1770418173526,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|100/100",
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Corviknight"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon",
+        "|move|p1a: Corviknight|Brave Bird|p2a: Ogerpon",
+        "|switch|p2a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Iron Hands|Iron Hands|100/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Iron Hands"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Iron Hands",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Volt Switch",
+        "|move|p1a: Iron Hands|Ice Punch|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Sinistcha|Sinistcha|100/100",
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Sinistcha",
+        "|move|p1a: Sinistcha|Strength Sap|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk",
+        "|move|p1a: Sinistcha|Matcha Gotcha|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Sinistcha",
+        "|move|p1a: Sinistcha|Strength Sap|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Sinistcha",
+        "|move|p1a: Sinistcha|Strength Sap|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|100/100",
+        "|move|p1a: Sinistcha|Matcha Gotcha|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Corviknight|Corviknight, M|73/100",
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Grimmsnarl|Thunder Wave|p1a: Corviknight",
+        "|move|p1a: Corviknight|Defog|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Corviknight|Brave Bird|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Corviknight|Defog|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl",
+        "|move|p1a: Corviknight|Brave Bird|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Corviknight|Defog|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Landorus|[miss]"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Landorus|Stone Edge|p2a: Zapdos",
+        "|move|p2a: Zapdos|Hurricane|p1a: Landorus|[miss]"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Iron Crown|Iron Crown|100/100",
+        "|move|p1a: Landorus|Stone Edge|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Iron Crown|Agility|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Iron Crown|Calm Mind|p2a: Iron Crown",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Iron Crown|Calm Mind|p2a: Iron Crown",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Iron Crown",
+        "|switch|p2a: Great Tusk|Great Tusk, tera:Ice|22/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Great Tusk",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Iron Valiant",
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|6/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Grimmsnarl"
+      ]
+    }
+  ],
+  "winner": "GameProm4",
+  "endTime": 1770418276684,
+  "p1Team": [
+    "Corviknight",
+    "Iron Hands",
+    "Sinistcha",
+    "Landorus-Therian",
+    "Raging Bolt"
+  ],
+  "p2Team": [
+    "Zapdos",
+    "Great Tusk",
+    "Grimmsnarl",
+    "Iron Crown",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "corviknight",
+      "ironhands",
+      "sinistcha",
+      "landorustherian",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "zapdos",
+      "greattusk",
+      "grimmsnarl",
+      "ironcrown",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

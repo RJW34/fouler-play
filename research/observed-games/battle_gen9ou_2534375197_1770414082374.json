@@ -1,0 +1,169 @@
+{
+  "id": "battle-gen9ou-2534375197",
+  "p1": "zehntimes",
+  "p2": "mysticryn",
+  "minElo": 1591,
+  "startTime": 1770414003292,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Dragonite|Extreme Speed|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Taunt|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Moltres|Moltres, shiny|100/100",
+        "|switch|p2a: Garganacl|Garganacl, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M, shiny|100/100",
+        "|move|p2a: Garganacl|Stealth Rock|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|100/100",
+        "|move|p1a: Slowking|Psychic Noise|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Slowking|Protect|p1a: Slowking",
+        "|move|p2a: Samurott|Aqua Cutter|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk, shiny|100/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Moltres|Moltres, shiny|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Moltres|Air Slash|p2a: Great Tusk",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Gholdengo",
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Moltres|Flamethrower|p2a: Gholdengo",
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Moltres",
+        "|move|p1a: Moltres|U-turn|p2a: Samurott",
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M, shiny|100/100",
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Raging Bolt|Calm Mind|p1a: Raging Bolt",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Slowking",
+        "|move|p2a: Slowking|Psyshock|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderbolt|p2a: Slowking",
+        "|switch|p2a: Dragonite|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Dragonite|Ice Spinner|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Tera Blast|p2a: Dragonite|[anim] Tera Blast Ice",
+        "|switch|p2a: Samurott|Samurott-Hisui, M, shiny|63/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Samurott"
+      ]
+    }
+  ],
+  "winner": "zehntimes",
+  "endTime": 1770414082374,
+  "p1Team": [
+    "Moltres",
+    "Slowking-Galar",
+    "Raging Bolt"
+  ],
+  "p2Team": [
+    "Garganacl",
+    "Samurott-Hisui",
+    "Great Tusk",
+    "Gholdengo",
+    "Slowking-Galar",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "moltres",
+      "slowkinggalar",
+      "ragingbolt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "garganacl",
+      "samurotthisui",
+      "greattusk",
+      "gholdengo",
+      "slowkinggalar",
+      "dragonite"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

@@ -1,0 +1,187 @@
+{
+  "id": "battle-gen9ou-2534369570",
+  "p1": "squigulousq",
+  "p2": "ba2ozknRR",
+  "minElo": 1616,
+  "startTime": 1770413433715,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Tinkaton",
+        "|move|p2a: Tinkaton|Stealth Rock|p1a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Araquanid|Araquanid, M|100/100",
+        "|move|p2a: Tinkaton|Gigaton Hammer|p1a: Araquanid"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Tinkaton|Knock Off|p1a: Araquanid",
+        "|move|p1a: Araquanid|Sticky Web|p2a: Tinkaton"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Tinkaton|Gigaton Hammer|p1a: Araquanid",
+        "|switch|p1a: Ceruledge|Ceruledge, M|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Tinkaton|Encore||[still]",
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Tinkaton",
+        "|switch|p2a: Alomomola|Alomomola, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Ceruledge",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Ceruledge|Close Combat|p2a: Pecharunt",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Raging Bolt",
+        "|switch|p1a: Deoxys|Deoxys-Speed|91/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Deoxys|Psycho Boost|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|94/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Gholdengo",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Gholdengo",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta, shiny|100/100",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Zamazenta",
+        "|switch|p2a: Alomomola|Alomomola, M|93/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Iron Valiant|Calm Mind|p1a: Iron Valiant",
+        "|move|p2a: Alomomola|Mirror Coat||[still]"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Iron Valiant|Calm Mind|p1a: Iron Valiant",
+        "|move|p2a: Alomomola|Play Rough|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Iron Valiant|Calm Mind|p1a: Iron Valiant",
+        "|move|p2a: Alomomola|Play Rough|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Alomomola|Aqua Jet|p1a: Iron Valiant"
+      ]
+    }
+  ],
+  "winner": "ba2ozknRR",
+  "endTime": 1770413631953,
+  "p1Team": [
+    "Araquanid",
+    "Ceruledge",
+    "Gholdengo",
+    "Raging Bolt",
+    "Deoxys-Speed",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Alomomola",
+    "Pecharunt",
+    "Great Tusk",
+    "Zamazenta"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "araquanid",
+      "ceruledge",
+      "gholdengo",
+      "ragingbolt",
+      "deoxysspeed",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "alomomola",
+      "pecharunt",
+      "greattusk",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

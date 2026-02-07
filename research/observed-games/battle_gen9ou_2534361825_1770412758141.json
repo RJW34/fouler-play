@@ -1,0 +1,76 @@
+{
+  "id": "battle-gen9ou-2534361825",
+  "p1": "magical dragon",
+  "p2": "MrsBergziege",
+  "minElo": 1555,
+  "startTime": 1770412623228,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Kyurem|Ice Beam|p1a: Ogerpon",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|100/100",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Moltres",
+        "|move|p2a: Moltres|Roar|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Moltres|U-turn|p1a: Slowking",
+        "|switch|p2a: Iron Treads|Iron Treads|100/100|[from] U-turn",
+        "|move|p1a: Slowking|Psychic Noise|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": []
+    }
+  ],
+  "winner": "MrsBergziege",
+  "endTime": 1770412758141,
+  "p1Team": [
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Moltres",
+    "Iron Treads"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 1,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "moltres",
+      "irontreads"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

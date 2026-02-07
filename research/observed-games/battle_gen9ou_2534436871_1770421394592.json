@@ -1,0 +1,240 @@
+{
+  "id": "battle-gen9ou-2534436871",
+  "p1": "Pig Perfect",
+  "p2": "Dequavious IV",
+  "minElo": 1583,
+  "startTime": 1770420873695,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Iron Treads|Earthquake|p1a: Sew What?",
+        "|move|p1a: Sew What?|Scald|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Girl Reaper|Iron Valiant|100/100",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Girl Reaper"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Slowking|Slowking, M|100/100",
+        "|move|p1a: Girl Reaper|Focus Blast|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Iron Trunk|Iron Treads|100/100",
+        "|move|p2a: Slowking|Thunder Wave|p1a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Iron Trunk|Stealth Rock|p2a: Slowking",
+        "|move|p2a: Slowking|Scald|p1a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Iron Trunk|Earthquake|p2a: Slowking",
+        "|move|p2a: Slowking|Future Sight|p1a: Iron Trunk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: So Ein Mist|Kingambit, M|100/100",
+        "|switch|p2a: Mandibuzz|Mandibuzz, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Iron Trunk|Iron Treads|18/100",
+        "|move|p2a: Mandibuzz|Defog|p1a: Iron Trunk",
+        "|switch|p1a: Girl Reaper|Iron Valiant|53/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Slowking|Slowking, M|65/100",
+        "|move|p1a: Girl Reaper|Moonblast|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads|82/100",
+        "|move|p1a: Girl Reaper|Moonblast|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Sew What?|Pincurchin, F|36/100",
+        "|move|p2a: Iron Treads|Rapid Spin|p1a: Sew What?"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Sumo Smoker|Iron Hands|100/100",
+        "|move|p2a: Iron Treads|Earthquake|p1a: Sumo Smoker"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|100/100",
+        "|move|p1a: Sumo Smoker|Drain Punch|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Girl Reaper|Iron Valiant|53/100",
+        "|move|p2a: Zamazenta|Iron Defense|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Girl Reaper|Focus Blast|p2a: Zamazenta",
+        "|move|p2a: Zamazenta|Body Press|p1a: Girl Reaper"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Girl Reaper|Focus Blast|p2a: Zamazenta",
+        "|switch|p2a: Slowking|Slowking, M|45/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Peak-Chu|Pawmot, M|100/100",
+        "|move|p2a: Slowking|Scald|p1a: Peak-Chu"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Peak-Chu|Revival Blessing|p1a: Peak-Chu",
+        "|move|p2a: Slowking|Scald|p1a: Peak-Chu",
+        "|switch|p1a: Sew What?|Pincurchin, F|26/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads|67/100",
+        "|move|p1a: Sew What?|Memento|p2a: Iron Treads",
+        "|switch|p1a: Girl Reaper|Iron Valiant|2/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Slowking|Slowking, M|78/100",
+        "|move|p1a: Girl Reaper|Focus Blast|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Iron Trunk|Iron Treads|50/100",
+        "|move|p2a: Slowking|Scald|p1a: Iron Trunk",
+        "|switch|p1a: Sumo Smoker|Iron Hands|72/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Kyurem|Kyurem|100/100",
+        "|move|p1a: Sumo Smoker|Drain Punch|p2a: Kyurem",
+        "|switch|p2a: Mandibuzz|Mandibuzz, F|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Mandibuzz|Toxic|p1a: Sumo Smoker",
+        "|move|p1a: Sumo Smoker|Supercell Slam|p2a: Mandibuzz",
+        "|switch|p2a: Iron Treads|Iron Treads|73/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Slowking|Slowking, M|76/100",
+        "|move|p1a: Sumo Smoker|Drain Punch|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads|73/100",
+        "|move|p1a: Sumo Smoker|Drain Punch|p2a: Iron Treads"
+      ]
+    }
+  ],
+  "winner": "Pig Perfect",
+  "endTime": 1770421394592,
+  "p1Team": [
+    "Iron Valiant",
+    "Iron Treads",
+    "Kingambit",
+    "Pincurchin",
+    "Iron Hands",
+    "Pawmot"
+  ],
+  "p2Team": [
+    "Slowking",
+    "Mandibuzz",
+    "Iron Treads",
+    "Zamazenta",
+    "Kyurem"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironvaliant",
+      "irontreads",
+      "kingambit",
+      "pincurchin",
+      "ironhands",
+      "pawmot"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 0,
+    "team": [
+      "slowking",
+      "mandibuzz",
+      "irontreads",
+      "zamazenta",
+      "kyurem"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

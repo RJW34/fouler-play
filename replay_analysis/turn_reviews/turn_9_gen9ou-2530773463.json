@@ -1,0 +1,20 @@
+{
+  "turn": 9,
+  "bot_choice": "unknown",
+  "why_critical": "Gliscor went down vs Dragapult (100% HP) \u2014 opponent has 5 Pokemon left",
+  "bot_team": "Gliscor 52% tox +4 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Reuniclus 100% | Alomomola 100% | Garganacl 100% | Dragapult 100% | Heatran 100% -1 atk, -1 spa | Dragonite fainted",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530773463",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Dragapult"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

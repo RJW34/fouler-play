@@ -1,0 +1,278 @@
+{
+  "id": "battle-gen9ou-2534415169",
+  "p1": "n trademark",
+  "p2": "Mimikyuster04",
+  "minElo": 1628,
+  "startTime": 1770418353518,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Garganacl",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Volt Switch",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk",
+        "|move|p1a: Garganacl|Stealth Rock|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Great Tusk",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Great Tusk|Close Combat|p1a: Ogerpon",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Great Tusk",
+        "|switch|p1a: Garganacl|Garganacl, M|100/100|[from] Flip Turn",
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Grimmsnarl|Light Screen|p2a: Grimmsnarl",
+        "|move|p1a: Garganacl|Trick|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|87/100",
+        "|move|p2a: Grimmsnarl|Thunder Wave|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Iron Crown|Iron Crown|100/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|83/100",
+        "|move|p2a: Iron Crown|Calm Mind|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Iron Crown|Stored Power|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Iron Crown",
+        "|switch|p1a: Garganacl|Garganacl, M|99/100|[from] Flip Turn",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|88/100",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|100/100",
+        "|move|p2a: Grimmsnarl|Reflect|p2a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|67/100",
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Iron Valiant|Destiny Bond|p2a: Iron Valiant",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Iron Valiant",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|88/100",
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Pecharunt|Recover|p1a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|100/100",
+        "|move|p2a: Zapdos|Hurricane|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Garganacl",
+        "|switch|p2a: Iron Valiant|Iron Valiant|27/100|[from] Volt Switch",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Iron Valiant",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|88/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Grimmsnarl|Grimmsnarl, M|39/100",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Grimmsnarl",
+        "|switch|p2a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|91/100",
+        "|move|p2a: Zapdos|Volt Switch|p1a: Alomomola",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|76/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon",
+        "|move|p1a: Alomomola|Body Slam|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Alomomola",
+        "|switch|p1a: Pecharunt|Pecharunt|70/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|switch|p1a: Garganacl|Garganacl, M|67/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Garganacl|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Garganacl|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "Mimikyuster04",
+  "endTime": 1770418574714,
+  "p1Team": [
+    "Great Tusk",
+    "Ogerpon-Wellspring",
+    "Alomomola",
+    "Garganacl",
+    "Pecharunt"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Grimmsnarl",
+    "Iron Crown",
+    "Ogerpon-Wellspring",
+    "Iron Valiant",
+    "Zapdos"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "greattusk",
+      "ogerponwellspring",
+      "alomomola",
+      "garganacl",
+      "pecharunt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "grimmsnarl",
+      "ironcrown",
+      "ogerponwellspring",
+      "ironvaliant",
+      "zapdos"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

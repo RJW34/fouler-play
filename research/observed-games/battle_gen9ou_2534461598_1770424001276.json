@@ -1,0 +1,32 @@
+{
+  "id": "battle-gen9ou-2534461598",
+  "p1": "mkenroyw",
+  "p2": "kianchimchar",
+  "minElo": 1512,
+  "startTime": 1770423933974,
+  "turns": [],
+  "winner": "mkenroyw",
+  "endTime": 1770424001268,
+  "p1Team": [],
+  "p2Team": [],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

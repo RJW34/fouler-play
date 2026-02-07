@@ -1,0 +1,36 @@
+{
+  "timestamp": "20260201_101745",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530668081",
+  "replay_id": "gen9ou-2530668081",
+  "mistakes_found": 4,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 49,
+      "description": "Clefable fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 61,
+      "description": "Tyranitar fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "pokemon_fainted",
+      "turn": 76,
+      "description": "Ogerpon fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "hazards_not_removed",
+      "turn": 91,
+      "description": "Opponent set hazards, bot didn't remove them",
+      "severity": "minor",
+      "suggested_fix": "Add defog/rapid spin priority when hazards are up"
+    }
+  ]
+}

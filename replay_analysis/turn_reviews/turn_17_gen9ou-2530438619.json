@@ -1,0 +1,22 @@
+{
+  "turn": 17,
+  "bot_choice": "Zamazenta fainted",
+  "why_critical": "\u274c Zamazenta fainted \u2014 should we have switched out earlier or chosen differently?",
+  "bot_team": "Gliscor 36% tox +3 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 79% +1 spa, +1 spd | Skarmory 100% | Pecharunt 100% | Zamazenta 67% +1 def",
+  "opp_team": "Ninetales 76% | Raging Bolt 88% | Walking Wake fainted | Hatterene 94% | Landorus-Therian 100% | Lokix 29%",
+  "field": [
+    "Weather: SunnyDay"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530438619",
+  "alternatives": [
+    [
+      "Switch out earlier",
+      "Preserve this Pokemon for later"
+    ],
+    [
+      "Different move",
+      "Better damage/utility before going down"
+    ]
+  ],
+  "feedback": null
+}

@@ -1,0 +1,297 @@
+{
+  "id": "battle-gen9ou-2534411666",
+  "p1": "Johnny tots",
+  "p2": "uscboarder",
+  "minElo": 1661,
+  "startTime": 1770417963501,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Klefki|Thunder Wave|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Klefki|Light Screen|p1a: Klefki",
+        "|move|p2a: Glimmora|Earth Power|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Klefki|Reflect|p1a: Klefki",
+        "|move|p2a: Glimmora|Stealth Rock|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Rillaboom|Rillaboom, M|100/100",
+        "|move|p2a: Glimmora|Earth Power|p1a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Rillaboom|Bulk Up|p1a: Rillaboom",
+        "|move|p2a: Glimmora|Mortal Spin|p1a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Rillaboom|High Horsepower|p2a: Glimmora",
+        "|move|p2a: Glimmora|Power Gem|p1a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Rillaboom|High Horsepower|p2a: Glimmora",
+        "|switch|p2a: Pierce|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Pierce|Aurora Veil|p2a: Pierce",
+        "|move|p1a: Rillaboom|Knock Off|p2a: Pierce"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Pierce|Encore||[still]"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Kingambit|Kingambit, M|100/100",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Klefki|Klefki, F|61/100",
+        "|move|p2a: Kingambit|Swords Dance|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Crouch|Raging Bolt|100/100",
+        "|move|p1a: Klefki|Reflect|p1a: Klefki"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Klefki|Light Screen|p1a: Klefki",
+        "|move|p2a: Crouch|Calm Mind|p2a: Crouch"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Rillaboom|Rillaboom, M|28/100 psn",
+        "|move|p2a: Crouch|Thunderbolt|p1a: Rillaboom",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Crouch|Thunderbolt|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Crouch"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Crouch|Thunderbolt|p1a: Pecharunt",
+        "|switch|p1a: Clefable|Clefable, F|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Crouch|Thunderbolt|p1a: Clefable",
+        "|move|p1a: Clefable|Moonblast|p2a: Crouch"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Crouch|Thunderbolt|p1a: Clefable",
+        "|move|p1a: Clefable|Moonblast|p2a: Crouch",
+        "|switch|p2a: Pierce|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Klefki|Klefki, F|61/100",
+        "|move|p2a: Pierce|Aurora Veil|p2a: Pierce"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Latias|Latias, F|100/100",
+        "|move|p1a: Klefki|Thunder Wave|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Klefki|Light Screen|p1a: Klefki",
+        "|move|p2a: Latias|Agility|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Latias|Agility|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Ogerpon|Play Rough|p2a: Latias"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Latias|Stored Power|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Latias|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Pierce|Ninetales-Alola, M|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Pierce|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Ogerpon",
+        "|switch|p1a: Manaphy|Manaphy|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Manaphy|Acid Armor|p1a: Manaphy",
+        "|move|p2a: Kingambit|Swords Dance|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Manaphy|Acid Armor|p1a: Manaphy",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Manaphy"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Manaphy|Scald|p2a: Kingambit",
+        "|move|p2a: Kingambit|Swords Dance|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Manaphy|Scald|p2a: Kingambit",
+        "|move|p2a: Kingambit|Kowtow Cleave|p1a: Manaphy"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Manaphy|Scald|p2a: Kingambit",
+        "|switch|p2a: BIG MAN|Blastoise, F|100/100"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p2a: BIG MAN|Shell Smash|p2a: BIG MAN",
+        "|move|p1a: Manaphy|Take Heart|p1a: Manaphy"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p2a: BIG MAN|Tera Blast|p1a: Manaphy|[anim] Tera Blast Poison",
+        "|move|p1a: Manaphy|Stored Power|p2a: BIG MAN"
+      ]
+    }
+  ],
+  "winner": "Johnny tots",
+  "endTime": 1770418220225,
+  "p1Team": [
+    "Rillaboom",
+    "Pecharunt",
+    "Klefki",
+    "Clefable",
+    "Ogerpon-Wellspring",
+    "Manaphy"
+  ],
+  "p2Team": [
+    "Ninetales-Alola",
+    "Kingambit",
+    "Raging Bolt",
+    "Latias",
+    "Blastoise"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "rillaboom",
+      "pecharunt",
+      "klefki",
+      "clefable",
+      "ogerponwellspring",
+      "manaphy"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ninetalesalola",
+      "kingambit",
+      "ragingbolt",
+      "latias",
+      "blastoise"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

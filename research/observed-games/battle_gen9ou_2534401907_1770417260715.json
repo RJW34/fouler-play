@@ -1,0 +1,239 @@
+{
+  "id": "battle-gen9ou-2534401907",
+  "p1": "Ynot655",
+  "p2": "bigspoondude",
+  "minElo": 1583,
+  "startTime": 1770416883435,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|100/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, F|100/100",
+        "|move|p1a: Hatterene|Nuzzle|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, M|100/100",
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Ceruledge|Swords Dance|p2a: Ceruledge",
+        "|move|p1a: Alomomola|Wish|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ceruledge|Bitter Blade|p1a: Alomomola",
+        "|move|p1a: Alomomola|Scald|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Alomomola",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Kingambit|Kingambit, M|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Walking Wake|Walking Wake|100/100",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F|100/100",
+        "|move|p2a: Walking Wake|Hydro Steam|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Walking Wake|Flip Turn|p1a: Hatterene",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100|[from] Flip Turn",
+        "|move|p1a: Hatterene|Draining Kiss|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: Hatterene",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Great Tusk",
+        "|switch|p2a: Ninetales|Ninetales, F|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Ninetales|Overheat|p1a: Hatterene",
+        "|move|p1a: Hatterene|Nuzzle|p2a: Ninetales"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Walking Wake|Walking Wake|100/100",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Walking Wake"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Walking Wake|Hydro Steam|p1a: Hatterene",
+        "|switch|p1a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Walking Wake|Draco Meteor|p1a: Dragapult",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Walking Wake|Weather Ball|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Dazzling Gleam|p2a: Walking Wake",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Gholdengo|Dazzling Gleam|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Solar Beam||[still]",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Kingambit|Kingambit, M|84/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Kingambit"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Cinderace|Cinderace, M|100/100",
+        "|move|p2a: Kingambit|Low Kick|p1a: Cinderace"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Kingambit",
+        "|switch|p2a: Ninetales|Ninetales, F|95/100 par"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Cinderace|Pyro Ball|p2a: Ninetales",
+        "|switch|p2a: Raging Bolt|Raging Bolt|32/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Cinderace",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Great Tusk|Knock Off|p2a: Raging Bolt",
+        "|switch|p2a: Ceruledge|Ceruledge, F|87/100 par"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Ceruledge"
+      ]
+    }
+  ],
+  "winner": "Ynot655",
+  "endTime": 1770417260715,
+  "p1Team": [
+    "Hatterene",
+    "Alomomola",
+    "Great Tusk",
+    "Dragapult",
+    "Gholdengo",
+    "Cinderace"
+  ],
+  "p2Team": [
+    "Raging Bolt",
+    "Ceruledge",
+    "Kingambit",
+    "Walking Wake",
+    "Great Tusk",
+    "Ninetales"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "hatterene",
+      "alomomola",
+      "greattusk",
+      "dragapult",
+      "gholdengo",
+      "cinderace"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ragingbolt",
+      "ceruledge",
+      "kingambit",
+      "walkingwake",
+      "greattusk",
+      "ninetales"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

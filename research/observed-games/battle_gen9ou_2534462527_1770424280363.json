@@ -1,0 +1,203 @@
+{
+  "id": "battle-gen9ou-2534462527",
+  "p1": "2001civic",
+  "p2": "flan727",
+  "minElo": 1750,
+  "startTime": 1770424053924,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, F|100/100",
+        "|move|p1a: Gholdengo|Nasty Plot|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Glimmora|Stealth Rock|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Glimmora|Meteor Beam||[still]",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Glimmora",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Gholdengo",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Iron Valiant|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Ogerpon",
+        "|switch|p1a: Ceruledge|Ceruledge, M|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Iron Valiant",
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: Iron Valiant",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk",
+        "|move|p1a: Ceruledge|Taunt|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Ceruledge",
+        "|switch|p1a: Ribombee|Ribombee, M|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Ribombee",
+        "|move|p1a: Ribombee|Stun Spore|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Ribombee|Reflect|p1a: Ribombee"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Ribombee|Light Screen|p1a: Ribombee",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Ribombee",
+        "|switch|p1a: Okidogi|Okidogi, M|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Okidogi|Bulk Up|p1a: Okidogi",
+        "|move|p2a: Great Tusk|Taunt|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Deoxys|Deoxys-Speed|46/100",
+        "|move|p1a: Okidogi|Drain Punch|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Deoxys|Reflect|p2a: Deoxys",
+        "|move|p1a: Okidogi|Drain Punch|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Okidogi|Drain Punch|p2a: Deoxys",
+        "|switch|p2a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite",
+        "|move|p1a: Okidogi|Taunt|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Dragonite|Tera Blast|p1a: Okidogi|[anim] Tera Blast Flying",
+        "|move|p1a: Okidogi|Bulk Up|p1a: Okidogi"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Dragonite|Tera Blast|p1a: Okidogi|[anim] Tera Blast Flying"
+      ]
+    }
+  ],
+  "winner": "flan727",
+  "endTime": 1770424280363,
+  "p1Team": [
+    "Ogerpon-Wellspring",
+    "Ceruledge",
+    "Ribombee",
+    "Okidogi"
+  ],
+  "p2Team": [
+    "Glimmora",
+    "Iron Valiant",
+    "Great Tusk",
+    "Deoxys-Speed",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "ogerponwellspring",
+      "ceruledge",
+      "ribombee",
+      "okidogi"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "glimmora",
+      "ironvaliant",
+      "greattusk",
+      "deoxysspeed",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

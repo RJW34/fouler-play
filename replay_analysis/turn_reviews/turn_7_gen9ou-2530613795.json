@@ -1,0 +1,24 @@
+{
+  "turn": 7,
+  "bot_choice": "Switched to Pecharunt",
+  "why_critical": "Switched to Pecharunt vs healthy Lokix \u2014 long-term positioning play",
+  "bot_team": "Gliscor 89% tox +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Dragapult 100% | Lokix 100% | Espeon fainted | Sinistcha 100% | Incineroar 100% | Glimmora 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530613795",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Lokix"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

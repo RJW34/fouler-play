@@ -1,0 +1,229 @@
+{
+  "id": "battle-gen9ou-2534443312",
+  "p1": "xdye",
+  "p2": "200IQ GOAT",
+  "minElo": 1615,
+  "startTime": 1770421683743,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|100/100",
+        "|move|p2a: Latios|Flip Turn|p1a: Gyatt in the hat",
+        "|switch|p1a: Dangerous flaps|Slither Wing, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Latios|Luster Purge|p1a: Dangerous flaps",
+        "|switch|p1a: 10 packs deep|Torkoal, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|91/100",
+        "|move|p2a: Latios|Draco Meteor|p1a: Gyatt in the hat"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Latios|Flip Turn|p1a: Gyatt in the hat",
+        "|switch|p2a: Cinderace|Cinderace, F|100/100|[from] Flip Turn",
+        "|move|p1a: Gyatt in the hat|Dazzling Gleam|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Waking Bad|Walking Wake|100/100",
+        "|move|p2a: Cinderace|U-turn|p1a: Waking Bad",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Gyatt in the hat|Hatterene, F, shiny|86/100",
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Gyatt in the hat"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|74/100",
+        "|move|p1a: Gyatt in the hat|Dazzling Gleam|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Gyatt in the hat",
+        "|switch|p1a: Waking Bad|Walking Wake|61/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Waking Bad|Weather Ball|p2a: Cinderace",
+        "|switch|p2a: Kingambit|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Waking Bad",
+        "|move|p1a: Waking Bad|Weather Ball|p2a: Kingambit",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: 10 packs deep|Torkoal, F, shiny|100/100",
+        "|move|p2a: Iron Valiant|Swords Dance|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: 10 packs deep",
+        "|move|p1a: 10 packs deep|Overheat|p2a: Iron Valiant|[miss]"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Iron Valiant|Knock Off|p1a: 10 packs deep",
+        "|switch|p1a: Waking Bad|Walking Wake|4/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Waking Bad|Hydro Steam|p2a: Iron Valiant",
+        "|switch|p2a: Latios|Latios, M|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: RagingStormZoner|Raging Bolt|100/100",
+        "|move|p2a: Latios|Luster Purge|p1a: RagingStormZoner"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: RagingStormZoner|Thunderclap|p2a: Latios",
+        "|move|p2a: Latios|Luster Purge|p1a: RagingStormZoner",
+        "|switch|p1a: Waking Bad|Walking Wake|4/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Waking Bad|Draco Meteor|p2a: Latios|[miss]",
+        "|move|p2a: Latios|Luster Purge|p1a: Waking Bad",
+        "|switch|p1a: Old and horny|Great Tusk, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Latios|Flip Turn|p1a: Old and horny",
+        "|switch|p2a: Ogerpon|Ogerpon, F|100/100|[from] Flip Turn",
+        "|move|p1a: Old and horny|Rapid Spin|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Old and horny|Temper Flare|p2a: Ogerpon",
+        "|switch|p2a: Latios|Latios, M|59/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Old and horny|Temper Flare|p2a: Latios",
+        "|move|p2a: Latios|Draco Meteor|p1a: Old and horny|[miss]"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Old and horny|Ice Spinner|p2a: Latios",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Old and horny|Temper Flare|p2a: Kyurem",
+        "|move|p2a: Kyurem|Dragon Dance|p2a: Kyurem"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Kyurem|Icicle Spear|p1a: Old and horny",
+        "|move|p1a: Old and horny|Headlong Rush|p2a: Kyurem"
+      ]
+    }
+  ],
+  "winner": "xdye",
+  "endTime": 1770422056651,
+  "p1Team": [
+    "Hatterene",
+    "Slither Wing",
+    "Torkoal",
+    "Walking Wake",
+    "Raging Bolt",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Cinderace",
+    "Iron Valiant",
+    "Kingambit",
+    "Latios",
+    "Ogerpon",
+    "Kyurem"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "hatterene",
+      "slitherwing",
+      "torkoal",
+      "walkingwake",
+      "ragingbolt",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "cinderace",
+      "ironvaliant",
+      "kingambit",
+      "latios",
+      "ogerpon",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

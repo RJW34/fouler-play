@@ -1,0 +1,143 @@
+{
+  "id": "battle-gen9ou-2534462142",
+  "p1": "DonDeLenguas",
+  "p2": "eros maniac",
+  "minElo": 1549,
+  "startTime": 1770423993923,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|100/100",
+        "|move|p1a: Meowscarada|U-turn|p2a: Hatterene",
+        "|switch|p2a: Hawlucha|Hawlucha, M|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Meowscarada|U-turn|p2a: Hawlucha",
+        "|switch|p1a: Primarina|Primarina, M|100/100|[from] U-turn",
+        "|move|p2a: Hawlucha|Swords Dance|p2a: Hawlucha"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Hawlucha|Acrobatics|p1a: Primarina",
+        "|switch|p1a: Meowscarada|Meowscarada, M|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Meowscarada|Triple Axel|p2a: Hawlucha",
+        "|move|p2a: Hawlucha|Acrobatics|p1a: Meowscarada",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Hawlucha|Acrobatics|p1a: Iron Valiant",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Hawlucha",
+        "|switch|p2a: Hoopa|Hoopa-Unbound|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Hoopa",
+        "|move|p2a: Hoopa|Drain Punch|p1a: Iron Valiant",
+        "|switch|p1a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Dragapult|Draco Meteor|p2a: Hoopa",
+        "|switch|p2a: Drifblim|Drifblim, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Heatran|Heatran, F|100/100",
+        "|move|p2a: Drifblim|Calm Mind|p2a: Drifblim"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Drifblim|Calm Mind|p2a: Drifblim",
+        "|move|p1a: Heatran|Taunt|p2a: Drifblim"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Drifblim|Tera Blast|p1a: Heatran|[anim] Tera Blast Fighting",
+        "|move|p1a: Heatran|Stealth Rock|p2a: Drifblim"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Drifblim|Shadow Ball|p1a: Heatran",
+        "|switch|p1a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Drifblim|Shadow Ball|p1a: Dragapult"
+      ]
+    }
+  ],
+  "winner": "eros maniac",
+  "endTime": 1770424275185,
+  "p1Team": [
+    "Primarina",
+    "Meowscarada",
+    "Iron Valiant",
+    "Dragapult",
+    "Heatran"
+  ],
+  "p2Team": [
+    "Hatterene",
+    "Hawlucha",
+    "Hoopa-Unbound",
+    "Drifblim"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "primarina",
+      "meowscarada",
+      "ironvaliant",
+      "dragapult",
+      "heatran"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "hatterene",
+      "hawlucha",
+      "hoopaunbound",
+      "drifblim"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

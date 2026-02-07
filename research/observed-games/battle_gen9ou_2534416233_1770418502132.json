@@ -1,0 +1,55 @@
+{
+  "id": "battle-gen9ou-2534416233",
+  "p1": "uscboarder",
+  "p2": "zokua",
+  "minElo": 1513,
+  "startTime": 1770418473532,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads|100/100",
+        "|move|p1a: Glimmora|Stealth Rock|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Iron Treads|Rapid Spin|p1a: Glimmora",
+        "|move|p1a: Glimmora|Earth Power|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": []
+    }
+  ],
+  "winner": "uscboarder",
+  "endTime": 1770418502132,
+  "p1Team": [],
+  "p2Team": [
+    "Iron Treads"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "irontreads"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

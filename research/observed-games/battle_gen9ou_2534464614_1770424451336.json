@@ -1,0 +1,154 @@
+{
+  "id": "battle-gen9ou-2534464614",
+  "p1": "Be11ringer",
+  "p2": "eros maniac",
+  "minElo": 1535,
+  "startTime": 1770424320156,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Deoxys|Taunt|p1a: Araquanid",
+        "|move|p1a: Araquanid|Liquidation|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Deoxys|Reflect|p2a: Deoxys",
+        "|move|p1a: Araquanid|Liquidation|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Araquanid|Liquidation|p2a: Deoxys",
+        "|switch|p2a: Salamence|Salamence, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Salamence|Dragon Dance|p2a: Salamence",
+        "|move|p1a: Araquanid|Pounce|p2a: Salamence"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Salamence|Dual Wingbeat|p1a: Araquanid",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Salamence",
+        "|move|p2a: Salamence|Dual Wingbeat|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Salamence",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Great Tusk",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Focus Blast|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Gholdengo",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Iron Valiant|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Ogerpon",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Great Tusk|Bulk Up|p2a: Great Tusk",
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Great Tusk|Taunt|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": []
+    }
+  ],
+  "winner": "eros maniac",
+  "endTime": 1770424451336,
+  "p1Team": [
+    "Great Tusk",
+    "Gholdengo",
+    "Ogerpon-Wellspring",
+    "Ceruledge"
+  ],
+  "p2Team": [
+    "Salamence",
+    "Iron Valiant",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "gholdengo",
+      "ogerponwellspring",
+      "ceruledge"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6666666666666666,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "salamence",
+      "ironvaliant",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

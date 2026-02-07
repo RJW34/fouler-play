@@ -1,0 +1,210 @@
+{
+  "id": "battle-gen9ou-2534406874",
+  "p1": "Huboy",
+  "p2": "Crooksieee",
+  "minElo": 1546,
+  "startTime": 1770417423913,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Great Tusk|Close Combat|p2a: Rillaboom",
+        "|move|p2a: Rillaboom|Knock Off|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Ribombee|Ribombee, F|100/100",
+        "|switch|p2a: Skarmory|Skarmory, F|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Ribombee|Trick|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Milotic|Milotic, F|100/100",
+        "|move|p2a: Gholdengo|Nasty Plot|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Milotic|Haze|p1a: Milotic",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Milotic"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Milotic|Scald|p2a: Gholdengo",
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Milotic"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Ribombee|Ribombee, F|100/100",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Ribombee"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Tyranitar|Tyranitar, F|100/100",
+        "|move|p1a: Ribombee|U-turn|p2a: Tyranitar",
+        "|switch|p1a: Great Tusk|Great Tusk, tera:Fire|43/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Skarmory|Skarmory, F|100/100",
+        "|move|p1a: Great Tusk|Smack Down|p2a: Skarmory"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Great Tusk|Close Combat|p2a: Skarmory",
+        "|move|p2a: Skarmory|Body Press|p1a: Great Tusk",
+        "|switch|p1a: Goodra|Goodra-Hisui, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Goodra|Flamethrower|p2a: Skarmory",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Goodra",
+        "|move|p1a: Goodra|Ice Beam|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Dondozo|Dondozo, M|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Dondozo"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Rillaboom|Rillaboom, M|52/100",
+        "|move|p1a: Dondozo|Avalanche|p2a: Rillaboom"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Goodra|Goodra-Hisui, F|81/100",
+        "|move|p2a: Rillaboom|Wood Hammer|p1a: Goodra"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p2a: Tyranitar|Tyranitar, F|69/100",
+        "|move|p1a: Goodra|Ice Beam|p2a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Goodra|Earthquake|p2a: Tyranitar",
+        "|move|p2a: Tyranitar|Low Kick|p1a: Goodra",
+        "|switch|p1a: Ribombee|Ribombee, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Glimmora|Glimmora, F|100/100",
+        "|move|p1a: Ribombee|U-turn|p2a: Glimmora",
+        "|switch|p1a: Milotic|Milotic, F|73/100 par|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Glimmora|Energy Ball|p1a: Milotic",
+        "|move|p1a: Milotic|Scald|p2a: Glimmora"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Glimmora|Power Gem|p1a: Milotic",
+        "|switch|p1a: Ribombee|Ribombee, F|88/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Ribombee|Poltergeist|p2a: Glimmora",
+        "|move|p2a: Glimmora|Power Gem|p1a: Ribombee"
+      ]
+    }
+  ],
+  "winner": "Crooksieee",
+  "endTime": 1770417834124,
+  "p1Team": [
+    "Ribombee",
+    "Milotic",
+    "Great Tusk",
+    "Goodra-Hisui",
+    "Dondozo"
+  ],
+  "p2Team": [
+    "Skarmory",
+    "Gholdengo",
+    "Tyranitar",
+    "Great Tusk",
+    "Rillaboom",
+    "Glimmora"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "ribombee",
+      "milotic",
+      "greattusk",
+      "goodrahisui",
+      "dondozo"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "skarmory",
+      "gholdengo",
+      "tyranitar",
+      "greattusk",
+      "rillaboom",
+      "glimmora"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,227 @@
+{
+  "id": "battle-gen9ou-2534427519",
+  "p1": "APNsBR",
+  "p2": "flyingtaco42",
+  "minElo": 1728,
+  "startTime": 1770419793631,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Slither Wing|First Impression|p1a: Dragapult",
+        "|move|p1a: Dragapult|U-turn|p2a: Slither Wing",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|100/100",
+        "|move|p1a: Great Tusk|Earthquake|p2a: Hatterene",
+        "|switch|p2a: Walking Wake|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Walking Wake|Draco Meteor|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Ninetales|Ninetales, F|100/100",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Ninetales",
+        "|switch|p1a: Dragapult|Dragapult, M, shiny|65/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Dragapult|Tera Blast|p2a: Great Tusk|[anim] Tera Blast Ghost"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|67/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Hatterene"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|77/100",
+        "|move|p2a: Hatterene|Draining Kiss|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Alomomola|Flip Turn|p2a: Hatterene",
+        "|switch|p1a: Zapdos|Zapdos|100/100|[from] Flip Turn",
+        "|move|p2a: Hatterene|Nuzzle|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Zapdos|Volt Switch|p2a: Hatterene",
+        "|switch|p1a: Alomomola|Alomomola, F|99/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Alomomola|Flip Turn|p2a: Hatterene",
+        "|switch|p1a: Zapdos|Zapdos|97/100|[from] Flip Turn",
+        "|move|p2a: Hatterene|Psychic Noise|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Ninetales|Ninetales, F|79/100",
+        "|move|p1a: Zapdos|Hurricane|p2a: Ninetales|[miss]"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|22/100 par",
+        "|switch|p1a: Alomomola|Alomomola, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Alomomola|Flip Turn|p2a: Hatterene",
+        "|switch|p1a: Zapdos|Zapdos|65/100|[from] Flip Turn",
+        "|move|p2a: Hatterene|Healing Wish|p2a: Hatterene",
+        "|switch|p2a: Walking Wake|Walking Wake|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Walking Wake|Draco Meteor|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Walking Wake|Draco Meteor|p1a: Alomomola",
+        "|switch|p1a: Dragapult|Dragapult, M, shiny, tera:Ghost|65/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|47/100",
+        "|move|p1a: Dragapult|Dragon Darts|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|65/100",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Walking Wake|Walking Wake|100/100",
+        "|move|p1a: Zapdos|Roost|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Walking Wake|Draco Meteor|p1a: Zapdos",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Ninetales|Ninetales, F|79/100",
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: Ninetales|Will-O-Wisp|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: Ninetales|Encore|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": []
+    }
+  ],
+  "winner": "flyingtaco42",
+  "endTime": 1770420357138,
+  "p1Team": [
+    "Great Tusk",
+    "Alomomola",
+    "Dragapult",
+    "Zapdos",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Hatterene",
+    "Walking Wake",
+    "Ninetales",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "greattusk",
+      "alomomola",
+      "dragapult",
+      "zapdos",
+      "zamazenta"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "hatterene",
+      "walkingwake",
+      "ninetales",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

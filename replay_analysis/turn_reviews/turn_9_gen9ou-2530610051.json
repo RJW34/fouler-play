@@ -1,0 +1,24 @@
+{
+  "turn": 9,
+  "bot_choice": "Switched to Blissey",
+  "why_critical": "Switched to Blissey vs healthy Kyurem \u2014 long-term positioning play",
+  "bot_team": "Gliscor 81% tox +6 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 65%",
+  "opp_team": "Dragapult 100% | Alomomola 100% | Ting-Lu 100% | Kyurem 100% | Weezing-Galar 100% | Corviknight 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530610051",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Kyurem"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

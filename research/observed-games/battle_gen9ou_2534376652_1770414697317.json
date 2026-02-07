@@ -1,0 +1,311 @@
+{
+  "id": "battle-gen9ou-2534376652",
+  "p1": "adamnadamn",
+  "p2": "Jamez",
+  "minElo": 1651,
+  "startTime": 1770414153298,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Cobalion|Stealth Rock|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Cobalion",
+        "|move|p1a: Cobalion|Thunder Wave|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Cobalion|Volt Switch|p2a: Pecharunt",
+        "|switch|p1a: Excadrill|Excadrill, F|100/100|[from] Volt Switch",
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Dragonite|Dragonite, F|100/100",
+        "|move|p1a: Excadrill|Earthquake|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Cobalion|Cobalion|100/100",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|85/100 par",
+        "|move|p1a: Cobalion|Body Press|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Cobalion|Volt Switch|p2a: Pecharunt",
+        "|switch|p1a: Tyranitar|Tyranitar, F|100/100|[from] Volt Switch",
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Ting-Lu"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Tyranitar|Ice Punch|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, F|100/100",
+        "|move|p2a: Ting-Lu|Ruination|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Clefable|Clefable, F|100/100",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, F|95/100",
+        "|move|p2a: Clefable|Moonblast|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Clefable|Moonblast|p1a: Tyranitar",
+        "|move|p1a: Tyranitar|Stone Edge|p2a: Clefable|[miss]"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Excadrill|Excadrill, F|66/100",
+        "|move|p2a: Clefable|Moonblast|p1a: Excadrill"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Dragonite|Dragonite, F|100/100",
+        "|move|p1a: Excadrill|Earthquake|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Excadrill|Rapid Spin|p2a: Dragonite",
+        "|move|p2a: Dragonite|Earthquake|p1a: Excadrill",
+        "|switch|p1a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Dragonite|[anim] Ivy Cudgel Rock",
+        "|switch|p2a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Gholdengo|Make It Rain|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Knock Off|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Darkrai|[anim] Ivy Cudgel Rock"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, F|8/100",
+        "|move|p2a: Darkrai|Knock Off|p1a: Tyranitar",
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Darkrai|Knock Off|p1a: Tornadus",
+        "|move|p1a: Tornadus|U-turn|p2a: Darkrai",
+        "|switch|p1a: Ogerpon|Ogerpon-Cornerstone, F|1/100|[from] U-turn",
+        "|switch|p2a: Pecharunt|Pecharunt|65/100 par"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Ogerpon|Knock Off|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Ogerpon",
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Tornadus|Heat Wave|p2a: Pecharunt",
+        "|switch|p2a: Ting-Lu|Ting-Lu|54/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Ting-Lu",
+        "|switch|p1a: Hydrapple|Hydrapple, F|94/100|[from] U-turn",
+        "|move|p2a: Ting-Lu|Ruination|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|13/100",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Gholdengo",
+        "|switch|p2a: Clefable|Clefable, F|68/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Clefable|Moonblast|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100",
+        "|move|p2a: Clefable|Moonlight|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Tornadus|Knock Off|p2a: Clefable",
+        "|move|p2a: Clefable|Calm Mind|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Clefable",
+        "|switch|p1a: Cobalion|Cobalion|100/100|[from] U-turn",
+        "|move|p2a: Clefable|Calm Mind|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: Cobalion|Thunder Wave|p2a: Clefable",
+        "|move|p2a: Clefable|Flamethrower|p1a: Cobalion",
+        "|switch|p1a: Tornadus|Tornadus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Clefable",
+        "|move|p2a: Clefable|Moonlight|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Clefable",
+        "|move|p2a: Clefable|Moonblast|p1a: Tornadus"
+      ]
+    },
+    {
+      "turn": 33,
+      "events": [
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Clefable",
+        "|move|p2a: Clefable|Moonblast|p1a: Tornadus",
+        "|switch|p1a: Hydrapple|Hydrapple, F, tera:Fairy|51/100"
+      ]
+    },
+    {
+      "turn": 34,
+      "events": [
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Clefable",
+        "|move|p2a: Clefable|Moonblast|p1a: Hydrapple"
+      ]
+    }
+  ],
+  "winner": "Jamez",
+  "endTime": 1770414697317,
+  "p1Team": [
+    "Excadrill",
+    "Cobalion",
+    "Tyranitar",
+    "Hydrapple",
+    "Ogerpon-Cornerstone",
+    "Tornadus-Therian"
+  ],
+  "p2Team": [
+    "Pecharunt",
+    "Dragonite",
+    "Darkrai",
+    "Ting-Lu",
+    "Clefable",
+    "Gholdengo"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "excadrill",
+      "cobalion",
+      "tyranitar",
+      "hydrapple",
+      "ogerponcornerstone",
+      "tornadustherian"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "pecharunt",
+      "dragonite",
+      "darkrai",
+      "tinglu",
+      "clefable",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

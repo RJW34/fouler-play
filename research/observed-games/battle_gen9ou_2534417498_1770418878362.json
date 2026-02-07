@@ -1,0 +1,37 @@
+{
+  "id": "battle-gen9ou-2534417498",
+  "p1": "squirtlesquad1999",
+  "p2": "valiums",
+  "minElo": 1510,
+  "startTime": 1770418623522,
+  "turns": [
+    {
+      "turn": 1,
+      "events": []
+    }
+  ],
+  "winner": "valiums",
+  "endTime": 1770418878362,
+  "p1Team": [],
+  "p2Team": [],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

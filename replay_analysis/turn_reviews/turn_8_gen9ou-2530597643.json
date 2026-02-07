@@ -1,0 +1,20 @@
+{
+  "turn": 8,
+  "bot_choice": "unknown",
+  "why_critical": "Gliscor went down vs Volcanion (52% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 47% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey 45% | Skarmory 75% | Pecharunt 100%",
+  "opp_team": "Zapdos 100% | Garchomp 86% -1 spd, -3 def, +3 spe, +2 atk | Gallade 100% | Cinderace 100% | Kingambit 100% | Volcanion 52%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530597643",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Volcanion"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

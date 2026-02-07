@@ -1,0 +1,20 @@
+{
+  "turn": 4,
+  "bot_choice": "unknown",
+  "why_critical": "Pecharunt went down vs Ceruledge (100% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 79% | Skarmory 100% | Pecharunt 100% | Zamazenta 100% +1 def",
+  "opp_team": "Ceruledge 100% +2 atk | Iron Treads 100% | Samurott-Hisui 100% | Raging Bolt 100% | Araquanid 100% | Enamorus 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530673879",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Ceruledge"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

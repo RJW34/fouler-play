@@ -1,0 +1,20 @@
+{
+  "turn": 6,
+  "bot_choice": "unknown",
+  "why_critical": "Gholdengo went down vs Corviknight (14% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 84% | Gholdengo 14% -1 spd | Zamazenta-* 100% | Blissey 65% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Hatterene 100% | Corviknight 14% | Slowking-Galar 100% | Garganacl 100% | Gliscor 100% | Zoroark-Hisui 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530586221",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Corviknight"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

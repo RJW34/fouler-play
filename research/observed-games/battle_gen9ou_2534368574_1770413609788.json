@@ -1,0 +1,272 @@
+{
+  "id": "battle-gen9ou-2534368574",
+  "p1": "CrossGuz",
+  "p2": "Noamm",
+  "minElo": 1600,
+  "startTime": 1770413313328,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F, shiny|100/100",
+        "|move|p2a: Gholdengo|Trick|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Gholdengo",
+        "|switch|p1a: balling|Darkrai, shiny|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: balling|Dark Pulse|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: balling|Dark Pulse|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Alomomola|Aqua Jet|p1a: balling",
+        "|move|p1a: balling|Dark Pulse|p2a: Alomomola",
+        "|switch|p2a: Lokix|Lokix, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Moltres|Moltres, shiny|100/100",
+        "|move|p2a: Lokix|Knock Off|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Mandibuzz|Mandibuzz, F|100/100",
+        "|move|p1a: Moltres|Roost|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Moltres|U-turn|p2a: Mandibuzz",
+        "|switch|p1a: Alomomola|Alomomola, F, shiny|98/100|[from] U-turn",
+        "|move|p2a: Mandibuzz|Toxic|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Mandibuzz|U-turn|p1a: Alomomola",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100|[from] U-turn",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Iron Valiant",
+        "|switch|p1a: balling|Darkrai, shiny, tera:Dark|84/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|82/100",
+        "|move|p1a: balling|Sludge Bomb|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F, shiny|100/100 tox",
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Gholdengo",
+        "|switch|p1a: balling|Darkrai, shiny, tera:Dark|84/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Mandibuzz|Mandibuzz, F|93/100",
+        "|move|p1a: balling|Dark Pulse|p2a: Mandibuzz"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F, shiny|53/100 tox",
+        "|switch|p2a: Gholdengo|Gholdengo|63/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Gholdengo|Shadow Ball|p1a: Alomomola",
+        "|move|p1a: Alomomola|Flip Turn|p2a: Gholdengo",
+        "|switch|p1a: balling|Darkrai, shiny, tera:Dark|84/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: balling|Dark Pulse|p2a: Gholdengo",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|80/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Moltres|Moltres, shiny|100/100",
+        "|move|p2a: Iron Valiant|Shadow Ball|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: balling|Darkrai, shiny, tera:Dark|84/100",
+        "|move|p2a: Iron Valiant|Shadow Ball|p1a: balling"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: balling|Ice Beam|p2a: Great Tusk",
+        "|switch|p2a: Lokix|Lokix, M|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Moltres|Moltres, shiny|58/100",
+        "|move|p2a: Lokix|Knock Off|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Lokix|Knock Off|p1a: Moltres",
+        "|switch|p1a: fugly|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p2a: Mandibuzz|Mandibuzz, F|53/100",
+        "|move|p1a: fugly|Ivy Cudgel|p2a: Mandibuzz|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: fugly|Ivy Cudgel|p2a: Mandibuzz|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Lokix|Lokix, M|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F, shiny|46/100 tox",
+        "|move|p2a: Lokix|Leech Life|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Lokix|Leech Life|p1a: Alomomola",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Lokix",
+        "|move|p2a: Lokix|Leech Life|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: scizon|Scizor, M, shiny|100/100",
+        "|move|p2a: Lokix|Leech Life|p1a: scizon",
+        "|switch|p1a: balling|Darkrai, shiny, tera:Dark|59/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: balling|Dark Pulse|p2a: Lokix",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|80/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|47/100",
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "CrossGuz",
+  "endTime": 1770413609788,
+  "p1Team": [
+    "Alomomola",
+    "Darkrai",
+    "Moltres",
+    "Ogerpon-Wellspring",
+    "Great Tusk",
+    "Scizor"
+  ],
+  "p2Team": [
+    "Alomomola",
+    "Lokix",
+    "Mandibuzz",
+    "Iron Valiant",
+    "Gholdengo",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "alomomola",
+      "darkrai",
+      "moltres",
+      "ogerponwellspring",
+      "greattusk",
+      "scizor"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 3,
+    "team": [
+      "alomomola",
+      "lokix",
+      "mandibuzz",
+      "ironvaliant",
+      "gholdengo",
+      "greattusk"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

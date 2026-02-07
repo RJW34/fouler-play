@@ -1,0 +1,284 @@
+{
+  "id": "battle-gen9ou-2534385455",
+  "p1": "rillaMane",
+  "p2": "suprya",
+  "minElo": 1682,
+  "startTime": 1770415083338,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Iron Crown|Future Sight|p1a: peter parker",
+        "|move|p1a: peter parker|Sticky Web|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Iron Crown|Volt Switch|p1a: peter parker",
+        "|switch|p2a: Amoonguss|Amoonguss, M, shiny|100/100|[from] Volt Switch",
+        "|move|p1a: peter parker|Surf|p2a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: joe|Gholdengo|100/100",
+        "|move|p2a: Amoonguss|Foul Play|p1a: joe"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Moltres|Moltres|100/100",
+        "|move|p1a: joe|Psyshock|p2a: Moltres"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: raikou?|Raging Bolt|100/100",
+        "|move|p2a: Moltres|Scorching Sands|p1a: raikou?"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: raikou?|Thunderbolt|p2a: Moltres",
+        "|switch|p2a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: peter parker|Araquanid, M|69/100",
+        "|move|p2a: Iron Crown|Psychic Noise|p1a: peter parker"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Iron Crown|Volt Switch|p1a: peter parker",
+        "|switch|p2a: Amoonguss|Amoonguss, M, shiny|100/100|[from] Volt Switch",
+        "|move|p1a: peter parker|Surf|p2a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: peter parker|Endeavor|p2a: Amoonguss",
+        "|move|p2a: Amoonguss|Giga Drain|p1: peter parker|[notarget]",
+        "|switch|p1a: joe|Gholdengo|39/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: joe|Shadow Ball|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: lol|Kingambit, F|100/100",
+        "|move|p2a: Darkrai|Dark Pulse|p1a: lol"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Darkrai|Will-O-Wisp|p1a: lol",
+        "|move|p1a: lol|Iron Head|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: lol|Iron Head|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: joe|Gholdengo|39/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: joe",
+        "|switch|p1a: charles james|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: charles james|Calm Mind|p1a: charles james",
+        "|move|p2a: Great Tusk|Rapid Spin|p1a: charles james"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: charles james|Vacuum Wave|p2a: Great Tusk",
+        "|switch|p2a: Amoonguss|Amoonguss, M, shiny|44/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, F|100/100",
+        "|move|p1a: charles james|Shadow Ball|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: charles james|Moonblast|p2a: Garganacl",
+        "|move|p2a: Garganacl|Salt Cure|p1a: charles james"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: charles james|Calm Mind|p1a: charles james",
+        "|move|p2a: Garganacl|Recover|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: charles james|Moonblast|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Iron Crown|Iron Crown|100/100",
+        "|move|p1a: charles james|Moonblast|p2a: Iron Crown"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: charles james|Shadow Ball|p2a: Iron Crown",
+        "|switch|p1a: lol|Kingambit, F|63/100 brn",
+        "|switch|p2a: Garganacl|Garganacl, F|75/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Amoonguss|Amoonguss, M, shiny|78/100",
+        "|move|p1a: lol|Swords Dance|p1a: lol"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: lol|Kowtow Cleave|p2a: Amoonguss",
+        "|move|p2a: Amoonguss|Foul Play|p1a: lol",
+        "|switch|p1a: lamp|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: lamp|Substitute|p1a: lamp",
+        "|move|p2a: Amoonguss|Foul Play|p1a: lamp"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: lamp|Fiery Dance|p2a: Amoonguss",
+        "|switch|p2a: Garganacl|Garganacl, F|75/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Garganacl|Protect|p2a: Garganacl",
+        "|move|p1a: lamp|Energy Ball|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: lamp|Energy Ball|p2a: Garganacl",
+        "|move|p2a: Garganacl|Salt Cure|p1a: lamp"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: lamp|Substitute|p1a: lamp",
+        "|move|p2a: Garganacl|Salt Cure|p1a: lamp"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p1a: lamp|Energy Ball|p2a: Garganacl",
+        "|switch|p2a: Darkrai|Darkrai|40/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: lamp",
+        "|move|p1a: lamp|Fiery Dance|p2a: Darkrai"
+      ]
+    }
+  ],
+  "winner": "rillaMane",
+  "endTime": 1770415735814,
+  "p1Team": [
+    "Gholdengo",
+    "Raging Bolt",
+    "Araquanid",
+    "Kingambit",
+    "Iron Valiant",
+    "Iron Moth"
+  ],
+  "p2Team": [
+    "Amoonguss",
+    "Moltres",
+    "Iron Crown",
+    "Darkrai",
+    "Great Tusk",
+    "Garganacl"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6666666666666666,
+    "fatCount": 0,
+    "offenseCount": 4,
+    "team": [
+      "gholdengo",
+      "ragingbolt",
+      "araquanid",
+      "kingambit",
+      "ironvaliant",
+      "ironmoth"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "amoonguss",
+      "moltres",
+      "ironcrown",
+      "darkrai",
+      "greattusk",
+      "garganacl"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

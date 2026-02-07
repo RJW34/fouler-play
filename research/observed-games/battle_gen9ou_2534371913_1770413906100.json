@@ -1,0 +1,282 @@
+{
+  "id": "battle-gen9ou-2534371913",
+  "p1": "n trademark",
+  "p2": "ba2ozknRR",
+  "minElo": 1640,
+  "startTime": 1770413673514,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Tinkaton|Knock Off|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Tinkaton"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|100/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Garganacl",
+        "|switch|p2a: Tinkaton|Tinkaton, F|89/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Tinkaton|Gigaton Hammer|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Tinkaton"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Tinkaton|Encore|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Tinkaton"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Tinkaton|Stealth Rock|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Tinkaton",
+        "|switch|p2a: Enamorus|Enamorus, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Alomomola|Alomomola, F|100/100",
+        "|move|p2a: Enamorus|Moonblast|p1a: Alomomola"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Enamorus|Moonblast|p1a: Alomomola",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Pecharunt",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100 tox",
+        "|move|p1a: Ogerpon|Shadow Ball|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Alomomola|Mirror Coat||[still]"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|88/100",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|85/100 tox",
+        "|move|p1a: Ogerpon|Shadow Ball|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|88/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Garganacl|Garganacl, M|31/100",
+        "|switch|p2a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Garganacl",
+        "|switch|p2a: Enamorus|Enamorus, F, tera:Stellar|100/100|[from] Parting Shot",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Enamorus"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Enamorus|Tera Blast|p1a: Garganacl|[anim] Tera Blast Stellar"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Enamorus|Tera Blast|p1a: Garganacl|[anim] Tera Blast Stellar",
+        "|switch|p1a: Pecharunt|Pecharunt|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Enamorus|Tera Blast|p1a: Pecharunt|[anim] Tera Blast Stellar",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Enamorus",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Enamorus|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Zamazenta|Zamazenta, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Encore|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|92/100",
+        "|move|p2a: Zamazenta|Crunch|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Great Tusk",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|36/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Ogerpon|Horn Leech|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Pecharunt|[anim] Ivy Cudgel Water",
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Ogerpon",
+        "|switch|p2a: Zamazenta|Zamazenta, shiny|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Ogerpon",
+        "|switch|p1a: Pecharunt|Pecharunt|76/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Pecharunt",
+        "|switch|p1a: Pecharunt|Pecharunt|15/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Pecharunt",
+        "|move|p1a: Pecharunt|Malignant Chain|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p2a: Zamazenta|Crunch|p1a: Pecharunt"
+      ]
+    }
+  ],
+  "winner": "ba2ozknRR",
+  "endTime": 1770413906100,
+  "p1Team": [
+    "Garganacl",
+    "Alomomola",
+    "Pecharunt",
+    "Ogerpon-Wellspring",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Alomomola",
+    "Tinkaton",
+    "Enamorus",
+    "Pecharunt",
+    "Zamazenta",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "garganacl",
+      "alomomola",
+      "pecharunt",
+      "ogerponwellspring",
+      "greattusk"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "alomomola",
+      "tinkaton",
+      "enamorus",
+      "pecharunt",
+      "zamazenta",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

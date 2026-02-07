@@ -1,0 +1,187 @@
+{
+  "id": "battle-gen9ou-2534410051",
+  "p1": "Greftiw",
+  "p2": "besudo",
+  "minElo": 1501,
+  "startTime": 1770417783493,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Tyranitar|Low Kick|p2a: Samurott",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|100/100",
+        "|move|p1a: Tyranitar|Stealth Rock|p2a: Hatterene",
+        "|move|p2a: Hatterene|Stealth Rock|p1a: Tyranitar|[from] ability: Magic Bounce"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Tyranitar|Knock Off|p2a: Hatterene",
+        "|move|p2a: Hatterene|Psychic Noise|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|100/100",
+        "|move|p1a: Tyranitar|Stealth Rock|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Tyranitar|Knock Off|p2a: Alomomola",
+        "|move|p2a: Alomomola|Wish|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Excadrill|Excadrill, M, shiny|100/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Excadrill",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|20/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Samurott|Aqua Jet|p1a: Excadrill",
+        "|switch|p1a: Zapdos|Zapdos, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Iron Treads|Iron Treads|100/100",
+        "|move|p1a: Zapdos|Heat Wave|p2a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Zapdos|Heat Wave|p2a: Iron Treads",
+        "|switch|p2a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Toxapex|Toxapex, M, shiny|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Toxapex|[anim] Ivy Cudgel Rock",
+        "|switch|p1a: Ogerpon|Ogerpon, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|26/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Hatterene",
+        "|switch|p2a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, M, shiny|63/100",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Iron Valiant|Iron Valiant, shiny|100/100",
+        "|move|p2a: Kyurem|Freeze-Dry|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, F|89/100",
+        "|move|p1a: Iron Valiant|Moonblast|p2a: Alomomola",
+        "|switch|p2a: Samurott|Samurott-Hisui, M, tera:Water|66/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Samurott|Aqua Jet|p1a: Iron Valiant",
+        "|switch|p1a: Ogerpon|Ogerpon-Teal-Tera, F, tera:Grass|76/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Samurott|Aqua Jet|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Samurott",
+        "|switch|p2a: Kyurem|Kyurem|63/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Kyurem"
+      ]
+    }
+  ],
+  "winner": "Greftiw",
+  "endTime": 1770418054746,
+  "p1Team": [
+    "Excadrill",
+    "Zapdos",
+    "Toxapex",
+    "Ogerpon",
+    "Tyranitar",
+    "Iron Valiant",
+    "Ogerpon-Teal-Tera"
+  ],
+  "p2Team": [
+    "Hatterene",
+    "Alomomola",
+    "Samurott-Hisui",
+    "Iron Treads",
+    "Ogerpon-Cornerstone",
+    "Kyurem"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "excadrill",
+      "zapdos",
+      "toxapex",
+      "ogerpon",
+      "tyranitar",
+      "ironvaliant",
+      "ogerpontealtera"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "hatterene",
+      "alomomola",
+      "samurotthisui",
+      "irontreads",
+      "ogerponcornerstone",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

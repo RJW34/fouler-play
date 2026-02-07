@@ -2366,7 +2366,7 @@ def upkeep(battle, _):
         )
         battle.field_turns_remaining = 3
 
-    if constants.ROOST in battle.user.active.volatile_statuses:
+    if battle.user.active is not None and constants.ROOST in battle.user.active.volatile_statuses:
         logger.info(
             "Removing 'roost' from {}'s volatiles".format(battle.user.active.name)
         )
@@ -2374,7 +2374,7 @@ def upkeep(battle, _):
             v for v in battle.user.active.volatile_statuses if v != constants.ROOST
         ]
 
-    if constants.ROOST in battle.opponent.active.volatile_statuses:
+    if battle.opponent.active is not None and constants.ROOST in battle.opponent.active.volatile_statuses:
         logger.info(
             "Removing 'roost' from {}'s volatiles".format(battle.opponent.active.name)
         )
@@ -2674,6 +2674,10 @@ def check_speed_ranges(battle, msg_lines):
             - the opponent COULD have prankster and it used a status move
             - Grassy Glide is used when Grassy Terrain is up
     """
+    # If either active Pokemon is None (e.g. fainted), skip speed range check
+    if battle.user.active is None or battle.opponent.active is None:
+        return
+
     for ln in msg_lines:
         # If either side switched this turn - don't do this check
         if ln.startswith("|switch|"):

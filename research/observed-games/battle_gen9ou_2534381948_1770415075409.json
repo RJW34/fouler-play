@@ -1,0 +1,265 @@
+{
+  "id": "battle-gen9ou-2534381948",
+  "p1": "rillaMane",
+  "p2": "adamnadamn",
+  "minElo": 1635,
+  "startTime": 1770414723324,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Tornadus|Bleakwind Storm|p1a: peter parker",
+        "|move|p1a: peter parker|Sticky Web|p2a: Tornadus"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Tornadus|Knock Off|p1a: peter parker",
+        "|move|p1a: peter parker|Endeavor|p2a: Tornadus"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Tornadus|Bleakwind Storm|p1a: peter parker|[miss]",
+        "|move|p1a: peter parker|Surf|p2a: Tornadus"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: raikou?|Raging Bolt|100/100",
+        "|move|p2a: Tornadus|Bleakwind Storm|p1a: raikou?"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: peter parker|Araquanid, M|33/100",
+        "|move|p2a: Tornadus|U-turn|p1a: peter parker",
+        "|switch|p2a: Excadrill|Excadrill, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Excadrill|Rapid Spin|p1a: peter parker",
+        "|move|p1a: peter parker|Surf|p2a: Excadrill"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: joe|Gholdengo|100/100",
+        "|move|p2a: Excadrill|Iron Head|p1a: joe"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: joe|Shadow Ball|p2a: Excadrill",
+        "|switch|p2a: Tyranitar|Tyranitar, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: peter parker|Araquanid, M, tera:Ghost|19/100",
+        "|move|p2a: Tyranitar|Earthquake|p1a: peter parker",
+        "|switch|p1a: lol|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Cobalion|Cobalion|100/100",
+        "|move|p1a: lol|Iron Head|p2a: Cobalion"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: joe|Gholdengo|73/100",
+        "|move|p2a: Cobalion|Thunder Wave|p1a: joe"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: joe|Nasty Plot|p1a: joe",
+        "|move|p2a: Cobalion|Stealth Rock|p1a: joe"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: joe|Psyshock|p2a: Cobalion",
+        "|move|p2a: Cobalion|Volt Switch|p1a: joe",
+        "|switch|p2a: Tornadus|Tornadus-Therian, M|41/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Tornadus|Heat Wave|p1a: joe|[miss]",
+        "|move|p1a: joe|Shadow Ball|p2a: Tornadus",
+        "|switch|p2a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: joe|Shadow Ball|p2a: Ogerpon",
+        "|move|p2a: Ogerpon|Knock Off|p1a: joe",
+        "|switch|p1a: lamp|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: lamp|Fiery Dance|p2a: Ogerpon",
+        "|switch|p2a: Tyranitar|Tyranitar, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: lol|Kingambit, F|84/100",
+        "|move|p2a: Tyranitar|Earthquake|p1a: lol"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Cobalion|Cobalion|55/100",
+        "|move|p1a: lol|Iron Head|p2a: Cobalion"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: raikou?|Raging Bolt|73/100",
+        "|move|p2a: Cobalion|Volt Switch|p1a: raikou?",
+        "|switch|p2a: Tyranitar|Tyranitar, M|100/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: raikou?|Thunderbolt|p2a: Tyranitar",
+        "|move|p2a: Tyranitar|Ice Punch|p1a: raikou?",
+        "|switch|p1a: lol|Kingambit, F|61/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Hydrapple|Hydrapple, M|100/100",
+        "|move|p1a: lol|Iron Head|p2a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: lol|Swords Dance|p1a: lol",
+        "|move|p2a: Hydrapple|Giga Drain|p1a: lol"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: lol|Kowtow Cleave|p2a: Hydrapple",
+        "|switch|p2a: Cobalion|Cobalion|41/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: lol|Sucker Punch|p2a: Cobalion",
+        "|move|p2a: Cobalion|Body Press|p1a: lol",
+        "|switch|p1a: lamp|Iron Moth|76/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: lamp|Fiery Dance|p2a: Cobalion",
+        "|switch|p2a: Tyranitar|Tyranitar, M|79/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: lamp|Energy Ball|p2a: Tyranitar",
+        "|move|p2a: Tyranitar|Earthquake|p1a: lamp",
+        "|switch|p1a: charles james|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: charles james|Moonblast|p2a: Tyranitar",
+        "|move|p2a: Tyranitar|Earthquake|p1a: charles james"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: charles james|Moonblast|p2a: Tyranitar"
+      ]
+    }
+  ],
+  "winner": "rillaMane",
+  "endTime": 1770415075409,
+  "p1Team": [
+    "Raging Bolt",
+    "Araquanid",
+    "Gholdengo",
+    "Kingambit",
+    "Iron Moth",
+    "Iron Valiant"
+  ],
+  "p2Team": [
+    "Excadrill",
+    "Tyranitar",
+    "Cobalion",
+    "Tornadus-Therian",
+    "Ogerpon-Cornerstone",
+    "Hydrapple"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6666666666666666,
+    "fatCount": 0,
+    "offenseCount": 4,
+    "team": [
+      "ragingbolt",
+      "araquanid",
+      "gholdengo",
+      "kingambit",
+      "ironmoth",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "excadrill",
+      "tyranitar",
+      "cobalion",
+      "tornadustherian",
+      "ogerponcornerstone",
+      "hydrapple"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,24 @@
+{
+  "turn": 13,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "Switched to Gliscor vs healthy Toxapex \u2014 long-term positioning play",
+  "bot_team": "Gliscor 44% +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 93% | Pecharunt 100%",
+  "opp_team": "Gliscor 87% | Toxapex 100% | Tyranitar 100% | Pecharunt 100% | Cyclizar 41% +1 spe | Garganacl 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530883459",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gholdengo instead",
+      "Check if better defensive matchup vs Toxapex"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

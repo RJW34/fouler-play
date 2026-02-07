@@ -1,0 +1,22 @@
+{
+  "timestamp": "20260201_094304",
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530657409",
+  "replay_id": "gen9ou-2530657409",
+  "mistakes_found": 2,
+  "mistakes": [
+    {
+      "category": "pokemon_fainted",
+      "turn": 10,
+      "description": "Zamazenta fainted - possible switching error",
+      "severity": "major",
+      "suggested_fix": "Improve switching logic to preserve Pokemon"
+    },
+    {
+      "category": "no_hazards_set",
+      "turn": 25,
+      "description": "Never set up hazards (critical for chip damage)",
+      "severity": "major",
+      "suggested_fix": "Increase hazard priority in scoring"
+    }
+  ]
+}

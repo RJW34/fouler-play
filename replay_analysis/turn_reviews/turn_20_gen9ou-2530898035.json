@@ -1,0 +1,24 @@
+{
+  "turn": 20,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "Switched to Gliscor vs Cinderace (36% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 36% +4 spa, +4 spd | Skarmory 100% | Pecharunt 100% | Zamazenta fainted",
+  "opp_team": "Ceruledge 100% | Cinderace 36% | Dragapult 100% | Raging Bolt 15% +4 spa, +3 spd | Ribombee fainted | Gholdengo 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530898035",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gholdengo instead",
+      "Check if better defensive matchup vs Cinderace"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

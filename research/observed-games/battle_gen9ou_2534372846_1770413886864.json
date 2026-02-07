@@ -1,0 +1,159 @@
+{
+  "id": "battle-gen9ou-2534372846",
+  "p1": "jyvon12811",
+  "p2": "sminey",
+  "minElo": 1660,
+  "startTime": 1770413763276,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p1a: Enamorus|Moonblast|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|100/100",
+        "|move|p1a: Enamorus|Earth Power|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p1a: Enamorus|Moonblast|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, F|100/100",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Dragapult|Dragapult, F|100/100",
+        "|switch|p2a: Zapdos|Zapdos|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Dragapult|Draco Meteor|p2a: Zapdos",
+        "|move|p2a: Zapdos|Thunder Wave|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Enamorus|Enamorus, F|81/100",
+        "|move|p2a: Zapdos|Roost|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|100/100",
+        "|move|p1a: Enamorus|Substitute|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Enamorus|Earth Power|p2a: Slowking",
+        "|move|p2a: Slowking|Ice Beam|p1a: Enamorus"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Enamorus|Earth Power|p2a: Slowking",
+        "|move|p2a: Slowking|Sludge Bomb|p1a: Enamorus",
+        "|switch|p1a: Kingambit|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Zapdos|Zapdos|83/100",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: Zapdos|Thunder Wave|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Zapdos"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Zapdos|Volt Switch|p1a: Kingambit",
+        "|switch|p2a: Clefable|Clefable, F|100/100|[from] Volt Switch",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Clefable|Knock Off|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Clefable|Moonblast|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Clefable"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": []
+    }
+  ],
+  "winner": "sminey",
+  "endTime": 1770413886864,
+  "p1Team": [
+    "Kingambit",
+    "Dragapult",
+    "Enamorus"
+  ],
+  "p2Team": [
+    "Slowking-Galar",
+    "Zapdos",
+    "Clefable"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6666666666666666,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "kingambit",
+      "dragapult",
+      "enamorus"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 1,
+    "fatCount": 3,
+    "offenseCount": 0,
+    "team": [
+      "slowkinggalar",
+      "zapdos",
+      "clefable"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

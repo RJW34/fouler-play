@@ -1,0 +1,24 @@
+{
+  "turn": 11,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "Switched to Gliscor vs Heatran (13% HP) \u2014 opponent low, finish or preserve?",
+  "bot_team": "Gliscor 89% tox +2 atk, -1 spe | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100% -2 spe | Zamazenta 100% -1 spd",
+  "opp_team": "Weavile 100% | Gengar 100% | Rillaboom 49% tox +1 atk, +1 def | Hatterene 72% -1 def | Kilowattrel 100% | Heatran 13%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530579741",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gholdengo instead",
+      "Check if better defensive matchup vs Heatran"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

@@ -1,0 +1,24 @@
+{
+  "turn": 21,
+  "bot_choice": "Thunder Wave",
+  "why_critical": "Gholdengo went down vs Empoleon (100% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor fainted | Gholdengo 55% +4 spa, -1 spd | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Weezing-Galar 33% | Gligar 100% | Cresselia 9% | Ogerpon-Cornerstone 100% | Torkoal 100% | Empoleon 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530561850",
+  "alternatives": [
+    [
+      "Switch to Gholdengo",
+      "Potentially better matchup vs Empoleon"
+    ],
+    [
+      "Different move than Thunder Wave",
+      "Could have forced switch or dealt more chip"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

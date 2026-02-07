@@ -1,0 +1,89 @@
+{
+  "id": "battle-gen9ou-2534374287",
+  "p1": "Srita Kaguya",
+  "p2": "playa del akat",
+  "minElo": 1521,
+  "startTime": 1770413913283,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Primarina",
+        "|move|p1a: Primarina|Moonblast|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Scizor|Scizor, M|100/100",
+        "|move|p1a: Primarina|Moonblast|p2a: Scizor"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Primarina",
+        "|move|p1a: Primarina|Flip Turn|p2a: Scizor",
+        "|switch|p1a: Dragapult|Dragapult, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Scizor|Bullet Punch|p1a: Dragapult",
+        "|move|p1a: Dragapult|Shadow Ball|p2a: Scizor",
+        "|switch|p2a: Samurott|Samurott-Hisui, M|28/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, F|14/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Primarina",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": []
+    }
+  ],
+  "winner": "playa del akat",
+  "endTime": 1770413999118,
+  "p1Team": [
+    "Dragapult",
+    "Primarina",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Scizor",
+    "Samurott-Hisui"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "dragapult",
+      "primarina",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "scizor",
+      "samurotthisui"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

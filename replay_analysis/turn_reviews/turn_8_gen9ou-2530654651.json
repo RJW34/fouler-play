@@ -1,0 +1,22 @@
+{
+  "turn": 8,
+  "bot_choice": "unknown",
+  "why_critical": "Pecharunt went down vs Great Tusk (58% HP) \u2014 opponent has 6 Pokemon left",
+  "bot_team": "Gliscor 31% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey 83% | Skarmory 100% | Pecharunt 11%",
+  "opp_team": "Indeedee 33% | Haxorus 100% | Torkoal 100% | Armarouge 100% | Great Tusk 58% -2 def, -2 spd | Iron Valiant 100%",
+  "field": [
+    "Terrain: Psychic Terrain"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530654651",
+  "alternatives": [
+    [
+      "Switch to Gliscor",
+      "Potentially better matchup vs Great Tusk"
+    ],
+    [
+      "Switch out 1-2 turns earlier",
+      "Preserve HP for late-game threat"
+    ]
+  ],
+  "feedback": null
+}

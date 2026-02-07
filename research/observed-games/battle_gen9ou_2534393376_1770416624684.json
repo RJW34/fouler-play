@@ -1,0 +1,293 @@
+{
+  "id": "battle-gen9ou-2534393376",
+  "p1": "Satanel07",
+  "p2": "Ynot655",
+  "minElo": 1500,
+  "startTime": 1770415953392,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Meowscarada|U-turn|p2a: Hatterene",
+        "|switch|p1a: Typhon|Tyranitar, M, shiny|100/100|[from] U-turn",
+        "|move|p2a: Hatterene|Nuzzle|p1a: Typhon"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Typhon|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Alomomola",
+        "|move|p2a: Alomomola|Scald|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p2a: Alomomola|Wish|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Dragapult|Dragapult, M|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Dragapult|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Dragapult|Will-O-Wisp|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Knock Off|p2a: Dragapult"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Dragapult|Hex|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Play Rough|p2a: Dragapult",
+        "|switch|p2a: Cinderace|Cinderace, M|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|67/100",
+        "|move|p2a: Cinderace|U-turn|p1a: Great Tusk",
+        "|switch|p2a: Alomomola|Alomomola, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring-Tera, F, tera:Water|42/100 brn",
+        "|move|p2a: Alomomola|Wish|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Mammon|Gholdengo|100/100",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Mammon",
+        "|switch|p2a: Gholdengo|Gholdengo|31/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Mammon|Shadow Ball|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Mammon|Shadow Ball|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Mammon",
+        "|switch|p2a: Cinderace|Cinderace, M|84/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Mammon|Shadow Ball|p2a: Cinderace",
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Mammon",
+        "|switch|p1a: Meowscarada|Meowscarada, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Meowscarada|Flower Trick|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p1a: Typhon|Tyranitar, M, shiny|100/100 par",
+        "|move|p2a: Gholdengo|Trick|p1a: Typhon"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|84/100",
+        "|move|p1a: Typhon|Knock Off|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Great Tusk|Stealth Rock|p1a: Typhon",
+        "|move|p1a: Typhon|Ice Beam|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Typhon",
+        "|move|p1a: Typhon|Ice Beam|p2a: Great Tusk",
+        "|switch|p2a: Cinderace|Cinderace, M|19/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Typhon",
+        "|switch|p1a: Great Tusk|Great Tusk|51/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Great Tusk",
+        "|switch|p1a: Meowscarada|Meowscarada, M|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|68/100",
+        "|move|p1a: Meowscarada|Knock Off|p2a: Hatterene"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Meowscarada|Knock Off|p2a: Hatterene",
+        "|move|p2a: Hatterene|Nuzzle|p1a: Meowscarada"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Meowscarada|Knock Off|p2a: Hatterene",
+        "|switch|p2a: Alomomola|Alomomola, M|49/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring-Tera, F, tera:Water|36/100 brn",
+        "|move|p2a: Alomomola|Wish|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Alomomola|[anim] Ivy Cudgel Water",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Ogerpon",
+        "|switch|p2a: Cinderace|Cinderace, M|19/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: Cinderace|U-turn|p1a: Ogerpon",
+        "|switch|p2a: Alomomola|Alomomola, M|70/100|[from] U-turn",
+        "|switch|p1a: Meowscarada|Meowscarada, M|81/100 par"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Alomomola|Protect|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|81/100",
+        "|move|p1a: Meowscarada|Knock Off|p2a: Gholdengo",
+        "|switch|p2a: Cinderace|Cinderace, M|97/100"
+      ]
+    },
+    {
+      "turn": 32,
+      "events": [
+        "|move|p2a: Cinderace|Pyro Ball|p1a: Meowscarada"
+      ]
+    }
+  ],
+  "winner": "Ynot655",
+  "endTime": 1770416624684,
+  "p1Team": [
+    "Tyranitar",
+    "Great Tusk",
+    "Ogerpon-Wellspring",
+    "Ogerpon-Wellspring-Tera",
+    "Gholdengo",
+    "Meowscarada"
+  ],
+  "p2Team": [
+    "Great Tusk",
+    "Gholdengo",
+    "Alomomola",
+    "Dragapult",
+    "Cinderace",
+    "Hatterene"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "tyranitar",
+      "greattusk",
+      "ogerponwellspring",
+      "ogerponwellspringtera",
+      "gholdengo",
+      "meowscarada"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 3,
+    "team": [
+      "greattusk",
+      "gholdengo",
+      "alomomola",
+      "dragapult",
+      "cinderace",
+      "hatterene"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

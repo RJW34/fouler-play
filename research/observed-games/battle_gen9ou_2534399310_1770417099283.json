@@ -1,0 +1,281 @@
+{
+  "id": "battle-gen9ou-2534399310",
+  "p1": "suprya",
+  "p2": "PikachuRTM",
+  "minElo": 1596,
+  "startTime": 1770416583422,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Sam|Knock Off|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Giga Drain|p2a: Sam"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Sam|Ceaseless Edge|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Giga Drain|p2a: Sam"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Sam|Ceaseless Edge|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Giga Drain|p2a: Sam",
+        "|switch|p2a: Kyu|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Kyu|Dragon Dance|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Kyu|Icicle Spear|p1a: Moltres",
+        "|move|p1a: Moltres|Roar|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|77/100",
+        "|move|p2a: Derrick|Surf|p1a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Kyu|Kyurem, shiny|100/100",
+        "|switch|p1a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|switch|p2a: Dønphan|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Dønphan|Knock Off|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Dønphan"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Mochi|Pecharunt|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Mochi"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Mochi",
+        "|move|p2a: Mochi|Malignant Chain|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Great Tusk|Knock Off|p2a: Mochi",
+        "|switch|p2a: Gałlade|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|22/100",
+        "|move|p2a: Gałlade|Moonblast|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|76/100",
+        "|move|p2a: Gałlade|Moonblast|p1a: Amoonguss"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|4/100",
+        "|move|p2a: Gałlade|Moonblast|p1a: Moltres",
+        "|switch|p1a: Amoonguss|Amoonguss, M, shiny|71/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Gałlade|Moonblast|p1a: Amoonguss",
+        "|move|p1a: Amoonguss|Sludge Bomb|p2a: Gałlade",
+        "|switch|p2a: Kyu|Kyurem, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: Kyu|Dragon Dance|p2a: Kyu",
+        "|move|p1a: Amoonguss|Foul Play|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Kyu|Icicle Spear|p1a: Amoonguss",
+        "|switch|p1a: Iron Crown|Iron Crown|84/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Kyu|Tera Blast|p1a: Iron Crown|[anim] Tera Blast Fire",
+        "|switch|p1a: Garganacl|Garganacl, M|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Kyu|Icicle Spear|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Kyu"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Kyu|Scale Shot|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Garganacl|Protect||[still]",
+        "|move|p2a: Kyu|Icicle Spear|p1a: Garganacl",
+        "|switch|p2a: Derrick|Pikachu, M|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Derrick|Agility|p2a: Derrick",
+        "|move|p1a: Garganacl|Recover|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: Derrick|Thunderbolt|p1a: Garganacl",
+        "|move|p1a: Garganacl|Salt Cure|p2a: Derrick"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|move|p2a: Derrick|Thunderbolt|p1a: Garganacl"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|44/100",
+        "|move|p2a: Derrick|Alluring Voice|p1a: Great Tusk",
+        "|switch|p1a: Garganacl|Garganacl, M, tera:Water|32/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|switch|p2a: Dønphan|Iron Treads|68/100",
+        "|move|p1a: Garganacl|Protect||[still]"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Dønphan|Earthquake|p1a: Garganacl",
+        "|switch|p1a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: Darkrai|Will-O-Wisp|p2a: Dønphan",
+        "|move|p2a: Dønphan|Rapid Spin|p1a: Darkrai"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Dønphan|Knock Off|p1a: Darkrai",
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Dønphan",
+        "|switch|p2a: Derrick|Pikachu, M|16/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Darkrai|Dark Pulse|p2a: Derrick"
+      ]
+    }
+  ],
+  "winner": "suprya",
+  "endTime": 1770417099283,
+  "p1Team": [
+    "Moltres",
+    "Amoonguss",
+    "Iron Crown",
+    "Great Tusk",
+    "Garganacl",
+    "Darkrai"
+  ],
+  "p2Team": [
+    "Kyurem",
+    "Iron Treads",
+    "Pecharunt",
+    "Iron Valiant",
+    "Pikachu"
+  ],
+  "p1Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.3333333333333333,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "moltres",
+      "amoonguss",
+      "ironcrown",
+      "greattusk",
+      "garganacl",
+      "darkrai"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "kyurem",
+      "irontreads",
+      "pecharunt",
+      "ironvaliant",
+      "pikachu"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

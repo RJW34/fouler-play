@@ -1,0 +1,208 @@
+{
+  "id": "battle-gen9ou-2534357780",
+  "p1": "apexacer",
+  "p2": "MiaTaylor612",
+  "minElo": 1538,
+  "startTime": 1770412203817,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Kyurem|Earth Power|p2a: Gholdengo",
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Articuno|Articuno|100/100",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Articuno|U-turn|p1a: Kingambit",
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100|[from] U-turn",
+        "|move|p1a: Kingambit|Swords Dance|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Landorus|Earth Power|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Landorus|Stealth Rock|p1a: Kingambit",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Landorus",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Kingambit|Sucker Punch|p2a: Iron Valiant",
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Kingambit",
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|36/100",
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Gholdengo|Recover|p2a: Gholdengo",
+        "|move|p1a: Grimmsnarl|Spirit Break|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Gholdengo|Thunder Wave|p1a: Grimmsnarl",
+        "|move|p1a: Grimmsnarl|Spirit Break|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Gholdengo|Recover|p2a: Gholdengo",
+        "|move|p1a: Grimmsnarl|Spirit Break|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Articuno|Articuno|100/100",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Articuno",
+        "|move|p2a: Articuno|Freeze-Dry|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|89/100",
+        "|move|p1a: Great Tusk|Close Combat|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Gholdengo",
+        "|switch|p2a: Iron Valiant|Iron Valiant, shiny|76/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|79/100 par",
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl",
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Grimmsnarl",
+        "|switch|p1a: Polteageist|Polteageist|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Polteageist",
+        "|switch|p1a: Kyurem|Kyurem|100/100 par"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Iron Valiant|Close Combat|p1a: Kyurem",
+        "|switch|p1a: Indeedee|Indeedee, M|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Indeedee|Expanding Force|p2a: Iron Valiant",
+        "|move|p2a: Iron Valiant|Knock Off|p1a: Indeedee",
+        "|switch|p1a: Great Tusk|Great Tusk|64/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Great Tusk"
+      ]
+    }
+  ],
+  "winner": "MiaTaylor612",
+  "endTime": 1770412388116,
+  "p1Team": [
+    "Kingambit",
+    "Grimmsnarl",
+    "Great Tusk",
+    "Polteageist",
+    "Kyurem",
+    "Indeedee"
+  ],
+  "p2Team": [
+    "Articuno",
+    "Landorus-Therian",
+    "Iron Valiant",
+    "Gholdengo"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "kingambit",
+      "grimmsnarl",
+      "greattusk",
+      "polteageist",
+      "kyurem",
+      "indeedee"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "articuno",
+      "landorustherian",
+      "ironvaliant",
+      "gholdengo"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

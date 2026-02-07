@@ -1,0 +1,165 @@
+{
+  "id": "battle-gen9ou-2534376380",
+  "p1": "Kissone",
+  "p2": "KANONDVERG",
+  "minElo": 1543,
+  "startTime": 1770414123297,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Dragapult|U-turn|p1a: Ribombee",
+        "|switch|p2a: Corviknight|Corviknight, F|100/100|[from] U-turn",
+        "|move|p1a: Ribombee|Sticky Web|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Ribombee|Stun Spore|p2a: Corviknight|[miss]",
+        "|move|p2a: Corviknight|Brave Bird|p1a: Ribombee",
+        "|switch|p1a: Gholdengo|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Gholdengo|Nasty Plot|p1a: Gholdengo",
+        "|move|p2a: Corviknight|U-turn|p1a: Gholdengo",
+        "|switch|p2a: Dragapult|Dragapult, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Dragapult|Tera Blast|p1a: Gholdengo|[anim] Tera Blast Ghost",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Dragapult",
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Gholdengo|Recover|p1a: Gholdengo",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Gholdengo|Focus Blast|p2a: Ting-Lu",
+        "|switch|p2a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Iron Moth",
+        "|move|p2a: Iron Moth|Fiery Dance|p1a: Gholdengo",
+        "|switch|p1a: Thundurus|Thundurus-Therian, M|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Thundurus|Thunderbolt|p2a: Iron Moth",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Thundurus|Focus Blast|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Calm Mind|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Thundurus|Tera Blast|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Thundurus",
+        "|switch|p1a: Kyurem|Kyurem|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Raging Bolt",
+        "|switch|p2a: Corviknight|Corviknight, F|86/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Kyurem|Dragon Dance|p1a: Kyurem",
+        "|move|p2a: Corviknight|Defog|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Corviknight",
+        "|move|p2a: Corviknight|Brave Bird|p1a: Kyurem"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Corviknight",
+        "|switch|p2a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Kyurem|Icicle Spear|p2a: Ogerpon"
+      ]
+    }
+  ],
+  "winner": "Kissone",
+  "endTime": 1770414315746,
+  "p1Team": [
+    "Gholdengo",
+    "Thundurus-Therian",
+    "Kyurem"
+  ],
+  "p2Team": [
+    "Corviknight",
+    "Dragapult",
+    "Ting-Lu",
+    "Iron Moth",
+    "Raging Bolt",
+    "Ogerpon-Cornerstone"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "gholdengo",
+      "thundurustherian",
+      "kyurem"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "corviknight",
+      "dragapult",
+      "tinglu",
+      "ironmoth",
+      "ragingbolt",
+      "ogerponcornerstone"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

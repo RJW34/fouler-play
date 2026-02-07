@@ -1,0 +1,165 @@
+{
+  "id": "battle-gen9ou-2534359944",
+  "p1": "tiocheech",
+  "p2": "playa del akat",
+  "minElo": 1536,
+  "startTime": 1770412443238,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p1a: Cinderace|U-turn|p2a: Landorus",
+        "|switch|p1a: Dragonite|Dragonite, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Landorus|Taunt|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100",
+        "|move|p2a: Landorus|U-turn|p1a: Slowking",
+        "|switch|p2a: Samurott|Samurott-Hisui, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|100/100",
+        "|move|p2a: Samurott|Knock Off|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Landorus|Landorus-Therian, M|89/100",
+        "|move|p1a: Zamazenta|Close Combat|p2a: Landorus"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Landorus|Landorus-Therian, M|100/100",
+        "|move|p2a: Landorus|U-turn|p1a: Landorus",
+        "|switch|p2a: Samurott|Samurott-Hisui, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|100/100",
+        "|move|p1a: Landorus|U-turn|p2a: Hatterene",
+        "|switch|p1a: Slowking|Slowking-Galar, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Hatterene|Nuzzle|p1a: Slowking",
+        "|move|p1a: Slowking|Flamethrower|p2a: Hatterene"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Hatterene|Pain Split|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Hatterene|Psychic Noise|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Samurott|Samurott-Hisui, F|100/100",
+        "|move|p1a: Slowking|Sludge Bomb|p2a: Samurott"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Zamazenta|Zamazenta|52/100",
+        "|move|p2a: Samurott|Ceaseless Edge|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Hatterene|Hatterene, F|84/100",
+        "|move|p1a: Zamazenta|Close Combat|p2a: Hatterene"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Zamazenta|Heavy Slam|p2a: Hatterene",
+        "|move|p2a: Hatterene|Draining Kiss|p1: Zamazenta|[notarget]",
+        "|switch|p1a: Cinderace|Cinderace, M|84/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Cinderace|U-turn|p2a: Hatterene",
+        "|switch|p1a: Dragonite|Dragonite, F|100/100|[from] U-turn",
+        "|switch|p2a: Landorus|Landorus-Therian, M|71/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": []
+    }
+  ],
+  "winner": "playa del akat",
+  "endTime": 1770412855724,
+  "p1Team": [
+    "Dragonite",
+    "Slowking-Galar",
+    "Zamazenta",
+    "Landorus-Therian",
+    "Cinderace"
+  ],
+  "p2Team": [
+    "Landorus-Therian",
+    "Samurott-Hisui",
+    "Hatterene"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 0,
+    "team": [
+      "dragonite",
+      "slowkinggalar",
+      "zamazenta",
+      "landorustherian",
+      "cinderace"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "landorustherian",
+      "samurotthisui",
+      "hatterene"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

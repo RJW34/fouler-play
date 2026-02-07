@@ -1,0 +1,26 @@
+{
+  "turn": 2,
+  "bot_choice": "Switched to Blissey",
+  "why_critical": "Switched to Blissey vs Indeedee (33% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 31% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey 100% | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Indeedee 33% | Haxorus 100% | Torkoal 100% | Armarouge 100% | Great Tusk 100% | Iron Valiant 100%",
+  "field": [
+    "Terrain: Psychic Terrain"
+  ],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530654651",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Indeedee"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

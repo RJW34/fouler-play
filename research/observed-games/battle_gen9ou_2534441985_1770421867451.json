@@ -1,0 +1,203 @@
+{
+  "id": "battle-gen9ou-2534441985",
+  "p1": "WhatTheFraax",
+  "p2": "rookie22",
+  "minElo": 1623,
+  "startTime": 1770421504734,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Kyurem|Freeze-Dry|p2a: Lisan Al Gaib",
+        "|switch|p2a: Bene Gesserit|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|100/100",
+        "|move|p2a: Bene Gesserit|Tachyon Cutter|p1a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Meowscarada|Meowscarada, M|100/100",
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Meowscarada",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Samurott|Samurott-Hisui, M|100/100",
+        "|move|p2a: Raging Bolt|Calm Mind|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Samurott|Sucker Punch|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Thunderbolt|p1a: Samurott",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Gholdengo|Gholdengo|71/100",
+        "|switch|p2a: Great Tusk|Great Tusk|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|78/100",
+        "|move|p1a: Gholdengo|Make It Rain|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Raging Bolt|Dragon Pulse|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Earthquake|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Earthquake|p1a: Great Tusk",
+        "|switch|p1a: Gholdengo|Gholdengo|71/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|63/100",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Gholdengo",
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: Raging Bolt",
+        "|switch|p2a: I'm the original.|Dragonite, M|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: I'm the original.",
+        "|move|p2a: I'm the original.|Dragon Dance|p2a: I'm the original."
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Gholdengo|Shadow Ball|p2a: I'm the original.",
+        "|move|p2a: I'm the original.|Earthquake|p1a: Gholdengo",
+        "|switch|p1a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Dragonite|Extreme Speed|p2a: I'm the original.",
+        "|switch|p2a: Great Tusk|Great Tusk|52/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Dragonite|Dragon Dance|p1a: Dragonite",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Dragonite"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Dragonite|Ice Spinner|p2a: Great Tusk",
+        "|switch|p2a: Bene Gesserit|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Dragonite|Earthquake|p2a: Bene Gesserit",
+        "|move|p2a: Bene Gesserit|Tachyon Cutter|p1a: Dragonite",
+        "|switch|p1a: Kingambit|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Bene Gesserit|Focus Blast|p1a: Kingambit|[miss]",
+        "|move|p1a: Kingambit|Iron Head|p2a: Bene Gesserit"
+      ]
+    }
+  ],
+  "winner": "WhatTheFraax",
+  "endTime": 1770421867451,
+  "p1Team": [
+    "Gholdengo",
+    "Samurott-Hisui",
+    "Great Tusk",
+    "Dragonite",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Iron Crown",
+    "Meowscarada",
+    "Raging Bolt",
+    "Great Tusk",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "gholdengo",
+      "samurotthisui",
+      "greattusk",
+      "dragonite",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ironcrown",
+      "meowscarada",
+      "ragingbolt",
+      "greattusk",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

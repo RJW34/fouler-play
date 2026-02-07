@@ -1,0 +1,226 @@
+{
+  "id": "battle-gen9ou-2534427214",
+  "p1": "peakelo",
+  "p2": "rillaMane",
+  "minElo": 1665,
+  "startTime": 1770419733609,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Grimmsnarl|Taunt|p2a: peter parker"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: lamp|Iron Moth|100/100",
+        "|move|p1a: Grimmsnarl|Light Screen|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100",
+        "|move|p2a: lamp|Sludge Wave|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: peter parker|Araquanid, M|100/100",
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Ceruledge|Poltergeist|p2a: peter parker|[miss]",
+        "|move|p2a: peter parker|Sticky Web|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Ceruledge|Poltergeist|p2a: peter parker",
+        "|switch|p2a: lol|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Ceruledge|Shadow Sneak|p2a: lol",
+        "|move|p2a: lol|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: lol|Sucker Punch|p1a: Ceruledge",
+        "|switch|p1a: Grimmsnarl|Grimmsnarl, M|100/100"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl",
+        "|move|p2a: lol|Iron Head|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: lol|Iron Head|p1a: Grimmsnarl",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: joe|Gholdengo|100/100",
+        "|move|p1a: Iron Treads|Earthquake|p2a: joe"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: joe|Nasty Plot|p2a: joe",
+        "|move|p1a: Iron Treads|Ice Spinner|p2a: joe"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: joe|Shadow Ball|p1a: Iron Treads",
+        "|switch|p1a: Iron Moth|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: joe|Psyshock|p1a: Iron Moth",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: joe|Shadow Ball|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Trailblaze|p2a: joe"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: joe|[anim] Ivy Cudgel Water",
+        "|switch|p2a: raikou?|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p2a: raikou?|Thunderclap|p1a: Ogerpon",
+        "|switch|p1a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: raikou?|Dragon Pulse|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: raikou?",
+        "|move|p2a: raikou?|Dragon Pulse|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: raikou?|Thunderclap|p1a: Latias",
+        "|move|p1a: Latias|Draining Kiss|p2a: raikou?",
+        "|switch|p2a: lol|Kingambit, F|75/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: lol|Sucker Punch||[still]",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: lol|Sucker Punch||[still]",
+        "|move|p1a: Latias|Calm Mind|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: lol|Sucker Punch||[still]",
+        "|move|p1a: Latias|Calm Mind|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p2a: lol|Sucker Punch|p1a: Latias"
+      ]
+    }
+  ],
+  "winner": "rillaMane",
+  "endTime": 1770420149825,
+  "p1Team": [
+    "Ceruledge",
+    "Grimmsnarl",
+    "Iron Treads",
+    "Iron Moth",
+    "Ogerpon-Wellspring",
+    "Latias"
+  ],
+  "p2Team": [
+    "Iron Moth",
+    "Araquanid",
+    "Kingambit",
+    "Gholdengo",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "ceruledge",
+      "grimmsnarl",
+      "irontreads",
+      "ironmoth",
+      "ogerponwellspring",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "ironmoth",
+      "araquanid",
+      "kingambit",
+      "gholdengo",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,276 @@
+{
+  "id": "battle-gen9ou-2534365363",
+  "p1": "MrsBergziege",
+  "p2": "Log God Neo✈️_✈️",
+  "minElo": 1508,
+  "startTime": 1770412983252,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: OVO CHUBBS|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: OVO CHUBBS",
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100|[from] U-turn",
+        "|move|p2a: OVO CHUBBS|Will-O-Wisp|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: DA LAST REX(3005)|Tyranitar, F|100/100",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, F|100/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: BLITZ SOME OPPS|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: BLITZ SOME OPPS|Stealth Rock|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: DA LAST REX(3005)|Tyranitar, F|100/100",
+        "|move|p1a: Moltres|U-turn|p2a: DA LAST REX(3005)",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, F|65/100",
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: BLITZ SOME OPPS|Stealth Rock|p1a: Moltres",
+        "|move|p1a: Moltres|U-turn|p2a: BLITZ SOME OPPS",
+        "|switch|p1a: Kyurem|Kyurem|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: KURAMA BLANCO|Ninetales-Alola, F, shiny|100/100",
+        "|move|p1a: Kyurem|Ice Beam|p2a: KURAMA BLANCO"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Iron Treads|Iron Treads|78/100",
+        "|move|p2a: KURAMA BLANCO|Blizzard|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Slowking|Slowking-Galar, M|100/100 brn",
+        "|move|p2a: KURAMA BLANCO|Blizzard|p1a: Slowking"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: KURAMA BLANCO|Dark Pulse|p1a: Slowking",
+        "|move|p1a: Slowking|Chilly Reception|p1a: Slowking",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: KURAMA BLANCO|[anim] Ivy Cudgel Water",
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|61/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: OVO CHUBBS|[anim] Ivy Cudgel Water",
+        "|move|p2a: OVO CHUBBS|Will-O-Wisp|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: OVO CHUBBS|[anim] Ivy Cudgel Water",
+        "|switch|p2a: BIRD JESUS|Staraptor, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: BIRD JESUS",
+        "|switch|p1a: Moltres|Moltres|47/100|[from] U-turn",
+        "|move|p2a: BIRD JESUS|Brave Bird|p1a: Moltres",
+        "|switch|p1a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Iron Valiant|Close Combat|p2a: BIRD JESUS",
+        "|switch|p2a: FAT CHARIZARD|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Kyurem|Kyurem|70/100",
+        "|move|p2a: FAT CHARIZARD|Tera Blast|p1a: Kyurem|[anim] Tera Blast Fairy",
+        "|switch|p1a: Slowking|Slowking-Galar, M|41/100 brn"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: FAT CHARIZARD|Earthquake|p1a: Slowking",
+        "|switch|p1a: Iron Treads|Iron Treads|37/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, F|52/100",
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Spikes|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: Iron Treads|Rapid Spin|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Spikes|p1: Iron Treads",
+        "|switch|p1a: Iron Valiant|Iron Valiant|94/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Iron Valiant|Swords Dance|p1a: Iron Valiant",
+        "|move|p2a: BLITZ SOME OPPS|Stealth Rock|p1a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|switch|p2a: DA LAST REX(3005)|Tyranitar, F|79/100",
+        "|move|p1a: Iron Valiant|Spirit Break|p2a: DA LAST REX(3005)",
+        "|switch|p2a: FAT CHARIZARD|Dragonite, M, shiny, tera:Fairy|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, F|37/100",
+        "|move|p1a: Iron Valiant|Spirit Break|p2a: BLITZ SOME OPPS",
+        "|switch|p2a: FAT CHARIZARD|Dragonite, M, shiny, tera:Fairy|100/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p1a: Iron Valiant|Spirit Break|p2a: FAT CHARIZARD",
+        "|move|p2a: FAT CHARIZARD|Dragon Dance|p2a: FAT CHARIZARD"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: FAT CHARIZARD|Tera Blast|p1a: Iron Valiant|[anim] Tera Blast Fairy",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring-Tera, F, tera:Water|76/100 brn"
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p2a: FAT CHARIZARD|Tera Blast|p1a: Ogerpon|[anim] Tera Blast Fairy"
+      ]
+    }
+  ],
+  "winner": "Log God Neo✈️_✈️",
+  "endTime": 1770413699879,
+  "p1Team": [
+    "Slowking-Galar",
+    "Ogerpon-Wellspring",
+    "Moltres",
+    "Iron Treads",
+    "Kyurem",
+    "Iron Valiant",
+    "Ogerpon-Wellspring-Tera"
+  ],
+  "p2Team": [
+    "Torkoal",
+    "Tyranitar",
+    "Garchomp",
+    "Ninetales-Alola",
+    "Staraptor",
+    "Dragonite"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "slowkinggalar",
+      "ogerponwellspring",
+      "moltres",
+      "irontreads",
+      "kyurem",
+      "ironvaliant",
+      "ogerponwellspringtera"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "torkoal",
+      "tyranitar",
+      "garchomp",
+      "ninetalesalola",
+      "staraptor",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

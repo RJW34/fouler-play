@@ -1,0 +1,175 @@
+{
+  "id": "battle-gen9ou-2534459072",
+  "p1": "flan727",
+  "p2": "rillaMane",
+  "minElo": 1714,
+  "startTime": 1770423633963,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Meowscarada|Knock Off|p2a: peter parker",
+        "|move|p2a: peter parker|Sticky Web|p1a: Meowscarada"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Meowscarada|Knock Off|p2a: peter parker",
+        "|switch|p2a: charles james|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Agnes Tachyon|Iron Crown|100/100",
+        "|move|p2a: charles james|Calm Mind|p2a: charles james"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: charles james|Shadow Ball|p1a: Agnes Tachyon",
+        "|move|p1a: Agnes Tachyon|Tachyon Cutter|p2a: charles james",
+        "|switch|p2a: lamp|Iron Moth|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: lamp|Fiery Dance|p1a: Agnes Tachyon",
+        "|switch|p1a: Dess|Ting-Lu|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: lamp|Energy Ball|p1a: Dess",
+        "|move|p1a: Dess|Earthquake|p2a: lamp",
+        "|switch|p2a: lol|Kingambit, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: lol|Swords Dance|p2a: lol",
+        "|move|p1a: Dess|Ruination|p2a: lol"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Bad apple|Pecharunt|100/100",
+        "|move|p2a: lol|Iron Head|p1a: Bad apple"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Bad apple|Shadow Ball|p2a: lol",
+        "|move|p2a: lol|Kowtow Cleave|p1a: Bad apple",
+        "|switch|p1a: Trans Rights|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Trans Rights|Moonblast|p2a: lol",
+        "|switch|p2a: joe|Gholdengo|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: joe|Make It Rain|p1a: Trans Rights",
+        "|switch|p1a: Meowscarada|Meowscarada, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p2a: joe|Nasty Plot|p2a: joe",
+        "|move|p1a: Meowscarada|Knock Off|p2a: joe",
+        "|switch|p2a: raikou?|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Meowscarada|Knock Off|p2a: raikou?",
+        "|move|p2a: raikou?|Calm Mind|p2a: raikou?"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p1a: Elephant|Great Tusk|100/100",
+        "|move|p2a: raikou?|Calm Mind|p2a: raikou?"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: raikou?|Dragon Pulse|p1a: Elephant",
+        "|switch|p1a: Dess|Ting-Lu|77/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: raikou?|Dragon Pulse|p1a: Dess",
+        "|move|p1a: Dess|Earthquake|p2a: raikou?"
+      ]
+    }
+  ],
+  "winner": "flan727",
+  "endTime": 1770423832197,
+  "p1Team": [
+    "Iron Crown",
+    "Ting-Lu",
+    "Pecharunt",
+    "Iron Valiant",
+    "Meowscarada",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Iron Valiant",
+    "Iron Moth",
+    "Kingambit",
+    "Gholdengo",
+    "Raging Bolt"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "ironcrown",
+      "tinglu",
+      "pecharunt",
+      "ironvaliant",
+      "meowscarada",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.8,
+    "fatCount": 0,
+    "offenseCount": 4,
+    "team": [
+      "ironvaliant",
+      "ironmoth",
+      "kingambit",
+      "gholdengo",
+      "ragingbolt"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

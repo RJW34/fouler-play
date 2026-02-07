@@ -1,0 +1,20 @@
+{
+  "turn": 16,
+  "bot_choice": "Used Crunch",
+  "why_critical": "\u274c Zamazenta fainted \u2014 should we have switched out earlier or chosen differently?",
+  "bot_team": "Gliscor 51% tox +2 atk | Gholdengo 100% | Zamazenta-* 100% | Blissey 35% +1 spa, +1 spd | Skarmory 100% | Pecharunt 100% | Zamazenta 10% +1 def",
+  "opp_team": "Tyranitar 36% +2 atk, +2 spe | Dondozo 100% | Darkrai 55% | Orthworm 100% | Clefable 100% | Hatterene 81%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530336872",
+  "alternatives": [
+    [
+      "Switch out earlier",
+      "Preserve this Pokemon for later"
+    ],
+    [
+      "Different move",
+      "Better damage/utility before going down"
+    ]
+  ],
+  "feedback": null
+}

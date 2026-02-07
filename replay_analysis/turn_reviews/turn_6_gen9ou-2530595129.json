@@ -1,0 +1,24 @@
+{
+  "turn": 6,
+  "bot_choice": "Switched to Zamazenta",
+  "why_critical": "Switched to Zamazenta vs Barraskewda (35% HP) \u2014 strategic pivot or forced out?",
+  "bot_team": "Gliscor 100% | Gholdengo 100% | Zamazenta-* 100% | Blissey 81% +1 spa, +1 spd | Skarmory fainted | Pecharunt 29%",
+  "opp_team": "Ludicolo 100% | Barraskewda 35% | Pelipper 100% | Politoed 100% | Drednaw 100% | Blastoise 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530595129",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Deal damage before opponent can react"
+    ],
+    [
+      "Switch to Gliscor instead",
+      "Check if better defensive matchup vs Barraskewda"
+    ],
+    [
+      "Aggressive prediction",
+      "Stay in and use super-effective move if available"
+    ]
+  ],
+  "feedback": null
+}

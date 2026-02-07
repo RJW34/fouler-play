@@ -1,0 +1,229 @@
+{
+  "id": "battle-gen9ou-2534404580",
+  "p1": "Yespoleon",
+  "p2": "slysly",
+  "minElo": 1596,
+  "startTime": 1770417153478,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Heatran",
+        "|switch|p1a: Heatran|Heatran, F|100/100|[from] U-turn",
+        "|move|p2a: Heatran|Magma Storm|p1a: Heatran"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, L99, F|100/100",
+        "|move|p1a: Heatran|Stealth Rock|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, F|100/100",
+        "|move|p1a: Heatran|Lava Plume|p2a: Corviknight",
+        "|switch|p2a: Excadrill|Excadrill, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Excadrill|Rapid Spin|p1a: Heatran",
+        "|move|p1a: Heatran|Lava Plume|p2a: Excadrill",
+        "|switch|p2a: Heatran|Heatran, F, tera:Grass|62/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Heatran|Taunt|p1a: Heatran",
+        "|move|p1a: Heatran|Lava Plume|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Heatran|Earth Power|p1a: Heatran",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Heatran|Earth Power|p1a: Heatran",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Heatran|Taunt|p1a: Heatran",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Heatran|Protect|p2a: Heatran",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, L99, F|100/100",
+        "|move|p1a: Heatran|Flash Cannon|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Heatran|Lava Plume|p2a: Alomomola",
+        "|move|p2a: Alomomola|Scald|p1a: Heatran"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Heatran|Earth Power|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Heatran",
+        "|switch|p2a: Gliscor|Gliscor, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Hatterene|Hatterene, F, shiny|100/100",
+        "|move|p2a: Gliscor|Knock Off|p1a: Hatterene"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Gliscor|U-turn|p1a: Hatterene",
+        "|switch|p2a: Heatran|Heatran, F, tera:Grass|28/100|[from] U-turn",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Heatran"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Hippowdon|Hippowdon, F|100/100",
+        "|move|p1a: Hatterene|Draining Kiss|p2a: Hippowdon"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Hippowdon|Earthquake|p1a: Hatterene",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Hippowdon"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Gliscor|Gliscor, F|96/100 tox",
+        "|move|p1a: Hatterene|Draining Kiss|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p2a: Gliscor|Protect|p2a: Gliscor",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Gliscor"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p2a: Gliscor|U-turn|p1a: Hatterene",
+        "|switch|p2a: Alomomola|Alomomola, L99, F|88/100 brn|[from] U-turn",
+        "|move|p1a: Hatterene|Psychic Noise|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p1a: Hatterene|Pain Split|p2a: Alomomola",
+        "|move|p2a: Alomomola|Mirror Coat||[still]"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Heatran|Heatran, F, tera:Grass|7/100",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Heatran|Protect|p2a: Heatran",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Heatran|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|switch|p2a: Hippowdon|Hippowdon, F|33/100",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Hippowdon|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Heatran|Heatran, F, tera:Grass|20/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Heatran|[anim] Ivy Cudgel Water"
+      ]
+    }
+  ],
+  "winner": "Yespoleon",
+  "endTime": 1770417436625,
+  "p1Team": [
+    "Heatran",
+    "Hatterene",
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Alomomola",
+    "Corviknight",
+    "Excadrill",
+    "Heatran",
+    "Gliscor",
+    "Hippowdon"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "heatran",
+      "hatterene",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.6666666666666666,
+    "fatCount": 4,
+    "offenseCount": 0,
+    "team": [
+      "alomomola",
+      "corviknight",
+      "excadrill",
+      "heatran",
+      "gliscor",
+      "hippowdon"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

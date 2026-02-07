@@ -1,0 +1,221 @@
+{
+  "id": "battle-gen9ou-2534364925",
+  "p1": "jyvon12811",
+  "p2": "Free P&lestine",
+  "minElo": 1597,
+  "startTime": 1770412953251,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Deoxys|Taunt|p1a: Araquanid",
+        "|move|p1a: Araquanid|Surf|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Deoxys|Stealth Rock|p1a: Araquanid",
+        "|move|p1a: Araquanid|Surf|p2a: Deoxys"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p2a: Deoxys|Light Screen|p2a: Deoxys",
+        "|move|p1a: Araquanid|Pounce|p2a: Deoxys",
+        "|switch|p2a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Zamazenta|Stone Edge|p1a: Araquanid",
+        "|move|p1a: Araquanid|Sticky Web|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Araquanid",
+        "|switch|p1a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|move|p1a: Kingambit|Low Kick|p2a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Ceruledge|Ceruledge, M|100/100",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge",
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: Great Tusk",
+        "|move|p2a: Great Tusk|Headlong Rush|p1a: Ceruledge",
+        "|switch|p1a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Dragapult|Shadow Ball|p2a: Great Tusk",
+        "|switch|p2a: Dragonite|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Dragapult|Will-O-Wisp|p2a: Dragonite",
+        "|move|p2a: Dragonite|Earthquake|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Dragonite|Earthquake|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Gholdengo"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Zamazenta|Zamazenta|100/100",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Zamazenta",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M|83/100",
+        "|move|p2a: Darkrai|Ice Beam|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Gholdengo|Gholdengo|100/100",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Gholdengo",
+        "|switch|p2a: Dragonite|Dragonite, F|88/100 brn"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Darkrai|Nasty Plot|p2a: Darkrai"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Darkrai|Dark Pulse|p1a: Kingambit",
+        "|switch|p1a: Dragapult|Dragapult, F|51/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Dragapult|Draco Meteor|p2a: Darkrai"
+      ]
+    }
+  ],
+  "winner": "jyvon12811",
+  "endTime": 1770413247384,
+  "p1Team": [
+    "Kingambit",
+    "Ceruledge",
+    "Dragapult",
+    "Great Tusk"
+  ],
+  "p2Team": [
+    "Zamazenta",
+    "Great Tusk",
+    "Dragonite",
+    "Gholdengo",
+    "Darkrai"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.75,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "kingambit",
+      "ceruledge",
+      "dragapult",
+      "greattusk"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6,
+    "fatCount": 0,
+    "offenseCount": 3,
+    "team": [
+      "zamazenta",
+      "greattusk",
+      "dragonite",
+      "gholdengo",
+      "darkrai"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

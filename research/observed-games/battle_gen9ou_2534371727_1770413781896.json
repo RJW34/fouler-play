@@ -1,0 +1,229 @@
+{
+  "id": "battle-gen9ou-2534371727",
+  "p1": "ohko_charjabug",
+  "p2": "minhoto",
+  "minElo": 1535,
+  "startTime": 1770413643280,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Silly Wheel|Stealth Rock|p2a: Slowking",
+        "|move|p2a: Slowking|Trick|p1a: Silly Wheel"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Silly Wheel|Earthquake|p2a: Slowking",
+        "|move|p2a: Slowking|Chilly Reception|p2a: Slowking",
+        "|switch|p2a: Corviknight|Corviknight, M|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p1a: Cheese Man|Gholdengo|100/100",
+        "|move|p2a: Corviknight|Defog|p1a: Cheese Man"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p2a: Blissey|Blissey, F|100/100",
+        "|move|p1a: Cheese Man|Nasty Plot|p1a: Cheese Man"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p1a: Cheese Man|Make It Rain|p2a: Blissey",
+        "|move|p2a: Blissey|Fire Blast|p1a: Cheese Man",
+        "|switch|p1a: Turd|Heatran, F|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Toxapex|Toxapex, M|100/100",
+        "|move|p1a: Turd|Magma Storm|p2a: Toxapex"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Turd|Earth Power|p2a: Toxapex",
+        "|move|p2a: Toxapex|Liquidation|p1a: Turd",
+        "|switch|p2a: Dondozo|Dondozo, F|100/100"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Turd|Will-O-Wisp|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Turd"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|100/100",
+        "|move|p1a: Turd|Taunt|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Cinderace|U-turn|p1a: Turd",
+        "|switch|p2a: Dondozo|Dondozo, F|88/100 brn|[from] U-turn",
+        "|move|p1a: Turd|Earth Power|p2a: Dondozo"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Turd|Magma Storm|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Turd"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Turd|Taunt|p2a: Dondozo",
+        "|move|p2a: Dondozo|Liquidation|p1a: Turd"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Turd|Earth Power|p2a: Dondozo",
+        "|switch|p2a: Cinderace|Cinderace, F|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Cinderace|U-turn|p1a: Turd",
+        "|switch|p2a: Slowking|Slowking-Galar, M|51/100|[from] U-turn",
+        "|move|p1a: Turd|Earth Power|p2a: Slowking"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Cinderace|Cinderace, F|100/100",
+        "|move|p1a: Turd|Earth Power|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Cinderace|Double-Edge|p1a: Turd",
+        "|switch|p1a: King Pin|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: King Pin|Sucker Punch||[still]",
+        "|move|p2a: Cinderace|Court Change|p2a: Cinderace"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|88/100",
+        "|move|p1a: King Pin|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: King Pin|Swords Dance|p1a: King Pin",
+        "|move|p2a: Corviknight|U-turn|p1a: King Pin",
+        "|switch|p2a: Cinderace|Cinderace, F|12/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Slowking|Slowking-Galar, M|49/100",
+        "|move|p1a: King Pin|Sucker Punch||[still]"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|88/100",
+        "|move|p1a: King Pin|Kowtow Cleave|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: King Pin|Sucker Punch||[still]",
+        "|move|p2a: Corviknight|Roost|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p1a: King Pin|Kowtow Cleave|p2a: Corviknight",
+        "|switch|p2a: Cinderace|Cinderace, F|12/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Blissey|Blissey, F, tera:Fire|68/100",
+        "|move|p1a: King Pin|Kowtow Cleave|p2a: Blissey"
+      ]
+    }
+  ],
+  "winner": "ohko_charjabug",
+  "endTime": 1770413781895,
+  "p1Team": [
+    "Gholdengo",
+    "Heatran",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Corviknight",
+    "Blissey",
+    "Toxapex",
+    "Dondozo",
+    "Cinderace",
+    "Slowking-Galar"
+  ],
+  "p1Classification": {
+    "archetype": "hyper-offense",
+    "confidence": 0.6666666666666666,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "gholdengo",
+      "heatran",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "fat",
+    "confidence": 0.8333333333333334,
+    "fatCount": 5,
+    "offenseCount": 0,
+    "team": [
+      "corviknight",
+      "blissey",
+      "toxapex",
+      "dondozo",
+      "cinderace",
+      "slowkinggalar"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

@@ -1,0 +1,182 @@
+{
+  "id": "battle-gen9ou-2534438238",
+  "p1": "byuself",
+  "p2": "life wont change",
+  "minElo": 1570,
+  "startTime": 1770421053704,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: She's Electric|Zapdos|100/100",
+        "|move|p1a: Great Tusk|Knock Off|p2a: She's Electric"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, M|100/100",
+        "|move|p2a: She's Electric|U-turn|p1a: Ninetales",
+        "|switch|p2a: Live Forever|Slowking-Galar, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Ninetales|Weather Ball|p2a: Live Forever",
+        "|move|p2a: Live Forever|Chilly Reception|p2a: Live Forever",
+        "|switch|p2a: Cha. Supernova|Kyurem|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Walking Wake|Walking Wake|100/100",
+        "|move|p2a: Cha. Supernova|Blizzard|p1a: Walking Wake",
+        "|switch|p1a: Ninetales|Ninetales, M|93/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|switch|p2a: Cast No Shadow|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Cast No Shadow|Will-O-Wisp|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Cast No Shadow"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Venusaur|Venusaur, M|100/100",
+        "|move|p2a: Cast No Shadow|U-turn|p1a: Venusaur",
+        "|switch|p2a: Live Forever|Slowking-Galar, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Venusaur|Earth Power|p2a: Live Forever",
+        "|move|p2a: Live Forever|Chilly Reception|p2a: Live Forever",
+        "|switch|p2a: Cha. Supernova|Kyurem|100/100|[from] Chilly Reception"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Kingambit|Kingambit, M|100/100",
+        "|move|p2a: Cha. Supernova|Blizzard|p1a: Kingambit"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Cha. Supernova|Blizzard|p1a: Kingambit",
+        "|move|p1a: Kingambit|Iron Head|p2a: Cha. Supernova"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p2a: Wonderwall|Great Tusk|100/100",
+        "|move|p1a: Kingambit|Kowtow Cleave|p2a: Wonderwall"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|94/100 brn",
+        "|move|p2a: Wonderwall|Stealth Rock|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Cast No Shadow|Dragapult, M|40/100",
+        "|move|p1a: Great Tusk|Rapid Spin|p2a: Cast No Shadow"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p2a: Cast No Shadow|Hex|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Knock Off|p2a: Cast No Shadow"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Ninetales|Ninetales, M|93/100",
+        "|move|p2a: Cast No Shadow|Hex|p1a: Ninetales"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|27/100 brn",
+        "|move|p2a: Cast No Shadow|Dragon Darts|p1a: Great Tusk",
+        "|switch|p1a: Venusaur|Venusaur, M|64/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Venusaur|Growth|p1a: Venusaur",
+        "|move|p2a: Cast No Shadow|Dragon Darts|p1a: Venusaur"
+      ]
+    }
+  ],
+  "winner": "life wont change",
+  "endTime": 1770421257107,
+  "p1Team": [
+    "Ninetales",
+    "Walking Wake",
+    "Great Tusk",
+    "Venusaur",
+    "Kingambit"
+  ],
+  "p2Team": [
+    "Zapdos",
+    "Slowking-Galar",
+    "Kyurem",
+    "Dragapult",
+    "Great Tusk"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ninetales",
+      "walkingwake",
+      "greattusk",
+      "venusaur",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 2,
+    "team": [
+      "zapdos",
+      "slowkinggalar",
+      "kyurem",
+      "dragapult",
+      "greattusk"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "WIN_WITH_OUR_ARCHETYPE"
+}

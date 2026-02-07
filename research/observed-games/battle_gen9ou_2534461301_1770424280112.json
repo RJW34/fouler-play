@@ -1,0 +1,153 @@
+{
+  "id": "battle-gen9ou-2534461301",
+  "p1": "Rabzzz",
+  "p2": "WhatTheFraax",
+  "minElo": 1621,
+  "startTime": 1770423903922,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Moltres|Moltres|100/100",
+        "|move|p2a: Landorus|Stealth Rock|p1a: Moltres"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Landorus|Taunt|p1a: Moltres",
+        "|move|p1a: Moltres|U-turn|p2a: Landorus",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Landorus|[anim] Ivy Cudgel Water",
+        "|switch|p2a: Dragonite|Dragonite, M|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Ogerpon|U-turn|p2a: Dragonite",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] U-turn",
+        "|move|p2a: Dragonite|Dragon Dance|p2a: Dragonite"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: Ceruledge|Ceruledge, M|100/100",
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ceruledge|Poltergeist|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Ceruledge",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Pecharunt|Pecharunt|100/100",
+        "|move|p2a: Iron Valiant|Calm Mind|p2a: Iron Valiant"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p2a: Iron Valiant|Calm Mind|p2a: Iron Valiant",
+        "|move|p1a: Pecharunt|Parting Shot|p2a: Iron Valiant",
+        "|switch|p1a: Ting-Lu|Ting-Lu|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Ting-Lu",
+        "|move|p1a: Ting-Lu|Earthquake|p2a: Iron Valiant",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p2a: Raging Bolt|Draco Meteor|p1a: Ting-Lu",
+        "|switch|p1a: Great Tusk|Great Tusk|58/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Raging Bolt",
+        "|switch|p2a: Dragonite|Dragonite, M|93/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Dragonite",
+        "|switch|p2a: Kingambit|Kingambit, M|100/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p2a: Kingambit|Sucker Punch|p1a: Great Tusk",
+        "|move|p1a: Great Tusk|Headlong Rush|p2a: Kingambit"
+      ]
+    }
+  ],
+  "winner": "Rabzzz",
+  "endTime": 1770424280112,
+  "p1Team": [
+    "Moltres",
+    "Ogerpon-Wellspring",
+    "Great Tusk",
+    "Pecharunt",
+    "Ting-Lu"
+  ],
+  "p2Team": [
+    "Dragonite",
+    "Ceruledge",
+    "Iron Valiant",
+    "Raging Bolt",
+    "Kingambit"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "moltres",
+      "ogerponwellspring",
+      "greattusk",
+      "pecharunt",
+      "tinglu"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.4,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "dragonite",
+      "ceruledge",
+      "ironvaliant",
+      "ragingbolt",
+      "kingambit"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

@@ -1,0 +1,95 @@
+{
+  "id": "battle-gen9ou-2534453193",
+  "p1": "55Havoc55",
+  "p2": "200IQ GOAT",
+  "minElo": 1583,
+  "startTime": 1770422883814,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Dragapult|Psychic Fangs|p2a: Glimmora",
+        "|move|p2a: Glimmora|Stealth Rock|p1a: Dragapult"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Scizor|Scizor, F|100/100",
+        "|move|p2a: Glimmora|Power Gem|p1a: Scizor"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|move|p1a: Scizor|Bullet Punch|p2a: Glimmora",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, M|100/100",
+        "|move|p2a: Ogerpon|Ivy Cudgel|p1a: Primarina|[anim] Ivy Cudgel Water"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Ogerpon|Trailblaze|p1a: Primarina",
+        "|switch|p1a: Dragapult|Dragapult, M|100/100"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Ogerpon|Play Rough|p1a: Dragapult",
+        "|switch|p1a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p2a: Ogerpon|Play Rough|p1a: Latias"
+      ]
+    }
+  ],
+  "winner": "200IQ GOAT",
+  "endTime": 1770422971048,
+  "p1Team": [
+    "Scizor",
+    "Primarina",
+    "Dragapult",
+    "Latias"
+  ],
+  "p2Team": [
+    "Ogerpon-Wellspring"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "scizor",
+      "primarina",
+      "dragapult",
+      "latias"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

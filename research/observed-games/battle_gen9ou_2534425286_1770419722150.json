@@ -1,0 +1,220 @@
+{
+  "id": "battle-gen9ou-2534425286",
+  "p1": "peakelo",
+  "p2": "Log God Neo✈️_✈️",
+  "minElo": 1597,
+  "startTime": 1770419523594,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p1a: Grimmsnarl|Low Kick|p2a: DA LAST REX(3005)",
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, M|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Grimmsnarl|Taunt|p2a: BLITZ SOME OPPS"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: KURAMA BLANCO|Ninetales-Alola, F, shiny|100/100",
+        "|move|p1a: Grimmsnarl|Reflect|p1a: Grimmsnarl"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Grimmsnarl|Taunt|p2a: KURAMA BLANCO",
+        "|move|p2a: KURAMA BLANCO|Moonblast|p1a: Grimmsnarl",
+        "|switch|p1a: Latias|Latias, F|100/100"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|100/100",
+        "|move|p1a: Latias|Agility|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p1a: Latias|Calm Mind|p1a: Latias",
+        "|move|p2a: OVO CHUBBS|Clear Smog|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Latias|Agility|p1a: Latias",
+        "|move|p2a: OVO CHUBBS|Will-O-Wisp|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Latias|Stored Power|p2a: OVO CHUBBS",
+        "|move|p2a: OVO CHUBBS|Clear Smog|p1a: Latias"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Iron Moth|Iron Moth|100/100",
+        "|switch|p2a: KURAMA BLANCO|Ninetales-Alola, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: BLITZ SOME OPPS|Garchomp, M|100/100",
+        "|move|p1a: Iron Moth|Substitute|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Iron Moth|Dazzling Gleam|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Stealth Rock|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|move|p1a: Iron Moth|Dazzling Gleam|p2a: BLITZ SOME OPPS",
+        "|move|p2a: BLITZ SOME OPPS|Breaking Swipe|p1a: Iron Moth"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Iron Moth|Fiery Dance|p2a: BLITZ SOME OPPS",
+        "|switch|p2a: FAT CHARIZARD|Dragonite, M, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Iron Moth|Dazzling Gleam|p2a: FAT CHARIZARD",
+        "|move|p2a: FAT CHARIZARD|Earthquake|p1a: Iron Moth",
+        "|switch|p1a: Iron Treads|Iron Treads|100/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p1a: Iron Treads|Stealth Rock|p2a: FAT CHARIZARD",
+        "|move|p2a: FAT CHARIZARD|Earthquake|p1a: Iron Treads"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p1a: Iron Treads|Ice Spinner|p2a: FAT CHARIZARD",
+        "|switch|p2a: OVO CHUBBS|Torkoal, M|59/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Iron Treads|Earthquake|p2a: OVO CHUBBS",
+        "|move|p2a: OVO CHUBBS|Lava Plume|p1a: Iron Treads",
+        "|switch|p1a: Ceruledge|Ceruledge, F|100/100"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Ceruledge|Swords Dance|p1a: Ceruledge",
+        "|move|p2a: OVO CHUBBS|Clear Smog|p1a: Ceruledge"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Ceruledge|Bitter Blade|p2a: OVO CHUBBS",
+        "|switch|p2a: BIRD JESUS|Staraptor, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: BIRD JESUS|Brave Bird|p1a: Ceruledge",
+        "|switch|p1a: Ogerpon|Ogerpon-Wellspring, F|100/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p1a: Ogerpon|Trailblaze|p2a: BIRD JESUS",
+        "|move|p2a: BIRD JESUS|Brave Bird|p1a: Ogerpon",
+        "|switch|p1a: Latias|Latias, F|74/100 brn"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Latias|Draining Kiss|p2a: BIRD JESUS",
+        "|switch|p2a: KURAMA BLANCO|Ninetales-Alola, F, shiny|100/100"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: KURAMA BLANCO|Blizzard|p1a: Latias"
+      ]
+    }
+  ],
+  "winner": "Log God Neo✈️_✈️",
+  "endTime": 1770419722150,
+  "p1Team": [
+    "Latias",
+    "Iron Moth",
+    "Iron Treads",
+    "Ceruledge",
+    "Ogerpon-Wellspring"
+  ],
+  "p2Team": [
+    "Garchomp",
+    "Ninetales-Alola",
+    "Torkoal",
+    "Dragonite",
+    "Staraptor"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "latias",
+      "ironmoth",
+      "irontreads",
+      "ceruledge",
+      "ogerponwellspring"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "garchomp",
+      "ninetalesalola",
+      "torkoal",
+      "dragonite",
+      "staraptor"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

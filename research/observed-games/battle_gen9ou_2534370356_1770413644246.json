@@ -1,0 +1,205 @@
+{
+  "id": "battle-gen9ou-2534370356",
+  "p1": "adamnadamn",
+  "p2": "n trademark",
+  "minElo": 1621,
+  "startTime": 1770413493269,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Tornadus|Knock Off|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p1a: Tornadus|Bleakwind Storm|p2a: Alomomola",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Tornadus",
+        "|switch|p2a: Garganacl|Garganacl, M|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|92/100",
+        "|move|p1a: Tornadus|Knock Off|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p1a: Tornadus|U-turn|p2a: Alomomola",
+        "|switch|p1a: Tyranitar|Tyranitar, M|100/100|[from] U-turn",
+        "|move|p2a: Alomomola|Flip Turn|p1a: Tyranitar",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Flip Turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, F|100/100",
+        "|move|p2a: Ogerpon|Shadow Ball|p1a: Hydrapple"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|switch|p1a: Tyranitar|Tyranitar, M|77/100"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p2a: Garganacl|Garganacl, M|100/100",
+        "|move|p1a: Tyranitar|Ice Punch|p2a: Garganacl"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Tyranitar|Knock Off|p2a: Garganacl",
+        "|move|p2a: Garganacl|Salt Cure|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Ogerpon|Ogerpon-Cornerstone, F|100/100",
+        "|move|p2a: Garganacl|Stealth Rock|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Ogerpon|Power Whip|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p1a: Ogerpon|Knock Off|p2a: Pecharunt",
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Ogerpon",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100|[from] Parting Shot"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|46/100",
+        "|move|p1a: Ogerpon|U-turn|p2a: Pecharunt",
+        "|switch|p1a: Excadrill|Excadrill, M|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Excadrill|Earthquake|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|switch|p2a: Great Tusk|Great Tusk|100/100",
+        "|switch|p1a: Hydrapple|Hydrapple, F|73/100"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|move|p2a: Great Tusk|Ice Spinner|p1a: Hydrapple",
+        "|move|p1a: Hydrapple|Giga Drain|p2a: Great Tusk",
+        "|switch|p2a: Pecharunt|Pecharunt|89/100"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Tyranitar|Tyranitar, M|54/100",
+        "|move|p2a: Pecharunt|Shadow Ball|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Alomomola|Alomomola, M|100/100",
+        "|move|p1a: Tyranitar|Knock Off|p2a: Alomomola"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Tyranitar|Stone Edge|p2a: Alomomola",
+        "|move|p2a: Alomomola|Scald|p1a: Tyranitar"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|move|p1a: Tyranitar|Earthquake|p2a: Alomomola",
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|65/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p1a: Hydrapple|Hydrapple, F|82/100",
+        "|move|p2a: Ogerpon|Swords Dance|p2a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": []
+    }
+  ],
+  "winner": "adamnadamn",
+  "endTime": 1770413644246,
+  "p1Team": [
+    "Tyranitar",
+    "Hydrapple",
+    "Ogerpon-Cornerstone",
+    "Excadrill"
+  ],
+  "p2Team": [
+    "Alomomola",
+    "Garganacl",
+    "Ogerpon-Wellspring",
+    "Great Tusk",
+    "Pecharunt"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 0,
+    "team": [
+      "tyranitar",
+      "hydrapple",
+      "ogerponcornerstone",
+      "excadrill"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "semi-fat",
+    "confidence": 0.4,
+    "fatCount": 2,
+    "offenseCount": 1,
+    "team": [
+      "alomomola",
+      "garganacl",
+      "ogerponwellspring",
+      "greattusk",
+      "pecharunt"
+    ],
+    "isFat": true,
+    "isOffensive": false
+  },
+  "relevantToBot": true,
+  "learningValue": "LOSS_WITH_OUR_ARCHETYPE"
+}

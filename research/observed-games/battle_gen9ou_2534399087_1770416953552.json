@@ -1,0 +1,251 @@
+{
+  "id": "battle-gen9ou-2534399087",
+  "p1": "Zapy364",
+  "p2": "uscboarder",
+  "minElo": 1697,
+  "startTime": 1770416583423,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|move|p2a: Garchomp|Earthquake|p1a: Raging Bolt",
+        "|move|p1a: Raging Bolt|Draco Meteor|p2a: Garchomp",
+        "|switch|p2a: Darkrai|Darkrai|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Raging Bolt",
+        "|switch|p1a: Primarina|Primarina, M|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|100/100",
+        "|move|p1a: Primarina|Moonblast|p2a: Pecharunt"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|move|p2a: Pecharunt|Malignant Chain|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|move|p2a: Pecharunt|Parting Shot|p1a: Primarina",
+        "|switch|p2a: Tornadus|Tornadus-Therian, M|100/100|[from] Parting Shot",
+        "|move|p1a: Primarina|Psychic Noise|p2a: Tornadus"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|move|p2a: Tornadus|Knock Off|p1a: Primarina",
+        "|move|p1a: Primarina|Surf|p2a: Tornadus"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|100/100",
+        "|move|p2a: Tornadus|U-turn|p1a: Zapdos",
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|switch|p1a: Primarina|Primarina, M|13/100 tox",
+        "|move|p2a: Raging Bolt|Draco Meteor|p1a: Primarina"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p2a: Pecharunt|Pecharunt|73/100",
+        "|move|p1a: Primarina|Psychic Noise|p2a: Pecharunt",
+        "|switch|p1a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Pecharunt|[anim] Ivy Cudgel Rock",
+        "|switch|p2a: Decidueye|Decidueye-Hisui, F|100/100"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|switch|p1a: Zapdos|Zapdos|92/100",
+        "|move|p2a: Decidueye|Triple Arrows|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p1a: Zapdos|U-turn|p2a: Raging Bolt",
+        "|switch|p1a: Great Tusk|Great Tusk|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|move|p1a: Great Tusk|Knock Off|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Tera Blast|p1a: Great Tusk|[anim] Tera Blast Fairy",
+        "|switch|p1a: Zapdos|Zapdos|76/100"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Zapdos|Hurricane|p2a: Raging Bolt",
+        "|move|p2a: Raging Bolt|Draco Meteor|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Zapdos|Roost|p1a: Zapdos"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|move|p2a: Darkrai|Ice Beam|p1a: Zapdos",
+        "|switch|p1a: Zamazenta|Zamazenta|100/100"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|move|p1a: Zamazenta|Iron Defense|p1a: Zamazenta",
+        "|move|p2a: Darkrai|Sludge Bomb|p1a: Zamazenta"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|switch|p2a: Tornadus|Tornadus-Therian, M|60/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Tornadus"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p2a: Darkrai|Darkrai|100/100",
+        "|move|p1a: Zamazenta|Body Press|p2a: Darkrai",
+        "|switch|p2a: Raging Bolt|Raging Bolt, tera:Fairy|42/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap|p1a: Zamazenta",
+        "|move|p1a: Zamazenta|Body Press|p2a: Raging Bolt"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|move|p2a: Raging Bolt|Tera Blast|p1a: Zamazenta|[anim] Tera Blast Fairy",
+        "|switch|p1a: Ogerpon|Ogerpon-Cornerstone, F|100/100"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|move|p1a: Ogerpon|Spiky Shield|p1a: Ogerpon",
+        "|move|p2a: Raging Bolt|Tera Blast|p1a: Ogerpon|[anim] Tera Blast Fairy"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Raging Bolt|Thunderclap||[still]",
+        "|move|p1a: Ogerpon|Swords Dance|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Raging Bolt|[anim] Ivy Cudgel Rock",
+        "|switch|p2a: Tornadus|Tornadus-Therian, M|44/100"
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p2a: Tornadus|Knock Off|p1a: Ogerpon",
+        "|move|p1a: Ogerpon|Ivy Cudgel|p2a: Tornadus|[anim] Ivy Cudgel Rock",
+        "|switch|p2a: Decidueye|Decidueye-Hisui, F|100/100"
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p2a: Decidueye|Triple Arrows|p1a: Ogerpon"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Decidueye|Triple Arrows|p1a: Ogerpon"
+      ]
+    }
+  ],
+  "winner": "uscboarder",
+  "endTime": 1770416953552,
+  "p1Team": [
+    "Primarina",
+    "Zapdos",
+    "Ogerpon-Cornerstone",
+    "Great Tusk",
+    "Zamazenta"
+  ],
+  "p2Team": [
+    "Darkrai",
+    "Pecharunt",
+    "Tornadus-Therian",
+    "Raging Bolt",
+    "Decidueye-Hisui"
+  ],
+  "p1Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 1,
+    "offenseCount": 1,
+    "team": [
+      "primarina",
+      "zapdos",
+      "ogerponcornerstone",
+      "greattusk",
+      "zamazenta"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "p2Classification": {
+    "archetype": "balanced",
+    "confidence": 0.5,
+    "fatCount": 0,
+    "offenseCount": 1,
+    "team": [
+      "darkrai",
+      "pecharunt",
+      "tornadustherian",
+      "ragingbolt",
+      "decidueyehisui"
+    ],
+    "isFat": false,
+    "isOffensive": false
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

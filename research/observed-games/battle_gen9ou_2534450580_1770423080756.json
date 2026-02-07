@@ -1,0 +1,283 @@
+{
+  "id": "battle-gen9ou-2534450580",
+  "p1": "rookie22",
+  "p2": "zeep vs zoop",
+  "minElo": 1707,
+  "startTime": 1770422553790,
+  "turns": [
+    {
+      "turn": 1,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|switch|p2a: Corviknight|Corviknight, M|100/100"
+      ]
+    },
+    {
+      "turn": 2,
+      "events": [
+        "|switch|p1a: Meowscarada|Meowscarada, M|100/100",
+        "|switch|p2a: Iron Crown|Iron Crown|100/100"
+      ]
+    },
+    {
+      "turn": 3,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|100/100",
+        "|move|p1a: Meowscarada|Knock Off|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 4,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|100/100",
+        "|move|p2a: Corviknight|U-turn|p1a: Raging Bolt",
+        "|switch|p2a: Dragapult|Dragapult, F|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 5,
+      "events": [
+        "|switch|p1a: Bene Gesserit|Iron Crown|100/100",
+        "|move|p2a: Dragapult|U-turn|p1a: Bene Gesserit",
+        "|switch|p2a: Ting-Lu|Ting-Lu|100/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 6,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|100/100",
+        "|move|p2a: Ting-Lu|Stealth Rock|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 7,
+      "events": [
+        "|move|p1a: Great Tusk|Stealth Rock|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Ruination|p1a: Great Tusk|[miss]"
+      ]
+    },
+    {
+      "turn": 8,
+      "events": [
+        "|move|p1a: Great Tusk|Ice Spinner|p2a: Ting-Lu",
+        "|move|p2a: Ting-Lu|Ruination|p1a: Great Tusk"
+      ]
+    },
+    {
+      "turn": 9,
+      "events": [
+        "|switch|p1a: Meowscarada|Meowscarada, M|84/100",
+        "|switch|p2a: Dragapult|Dragapult, F|100/100"
+      ]
+    },
+    {
+      "turn": 10,
+      "events": [
+        "|switch|p1a: Bene Gesserit|Iron Crown|64/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Bene Gesserit"
+      ]
+    },
+    {
+      "turn": 11,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Bene Gesserit",
+        "|switch|p1a: Raging Bolt|Raging Bolt|94/100"
+      ]
+    },
+    {
+      "turn": 12,
+      "events": [
+        "|switch|p2a: Iron Crown|Iron Crown|100/100",
+        "|switch|p1a: Meowscarada|Meowscarada, M|84/100"
+      ]
+    },
+    {
+      "turn": 13,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|72/100",
+        "|move|p1a: Meowscarada|Knock Off|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 14,
+      "events": [
+        "|move|p1a: Meowscarada|Taunt|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 15,
+      "events": [
+        "|switch|p1a: Raging Bolt|Raging Bolt|82/100",
+        "|move|p2a: Corviknight|U-turn|p1a: Raging Bolt",
+        "|switch|p2a: Ting-Lu|Ting-Lu|65/100|[from] U-turn"
+      ]
+    },
+    {
+      "turn": 16,
+      "events": [
+        "|switch|p1a: Meowscarada|Meowscarada, M|84/100",
+        "|move|p2a: Ting-Lu|Earthquake|p1a: Meowscarada"
+      ]
+    },
+    {
+      "turn": 17,
+      "events": [
+        "|switch|p2a: Corviknight|Corviknight, M|40/100",
+        "|move|p1a: Meowscarada|Knock Off|p2a: Corviknight"
+      ]
+    },
+    {
+      "turn": 18,
+      "events": [
+        "|move|p1a: Meowscarada|Knock Off|p2a: Corviknight",
+        "|switch|p2a: Dragapult|Dragapult, F|88/100"
+      ]
+    },
+    {
+      "turn": 19,
+      "events": [
+        "|switch|p1a: Great Tusk|Great Tusk|48/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Great Tusk",
+        "|switch|p1a: Lisan Al Gaib|Keldeo|100/100"
+      ]
+    },
+    {
+      "turn": 20,
+      "events": [
+        "|switch|p2a: Ogerpon|Ogerpon-Wellspring, F|100/100",
+        "|move|p1a: Lisan Al Gaib|Air Slash|p2a: Ogerpon",
+        "|switch|p2a: Iron Crown|Iron Crown|94/100"
+      ]
+    },
+    {
+      "turn": 21,
+      "events": [
+        "|switch|p1a: Meowscarada|Meowscarada, M|57/100",
+        "|move|p2a: Iron Crown|Volt Switch|p1a: Meowscarada",
+        "|switch|p2a: Dragapult|Dragapult, F|76/100|[from] Volt Switch"
+      ]
+    },
+    {
+      "turn": 22,
+      "events": [
+        "|switch|p1a: Lisan Al Gaib|Keldeo|94/100",
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Lisan Al Gaib"
+      ]
+    },
+    {
+      "turn": 23,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Lisan Al Gaib",
+        "|switch|p1a: I'm the original.|Dragonite, F|100/100"
+      ]
+    },
+    {
+      "turn": 24,
+      "events": [
+        "|switch|p2a: Ting-Lu|Ting-Lu|59/100",
+        "|move|p1a: I'm the original.|Dragon Dance|p1a: I'm the original."
+      ]
+    },
+    {
+      "turn": 25,
+      "events": [
+        "|move|p1a: I'm the original.|Dragon Dance|p1a: I'm the original.",
+        "|move|p2a: Ting-Lu|Whirlwind|p1a: I'm the original."
+      ]
+    },
+    {
+      "turn": 26,
+      "events": [
+        "|move|p1a: Meowscarada|Flower Trick|p2a: Ting-Lu",
+        "|switch|p2a: Dragapult|Dragapult, F|64/100"
+      ]
+    },
+    {
+      "turn": 27,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: Meowscarada",
+        "|switch|p1a: I'm the original.|Dragonite, F, tera:Flying|100/100"
+      ]
+    },
+    {
+      "turn": 28,
+      "events": [
+        "|move|p2a: Dragapult|Dragon Darts|p1a: I'm the original.",
+        "|move|p1a: I'm the original.|Dragon Dance|p1a: I'm the original."
+      ]
+    },
+    {
+      "turn": 29,
+      "events": [
+        "|move|p1a: I'm the original.|Tera Blast|p2a: Dragapult|[anim] Tera Blast Flying",
+        "|switch|p2a: Iron Valiant|Iron Valiant|100/100"
+      ]
+    },
+    {
+      "turn": 30,
+      "events": [
+        "|move|p2a: Iron Valiant|Thunderbolt|p1a: I'm the original.",
+        "|switch|p1a: Raging Bolt|Raging Bolt|64/100"
+      ]
+    },
+    {
+      "turn": 31,
+      "events": [
+        "|move|p1a: Raging Bolt|Thunderclap|p2a: Iron Valiant",
+        "|move|p2a: Iron Valiant|Moonblast|p1a: Raging Bolt"
+      ]
+    }
+  ],
+  "winner": "zeep vs zoop",
+  "endTime": 1770423080756,
+  "p1Team": [
+    "Raging Bolt",
+    "Meowscarada",
+    "Iron Crown",
+    "Great Tusk",
+    "Keldeo",
+    "Dragonite"
+  ],
+  "p2Team": [
+    "Corviknight",
+    "Iron Crown",
+    "Dragapult",
+    "Ting-Lu",
+    "Ogerpon-Wellspring",
+    "Iron Valiant"
+  ],
+  "p1Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 0,
+    "offenseCount": 2,
+    "team": [
+      "ragingbolt",
+      "meowscarada",
+      "ironcrown",
+      "greattusk",
+      "keldeo",
+      "dragonite"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "p2Classification": {
+    "archetype": "offensive",
+    "confidence": 0.3333333333333333,
+    "fatCount": 1,
+    "offenseCount": 2,
+    "team": [
+      "corviknight",
+      "ironcrown",
+      "dragapult",
+      "tinglu",
+      "ogerponwellspring",
+      "ironvaliant"
+    ],
+    "isFat": false,
+    "isOffensive": true
+  },
+  "relevantToBot": false,
+  "learningValue": "IRRELEVANT_ARCHETYPE"
+}

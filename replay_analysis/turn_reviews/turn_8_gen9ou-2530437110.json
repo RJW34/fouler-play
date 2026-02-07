@@ -1,0 +1,20 @@
+{
+  "turn": 8,
+  "bot_choice": "Switched to Gliscor",
+  "why_critical": "\ud83d\udd04 Switched to Gliscor vs Moltres \u2014 was this the right matchup?",
+  "bot_team": "Gliscor 89% tox | Gholdengo 100% | Zamazenta-* 100% | Blissey 94% brn | Skarmory 100% | Pecharunt 100%",
+  "opp_team": "Overqwil 100% | Lapras 100% | Swampert 100% | Malamar 100% | Moltres 100% | Electrode-Hisui 100%",
+  "field": [],
+  "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2530437110",
+  "alternatives": [
+    [
+      "Stay in and attack",
+      "Maintain offensive pressure"
+    ],
+    [
+      "Switch to different Pokemon",
+      "Better type matchup available"
+    ]
+  ],
+  "feedback": null
+}
