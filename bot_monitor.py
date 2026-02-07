@@ -58,6 +58,9 @@ DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")  # For project updates
 DISCORD_BATTLES_WEBHOOK = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")  # For battle notifications
 DISCORD_FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL")  # For turn reviews
 
+# Bot identity for multi-bot reporting
+BOT_DISPLAY_NAME = os.getenv("BOT_DISPLAY_NAME", "").strip()  # e.g. "🪲 DEKU" or "💥 BAKUGO"
+
 # Import replay analyzer and turn reviewer (commented out during upgrade)
 # from replay_analysis.analyzer import ReplayAnalyzer
 # from replay_analysis.turn_review import TurnReviewer
@@ -282,7 +285,8 @@ class BotMonitor:
         total = wins + losses
         wr = (wins / total * 100) if total > 0 else 0
 
-        msg = f"📊 **Batch Report ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR)\n"
+        name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
+        msg = f"📊 **Batch Report{name_tag} ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR)\n"
         msg += f"**Overall Record:** {self.wins}W - {self.losses}L\n\n"
 
         # List results
@@ -733,7 +737,8 @@ class BotMonitor:
                 username = cmd[i + 1]
                 break
         
-        startup_msg = "🚀 **Fouler Play bot starting...**"
+        name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
+        startup_msg = f"🚀 **Fouler Play bot{name_tag} starting...**"
         if username:
             user_page = f"https://pokemonshowdown.com/users/{username.lower()}"
             startup_msg += f"\n📊 **Account:** [{username}]({user_page})"
