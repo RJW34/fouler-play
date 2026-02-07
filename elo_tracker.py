@@ -48,7 +48,7 @@ def save_stats(stats):
 def get_current_elo():
     """Scrape current ELO from Showdown profile"""
     try:
-        r = requests.get(f"https://pokemonshowdown.com/users/{USERNAME.lower()}", timeout=10)
+        r = requests.get(f"https://pokemonshowdown.com/users/{USERNAME.lower().replace(' ', '')}", timeout=10)
         # Look for gen9ou rating
         match = re.search(r'gen9ou.*?<strong>(\d+)</strong>', r.text, re.DOTALL)
         if match:
