@@ -1,165 +1,352 @@
-# CLAUDE.md - Fouler-Play Autonomous Operations Manual
+# CLAUDE.md - Fouler Play v2 Project Guide
 
-## Mission
+## Current State (2026-02-06)
 
-Reach **1700 ELO in gen9ou** on Pokemon Showdown. Bot account: "ALL CHUNG". Current: ~1350. Do not stop until 1700.
+### Active Bots
+- **BugInTheCode (DEKU)** - Running from `/home/ryan/projects/fouler-play-v2/`
+- **LEBOTJAMESXD006 (BAKUGO)** - Running from `/home/ryan/projects/fouler-play/`
 
-## You Own Your Machine
+Both bots play gen9ou on Pokemon Showdown ladder simultaneously.
 
-This project runs on **two machines**. When you start a session, determine which machine you are on and act accordingly. You own everything on your machine — code, services, streaming, display, environment. If something is broken, fix it. If something is missing, build it. Do not wait for the human or the other machine.
+### Project Status
+This is a fork of [pmariglia/foul-play](https://github.com/pmariglia/foul-play) with enhancements:
+- ✅ Multi-battle support (3 concurrent battles)
+- ✅ Discord webhook integration
+- ✅ Bot monitoring and auto-restart
+- ✅ Battle statistics tracking
+- ✅ Resume battle support after crashes
+- ✅ Process lock to prevent duplicate instances
+- ✅ Log rotation with size limits
+- 🚧 Turn-by-turn analysis (infrastructure exists, needs refinement)
+- 🚧 Replay analysis pipeline
 
-### How to identify your machine
-- Run `uname -s` or check `$OSTYPE`. Linux = **DEKU**. Windows / `MSYS` / `MINGW` = **BAKUGO**.
-- Or check the hostname: `hostname`.
+### Recent Fixes (This Audit)
+1. **Teams directory cleanup** - Removed nested `teams/teams/` structure and circular symlinks
+2. **Log rotation** - Added 10MB size limits to prevent 100MB+ log files
+3. **Comprehensive .env.example** - Documented all 20+ environment variables
+4. **Documentation** - Created DEPLOYMENT.md
 
 ---
 
-## DEKU (Linux) — Brains
+## Core Architecture
 
-**You own:** Code analysis, strategy improvements, replay analysis, developer loop, test suite, upstream merges.
+### Entry Points
+- `run.py` - Main bot entry point (CLI mode or environment variables)
+- `bot_monitor.py` - Wrapper that monitors bot and posts to Discord
+- `process_lock.py` - Prevents duplicate bot instances per directory
 
-### Your loop: `infrastructure/linux/developer_loop.sh`
-Runs continuously. Pulls battle data → analyzes performance → invokes Claude Code to make one improvement → runs tests → pushes if passing. Install as a persistent service:
+### Key Modules
+- `fp/battle.py` - Battle state management
+- `fp/battle_modifier.py` - Parses Pokemon Showdown protocol
+- `fp/run_battle.py` - Main battle loop, manages concurrent battles
+- `fp/websocket_client.py` - WebSocket connection to Pokemon Showdown
+- `fp/search/main.py` - MCTS search for best moves
+- `fp/search/endgame.py` - Endgame solver
+- `config.py` - Configuration and logging setup
+- `teams/load_team.py` - Team loading from files
+
+### Data Flow
+1. `bot_monitor.py` spawns `run.py` as subprocess
+2. `run.py` connects to Pokemon Showdown via websocket
+3. Multiple battle workers handle concurrent games
+4. Each battle gets its own log file (with rotation)
+5. Battle results written to `battle_stats.json`
+6. Discord webhooks post results in real-time
+7. `active_battles.json` tracks ongoing battles for crash recovery
+
+---
+
+## Configuration
+
+### Environment Variables
+See `.env.example` for complete reference. Key variables:
+
+**Required:**
+- `PS_USERNAME` - Pokemon Showdown username
+- `PS_PASSWORD` - Pokemon Showdown password
+- `TEAM_LIST` - Path to team list file
+
+**Performance:**
+- `MAX_CONCURRENT_BATTLES` - How many battles to run simultaneously (default: 3)
+- `SEARCH_PARALLELISM` - Worker processes for search (default: 2)
+- `PS_SEARCH_TIME_MS` - Milliseconds per move search (default: 2000)
+
+**Discord:**
+- `DISCORD_BATTLES_WEBHOOK_URL` - Battle results channel
+- `DISCORD_FEEDBACK_WEBHOOK_URL` - Turn analysis channel
+- `BOT_DISPLAY_NAME` - Bot identity in Discord messages (e.g., "🪲 DEKU")
+
+### Teams
+Teams are stored in `teams/` directory with this structure:
+```
+teams/
+├── fat-teams.list         # List of team paths
+└── gen9/ou/
+    ├── fat-team-1-stall
+    ├── fat-team-2-pivot
+    └── fat-team-3-dondozo
+```
+
+The `TEAM_LIST` environment variable points to a file containing team paths (one per line).
+Bot randomly selects a team from the list for each battle.
+
+---
+
+## Running the Bot
+
+### Development Mode (Manual)
 ```bash
-bash infrastructure/linux/install_service.sh
-systemctl --user start fouler-play
+cd /home/ryan/projects/fouler-play-v2
+source venv/bin/activate
+python run.py \
+  --websocket-uri wss://sim3.psim.us/showdown/websocket \
+  --ps-username BugInTheCode \
+  --ps-password <password> \
+  --bot-mode search_ladder \
+  --pokemon-format gen9ou \
+  --search-time-ms 2000 \
+  --max-concurrent-battles 3
 ```
 
-### Your responsibilities (in priority order)
-1. **Port remaining improvements** — check TASKBOARD.md "What we're porting" for unchecked items. Port them one at a time onto the fresh upstream fork. Run `python -m pytest tests/ -v` after each.
-2. **Replay analysis pipeline** — `replay_analysis/` is empty. Build `team_performance.py` that reads `battle_stats.json`, computes per-team win rates, identifies weaknesses (bad matchups, repeated misplays), and outputs a text report. The developer loop feeds this report to Claude Code.
-3. **Phase 2-4 roadmap items** — see TASKBOARD.md. Bayesian set inference, switch prediction, archetype classification. Implement based on current ELO bracket.
-4. **Fix anything broken** — if tests fail, if imports break, if the developer loop crashes, diagnose and fix. Use sub-agents (`claude -p` or the Task tool) to parallelize research and implementation.
-5. **Push to GitHub** — all code goes to `foulest-play` branch. Update TASKBOARD.md when completing items. Never modify files in the `never_modify` list in `infrastructure/guardrails.json`.
+### Production Mode (Recommended)
+```bash
+cd /home/ryan/projects/fouler-play-v2
+source venv/bin/activate
+./bot_monitor.py
+```
 
-### Sub-agent pattern (DEKU)
-When you have multiple independent tasks, spawn sub-agents to work in parallel:
-- Agent 1: Port a specific module (e.g., endgame solver)
-- Agent 2: Build replay analysis while Agent 1 ports code
-- Agent 3: Research upstream changes for integration opportunities
+The bot monitor handles:
+- Auto-restart on crashes
+- Discord notifications
+- Graceful shutdown
+- Drain mode (finish battles, don't start new ones)
 
-Use the Task tool or `claude -p "prompt" --allowedTools "Edit,Write,Read,Bash,Glob,Grep"` for headless sub-agents.
+### Monitoring
+```bash
+# Check if running
+cat .bot.pid && ps aux | grep $(cat .bot.pid)
 
-### Coordinating with BAKUGO
-- Push code to `foulest-play`. BAKUGO pulls automatically in their player loop.
-- If BAKUGO needs to do something specific (install a dependency, restart OBS, change .env), write instructions in `TASKBOARD.md` under "BAKUGO Action Items" and push.
-- Read `battle_stats.json` (pushed by BAKUGO) for performance data.
+# View active battles
+cat active_battles.json
+
+# Watch logs
+tail -f bot_monitor_debug.log
+
+# Check stats
+cat battle_stats.json
+```
 
 ---
 
-## BAKUGO (Windows) — Brawn
+## Development Workflow
 
-**You own:** Bot operation, battle data collection, OBS streaming, Twitch display, poke-engine builds, ELO monitoring, and everything visual.
+### Making Changes
+1. **Create branch** - Work on feature branches
+2. **Make changes** - Edit code
+3. **Run tests** - `python -m pytest tests/ -x -q` (all 517 must pass)
+4. **Commit** - Descriptive commit messages
+5. **Test in production** - Monitor ELO and logs carefully
 
-### Your loop: `infrastructure/windows/player_loop.bat`
-Runs continuously. Pulls latest code → plays a batch of games → pushes stats/replays → checks for new deploys. Install as a persistent scheduled task:
-```
-Run as Administrator: infrastructure\windows\install_task.bat
-schtasks /run /tn "FoulerPlayPlayerLoop"
-```
+### Protected Files (Don't Modify Without Good Reason)
+- `run.py` - Main entry point, changes affect both bots
+- `config.py` - Core configuration
+- Team files in `teams/` - These are battle-tested
+- `constants.py` - Game constants
 
-### Your responsibilities (in priority order)
-1. **Keep the bot playing** — the player loop must be running at all times. If it crashes, diagnose why and fix. Check logs in the repo root.
-2. **OBS + Twitch streaming** — you own the entire streaming pipeline:
-   - `streaming/` directory contains OBS integration code. If it's empty, **build it**:
-     - `serve_obs_page.py`: HTTP server + obs-websocket client that controls OBS Browser Source URLs to display live battles
-     - `obs_battles.html`: Fallback HTML page showing battle iframes (note: Showdown blocks iframes with `X-Frame-Options`, so prefer direct OBS Browser Sources controlled via obs-websocket)
-     - `stream_overlay.html`: ELO display, win/loss counter, team info overlay
-   - OBS Browser Sources must be named to match `.env` → `OBS_BATTLE_SOURCES=Battle Slot 1,Battle Slot 2,Battle Slot 3`
-   - Battle URLs use format: `https://play.pokemonshowdown.com/battle-gen9ou-XXXXXXX` — **never** use `~~showdown` in URLs, it causes "Please visit showdown directly" errors
-   - If the stream shows "Please visit showdown directly" or blank frames, the URL format is wrong. Fix it in the source code.
-   - obs-websocket (port 4455) lets you programmatically set Browser Source URLs. Use `obsws-python` or raw websocket to `SetInputSettings`.
-3. **Environment setup** — your `.env` file (not tracked by git) must have all variables from `.env.example`. Critical streaming vars:
-   ```
-   OBS_WS_HOST=localhost
-   OBS_WS_PORT=4455
-   OBS_BATTLE_SOURCES=Battle Slot 1,Battle Slot 2,Battle Slot 3
-   ```
-4. **poke-engine builds** — if DEKU pushes code that updates poke-engine version, you need Rust toolchain installed to rebuild. `pip install -e .` or `pip install poke-engine==X.X.X`.
-5. **ELO monitoring** — `infrastructure/elo_watchdog.py` runs after deploys. If ELO drops >50 from a deploy, it auto-reverts. Make sure this is working.
-6. **Push battle data** — after each batch, `battle_stats.json` and `replays/` get committed and pushed to `foulest-play`.
-
-### Sub-agent pattern (BAKUGO)
-When you have multiple independent tasks, spawn sub-agents:
-- Agent 1: Fix OBS streaming display issues
-- Agent 2: Run the next batch of bot games
-- Agent 3: Build missing streaming infrastructure
-
-### Coordinating with DEKU
-- Push battle data (stats, replays) to `foulest-play`. DEKU pulls in their developer loop.
-- Check `TASKBOARD.md` for any "BAKUGO Action Items" that DEKU has written.
-- If you find a bug in the bot's decision-making, note it in TASKBOARD.md under "Bug Reports" and push. DEKU will fix it.
+### Code Quality Standards
+- All tests must pass before committing
+- Use descriptive variable names
+- Add comments for complex logic
+- Handle exceptions properly (don't silently swallow)
+- Use logging instead of print statements
+- Follow existing code style
 
 ---
 
-## Repository Structure
+## Common Tasks
 
+### Add a New Team
+1. Create team file: `teams/gen9/ou/my-new-team`
+2. Add to list: `echo "gen9/ou/my-new-team" >> teams/fat-teams.list`
+3. Bot picks it up automatically (no restart needed)
+
+### Change Battle Count
+Edit `.env`:
 ```
-fouler-play/
-├── run.py                    # Entry point (NEVER MODIFY)
-├── config.py                 # FoulPlayConfig + env loading (NEVER MODIFY)
-├── .env                      # Local credentials (NEVER MODIFY, not tracked)
-├── .env.example              # Template for .env (tracked)
-├── CLAUDE.md                 # THIS FILE — read on every session
-├── TASKBOARD.md              # Cross-machine coordination — read and update
-├── constants.py              # Shim → re-exports from constants_pkg/
-├── constants_pkg/            # Penalty/boost values, ability sets, move flags
-├── fp/
-│   ├── battle.py             # Battle/Battler/Pokemon state
-│   ├── battle_modifier.py    # Parses PS protocol, updates battle state
-│   ├── run_battle.py         # Main battle loop + streaming hooks
-│   ├── websocket_client.py   # PS websocket + multi-battle routing
-│   ├── search/
-│   │   ├── main.py           # MCTS + ability penalty system (core logic)
-│   │   ├── endgame.py        # Endgame solver
-│   │   ├── standard_battles.py  # Battle sampling + weighted selection
-│   │   └── move_validators.py   # Move validation
-│   ├── team_analysis.py      # Win condition identification
-│   ├── opponent_model.py     # Opponent tendency tracking
-│   ├── playstyle_config.py   # Per-team playstyle tuning
-│   └── decision_trace.py     # Decision logging
-├── infrastructure/
-│   ├── guardrails.json       # File permissions + safety thresholds
-│   ├── elo_watchdog.py       # Auto-revert bad deploys
-│   ├── linux/                # DEKU's scripts + service files
-│   └── windows/              # BAKUGO's scripts + task installer
-├── streaming/                # OBS/Twitch integration (BAKUGO builds this)
-├── replay_analysis/          # Performance analysis (DEKU builds this)
-├── data/                     # Smogon data, pokedex, moves
-├── teams/                    # Team files (NEVER MODIFY)
-└── tests/                    # Test suite
+MAX_CONCURRENT_BATTLES=2  # Run 2 battles at once instead of 3
+```
+Restart bot for changes to take effect.
+
+### Update Search Time
+Edit `.env`:
+```
+PS_SEARCH_TIME_MS=3000  # Spend 3 seconds per move instead of 2
+```
+More time = potentially better play, but slower games.
+
+### Drain Mode (Stop Gracefully)
+```bash
+# Signal bot to finish current battles and exit
+touch .pids/drain.request
+
+# Wait for battles to complete
+tail -f bot_monitor_debug.log
 ```
 
-## Key Design Principles
+### Force Stop
+```bash
+kill $(cat .bot.pid)
+```
 
-1. **Penalties, not blocks** — reduce move weights, never remove options entirely
-2. **Known > Inferred** — trust revealed abilities over Pokemon-commonly-has lists
-3. **Severe for game-losing** — 0.1 weight for moves that actively help opponent
-4. **One improvement per cycle** — small correct changes beat ambitious broken ones
-5. **Tests must pass** — `python -m pytest tests/ -v` before every push
-6. **Never modify protected files** — see `infrastructure/guardrails.json`
+---
 
-## On Every Fresh Session
+## Troubleshooting
 
-1. Read this file (CLAUDE.md)
-2. Read TASKBOARD.md for current status and action items
-3. Determine which machine you're on (DEKU or BAKUGO)
-4. Check `git log --oneline -5` and `git status` for recent changes
-5. Act on your highest-priority responsibility
-6. Update TASKBOARD.md with what you did
-7. Push your changes
+### Bot Won't Start
+1. Check if already running: `cat .bot.pid && ps aux | grep $(cat .bot.pid)`
+2. Remove stale PID: `rm .bot.pid`
+3. Check logs: `tail -50 bot_monitor_debug.log`
+4. Verify credentials in `.env`
 
-## Upstream Base
+### Bot Keeps Crashing
+1. Check logs for exception traces
+2. Verify Pokemon Showdown is accessible
+3. Check for invalid team files
+4. Monitor system resources (CPU/RAM)
 
-Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play) at commit `55fa9b4`.
-- Upstream: `upstream` → https://github.com/pmariglia/foul-play.git
-- Origin: `origin` → https://github.com/RJW34/fouler-play.git
-- Branch: `foulest-play`
+### No Discord Messages
+1. Verify webhook URLs in `.env`
+2. Test webhook manually: `curl -X POST -H "Content-Type: application/json" -d '{"content":"test"}' <WEBHOOK_URL>`
+3. Check bot_monitor.py is running (not just run.py)
+
+### Teams Not Loading
+```bash
+# Test team loading
+python -c "from teams import load_team; print(load_team('gen9/ou/fat-team-1-stall'))"
+```
+
+---
+
+## Multi-Bot Coexistence
+
+### How DEKU and BAKUGO Coexist
+- **Separate directories** - Different working directories
+- **Separate configs** - Each has own .env file
+- **Separate PIDs** - process_lock.py scopes to directory
+- **Separate logs** - Each writes to its own logs/ directory
+- **Shared Showdown server** - Both connect to same server with different accounts
+- **Shared Discord webhooks** - Can post to same channels (use BOT_DISPLAY_NAME to distinguish)
+
+### Adding Another Bot
+1. Create new directory (e.g., `/home/ryan/projects/fouler-play-bot3/`)
+2. Clone repo into that directory
+3. Create `.env` with unique `PS_USERNAME` and `BOT_DISPLAY_NAME`
+4. Run bot_monitor.py from that directory
+5. process_lock.py keeps it isolated from other bots
+
+---
 
 ## Testing
 
+### Run All Tests
 ```bash
-python -m pytest tests/ -v                                              # Full suite
-python -c "import ast; ast.parse(open('fp/search/main.py').read())"     # Syntax check
-python -c "from fp.search.main import find_best_move; print('OK')"      # Import check
+source venv/bin/activate
+python -m pytest tests/ -v
 ```
+
+### Run Specific Test
+```bash
+python -m pytest tests/test_battle.py -v
+```
+
+### Quick Syntax Check
+```bash
+python -m py_compile fp/search/main.py
+```
+
+### Import Test
+```bash
+python -c "from fp.search.main import find_best_move; print('OK')"
+```
+
+---
+
+## File Structure Reference
+
+```
+fouler-play-v2/
+├── run.py                    # Main entry point
+├── bot_monitor.py            # Bot wrapper with Discord integration
+├── process_lock.py           # Prevent duplicate instances
+├── config.py                 # Configuration and logging
+├── .env                      # Local environment variables (not tracked)
+├── .env.example              # Template with all variables documented
+├── DEPLOYMENT.md             # Ops/deployment guide
+├── CLAUDE.md                 # This file - project guide
+├── AUDIT_FINDINGS.md         # Audit results (2026-02-06)
+├── active_battles.json       # Currently active battles (runtime)
+├── battle_stats.json         # Battle history and stats (runtime)
+├── .bot.pid                  # Bot process ID (runtime)
+├── .pids/                    # Process management files
+├── logs/                     # Battle logs (auto-rotating at 10MB)
+├── teams/                    # Team files
+│   ├── fat-teams.list        # Team list
+│   └── gen*/ou/              # Team files by generation
+├── fp/                       # Core bot code
+│   ├── battle.py
+│   ├── battle_modifier.py
+│   ├── run_battle.py
+│   ├── websocket_client.py
+│   └── search/
+│       ├── main.py           # MCTS search
+│       ├── endgame.py
+│       └── ...
+├── tests/                    # Test suite (517 tests)
+├── data/                     # Pokedex, moves, abilities
+├── streaming/                # OBS/streaming integration (WIP)
+├── replay_analysis/          # Replay analysis tools (WIP)
+└── venv/                     # Python virtual environment
+```
+
+---
+
+## Future Improvements
+
+### High Priority
+- [ ] Improve MCTS search heuristics
+- [ ] Better endgame detection
+- [ ] Smarter switching logic
+- [ ] Team matchup analysis
+
+### Medium Priority
+- [ ] Replay analysis pipeline
+- [ ] Turn-by-turn feedback system
+- [ ] ELO tracking and visualization
+- [ ] Per-team performance stats
+
+### Low Priority
+- [ ] OBS streaming integration
+- [ ] Live battle viewer
+- [ ] Historical data analysis
+- [ ] Meta-game trend tracking
+
+---
+
+## References
+
+- **Upstream fork**: https://github.com/pmariglia/foul-play
+- **Pokemon Showdown**: https://pokemonshowdown.com/
+- **Poke-engine docs**: https://poke-engine.readthedocs.io/
+
+---
+
+## Notes for AI Assistants
+
+When working on this project:
+1. Always run tests after changes
+2. Be careful with process_lock.py - it kills processes!
+3. Don't modify team files without explicit request
+4. Check active_battles.json before stopping bot (avoid forfeits)
+5. Monitor ELO after changes - auto-revert if it drops significantly
+6. Commit changes incrementally with clear messages
+7. Update this file when architecture changes
