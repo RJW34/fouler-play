@@ -2,8 +2,16 @@
 
 **Mission:** Reach 1700 ELO in gen9ou
 **Branch:** foulest-play
-**Bot Account:** ALL CHUNG (ELO: 1167, GXE: 44.1%)
-**Updated:** 2026-02-06 17:40 EST
+**Bot Account:** ALL CHUNG (ELO: ~1141)
+**Updated:** 2026-02-07
+
+---
+
+## NEXT ACTION (read this first)
+
+**DEKU:** Implement Phase 2 Bayesian set inference — speed range narrowing and Bayesian updating as moves/items are revealed. See Phase 2 section below.
+
+**BAKUGO:** Keep the bot playing. Ensure `player_loop.bat` is running and pushing `battle_stats.json` after each batch.
 
 ---
 
@@ -29,26 +37,11 @@
 
 ## DEKU Action Items
 
-### Port Checklist (fresh fork from upstream 55fa9b4)
-All modules ported and imports verified ✅
-- [x] constants_pkg/ → penalty system (abilities, moves, strategy constants)
-- [x] fp/search/main.py → MCTS + ability detection + penalty system + timeout protection
-- [x] fp/search/endgame.py → endgame solver
-- [x] fp/team_analysis.py → win condition identification
-- [x] fp/decision_trace.py → decision logging
-- [x] fp/opponent_model.py → opponent tendencies
-- [x] fp/movepool_tracker.py → move tracking
-- [x] fp/playstyle_config.py → team playstyle tuning
-- [x] fp/search/move_validators.py → move validation
-- [x] fp/battle.py additions → snapshot(), null checks, PP tracking
-- [x] fp/battle_modifier.py additions → time parsing, movepool tracking
-- [x] fp/run_battle.py extensions → streaming, battle tracking, traces
-- [x] fp/search/standard_battles.py → weighted sampling
-- [x] fp/search/helpers.py → sample_weight
-- [x] replay_analysis/team_performance.py → per-team win rates and weakness analysis
+### Port Checklist (fresh fork from upstream 55fa9b4) — ALL DONE ✅
+All modules ported and imports verified. Nothing left to port.
 
 ### Build / Fix
-- [ ] Fix bot_monitor.py username — hardcoded "LEBOTJAMESXD005", should read from .env or use "ALL CHUNG"
+- [x] Fix bot_monitor.py username — already reads from .env (PS_USERNAME), no longer hardcoded
 - [ ] Verify developer loop (`infrastructure/linux/developer_loop.sh`) works end-to-end
 - [ ] Wire team_performance.py output into developer loop analysis prompt
 
@@ -79,7 +72,7 @@ All modules ported and imports verified ✅
 
 ### 1. Pull Latest Code
 ```powershell
-cd C:\Users\Ryan\projects\fouler-play   # or wherever your clone is
+cd C:\Users\mtoli\Documents\Code\fouler-play
 git checkout foulest-play
 git pull origin foulest-play
 ```
@@ -130,12 +123,14 @@ infrastructure\windows\install_task.bat
 schtasks /run /tn "FoulerPlayPlayerLoop"
 ```
 
-### 7. Streaming Pipeline (streaming/ has files but needs OBS setup)
+### 7. Streaming Pipeline (BUILT — verify, do not rebuild)
+The streaming infrastructure is fully built. Just verify it works:
+- Start stream server: `python streaming/serve_obs_page.py` (port 8777)
+- Test endpoints: `curl http://localhost:8777/status` and `curl http://localhost:8777/battles`
 - Verify OBS has Browser Sources named "Battle Slot 1", "Battle Slot 2", "Battle Slot 3"
 - URL format: `https://play.pokemonshowdown.com/battle-gen9ou-XXXXXXX`
 - **NEVER** use `~~showdown` in URLs — causes "Please visit showdown directly" errors
-- Test obs-websocket connection: `python streaming/obs_controller.py`
-- Start stream server: `python streaming/serve_obs_page.py`
+- If something is broken, fix it. Do NOT rewrite the streaming stack.
 
 ### 8. Verify Everything
 - [x] Bot connects to Showdown and plays games — LIVE, 2-3 concurrent battles running (ALL CHUNG)
@@ -158,7 +153,8 @@ schtasks /run /tn "FoulerPlayPlayerLoop"
 
 ## Bug Reports
 <!-- When either machine finds a bug, note it here with date and description. The owning machine fixes it. -->
-- 2026-02-06: bot_monitor.py hardcodes USERNAME="LEBOTJAMESXD005" — needs to match current account "ALL CHUNG" (DEKU fixing)
+- 2026-02-06: ~~bot_monitor.py hardcodes USERNAME~~ — FIXED, now reads from .env
+- 2026-02-07: replay_analysis/turn_review.py had hardcoded "LEBOTJAMESXD002" — FIXED, now reads PS_USERNAME from .env
 
 ---
 
