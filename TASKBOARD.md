@@ -2,8 +2,19 @@
 
 **Mission:** Reach 1700 ELO in gen9ou
 **Branch:** foulest-play
-**Bot Account:** ALL CHUNG (ELO: 1167, GXE: 44.1%)
-**Updated:** 2026-02-06 17:40 EST
+**Bot Account:** ALL CHUNG (ELO: 1142, GXE: 44.1%)
+**Updated:** 2026-02-07 18:15 EST
+
+---
+
+## Current Assessment
+
+207 real battles played. 49% overall WR — we're coin-flipping. All major systems (penalty, Bayesian, PP tracking, momentum, endgame solver) are implemented and wired in. The bottleneck is decision quality tuning, not missing features.
+
+**Team Performance:**
+- fat-team-1-stall: 37W-36L (51%) — mediocre
+- fat-team-2-pivot: 30W-38L (44%) ⚠️ — dragging ELO down
+- fat-team-3-dondozo: 35W-31L (53%) — best performer
 
 ---
 
@@ -11,28 +22,25 @@
 
 ### DEKU (Linux) owns:
 - Code analysis + strategy improvements
-- Replay analysis pipeline (`replay_analysis/`)
-- Developer loop (`infrastructure/linux/developer_loop.sh`)
+- Replay analysis pipeline
+- Developer loop
 - Test suite maintenance
-- Upstream merge management
-- Porting improvements onto fresh fork
+- Decision logic tuning
 
 ### BAKUGO (Windows) owns:
-- Bot operation (`infrastructure/windows/player_loop.bat`)
-- OBS + Twitch streaming (`streaming/`)
+- Bot operation (player_loop.bat)
+- OBS + Twitch streaming
 - Battle data collection + push
-- poke-engine builds (Rust toolchain)
-- ELO monitoring + watchdog
-- Environment/credentials setup
+- poke-engine builds
+- ELO monitoring
 
 ---
 
 ## DEKU Action Items
 
-### Port Checklist (fresh fork from upstream 55fa9b4)
-All modules ported and imports verified ✅
-- [x] constants_pkg/ → penalty system (abilities, moves, strategy constants)
-- [x] fp/search/main.py → MCTS + ability detection + penalty system + timeout protection
+### Port Checklist — ALL DONE ✅
+- [x] constants_pkg/ → penalty system
+- [x] fp/search/main.py → MCTS + ability detection + penalty system + timeout
 - [x] fp/search/endgame.py → endgame solver
 - [x] fp/team_analysis.py → win condition identification
 - [x] fp/decision_trace.py → decision logging
@@ -40,135 +48,75 @@ All modules ported and imports verified ✅
 - [x] fp/movepool_tracker.py → move tracking
 - [x] fp/playstyle_config.py → team playstyle tuning
 - [x] fp/search/move_validators.py → move validation
-- [x] fp/battle.py additions → snapshot(), null checks, PP tracking
-- [x] fp/battle_modifier.py additions → time parsing, movepool tracking
-- [x] fp/run_battle.py extensions → streaming, battle tracking, traces
-- [x] fp/search/standard_battles.py → weighted sampling
+- [x] fp/battle.py → snapshot(), null checks, PP tracking
+- [x] fp/battle_modifier.py → time parsing, movepool tracking, PP recording
+- [x] fp/run_battle.py → streaming, battle tracking, traces
+- [x] fp/search/standard_battles.py → weighted + Bayesian sampling
 - [x] fp/search/helpers.py → sample_weight
-- [x] replay_analysis/team_performance.py → per-team win rates and weakness analysis
+- [x] replay_analysis/team_performance.py → working pipeline
+- [x] fp/bayesian_sets.py → Bayesian set inference with speed range narrowing
 
-### Build / Fix
-- [ ] Fix bot_monitor.py username — hardcoded "LEBOTJAMESXD005", should read from .env or use "ALL CHUNG"
-- [ ] Verify developer loop (`infrastructure/linux/developer_loop.sh`) works end-to-end
-- [ ] Wire team_performance.py output into developer loop analysis prompt
-
-### Phase 2: Bayesian Set Inference (1450→1550)
+### Phase 2: Bayesian Set Inference — DONE ✅
 - [x] Weighted sampling by set count
-- [ ] Speed range narrowing (upstream has infrastructure, need to USE it)
-- [ ] Bayesian updating as moves/items revealed
-- [ ] Track revealed information to update set probabilities
+- [x] Speed range narrowing (check_speed_ranges in battle_modifier → bayesian_sets)
+- [x] Bayesian updating as moves/items revealed (fp/bayesian_sets.py)
+- [x] Track revealed information to update set probabilities
 
-### Phase 3: Switch Prediction (1550→1650)
-- [x] Win condition awareness
-- [x] Momentum tracking
-- [ ] PP tracking (infrastructure built, needs battle_modifier integration)
-- [ ] OpponentModel passive/sack tendencies
+### Phase 3: Switch Prediction (current focus)
+- [x] Win condition awareness (3.1)
+- [x] PP tracking (3.2 — battle_modifier records, main.py uses)
+- [x] Momentum tracking (3.3)
+- [ ] **ACTIVE: Investigate fat-team-2-pivot 44% WR — switch logic tuning**
+- [ ] OpponentModel passive/sack tendency integration
 - [ ] Switch prediction from type matchups
 
 ### Phase 4: Archetype + Adaptive (1650→1700)
-- [x] Endgame solver
+- [x] Endgame solver (fp/search/endgame.py)
 - [ ] Team archetype classification
 - [ ] Game-phase awareness
-- [ ] Dynamic team selection
+- [ ] Dynamic team selection (drop/replace underperforming teams)
+
+### Build / Fix
+- [x] bot_monitor username fix (reads from .env now)
+- [x] Developer loop wired (infrastructure/linux/)
+- [x] ProcessPoolExecutor zombie leak fixed
+- [x] Stream pipeline re-enabled
+- [ ] battle_stats.json needs richer data from BAKUGO (opponent_pokemon missing in real battles)
 
 ---
 
 ## BAKUGO Action Items
 
-**READ THIS CAREFULLY — step-by-step instructions for getting the bot running on Windows.**
+### CRITICAL — Battle Stats Data Quality
+The bot is writing minimal battle_stats.json entries. Real battles are missing:
+- `opponent_pokemon` — needed for matchup analysis
+- `rating_before` / `rating_after` — needed for ELO tracking
+- `replay_id` in correct format
 
-### 1. Pull Latest Code
-```powershell
-cd C:\Users\Ryan\projects\fouler-play   # or wherever your clone is
-git checkout foulest-play
-git pull origin foulest-play
-```
+**Action:** Check bot_monitor.py's `record_batch_result()` and the state_store code. Ensure all fields are being populated when battles complete. The mock data has the right schema — real data should match.
 
-### 2. Environment Setup
-Copy `.env.example` to `.env` if you haven't, then fill in:
-```
-PS_USERNAME=ALL CHUNG
-PS_PASSWORD=<check with Ryan or existing .env>
-PS_WEBSOCKET_URI=wss://sim3.psim.us/showdown/websocket
-PS_FORMAT=gen9ou
-PS_BOT_MODE=search_ladder
+### Keep Bot Running
+- [ ] player_loop.bat must be running continuously
+- [ ] Push battle_stats.json after each batch: `git add battle_stats.json && git commit -m "data: battle stats" && git push origin foulest-play`
+- [ ] If bot crashes, check logs and restart
 
-# OBS streaming (if OBS is set up)
-OBS_WS_HOST=localhost
-OBS_WS_PORT=4455
-OBS_BATTLE_SOURCES=Battle Slot 1,Battle Slot 2,Battle Slot 3
-
-# Discord webhooks (ask Ryan or check existing .env)
-DISCORD_WEBHOOK_URL=<project updates webhook>
-DISCORD_BATTLES_WEBHOOK_URL=<battle notifications webhook>
-DISCORD_FEEDBACK_WEBHOOK_URL=<turn review webhook>
-```
-
-### 3. Python Environment
-```powershell
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### 4. poke-engine (Rust required)
-```powershell
-# Need Rust toolchain: https://rustup.rs/
-pip install poke-engine
-# If that fails, try: pip install poke-engine==0.3.0
-```
-
-### 5. Verify Bot Runs
-```powershell
-python run.py --ps-username "ALL CHUNG" --ps-password "<password>" --bot-mode search_ladder --pokemon-format gen9ou --team-name gen9/ou/fat-team-1-stall --search-time-ms 3000 --run-count 5 --save-replay always --log-level INFO
-```
-
-### 6. Install Player Loop as Scheduled Task
-```powershell
-# Run as Administrator:
-infrastructure\windows\install_task.bat
-schtasks /run /tn "FoulerPlayPlayerLoop"
-```
-
-### 7. Streaming Pipeline (streaming/ has files but needs OBS setup)
-- Verify OBS has Browser Sources named "Battle Slot 1", "Battle Slot 2", "Battle Slot 3"
-- URL format: `https://play.pokemonshowdown.com/battle-gen9ou-XXXXXXX`
-- **NEVER** use `~~showdown` in URLs — causes "Please visit showdown directly" errors
-- Test obs-websocket connection: `python streaming/obs_controller.py`
-- Start stream server: `python streaming/serve_obs_page.py`
-
-### 8. Verify Everything
-- [x] Bot connects to Showdown and plays games — LIVE, 2-3 concurrent battles running (ALL CHUNG)
-- [ ] battle_stats.json is being written — waiting for first batch to complete (fat games are long)
-- [ ] Replays saved to replay_analysis/
-- [ ] OBS shows live battles (if streaming) — OBS not running yet, streaming server up on :8777
-- [x] Player loop runs unattended — scheduled task FoulerPlayPlayerLoop installed
-- [ ] Push battle_stats.json after each batch
-
-### Completed Setup Steps
-- [x] Step 1: Pull latest code (at 9ca25a3)
-- [x] Step 2: .env configured (ALL CHUNG, all OBS vars, ELO tracking)
-- [x] Step 3: Python env ready (all deps installed)
-- [x] Step 4: poke-engine 0.0.46 built with terastallization (Rust cargo 1.92.0, PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1 for Python 3.14)
-- [x] Step 5: Bot verified running — logged in, searching ladder, playing games
-- [x] Step 6: Scheduled task installed (FoulerPlayPlayerLoop)
-- [x] Step 7: Streaming server running (serve_obs_page.py on :8777), OBS not yet open
+### Streaming (lower priority)
+- [ ] Verify streaming server: `python streaming/serve_obs_page.py` → http://localhost:8777/status
+- [ ] OBS Browser Sources named "Battle Slot 1/2/3"
 
 ---
 
 ## Bug Reports
-<!-- When either machine finds a bug, note it here with date and description. The owning machine fixes it. -->
-- 2026-02-06: bot_monitor.py hardcodes USERNAME="LEBOTJAMESXD005" — needs to match current account "ALL CHUNG" (DEKU fixing)
+- 2026-02-07: battle_stats.json real entries missing opponent_pokemon and rating fields (BAKUGO to fix data collection)
+- 2026-02-06: bot_monitor.py URL space issue — FIXED (allchung not all chung)
+- 2026-02-06: ProcessPoolExecutor zombie processes — FIXED (global singleton)
 
 ---
 
 ## Communication Protocol
-
 - Push code/data to `foulest-play` branch
-- Update this TASKBOARD.md when completing items (check the box: `[x]`)
-- DEKU pushes code changes, BAKUGO pushes battle data
-- Check `battle_stats.json` for performance tracking
-- If you need the other machine to act, write it under their Action Items section and push
+- Update this TASKBOARD.md when completing items
+- DEKU pushes code, BAKUGO pushes battle data
 
 ## Phase 1 (DONE)
 - [x] Penalty system for ability-aware decisions
