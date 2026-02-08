@@ -235,6 +235,26 @@ async def handle_event(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
 
 
+async def _merge_deku_battles(payload: dict) -> dict:
+    """Merge DEKU's active battles into the payload for OBS updates."""
+    try:
+        deku_url = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
+        async with aiohttp.ClientSession() as sess:
+            async with sess.get(deku_url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
+                if resp.status == 200:
+                    deku_data = await resp.json()
+                    deku_battles = deku_data.get("battles", [])
+                    for b in deku_battles:
+                        b["slot"] = 2
+                    local_battles = payload.get("battles", [])
+                    for b in local_battles:
+                        b.setdefault("slot", 1)
+                    payload["battles"] = local_battles + deku_battles
+    except Exception:
+        pass
+    return payload
+
+
 async def _process_event_update(event_type: str, payload: dict) -> None:
     try:
         await maybe_refresh_elo_from_event(event_type, payload)
@@ -242,6 +262,7 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
         await broadcast("STATE_UPDATE", state)
         # Update OBS sources immediately when battle events come in (event-based, not polling)
         if event_type in ("BATTLE_START", "BATTLE_END") and _obs_client:
+            state = await _merge_deku_battles(state)
             await maybe_update_obs_sources(state)
     except Exception:
         pass
@@ -790,22 +811,7 @@ async def poll_files(app: web.Application) -> None:
             if (now - last_obs_sync) >= OBS_SYNC_INTERVAL_SEC:
                 last_obs_sync = now
                 local_payload = build_state_payload()
-                # Merge DEKU battles into slot 2
-                try:
-                    deku_url = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
-                    async with aiohttp.ClientSession() as sess:
-                        async with sess.get(deku_url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
-                            if resp.status == 200:
-                                deku_data = await resp.json()
-                                deku_battles = deku_data.get("battles", [])
-                                for b in deku_battles:
-                                    b["slot"] = 2  # Force DEKU to slot 2
-                                local_battles = local_payload.get("battles", [])
-                                for b in local_battles:
-                                    b.setdefault("slot", 1)
-                                local_payload["battles"] = local_battles + deku_battles
-                except Exception:
-                    pass
+                local_payload = await _merge_deku_battles(local_payload)
                 await maybe_update_obs_sources(local_payload)
 
         # Periodic ELO refresh in case no events fire (e.g., after restart).
