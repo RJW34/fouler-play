@@ -35,9 +35,15 @@ class TeamListIterator:
     def get_next_team(self):
         if not self.team_names:
             raise ValueError("Team list is empty")
+        old_idx = self.index
         team_name = self.team_names[self.index]
         self.index = (self.index + 1) % len(self.team_names)
         self._save_index()
+        import logging
+        logging.getLogger(__name__).info(
+            f"TeamListIterator(id={id(self)}): idx {old_idx}->{self.index}, "
+            f"teams={len(self.team_names)}, returning={team_name}"
+        )
         return team_name
 
 
