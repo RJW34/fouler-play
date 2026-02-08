@@ -313,6 +313,7 @@ async def battle_worker(
                 else:
                     team_name = FoulPlayConfig.team_name
                 team_packed, team_dict, team_file_name = load_team(team_name)
+                logger.info(f"Team selected: {team_name} -> {team_file_name}")
 
                 # Only update the server team when starting a new ladder search,
                 # or always when using the global search manager (single-team mode).
