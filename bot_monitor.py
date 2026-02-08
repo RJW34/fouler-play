@@ -7,6 +7,15 @@ Also automatically analyzes losses for improvement opportunities
 Supports concurrent battles - tracks multiple active battles simultaneously.
 """
 
+import sys
+import os
+
+# Force UTF-8 for console output on Windows (avoid cp1252 emoji crashes)
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+
 import asyncio
 import re
 import sys
@@ -51,6 +60,10 @@ PID_DIR.mkdir(exist_ok=True)
 PID_FILE = PID_DIR / "bot_monitor.pid"
 BOT_MAIN_PID_FILE = PID_DIR / "bot_main.pid"
 DRAIN_FILE = PID_DIR / "drain.request"
+LAST_STARTUP_FILE = Path(__file__).parent / ".last_startup.json"
+
+# Startup message throttling (seconds) - only post startup if it's been this long
+STARTUP_THROTTLE_SEC = int(os.getenv("STARTUP_THROTTLE_SEC", "1800"))  # Default: 30 minutes
 
 
 # Discord webhook URLs (from .env)
@@ -104,6 +117,35 @@ class BattleState:
         self.start_time = start_time
         self.result = None  # "won", "lost", "tie"
         self.replay_url = None
+
+
+def should_post_startup_message():
+    """Check if we should post a startup message based on throttle time."""
+    if STARTUP_THROTTLE_SEC <= 0:
+        return True  # Always post if throttling is disabled
+    
+    try:
+        if LAST_STARTUP_FILE.exists():
+            data = json.loads(LAST_STARTUP_FILE.read_text())
+            last_startup = data.get("timestamp", 0)
+            elapsed = time.time() - last_startup
+            return elapsed >= STARTUP_THROTTLE_SEC
+    except Exception:
+        pass
+    
+    return True  # Post on first startup or if file is corrupt
+
+
+def record_startup_message():
+    """Record that we posted a startup message."""
+    try:
+        data = {
+            "timestamp": time.time(),
+            "bot_name": BOT_DISPLAY_NAME or "Unknown"
+        }
+        LAST_STARTUP_FILE.write_text(json.dumps(data))
+    except Exception as e:
+        print(f"[MONITOR] Failed to record startup time: {e}")
 
 
 class BotMonitor:
@@ -242,7 +284,8 @@ class BotMonitor:
             if suppress_embeds:
                 payload["flags"] = 4
             try:
-                async with session.post(webhook_url, json=payload) as resp:
+                # Ensure UTF-8 encoding for Discord webhook
+                async with session.post(webhook_url, json=payload, headers={"Content-Type": "application/json; charset=utf-8"}) as resp:
                     if resp.status == 204:
                         print(f"[MONITOR] Sent to {channel}: {message[:50]}...")
                     else:
@@ -596,8 +639,12 @@ class BotMonitor:
                         battle_id = list(self.active_battles.keys())[0]
 
                 # Load our username from env for comparison
+                # Normalize both sides (Showdown strips spaces/special chars)
+                def _norm_user(n): return re.sub(r'[^a-z0-9]', '', n.lower()) if n else ""
                 our_username = os.getenv("PS_USERNAME", "ALL CHUNG")
-                if winner == our_username:
+                showdown_accts = os.getenv("SHOWDOWN_ACCOUNTS", our_username).split(",")
+                normalized_accts = [_norm_user(a) for a in showdown_accts if a.strip()]
+                if _norm_user(winner) in normalized_accts:
                     if not self.session_rebase_enabled or self.session_base_wins is not None:
                         self.wins += 1
                     update_daily_stats(wins_delta=1)  # Track daily totals
@@ -667,6 +714,12 @@ class BotMonitor:
             match = REPLAY_PATTERN.search(line)
             if match:
                 replay_id = match.group(1)
+                # Strip any spectator hash from replay ID (format: gen9ou-NUMBER or gen9ou-NUMBER-HASH)
+                # Keep only format-number portions
+                parts = replay_id.split("-")
+                if len(parts) >= 3:
+                    # Remove hash suffix (everything after the second dash)
+                    replay_id = f"{parts[0]}-{parts[1]}"
                 replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
 
                 # Extract battle_id from replay_id
@@ -825,17 +878,26 @@ class BotMonitor:
                 username = cmd[i + 1]
                 break
         
+        # Only post startup message if enough time has passed since last startup
+        if should_post_startup_message():
+            name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
+            startup_msg = f"🚀 **Fouler Play bot{name_tag} starting...**"
+            if username:
+                user_page = f"https://pokemonshowdown.com/users/{username.lower().replace(' ', '')}"
+                startup_msg += f"\n📊 **Account:** [{username}]({user_page})"
+                startup_msg += "\n⏳ *ELO stats will be posted once ladder data loads*"
+            
+            await self.send_discord_message(
+                startup_msg,
+                channel="battles"
+            )
+            record_startup_message()
+        else:
+            print(f"[MONITOR] Skipping startup message (throttled)")
+
+        # Echo to logs (not Discord)
         name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
-        startup_msg = f"🚀 **Fouler Play bot{name_tag} starting...**"
-        if username:
-            user_page = f"https://pokemonshowdown.com/users/{username.lower().replace(' ', '')}"
-            startup_msg += f"\n📊 **Account:** [{username}]({user_page})"
-            startup_msg += "\n⏳ *ELO stats will be posted once ladder data loads*"
-        
-        await self.send_discord_message(
-            startup_msg,
-            channel="battles"
-        )
+        print(f"[MONITOR] Fouler Play bot{name_tag} starting...")
 
         # Monitor output
         await self.monitor_output(self.process.stdout)

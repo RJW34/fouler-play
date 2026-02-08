@@ -319,14 +319,15 @@ body.mode-bottom #bottom-bar {
 /* ===== DEADSPACE HUD ===== */
 #deadspace-grid {
   position: fixed;
-  left: 50%;
+  left: 0;
+  right: 0;
   top: 40%;
   bottom: 82px;
-  transform: translateX(-50%);
-  width: min(2300px, 94vw);
+  width: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 26px;
+  gap: 20px;
+  padding: 0 20px;
   z-index: 90;
   pointer-events: none;
   justify-items: stretch;
@@ -337,23 +338,26 @@ body.mode-bottom #bottom-bar {
   gap: 14px;
   min-height: 100%;
   align-items: stretch;
-  padding: 0 28% 0 4%;
+  padding: 0;
 }
 .dead-column.col-left {
-  transform: translateX(-90px);
+  transform: translateX(0);
+  padding: 0 8px;
 }
 .dead-column.col-right {
-  transform: translateX(60px);
+  transform: translateX(0);
+  padding: 0 8px;
 }
 .dead-column.col-center {
-  transform: translateX(-15px);
+  transform: translateX(0);
+  padding: 0 8px;
 }
 .worker-pill {
-  background: rgba(10, 10, 18, 0.75);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(16, 16, 28, 0.92);
+  border: 1px solid rgba(255,255,255,0.22);
   border-radius: 14px;
   padding: 9px 14px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.45);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -408,11 +412,11 @@ body.mode-bottom #bottom-bar {
 }
 .dead-card {
   flex: 1;
-  background: rgba(12, 12, 20, 0.86);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(16, 16, 28, 0.94);
+  border: 1px solid rgba(255,255,255,0.22);
   border-radius: 18px;
   padding: 26px 28px;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.6);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -653,7 +657,7 @@ body.hide-recent #mid-form {
   <div class="dead-column col-left">
     <div class="worker-pill" id="worker-1">
       <div class="worker-left">
-        <div class="worker-label">Worker 1</div>
+        <div class="worker-label">ALL CHUNG</div>
         <div class="worker-opponent" id="worker-1-name">Idle</div>
       </div>
       <div class="worker-status idle" id="worker-1-status">Idle</div>
@@ -670,12 +674,9 @@ body.hide-recent #mid-form {
     </div>
   </div>
   <div class="dead-column col-center">
-    <div class="worker-pill" id="worker-2">
-      <div class="worker-left">
-        <div class="worker-label">Worker 2</div>
-        <div class="worker-opponent" id="worker-2-name">Idle</div>
-      </div>
-      <div class="worker-status idle" id="worker-2-status">Idle</div>
+    <div class="dead-card">
+      <div class="hud-label">ELO</div>
+      <div id="accounts-elo-container"></div>
     </div>
     <div class="dead-card">
       <div class="hud-label">NEXT FIX</div>
@@ -684,10 +685,20 @@ body.hide-recent #mid-form {
     </div>
   </div>
   <div class="dead-column col-right">
-    <!-- Worker 3 removed - only 2 concurrent battles now -->
+    <div class="worker-pill" id="worker-2">
+      <div class="worker-left">
+        <div class="worker-label">BUGINTHECODE</div>
+        <div class="worker-opponent" id="worker-2-name">Idle</div>
+      </div>
+      <div class="worker-status idle" id="worker-2-status">Idle</div>
+    </div>
     <div class="dead-card">
-      <div class="hud-label">ELO</div>
-      <div id="accounts-elo-container"></div>
+      <div class="hud-label">TODAY</div>
+      <div class="hud-record">
+        <span class="hud-w" id="mid-wins2">0</span>
+        <span class="hud-sep">-</span>
+        <span class="hud-l" id="mid-losses2">0</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1020,9 +1031,10 @@ function updateOverlay(status, battles) {
       setText(todayEl, '');
     }
   }
-  if (sessionRecordEl) {
-    setText(sessionRecordEl, `${sessionWins}W-${sessionLosses}L`);
-  }
+  // Track local wins/losses for merged stats
+  localWins = hasDaily ? todayWins : sessionWins;
+  localLosses = hasDaily ? todayLosses : sessionLosses;
+  // sessionRecordEl updated by mergeBotStats()
 
   // Status dot
   const hasActiveBattles = activeBattles.length > 0;
@@ -1057,9 +1069,10 @@ function updateOverlay(status, battles) {
       setText(eloSyncEl, '--');
     }
   }
-  if (battleEl) {
-    setText(battleEl, buildBattleInfo(data, activeBattles));
-  }
+  // Track local opponent for merged display
+  const localBattleInfo = buildBattleInfo(data, activeBattles);
+  localOpponent = activeBattles.length > 0 ? (activeBattles[0].opponent || activeBattles[0].id || '') : '';
+  // battleEl updated by mergeBotStats()
   
   // Recent results pips
   const resultsEl = document.getElementById('recent-results');
@@ -1154,8 +1167,8 @@ function updateOverlay(status, battles) {
     }
   };
   updateWorker(1, worker1NameEl, worker1StatusEl);
-  updateWorker(2, worker2NameEl, worker2StatusEl);
-  // Only 2 workers now - Worker 3 removed
+  // Worker 2 is updated by pollDeku() separately
+  mergeBotStats();
 }
 
 let ws = null;
@@ -1271,9 +1284,83 @@ function connectWs() {
   });
 }
 
+// DEKU (BugInTheCode) poller — updates Worker 2 pill + merged stats
+const DEKU_STATE_URL = '/deku-state';
+let dekuWins = 0, dekuLosses = 0, dekuOpponent = '';
+async function pollDeku() {
+  const w2Name = document.getElementById('worker-2-name');
+  const w2Status = document.getElementById('worker-2-status');
+  if (!w2Name || !w2Status) return;
+  try {
+    const resp = await fetch(`${DEKU_STATE_URL}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!resp.ok) throw new Error('fetch failed');
+    const data = await resp.json();
+    const dStatus = data.status || {};
+    // Track DEKU wins/losses
+    dekuWins = Number(dStatus.today_wins ?? dStatus.wins ?? 0);
+    dekuLosses = Number(dStatus.today_losses ?? dStatus.losses ?? 0);
+    // Update Worker 2 pill
+    const battles = data.battles || dStatus.active_battles || [];
+    if (battles.length > 0) {
+      const b = battles[0];
+      dekuOpponent = (b && typeof b === 'object') ? (b.opponent || b.id || 'BugInTheCode') : String(b);
+      w2Name.textContent = dekuOpponent;
+      w2Status.textContent = 'Active';
+      w2Status.className = 'worker-status active';
+    } else {
+      const statusStr = (dStatus.status || '').toLowerCase();
+      const label = statusStr.includes('search') ? 'Searching' : 'Idle';
+      dekuOpponent = '';
+      w2Name.textContent = label;
+      w2Status.textContent = label;
+      w2Status.className = 'worker-status ' + label.toLowerCase();
+    }
+    // Merge stats into overlay
+    mergeBotStats();
+  } catch (e) {
+    w2Name.textContent = 'Offline';
+    w2Status.textContent = 'Offline';
+    w2Status.className = 'worker-status idle';
+  }
+}
+
+let localWins = 0, localLosses = 0, localOpponent = '';
+function mergeBotStats() {
+  const totalW = localWins + dekuWins;
+  const totalL = localLosses + dekuLosses;
+  const total = totalW + totalL;
+  // Update session record (top bar)
+  const sessionRecordEl = document.getElementById('session-record');
+  if (sessionRecordEl) sessionRecordEl.textContent = totalW + 'W-' + totalL + 'L';
+  // Update active count
+  const activeCountEl = document.getElementById('active-count');
+  if (activeCountEl) {
+    const localActive = document.getElementById('worker-1-status');
+    const dekuActive = document.getElementById('worker-2-status');
+    let count = 0;
+    if (localActive && localActive.textContent === 'Active') count++;
+    if (dekuActive && dekuActive.textContent === 'Active') count++;
+    activeCountEl.textContent = String(count);
+  }
+  // Update battle info (bottom bar) — show both opponents
+  const battleEl = document.getElementById('battle-info');
+  if (battleEl) {
+    const parts = [];
+    if (localOpponent) parts.push('vs ' + localOpponent);
+    if (dekuOpponent) parts.push('vs ' + dekuOpponent);
+    if (parts.length > 0) {
+      battleEl.textContent = parts.join('  |  ');
+    } else {
+      battleEl.textContent = 'Waiting for battle...';
+    }
+  }
+}
+
 pollOnce();
+pollDeku();
 connectWs();
 setInterval(pollOnce, 2000);
+setInterval(pollDeku, 3000);
 </script>
 </body>
 </html>

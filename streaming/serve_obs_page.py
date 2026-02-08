@@ -250,6 +250,13 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
 def _build_direct_battle_url(bid: str) -> str:
     # Use direct URL without ~~showdown to avoid "visit showdown directly" frame check.
     # OBS browser sources load as top-level pages so X-Frame-Options doesn't apply.
+    # Strip spectator hash suffix (e.g. battle-gen9ou-123456-abcdef... → battle-gen9ou-123456)
+    # The hash causes PS to load an empty room; short ID works for public spectating.
+    parts = bid.split('-')
+    # Format: battle-gen9ou-XXXXXXX[-spectatorhash]
+    # Keep first 3 parts (battle, format, number), drop any alpha-heavy suffix
+    if len(parts) >= 4 and not parts[3].isdigit():
+        bid = '-'.join(parts[:3])
     ts = int(time.time())
     return f"https://play.pokemonshowdown.com/{bid}?r={ts}"
 
@@ -681,6 +688,19 @@ async def handle_state(request: web.Request) -> web.Response:
     return web.json_response(build_state_payload())
 
 
+DEKU_STATE_URL = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
+
+async def handle_deku_state(request: web.Request) -> web.Response:
+    """Proxy DEKU's state endpoint to avoid CORS issues in OBS browser."""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(DEKU_STATE_URL, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                data = await resp.json()
+                return web.json_response(data)
+    except Exception:
+        return web.json_response({"error": "deku offline"}, status=502)
+
+
 def build_debug_payload() -> dict:
     payload = build_state_payload()
     battles = payload.get("battles") or []
@@ -833,6 +853,7 @@ def create_app() -> web.Application:
     app.router.add_get("/battles", handle_battles)
     app.router.add_get("/status", handle_status)
     app.router.add_get("/state", handle_state)
+    app.router.add_get("/deku-state", handle_deku_state)
     app.router.add_get("/debug_state", handle_debug_state)
     app.router.add_get("/active_battles.json", handle_battles_file)
     app.on_startup.append(start_background_tasks)
