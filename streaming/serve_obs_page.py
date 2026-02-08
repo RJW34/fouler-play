@@ -780,7 +780,11 @@ async def poll_files(app: web.Application) -> None:
 
 async def start_background_tasks(app: web.Application) -> None:
     app["poller"] = asyncio.create_task(poll_files(app))
-    app["elo_init"] = asyncio.create_task(_init_elo_cache())
+    # Initialize ELO cache and broadcast once ready
+    async def init_and_broadcast_elo():
+        await _init_elo_cache()
+        await broadcast("STATE_UPDATE", build_state_payload())
+    app["elo_init"] = asyncio.create_task(init_and_broadcast_elo())
     if _obs_client:
         app["obs_init"] = asyncio.create_task(maybe_update_obs_sources(build_state_payload()))
 
