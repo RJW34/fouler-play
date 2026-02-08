@@ -219,9 +219,6 @@ async def _post_battle_to_discord(
     
     # Build embed title showing the actual matchup
     message = f"{emoji} **{bot_display_name}** {result_text} vs **{opponent_name}**"
-    # Add player attribution if different from bot display name
-    if our_player_name and our_player_name != bot_display_name and our_player_name.lower() != bot_display_name.lower():
-        message += f"\n*({our_player_name} vs {opponent_name})*"
     
     # Add team info if available
     if team_name and team_name != "gen9ou":  # Skip if it's just the default format name
