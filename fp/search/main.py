@@ -2715,6 +2715,18 @@ def apply_team_strategy_bias(
         base_move = move.split()[-1] if is_switch else move
         move_name = normalize_name(base_move)
 
+        # Early-game hazard urgency for FAT/STALL teams
+        # Human stall players set rocks in the first 1-3 turns almost always
+        is_early_game = hasattr(battle, 'turn') and isinstance(battle.turn, int) and battle.turn <= 3
+        if move_name == "stealthrock" and is_early_game and not hazards_on_opp:
+            if playstyle in (Playstyle.FAT, Playstyle.STALL):
+                # Strong boost: rocks are the foundation of chip-based strategies
+                early_hazard_boost = 3.0 if battle.turn <= 1 else 2.5 if battle.turn <= 2 else 2.0
+                new_weight *= early_hazard_boost
+            elif playstyle in (Playstyle.BALANCE, Playstyle.BULKY_OFFENSE):
+                # Moderate boost for non-HO teams
+                new_weight *= 1.8
+
         # Apply style multipliers
         if move_name in hazard_moves_norm:
             if not hazards_on_opp or our_has_gholdengo:
@@ -2733,6 +2745,16 @@ def apply_team_strategy_bias(
                 new_weight *= 0.7
         if move_name in recovery_moves_norm:
             new_weight *= recovery_mult
+            # FAT/STALL teams should recover more aggressively
+            # A wall below 60% HP should almost always recover
+            if playstyle in (Playstyle.FAT, Playstyle.STALL):
+                active = battle.user.active
+                if active and active.max_hp > 0:
+                    hp_ratio = active.hp / active.max_hp
+                    if hp_ratio <= 0.4:
+                        new_weight *= 2.5  # Strong: heal when critically low
+                    elif hp_ratio <= 0.6:
+                        new_weight *= 1.8  # Moderate: heal to stay healthy
         if move_name in setup_moves_norm:
             new_weight *= setup_mult
             if active_is_wincon:
