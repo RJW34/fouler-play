@@ -60,6 +60,9 @@ OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
 SHOWDOWN_USER_ID = os.getenv("SHOWDOWN_USER_ID", "").strip()
+SHOWDOWN_ACCOUNTS = [
+    acc.strip() for acc in os.getenv("SHOWDOWN_ACCOUNTS", "").split(",") if acc.strip()
+]
 SHOWDOWN_FORMAT = os.getenv("PS_FORMAT", "gen9ou").strip().lower()
 ELO_REFRESH_COOLDOWN_SEC = int(os.getenv("SHOWDOWN_ELO_COOLDOWN_SEC", "5"))
 ELO_EVENT_RETRY_SEC = int(os.getenv("SHOWDOWN_ELO_EVENT_RETRY_SEC", "8"))
@@ -78,7 +81,7 @@ _last_obs_urls: dict[int, str | None] = {}
 _last_obs_updates: dict[int, float] = {}
 _last_obs_status: dict[int, str] = {}
 _obs_sources: list[str] = []
-_ladder_cache = {"elo": None, "updated": 0.0}
+_ladder_cache = {"accounts": {}, "updated": 0.0}
 _ladder_lock = asyncio.Lock()
 _last_stats = {"wins": None, "losses": None}
 _last_elo_refresh_ts = 0.0
@@ -156,12 +159,19 @@ def build_state_payload() -> dict:
     status["today_losses"] = daily.get("losses", 0)
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
+    
+    # Add accounts_elo to payload
+    accounts_elo = {}
+    if _ladder_cache.get("accounts"):
+        accounts_elo = dict(_ladder_cache["accounts"])
+    
     return {
         "status": status,
         "battles": battles,
         "count": battles_data.get("count", len(battles)),
         "max_slots": battles_data.get("max_slots"),
         "updated": battles_data.get("updated"),
+        "accounts_elo": accounts_elo,
     }
 
 
@@ -323,9 +333,10 @@ def _extract_elo_from_profile(html: str, fmt: str) -> int | None:
         return None
 
 
-async def fetch_showdown_elo() -> int | None:
+async def fetch_showdown_elo(user_id: str | None = None) -> int | None:
     # Prefer JSON user API (more reliable than HTML scraping).
-    user_id = _resolve_showdown_user_id()
+    if not user_id:
+        user_id = _resolve_showdown_user_id()
     if user_id:
         api_url = f"https://pokemonshowdown.com/users/{user_id}.json"
         timeout = aiohttp.ClientTimeout(total=6)
@@ -367,9 +378,15 @@ async def fetch_showdown_elo() -> int | None:
         except Exception:
             pass
 
-    url = _resolve_showdown_profile_url()
-    if not url:
-        return None
+    # Fallback to HTML scraping if JSON API didn't work
+    if not user_id:
+        user_id = _resolve_showdown_user_id()
+    if not user_id:
+        url = _resolve_showdown_profile_url()
+        if not url:
+            return None
+    else:
+        url = f"https://pokemonshowdown.com/users/{user_id}"
     timeout = aiohttp.ClientTimeout(total=6)
     headers = {"User-Agent": "FoulerPlayOBS/1.0"}
     try:
@@ -413,11 +430,17 @@ async def _replay_exists(replay_id: str) -> bool:
 
 async def _init_elo_cache() -> None:
     try:
-        elo = await fetch_showdown_elo()
-        if elo is not None:
-            async with _ladder_lock:
-                _ladder_cache["elo"] = elo
-                _ladder_cache["updated"] = time.time()
+        accounts = SHOWDOWN_ACCOUNTS if SHOWDOWN_ACCOUNTS else [_resolve_showdown_user_id()]
+        accounts = [acc for acc in accounts if acc]
+        if not accounts:
+            return
+        
+        async with _ladder_lock:
+            for acc in accounts:
+                elo = await fetch_showdown_elo(user_id=acc)
+                if elo is not None:
+                    _ladder_cache["accounts"][acc] = elo
+            _ladder_cache["updated"] = time.time()
     except Exception:
         pass
 
@@ -430,13 +453,21 @@ async def _refresh_elo(force: bool = False) -> bool:
         return False
 
     _last_elo_refresh_ts = now
-    elo = await fetch_showdown_elo()
-    if elo is None:
+    accounts = SHOWDOWN_ACCOUNTS if SHOWDOWN_ACCOUNTS else [_resolve_showdown_user_id()]
+    accounts = [acc for acc in accounts if acc]
+    if not accounts:
         return False
+    
+    updated_any = False
     async with _ladder_lock:
-        _ladder_cache["elo"] = elo
-        _ladder_cache["updated"] = time.time()
-    return True
+        for acc in accounts:
+            elo = await fetch_showdown_elo(user_id=acc)
+            if elo is not None:
+                _ladder_cache["accounts"][acc] = elo
+                updated_any = True
+        if updated_any:
+            _ladder_cache["updated"] = time.time()
+    return updated_any
 
 
 async def _run_elo_refresh_task(*, force: bool, delay: int = 0) -> None:
@@ -519,12 +550,21 @@ async def maybe_refresh_elo_from_event(event_type: str, payload: dict) -> None:
 
 
 def _apply_ladder_status(status: dict) -> dict:
-    if _ladder_cache.get("elo") is None:
-        return status
     merged = dict(status)
-    merged["elo"] = _ladder_cache.get("elo")
-    merged["elo_source"] = "showdown"
-    merged["elo_updated"] = _ladder_cache.get("updated")
+    accounts = _ladder_cache.get("accounts", {})
+    
+    # Backward compat: if only one account, set top-level "elo" field
+    if accounts:
+        # Prefer SHOWDOWN_USER_ID if set, else use first account
+        primary_user = _resolve_showdown_user_id()
+        if primary_user and primary_user in accounts:
+            merged["elo"] = accounts[primary_user]
+        else:
+            # Fallback: use first account's ELO
+            merged["elo"] = list(accounts.values())[0]
+        merged["elo_source"] = "showdown"
+        merged["elo_updated"] = _ladder_cache.get("updated")
+    
     return merged
 
 
@@ -657,7 +697,7 @@ def build_debug_payload() -> dict:
         "updated": time.time(),
         "expected": expected,
         "ladder": {
-            "elo": _ladder_cache.get("elo"),
+            "accounts": dict(_ladder_cache.get("accounts", {})),
             "elo_updated": _ladder_cache.get("updated"),
             "last_refresh_ts": _last_elo_refresh_ts,
             "last_event_ts": _last_elo_event_ts,

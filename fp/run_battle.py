@@ -423,14 +423,19 @@ async def update_active_battles_file():
 
 async def send_stream_event(event_type, payload):
     """Send a real-time event signal to the stream server."""
-    try:
-        url = "http://localhost:8777/event"
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json={"type": event_type, "payload": payload}, timeout=3) as resp:
-                return await resp.json()
-    except Exception:
-        # Silently fail if stream server isn't running
-        logger.debug("Stream event send failed")
+    url = "http://localhost:8777/event"
+    for attempt in range(2):  # Try twice: initial + 1 retry
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json={"type": event_type, "payload": payload}, timeout=3) as resp:
+                    return await resp.json()
+        except Exception as e:
+            if attempt == 0:
+                logger.debug(f"Stream event send failed (attempt 1/2), retrying in 2s: {e}")
+                await asyncio.sleep(2)
+            else:
+                # Final failure after retry
+                logger.warning(f"Stream event send failed after 2 attempts: {e}")
 
 
 def format_decision(battle, decision):
