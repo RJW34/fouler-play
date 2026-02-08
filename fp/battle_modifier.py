@@ -2978,6 +2978,11 @@ def get_damage_dealt(battle, split_msg, next_messages):
             next_line_split[1] == "-damage"
             and defending_side.name in next_line_split[2]
         ):
+            # Guard against None active pokemon (intermittent bug)
+            if defending_side.active is None:
+                logger.warning(f"defending_side.active is None for damage calculation, skipping")
+                return None
+            
             final_health, maxhp, _ = get_pokemon_info_from_condition(next_line_split[3])
             # maxhp can be 0 if the targetted pokemon fainted
             # the message would be: "0 fnt"
