@@ -238,7 +238,11 @@ async def handle_event(request: web.Request) -> web.Response:
 async def _process_event_update(event_type: str, payload: dict) -> None:
     try:
         await maybe_refresh_elo_from_event(event_type, payload)
-        await broadcast("STATE_UPDATE", build_state_payload())
+        state = build_state_payload()
+        await broadcast("STATE_UPDATE", state)
+        # Update OBS sources immediately when battle events come in (event-based, not polling)
+        if event_type in ("BATTLE_START", "BATTLE_END") and _obs_client:
+            await maybe_update_obs_sources(state)
     except Exception:
         pass
 
