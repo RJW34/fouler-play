@@ -351,6 +351,12 @@ body.mode-bottom #bottom-bar {
 .dead-column.col-center {
   transform: translateX(0);
   padding: 0 8px;
+  padding-top: 90px;
+}
+.emerald-card {
+  border-color: rgba(74, 222, 128, 0.35) !important;
+  padding: 10px 16px !important;
+  gap: 4px !important;
 }
 .worker-pill {
   background: rgba(16, 16, 28, 0.92);
@@ -674,11 +680,16 @@ body.hide-recent #mid-form {
     </div>
   </div>
   <div class="dead-column col-center">
-    <div class="dead-card">
+    <div class="dead-card emerald-card">
+      <div class="hud-label" style="color: #4ade80;">🎮 EMERALD AI</div>
+      <div class="hud-sub" id="emerald-status" style="color: rgba(255,255,255,0.85);">Title Screen — Awaiting Start</div>
+      <div class="hud-sub" style="font-size: 11px; opacity: 0.6;">Claude plays Pokémon Emerald to 100% via BizHawk</div>
+    </div>
+    <div class="dead-card" style="padding: 14px 20px;">
       <div class="hud-label">ELO</div>
       <div id="accounts-elo-container"></div>
     </div>
-    <div class="dead-card">
+    <div class="dead-card" style="padding: 14px 20px;">
       <div class="hud-label">NEXT FIX</div>
       <div class="hud-todo-text" id="mid-todo">Pending replay review</div>
       <div class="hud-sub" id="mid-form"></div>
