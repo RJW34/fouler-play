@@ -61,6 +61,14 @@ DISCORD_FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL")  # For turn
 # Bot identity for multi-bot reporting
 BOT_DISPLAY_NAME = os.getenv("BOT_DISPLAY_NAME", "").strip()  # e.g. "🪲 DEKU" or "💥 BAKUGO"
 
+# Fix Windows latin-1 encoded UTF-8 bytes (Issue 3)
+if BOT_DISPLAY_NAME:
+    try:
+        # Fix Windows latin-1 encoded UTF-8 bytes
+        BOT_DISPLAY_NAME = BOT_DISPLAY_NAME.encode('latin-1').decode('utf-8')
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        pass  # Already valid UTF-8
+
 # Import replay analyzer and turn reviewer (commented out during upgrade)
 # from replay_analysis.analyzer import ReplayAnalyzer
 # from replay_analysis.turn_review import TurnReviewer
@@ -99,14 +107,20 @@ class BattleState:
 
 
 class BotMonitor:
-    BATCH_SIZE = 3  # Report every N completed games
-
     def __init__(self):
         self._write_self_pid()
         atexit.register(self._cleanup_self_pid)
         self.process = None
         self.wins = 0
         self.losses = 0
+        # Issue 4: Make BATCH_SIZE configurable via env var
+        batch_size_env = os.getenv("BATCH_SIZE", "3").strip()
+        try:
+            self.BATCH_SIZE = int(batch_size_env)
+            if self.BATCH_SIZE < 1:
+                self.BATCH_SIZE = 3
+        except ValueError:
+            self.BATCH_SIZE = 3
         # Session rebasing: start session display at 0/0 even if early wins land quickly
         rebase_env = os.getenv("SESSION_REBASE_ON_START", "1").strip().lower()
         self.session_rebase_enabled = rebase_env not in ("0", "false", "no", "off")
@@ -198,12 +212,13 @@ class BotMonitor:
         await self._shutdown_child(reason=reason)
         self._cleanup_bot_main_pid()
 
-    async def send_discord_message(self, message, channel="project"):
+    async def send_discord_message(self, message, channel="project", suppress_embeds=False):
         """Send instant notification via Discord webhook
 
         Args:
             message: Message content
             channel: "project" (dev updates), "battles" (live feed), or "feedback" (turn reviews)
+            suppress_embeds: If True, suppress automatic URL embeds (Discord flag 1 << 2 = 4)
         """
         if channel == "battles":
             webhook_url = DISCORD_BATTLES_WEBHOOK
@@ -223,6 +238,9 @@ class BotMonitor:
 
         async with aiohttp.ClientSession() as session:
             payload = {"content": message}
+            # Issue 2: Add suppress_embeds flag (SUPPRESS_EMBEDS = 1 << 2 = 4)
+            if suppress_embeds:
+                payload["flags"] = 4
             try:
                 async with session.post(webhook_url, json=payload) as resp:
                     if resp.status == 204:
@@ -279,6 +297,46 @@ class BotMonitor:
                 pass
             await self.process.wait()
 
+    async def fetch_elo(self, username, pokemon_format="gen9ou"):
+        """Fetch current ELO and GXE from Pokemon Showdown ladder API.
+        
+        Returns:
+            tuple: (elo, gxe) or (None, None) on failure
+        """
+        try:
+            # Normalize username for API lookup (lowercase, no spaces)
+            user_id = username.lower().replace(' ', '')
+            
+            # Try user API first - more reliable
+            user_url = f"https://pokemonshowdown.com/users/{user_id}.json"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(user_url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        # ratings is a dict like {"gen9ou": {"elo": 1169, "gxe": 53.8, ...}}
+                        if 'ratings' in data and pokemon_format in data['ratings']:
+                            rating = data['ratings'][pokemon_format]
+                            elo = rating.get('elo')
+                            gxe = rating.get('gxe')
+                            if elo is not None:
+                                return (elo, gxe)
+            
+            # Fallback to ladder API (slower but works if user API fails)
+            ladder_url = f"https://pokemonshowdown.com/api/ladder/{pokemon_format}.json"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(ladder_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        ladder = await resp.json()
+                        # Search for user in ladder
+                        for entry in ladder:
+                            if entry.get('userid') == user_id:
+                                return (entry.get('elo'), entry.get('gxe'))
+            
+            return (None, None)
+        except Exception as e:
+            print(f"[MONITOR] Failed to fetch ELO: {e}")
+            return (None, None)
+
     async def flush_batch_report(self):
         """Post a summary of the last BATCH_SIZE games to Discord."""
         if not self.batch_results:
@@ -289,21 +347,41 @@ class BotMonitor:
         total = wins + losses
         wr = (wins / total * 100) if total > 0 else 0
 
+        # Fetch current ELO (Issue 1)
+        ps_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+        ps_format = os.getenv("PS_FORMAT", "gen9ou")
+        elo, gxe = await self.fetch_elo(ps_username, ps_format)
+        
+        elo_str = ""
+        if elo is not None:
+            elo_str = f" | **ELO: {elo}**"
+            if gxe is not None:
+                elo_str += f" ({gxe:.1f} GXE)"
+
         name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
-        msg = f"📊 **Batch Report{name_tag} ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR)\n"
+        msg = f"📊 **Batch Report{name_tag} ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR){elo_str}\n"
         msg += f"**Overall Record:** {self.wins}W - {self.losses}L\n\n"
 
-        # List results
+        # List results — suppress Discord embeds on non-loss replays with <url>
         for opp, result, replay in self.batch_results:
             emoji = "✅" if result == "won" else "💀" if result == "lost" else "🤝"
-            replay_link = f" — [replay]({replay})" if replay else ""
+            if replay:
+                if result == "lost":
+                    # Losses get full embed (bare URL on its own line)
+                    replay_link = f" — [replay]({replay})"
+                else:
+                    # Wins/ties get suppressed embed (angle brackets)
+                    replay_link = f" — [replay](<{replay}>)"
+            else:
+                replay_link = ""
             msg += f"{emoji} vs {opp}{replay_link}\n"
 
         # Loss analysis summary
         if self.batch_losses:
             msg += f"\n🔍 **Analyzing {len(self.batch_losses)} loss(es)...**"
 
-        await self.send_discord_message(msg, channel="battles")
+        # Suppress all auto-embeds on the batch message; losses get their own embed messages below
+        await self.send_discord_message(msg, channel="battles", suppress_embeds=True)
 
         # Run loss analyses in background
         for replay_url, opponent in self.batch_losses:
