@@ -1,0 +1,69 @@
+/* OBS Browser Source Custom CSS for Pokemon Showdown battles */
+/* Inject this via OBS browser source settings to hide UI elements */
+
+/* Hide "Do Not Sell My Personal Information" cookie banner */
+.ps-room-opaque[id*="do-not-sell"],
+.ps-room[id*="do-not-sell"],
+.ps-overlay[aria-label*="cookie"],
+.ps-overlay[aria-label*="privacy"],
+div[class*="ccpa"],
+div[class*="cookie-banner"],
+div[class*="privacy-banner"] {
+  display: none !important;
+}
+
+/* Hide Showdown header/navigation bar */
+.header,
+.ps-header,
+header.ps-header,
+.nav,
+.ps-nav,
+nav.ps-nav,
+.menubar,
+.ps-menubar {
+  display: none !important;
+}
+
+/* Hide "Choose name" toolbar / user controls */
+.ps-room-light .menubar,
+.ps-room-opaque .menubar,
+.battle-log .inner .choose-user,
+.choose-user,
+.choose-name,
+.usernameform,
+.userbar,
+.ps-userbar,
+.user-panel {
+  display: none !important;
+}
+
+/* Hide any top bars in battle rooms */
+.battle .battle-controls,
+.battle .battle-options,
+.ps-room-light > .menubar,
+.ps-room-opaque > .menubar {
+  display: none !important;
+}
+
+/* Ensure battles start at top (since we removed header) */
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.ps-room,
+.ps-room-light,
+.ps-room-opaque {
+  top: 0 !important;
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Hide any promotional banners */
+.ps-popup,
+.ps-notification,
+.promotion,
+.advertisement,
+[class*="promo"] {
+  display: none !important;
+}
