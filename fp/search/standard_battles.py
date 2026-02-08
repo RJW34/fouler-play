@@ -194,6 +194,8 @@ def choice_item(predicted_pkmn_set: PredictedPokemonSet):
 
     num_illogical_moves = 0
     for mv in predicted_pkmn_set.pkmn_moveset.moves:
+        if mv not in all_move_json:
+            continue  # Skip unknown moves (e.g. hiddenpower60)
         if all_move_json[mv][constants.CATEGORY] not in logical_moves and mv not in [
             "trick",
             "switcheroo",
@@ -234,7 +236,7 @@ def smogon_set_makes_sense(predicted_pkmn_set: PredictedPokemonSet):
 
         case "assaultvest":
             if predicted_pkmn_set.pkmn_set.ability != "klutz" and any(
-                all_move_json[mv][constants.CATEGORY] == constants.STATUS
+                all_move_json.get(mv, {}).get(constants.CATEGORY) == constants.STATUS
                 for mv in predicted_pkmn_set.pkmn_moveset.moves
             ):
                 return False

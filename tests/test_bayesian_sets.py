@@ -188,19 +188,16 @@ class TestBayesianSetProbabilities(unittest.TestCase):
         probs = bayesian_set_probabilities(pkmn)
         
         if len(probs) > 1:
-            # Get two sets with different counts
-            sets_by_count = sorted(probs.keys(), key=lambda s: s.pkmn_set.count, reverse=True)
+            # Sort by set count (probs is list of (PredictedPokemonSet, probability) tuples)
+            sets_by_count = sorted(probs, key=lambda t: t[0].pkmn_set.count, reverse=True)
             
             if len(sets_by_count) >= 2:
-                highest_count_set = sets_by_count[0]
-                lowest_count_set = sets_by_count[-1]
+                highest_count_set, highest_prob = sets_by_count[0]
+                lowest_count_set, lowest_prob = sets_by_count[-1]
                 
                 # If counts differ, probabilities should differ accordingly
                 if highest_count_set.pkmn_set.count > lowest_count_set.pkmn_set.count:
-                    self.assertGreater(
-                        probs[highest_count_set],
-                        probs[lowest_count_set]
-                    )
+                    self.assertGreater(highest_prob, lowest_prob)
 
     def test_hidden_power_handling(self):
         """Test that hidden power types are handled correctly"""
@@ -211,7 +208,8 @@ class TestBayesianSetProbabilities(unittest.TestCase):
         probs = bayesian_set_probabilities(pkmn)
         
         # Sets with incompatible hidden power types should be filtered
-        for pkmn_set in probs.keys():
+        # probs is list of (PredictedPokemonSet, probability) tuples
+        for pkmn_set, _ in probs:
             has_hp = any(m.startswith(constants.HIDDEN_POWER) for m in pkmn_set.pkmn_moveset.moves)
             if has_hp:
                 # Should have a compatible hidden power type
@@ -231,7 +229,7 @@ class TestBayesianSetProbabilities(unittest.TestCase):
         # Should work with None battle
         probs = bayesian_set_probabilities(pkmn, None)
         
-        self.assertIsInstance(probs, dict)
+        self.assertIsInstance(probs, list)
 
     def test_empty_datasets_returns_empty(self):
         """Test behavior when datasets are empty"""

@@ -96,13 +96,25 @@ Based on what you find, fix the single most impactful pattern. Examples:
 - If status moves are ignored: check if Toxic/WoW are being deprioritized somewhere
 
 **Step 4 — Verify and push:**
-- [ ] Run team_performance.py, study the report for patterns
-- [ ] Review 3-5 recent losses — identify the #1 recurring mistake
-- [ ] Implement a targeted fix for that mistake pattern
-- [ ] `python -m pytest tests/ -v` — tests pass
-- [ ] `python -c "from fp.search.main import find_best_move; print('OK')"` — imports work
-- [ ] Update this TASKBOARD.md (check boxes, note what you found/fixed)
+- [x] Run team_performance.py, study the report for patterns
+- [x] Review 3-5 recent losses — identify the #1 recurring mistake
+- [x] Implement a targeted fix for that mistake pattern
+- [x] `python -m pytest tests/ -v` — tests pass (82/82)
+- [x] `python -c "from fp.search.main import find_best_move; print('OK')"` — imports work
+- [x] Update this TASKBOARD.md (check boxes, note what you found/fixed)
 - [ ] `git push origin foulest-play`
+
+**Diagnosis findings (2026-02-07):**
+- 76% of losses had NO Stealth Rock set — the #1 problem for fat/stall teams
+- Bot treated turn 1 identically to turn 30 — no early-game hazard priority
+- Recovery moves underused: avg 1.7/game in wins vs needed much more in losses
+- Switch rate in losses was 46% (too high) vs 32% in wins
+- MCTS inherently undervalues non-damaging moves (no immediate HP impact)
+
+**Fix applied:** Early-game hazard urgency + FAT/STALL recovery boost
+- Turns 1-3: Stealth Rock gets 2-3x weight boost for FAT/STALL teams, 1.8x for balance
+- FAT/STALL recovery moves get 2.5x boost when HP ≤40%, 1.8x when ≤60%
+- Also fixed: hiddenpower60 KeyError in standard_battles.py, Bayesian test API mismatch
 
 ### Phase 2: Better Opponent Modeling (target: 1200 -> 1400)
 - [x] Weighted sampling by set count
