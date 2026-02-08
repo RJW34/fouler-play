@@ -6,17 +6,38 @@ TEAM_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 class TeamListIterator:
+    _INDEX_FILE = os.path.join(TEAM_DIR, ".team_iterator_index")
+
     def __init__(self, team_list_file):
         with open(os.path.join(TEAM_DIR, team_list_file), "r") as f:
             lines = f.readlines()
-        self.team_names = [line.strip() for line in lines]
-        self.index = 0
+        self.team_names = [line.strip() for line in lines if line.strip()]
+        # Restore persisted index so rotation survives restarts
+        self.index = self._load_index()
+
+    def _load_index(self):
+        try:
+            with open(self._INDEX_FILE, "r") as f:
+                idx = int(f.read().strip())
+                if 0 <= idx < len(self.team_names):
+                    return idx
+        except (FileNotFoundError, ValueError):
+            pass
+        return 0
+
+    def _save_index(self):
+        try:
+            with open(self._INDEX_FILE, "w") as f:
+                f.write(str(self.index))
+        except OSError:
+            pass
 
     def get_next_team(self):
         if not self.team_names:
             raise ValueError("Team list is empty")
         team_name = self.team_names[self.index]
         self.index = (self.index + 1) % len(self.team_names)
+        self._save_index()
         return team_name
 
 
