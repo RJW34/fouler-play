@@ -191,6 +191,9 @@ class BotMonitor:
             self.drain_timeout_sec = int(drain_timeout_env)
         else:
             self.drain_timeout_sec = None
+        # ELO tracking for stream overlay
+        self.current_elo = None
+        self.last_elo_fetch = None
 
     def _write_self_pid(self):
         try:
@@ -493,12 +496,22 @@ class BotMonitor:
     async def monitor_output(self, stream):
         """Monitor bot output line by line"""
         last_cleanup = datetime.now()
+        last_elo_fetch = datetime.now()
         
         async for line in stream:
             # Periodic cleanup of stale battles (every 5 minutes)
             if (datetime.now() - last_cleanup).total_seconds() > 300:
                 await self.cleanup_stale_battles()
                 last_cleanup = datetime.now()
+            
+            # Periodic ELO fetch for stream overlay (every 60 seconds)
+            if (datetime.now() - last_elo_fetch).total_seconds() > 60:
+                username = os.getenv("PS_USERNAME", "BugInTheCode")
+                elo, _ = await self.fetch_elo(username)
+                if elo is not None:
+                    self.current_elo = elo
+                    self.last_elo_fetch = datetime.now()
+                last_elo_fetch = datetime.now()
             
             line = line.decode('utf-8', errors='replace').strip()
             logging.debug(f"Line: {line}")
@@ -556,6 +569,7 @@ class BotMonitor:
                     await update_stream_status(
                         wins=self.wins,
                         losses=self.losses,
+                        elo=self.current_elo,
                         status="Battling" if active_battle_ids else "Idle",
                         battle_info=battle_info,
                     )
@@ -695,6 +709,7 @@ class BotMonitor:
                 ) if active_battle_ids else "Waiting..."
                 await update_stream_status(
                     wins=self.wins, losses=self.losses,
+                    elo=self.current_elo,
                     status="Battling" if active_battle_ids else "Idle",
                     battle_info=battle_info
                 )

@@ -2,24 +2,24 @@
   "caterpie": {
     "pokemon_name": "caterpie",
     "physical_moves": [
-      "earthquake",
       "phantomforce",
+      "earthquake",
+      "acrobatics",
       "scaleshot",
-      "tackle",
-      "acrobatics"
+      "tackle"
     ],
     "special_moves": [],
     "status_moves": [
+      "dragondance",
+      "healingwish",
+      "agility",
+      "sleeptalk",
+      "swordsdance",
+      "protect",
       "meditate",
       "destinybond",
       "somerandomunknownmove",
-      "stringshot",
-      "dragondance",
-      "swordsdance",
-      "healingwish",
-      "protect",
-      "agility",
-      "sleeptalk"
+      "stringshot"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"

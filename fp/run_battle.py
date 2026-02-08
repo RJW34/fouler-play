@@ -1030,7 +1030,21 @@ async def get_battle_tag_and_opponent(
 
 def _extract_opponent_from_message(msg):
     """Extract opponent name from a battle message. Returns None if not found."""
-    # Try |player| format first
+    # Try |title| format first (comes earliest in battle init)
+    for line in msg.split("\n"):
+        if "|title|" in line:
+            # Format: |title|Player1 vs. Player2
+            parts = line.split("|")
+            if len(parts) >= 3:
+                title = parts[2]
+                if " vs. " in title:
+                    players = title.split(" vs. ")
+                    for player in players:
+                        player = player.strip()
+                        if player.lower() != FoulPlayConfig.username.lower():
+                            return player
+    
+    # Try |player| format
     for line in msg.split("\n"):
         if "|player|" in line:
             parts = line.split("|")
@@ -1039,7 +1053,7 @@ def _extract_opponent_from_message(msg):
                 if player_name.lower() != FoulPlayConfig.username.lower():
                     return player_name
 
-    # Try vs. format in title
+    # Fallback: vs. format anywhere in message
     if "vs." in msg:
         opponent_name = msg.split("vs.")[1].split("|")[0].strip()
         if opponent_name.lower() != FoulPlayConfig.username.lower():
