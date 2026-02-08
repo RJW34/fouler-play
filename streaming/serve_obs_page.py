@@ -160,10 +160,11 @@ def build_state_payload() -> dict:
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
     
-    # Add accounts_elo to payload
+    # Add accounts_elo to status (so overlay.html receives it via payload.status)
     accounts_elo = {}
     if _ladder_cache.get("accounts"):
         accounts_elo = dict(_ladder_cache["accounts"])
+    status["accounts_elo"] = accounts_elo
     
     return {
         "status": status,
@@ -171,7 +172,7 @@ def build_state_payload() -> dict:
         "count": battles_data.get("count", len(battles)),
         "max_slots": battles_data.get("max_slots"),
         "updated": battles_data.get("updated"),
-        "accounts_elo": accounts_elo,
+        "accounts_elo": accounts_elo,  # Also keep at top-level for /state endpoint compat
     }
 
 
