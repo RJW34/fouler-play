@@ -1326,6 +1326,11 @@ async function pollDeku() {
       w2Status.textContent = label;
       w2Status.className = 'worker-status ' + label.toLowerCase();
     }
+    // Update right-side DEKU score card
+    const dw = document.getElementById('mid-wins2');
+    const dl = document.getElementById('mid-losses2');
+    if (dw) dw.textContent = dekuWins;
+    if (dl) dl.textContent = dekuLosses;
     // Merge stats into overlay
     mergeBotStats();
   } catch (e) {
