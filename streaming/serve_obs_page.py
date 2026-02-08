@@ -784,11 +784,29 @@ async def poll_files(app: web.Application) -> None:
             await broadcast("STATE_UPDATE", build_state_payload())
 
         # Periodic OBS sync so a failed update doesn't leave a slot stale.
+        # Also poll DEKU's state for cross-machine battle display in slot 2.
         if _obs_client and OBS_SYNC_INTERVAL_SEC > 0:
             now = time.time()
             if (now - last_obs_sync) >= OBS_SYNC_INTERVAL_SEC:
                 last_obs_sync = now
-                await maybe_update_obs_sources(build_state_payload())
+                local_payload = build_state_payload()
+                # Merge DEKU battles into slot 2
+                try:
+                    deku_url = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
+                    async with aiohttp.ClientSession() as sess:
+                        async with sess.get(deku_url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
+                            if resp.status == 200:
+                                deku_data = await resp.json()
+                                deku_battles = deku_data.get("battles", [])
+                                for b in deku_battles:
+                                    b["slot"] = 2  # Force DEKU to slot 2
+                                local_battles = local_payload.get("battles", [])
+                                for b in local_battles:
+                                    b.setdefault("slot", 1)
+                                local_payload["battles"] = local_battles + deku_battles
+                except Exception:
+                    pass
+                await maybe_update_obs_sources(local_payload)
 
         # Periodic ELO refresh in case no events fire (e.g., after restart).
         if ELO_POLL_INTERVAL_SEC > 0:
