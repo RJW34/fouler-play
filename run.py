@@ -10,6 +10,13 @@ import time
 from copy import deepcopy
 from pathlib import Path
 
+# Load .env so webhook URLs and other config are available to submodules
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    pass  # dotenv not installed; rely on systemd EnvironmentFile
+
 from config import FoulPlayConfig, init_logging, BotModes
 import constants
 
