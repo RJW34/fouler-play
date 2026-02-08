@@ -1,9 +1,20 @@
 # TASKBOARD.md - Fouler Play Coordination
 
+**This is the single source of truth for fouler-play operations.** If anything contradicts this file, this file wins. `fouler-play-v2` has been archived — it was a duplicate clone DEKU created. Only `/home/ryan/projects/fouler-play` exists now.
+
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
 **Branch:** foulest-play
-**Bot Account:** ALL CHUNG (ELO: ~1200, stuck at 50% win rate)
+**Bot Account:** BugInTheCode on DEKU, ALL CHUNG on BAKUGO
 **Updated:** 2026-02-07
+
+---
+
+## Standing Rules (check every session — fix drift immediately)
+
+1. **1 battle per machine.** DEKU runs `--max-concurrent-battles 1`. BAKUGO runs `--max-concurrent-battles 1`. MCTS search quality degrades when sharing CPU across battles. This is enforced in the systemd service file — do not override it.
+2. **Discord battle reporting must work.** Completed results, replays, and ELO should post to #fouler-play-battles. If battles are happening but nothing's posting, fix it before doing anything else.
+3. **One fouler-play process per machine.** Managed by systemd on DEKU. Check before any restart: `pgrep -c -f "run.py.*BugInTheCode"` should return 1.
+4. **One source of truth.** This file. `fouler-play-v2/` is archived. `BOT_PROTOCOL.md` is supplementary. If they conflict, this file wins.
 
 ---
 
@@ -177,9 +188,9 @@ Pokemon Showdown **blocks iframes** with `X-Frame-Options: DENY`. You CANNOT emb
 
 **DO NOT try to use iframes for battles. They will not work.**
 
-### Target Layout (2 battles, not 3)
+### Target Layout (1 battle per machine, 2 total across DEKU + BAKUGO)
 
-We run **2 concurrent battles** (`MAX_CONCURRENT_BATTLES=2`). OBS has these sources:
+Each machine runs **1 concurrent battle** (`MAX_CONCURRENT_BATTLES=1`). OBS has these sources:
 
 ```
 ┌──────────────────┬──────────────────┬──────────────────┐
