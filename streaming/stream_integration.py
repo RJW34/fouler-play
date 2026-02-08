@@ -32,7 +32,8 @@ _last_active_ids: set[str] = set()
 async def send_stream_event(event_type, payload):
     """Send a real-time event signal to the stream server."""
     try:
-        url = "http://localhost:8777/event"
+        # Support remote stream servers for cross-machine setups (DEKU->BAKUGO OBS)
+        url = os.environ.get("STREAM_EVENT_URL", "http://localhost:8777/event")
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json={"type": event_type, "payload": payload}, timeout=3) as resp:
                 return await resp.json()
