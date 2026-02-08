@@ -242,8 +242,8 @@ class _FoulPlayConfig:
         self.max_concurrent_battles = max(1, args.max_concurrent_battles)
         self.max_mcts_battles = args.max_mcts_battles if args.max_mcts_battles > 0 else None
         if self.max_mcts_battles is None:
-            # Default MCTS samples to the live concurrency level so logs align with expectation.
-            self.max_mcts_battles = self.max_concurrent_battles
+            # Default MCTS samples to 4 — sample count is independent of concurrency.
+            self.max_mcts_battles = 4
         self.run_count = args.run_count
         self.team_name = args.team_name or self.pokemon_format
         self.team_names = [t.strip() for t in args.team_names.split(",")] if args.team_names else None
