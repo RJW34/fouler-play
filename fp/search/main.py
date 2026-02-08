@@ -23,6 +23,8 @@ from constants import (
     TOXIC_POISON_MOVES,
     POISON,
     TOXIC,
+    BURN,
+    PARALYZED,
     # Type-absorbing abilities
     POKEMON_COMMONLY_WATER_IMMUNE,
     WATER_TYPE_MOVES,
@@ -2243,6 +2245,57 @@ def apply_switch_penalties(
         if has_recovery:
             multiplier *= BOOST_SWITCH_HAS_RECOVERY
             reasons.append("has recovery")
+
+        # === POISON HEAL STATUS VULNERABILITY ===
+        # Poison Heal mons (Gliscor, Breloom) are ruined if burned before Toxic Orb activates
+        # Status-backfire mons (Guts, Marvel Scale) WANT to be statused
+        if opponent is not None:
+            target_ability = getattr(target_pkmn, "ability", None)
+            target_status = getattr(target_pkmn, "status", None)
+            target_name_norm = normalize_name(target_pkmn.name)
+            target_base_norm = normalize_name(getattr(target_pkmn, "base_name", "") or target_pkmn.name)
+            
+            # Check if target is a Poison Heal mon
+            is_poison_heal = (
+                (target_ability and normalize_name(target_ability) == "poisonheal")
+                or target_name_norm in POKEMON_COMMONLY_POISON_HEAL
+                or target_base_norm in POKEMON_COMMONLY_POISON_HEAL
+            )
+            
+            # Check if target is a status-backfire mon (Guts, Marvel Scale, Quick Feet)
+            is_status_backfire = (
+                target_name_norm in POKEMON_STATUS_BACKFIRES
+                or target_base_norm in POKEMON_STATUS_BACKFIRES
+            )
+            
+            # Get opponent's known moves
+            opponent_moves = getattr(opponent, "moves", [])
+            opponent_move_names = [
+                m.name if hasattr(m, "name") else str(m) for m in opponent_moves
+            ]
+            
+            # Check for status-inflicting moves
+            has_burn_move = any(
+                move_name in STATUS_INFLICTING_MOVES and move_name in {"willowisp", "scald", "searingshot", "inferno", "sacredfire", "burningjealousy"}
+                for move_name in opponent_move_names
+            )
+            has_paralyze_move = any(
+                move_name in STATUS_INFLICTING_MOVES and move_name in {"thunderwave", "stunspore", "glare", "nuzzle", "zapcannon", "bodyslam"}
+                for move_name in opponent_move_names
+            )
+            has_status_move = has_burn_move or has_paralyze_move
+            
+            # PENALTY: Poison Heal mon switching into burn move (if not already poisoned)
+            if is_poison_heal and has_burn_move and target_status not in (POISON, TOXIC):
+                # This is catastrophic - burning a Poison Heal mon ruins it permanently
+                multiplier *= PENALTY_SWITCH_WEAK_TO_OPPONENT  # Use existing severe penalty constant
+                reasons.append("Poison Heal vs burn move")
+            
+            # BOOST: Status-backfire mon (Guts/Marvel Scale) switching into status move
+            # These mons WANT to be statused (if not already statused)
+            if is_status_backfire and has_status_move and target_status is None:
+                multiplier *= BOOST_SWITCH_COUNTERS  # Use existing counter boost constant
+                reasons.append("Guts/Marvel Scale vs status move")
 
         # === PLAYSTYLE ADJUSTMENT ===
         # For penalties (multiplier < 1.0), apply playstyle modulation
