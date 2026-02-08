@@ -92,11 +92,27 @@ async def _send_battle_chat(ps_websocket_client, battle_tag: str, messages: list
 
 
 def _normalize_replay_id(battle_id: str) -> str:
+    """Convert a battle tag to a public replay ID.
+    
+    Battle tags come in two forms:
+      - battle-gen9ou-2535182938          (public)
+      - battle-gen9ou-2535189406-HASH     (private hash appended)
+    
+    Public replay IDs are always: format-number (e.g. gen9ou-2535182938)
+    The private hash (4th segment) must be stripped or the URL 404s.
+    """
     if not battle_id:
         return ""
-    if battle_id.startswith("battle-"):
-        return battle_id.replace("battle-", "", 1)
-    return battle_id
+    tag = battle_id
+    if tag.startswith("battle-"):
+        tag = tag.replace("battle-", "", 1)
+    # Strip private hash: format is "gen9ou-NUMBER" or "gen9ou-NUMBER-PRIVATEHASH"
+    # Keep only first two segments (format + number)
+    parts = tag.split("-")
+    if len(parts) >= 3:
+        # parts[0] = "gen9ou", parts[1] = number, parts[2+] = private hash
+        tag = f"{parts[0]}-{parts[1]}"
+    return tag
 
 
 async def _replay_exists(replay_id: str) -> bool:
@@ -168,12 +184,22 @@ async def _post_battle_to_discord(
     
     # Add replay link if available
     if replay_url:
-        message += f"\n{replay_url}"
+        # Wrap non-loss replays in <> to suppress Discord embed
+        if is_win or is_tie:
+            message += f"\n<{replay_url}>"
+        else:
+            message += f"\n{replay_url}"
     else:
-        # Construct likely replay URL from battle_tag
+        # Construct replay URL from battle_tag and verify it exists
         replay_id = _normalize_replay_id(battle_tag)
         if replay_id:
-            message += f"\nhttps://replay.pokemonshowdown.com/{replay_id}"
+            constructed_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+            if await _replay_exists(replay_id):
+                if is_win or is_tie:
+                    message += f"\n<{constructed_url}>"
+                else:
+                    message += f"\n{constructed_url}"
+                # else: replay doesn't exist (not uploaded), skip link
     
     # Send to Discord
     try:
