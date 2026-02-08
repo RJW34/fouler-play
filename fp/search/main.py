@@ -195,6 +195,12 @@ from constants import (
     AGGRESSIVE_MOVES,
     # PHASE 4.1: Endgame Solver
     ENDGAME_MAX_POKEMON,
+    # Proactive sweep prevention (2026-02-08)
+    PENALTY_STAY_VS_SETUP_SWEEPER,
+    PENALTY_PASSIVE_VS_BOOSTED,
+    BOOST_SWITCH_VS_BOOSTED,
+    BOOST_PHAZE_VS_BOOSTED,
+    BOOST_REVENGE_VS_BOOSTED,
 )
 from fp.battle import Battle
 from fp.decision_trace import build_trace_base
@@ -380,6 +386,12 @@ class OpponentAbilityState:
     # === OUR BOOST STATE (ANTI-REDUNDANT SETUP) ===
     our_attack_boost: int = 0  # Replay: gen9ou-2532366515 turn 55 (Swords Dance at +4)
     our_spa_boost: int = 0  # Replay: gen9ou-2532366515 turn 55 (Swords Dance at +4)
+
+    # === OPPONENT BOOST STATE (PROACTIVE SWEEP PREVENTION 2026-02-08) ===
+    opponent_attack_boost: int = 0  # Opponent's Attack boost stage
+    opponent_spa_boost: int = 0  # Opponent's Special Attack boost stage
+    opponent_speed_boost: int = 0  # Opponent's Speed boost stage
+    opponent_has_offensive_boost: bool = False  # Opponent has +1 or more Atk/SpA
 
     # === PHASE 1.3: SCREENS AWARENESS ===
     opponent_has_reflect: bool = False  # Opponent has Reflect up
@@ -681,6 +693,15 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
         boosts = getattr(battle.user.active, "boosts", {}) or {}
         state.our_attack_boost = int(boosts.get(constants.ATTACK, 0) or 0)
         state.our_spa_boost = int(boosts.get(constants.SPECIAL_ATTACK, 0) or 0)
+
+    # Track opponent's offensive boosts (PROACTIVE SWEEP PREVENTION 2026-02-08)
+    opp_boosts = getattr(opponent, "boosts", {}) or {}
+    state.opponent_attack_boost = int(opp_boosts.get(constants.ATTACK, 0) or 0)
+    state.opponent_spa_boost = int(opp_boosts.get(constants.SPECIAL_ATTACK, 0) or 0)
+    state.opponent_speed_boost = int(opp_boosts.get(constants.SPEED, 0) or 0)
+    state.opponent_has_offensive_boost = (
+        state.opponent_attack_boost > 0 or state.opponent_spa_boost > 0
+    )
 
     # === WEATHER AND TERRAIN DETECTION ===
     state.weather = getattr(battle, "weather", "") or ""
@@ -1421,6 +1442,8 @@ def apply_ability_penalties(
             ability_state.our_hp_percent >= 0.95,
             # PHASE 3.3: Momentum Tracking
             ability_state.momentum_level != "neutral",
+            # Proactive sweep prevention (2026-02-08)
+            ability_state.opponent_has_offensive_boost,
         ]
     ):
         return final_policy
@@ -1736,8 +1759,57 @@ def apply_ability_penalties(
                 penalty = BOOST_PROTECT_PUNISH
                 reason = "Opponent used Protect (free setup turn)"
 
+        # =================================================================
+        # PROACTIVE SWEEP PREVENTION (2026-02-08)
+        # Heavy penalties for staying in vs boosted threats
+        # =================================================================
+        if ability_state.opponent_has_offensive_boost:
+            boost_level = max(ability_state.opponent_attack_boost, ability_state.opponent_spa_boost)
+            
+            # PRIORITY 1: Heavily boost switching vs boosted opponent
+            if move.startswith("switch "):
+                if penalty >= 1.0:
+                    # Scale boost with boost level (+1 = 1.6x, +2 = 2.0x, +3+ = 2.4x)
+                    switch_boost = BOOST_SWITCH_VS_BOOSTED + (boost_level - 1) * 0.2
+                    penalty = max(penalty, switch_boost)
+                    reason = f"Switch vs +{boost_level} boosted threat (CRITICAL)"
+            
+            # PRIORITY 2: Massively boost phazing moves vs boosted opponent
+            elif move_name in PHAZING_MOVES:
+                if penalty >= 1.0:
+                    penalty = max(penalty, BOOST_PHAZE_VS_BOOSTED)
+                    reason = f"Phaze +{boost_level} boosted sweeper (reset threat)"
+            
+            # PRIORITY 3: Boost priority/revenge moves (IF we can KO)
+            elif move_name in PRIORITY_MOVES:
+                if penalty >= 1.0:
+                    penalty = max(penalty, BOOST_REVENGE_VS_BOOSTED)
+                    reason = f"Priority vs +{boost_level} threat (revenge kill)"
+            
+            # PRIORITY 4: HEAVILY penalize passive/setup moves vs boosted opponent
+            elif move_name in SETUP_MOVES or move_name in STATUS_ONLY_MOVES:
+                penalty = min(penalty, PENALTY_PASSIVE_VS_BOOSTED)
+                reason = f"PASSIVE vs +{boost_level} boosted threat (will sweep)"
+            
+            # PRIORITY 5: Penalize staying in with non-damaging moves
+            else:
+                move_data = all_move_json.get(move_name, {})
+                move_category = move_data.get(constants.CATEGORY, "")
+                base_power = move_data.get(constants.BASE_POWER, 0)
+                
+                # If it's not a strong damaging move, penalize staying in
+                is_strong_attack = (
+                    move_category in {constants.PHYSICAL, constants.SPECIAL} 
+                    and base_power >= 80
+                )
+                
+                if not is_strong_attack and not move.startswith("switch "):
+                    # Moderate penalty for staying in with weak moves
+                    penalty = min(penalty, PENALTY_STAY_VS_SETUP_SWEEPER)
+                    reason = f"Stay vs +{boost_level} boosted threat (risky)"
+
         # Anti-setup punishment: boost aggressive replies after opponent sets up
-        if ability_state.opponent_used_setup:
+        elif ability_state.opponent_used_setup:
             move_data = all_move_json.get(move_name, {})
             move_category = move_data.get(constants.CATEGORY, "")
             base_power = move_data.get(constants.BASE_POWER, 0)
@@ -2210,7 +2282,7 @@ def apply_switch_penalties(
                     multiplier *= BOOST_SWITCH_RESISTS_STAB
                     reasons.append("resists opponent STAB")
 
-        # === UNAWARE VS SETUP BOOST ===
+        # === UNAWARE VS SETUP BOOST (ENHANCED 2026-02-08) ===
         if opponent is not None:
             opp_boosts = getattr(opponent, "boosts", {}) or {}
             has_offensive_boost = (
@@ -2218,23 +2290,51 @@ def apply_switch_penalties(
                 or opp_boosts.get(constants.SPECIAL_ATTACK, 0) > 0
             )
             if has_offensive_boost:
+                boost_level = max(opp_boosts.get(constants.ATTACK, 0), opp_boosts.get(constants.SPECIAL_ATTACK, 0))
+                
                 target_ability = getattr(target_pkmn, "ability", None)
                 target_ability_norm = normalize_name(target_ability) if target_ability else None
                 target_name_norm = normalize_name(target_pkmn.name)
                 target_base_norm = normalize_name(getattr(target_pkmn, "base_name", "") or target_pkmn.name)
+                
+                # CRITICAL: Unaware walls boosted sweepers perfectly
                 if (
                     target_ability_norm == "unaware"
                     or target_name_norm in POKEMON_COMMONLY_UNAWARE
                     or target_base_norm in POKEMON_COMMONLY_UNAWARE
                 ):
-                    multiplier *= BOOST_SWITCH_UNAWARE_VS_SETUP
-                    reasons.append("Unaware vs boosted attacker")
-                if any(m in PHAZING_MOVES or m == "haze" for m in target_move_names):
+                    # Scale boost with threat level
+                    unaware_boost = BOOST_SWITCH_UNAWARE_VS_SETUP + (boost_level - 1) * 0.15
+                    multiplier *= unaware_boost
+                    reasons.append(f"Unaware vs +{boost_level} boosted (PERFECT WALL)")
+                
+                # CRITICAL: Phazing resets all boosts
+                elif any(m in PHAZING_MOVES or m == "haze" for m in target_move_names):
+                    phaze_boost = BOOST_SWITCH_COUNTERS + (boost_level - 1) * 0.1
+                    multiplier *= phaze_boost
+                    reasons.append(f"Phaze/Haze vs +{boost_level} boosted (RESET THREAT)")
+                
+                # HIGH PRIORITY: Priority moves can revenge kill
+                elif any(m in PRIORITY_MOVES for m in target_move_names):
                     multiplier *= BOOST_SWITCH_COUNTERS
-                    reasons.append("Haze/Phaze vs boosted attacker")
-                if any(m in PRIORITY_MOVES for m in target_move_names):
-                    multiplier *= BOOST_SWITCH_COUNTERS
-                    reasons.append("priority check vs boosted attacker")
+                    reasons.append(f"Priority vs +{boost_level} boosted (revenge kill)")
+                
+                # DEFENSIVE: Type resistance helps survive
+                else:
+                    target_types = getattr(target_pkmn, "types", []) or []
+                    if target_types and opponent_types:
+                        # Check if target resists opponent's STAB
+                        resists_count = 0
+                        for opp_type in opponent_types:
+                            effectiveness = type_effectiveness_modifier(opp_type, target_types)
+                            if effectiveness <= 0.5:
+                                resists_count += 1
+                        
+                        # If we resist their STAB, we can at least survive to check them
+                        if resists_count > 0:
+                            resist_boost = 1.3 + (boost_level - 1) * 0.1
+                            multiplier *= resist_boost
+                            reasons.append(f"Resists STAB vs +{boost_level} boosted (defensive check)")
 
         # === RECOVERY MOVE BOOST ===
         has_recovery = False

@@ -1309,6 +1309,16 @@ BOOST_PRESSURE_MOMENTUM = 1.2                 # +20% pressure when positive mome
 BOOST_PIVOT_NEGATIVE_MOMENTUM = 1.2           # +20% pivots when negative momentum
 BOOST_HIGHRISK_DESPERATE = 1.3                # +30% high-risk when very behind
 
+# =============================================================================
+# PHASE PROACTIVE: SETUP SWEEP PREVENTION (2026-02-08)
+# =============================================================================
+# Penalties for staying in against boosted threats
+PENALTY_STAY_VS_SETUP_SWEEPER = 0.15         # 85% penalty for non-switch vs setup threat
+PENALTY_PASSIVE_VS_BOOSTED = 0.25            # 75% penalty for passive moves vs boosted opponent
+BOOST_SWITCH_VS_BOOSTED = 1.6                # +60% boost for switching vs boosted opponent
+BOOST_PHAZE_VS_BOOSTED = 1.8                 # +80% boost for phazing boosted opponent
+BOOST_REVENGE_VS_BOOSTED = 1.5               # +50% boost for priority/revenge vs boosted opponent
+
 # Aggressive moves (benefit from momentum)
 AGGRESSIVE_MOVES = {
     "swordsdance",
