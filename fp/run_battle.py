@@ -414,8 +414,8 @@ async def update_active_battles_file():
         for bid, info in _active_battles.items():
             # Clean ID - ensure no whitespace or hidden characters
             clean_id = re.sub(r'[^a-zA-Z0-9-]', '', bid)
-            # Use ~~showdown hash route for proper embedding
-            url = f"https://play.pokemonshowdown.com/~~showdown/?embed=1&dark=1#{clean_id}"
+            # Use short battle ID format - works for both local and cross-machine spectator viewing
+            url = f"https://play.pokemonshowdown.com/{clean_id}"
             started = info.get("started")
             worker_id = info.get("worker_id")
             status = info.get("status", "active")
