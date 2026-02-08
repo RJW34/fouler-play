@@ -684,13 +684,7 @@ body.hide-recent #mid-form {
     </div>
   </div>
   <div class="dead-column col-right">
-    <div class="worker-pill" id="worker-3">
-      <div class="worker-left">
-        <div class="worker-label">Worker 3</div>
-        <div class="worker-opponent" id="worker-3-name">Idle</div>
-      </div>
-      <div class="worker-status idle" id="worker-3-status">Idle</div>
-    </div>
+    <!-- Worker 3 removed - only 2 concurrent battles now -->
     <div class="dead-card">
       <div class="hud-label">ELO</div>
       <div id="accounts-elo-container"></div>
@@ -897,10 +891,8 @@ function updateOverlay(status, battles) {
   const eloSyncEl = document.getElementById('elo-sync');
   const worker1NameEl = document.getElementById('worker-1-name');
   const worker2NameEl = document.getElementById('worker-2-name');
-  const worker3NameEl = document.getElementById('worker-3-name');
   const worker1StatusEl = document.getElementById('worker-1-status');
   const worker2StatusEl = document.getElementById('worker-2-status');
-  const worker3StatusEl = document.getElementById('worker-3-status');
   
   // Multi-account ELO with change detection
   const accountsElo = data.accounts_elo || {};
@@ -1163,7 +1155,7 @@ function updateOverlay(status, battles) {
   };
   updateWorker(1, worker1NameEl, worker1StatusEl);
   updateWorker(2, worker2NameEl, worker2StatusEl);
-  updateWorker(3, worker3NameEl, worker3StatusEl);
+  // Only 2 workers now - Worker 3 removed
 }
 
 let ws = null;
