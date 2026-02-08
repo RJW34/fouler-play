@@ -125,6 +125,71 @@ async def _replay_exists(replay_id: str) -> bool:
     return exists
 
 
+async def _post_battle_to_discord(
+    battle_tag: str,
+    winner: str | None,
+    opponent_name: str,
+    replay_url: str | None = None,
+    team_name: str | None = None,
+) -> None:
+    """Post battle result to Discord webhook.
+    
+    Args:
+        battle_tag: Battle ID
+        winner: Winner's username (None for tie/forfeit)
+        opponent_name: Opponent's username
+        replay_url: Replay URL (if available)
+        team_name: Team name used (if applicable)
+    """
+    webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
+    if not webhook_url:
+        logger.debug("DISCORD_BATTLES_WEBHOOK_URL not configured, skipping Discord post")
+        return
+    
+    bot_name = FoulPlayConfig.username
+    is_win = winner == bot_name
+    is_tie = winner is None or winner == "tie"
+    
+    # Format emoji based on result
+    if is_tie:
+        emoji = "🤝"
+    elif is_win:
+        emoji = "✅"
+    else:
+        emoji = "💀"
+    
+    # Build message
+    result_text = "won" if is_win else "lost" if not is_tie else "tied"
+    message = f"{emoji} **🪲 DEKU** {result_text} vs **{opponent_name}**"
+    
+    # Add team info if available
+    if team_name and team_name != "gen9ou":  # Skip if it's just the default format name
+        message += f" (Team: {team_name})"
+    
+    # Add replay link if available
+    if replay_url:
+        message += f"\n{replay_url}"
+    else:
+        # Construct likely replay URL from battle_tag
+        replay_id = _normalize_replay_id(battle_tag)
+        if replay_id:
+            message += f"\nhttps://replay.pokemonshowdown.com/{replay_id}"
+    
+    # Send to Discord
+    try:
+        async with aiohttp.ClientSession() as session:
+            payload = {"content": message}
+            async with session.post(webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status == 204:
+                    logger.info(f"Posted battle result to Discord: {result_text} vs {opponent_name}")
+                else:
+                    logger.warning(f"Discord webhook returned status {resp.status}")
+    except asyncio.TimeoutError:
+        logger.warning("Discord webhook post timed out")
+    except Exception as e:
+        logger.warning(f"Failed to post to Discord webhook: {e}")
+
+
 async def prime_resume_battles() -> int:
     """Load in-progress battles from active_battles.json so workers can resume them."""
     if not RESUME_ACTIVE_BATTLES:
@@ -1355,6 +1420,9 @@ async def pokemon_battle(
             )
             logger.info("Battle finished: {} Winner: {}".format(battle_tag, winner))
             await _send_battle_chat(ps_websocket_client, battle_tag, POST_BATTLE_MESSAGES)
+            
+            # Save replay and capture URL if configured
+            replay_url = None
             if (
                 FoulPlayConfig.save_replay == SaveReplay.always
                 or (
@@ -1366,7 +1434,18 @@ async def pokemon_battle(
                     and winner == FoulPlayConfig.username
                 )
             ):
-                await ps_websocket_client.save_replay(battle_tag)
+                replay_url = await ps_websocket_client.save_replay(battle_tag)
+            
+            # Post battle result to Discord
+            team_name = FoulPlayConfig.team_name if hasattr(FoulPlayConfig, 'team_name') else None
+            await _post_battle_to_discord(
+                battle_tag=battle_tag,
+                winner=winner,
+                opponent_name=opponent_name,
+                replay_url=replay_url,
+                team_name=team_name,
+            )
+            
             await ps_websocket_client.leave_battle(battle_tag)
 
             # Cleanup battle queue to prevent buildup over time
