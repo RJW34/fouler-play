@@ -91,6 +91,12 @@ async def _send_battle_chat(ps_websocket_client, battle_tag: str, messages: list
         await ps_websocket_client.send_message(battle_tag, [message])
 
 
+def _normalize_username(name: str) -> str:
+    """Normalize a Showdown username for comparison (strip non-alnum, lowercase)."""
+    import re
+    return re.sub(r'[^a-z0-9]', '', name.lower()) if name else ""
+
+
 def _normalize_replay_id(battle_id: str) -> str:
     """Convert a battle tag to a public replay ID.
     
@@ -141,12 +147,31 @@ async def _replay_exists(replay_id: str) -> bool:
     return exists
 
 
+async def _fetch_elo(username: str, fmt: str = "gen9ou") -> tuple:
+    """Fetch current ELO and GXE from Pokemon Showdown ladder API.
+    Returns (elo, gxe) or (None, None) on failure."""
+    try:
+        url = f"https://pokemonshowdown.com/users/{_normalize_username(username)}.json"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status != 200:
+                    return (None, None)
+                data = await resp.json(content_type=None)
+                if 'ratings' in data and fmt in data['ratings']:
+                    rating = data['ratings'][fmt]
+                    return (rating.get('elo'), rating.get('gxe'))
+    except Exception:
+        pass
+    return (None, None)
+
+
 async def _post_battle_to_discord(
     battle_tag: str,
     winner: str | None,
     opponent_name: str,
     replay_url: str | None = None,
     team_name: str | None = None,
+    our_player_name: str | None = None,
 ) -> None:
     """Post battle result to Discord webhook.
     
@@ -156,14 +181,24 @@ async def _post_battle_to_discord(
         opponent_name: Opponent's username
         replay_url: Replay URL (if available)
         team_name: Team name used (if applicable)
+        our_player_name: Our actual player name in this battle (e.g., "ALL CHUNG" or "BugInTheCode")
     """
     webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
     if not webhook_url:
         logger.debug("DISCORD_BATTLES_WEBHOOK_URL not configured, skipping Discord post")
         return
     
-    bot_name = FoulPlayConfig.username
-    is_win = winner == bot_name
+    # Get bot display name from environment (e.g., "💥 BAKUGO" or "🪲 DEKU")
+    bot_display_name = os.getenv("BOT_DISPLAY_NAME", "").strip()
+    if not bot_display_name:
+        bot_display_name = FoulPlayConfig.username
+    
+    # Determine if we won by checking if winner matches any of our known accounts
+    # Normalize both sides (Showdown strips spaces/special chars)
+    showdown_accounts = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
+    showdown_accounts = [_normalize_username(acc) for acc in showdown_accounts if acc.strip()]
+    
+    is_win = winner and _normalize_username(winner) in showdown_accounts
     is_tie = winner is None or winner == "tie"
     
     # Format emoji based on result
@@ -176,7 +211,17 @@ async def _post_battle_to_discord(
     
     # Build message
     result_text = "won" if is_win else "lost" if not is_tie else "tied"
-    message = f"{emoji} **🪲 DEKU** {result_text} vs **{opponent_name}**"
+    
+    # Use the actual player name from the battle for attribution
+    # If not provided, determine from winner or fall back to FoulPlayConfig.username
+    if not our_player_name:
+        our_player_name = winner if is_win else FoulPlayConfig.username
+    
+    # Build embed title showing the actual matchup
+    message = f"{emoji} **{bot_display_name}** {result_text} vs **{opponent_name}**"
+    # Add player attribution if different from bot display name
+    if our_player_name and our_player_name != bot_display_name and our_player_name.lower() != bot_display_name.lower():
+        message += f"\n*({our_player_name} vs {opponent_name})*"
     
     # Add team info if available
     if team_name and team_name != "gen9ou":  # Skip if it's just the default format name
@@ -184,11 +229,18 @@ async def _post_battle_to_discord(
     
     # Add replay link if available
     if replay_url:
+        # Normalize replay URL to strip any spectator hashes
+        # Extract replay ID from URL
+        replay_id = replay_url.split("/")[-1]
+        # Strip hash if present (format: gen9ou-NUMBER or gen9ou-NUMBER-HASH)
+        replay_id = _normalize_replay_id(replay_id)
+        normalized_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+        
         # Wrap non-loss replays in <> to suppress Discord embed
         if is_win or is_tie:
-            message += f"\n<{replay_url}>"
+            message += f"\n<{normalized_url}>"
         else:
-            message += f"\n{replay_url}"
+            message += f"\n{normalized_url}"
     else:
         # Construct replay URL from battle_tag and verify it exists
         replay_id = _normalize_replay_id(battle_tag)
@@ -201,6 +253,15 @@ async def _post_battle_to_discord(
                     message += f"\n{constructed_url}"
                 # else: replay doesn't exist (not uploaded), skip link
     
+    # Fetch and append current ELO
+    ps_username = our_player_name or FoulPlayConfig.username
+    elo, gxe = await _fetch_elo(ps_username)
+    if elo is not None:
+        elo_line = f"📊 **ELO: {elo:.0f}**"
+        if gxe is not None:
+            elo_line += f" ({gxe:.1f}% GXE)"
+        message += f"\n{elo_line}"
+
     # Send to Discord
     try:
         async with aiohttp.ClientSession() as session:
@@ -1090,6 +1151,10 @@ async def start_battle_common(
                 battle.opponent.account_name = inferred
 
         if "|player|" in msg:
+            # Get list of our known accounts (normalized for Showdown comparison)
+            showdown_accounts = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
+            showdown_accounts = [_normalize_username(acc) for acc in showdown_accounts if acc.strip()]
+            
             for line in msg.split("\n"):
                 if "|player|" not in line:
                     continue
@@ -1098,16 +1163,23 @@ async def start_battle_common(
                     continue
                 player_slot = parts[2]
                 player_name = parts[3]
-                if not battle.opponent.account_name:
-                    if player_name.lower() != FoulPlayConfig.username.lower():
+                
+                # Check if this player is one of our accounts
+                if _normalize_username(player_name) in showdown_accounts:
+                    # This is us!
+                    battle.user.account_name = player_name
+                    battle.user.name = player_slot
+                    battle.opponent.name = constants.ID_LOOKUP[player_slot]
+                else:
+                    # This is the opponent
+                    if not battle.opponent.account_name:
                         battle.opponent.account_name = player_name
-                if (
-                    battle.opponent.account_name
-                    and player_name.lower() == battle.opponent.account_name.lower()
-                ):
-                    battle.opponent.name = player_slot
-                    battle.user.name = constants.ID_LOOKUP[battle.opponent.name]
-            if battle.opponent.name:
+                    if battle.opponent.account_name and player_name.lower() == battle.opponent.account_name.lower():
+                        battle.opponent.name = player_slot
+                        if not battle.user.name:
+                            battle.user.name = constants.ID_LOOKUP[battle.opponent.name]
+            
+            if battle.opponent.name and battle.user.name:
                 break
 
     return battle, msg
@@ -1449,27 +1521,35 @@ async def pokemon_battle(
             
             # Save replay and capture URL if configured
             replay_url = None
+            
+            # Check if winner is one of our accounts (normalize for Showdown's format)
+            showdown_accounts = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
+            showdown_accounts = [_normalize_username(acc) for acc in showdown_accounts if acc.strip()]
+            we_won = winner and _normalize_username(winner) in showdown_accounts
+            
             if (
                 FoulPlayConfig.save_replay == SaveReplay.always
                 or (
                     FoulPlayConfig.save_replay == SaveReplay.on_loss
-                    and winner != FoulPlayConfig.username
+                    and not we_won
                 )
                 or (
                     FoulPlayConfig.save_replay == SaveReplay.on_win
-                    and winner == FoulPlayConfig.username
+                    and we_won
                 )
             ):
                 replay_url = await ps_websocket_client.save_replay(battle_tag)
             
             # Post battle result to Discord
             team_name = FoulPlayConfig.team_name if hasattr(FoulPlayConfig, 'team_name') else None
+            our_player_name = battle.user.account_name if battle.user and battle.user.account_name else None
             await _post_battle_to_discord(
                 battle_tag=battle_tag,
                 winner=winner,
                 opponent_name=opponent_name,
                 replay_url=replay_url,
                 team_name=team_name,
+                our_player_name=our_player_name,
             )
             
             await ps_websocket_client.leave_battle(battle_tag)
@@ -1502,7 +1582,11 @@ async def pokemon_battle(
 
             # Update stream overlay stats
             try:
-                is_win = winner == FoulPlayConfig.username
+                # Check if winner is one of our accounts
+                showdown_accounts_stats = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
+                showdown_accounts_stats = [_normalize_username(acc) for acc in showdown_accounts_stats if acc.strip()]
+                is_win = winner and _normalize_username(winner) in showdown_accounts_stats
+                
                 if winner and winner != "None":
                     update_daily_stats(
                         wins_delta=1 if is_win else 0,
