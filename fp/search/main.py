@@ -1357,6 +1357,7 @@ def apply_ability_penalties(
     final_policy: dict[str, float],
     ability_state: OpponentAbilityState,
     trace_events: list[dict] | None = None,
+    battle: Battle | None = None,
 ) -> dict[str, float]:
     """
     Apply penalties to moves based on opponent's abilities.
@@ -2048,6 +2049,69 @@ def apply_ability_penalties(
             if ability_state.opponent_active_is_threat:
                 penalty = min(penalty, 0.1)
                 reason = "Full HP vs boosted threat (don't waste turn)"
+
+        # =====================================================================
+        # POISON HEAL ACTIVE vs WILL-O-WISP THREAT
+        # When Gliscor/Poison Heal is ALREADY on field, don't use setup moves
+        # if opponent has/might have Will-O-Wisp. Getting burned ruins Poison Heal.
+        # =====================================================================
+        
+        # This check only applies to non-switch moves (when we're active)
+        if not move.startswith("switch ") and battle is not None:
+            our_active = getattr(battle.user, "active", None) if hasattr(battle, "user") else None
+            opponent_active = getattr(battle.opponent, "active", None) if hasattr(battle, "opponent") else None
+            
+            if our_active is not None and opponent_active is not None:
+                our_ability = getattr(our_active, "ability", None)
+                our_status = getattr(our_active, "status", None)
+                our_name_norm = normalize_name(our_active.name)
+                our_base_norm = normalize_name(getattr(our_active, "base_name", "") or our_active.name)
+                
+                # Check if we are a Poison Heal mon
+                is_poison_heal = (
+                    (our_ability and normalize_name(our_ability) == "poisonheal")
+                    or our_name_norm in POKEMON_COMMONLY_POISON_HEAL
+                    or our_base_norm in POKEMON_COMMONLY_POISON_HEAL
+                )
+                
+                # Only apply penalty if we're NOT already statused (if poisoned/burned, threat is irrelevant)
+                if is_poison_heal and our_status is None:
+                    # Get opponent's known moves
+                    opponent_moves = getattr(opponent_active, "moves", [])
+                    opponent_move_names = [
+                        m.name if hasattr(m, "name") else str(m) for m in opponent_moves
+                    ]
+                    
+                    # Check for burn-inflicting moves
+                    has_burn_move = any(
+                        move_name in {"willowisp", "scald", "searingshot", "inferno", "sacredfire", "burningjealousy"}
+                        for move_name in opponent_move_names
+                    )
+                    
+                    # Also check if opponent commonly carries WoW based on species
+                    opponent_name_norm = normalize_name(opponent_active.name)
+                    wow_common_users = {
+                        "torkoal", "corviknight", "rotomwash", "rotomheat", "rotom",
+                        "alomomola", "sableye", "dusknoir", "spiritomb", "skeledirge",
+                        "arcanine", "arcaninehisui", "zapdos", "zapdosgalar", "moltres",
+                    }
+                    likely_has_wow = opponent_name_norm in wow_common_users
+                    
+                    # If opponent has WoW or likely has it, penalize passive/setup moves
+                    if has_burn_move or likely_has_wow:
+                        move_data = all_move_json.get(move_name, {})
+                        move_category = move_data.get(constants.CATEGORY, "")
+                        base_power = move_data.get(constants.BASE_POWER, 0)
+                        
+                        # Heavily penalize status/setup moves (like Spikes, Swords Dance, etc.)
+                        if move_name in SETUP_MOVES or move_category == constants.STATUS:
+                            penalty = min(penalty, PENALTY_PASSIVE_VS_BOOSTED)  # Same as vs boosted threat
+                            reason = f"Poison Heal vs WoW threat ({opponent_name_norm}) - avoid passive"
+                        
+                        # Moderately penalize weak attacks (should either switch or attack hard)
+                        elif move_category in {constants.PHYSICAL, constants.SPECIAL} and base_power < 70:
+                            penalty = min(penalty, 0.7)
+                            reason = f"Poison Heal vs WoW threat - prefer strong attack or switch"
 
         # =====================================================================
         # PHASE 3.3: MOMENTUM TRACKING
@@ -3047,6 +3111,7 @@ def select_move_from_mcts_results(
             blended_policy,
             ability_state,
             trace_events=trace_events,
+            battle=battle,
         )
 
     # Apply switch-specific penalties (Phase 2.1)
