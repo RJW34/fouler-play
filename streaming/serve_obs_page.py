@@ -291,13 +291,8 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
 def _build_direct_battle_url(bid: str) -> str:
     # Use direct URL without ~~showdown to avoid "visit showdown directly" frame check.
     # OBS browser sources load as top-level pages so X-Frame-Options doesn't apply.
-    # Strip spectator hash suffix (e.g. battle-gen9ou-123456-abcdef... → battle-gen9ou-123456)
-    # The hash causes PS to load an empty room; short ID works for public spectating.
-    parts = bid.split('-')
-    # Format: battle-gen9ou-XXXXXXX[-spectatorhash]
-    # Keep first 3 parts (battle, format, number), drop any alpha-heavy suffix
-    if len(parts) >= 4 and not parts[3].isdigit():
-        bid = '-'.join(parts[:3])
+    # Keep spectator hash intact - it's required for spectator access.
+    # Without the hash, PS redirects to homepage instead of showing the battle.
     ts = int(time.time())
     return f"https://play.pokemonshowdown.com/{bid}?r={ts}"
 
