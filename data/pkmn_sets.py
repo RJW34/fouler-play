@@ -466,6 +466,7 @@ class _TeamDatasets(PokemonSets):
         self.raw_pkmn_sets = {}
         self.raw_pkmn_moves = {}
         self.pkmn_sets = {}
+        self.movepool_data = {}
         self.pkmn_mode = "uninitialized"
 
     def _get_sets_dict(self):
