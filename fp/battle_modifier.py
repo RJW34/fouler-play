@@ -1186,6 +1186,10 @@ def boost(battle, split_msg):
     else:
         pkmn = battle.user.active
 
+    if pkmn is None:
+        logger.warning("boost: active pokemon is None, skipping")
+        return
+
     stat = constants.STAT_ABBREVIATION_LOOKUPS[split_msg[3].strip()]
     amount = int(split_msg[4].strip())
 
@@ -1202,6 +1206,10 @@ def unboost(battle, split_msg):
         pkmn = battle.opponent.active
     else:
         pkmn = battle.user.active
+
+    if pkmn is None:
+        logger.warning("unboost: active pokemon is None, skipping")
+        return
 
     stat = constants.STAT_ABBREVIATION_LOOKUPS[split_msg[3].strip()]
     amount = int(split_msg[4].strip())
