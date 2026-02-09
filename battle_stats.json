@@ -1021,6 +1021,34 @@
       "team_file": "fat-team-1-stall",
       "result": "win",
       "replay_id": "battle-gen9ou-2536201086-k8syld4aa18pwo6fl5l55v0uqcqmm6lpw"
+    },
+    {
+      "battle_id": "battle-gen9ou-2536206771",
+      "timestamp": "2026-02-09T19:08:55.219953+00:00",
+      "team_file": "fat-team-2-pivot",
+      "result": "loss",
+      "replay_id": "battle-gen9ou-2536206771"
+    },
+    {
+      "battle_id": "battle-gen9ou-2536209679",
+      "timestamp": "2026-02-09T19:14:55.369130+00:00",
+      "team_file": "fat-team-3-dondozo",
+      "result": "loss",
+      "replay_id": "battle-gen9ou-2536209679"
+    },
+    {
+      "battle_id": "battle-gen9ou-2536213705",
+      "timestamp": "2026-02-09T19:18:41.695506+00:00",
+      "team_file": "fat-team-1-stall",
+      "result": "win",
+      "replay_id": "battle-gen9ou-2536213705"
+    },
+    {
+      "battle_id": "battle-gen9ou-2536216224",
+      "timestamp": "2026-02-09T19:24:52.043660+00:00",
+      "team_file": "fat-team-2-pivot",
+      "result": "win",
+      "replay_id": "battle-gen9ou-2536216224"
     }
   ]
 }
