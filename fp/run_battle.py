@@ -64,6 +64,8 @@ REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "60"))
 REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 
+BATTLE_HARD_TIMEOUT_SEC = int(os.getenv("BATTLE_HARD_TIMEOUT_SEC", "3600"))  # 1 hour max per battle
+
 # Battle chat defaults
 OPENING_CHAT_MESSAGE = "hf"
 POST_BATTLE_MESSAGES = ["gg", "ttv/thepeakmos"]
@@ -573,18 +575,34 @@ async def update_active_battles_file():
 async def send_stream_event(event_type, payload):
     """Send a real-time event signal to the stream server."""
     url = "http://localhost:8777/event"
-    for attempt in range(2):  # Try twice: initial + 1 retry
+    for attempt in range(3):  # Try 3 times: initial + 2 retries
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json={"type": event_type, "payload": payload}, timeout=3) as resp:
-                    return await resp.json()
-        except Exception as e:
-            if attempt == 0:
-                logger.debug(f"Stream event send failed (attempt 1/2), retrying in 2s: {e}")
-                await asyncio.sleep(2)
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(url, json={"type": event_type, "payload": payload}) as resp:
+                    if resp.status == 200:
+                        return await resp.json()
+                    else:
+                        logger.warning(f"Stream event {event_type} returned status {resp.status}")
+        except asyncio.TimeoutError:
+            if attempt < 2:
+                logger.debug(f"Stream event {event_type} timeout (attempt {attempt+1}/3), retrying...")
+                await asyncio.sleep(1)
             else:
-                # Final failure after retry
-                logger.warning(f"Stream event send failed after 2 attempts: {e}")
+                logger.error(f"Stream event {event_type} failed after 3 attempts (timeout)")
+        except aiohttp.ClientConnectorError as e:
+            if attempt < 2:
+                logger.debug(f"Stream server not available for {event_type} (attempt {attempt+1}/3): {e}")
+                await asyncio.sleep(1)
+            else:
+                logger.error(f"Stream server unreachable for {event_type} after 3 attempts: {e}")
+        except Exception as e:
+            if attempt < 2:
+                logger.debug(f"Stream event {event_type} failed (attempt {attempt+1}/3), retrying: {e}")
+                await asyncio.sleep(1)
+            else:
+                # Final failure after retries
+                logger.error(f"Stream event {event_type} failed after 3 attempts: {e}")
 
 
 def format_decision(battle, decision):
@@ -1469,8 +1487,32 @@ async def pokemon_battle(
 
     timeout_strikes = 0
     message_timeout = MESSAGE_TIMEOUT_SEC
+    battle_start_time = time.time()
 
     while True:
+        # Hard timeout safety: forcibly end battles that run too long
+        if BATTLE_HARD_TIMEOUT_SEC > 0:
+            elapsed = time.time() - battle_start_time
+            if elapsed > BATTLE_HARD_TIMEOUT_SEC:
+                logger.error(
+                    f"Battle {battle_tag} exceeded hard timeout "
+                    f"({elapsed:.0f}s > {BATTLE_HARD_TIMEOUT_SEC}s) - forcibly terminating"
+                )
+                try:
+                    await ps_websocket_client.leave_battle(battle_tag)
+                except Exception:
+                    pass
+                ps_websocket_client.unregister_battle(battle_tag)
+                async with _battles_lock:
+                    _active_battles.pop(battle_tag, None)
+                await update_active_battles_file()
+                await send_stream_event("BATTLE_END", {
+                    "id": battle_tag,
+                    "winner": None,
+                    "ended": time.time(),
+                })
+                return None, battle_tag
+
         try:
             msg = await asyncio.wait_for(
                 ps_websocket_client.receive_battle_message(battle_tag),
@@ -1654,6 +1696,23 @@ async def pokemon_battle(
                 OPPONENT_MODEL.observe(battle)
             except Exception as e:
                 logger.debug(f"Opponent model update failed: {e}")
+            
+            # Send turn update for real-time OBS updates
+            if action_required and "|turn|" in msg:
+                try:
+                    turn_num = battle.turn if hasattr(battle, 'turn') else None
+                    our_active = battle.user.active.name if battle.user and battle.user.active else None
+                    opp_active = battle.opponent.active.name if battle.opponent and battle.opponent.active else None
+                    await send_stream_event("TURN_UPDATE", {
+                        "id": battle_tag,
+                        "turn": turn_num,
+                        "our_pokemon": our_active,
+                        "opponent_pokemon": opp_active,
+                        "timestamp": time.time(),
+                    })
+                except Exception as e:
+                    logger.debug(f"Failed to send turn update event: {e}")
+            
             if action_required and not battle.wait:
                 best_move = await async_pick_move(battle)
                 await ps_websocket_client.send_message(battle_tag, best_move)
