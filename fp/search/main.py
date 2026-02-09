@@ -25,6 +25,9 @@ from constants import (
     TOXIC,
     BURN,
     PARALYZED,
+    # Status threat detection
+    NON_VOLATILE_STATUSES,
+    STATUS,
     # Type-absorbing abilities
     POKEMON_COMMONLY_WATER_IMMUNE,
     WATER_TYPE_MOVES,
@@ -1353,6 +1356,164 @@ def apply_heuristic_bias(
     return adjusted
 
 
+def get_opponent_status_threats(opponent_pokemon, movepool_data=None):
+    """
+    Returns set of status types the opponent can inflict.
+    Checks revealed moves + potential moves from movepool.
+    
+    GENERAL approach: checks ALL status-inflicting moves, not just specific ones.
+    
+    Returns: set of status codes like {'brn', 'par', 'slp', 'frz', 'psn', 'tox'}
+    """
+    if not opponent_pokemon:
+        return set()
+    
+    threats = set()
+    
+    # Check revealed moves
+    revealed_moves = getattr(opponent_pokemon, "moves", []) or []
+    for mv in revealed_moves:
+        move_name = normalize_name(mv.name if hasattr(mv, "name") else str(mv))
+        move_data = all_move_json.get(move_name, {})
+        
+        # Direct status effect (e.g., Thunder Wave -> par, Will-O-Wisp -> brn)
+        if STATUS in move_data and move_data[STATUS] in NON_VOLATILE_STATUSES:
+            threats.add(move_data[STATUS])
+        
+        # Secondary status effect (e.g., Scald 30% burn, Nuzzle 100% par)
+        secondary = move_data.get("secondary", {})
+        if isinstance(secondary, dict) and "status" in secondary:
+            status_code = secondary["status"]
+            if status_code in NON_VOLATILE_STATUSES:
+                threats.add(status_code)
+    
+    # Check potential moves from movepool (what opponent COULD have)
+    if movepool_data:
+        opponent_name = normalize_name(opponent_pokemon.name)
+        opp_data = movepool_data.get(opponent_name, {})
+        
+        # Check all move categories (status, physical, special)
+        # Physical/special moves can have secondary status (Scald, Nuzzle, etc.)
+        all_potential_moves = (
+            opp_data.get('status_moves', []) +
+            opp_data.get('physical_moves', []) +
+            opp_data.get('special_moves', [])
+        )
+        
+        for move_name in all_potential_moves:
+            move_norm = normalize_name(move_name)
+            move_data = all_move_json.get(move_norm, {})
+            
+            # Check for status effects
+            if STATUS in move_data and move_data[STATUS] in NON_VOLATILE_STATUSES:
+                threats.add(move_data[STATUS])
+            
+            secondary = move_data.get("secondary", {})
+            if isinstance(secondary, dict) and "status" in secondary:
+                status_code = secondary["status"]
+                if status_code in NON_VOLATILE_STATUSES:
+                    threats.add(status_code)
+    
+    return threats
+
+
+def is_status_threatening_for_ability(status_codes, our_pokemon):
+    """
+    Returns (is_threatened, ability_name, reason) tuple.
+    
+    GENERAL check for ALL ability-status interactions (not just Poison Heal vs WoW).
+    
+    Checks if any of the given status codes would be BAD for our Pokemon's ability.
+    
+    Args:
+        status_codes: set of status codes like {'brn', 'par', 'slp'}
+        our_pokemon: our active Pokemon object
+    
+    Returns:
+        (bool, str, str): (is_threatened, ability_name, reason)
+    """
+    if not status_codes:
+        return (False, None, None)
+    
+    ability_norm = normalize_name(getattr(our_pokemon, 'ability', '') or '')
+    our_name_norm = normalize_name(our_pokemon.name)
+    our_base_norm = normalize_name(getattr(our_pokemon, 'base_name', '') or our_pokemon.name)
+    
+    # =========================================================================
+    # POISON HEAL: Wants PSN/TOX, threatened by BRN/PAR/SLP/FRZ
+    # =========================================================================
+    is_poison_heal = (
+        ability_norm == 'poisonheal'
+        or our_name_norm in POKEMON_COMMONLY_POISON_HEAL
+        or our_base_norm in POKEMON_COMMONLY_POISON_HEAL
+    )
+    
+    if is_poison_heal:
+        # Any non-poison status ruins Poison Heal (no healing)
+        harmful_statuses = status_codes - {'psn', 'tox'}
+        if harmful_statuses:
+            status_str = ', '.join(sorted(harmful_statuses))
+            return (True, 'Poison Heal', status_str)
+    
+    # =========================================================================
+    # TOXIC BOOST: Wants PSN/TOX, threatened by other status
+    # =========================================================================
+    is_toxic_boost = ability_norm == 'toxicboost'
+    
+    if is_toxic_boost:
+        harmful_statuses = status_codes - {'psn', 'tox'}
+        if harmful_statuses:
+            status_str = ', '.join(sorted(harmful_statuses))
+            return (True, 'Toxic Boost', status_str)
+    
+    # =========================================================================
+    # GUTS: Wants status (boosts Attack), but BRN halves Attack (bad!)
+    # Also SLP/FRZ prevent action (very bad!)
+    # =========================================================================
+    is_guts = ability_norm == 'guts'
+    
+    if is_guts:
+        # Burn negates Guts boost, Sleep/Freeze prevent action
+        harmful = status_codes & {'brn', 'slp', 'frz'}
+        if harmful:
+            status_str = ', '.join(sorted(harmful))
+            return (True, 'Guts', status_str)
+    
+    # =========================================================================
+    # MARVEL SCALE: Wants status (Def boost), but SLP/FRZ prevent action
+    # =========================================================================
+    is_marvel_scale = ability_norm == 'marvelscale'
+    
+    if is_marvel_scale:
+        harmful = status_codes & {'slp', 'frz'}
+        if harmful:
+            status_str = ', '.join(sorted(harmful))
+            return (True, 'Marvel Scale', status_str)
+    
+    # =========================================================================
+    # QUICK FEET: Wants status (Speed boost), but:
+    #   - PAR reduces speed (bad!)
+    #   - SLP/FRZ prevent action
+    # =========================================================================
+    is_quick_feet = ability_norm == 'quickfeet'
+    
+    if is_quick_feet:
+        # Paralysis negates speed boost, Sleep/Freeze prevent action
+        harmful = status_codes & {'par', 'slp', 'frz'}
+        if harmful:
+            status_str = ', '.join(sorted(harmful))
+            return (True, 'Quick Feet', status_str)
+    
+    # =========================================================================
+    # Future extensibility: add more ability checks here
+    # - Synchronize: reflects status back (might want different logic)
+    # - Magic Guard: immune to status damage (not threatened)
+    # - Natural Cure: shrugs off status on switch (less threatened)
+    # =========================================================================
+    
+    return (False, None, None)
+
+
 def apply_ability_penalties(
     final_policy: dict[str, float],
     ability_state: OpponentAbilityState,
@@ -2051,20 +2212,19 @@ def apply_ability_penalties(
                 reason = "Full HP vs boosted threat (don't waste turn)"
 
         # =====================================================================
-        # POISON HEAL vs NON-TOXIC STATUS THREAT (ROOT CAUSE FIX)
+        # GENERAL ABILITY-STATUS THREAT AWARENESS (ABSO ROOT CAUSE FIX)
         # 
-        # Poison Heal's core mechanic: heal 1/8 HP per turn when poisoned
-        # CRITICAL VULNERABILITY: Any non-Poison/Toxic status PERMANENTLY breaks this
-        #   - Burn: no healing, halved Attack
-        #   - Paralysis: no healing, reduced Speed  
-        #   - Sleep: no healing, can't move
-        #   - Freeze: no healing, can't move
+        # Many abilities have critical interactions with status conditions:
+        #   - POISON HEAL: Wants PSN/TOX, crippled by BRN/PAR/SLP/FRZ
+        #   - TOXIC BOOST: Wants PSN/TOX, crippled by other status
+        #   - GUTS: Wants status (Atk boost), but BRN halves Attack (bad!)
+        #   - MARVEL SCALE: Wants status (Def boost), but SLP/FRZ prevent action
+        #   - QUICK FEET: Wants status (Speed boost), but PAR slows (bad!)
         # 
-        # When a Poison Heal mon is active with no status, opponent's status moves
-        # are uniquely threatening — getting statused ruins the entire strategy.
+        # GENERAL PRINCIPLE: Check opponent's ACTUAL status-inflicting capabilities
+        # (revealed moves + movepool data), not hardcoded species lists.
         # 
-        # General principle (not matchup-specific):
-        # "I have Poison Heal → any status move is a critical threat"
+        # This replaces the WoW-specific hardcoded fix from commit 236e62c.
         # =====================================================================
         
         # This check only applies to non-switch moves (when we're active)
@@ -2073,61 +2233,24 @@ def apply_ability_penalties(
             opponent_active = getattr(battle.opponent, "active", None) if hasattr(battle, "opponent") else None
             
             if our_active is not None and opponent_active is not None:
-                our_ability = getattr(our_active, "ability", None)
                 our_status = getattr(our_active, "status", None)
-                our_name_norm = normalize_name(our_active.name)
-                our_base_norm = normalize_name(getattr(our_active, "base_name", "") or our_active.name)
-                
-                # Check if we are a Poison Heal mon
-                is_poison_heal = (
-                    (our_ability and normalize_name(our_ability) == "poisonheal")
-                    or our_name_norm in POKEMON_COMMONLY_POISON_HEAL
-                    or our_base_norm in POKEMON_COMMONLY_POISON_HEAL
-                )
                 
                 # Only apply penalty if we're NOT already statused
-                # If already poisoned: Poison Heal is working, we're safe
-                # If already burned/paralyzed/etc: damage is already done, no point worrying
-                if is_poison_heal and our_status is None:
-                    # Get opponent's known moves
-                    opponent_moves = getattr(opponent_active, "moves", [])
-                    opponent_move_names = [
-                        m.name if hasattr(m, "name") else str(m) for m in opponent_moves
-                    ]
+                # (if already statused, threat is irrelevant)
+                if our_status is None:
+                    # Get opponent's status threats (GENERAL check - all status types)
+                    opponent_threats = get_opponent_status_threats(
+                        opponent_active,
+                        movepool_data=TeamDatasets.movepool_data
+                    )
                     
-                    # Check for ANY non-Poison status-inflicting move
-                    # STATUS_INFLICTING_MOVES includes: WoW, T-Wave, Glare, Sleep Powder, etc.
-                    # We WANT Toxic/Poison (activates Poison Heal), avoid everything else
-                    has_dangerous_status_move = False
-                    for opp_move_name in opponent_move_names:
-                        if opp_move_name in STATUS_INFLICTING_MOVES:
-                            # Toxic/Poison are GOOD for us (activate Poison Heal)
-                            if opp_move_name not in TOXIC_POISON_MOVES:
-                                has_dangerous_status_move = True
-                                break
+                    # Check if those threats are harmful for our ability
+                    is_threatened, ability_name, threat_details = is_status_threatening_for_ability(
+                        opponent_threats,
+                        our_active
+                    )
                     
-                    # If no known dangerous status moves yet, check opponent's common moveset
-                    # Use the same dataset infrastructure that predicts sets
-                    if not has_dangerous_status_move:
-                        try:
-                            from data.pkmn_sets import TeamDatasets, RandomBattleTeamDatasets
-                            if battle.battle_type == BattleType.RANDOM_BATTLE:
-                                possible_moves = RandomBattleTeamDatasets.get_all_possible_moves(opponent_active)
-                            else:
-                                possible_moves = TeamDatasets.get_all_possible_moves(opponent_active)
-                            
-                            # Check if opponent commonly has dangerous status moves
-                            for possible_move in possible_moves:
-                                if possible_move in STATUS_INFLICTING_MOVES and possible_move not in TOXIC_POISON_MOVES:
-                                    has_dangerous_status_move = True
-                                    break
-                        except Exception:
-                            # If dataset check fails, be cautious and assume threat exists
-                            # Better safe than sorry with Poison Heal
-                            pass
-                    
-                    # If opponent has/might have dangerous status moves, penalize passive plays
-                    if has_dangerous_status_move:
+                    if is_threatened:
                         move_data = all_move_json.get(move_name, {})
                         move_category = move_data.get(constants.CATEGORY, "")
                         base_power = move_data.get(constants.BASE_POWER, 0)
@@ -2136,13 +2259,13 @@ def apply_ability_penalties(
                         # These waste a turn and give opponent a free chance to status us
                         if move_name in SETUP_MOVES or move_category == constants.STATUS:
                             penalty = min(penalty, PENALTY_PASSIVE_VS_BOOSTED)
-                            reason = "Poison Heal vs status threat (passive = risk crippling)"
+                            reason = f"{ability_name} vs status threat ({threat_details}) - avoid passive"
                         
                         # Moderately penalize weak attacks
                         # Should either switch or attack decisively
                         elif move_category in {constants.PHYSICAL, constants.SPECIAL} and base_power < 70:
                             penalty = min(penalty, 0.7)
-                            reason = "Poison Heal vs status threat (prefer strong move or switch)"
+                            reason = f"{ability_name} vs status threat - prefer strong move or switch"
 
         # =====================================================================
         # PHASE 3.3: MOMENTUM TRACKING
