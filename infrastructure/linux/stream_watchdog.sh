@@ -61,7 +61,7 @@ fi
 # Check for stale active battles (battle older than 30 min = probably stale)
 if [ -f "$BATTLES_FILE" ]; then
     python3 -c "
-import json, datetime
+import json, datetime, requests
 
 with open('$BATTLES_FILE') as f:
     data = json.load(f)
@@ -88,5 +88,13 @@ if len(cleaned) != len(battles):
     data['updated'] = now.isoformat()
     with open('$BATTLES_FILE', 'w') as f:
         json.dump(data, f, indent=2)
+    
+    # Signal stream server to refresh
+    try:
+        requests.post('http://localhost:8777/event', 
+                     json={'type': 'STATE_REFRESH', 'payload': {}},
+                     timeout=2)
+    except:
+        pass  # Stream server might be down, that's OK
 " 2>/dev/null || true
 fi
