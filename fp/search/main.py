@@ -1356,19 +1356,77 @@ def apply_heuristic_bias(
     return adjusted
 
 
-def get_opponent_status_threats(opponent_pokemon, movepool_data=None):
+def get_opponent_status_threats(opponent_pokemon, our_pokemon=None, movepool_data=None):
     """
-    Returns set of status types the opponent can inflict.
+    Returns set of status types the opponent can inflict ON OUR POKEMON.
     Checks revealed moves + potential moves from movepool.
     
     GENERAL approach: checks ALL status-inflicting moves, not just specific ones.
+    
+    TYPE IMMUNITY CHECKS:
+    - Ground immune to Electric moves (Thunder Wave can't hit)
+    - Grass immune to powder moves (Spore, Sleep Powder, Stun Spore)
+    - Electric can't be paralyzed
+    - Fire can't be burned
+    - Ice can't be frozen
+    - Poison/Steel can't be poisoned
+    
+    Args:
+        opponent_pokemon: Opponent's active Pokemon
+        our_pokemon: Our active Pokemon (for type immunity checks)
+        movepool_data: Movepool data for checking potential moves
     
     Returns: set of status codes like {'brn', 'par', 'slp', 'frz', 'psn', 'tox'}
     """
     if not opponent_pokemon:
         return set()
     
+    # Get our types for immunity checks
+    our_types = []
+    if our_pokemon:
+        our_types = [t.lower() for t in (getattr(our_pokemon, "types", []) or [])]
+    
     threats = set()
+    
+    def can_status_affect_us(move_data, status_code):
+        """Check if a status move can actually affect our Pokemon."""
+        if not our_pokemon or not our_types:
+            # Can't verify immunity, assume vulnerable
+            return True
+        
+        # TYPE IMMUNITY: Move type effectiveness check
+        # Ground immune to Electric (Thunder Wave), etc.
+        move_type = move_data.get(constants.TYPE, "").lower()
+        if move_type:
+            from fp.helpers import type_effectiveness_modifier
+            if type_effectiveness_modifier(move_type, our_types) == 0:
+                # Move can't hit us at all (type immunity)
+                return False
+        
+        # POWDER IMMUNITY: Grass types immune to powder moves
+        if "grass" in our_types:
+            flags = move_data.get("flags", {})
+            if flags.get("powder"):
+                return False
+        
+        # STATUS-TYPE IMMUNITY: Certain types can't receive certain statuses
+        # Electric types can't be paralyzed
+        if status_code == "par" and "electric" in our_types:
+            return False
+        
+        # Fire types can't be burned
+        if status_code == "brn" and "fire" in our_types:
+            return False
+        
+        # Ice types can't be frozen
+        if status_code == "frz" and "ice" in our_types:
+            return False
+        
+        # Poison and Steel types can't be poisoned
+        if status_code in {"psn", "tox"} and ("poison" in our_types or "steel" in our_types):
+            return False
+        
+        return True
     
     # Check revealed moves
     revealed_moves = getattr(opponent_pokemon, "moves", []) or []
@@ -1378,14 +1436,17 @@ def get_opponent_status_threats(opponent_pokemon, movepool_data=None):
         
         # Direct status effect (e.g., Thunder Wave -> par, Will-O-Wisp -> brn)
         if STATUS in move_data and move_data[STATUS] in NON_VOLATILE_STATUSES:
-            threats.add(move_data[STATUS])
+            status_code = move_data[STATUS]
+            if can_status_affect_us(move_data, status_code):
+                threats.add(status_code)
         
         # Secondary status effect (e.g., Scald 30% burn, Nuzzle 100% par)
         secondary = move_data.get("secondary", {})
         if isinstance(secondary, dict) and "status" in secondary:
             status_code = secondary["status"]
             if status_code in NON_VOLATILE_STATUSES:
-                threats.add(status_code)
+                if can_status_affect_us(move_data, status_code):
+                    threats.add(status_code)
     
     # Check potential moves from movepool (what opponent COULD have)
     if movepool_data:
@@ -1406,13 +1467,16 @@ def get_opponent_status_threats(opponent_pokemon, movepool_data=None):
             
             # Check for status effects
             if STATUS in move_data and move_data[STATUS] in NON_VOLATILE_STATUSES:
-                threats.add(move_data[STATUS])
+                status_code = move_data[STATUS]
+                if can_status_affect_us(move_data, status_code):
+                    threats.add(status_code)
             
             secondary = move_data.get("secondary", {})
             if isinstance(secondary, dict) and "status" in secondary:
                 status_code = secondary["status"]
                 if status_code in NON_VOLATILE_STATUSES:
-                    threats.add(status_code)
+                    if can_status_affect_us(move_data, status_code):
+                        threats.add(status_code)
     
     return threats
 
@@ -2239,8 +2303,10 @@ def apply_ability_penalties(
                 # (if already statused, threat is irrelevant)
                 if our_status is None:
                     # Get opponent's status threats (GENERAL check - all status types)
+                    # Now includes TYPE IMMUNITY checks (Ground vs Thunder Wave, etc.)
                     opponent_threats = get_opponent_status_threats(
                         opponent_active,
+                        our_pokemon=our_active,
                         movepool_data=TeamDatasets.movepool_data
                     )
                     
