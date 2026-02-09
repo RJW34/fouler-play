@@ -224,6 +224,7 @@ from data import all_move_json
 from fp.movepool_tracker import get_threat_category, ThreatCategory
 from fp.search.move_validators import filter_blocked_moves
 from fp.opponent_model import OPPONENT_MODEL
+from sweep_fix import smart_sweep_prevention
 
 logger = logging.getLogger(__name__)
 
@@ -1987,55 +1988,27 @@ def apply_ability_penalties(
 
         # =================================================================
         # PROACTIVE SWEEP PREVENTION (2026-02-08)
-        # Heavy penalties for staying in vs boosted threats
+        # Smart sweep prevention: consider counterplay options
         # =================================================================
-        if ability_state.opponent_has_offensive_boost:
-            boost_level = max(ability_state.opponent_attack_boost, ability_state.opponent_spa_boost)
-            
-            # PRIORITY 1: Heavily boost switching vs boosted opponent
-            if move.startswith("switch "):
-                if penalty >= 1.0:
-                    # Scale boost with boost level (+1 = 1.6x, +2 = 2.0x, +3+ = 2.4x)
-                    switch_boost = BOOST_SWITCH_VS_BOOSTED + (boost_level - 1) * 0.2
-                    penalty = max(penalty, switch_boost)
-                    reason = f"Switch vs +{boost_level} boosted threat (CRITICAL)"
-            
-            # PRIORITY 2: Massively boost phazing moves vs boosted opponent
-            elif move_name in PHAZING_MOVES:
-                if penalty >= 1.0:
-                    penalty = max(penalty, BOOST_PHAZE_VS_BOOSTED)
-                    reason = f"Phaze +{boost_level} boosted sweeper (reset threat)"
-            
-            # PRIORITY 3: Boost priority/revenge moves (IF we can KO)
-            elif move_name in PRIORITY_MOVES:
-                if penalty >= 1.0:
-                    penalty = max(penalty, BOOST_REVENGE_VS_BOOSTED)
-                    reason = f"Priority vs +{boost_level} threat (revenge kill)"
-            
-            # PRIORITY 4: HEAVILY penalize passive/setup moves vs boosted opponent
-            elif move_name in SETUP_MOVES or move_name in STATUS_ONLY_MOVES:
-                penalty = min(penalty, PENALTY_PASSIVE_VS_BOOSTED)
-                reason = f"PASSIVE vs +{boost_level} boosted threat (will sweep)"
-            
-            # PRIORITY 5: Penalize staying in with non-damaging moves
-            else:
-                move_data = all_move_json.get(move_name, {})
-                move_category = move_data.get(constants.CATEGORY, "")
-                base_power = move_data.get(constants.BASE_POWER, 0)
-                
-                # If it's not a strong damaging move, penalize staying in
-                is_strong_attack = (
-                    move_category in {constants.PHYSICAL, constants.SPECIAL} 
-                    and base_power >= 80
-                )
-                
-                if not is_strong_attack and not move.startswith("switch "):
-                    # Moderate penalty for staying in with weak moves
-                    penalty = min(penalty, PENALTY_STAY_VS_SETUP_SWEEPER)
-                    reason = f"Stay vs +{boost_level} boosted threat (risky)"
+        penalty, reason = smart_sweep_prevention(
+            penalty=penalty,
+            reason=reason,
+            move=move,
+            move_name=move_name,
+            ability_state=ability_state,
+            battle=battle,
+            PENALTY_PASSIVE_VS_BOOSTED=PENALTY_PASSIVE_VS_BOOSTED,
+            BOOST_SWITCH_VS_BOOSTED=BOOST_SWITCH_VS_BOOSTED,
+            BOOST_PHAZE_VS_BOOSTED=BOOST_PHAZE_VS_BOOSTED,
+            BOOST_REVENGE_VS_BOOSTED=BOOST_REVENGE_VS_BOOSTED,
+            SETUP_MOVES=SETUP_MOVES,
+            STATUS_ONLY_MOVES=STATUS_ONLY_MOVES,
+            PHAZING_MOVES=PHAZING_MOVES,
+            PRIORITY_MOVES=PRIORITY_MOVES,
+        )
 
         # Anti-setup punishment: boost aggressive replies after opponent sets up
-        elif ability_state.opponent_used_setup:
+        if ability_state.opponent_used_setup:
             move_data = all_move_json.get(move_name, {})
             move_category = move_data.get(constants.CATEGORY, "")
             base_power = move_data.get(constants.BASE_POWER, 0)
