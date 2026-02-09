@@ -50,6 +50,7 @@ aiohttp_replay_check.json
 replay_check.json
 stream_status.json
 diagnostics/health_report.json
+teams/.team_iterator_index
 
 # Console output fragments
 Bot

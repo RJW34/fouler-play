@@ -8,10 +8,14 @@ TEAM_DIR = os.path.dirname(os.path.abspath(__file__))
 class TeamListIterator:
     _INDEX_FILE = os.path.join(TEAM_DIR, ".team_iterator_index")
 
-    def __init__(self, team_list_file):
-        with open(os.path.join(TEAM_DIR, team_list_file), "r") as f:
-            lines = f.readlines()
-        self.team_names = [line.strip() for line in lines if line.strip()]
+    def __init__(self, team_list_file_or_names):
+        # Support both file path (str) and direct list of team names
+        if isinstance(team_list_file_or_names, list):
+            self.team_names = team_list_file_or_names
+        else:
+            with open(os.path.join(TEAM_DIR, team_list_file_or_names), "r") as f:
+                lines = f.readlines()
+            self.team_names = [line.strip() for line in lines if line.strip()]
         # Restore persisted index so rotation survives restarts
         self.index = self._load_index()
 
