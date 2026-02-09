@@ -2051,9 +2051,20 @@ def apply_ability_penalties(
                 reason = "Full HP vs boosted threat (don't waste turn)"
 
         # =====================================================================
-        # POISON HEAL ACTIVE vs WILL-O-WISP THREAT
-        # When Gliscor/Poison Heal is ALREADY on field, don't use setup moves
-        # if opponent has/might have Will-O-Wisp. Getting burned ruins Poison Heal.
+        # POISON HEAL vs NON-TOXIC STATUS THREAT (ROOT CAUSE FIX)
+        # 
+        # Poison Heal's core mechanic: heal 1/8 HP per turn when poisoned
+        # CRITICAL VULNERABILITY: Any non-Poison/Toxic status PERMANENTLY breaks this
+        #   - Burn: no healing, halved Attack
+        #   - Paralysis: no healing, reduced Speed  
+        #   - Sleep: no healing, can't move
+        #   - Freeze: no healing, can't move
+        # 
+        # When a Poison Heal mon is active with no status, opponent's status moves
+        # are uniquely threatening — getting statused ruins the entire strategy.
+        # 
+        # General principle (not matchup-specific):
+        # "I have Poison Heal → any status move is a critical threat"
         # =====================================================================
         
         # This check only applies to non-switch moves (when we're active)
@@ -2074,7 +2085,9 @@ def apply_ability_penalties(
                     or our_base_norm in POKEMON_COMMONLY_POISON_HEAL
                 )
                 
-                # Only apply penalty if we're NOT already statused (if poisoned/burned, threat is irrelevant)
+                # Only apply penalty if we're NOT already statused
+                # If already poisoned: Poison Heal is working, we're safe
+                # If already burned/paralyzed/etc: damage is already done, no point worrying
                 if is_poison_heal and our_status is None:
                     # Get opponent's known moves
                     opponent_moves = getattr(opponent_active, "moves", [])
@@ -2082,36 +2095,54 @@ def apply_ability_penalties(
                         m.name if hasattr(m, "name") else str(m) for m in opponent_moves
                     ]
                     
-                    # Check for burn-inflicting moves
-                    has_burn_move = any(
-                        move_name in {"willowisp", "scald", "searingshot", "inferno", "sacredfire", "burningjealousy"}
-                        for move_name in opponent_move_names
-                    )
+                    # Check for ANY non-Poison status-inflicting move
+                    # STATUS_INFLICTING_MOVES includes: WoW, T-Wave, Glare, Sleep Powder, etc.
+                    # We WANT Toxic/Poison (activates Poison Heal), avoid everything else
+                    has_dangerous_status_move = False
+                    for opp_move_name in opponent_move_names:
+                        if opp_move_name in STATUS_INFLICTING_MOVES:
+                            # Toxic/Poison are GOOD for us (activate Poison Heal)
+                            if opp_move_name not in TOXIC_POISON_MOVES:
+                                has_dangerous_status_move = True
+                                break
                     
-                    # Also check if opponent commonly carries WoW based on species
-                    opponent_name_norm = normalize_name(opponent_active.name)
-                    wow_common_users = {
-                        "torkoal", "corviknight", "rotomwash", "rotomheat", "rotom",
-                        "alomomola", "sableye", "dusknoir", "spiritomb", "skeledirge",
-                        "arcanine", "arcaninehisui", "zapdos", "zapdosgalar", "moltres",
-                    }
-                    likely_has_wow = opponent_name_norm in wow_common_users
+                    # If no known dangerous status moves yet, check opponent's common moveset
+                    # Use the same dataset infrastructure that predicts sets
+                    if not has_dangerous_status_move:
+                        try:
+                            from data.pkmn_sets import TeamDatasets, RandomBattleTeamDatasets
+                            if battle.battle_type == BattleType.RANDOM_BATTLE:
+                                possible_moves = RandomBattleTeamDatasets.get_all_possible_moves(opponent_active)
+                            else:
+                                possible_moves = TeamDatasets.get_all_possible_moves(opponent_active)
+                            
+                            # Check if opponent commonly has dangerous status moves
+                            for possible_move in possible_moves:
+                                if possible_move in STATUS_INFLICTING_MOVES and possible_move not in TOXIC_POISON_MOVES:
+                                    has_dangerous_status_move = True
+                                    break
+                        except Exception:
+                            # If dataset check fails, be cautious and assume threat exists
+                            # Better safe than sorry with Poison Heal
+                            pass
                     
-                    # If opponent has WoW or likely has it, penalize passive/setup moves
-                    if has_burn_move or likely_has_wow:
+                    # If opponent has/might have dangerous status moves, penalize passive plays
+                    if has_dangerous_status_move:
                         move_data = all_move_json.get(move_name, {})
                         move_category = move_data.get(constants.CATEGORY, "")
                         base_power = move_data.get(constants.BASE_POWER, 0)
                         
-                        # Heavily penalize status/setup moves (like Spikes, Swords Dance, etc.)
+                        # Heavily penalize status/setup moves
+                        # These waste a turn and give opponent a free chance to status us
                         if move_name in SETUP_MOVES or move_category == constants.STATUS:
-                            penalty = min(penalty, PENALTY_PASSIVE_VS_BOOSTED)  # Same as vs boosted threat
-                            reason = f"Poison Heal vs WoW threat ({opponent_name_norm}) - avoid passive"
+                            penalty = min(penalty, PENALTY_PASSIVE_VS_BOOSTED)
+                            reason = "Poison Heal vs status threat (passive = risk crippling)"
                         
-                        # Moderately penalize weak attacks (should either switch or attack hard)
+                        # Moderately penalize weak attacks
+                        # Should either switch or attack decisively
                         elif move_category in {constants.PHYSICAL, constants.SPECIAL} and base_power < 70:
                             penalty = min(penalty, 0.7)
-                            reason = f"Poison Heal vs WoW threat - prefer strong attack or switch"
+                            reason = "Poison Heal vs status threat (prefer strong move or switch)"
 
         # =====================================================================
         # PHASE 3.3: MOMENTUM TRACKING
