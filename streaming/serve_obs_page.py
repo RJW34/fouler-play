@@ -160,6 +160,15 @@ def build_state_payload() -> dict:
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
     
+    # Update status field based on active battles
+    if battles:
+        status["status"] = "Active"
+        opponent = battles[0].get("opponent", "Opponent") if battles else "Opponent"
+        status["battle_info"] = f"vs {opponent}"
+    else:
+        status["status"] = "Searching"
+        status["battle_info"] = "Searching..."
+    
     # Add accounts_elo to status (so overlay.html receives it via payload.status)
     accounts_elo = {}
     if _ladder_cache.get("accounts"):
@@ -533,24 +542,40 @@ def _schedule_elo_refresh(*, force: bool, delay: int = 0) -> None:
 
 
 async def _filter_finished_battles(battles: list[dict]) -> list[dict]:
+    """Filter out finished battles (replay exists) and stale battles (>5min old)."""
     if not battles:
         return battles
     filtered: list[dict] = []
     now = time.time()
+    STALE_BATTLE_THRESHOLD_SEC = 5 * 60  # 5 minutes
+    
     for battle in battles:
         battle_id = battle.get("id")
         if not battle_id:
             continue
+        
         started = _parse_started_iso(battle.get("started"))
+        
+        # Safety net: auto-clear stale battles (older than 5 minutes)
+        if started:
+            age = now - started.timestamp()
+            if age > STALE_BATTLE_THRESHOLD_SEC:
+                # Battle running >5min, likely finished but cleanup missed
+                continue
+        
+        # Skip replay check for very recent battles to avoid false positives
         if started and REPLAY_CHECK_MIN_AGE_SEC > 0:
             age = now - started.timestamp()
             if age < REPLAY_CHECK_MIN_AGE_SEC:
                 filtered.append(battle)
                 continue
+        
+        # Check if replay exists (battle finished)
         replay_id = _normalize_replay_id(battle_id)
         if await _replay_exists(replay_id):
             # Replay exists -> battle is finished; drop from OBS updates.
             continue
+        
         filtered.append(battle)
     return filtered
 
