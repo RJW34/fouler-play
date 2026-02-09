@@ -3,7 +3,7 @@
 **This is the single source of truth for fouler-play operations.** If anything contradicts this file, this file wins. `fouler-play-v2` has been archived — it was a duplicate clone DEKU created. Only `/home/ryan/projects/fouler-play` exists now.
 
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
-**Branch:** foulest-play
+**Branch:** master
 **Bot Account:** BugInTheCode on DEKU, ALL CHUNG on BAKUGO
 **Updated:** 2026-02-07
 
@@ -113,7 +113,7 @@ Based on what you find, fix the single most impactful pattern. Examples:
 - [x] `python -m pytest tests/ -v` — tests pass (82/82)
 - [x] `python -c "from fp.search.main import find_best_move; print('OK')"` — imports work
 - [x] Update this TASKBOARD.md (check boxes, note what you found/fixed)
-- [ ] `git push origin foulest-play`
+- [ ] `git push origin master`
 
 **Diagnosis findings (2026-02-07):**
 - 76% of losses had NO Stealth Rock set — the #1 problem for fat/stall teams
@@ -316,7 +316,7 @@ Bottom bar overlay: vs Opponent1, Opponent2 | [W][W][L][W][L] pips
 
 ## Communication Protocol
 
-- Push code/data to `foulest-play` branch
+- Push code/data to `master` branch
 - Update this TASKBOARD.md when completing items (check the box: `[x]`)
 - DEKU pushes code changes, BAKUGO pushes battle data
 - Check `battle_stats.json` for performance tracking

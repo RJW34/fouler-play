@@ -2,13 +2,13 @@
 REM =============================================================================
 REM Fouler-Play Deploy Update (Windows Machine)
 REM =============================================================================
-REM Pulls latest code from foulest-play, records the deploy event.
+REM Pulls latest code from master, records the deploy event.
 REM =============================================================================
 
 setlocal enabledelayedexpansion
 
 set REPO_DIR=%~dp0..\..
-set BRANCH=foulest-play
+set BRANCH=master
 set DEPLOY_LOG=%REPO_DIR%\infrastructure\deploy_log.json
 set BATTLE_STATS=%REPO_DIR%\battle_stats.json
 

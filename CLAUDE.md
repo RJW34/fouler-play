@@ -40,7 +40,7 @@ systemctl --user start fouler-play
 1. **Improve the bot's decision-making** — see TASKBOARD.md for the current phase. The bot is stuck at ~1200 with 50% win rate across 219 games. It needs to play fat/stall correctly at a higher level. Focus on improvements that help the bot play these archetypes faithfully: better switching, hazard management, recovery timing, PP awareness, matchup-based pivoting. Run `python -m pytest tests/ -v` after each change.
 2. **Improve the morning report** — `replay_analysis/team_performance.py` generates per-team analysis. Make this output more useful for a competitive player studying their teams. The report should answer: "Is this team viable? What does it lose to? Which Pokemon are the weak links? Which replays should I watch?" This is the primary deliverable the player consumes.
 3. **Fix anything broken** — if tests fail, if imports break, if the developer loop crashes, diagnose and fix.
-4. **Push to GitHub** — all code goes to `foulest-play` branch. Update TASKBOARD.md when completing items. Never modify files in the `never_modify` list in `infrastructure/guardrails.json`.
+4. **Push to GitHub** — all code goes to `master` branch. Update TASKBOARD.md when completing items. Never modify files in the `never_modify` list in `infrastructure/guardrails.json`.
 
 ### Sub-agent pattern (DEKU)
 When you have multiple independent tasks, spawn sub-agents to work in parallel:
@@ -51,7 +51,7 @@ When you have multiple independent tasks, spawn sub-agents to work in parallel:
 Use the Task tool or `claude -p "prompt" --allowedTools "Edit,Write,Read,Bash,Glob,Grep"` for headless sub-agents.
 
 ### Coordinating with BAKUGO
-- Push code to `foulest-play`. BAKUGO pulls automatically in their player loop.
+- Push code to `master`. BAKUGO pulls automatically in their player loop.
 - If BAKUGO needs to do something specific, write instructions in `TASKBOARD.md` under "BAKUGO Action Items" and push.
 - Read `battle_stats.json` (pushed by BAKUGO) for performance data.
 
@@ -70,7 +70,7 @@ schtasks /run /tn "FoulerPlayPlayerLoop"
 
 ### Your responsibilities (in priority order)
 1. **Keep the bot playing** — the player loop must be running at all times. If it crashes, diagnose why and fix. The bot should be playing games continuously so there's fresh data every morning. Check logs in the repo root.
-2. **Push battle data** — after each batch, `battle_stats.json` and `replays/` get committed and pushed to `foulest-play`. This is the raw material DEKU and the player need.
+2. **Push battle data** — after each batch, `battle_stats.json` and `replays/` get committed and pushed to `master`. This is the raw material DEKU and the player need.
 3. **ELO monitoring** — `infrastructure/elo_watchdog.py` runs after deploys. If ELO drops >50 from a deploy, it auto-reverts. Make sure this is working.
 4. **poke-engine builds** — if DEKU pushes code that updates poke-engine version, you need Rust toolchain installed to rebuild. `pip install -e .` or `pip install poke-engine==X.X.X`.
 5. **Streaming (low priority)** — the streaming pipeline in `streaming/` is built and functional but is NOT critical to the mission. Only work on it if everything above is running smoothly.
@@ -80,7 +80,7 @@ schtasks /run /tn "FoulerPlayPlayerLoop"
    - Start with: `python streaming/serve_obs_page.py`
 
 ### Coordinating with DEKU
-- Push battle data (stats, replays) to `foulest-play`. DEKU pulls in their developer loop.
+- Push battle data (stats, replays) to `master`. DEKU pulls in their developer loop.
 - Check `TASKBOARD.md` for any "BAKUGO Action Items" that DEKU has written.
 - If you find a bug in the bot's decision-making, note it in TASKBOARD.md under "Bug Reports" and push.
 
@@ -151,7 +151,7 @@ fouler-play/
 Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play) at commit `55fa9b4`.
 - Upstream: `upstream` -> https://github.com/pmariglia/foul-play.git
 - Origin: `origin` -> https://github.com/RJW34/fouler-play.git
-- Branch: `foulest-play`
+- Branch: `master`
 
 ## Testing
 

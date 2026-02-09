@@ -11,7 +11,7 @@ REM ---------------------------------------------------------------------------
 REM Configuration
 REM ---------------------------------------------------------------------------
 set REPO_DIR=%~dp0..\..
-set BRANCH=foulest-play
+set BRANCH=master
 set BATCH_SIZE=10
 set DEPLOY_SCRIPT=%~dp0deploy_update.bat
 set ELO_WATCHDOG=%REPO_DIR%\infrastructure\elo_watchdog.py
