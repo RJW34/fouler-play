@@ -31,6 +31,10 @@ from constants_pkg.strategy import SETUP_MOVES
 
 logger = logging.getLogger(__name__)
 
+# Blacklist for dead battles (forcibly terminated due to timeout)
+# Prevents re-claiming the same stuck battle immediately after termination
+_dead_battle_blacklist: set[str] = set()
+
 # Active battles tracking for stream overlay
 # battle_id -> {"opponent": str, "started": datetime, "worker_id": int | None}
 _active_battles = {}
@@ -39,7 +43,7 @@ _last_active_battles_write = 0.0
 _last_active_battles_payload = None
 
 # Battle message timeout tuning (seconds)
-MESSAGE_TIMEOUT_SEC = int(os.getenv("BATTLE_MESSAGE_TIMEOUT_SEC", "300"))
+MESSAGE_TIMEOUT_SEC = int(os.getenv("BATTLE_MESSAGE_TIMEOUT_SEC", "120"))
 STALE_STRIKES = int(os.getenv("BATTLE_STALE_STRIKES", "2"))
 STALE_DISPLAY_GRACE_SEC = int(os.getenv("BATTLE_STALE_DISPLAY_GRACE_SEC", "900"))
 # Throttle active_battles.json writes to avoid excessive disk churn.
@@ -64,7 +68,7 @@ REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "60"))
 REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 
-BATTLE_HARD_TIMEOUT_SEC = int(os.getenv("BATTLE_HARD_TIMEOUT_SEC", "3600"))  # 1 hour max per battle
+BATTLE_HARD_TIMEOUT_SEC = int(os.getenv("BATTLE_HARD_TIMEOUT_SEC", "900"))  # 15 min max per battle
 
 # Battle chat defaults
 OPENING_CHAT_MESSAGE = "hf"
@@ -1008,6 +1012,12 @@ async def get_battle_tag_and_opponent(
         # First try to atomically claim a pending battle (prevents race conditions)
         battle_tag, pending_msgs = await ps_websocket_client.claim_pending_battle(worker_id)
         if battle_tag and pending_msgs:
+            # Check if this battle is blacklisted (dead/stuck battle)
+            if battle_tag in _dead_battle_blacklist:
+                logger.warning(f"Skipping blacklisted dead battle: {battle_tag}")
+                # Unregister it so other workers can also skip it
+                ps_websocket_client.unregister_battle(battle_tag)
+                continue
             _release_search("battle claimed")
             # Battle already claimed and registered - extract opponent name
             for msg in pending_msgs:
@@ -1032,6 +1042,11 @@ async def get_battle_tag_and_opponent(
         match = battle_tag_pattern.match(first_line)
         if match:
             battle_tag = match.group(1)
+
+            # Check if this battle is blacklisted (dead/stuck battle)
+            if battle_tag in _dead_battle_blacklist:
+                logger.warning(f"Skipping blacklisted dead battle from message: {battle_tag}")
+                continue
 
             # Register this battle immediately to prevent other workers from grabbing it
             await ps_websocket_client.register_battle(battle_tag)
@@ -1498,6 +1513,9 @@ async def pokemon_battle(
                     f"Battle {battle_tag} exceeded hard timeout "
                     f"({elapsed:.0f}s > {BATTLE_HARD_TIMEOUT_SEC}s) - forcibly terminating"
                 )
+                # Blacklist this battle to prevent re-claiming the same dead room
+                _dead_battle_blacklist.add(battle_tag)
+                logger.info(f"Added {battle_tag} to dead battle blacklist (size: {len(_dead_battle_blacklist)})")
                 try:
                     await ps_websocket_client.leave_battle(battle_tag)
                 except Exception:
