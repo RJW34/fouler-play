@@ -266,15 +266,26 @@ async def _merge_deku_battles(payload: dict) -> dict:
 
 async def _process_event_update(event_type: str, payload: dict) -> None:
     try:
+        print(f"[EVENT] Received event: {event_type}")
+        if payload:
+            print(f"[EVENT] Payload: {payload}")
+        
         await maybe_refresh_elo_from_event(event_type, payload)
         state = build_state_payload()
         await broadcast("STATE_UPDATE", state)
+        
         # Update OBS sources immediately when battle events come in (event-based, not polling)
-        if event_type in ("BATTLE_START", "BATTLE_END") and _obs_client:
-            state = await _merge_deku_battles(state)
-            await maybe_update_obs_sources(state)
-    except Exception:
-        pass
+        if event_type in ("BATTLE_START", "BATTLE_END"):
+            print(f"[EVENT] {event_type} detected - triggering OBS update")
+            if _obs_client:
+                state = await _merge_deku_battles(state)
+                await maybe_update_obs_sources(state)
+            else:
+                print(f"[EVENT] ❌ No OBS client available for {event_type} update")
+    except Exception as e:
+        print(f"[EVENT] ❌ Error processing event {event_type}: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def _build_direct_battle_url(bid: str) -> str:
@@ -662,37 +673,73 @@ async def ensure_obs_sources() -> None:
 
 
 async def maybe_update_obs_sources(payload: dict) -> None:
+    print(f"[OBS-UPDATE] maybe_update_obs_sources() called")
+    
     if not _obs_client:
+        print(f"[OBS-UPDATE] ❌ No OBS client (_obs_client is None)")
         return
+    
+    obs_connected = False
+    try:
+        obs_connected = not _obs_client.is_closed()
+    except Exception as e:
+        print(f"[OBS-UPDATE] ❌ Failed to check OBS client status: {e}")
+    
+    print(f"[OBS-UPDATE] OBS client connected: {obs_connected}")
+    
     if not _obs_sources:
         await ensure_obs_sources()
     if not _obs_sources:
+        print(f"[OBS-UPDATE] ❌ No OBS sources configured")
         return
+    
     battles = payload.get("battles") or []
+    print(f"[OBS-UPDATE] Battles in payload: {len(battles)}")
+    for b in battles:
+        print(f"[OBS-UPDATE]   - {b.get('id')} (slot {b.get('slot')}, opponent: {b.get('opponent')})")
+    
     battles = await _filter_finished_battles(battles)
+    print(f"[OBS-UPDATE] Battles after filtering: {len(battles)}")
+    
     slot_map = _build_slot_map(battles)
+    print(f"[OBS-UPDATE] Slot map: {dict((k, v.get('id')) for k, v in slot_map.items())}")
+    print(f"[OBS-UPDATE] OBS sources: {_obs_sources}")
+    
     async with _obs_update_lock:
         for idx, source_name in enumerate(_obs_sources, start=1):
             battle = slot_map.get(idx)
             desired_id = battle.get("id") if battle else None
             previous_id = _last_obs_ids.get(idx)
+            
+            print(f"[OBS-UPDATE] Slot {idx} ({source_name}): previous={previous_id}, desired={desired_id}")
+            
             if previous_id == desired_id:
+                print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
                 continue
+            
             if desired_id:
                 if OBS_FORCE_REFRESH:
                     # Force a clean load between battles to avoid stale CEF state.
+                    print(f"[OBS-UPDATE] Slot {idx}: Force refresh to idle page")
                     await _obs_client.set_browser_source_url(source_name, _cache_bust(OBS_IDLE_URL))
                     if OBS_REFRESH_PAUSE_MS > 0:
                         await asyncio.sleep(OBS_REFRESH_PAUSE_MS / 1000)
                 url = _build_direct_battle_url(desired_id)
+                print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id}")
             else:
                 url = OBS_IDLE_URL
+                print(f"[OBS-UPDATE] Slot {idx}: Setting to idle page")
+            
             ok = await _obs_client.set_browser_source_url(source_name, url)
             _last_obs_urls[idx] = url
             _last_obs_updates[idx] = time.time()
             _last_obs_status[idx] = "ok" if ok else "fail"
+            
             if ok:
+                print(f"[OBS-UPDATE] ✅ Slot {idx}: Successfully updated to {url}")
                 _last_obs_ids[idx] = desired_id
+            else:
+                print(f"[OBS-UPDATE] ❌ Slot {idx}: Failed to update to {url}")
 
 
 async def handle_obs(request: web.Request) -> web.FileResponse:
@@ -758,15 +805,25 @@ def build_debug_payload() -> dict:
         expected[i] = battle.get("id") if battle else None
 
     obs_connected = False
+    obs_client_status = "None"
     try:
         if _obs_client:
             obs_connected = not _obs_client.is_closed()
-    except Exception:
-        obs_connected = False
+            obs_client_status = "connected" if obs_connected else "disconnected"
+        else:
+            obs_client_status = "None"
+    except Exception as e:
+        obs_client_status = f"error: {e}"
+
+    # Include current battles from active_battles.json
+    battles_data = state_store.read_active_battles()
+    current_battles = battles_data.get("battles", [])
 
     return {
         "updated": time.time(),
         "expected": expected,
+        "current_battles": current_battles,
+        "battles_file_path": str(state_store.ACTIVE_BATTLES_PATH),
         "ladder": {
             "accounts": dict(_ladder_cache.get("accounts", {})),
             "elo_updated": _ladder_cache.get("updated"),
@@ -776,6 +833,7 @@ def build_debug_payload() -> dict:
             "retry_in_flight": bool(_elo_retry_task and not _elo_retry_task.done()),
         },
         "obs": {
+            "client_status": obs_client_status,
             "connected": obs_connected,
             "host": OBS_WS_HOST,
             "port": OBS_WS_PORT,
@@ -784,6 +842,8 @@ def build_debug_payload() -> dict:
             "last_urls": dict(_last_obs_urls),
             "last_updates": dict(_last_obs_updates),
             "last_status": dict(_last_obs_status),
+            "sync_interval_sec": OBS_SYNC_INTERVAL_SEC,
+            "force_refresh": OBS_FORCE_REFRESH,
         },
     }
 
@@ -822,10 +882,12 @@ async def poll_files(app: web.Application) -> None:
         )
 
         if status_mtime and status_mtime != last_status_mtime:
+            print(f"[POLL] Status file changed (mtime: {status_mtime})")
             last_status_mtime = status_mtime
             await broadcast("STATE_UPDATE", build_state_payload())
 
         if battles_mtime and battles_mtime != last_battles_mtime:
+            print(f"[POLL] Battles file changed (mtime: {battles_mtime})")
             last_battles_mtime = battles_mtime
             await broadcast("STATE_UPDATE", build_state_payload())
 
@@ -834,6 +896,7 @@ async def poll_files(app: web.Application) -> None:
         if _obs_client and OBS_SYNC_INTERVAL_SEC > 0:
             now = time.time()
             if (now - last_obs_sync) >= OBS_SYNC_INTERVAL_SEC:
+                print(f"[POLL] Running periodic OBS sync (interval: {OBS_SYNC_INTERVAL_SEC}s)")
                 last_obs_sync = now
                 local_payload = build_state_payload()
                 local_payload = await _merge_deku_battles(local_payload)
@@ -904,6 +967,7 @@ def create_app() -> web.Application:
     app.router.add_get("/state", handle_state)
     app.router.add_get("/deku-state", handle_deku_state)
     app.router.add_get("/debug_state", handle_debug_state)
+    app.router.add_get("/obs-debug", handle_debug_state)  # Alias for debug_state
     app.router.add_get("/active_battles.json", handle_battles_file)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
@@ -931,6 +995,7 @@ if __name__ == "__main__":
     print("    GET  /state   - Combined status + battles")
     print("    GET  /debug   - OBS debug overlay")
     print("    GET  /debug_state - OBS debug JSON")
+    print("    GET  /obs-debug   - OBS diagnostics (client status, sources, battles)")
     print("    GET  /ws      - Real-time updates")
     print("    POST /event   - Bot event hook")
     print()
