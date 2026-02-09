@@ -440,6 +440,10 @@ async def _attempt_resume_battle(
                 ps_websocket_client.unregister_battle(battle_tag)
             except Exception:
                 pass
+            try:
+                await ps_websocket_client.leave_battle(battle_tag)
+            except Exception:
+                pass
             if battle_tag in _active_battles:
                 del _active_battles[battle_tag]
                 await update_active_battles_file()
@@ -1018,8 +1022,12 @@ async def get_battle_tag_and_opponent(
             # Check if this battle is blacklisted (dead/stuck battle)
             if battle_tag in _dead_battle_blacklist:
                 logger.warning(f"Skipping blacklisted dead battle: {battle_tag}")
-                # Unregister it so other workers can also skip it
+                # Unregister and leave the room so PS stops sending messages
                 ps_websocket_client.unregister_battle(battle_tag)
+                try:
+                    await ps_websocket_client.leave_battle(battle_tag)
+                except Exception:
+                    pass
                 continue
             _release_search("battle claimed")
             # Battle already claimed and registered - extract opponent name
@@ -1183,6 +1191,10 @@ async def start_battle_common(
             logger.info(f"Blacklisted closed-before-init battle: {battle_tag} (blacklist size: {len(_dead_battle_blacklist)})")
             try:
                 ps_websocket_client.unregister_battle(battle_tag)
+            except Exception:
+                pass
+            try:
+                await ps_websocket_client.leave_battle(battle_tag)
             except Exception:
                 pass
             removed = False
