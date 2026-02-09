@@ -47,7 +47,7 @@ nohup ./infrastructure/linux/developer_loop.sh &
 
 **Environment Variables:**
 - `SLEEP_INTERVAL`: Seconds between analysis cycles (default: 1800)
-- `BRANCH`: Git branch to track (default: foulest-play)
+- `BRANCH`: Git branch to track (default: master)
 - `REPO_DIR`: Repository root (auto-detected)
 
 ### 3. `team_performance.py` - Core Analysis Script
@@ -155,7 +155,7 @@ The loop will:
 
 ### "battle_stats.json not found"
 - Ensure BAKUGO has pushed the file to git
-- Check that you're on the correct branch (`foulest-play`)
+- Check that you're on the correct branch (`master`)
 - Verify git pull is working
 
 ### "No battles found"

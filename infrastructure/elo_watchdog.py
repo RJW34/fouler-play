@@ -124,7 +124,7 @@ def git_revert(commit_hash: str) -> bool:
             print(f"Successfully reverted commit {commit_hash[:8]}")
             # Push the revert
             push_result = subprocess.run(
-                ["git", "-C", str(REPO_DIR), "push", "origin", "foulest-play"],
+                ["git", "-C", str(REPO_DIR), "push", "origin", "master"],
                 capture_output=True,
                 text=True,
                 timeout=60,

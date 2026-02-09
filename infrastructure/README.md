@@ -3,11 +3,11 @@
 ## Architecture Overview
 
 The fouler-play bot operates across two machines in a continuous improvement loop,
-coordinated through GitHub (branch: `foulest-play`).
+coordinated through GitHub (branch: `master`).
 
 ```
 +---------------------------+          GitHub           +---------------------------+
-|     WINDOWS MACHINE       |  <-- foulest-play -->     |      LINUX MACHINE        |
+|     WINDOWS MACHINE       |  <-- master -->     |      LINUX MACHINE        |
 |                           |        branch             |                           |
 |  - Plays ladder matches   |                           |  - Analyzes replays       |
 |  - Streams to Twitch      |  battle_stats.json --->   |  - Identifies weaknesses  |
@@ -23,7 +23,7 @@ Responsibilities:
 - Runs the bot against the Pokemon Showdown ladder (`gen9ou`)
 - Streams gameplay to Twitch via OBS
 - After each batch of games, pushes `battle_stats.json` and replay files to GitHub
-- Periodically checks for new code on `foulest-play` and deploys updates
+- Periodically checks for new code on `master` and deploys updates
 - Runs the ELO watchdog to revert bad deploys
 
 Key scripts:
@@ -34,7 +34,7 @@ Key scripts:
 ### Linux Machine (Developer / Analyst)
 
 Responsibilities:
-- Pulls latest battle data from `foulest-play`
+- Pulls latest battle data from `master`
 - Runs `replay_analysis/team_performance.py` to generate performance reports
 - Invokes Claude Code CLI with the analysis prompt and team report
 - If Claude produces changes that pass syntax checks and tests, commits and pushes
@@ -46,7 +46,7 @@ Key scripts:
 
 ### GitHub as Coordination Layer
 
-- Branch `foulest-play` is the live code branch. Both machines push to and pull from it.
+- Branch `master` is the live code branch. Both machines push to and pull from it.
 - The Windows machine pushes data (stats, replays). The Linux machine pushes code.
 - Merge conflicts are avoided because each machine writes to different files.
 - `infrastructure/deploy_log.json` tracks every deploy event for audit and rollback.
@@ -58,10 +58,10 @@ Key scripts:
 ### Windows Player Loop
 
 ```
-1. git pull origin foulest-play
+1. git pull origin master
 2. Run bot for {batch_size} games (default 10)
 3. git add battle_stats.json replays/ && git commit && git push
-4. git fetch origin foulest-play
+4. git fetch origin master
 5. If new commits from Linux machine: run deploy_update.bat
 6. Run elo_watchdog.py to check for regressions
 7. Go to step 1
@@ -70,7 +70,7 @@ Key scripts:
 ### Linux Developer Loop
 
 ```
-1. git pull origin foulest-play
+1. git pull origin master
 2. Check if new entries exist in battle_stats.json since last analysis
 3. If yes: run team_performance.py to generate report
 4. Invoke Claude Code with analysis_prompt.md + report
@@ -95,7 +95,7 @@ Key scripts:
 
 ### Linux Machine
 
-1. Clone the repo and checkout `foulest-play`
+1. Clone the repo and checkout `master`
 2. Ensure Claude Code CLI is installed and authenticated
 3. Ensure Python dependencies are installed (`pip install -r requirements.txt`)
 4. Run:

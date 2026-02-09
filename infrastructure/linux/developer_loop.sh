@@ -12,7 +12,7 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
-BRANCH="${BRANCH:-foulest-play}"
+BRANCH="${BRANCH:-master}"
 SLEEP_INTERVAL="${SLEEP_INTERVAL:-1800}"  # seconds between cycles (default 30 min)
 LOG_FILE="${REPO_DIR}/infrastructure/linux/developer_loop.log"
 LAST_ANALYSIS_MARKER="${REPO_DIR}/infrastructure/linux/.last_analysis_count"

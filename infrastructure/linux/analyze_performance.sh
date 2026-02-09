@@ -12,7 +12,7 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
-BRANCH="${BRANCH:-foulest-play}"
+BRANCH="${BRANCH:-master}"
 BATTLE_STATS="${REPO_DIR}/battle_stats.json"
 REPORT_DIR="${REPO_DIR}/replay_analysis/reports"
 TIMESTAMP=$(date '+%Y%m%d_%H%M%S')

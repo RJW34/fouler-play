@@ -11,7 +11,7 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
-BRANCH="foulest-play"
+BRANCH="master"
 BATCH_SIZE="${BATCH_SIZE:-15}"  # games per batch
 MAX_CONCURRENT="${MAX_CONCURRENT:-3}"
 ENV_FILE="${REPO_DIR}/.env.deku"
