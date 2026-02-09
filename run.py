@@ -11,9 +11,10 @@ from copy import deepcopy
 from pathlib import Path
 
 # Load .env so webhook URLs and other config are available to submodules
+_dotenv_loaded = False
 try:
     from dotenv import load_dotenv
-    load_dotenv(Path(__file__).resolve().parent / ".env")
+    _dotenv_loaded = load_dotenv(Path(__file__).resolve().parent / ".env")
 except ImportError:
     pass  # dotenv not installed; rely on systemd EnvironmentFile
 
@@ -446,6 +447,15 @@ async def battle_worker(
 async def run_foul_play():
     FoulPlayConfig.configure()
     init_logging(FoulPlayConfig.log_level, FoulPlayConfig.log_to_file)
+    
+    # Log .env status for debugging
+    logger.info(f".env loading: {'success' if _dotenv_loaded else 'skipped/failed (using systemd EnvironmentFile)'}")
+    discord_webhook = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
+    if discord_webhook:
+        logger.info("Discord battle reporting: ENABLED")
+    else:
+        logger.warning("Discord battle reporting: DISABLED (DISCORD_BATTLES_WEBHOOK_URL not set)")
+    
     apply_mods(FoulPlayConfig.pokemon_format)
     validate_constants()
 
