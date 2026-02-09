@@ -302,13 +302,8 @@ async def battle_worker(
             team_file_name = "None"
 
             if FoulPlayConfig.requires_team():
-                # Priority: team_names (per-worker) > team_list (cycling) > team_name (single)
-                if FoulPlayConfig.team_names is not None:
-                    # Per-worker team assignment: worker_id maps to team index
-                    team_idx = worker_id % len(FoulPlayConfig.team_names)
-                    team_name = FoulPlayConfig.team_names[team_idx]
-                    logger.debug(f"Worker {worker_id} using team: {team_name}")
-                elif team_iterator is not None:
+                # Priority: team_iterator (cycling team_names/team_list) > team_name (single)
+                if team_iterator is not None:
                     team_name = team_iterator.get_next_team()
                 else:
                     team_name = FoulPlayConfig.team_name
@@ -475,11 +470,13 @@ async def run_foul_play():
     except Exception as e:
         logger.warning(f"Failed to prime resume battles: {e}")
 
-    team_iterator = (
-        None
-        if FoulPlayConfig.team_list is None
-        else TeamListIterator(FoulPlayConfig.team_list)
-    )
+    # Initialize team iterator for both TEAM_LIST (file) and TEAM_NAMES (env var)
+    if FoulPlayConfig.team_names is not None:
+        team_iterator = TeamListIterator(FoulPlayConfig.team_names)
+    elif FoulPlayConfig.team_list is not None:
+        team_iterator = TeamListIterator(FoulPlayConfig.team_list)
+    else:
+        team_iterator = None
 
     stats = BattleStats()
     shutdown_event = asyncio.Event()
