@@ -433,6 +433,9 @@ async def _attempt_resume_battle(
 
         if battle_room_closed(battle_tag, msg) or battle_is_finished(battle_tag, msg):
             logger.info("Resume drop: battle already closed/finished %s", battle_tag)
+            # Blacklist to prevent search loop from re-claiming this dead battle
+            _dead_battle_blacklist.add(battle_tag)
+            logger.info(f"Blacklisted resumed-but-closed battle: {battle_tag} (blacklist size: {len(_dead_battle_blacklist)})")
             try:
                 ps_websocket_client.unregister_battle(battle_tag)
             except Exception:
