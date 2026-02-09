@@ -1175,6 +1175,9 @@ async def start_battle_common(
         # If the battle room was closed before we could initialize, bail out.
         if battle_room_closed(battle_tag, msg):
             logger.warning(f"Battle room closed before init: {battle_tag}")
+            # Blacklist to prevent immediate re-claim from buffered messages
+            _dead_battle_blacklist.add(battle_tag)
+            logger.info(f"Blacklisted closed-before-init battle: {battle_tag} (blacklist size: {len(_dead_battle_blacklist)})")
             try:
                 ps_websocket_client.unregister_battle(battle_tag)
             except Exception:
