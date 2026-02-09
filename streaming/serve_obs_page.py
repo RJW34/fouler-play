@@ -553,12 +553,11 @@ def _schedule_elo_refresh(*, force: bool, delay: int = 0) -> None:
 
 
 async def _filter_finished_battles(battles: list[dict]) -> list[dict]:
-    """Filter out finished battles (replay exists) and stale battles (>5min old)."""
+    """Filter out finished battles (replay exists). Removed stale-battle filter - most PS battles are 10-30min."""
     if not battles:
         return battles
     filtered: list[dict] = []
     now = time.time()
-    STALE_BATTLE_THRESHOLD_SEC = 5 * 60  # 5 minutes
     
     for battle in battles:
         battle_id = battle.get("id")
@@ -566,13 +565,6 @@ async def _filter_finished_battles(battles: list[dict]) -> list[dict]:
             continue
         
         started = _parse_started_iso(battle.get("started"))
-        
-        # Safety net: auto-clear stale battles (older than 5 minutes)
-        if started:
-            age = now - started.timestamp()
-            if age > STALE_BATTLE_THRESHOLD_SEC:
-                # Battle running >5min, likely finished but cleanup missed
-                continue
         
         # Skip replay check for very recent battles to avoid false positives
         if started and REPLAY_CHECK_MIN_AGE_SEC > 0:

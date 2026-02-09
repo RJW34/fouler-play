@@ -94,6 +94,7 @@ async def _send_battle_chat(ps_websocket_client, battle_tag: str, messages: list
     for message in messages:
         if not message:
             continue
+        logger.info("Sending battle chat in %s: %s", battle_tag, message)
         await ps_websocket_client.send_message(battle_tag, [message])
 
 
