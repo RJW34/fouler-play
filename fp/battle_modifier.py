@@ -49,6 +49,17 @@ ABILITIES_REVEALED_ON_SWITCH_IN = [
     "snowwarning",
 ]
 
+# Conservative set for speed-order based item inference.
+# These abilities have clearly visible switch-in activations and are safe for
+# relative activation-order checks.
+ABILITIES_SAFE_FOR_SPEED_ORDER_INFERENCE = {
+    "intimidate",
+    "pressure",
+    "download",
+    "trace",
+    "frisk",
+}
+
 SIDE_CONDITION_DEFAULT_DURATION = {
     constants.REFLECT: 5,
     constants.LIGHT_SCREEN: 5,
@@ -2881,6 +2892,97 @@ def check_opponent_hiddenpower(battle, msg_line):
     )
 
 
+def _side_id_from_protocol_ident(ident: str):
+    if not ident:
+        return None
+    # Protocol examples: "p1a: Kyurem", "p2a: Landorus-Therian"
+    side_token = ident.split(":")[0].strip()
+    if len(side_token) < 2:
+        return None
+    side_id = side_token[:2]
+    if side_id in {"p1", "p2"}:
+        return side_id
+    return None
+
+
+def check_choicescarf_from_ability_order(battle, msg_lines):
+    """
+    Infer Choice Scarf from switch-in ability activation order.
+
+    This is intentionally conservative:
+    - only when both sides switched in this message batch
+    - only for clearly pronounced switch-in abilities
+    - only when opponent activates before us
+    - only if opponent cannot naturally be faster at max speed without Scarf
+    """
+    if battle.generation in ["gen1", "gen2", "gen3"] or battle.trick_room:
+        return
+
+    if battle.user.active is None or battle.opponent.active is None:
+        return
+
+    opp = battle.opponent.active
+    if opp.item != constants.UNKNOWN_ITEM or not opp.can_have_choice_item:
+        return
+
+    if can_have_speed_modified(battle, opp):
+        return
+
+    switched_sides = set()
+    ability_events = []
+    for idx, ln in enumerate(msg_lines):
+        if ln.startswith("|switch|"):
+            split_ln = ln.split("|")
+            if len(split_ln) >= 3:
+                side_id = _side_id_from_protocol_ident(split_ln[2])
+                if side_id:
+                    switched_sides.add(side_id)
+        if not ln.startswith("|-ability|"):
+            continue
+        split_ln = ln.split("|")
+        if len(split_ln) < 4:
+            continue
+        side_id = _side_id_from_protocol_ident(split_ln[2])
+        if side_id not in {battle.user.name, battle.opponent.name}:
+            continue
+        ability = normalize_name(split_ln[3])
+        if ability in ABILITIES_SAFE_FOR_SPEED_ORDER_INFERENCE:
+            ability_events.append((idx, side_id, ability))
+
+    if battle.user.name not in switched_sides or battle.opponent.name not in switched_sides:
+        return
+
+    user_event = next((e for e in ability_events if e[1] == battle.user.name), None)
+    opp_event = next((e for e in ability_events if e[1] == battle.opponent.name), None)
+    if user_event is None or opp_event is None:
+        return
+
+    # We only infer Scarf when opponent's pronounced ability triggers before ours.
+    if opp_event[0] >= user_event[0]:
+        return
+
+    battle_copy = deepcopy(battle)
+    # Compute opponent's max plausible speed WITHOUT scarf.
+    battle_copy.opponent.active.set_spread("jolly", "0,0,0,0,0,252")
+    if battle_copy.opponent.active.item == constants.UNKNOWN_ITEM:
+        battle_copy.opponent.active.item = None
+
+    opp_no_scarf_speed = battle_copy.get_effective_speed(battle_copy.opponent)
+    our_effective_speed = battle_copy.get_effective_speed(battle_copy.user)
+
+    if our_effective_speed > opp_no_scarf_speed:
+        logger.info(
+            "Opponent %s ability order implies Choice Scarf (%s before %s, %d > %d no-scarf max)",
+            opp.name,
+            opp_event[2],
+            user_event[2],
+            our_effective_speed,
+            opp_no_scarf_speed,
+        )
+        opp.item = "choicescarf"
+        opp.item_inferred = True
+
+
 def check_choicescarf(battle, msg_lines):
     # If either side switched this turn - don't do this check
     if any(
@@ -3527,6 +3629,7 @@ def process_battle_updates(battle: Battle):
         elif action == "switch" and is_opponent(battle, split_msg):
             check_heavydutyboots(battle, msg_lines[i + 1 :])
 
+    check_choicescarf_from_ability_order(battle, msg_lines)
     battle.msg_list.clear()
 
 

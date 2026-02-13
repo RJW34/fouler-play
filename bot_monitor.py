@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Fouler Play Bot Monitor - Event-driven Discord notifications
 Monitors bot output and instantly posts battle results/replays to Discord
@@ -18,17 +18,16 @@ if sys.platform == 'win32':
 
 import asyncio
 import re
-import sys
 import aiohttp
 import json
 import time
 import signal
 import subprocess
 import atexit
+from collections import OrderedDict, deque
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
-import os
 import logging
 
 # Configure logging
@@ -72,7 +71,7 @@ DISCORD_BATTLES_WEBHOOK = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")  # For battle
 DISCORD_FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL")  # For turn reviews
 
 # Bot identity for multi-bot reporting
-BOT_DISPLAY_NAME = os.getenv("BOT_DISPLAY_NAME", "").strip()  # e.g. "🪲 DEKU" or "💥 BAKUGO"
+BOT_DISPLAY_NAME = os.getenv("BOT_DISPLAY_NAME", "").strip()  # e.g. "ðŸª² DEKU" or "ðŸ’¥ BAKUGO"
 
 # Fix Windows latin-1 encoded UTF-8 bytes (Issue 3)
 if BOT_DISPLAY_NAME:
@@ -82,11 +81,35 @@ if BOT_DISPLAY_NAME:
     except (UnicodeDecodeError, UnicodeEncodeError):
         pass  # Already valid UTF-8
 
-# Import replay analyzer and turn reviewer (commented out during upgrade)
-# from replay_analysis.analyzer import ReplayAnalyzer
-# from replay_analysis.turn_review import TurnReviewer
-from streaming.stream_integration import start_stream, stop_stream, update_stream_status
-from streaming.state_store import update_daily_stats
+# Import turn reviewer for turn-by-turn loss analysis from turn 1 onward.
+from replay_analysis.turn_review import TurnReviewer
+update_daily_stats = __import__(
+    "streaming.state_store", fromlist=["update_daily_stats"]
+).update_daily_stats
+
+ENABLE_STREAM_HOOKS = os.getenv("ENABLE_STREAM_HOOKS", "0").strip().lower() not in (
+    "0",
+    "false",
+    "no",
+    "off",
+)
+if ENABLE_STREAM_HOOKS:
+    from streaming.stream_integration import start_stream, stop_stream, update_stream_status
+else:
+    async def start_stream():
+        return {"ok": True, "msg": "stream hooks disabled"}
+
+    async def stop_stream():
+        return {"ok": True, "msg": "stream hooks disabled"}
+
+    async def update_stream_status(**kwargs):
+        return {"ok": True, "msg": "stream hooks disabled"}
+
+SEEN_BATTLE_IDS_MAX = max(500, int(os.getenv("MONITOR_SEEN_BATTLE_IDS_MAX", "10000")))
+POSTED_REPLAYS_MAX = max(500, int(os.getenv("MONITOR_POSTED_REPLAYS_MAX", "10000")))
+FINISHED_BATTLES_MAX = max(100, int(os.getenv("MONITOR_FINISHED_BATTLES_MAX", "2000")))
+BATCH_RESULTS_MAX = max(100, int(os.getenv("MONITOR_BATCH_RESULTS_MAX", "500")))
+BATCH_LOSSES_MAX = max(50, int(os.getenv("MONITOR_BATCH_LOSSES_MAX", "250")))
 
 # Patterns to detect in bot output
 # NOTE: Battle IDs can have alphanumeric hash suffixes like:
@@ -170,14 +193,16 @@ class BotMonitor:
         self.session_base_losses = None
         # Track multiple active battles
         self.active_battles = {}  # battle_id -> BattleState
-        self.seen_battle_ids = set()  # Track ALL battles ever seen (prevents duplicates)
+        self.seen_battle_ids = set()  # Track seen battles with bounded retention
+        self._seen_battle_order = deque()
         self.last_winner = None  # for associating winner with replay
         self.last_battle_id = None  # for associating events
         self.battle_message_map = {}  # Track most recent battle for each message stream
-        self.finished_battles = {}  # battle_id -> (opponent, result) for completed battles awaiting replay
-        self.analyzer = None  # ReplayAnalyzer() - disabled during upgrade
-        self.turn_reviewer = None  # TurnReviewer() - disabled during upgrade
-        self.posted_replays = set()  # Track posted replays to avoid duplicates
+        self.finished_battles = OrderedDict()  # battle_id -> (opponent, result) awaiting replay
+        self.analyzer = None  # ReplayAnalyzer remains disabled during upgrade
+        self.turn_reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "ALL CHUNG"))
+        self.posted_replays = set()  # Track posted replays with bounded retention
+        self._posted_replay_order = deque()
         self.num_workers = 0
         # Batch reporting state
         self.batch_results = []  # list of (opponent, result, replay_url)
@@ -194,6 +219,34 @@ class BotMonitor:
         # ELO tracking for stream overlay
         self.current_elo = None
         self.last_elo_fetch = None
+
+    def _remember_seen_battle(self, battle_id: str) -> bool:
+        """Remember a battle id and return True if already seen."""
+        if battle_id in self.seen_battle_ids:
+            return True
+        self.seen_battle_ids.add(battle_id)
+        self._seen_battle_order.append(battle_id)
+        while len(self._seen_battle_order) > SEEN_BATTLE_IDS_MAX:
+            stale = self._seen_battle_order.popleft()
+            self.seen_battle_ids.discard(stale)
+        return False
+
+    def _remember_posted_replay(self, replay_url: str) -> bool:
+        """Remember replay URL and return True if it was already tracked."""
+        if replay_url in self.posted_replays:
+            return True
+        self.posted_replays.add(replay_url)
+        self._posted_replay_order.append(replay_url)
+        while len(self._posted_replay_order) > POSTED_REPLAYS_MAX:
+            stale = self._posted_replay_order.popleft()
+            self.posted_replays.discard(stale)
+        return False
+
+    def _track_finished_battle(self, battle_id: str, opponent: str, result: str) -> None:
+        self.finished_battles[battle_id] = (opponent, result)
+        self.finished_battles.move_to_end(battle_id)
+        while len(self.finished_battles) > FINISHED_BATTLES_MAX:
+            self.finished_battles.popitem(last=False)
 
     def _write_self_pid(self):
         try:
@@ -394,9 +447,9 @@ class BotMonitor:
         wr = (wins / total * 100) if total > 0 else 0
 
         # Fetch current ELO (Issue 1)
-        ps_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+        ps_username = os.getenv("PS_USERNAME", "").strip()
         ps_format = os.getenv("PS_FORMAT", "gen9ou")
-        elo, gxe = await self.fetch_elo(ps_username, ps_format)
+        elo, gxe = await self.fetch_elo(ps_username, ps_format) if ps_username else (None, None)
         
         elo_str = ""
         if elo is not None:
@@ -405,26 +458,31 @@ class BotMonitor:
                 elo_str += f" ({gxe:.1f} GXE)"
 
         name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
-        msg = f"📊 **Batch Report{name_tag} ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR){elo_str}\n"
+        msg = f"ðŸ“Š **Batch Report{name_tag} ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR){elo_str}\n"
         msg += f"**Overall Record:** {self.wins}W - {self.losses}L\n\n"
 
-        # List results — suppress Discord embeds on non-loss replays with <url>
+        # List results â€” suppress Discord embeds on non-loss replays with <url>
         for opp, result, replay in self.batch_results:
-            emoji = "✅" if result == "won" else "💀" if result == "lost" else "🤝"
+            if result == "won":
+                icon = "W"
+            elif result == "lost":
+                icon = "L"
+            else:
+                icon = "T"
             if replay:
                 if result == "lost":
                     # Losses get full embed (bare URL on its own line)
-                    replay_link = f" — [replay]({replay})"
+                    replay_link = f" â€” [replay]({replay})"
                 else:
                     # Wins/ties get suppressed embed (angle brackets)
-                    replay_link = f" — [replay](<{replay}>)"
+                    replay_link = f" â€” [replay](<{replay}>)"
             else:
                 replay_link = ""
-            msg += f"{emoji} vs {opp}{replay_link}\n"
+            msg += f"{icon} vs {opp}{replay_link}\n"
 
         # Loss analysis summary
         if self.batch_losses:
-            msg += f"\n🔍 **Analyzing {len(self.batch_losses)} loss(es)...**"
+            msg += f"\nðŸ” **Analyzing {len(self.batch_losses)} loss(es)...**"
 
         # Suppress all auto-embeds on the batch message; losses get their own embed messages below
         await self.send_discord_message(msg, channel="battles", suppress_embeds=True)
@@ -446,21 +504,64 @@ class BotMonitor:
     def record_batch_result(self, opponent, result, replay_url=None):
         """Add a game result to the current batch."""
         self.batch_results.append((opponent, result, replay_url))
+        while len(self.batch_results) > BATCH_RESULTS_MAX:
+            self.batch_results.pop(0)
         if result == "won":
             self.batch_wins_count += 1
         elif result == "lost":
             self.batch_losses_count += 1
             if replay_url:
                 self.batch_losses.append((replay_url, opponent))
+                if len(self.batch_losses) > BATCH_LOSSES_MAX:
+                    self.batch_losses = self.batch_losses[-BATCH_LOSSES_MAX:]
+
+        # Keep counters aligned with bounded buffers.
+        self.batch_wins_count = sum(1 for _, r, _ in self.batch_results if r == "won")
+        self.batch_losses_count = sum(1 for _, r, _ in self.batch_results if r == "lost")
 
     async def analyze_loss_async(self, replay_url, battle_state):
-        """Analyze a loss replay in the background (disabled during upgrade)"""
+        """Analyze a loss replay in the background from turn 1 onward."""
         try:
-            # Analysis disabled during upgrade
-            print(f"[MONITOR] Analysis disabled during upgrade for battle vs {battle_state.opponent}")
-            return
+            if not self.turn_reviewer:
+                print(f"[MONITOR] Turn reviewer unavailable for battle vs {battle_state.opponent}")
+                return
+
+            replay_id = replay_url.rstrip("/").split("/")[-1]
+            replay_json_url = f"https://replay.pokemonshowdown.com/{replay_id}.json"
+
+            timeout = aiohttp.ClientTimeout(total=20)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(replay_json_url) as resp:
+                    if resp.status != 200:
+                        print(
+                            f"[MONITOR] Failed to fetch replay JSON {replay_id}: "
+                            f"HTTP {resp.status}"
+                        )
+                        return
+                    replay_data = await resp.json(content_type=None)
+
+            full_review = self.turn_reviewer.format_full_review(replay_data, replay_url)
+            critical_turns = self.turn_reviewer.extract_critical_turns(replay_data, replay_url)
+
+            reports_dir = Path(__file__).parent / "replay_analysis" / "reports"
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            report_path = reports_dir / f"full_turn_review_{replay_id}.txt"
+            report_path.write_text(full_review + "\n", encoding="utf-8")
+            print(f"[MONITOR] Saved full turn review: {report_path}")
+
+            if critical_turns:
+                lead = critical_turns[0]
+                summary = (
+                    f"[Turn Review] vs {battle_state.opponent}\n"
+                    f"Replay: {replay_url}\n"
+                    f"Turn 1 lead: {lead.bot_active} -> {lead.bot_choice}\n"
+                    f"Note: {lead.why_critical}\n"
+                    f"Saved full review: {report_path}"
+                )
+                await self.send_discord_message(summary, channel="feedback", suppress_embeds=True)
+
         except Exception as e:
-            print(f"[MONITOR] Error in analysis placeholder: {e}")
+            print(f"[MONITOR] Error in loss analysis: {e}")
 
     def find_battle_for_event(self, line):
         """Try to find which battle an event belongs to"""
@@ -534,8 +635,6 @@ class BotMonitor:
             if match:
                 wins = int(match.group(1))
                 losses = int(match.group(2))
-                total = wins + losses
-                win_rate = (wins / total * 100) if total > 0 else 0
                 
                 # Track stats silently -- batch report handles Discord
                 base_was_none = self.session_rebase_enabled and self.session_base_wins is None
@@ -603,15 +702,12 @@ class BotMonitor:
                 opponent = re.sub(r'[^\w\s-]', '', raw_opp).strip()
 
                 # If we've already seen this battle, update opponent if it was Unknown
-                if battle_id in self.seen_battle_ids:
+                if self._remember_seen_battle(battle_id):
                     if opponent and opponent != "Unknown" and battle_id in self.active_battles:
                         if self.active_battles[battle_id].opponent == "Unknown":
                             self.active_battles[battle_id].opponent = opponent
                             logging.info(f"Updated opponent for {battle_id}: {opponent}")
                     continue
-
-                # Mark as seen
-                self.seen_battle_ids.add(battle_id)
 
                 # Create battle state
                 battle_state = BattleState(battle_id, opponent, datetime.now())
@@ -655,25 +751,22 @@ class BotMonitor:
                 # Load our username from env for comparison
                 # Normalize both sides (Showdown strips spaces/special chars)
                 def _norm_user(n): return re.sub(r'[^a-z0-9]', '', n.lower()) if n else ""
-                our_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+                our_username = os.getenv("PS_USERNAME", "")
                 showdown_accts = os.getenv("SHOWDOWN_ACCOUNTS", our_username).split(",")
                 normalized_accts = [_norm_user(a) for a in showdown_accts if a.strip()]
                 if _norm_user(winner) in normalized_accts:
                     if not self.session_rebase_enabled or self.session_base_wins is not None:
                         self.wins += 1
                     update_daily_stats(wins_delta=1)  # Track daily totals
-                    emoji = "🎉"
                     result = "Won"
                     result_key = "won"
                 elif winner == "None":
                     result = "Tie"
-                    emoji = "🤝"
                     result_key = "tie"
                 else:
                     if not self.session_rebase_enabled or self.session_base_wins is not None:
                         self.losses += 1
                     update_daily_stats(losses_delta=1)  # Track daily totals
-                    emoji = "💀"
                     result = "Lost"
                     result_key = "lost"
 
@@ -692,7 +785,7 @@ class BotMonitor:
                     opponent = self.active_battles[battle_id].opponent
 
                     # Move to finished_battles and remove from active immediately
-                    self.finished_battles[battle_id] = (opponent, result_key)
+                    self._track_finished_battle(battle_id, opponent, result_key)
                     del self.active_battles[battle_id]
                     # Record for batch report (replay URL added later when detected)
                     self.record_batch_result(opponent, result_key)
@@ -702,7 +795,6 @@ class BotMonitor:
                     self.record_batch_result("Unknown", result_key)
 
                 # Always update stream overlay with remaining battles/stats
-                active_count = len(self.active_battles)
                 active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
                 battle_info = ", ".join(
                     f"vs {self.active_battles[bid].opponent}" for bid in active_battle_ids
@@ -721,9 +813,7 @@ class BotMonitor:
             # Detect battle end with team
             match = BATTLE_END_PATTERN.search(line)
             if match:
-                result = match.group(1)
-                team = match.group(2)
-                # Additional info if we want team name
+                pass
 
             # Detect replay link - associate with battle
             match = REPLAY_PATTERN.search(line)
@@ -756,8 +846,7 @@ class BotMonitor:
                     battle_id = self.find_battle_for_event(line)
 
                 # Attach replay URL to the most recent batch result for this battle
-                if replay_url not in self.posted_replays:
-                    self.posted_replays.add(replay_url)
+                if not self._remember_posted_replay(replay_url):
 
                     if battle_id and battle_id in self.finished_battles:
                         opponent, result = self.finished_battles[battle_id]
@@ -775,6 +864,8 @@ class BotMonitor:
                             self.batch_losses = [(u, o) if u != replay_url else (u, o) for u, o in self.batch_losses]
                             if not any(u == replay_url for u, _ in self.batch_losses):
                                 self.batch_losses.append((replay_url, opponent))
+                                if len(self.batch_losses) > BATCH_LOSSES_MAX:
+                                    self.batch_losses = self.batch_losses[-BATCH_LOSSES_MAX:]
 
                         del self.finished_battles[battle_id]
 
@@ -786,25 +877,42 @@ class BotMonitor:
         """Run the bot process and monitor it
         
         Configuration:
-        - Uses 3 concurrent battle workers (MAX_CONCURRENT_BATTLES=3 in run.py)
-        - Rotates through 3 fat teams: stall, pivot, dondozo
-        - Target: 1700 ELO
-        - Runs indefinitely (--run-count 999999)
+        - Defaults to single-battle operation for stability
+        - Team selection is controlled by TEAM_NAMES / TEAM_LIST / TEAM_NAME
+        - Runs indefinitely until stopped
         """
         # Load credentials from environment
-        ps_username = os.getenv("PS_USERNAME", "ALL CHUNG")
-        ps_password = os.getenv("PS_PASSWORD", "ALLCHUNG")
+        ps_username = os.getenv("PS_USERNAME", "").strip()
+        ps_password = os.getenv("PS_PASSWORD", "").strip()
         ps_websocket_uri = os.getenv("PS_WEBSOCKET_URI", "wss://sim3.psim.us/showdown/websocket")
         ps_format = os.getenv("PS_FORMAT", "gen9ou")
         spectator_username = os.getenv("SPECTATOR_USERNAME")
         team_names_env = os.getenv("TEAM_NAMES", "").strip()
         team_list_env = os.getenv("TEAM_LIST", "").strip()
         team_name_env = os.getenv("TEAM_NAME", "").strip()
-        max_concurrent_env = os.getenv("MAX_CONCURRENT_BATTLES")
-        search_parallelism_env = os.getenv("SEARCH_PARALLELISM")
-        max_mcts_env = os.getenv("MAX_MCTS_BATTLES")
+        max_concurrent_env = os.getenv("MAX_CONCURRENT_BATTLES", "1")
+        search_parallelism_env = os.getenv("SEARCH_PARALLELISM", "1")
+        max_mcts_env = os.getenv("MAX_MCTS_BATTLES", "1")
+        search_time_env = os.getenv("PS_SEARCH_TIME_MS", os.getenv("SEARCH_TIME_MS", "3000")).strip()
+        min_search_time_env = os.getenv("MIN_SEARCH_TIME_MS", "1200").strip()
         bot_log_level = os.getenv("BOT_LOG_LEVEL", "INFO").strip().upper()
         bot_log_to_file = os.getenv("BOT_LOG_TO_FILE", "0").strip().lower() not in ("0", "false", "no", "off")
+
+        try:
+            search_time_ms = int(search_time_env)
+        except ValueError:
+            search_time_ms = 3000
+        try:
+            min_search_time_ms = int(min_search_time_env)
+        except ValueError:
+            min_search_time_ms = 1200
+        if min_search_time_ms > 0 and search_time_ms < min_search_time_ms:
+            search_time_ms = min_search_time_ms
+
+        if not ps_username:
+            raise RuntimeError("PS_USERNAME is required in .env")
+        if not ps_password:
+            raise RuntimeError("PS_PASSWORD is required in .env")
         
         cmd = [
             sys.executable, "-u", "run.py",  # -u for unbuffered output
@@ -813,7 +921,7 @@ class BotMonitor:
             "--ps-password", ps_password,
             "--bot-mode", "search_ladder",
             "--pokemon-format", ps_format,
-            "--search-time-ms", "3000",  # Reduced to stay under turn timer
+            "--search-time-ms", str(search_time_ms),
             "--run-count", "999999",  # Run indefinitely until 1700 ELO
             "--save-replay", "always",
             "--log-level", bot_log_level  # Adjustable via BOT_LOG_LEVEL
@@ -896,11 +1004,11 @@ class BotMonitor:
         # Only post startup message if enough time has passed since last startup
         if should_post_startup_message():
             name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
-            startup_msg = f"🚀 **Fouler Play bot{name_tag} starting...**"
+            startup_msg = f"ðŸš€ **Fouler Play bot{name_tag} starting...**"
             if username:
                 user_page = f"https://pokemonshowdown.com/users/{username.lower().replace(' ', '')}"
-                startup_msg += f"\n📊 **Account:** [{username}]({user_page})"
-                startup_msg += "\n⏳ *ELO stats will be posted once ladder data loads*"
+                startup_msg += f"\nðŸ“Š **Account:** [{username}]({user_page})"
+                startup_msg += "\nâ³ *ELO stats will be posted once ladder data loads*"
             
             await self.send_discord_message(
                 startup_msg,
@@ -908,7 +1016,7 @@ class BotMonitor:
             )
             record_startup_message()
         else:
-            print(f"[MONITOR] Skipping startup message (throttled)")
+            print("[MONITOR] Skipping startup message (throttled)")
 
         # Echo to logs (not Discord)
         name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""

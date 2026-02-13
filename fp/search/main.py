@@ -1,8 +1,7 @@
 import logging
+import os
 import random
 import time
-import atexit
-from concurrent.futures import ProcessPoolExecutor, TimeoutError as FuturesTimeoutError
 from copy import deepcopy
 from dataclasses import dataclass, field, asdict
 from enum import Enum
@@ -211,9 +210,11 @@ from config import FoulPlayConfig
 from .standard_battles import prepare_battles
 from .random_battles import prepare_random_battles
 
-from poke_engine import State as PokeEngineState, monte_carlo_tree_search, MctsResult
-
+from poke_engine import monte_carlo_tree_search
+from fp.search.eval import evaluate_position, _opponent_best_damage as _eval_opponent_best_damage
+from fp.search.forced_lines import detect_forced_line
 from fp.search.poke_engine_helpers import battle_to_poke_engine_state
+from fp.search.speed_order import assess_speed_order
 from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES
 from fp.helpers import normalize_name, type_effectiveness_modifier
 from data.pkmn_sets import ITEM_STRING, EFFECTIVENESS, SmogonSets, TeamDatasets
@@ -227,46 +228,20 @@ from fp.opponent_model import OPPONENT_MODEL
 from sweep_fix import smart_sweep_prevention
 
 logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# GLOBAL PROCESS POOL (CRITICAL FIX FOR ZOMBIE PROCESS LEAK)
-# =============================================================================
-# PROBLEM: Creating a new ProcessPoolExecutor for every move decision causes
-# worker processes to accumulate and leak memory over time.
-# SOLUTION: Use a single global executor that's reused across all battles.
-# =============================================================================
-
-_global_executor = None
-_executor_lock = None  # Will be initialized when needed (avoid threading import at module level)
-
-
-def _get_executor():
-    """Get or create the global ProcessPoolExecutor instance."""
-    global _global_executor, _executor_lock
-    
-    if _executor_lock is None:
-        import threading
-        _executor_lock = threading.Lock()
-    
-    with _executor_lock:
-        if _global_executor is None:
-            logger.info(f"Initializing global ProcessPoolExecutor with {FoulPlayConfig.parallelism} workers")
-            _global_executor = ProcessPoolExecutor(max_workers=FoulPlayConfig.parallelism)
-            # Register cleanup on exit
-            atexit.register(_shutdown_executor)
-    
-    return _global_executor
-
-
-def _shutdown_executor():
-    """Shutdown the global executor on program exit."""
-    global _global_executor
-    if _global_executor is not None:
-        logger.info("Shutting down global ProcessPoolExecutor...")
-        _global_executor.shutdown(wait=True, cancel_futures=True)
-        _global_executor = None
-        logger.info("Global ProcessPoolExecutor shut down cleanly")
+PIVOT_MOVES_NORM = {normalize_name(m) for m in PIVOT_MOVES}
+RECOVERY_MOVES_NORM = {normalize_name(m) for m in RECOVERY_MOVES}
+SETUP_MOVES_NORM = {normalize_name(m) for m in SETUP_MOVES}
+HAZARD_SETTING_MOVES_NORM = {normalize_name(m) for m in HAZARD_SETTING_MOVES}
+STALL_SURVIVAL_MOVES_NORM = {
+    "protect",
+    "detect",
+    "kingsshield",
+    "spikyshield",
+    "banefulbunker",
+    "silktrap",
+    "obstruct",
+    "endure",
+}
 
 
 # =============================================================================
@@ -278,6 +253,589 @@ class DecisionProfile(Enum):
     DEFAULT = "default"
     LOW = "low"
     HIGH = "high"
+
+
+# Keep post-eval heuristics from drifting too far from core eval intent.
+# 0.0 = raw eval only, 1.0 = full heuristic stack.
+HEURISTIC_BLEND_ALPHA = 0.35
+MCTS_BLEND_ENABLED = str(os.getenv("MCTS_BLEND_ENABLED", "1")).lower() not in {
+    "0",
+    "false",
+    "no",
+    "off",
+}
+MCTS_BLEND_BASE_ALPHA = max(
+    0.0,
+    min(1.0, float(os.getenv("MCTS_BLEND_BASE_ALPHA", "0.55"))),
+)
+MCTS_BLEND_HIGH_ALPHA = max(
+    MCTS_BLEND_BASE_ALPHA,
+    min(1.0, float(os.getenv("MCTS_BLEND_HIGH_ALPHA", "0.70"))),
+)
+MCTS_BLEND_MIN_TIME_MS = max(200, int(os.getenv("MCTS_BLEND_MIN_TIME_MS", "1800")))
+MCTS_BLEND_MIN_PER_SAMPLE_MS = max(
+    120, int(os.getenv("MCTS_BLEND_MIN_PER_SAMPLE_MS", "350"))
+)
+MCTS_BLEND_MAX_SAMPLES = max(1, int(os.getenv("MCTS_BLEND_MAX_SAMPLES", "2")))
+MCTS_BLEND_UNCERTAIN_RATIO = max(
+    1.01, float(os.getenv("MCTS_BLEND_UNCERTAIN_RATIO", "1.28"))
+)
+MCTS_BLEND_CLEAR_PROGRESS_RATIO = max(
+    1.10, float(os.getenv("MCTS_BLEND_CLEAR_PROGRESS_RATIO", "1.45"))
+)
+MCTS_BLEND_MIN_EVAL_REL = max(
+    0.0, min(0.5, float(os.getenv("MCTS_BLEND_MIN_EVAL_REL", "0.06")))
+)
+MCTS_BLEND_MIN_PROGRESS_REL = max(
+    0.0, min(0.5, float(os.getenv("MCTS_BLEND_MIN_PROGRESS_REL", "0.03")))
+)
+MCTS_BLEND_MIN_KEEP = max(2, int(os.getenv("MCTS_BLEND_MIN_KEEP", "3")))
+MCTS_BLEND_MAX_KEEP = max(
+    MCTS_BLEND_MIN_KEEP, int(os.getenv("MCTS_BLEND_MAX_KEEP", "6"))
+)
+MCTS_BLEND_ANCHOR_BASE_RATIO = max(
+    0.40, min(0.98, float(os.getenv("MCTS_BLEND_ANCHOR_BASE_RATIO", "0.72")))
+)
+MCTS_BLEND_ANCHOR_LOW_RATIO = max(
+    MCTS_BLEND_ANCHOR_BASE_RATIO,
+    min(0.99, float(os.getenv("MCTS_BLEND_ANCHOR_LOW_RATIO", "0.80"))),
+)
+MCTS_BLEND_ANCHOR_THREAT_RATIO = max(
+    MCTS_BLEND_ANCHOR_LOW_RATIO,
+    min(0.995, float(os.getenv("MCTS_BLEND_ANCHOR_THREAT_RATIO", "0.88"))),
+)
+
+
+def _stability_blend_policy(
+    pre_policy: dict[str, float],
+    post_policy: dict[str, float],
+    alpha: float = HEURISTIC_BLEND_ALPHA,
+) -> dict[str, float]:
+    """Blend raw eval with heuristic-adjusted policy to reduce over-correction."""
+    alpha = max(0.0, min(1.0, float(alpha)))
+    if alpha <= 0.0:
+        return dict(pre_policy)
+    if alpha >= 1.0:
+        return dict(post_policy)
+
+    merged: dict[str, float] = {}
+    all_moves = set(pre_policy) | set(post_policy)
+    for move in all_moves:
+        try:
+            pre = float(pre_policy.get(move, 0.0))
+        except (TypeError, ValueError):
+            pre = 0.0
+        try:
+            post = float(post_policy.get(move, 0.0))
+        except (TypeError, ValueError):
+            post = 0.0
+
+        # Keep weights non-negative for downstream thresholding.
+        pre = max(0.0, pre)
+        post = max(0.0, post)
+        merged[move] = ((1.0 - alpha) * pre) + (alpha * post)
+
+    return merged
+
+
+def _normalize_policy_weights(policy: dict[str, float]) -> dict[str, float]:
+    cleaned: dict[str, float] = {}
+    total = 0.0
+    for move, weight in (policy or {}).items():
+        try:
+            w = float(weight)
+        except (TypeError, ValueError):
+            continue
+        if w <= 0.0:
+            continue
+        cleaned[str(move)] = w
+        total += w
+    if total <= 0.0:
+        return {}
+    return {move: weight / total for move, weight in cleaned.items()}
+
+
+def _top_policy_entries(
+    policy: dict[str, float],
+    limit: int = 5,
+) -> list[dict[str, float | str]]:
+    entries = sorted((policy or {}).items(), key=lambda x: x[1], reverse=True)[:limit]
+    return [
+        {"move": move, "weight": round(float(weight), 6)}
+        for move, weight in entries
+    ]
+
+
+def _blend_eval_mcts_policy(
+    eval_policy: dict[str, float],
+    mcts_policy: dict[str, float],
+    *,
+    alpha: float,
+) -> dict[str, float]:
+    """
+    Blend normalized eval policy with normalized MCTS policy.
+    alpha=0 -> eval only, alpha=1 -> MCTS only.
+    """
+    alpha = max(0.0, min(1.0, float(alpha)))
+    eval_norm = _normalize_policy_weights(eval_policy)
+    mcts_norm = _normalize_policy_weights(mcts_policy)
+    if not eval_norm:
+        return dict(mcts_norm)
+    if not mcts_norm:
+        return dict(eval_norm)
+
+    blended: dict[str, float] = {}
+    all_moves = set(eval_norm) | set(mcts_norm)
+    for move in all_moves:
+        blended[move] = ((1.0 - alpha) * eval_norm.get(move, 0.0)) + (
+            alpha * mcts_norm.get(move, 0.0)
+        )
+    return _normalize_policy_weights(blended)
+
+
+def _should_activate_mcts_blend(
+    *,
+    battle: Battle,
+    ability_state: "OpponentAbilityState | None",
+    eval_policy: dict[str, float],
+    decision_profile: DecisionProfile,
+) -> tuple[bool, list[str]]:
+    if not MCTS_BLEND_ENABLED:
+        return False, ["disabled"]
+    if battle is None or getattr(battle, "force_switch", False):
+        return False, ["force_switch_or_no_battle"]
+
+    normalized = _normalize_policy_weights(eval_policy)
+    ranked = sorted(normalized.items(), key=lambda x: x[1], reverse=True)
+    if len(ranked) < 2:
+        return False, ["insufficient_eval_options"]
+
+    top_w = float(ranked[0][1])
+    second_w = float(ranked[1][1])
+    ratio = float("inf") if second_w <= 0 else (top_w / second_w)
+    top_move = str(ranked[0][0])
+
+    reasons: list[str] = []
+
+    uncertainty_cutoff = MCTS_BLEND_UNCERTAIN_RATIO
+    if decision_profile == DecisionProfile.HIGH:
+        uncertainty_cutoff += 0.08
+    elif decision_profile == DecisionProfile.LOW:
+        uncertainty_cutoff -= 0.05
+    uncertainty_cutoff = max(1.02, uncertainty_cutoff)
+    if ratio <= uncertainty_cutoff:
+        reasons.append("uncertain_eval")
+
+    early_turn = int(getattr(battle, "turn", 0) or 0) <= 3
+    if early_turn and ratio <= (uncertainty_cutoff + 0.12):
+        reasons.append("early_turn")
+
+    boost_level = 0
+    if ability_state is not None:
+        boost_level = max(
+            int(getattr(ability_state, "opponent_attack_boost", 0) or 0),
+            int(getattr(ability_state, "opponent_spa_boost", 0) or 0),
+        )
+        if bool(getattr(ability_state, "opponent_active_is_threat", False)) and (
+            boost_level >= 2 or ratio <= (uncertainty_cutoff + 0.15)
+        ):
+            reasons.append("active_threat")
+        if boost_level >= 2 or (
+            boost_level >= 1 and ratio <= uncertainty_cutoff
+        ):
+            reasons.append("opponent_boosted")
+        if bool(getattr(ability_state, "ko_line_available", False)):
+            reasons.append("ko_line_present")
+
+    # If eval already has a clear direct progress line and no immediate danger,
+    # skip blend to avoid MCTS over-correcting into defensive loops.
+    top_is_progress = _is_meaningful_progress_move(
+        top_move,
+        battle,
+        ability_state,
+        include_status_pivots=False,
+    )
+    active_threat = bool(
+        ability_state is not None
+        and getattr(ability_state, "opponent_active_is_threat", False)
+    )
+    if (
+        top_is_progress
+        and ratio >= MCTS_BLEND_CLEAR_PROGRESS_RATIO
+        and boost_level < 2
+        and not active_threat
+    ):
+        return False, ["clear_eval_progress"]
+
+    # If eval already has a very clear best line, only invoke MCTS when we are
+    # in genuinely dangerous states (boosted threat). This avoids over-correcting
+    # obvious progress turns.
+    if ratio >= 1.7 and boost_level < 2:
+        reasons = [r for r in reasons if r in {"opponent_boosted"}]
+
+    return (len(reasons) > 0), reasons
+
+
+def _run_mcts_policy_pass(
+    sampled_battles: list[tuple[Battle, float]],
+    *,
+    per_sample_ms: int,
+    max_samples: int,
+    legal_moves: set[str] | None = None,
+) -> tuple[dict[str, float], dict]:
+    """
+    Run bounded MCTS on up to max_samples sampled states and aggregate visit policy.
+    """
+    selected_samples = sorted(
+        list(sampled_battles or []), key=lambda x: float(x[1]), reverse=True
+    )[: max(1, int(max_samples))]
+    aggregated: dict[str, float] = {}
+    meta = {
+        "samples_attempted": len(selected_samples),
+        "samples_succeeded": 0,
+        "samples_failed": 0,
+        "total_visits": 0,
+        "per_sample_ms": int(per_sample_ms),
+    }
+    legal_norm_to_move: dict[str, str] = {}
+    if legal_moves:
+        for lm in legal_moves:
+            legal_norm_to_move[normalize_name(lm)] = lm
+
+    for idx, (sample_battle, sample_weight) in enumerate(selected_samples):
+        try:
+            state = battle_to_poke_engine_state(sample_battle)
+            result = monte_carlo_tree_search(state, int(per_sample_ms))
+            total_visits = int(getattr(result, "total_visits", 0) or 0)
+            if total_visits <= 0:
+                meta["samples_failed"] += 1
+                continue
+
+            meta["samples_succeeded"] += 1
+            meta["total_visits"] += total_visits
+
+            for option in getattr(result, "side_one", []) or []:
+                move_choice = str(getattr(option, "move_choice", "") or "")
+                if not move_choice:
+                    continue
+                if legal_moves and move_choice not in legal_moves:
+                    mapped = legal_norm_to_move.get(normalize_name(move_choice))
+                    if mapped:
+                        move_choice = mapped
+                    else:
+                        continue
+                visits = float(getattr(option, "visits", 0) or 0.0)
+                if visits <= 0:
+                    continue
+                contribution = float(sample_weight) * (visits / float(total_visits))
+                aggregated[move_choice] = aggregated.get(move_choice, 0.0) + contribution
+        except Exception as e:
+            meta["samples_failed"] += 1
+            logger.warning(
+                "MCTS blend sample %s failed (budget=%sms): %s",
+                idx,
+                per_sample_ms,
+                e,
+            )
+
+    return _normalize_policy_weights(aggregated), meta
+
+
+def _choose_from_weighted_policy(
+    policy: dict[str, float],
+    *,
+    decision_profile: DecisionProfile,
+) -> str | None:
+    ranked = sorted((policy or {}).items(), key=lambda x: x[1], reverse=True)
+    if not ranked:
+        return None
+
+    if decision_profile == DecisionProfile.LOW:
+        return ranked[0][0]
+
+    if len(ranked) >= 2:
+        top, second = ranked[0][1], ranked[1][1]
+        dominance_ratio = 1.6 if decision_profile == DecisionProfile.HIGH else 1.4
+        if second > 0 and (top / second) >= dominance_ratio:
+            return ranked[0][0]
+
+    considered_threshold = 0.85 if decision_profile == DecisionProfile.HIGH else 0.90
+    best_weight = ranked[0][1]
+    considered = [item for item in ranked if item[1] >= best_weight * considered_threshold]
+    if not considered:
+        return ranked[0][0]
+
+    return random.choices(considered, weights=[w for _, w in considered], k=1)[0][0]
+
+
+def _build_mcts_legal_move_set(
+    eval_policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: "OpponentAbilityState | None",
+) -> set[str]:
+    """
+    Restrict MCTS blend choices to eval-credible lines.
+    This prevents low-value tails from dominating after blend.
+    """
+    normalized = _normalize_policy_weights(eval_policy)
+    ranked = sorted(normalized.items(), key=lambda x: x[1], reverse=True)
+    if not ranked:
+        return set()
+
+    top_weight = max(float(ranked[0][1]), 1e-9)
+    selected: list[tuple[str, float]] = []
+
+    for idx, (move, weight) in enumerate(ranked):
+        rel = float(weight) / top_weight
+        include = idx < MCTS_BLEND_MIN_KEEP or rel >= MCTS_BLEND_MIN_EVAL_REL
+        if (
+            not include
+            and rel >= MCTS_BLEND_MIN_PROGRESS_REL
+            and _is_meaningful_progress_move(
+                move,
+                battle,
+                ability_state,
+                include_status_pivots=False,
+            )
+        ):
+            include = True
+        if include:
+            selected.append((move, float(weight)))
+
+    if not selected:
+        selected = ranked[: MCTS_BLEND_MIN_KEEP]
+
+    selected.sort(key=lambda x: x[1], reverse=True)
+    limited = selected[: MCTS_BLEND_MAX_KEEP]
+    return {move for move, _ in limited}
+
+
+def _move_name_and_norm(move: str) -> tuple[str, str]:
+    move_name = move.split(":")[-1] if ":" in move else move
+    return move_name, normalize_name(move_name)
+
+
+def _is_status_setup_move(move: str) -> bool:
+    if not move or move.startswith("switch "):
+        return False
+    move_name, move_norm = _move_name_and_norm(move)
+    move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+    return (
+        move_data.get(constants.CATEGORY) == constants.STATUS
+        and move_norm in SETUP_MOVES_NORM
+    )
+
+
+def _resolve_mcts_anchor_ratio(
+    *,
+    decision_profile: DecisionProfile,
+    ability_state: "OpponentAbilityState | None",
+) -> float:
+    ratio = MCTS_BLEND_ANCHOR_BASE_RATIO
+    if decision_profile == DecisionProfile.LOW:
+        ratio = max(ratio, MCTS_BLEND_ANCHOR_LOW_RATIO)
+
+    boost_level = 0
+    active_threat = False
+    if ability_state is not None:
+        active_threat = bool(getattr(ability_state, "opponent_active_is_threat", False))
+        boost_level = max(
+            int(getattr(ability_state, "opponent_attack_boost", 0) or 0),
+            int(getattr(ability_state, "opponent_spa_boost", 0) or 0),
+        )
+
+    if active_threat or boost_level >= 1:
+        ratio = max(ratio, MCTS_BLEND_ANCHOR_THREAT_RATIO)
+    return ratio
+
+
+def _apply_mcts_eval_anchor_choice_guard(
+    *,
+    battle: Battle | None,
+    ability_state: "OpponentAbilityState | None",
+    eval_policy: dict[str, float],
+    final_policy: dict[str, float],
+    eval_choice: str | None,
+    proposed_choice: str | None,
+    decision_profile: DecisionProfile,
+) -> tuple[str | None, dict]:
+    """
+    Keep MCTS blend from overriding a clearly credible eval line with a lower-trust
+    fallback (switch churn or setup status) in volatile states.
+    """
+    metadata = {
+        "applied": False,
+        "reason": None,
+        "eval_choice": eval_choice,
+        "proposed_choice": proposed_choice,
+    }
+    if (
+        battle is None
+        or not eval_choice
+        or not proposed_choice
+        or eval_choice == proposed_choice
+        or getattr(battle, "force_switch", False)
+    ):
+        return proposed_choice, metadata
+
+    eval_norm = _normalize_policy_weights(eval_policy)
+    final_norm = _normalize_policy_weights(final_policy)
+    eval_weight = float(eval_norm.get(eval_choice, 0.0))
+    if eval_weight <= 0.0:
+        return proposed_choice, metadata
+
+    ranked_eval = sorted(eval_norm.items(), key=lambda x: x[1], reverse=True)
+    second_weight = 0.0
+    for move, weight in ranked_eval:
+        if move != eval_choice:
+            second_weight = float(weight)
+            break
+    eval_ratio = float("inf") if second_weight <= 0.0 else (eval_weight / second_weight)
+
+    incoming_pressure = None
+    try:
+        incoming_pressure = float(_eval_opponent_best_damage(battle))
+    except Exception:
+        incoming_pressure = None
+
+    eval_move_name, eval_move_norm = _move_name_and_norm(eval_choice)
+    eval_move_data = all_move_json.get(eval_move_norm, all_move_json.get(eval_move_name, {}))
+    proposed_move_name, proposed_move_norm = _move_name_and_norm(proposed_choice)
+    proposed_move_data = all_move_json.get(
+        proposed_move_norm, all_move_json.get(proposed_move_name, {})
+    )
+
+    boost_level = 0
+    active_threat = False
+    if ability_state is not None:
+        active_threat = bool(getattr(ability_state, "opponent_active_is_threat", False))
+        boost_level = max(
+            int(getattr(ability_state, "opponent_attack_boost", 0) or 0),
+            int(getattr(ability_state, "opponent_spa_boost", 0) or 0),
+        )
+
+    eval_is_progress = _is_meaningful_progress_move(
+        eval_choice,
+        battle,
+        ability_state,
+        include_status_pivots=False,
+        incoming_pressure=incoming_pressure,
+    )
+    # Under immediate threat, hazard setup is too often fake progress.
+    if active_threat and eval_move_norm in HAZARD_SETTING_MOVES_NORM:
+        eval_is_progress = False
+
+    proposed_is_progress = _is_meaningful_progress_move(
+        proposed_choice,
+        battle,
+        ability_state,
+        include_status_pivots=False,
+        incoming_pressure=incoming_pressure,
+    )
+    proposed_is_switch = proposed_choice.startswith("switch ")
+    proposed_is_setup = _is_status_setup_move(proposed_choice)
+    proposed_is_status = (
+        proposed_move_data.get(constants.CATEGORY) == constants.STATUS and not proposed_is_setup
+    )
+    proposed_is_nonprogress = (not proposed_is_progress) or proposed_is_status
+
+    user_active = getattr(getattr(battle, "user", None), "active", None)
+    our_hp_ratio = 1.0
+    if user_active is not None:
+        our_hp_ratio = getattr(user_active, "hp", 1) / max(getattr(user_active, "max_hp", 1), 1)
+    unaware_hold = _is_unaware_like(user_active) and active_threat and our_hp_ratio >= 0.40
+
+    if active_threat and boost_level >= 1 and proposed_is_setup:
+        metadata["applied"] = True
+        metadata["reason"] = "boosted_threat_block_setup_override"
+        return eval_choice, metadata
+
+    if (
+        active_threat
+        and proposed_move_norm in HAZARD_SETTING_MOVES_NORM
+        and eval_move_norm not in HAZARD_SETTING_MOVES_NORM
+        and eval_is_progress
+    ):
+        metadata["applied"] = True
+        metadata["reason"] = "boosted_threat_block_hazard_override"
+        return eval_choice, metadata
+
+    if unaware_hold and proposed_is_switch and eval_is_progress:
+        metadata["applied"] = True
+        metadata["reason"] = "unaware_hold_keep_progress_line"
+        return eval_choice, metadata
+
+    if proposed_is_setup and eval_is_progress and not eval_choice.startswith("switch "):
+        # Outside explicit boosted-threat states, avoid flipping strong direct
+        # progress lines into setup clicks under meaningful pressure.
+        if incoming_pressure is not None and incoming_pressure >= max(0.18, our_hp_ratio * 0.42):
+            metadata["applied"] = True
+            metadata["reason"] = "block_setup_override_under_pressure"
+            return eval_choice, metadata
+        if eval_ratio >= 1.08 and decision_profile == DecisionProfile.LOW:
+            metadata["applied"] = True
+            metadata["reason"] = "block_setup_override_over_progress"
+            return eval_choice, metadata
+
+    survival = _assess_immediate_survival_risk(battle)
+    if (
+        bool(survival.get("risk", False))
+        and proposed_is_switch
+        and not eval_choice.startswith("switch ")
+    ):
+        metadata["applied"] = True
+        metadata["reason"] = "survival_risk_prefer_switch"
+        return proposed_choice, metadata
+
+    confidence_floor = 1.20
+    if decision_profile == DecisionProfile.LOW:
+        confidence_floor = 1.22
+    elif decision_profile == DecisionProfile.HIGH:
+        confidence_floor = 1.30
+    if active_threat:
+        confidence_floor = min(confidence_floor, 1.15)
+    if boost_level >= 2:
+        confidence_floor = min(confidence_floor, 1.05)
+    eval_confident = eval_ratio >= confidence_floor
+
+    anchor_ratio = _resolve_mcts_anchor_ratio(
+        decision_profile=decision_profile,
+        ability_state=ability_state,
+    )
+    eval_floor = eval_weight * anchor_ratio
+    final_eval_weight = float(final_norm.get(eval_choice, 0.0))
+
+    if (
+        eval_is_progress
+        and eval_confident
+        and final_eval_weight < eval_floor
+        and (proposed_is_switch or proposed_is_setup or proposed_is_nonprogress)
+    ):
+        metadata["applied"] = True
+        metadata["reason"] = "eval_anchor_progress_guard"
+        metadata["eval_ratio"] = round(eval_ratio, 4)
+        metadata["eval_weight"] = round(eval_weight, 6)
+        metadata["final_eval_weight"] = round(final_eval_weight, 6)
+        metadata["eval_floor"] = round(eval_floor, 6)
+        return eval_choice, metadata
+
+    return proposed_choice, metadata
+
+
+def _apply_penalty_guard(
+    base_policy: dict[str, float],
+    penalized_policy: dict[str, float],
+) -> dict[str, float]:
+    """
+    Keep only downward adjustments from a penalty pass.
+    """
+    guarded: dict[str, float] = {}
+    for move, weight in (base_policy or {}).items():
+        current = max(0.0, float(weight))
+        adjusted = float(penalized_policy.get(move, current)) if penalized_policy else current
+        guarded[move] = min(current, max(0.0, adjusted))
+    return guarded
 
 
 def _resolve_playstyle(team_plan: TeamAnalysis | None = None) -> Playstyle:
@@ -314,6 +872,7 @@ class OpponentAbilityState:
     has_unaware: bool = False
     has_guts_like: bool = False  # Guts, Marvel Scale, Quick Feet
     has_poison_heal: bool = False
+    has_purifying_salt: bool = False
     has_water_immunity: bool = False  # Water Absorb, Storm Drain, Dry Skin
     has_electric_immunity: bool = False  # Volt Absorb, Lightning Rod, Motor Drive
     has_flash_fire: bool = False
@@ -416,9 +975,15 @@ class OpponentAbilityState:
     # === PHASE 2.2: ENTRY HAZARD CALCULUS ===
     opponent_sr_up: bool = False  # Stealth Rock on opponent's side
     opponent_spikes_layers: int = 0  # Spikes layers on opponent's side
+    opponent_hazard_layers: int = 0  # Effective hazard pressure on opponent side
     opponent_has_sr_weak: bool = False  # Opponent has SR-weak Pokemon in back
     opponent_has_hazard_removal: bool = False  # Opponent has revealed Defog/Spin
+    opponent_active_has_hazard_removal: bool = False  # Active foe can remove hazards now
+    opponent_active_removal_is_spin: bool = False  # Active foe has Rapid Spin / Mortal Spin
+    opponent_has_salt_cure: bool = False  # Active foe has revealed Salt Cure
     opponent_alive_count: int = 6  # Number of opponent Pokemon still alive
+    our_has_alive_spinblocker: bool = False  # We have at least one living Ghost type
+    our_active_is_spinblocker: bool = False  # Our active is a Ghost type
 
     # === PHASE 2.3: TERA PREDICTION ===
     opponent_has_terastallized: bool = False  # Opponent has already used Tera
@@ -439,6 +1004,7 @@ class OpponentAbilityState:
 
     # === HEALING WASTE AVOIDANCE ===
     our_hp_percent: float = 1.0  # Our active HP percentage
+    our_active_is_salt_cured: bool = False  # Our active is under Salt Cure volatile
 
     # === PHASE 3.3: MOMENTUM TRACKING ===
     momentum: float = 0.0  # Positive = we have momentum
@@ -517,6 +1083,50 @@ def calculate_momentum(battle: Battle) -> tuple[float, str]:
     return momentum, level
 
 
+def _estimate_board_advantage(
+    battle: Battle | None,
+    ability_state: "OpponentAbilityState | None" = None,
+) -> tuple[float, bool]:
+    """
+    Estimate whether we are ahead enough to favor conversion (direct progress)
+    over defensive shuffling.
+    """
+    if battle is None:
+        return 0.0, False
+
+    our_team = ([battle.user.active] if battle.user.active else []) + list(
+        getattr(battle.user, "reserve", []) or []
+    )
+    opp_team = ([battle.opponent.active] if battle.opponent.active else []) + list(
+        getattr(battle.opponent, "reserve", []) or []
+    )
+
+    our_alive = sum(1 for p in our_team if p is not None and getattr(p, "hp", 0) > 0)
+    opp_alive = sum(1 for p in opp_team if p is not None and getattr(p, "hp", 0) > 0)
+    our_hp_total = sum(
+        getattr(p, "hp", 0) / max(getattr(p, "max_hp", 1), 1)
+        for p in our_team
+        if p is not None and getattr(p, "hp", 0) > 0
+    )
+    opp_hp_total = sum(
+        getattr(p, "hp", 0) / max(getattr(p, "max_hp", 1), 1)
+        for p in opp_team
+        if p is not None and getattr(p, "hp", 0) > 0
+    )
+
+    score = 0.0
+    score += (our_alive - opp_alive) * 1.10
+    score += (our_hp_total - opp_hp_total) * 0.32
+
+    if ability_state is not None:
+        score += max(-2.5, min(2.5, float(getattr(ability_state, "momentum", 0.0) or 0.0))) * 0.20
+        score += min(3.0, float(getattr(ability_state, "opponent_hazard_layers", 0.0) or 0.0)) * 0.14
+        score -= min(3.0, float(getattr(ability_state, "our_hazard_layers", 0.0) or 0.0)) * 0.10
+
+    # Conservative threshold: avoid forcing "conversion mode" in marginal spots.
+    return score, (score >= 0.75)
+
+
 def is_likely_wincon(pokemon, battle: Battle) -> bool:
     """Check if a Pokemon is likely a win condition based on its characteristics."""
     if pokemon is None or pokemon.hp <= 0:
@@ -550,6 +1160,22 @@ def is_likely_wincon(pokemon, battle: Battle) -> bool:
     return score >= 4
 
 
+def _hazard_move_can_progress(move_norm: str, battle: Battle | None) -> bool:
+    """Return True when a hazard-setting move can still add new board value."""
+    if battle is None:
+        return True
+    opp_side = getattr(getattr(battle, "opponent", None), "side_conditions", {}) or {}
+    if move_norm == "spikes":
+        return int(opp_side.get(constants.SPIKES, 0) or 0) < 3
+    if move_norm == "toxicspikes":
+        return int(opp_side.get(constants.TOXIC_SPIKES, 0) or 0) < 2
+    if move_norm == "stealthrock":
+        return int(opp_side.get(constants.STEALTH_ROCK, 0) or 0) <= 0
+    if move_norm == "stickyweb":
+        return int(opp_side.get(constants.STICKY_WEB, 0) or 0) <= 0
+    return True
+
+
 def detect_odd_move(
     battle: Battle,
     move_choice: str,
@@ -559,40 +1185,62 @@ def detect_odd_move(
     if not move_choice:
         return []
     move_name = move_choice.split(":")[-1] if ":" in move_choice else move_choice
+    move_norm = normalize_name(move_name)
     oddities = []
+    last_move_raw = getattr(getattr(battle, "user", None), "last_selected_move", None)
+    last_move = getattr(last_move_raw, "move", "") if last_move_raw is not None else ""
+    last_move_norm = normalize_name(last_move)
+    hazard_setting_norm = {normalize_name(m) for m in HAZARD_SETTING_MOVES}
+    hazard_removal_norm = {normalize_name(m) for m in HAZARD_REMOVAL_MOVES}
+    recovery_moves_norm = {normalize_name(m) for m in RECOVERY_MOVES}
+    status_moves_norm = {normalize_name(m) for m in ALL_STATUS_MOVES}
+    status_inflicting_norm = {normalize_name(m) for m in STATUS_INFLICTING_MOVES}
 
     if ability_state is not None:
         # Hazard removal with no hazards
-        if move_name in HAZARD_REMOVAL_MOVES and ability_state.our_hazard_layers <= 0:
+        if move_norm in hazard_removal_norm and ability_state.our_hazard_layers <= 0:
             oddities.append("waste_turn:remove_hazards_no_hazards")
-            last_move = getattr(battle.user.last_selected_move, "move", "")
-            if normalize_name(last_move) == normalize_name(move_name):
+            if last_move_norm == move_norm:
                 oddities.append("waste_turn:repeat_hazard_removal")
 
         # Full-HP recovery
-        if move_name in RECOVERY_MOVES and ability_state.our_hp_percent >= 0.95:
+        if move_norm in recovery_moves_norm and ability_state.our_hp_percent >= 0.95:
             oddities.append("waste_turn:full_hp_recovery")
 
         # Status moves into known immunities/blocks
-        if move_name in ALL_STATUS_MOVES:
+        if move_norm in status_moves_norm:
             if ability_state.has_good_as_gold:
                 oddities.append("waste_turn:status_blocked_good_as_gold")
-            if ability_state.has_magic_bounce and move_name in MAGIC_BOUNCE_REFLECTED_MOVES:
+            if ability_state.has_magic_bounce and move_norm in {
+                normalize_name(m) for m in MAGIC_BOUNCE_REFLECTED_MOVES
+            }:
                 oddities.append("waste_turn:status_reflected_magic_bounce")
+            if ability_state.has_poison_heal and move_norm in {
+                normalize_name(m) for m in TOXIC_POISON_MOVES
+            }:
+                oddities.append("waste_turn:status_into_poison_heal")
+            if ability_state.has_purifying_salt and move_norm in status_inflicting_norm:
+                oddities.append("waste_turn:status_into_purifying_salt")
 
     # Future Sight/Doom Desire already pending on opponent side
-    if move_name in {constants.FUTURE_SIGHT, "doomdesire"}:
+    if move_norm in {normalize_name(constants.FUTURE_SIGHT), "doomdesire"}:
         try:
             if battle.opponent.future_sight[0] > 0:
                 oddities.append("waste_turn:future_sight_already_pending")
         except Exception:
             pass
 
+    # Hazard setup with no incremental value (maxed/already active).
+    if move_norm in hazard_setting_norm and not _hazard_move_can_progress(move_norm, battle):
+        oddities.append("waste_turn:hazard_no_progress")
+
     # Repeating a non-damaging move on consecutive turns
-    move_data = all_move_json.get(move_name, {})
+    move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
     if move_data.get(constants.CATEGORY) == constants.STATUS:
-        last_move = getattr(battle.user.last_selected_move, "move", "")
-        if normalize_name(last_move) == normalize_name(move_name):
+        if last_move_norm == move_norm:
+            # Repeating hazards can be correct while layers are still progressing.
+            if move_norm in hazard_setting_norm and _hazard_move_can_progress(move_norm, battle):
+                return oddities
             oddities.append("waste_turn:repeat_status_move")
 
     return oddities
@@ -601,6 +1249,62 @@ def detect_odd_move(
 def _log_oddities(choice: str, oddities: list[str]):
     if oddities:
         logger.warning(f"Odd move detected: {choice} -> {', '.join(oddities)}")
+
+
+def apply_oddity_penalties(
+    policy: dict[str, float],
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list[dict] | None = None,
+) -> dict[str, float]:
+    """Penalize choices that are known low-value oddities in the current state."""
+    if battle is None:
+        return policy
+
+    adjusted = dict(policy)
+    for move, weight in policy.items():
+        if weight <= 0:
+            continue
+        oddities = detect_odd_move(battle, move, ability_state)
+        if not oddities:
+            continue
+
+        penalty = 1.0
+        for odd in oddities:
+            if odd == "waste_turn:repeat_status_move":
+                penalty = min(penalty, 0.30)
+            elif odd in {
+                "waste_turn:remove_hazards_no_hazards",
+                "waste_turn:repeat_hazard_removal",
+                "waste_turn:full_hp_recovery",
+                "waste_turn:future_sight_already_pending",
+                "waste_turn:hazard_no_progress",
+            }:
+                penalty = min(penalty, 0.25)
+            elif odd in {
+                "waste_turn:status_blocked_good_as_gold",
+                "waste_turn:status_reflected_magic_bounce",
+                "waste_turn:status_into_poison_heal",
+                "waste_turn:status_into_purifying_salt",
+            }:
+                penalty = min(penalty, 0.10)
+            else:
+                penalty = min(penalty, 0.50)
+
+        new_weight = weight * penalty
+        adjusted[move] = new_weight
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "penalty",
+                    "source": "oddity",
+                    "move": move,
+                    "reason": ",".join(oddities),
+                    "before": weight,
+                    "after": new_weight,
+                }
+            )
+    return adjusted
 
 
 def find_ko_line(battle: Battle) -> dict | None:
@@ -621,29 +1325,25 @@ def find_ko_line(battle: Battle) -> dict | None:
     except Exception:
         return None
 
-    try:
-        our_speed = battle.get_effective_speed(battle.user)
-        opp_speed = battle.get_effective_speed(battle.opponent)
-        outspeed = our_speed > opp_speed
-    except Exception:
-        outspeed = False
+    speed_assessment = assess_speed_order(battle)
+    guaranteed_move_first = speed_assessment.guaranteed_move_first
 
     best_one_shot = None
     for move_name in move_names:
         damage = estimate_damage(our, opp, move_name)
-        if damage >= 1.0 and (outspeed or move_name in PRIORITY_MOVES):
+        if damage >= 1.0 and (guaranteed_move_first or move_name in PRIORITY_MOVES):
             if best_one_shot is None or damage > best_one_shot["damage"]:
                 best_one_shot = {
                     "turns": 1,
                     "move": move_name,
                     "damage": round(damage, 3),
-                    "outspeed": outspeed,
+                    "outspeed": guaranteed_move_first,
                 }
     if best_one_shot:
         return best_one_shot
 
     best_two_shot = None
-    if outspeed:
+    if guaranteed_move_first:
         for move_name in move_names:
             damage = estimate_damage(our, opp, move_name)
             if damage >= 0.5:
@@ -652,7 +1352,7 @@ def find_ko_line(battle: Battle) -> dict | None:
                         "turns": 2,
                         "move": move_name,
                         "damage": round(damage, 3),
-                        "outspeed": outspeed,
+                        "outspeed": guaranteed_move_first,
                     }
     return best_two_shot
 
@@ -749,6 +1449,12 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     # Poison Heal
     state.has_poison_heal = _check_ability_or_pokemon(
         ability, name, base_name, {"poisonheal"}, POKEMON_COMMONLY_POISON_HEAL
+    )
+
+    # Purifying Salt: status immunity + ghost damage reduction.
+    # Garganacl almost always leverages this for long-game progress.
+    state.has_purifying_salt = _check_ability_or_pokemon(
+        ability, name, base_name, {"purifyingsalt"}, {"garganacl"}
     )
 
     # Type immunities - Mold Breaker bypasses these
@@ -932,9 +1638,12 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     # === PHAZING DETECTION ===
     for move in opponent.moves:
         move_name = move.name if hasattr(move, "name") else str(move)
+        move_norm = normalize_name(move_name)
         if move_name in PHAZING_MOVES:
             state.has_phazing = True
             break
+        if move_norm == "saltcure":
+            state.opponent_has_salt_cure = True
 
     # === SUBSTITUTE DETECTION ===
     if "substitute" in volatile_statuses:
@@ -995,6 +1704,10 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     # Track our HP percentage (for avoiding wasteful recovery)
     if battle.user.active is not None and battle.user.active.max_hp > 0:
         state.our_hp_percent = battle.user.active.hp / battle.user.active.max_hp
+        user_volatiles = getattr(battle.user.active, "volatile_statuses", []) or []
+        state.our_active_is_salt_cured = any(
+            "saltcure" in normalize_name(v) for v in user_volatiles
+        )
 
     # =========================================================================
     # PHASE 1.2: TRICK ROOM AWARENESS
@@ -1104,11 +1817,20 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     if opp_side:
         state.opponent_sr_up = opp_side.get(constants.STEALTH_ROCK, 0) > 0
         state.opponent_spikes_layers = opp_side.get(constants.SPIKES, 0)
+        opp_toxic_spikes = int(opp_side.get(constants.TOXIC_SPIKES, 0) or 0)
+        opp_sticky_web = int(opp_side.get(constants.STICKY_WEB, 0) or 0)
+        state.opponent_hazard_layers = (
+            (2 if state.opponent_sr_up else 0)
+            + int(state.opponent_spikes_layers or 0)
+            + (1 if opp_toxic_spikes > 0 else 0)
+            + (1 if opp_sticky_web > 0 else 0)
+        )
 
     # Count opponent's alive Pokemon
     alive_count = 0
     has_sr_weak = False
     has_hazard_removal = False
+    hazard_removal_norm = {normalize_name(m) for m in HAZARD_REMOVAL_MOVES}
 
     for opp_pokemon in battle.opponent.reserve + ([battle.opponent.active] if battle.opponent.active else []):
         if opp_pokemon is None:
@@ -1125,13 +1847,38 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
 
         # Check for hazard removal moves
         for move in getattr(opp_pokemon, "moves", []):
-            move_name = move.name if hasattr(move, "name") else str(move)
-            if move_name in HAZARD_REMOVAL_MOVES:
+            move_name = normalize_name(move.name if hasattr(move, "name") else str(move))
+            if move_name in hazard_removal_norm:
                 has_hazard_removal = True
 
     state.opponent_alive_count = alive_count
     state.opponent_has_sr_weak = has_sr_weak
     state.opponent_has_hazard_removal = has_hazard_removal
+
+    # Active removal pressure (important for hazard-preservation play).
+    active_removal_is_spin = False
+    if opponent is not None:
+        for move in getattr(opponent, "moves", []) or []:
+            move_name = normalize_name(move.name if hasattr(move, "name") else str(move))
+            if move_name in hazard_removal_norm:
+                state.opponent_active_has_hazard_removal = True
+                if move_name in {"rapidspin", "mortalspin"}:
+                    active_removal_is_spin = True
+                break
+    state.opponent_active_removal_is_spin = active_removal_is_spin
+
+    # Ghost types can block Rapid Spin / Mortal Spin hazard removal.
+    def _is_alive_ghost(pkmn) -> bool:
+        if pkmn is None or getattr(pkmn, "hp", 0) <= 0:
+            return False
+        pkmn_types = [normalize_name(t) for t in (getattr(pkmn, "types", []) or [])]
+        return "ghost" in pkmn_types
+
+    our_team = ([battle.user.active] if battle.user.active is not None else []) + list(
+        getattr(battle.user, "reserve", []) or []
+    )
+    state.our_has_alive_spinblocker = any(_is_alive_ghost(p) for p in our_team)
+    state.our_active_is_spinblocker = _is_alive_ghost(battle.user.active)
 
     # =========================================================================
     # PHASE 2.3: TERA PREDICTION
@@ -1331,7 +2078,7 @@ def apply_heuristic_bias(
             heuristic += 0.1
 
         # Pivot when momentum is negative
-        if move_name in {"uturn", "voltswitch", "flipturn", "partingshot"} and ability_state.momentum_level in {
+        if move_name in PIVOT_MOVES_NORM and ability_state.momentum_level in {
             "negative",
             "strong_negative",
         }:
@@ -1597,6 +2344,7 @@ def apply_ability_penalties(
             ability_state.has_unaware,
             ability_state.has_guts_like,
             ability_state.has_poison_heal,
+            ability_state.has_purifying_salt,
             ability_state.has_water_immunity,
             ability_state.has_electric_immunity,
             ability_state.has_flash_fire,
@@ -1685,6 +2433,10 @@ def apply_ability_penalties(
         # Extract the move name from the move choice format
         # Move choices can be "move:swordsdance" or just "swordsdance"
         move_name = move.split(":")[-1] if ":" in move else move
+        move_norm = normalize_name(move_name)
+        base_move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+        move_type_norm = normalize_name(base_move_data.get(constants.TYPE, ""))
+        move_category = base_move_data.get(constants.CATEGORY)
 
         penalty = 1.0  # No penalty by default
         reason = None
@@ -1712,6 +2464,20 @@ def apply_ability_penalties(
         if ability_state.has_poison_heal and move_name in TOXIC_POISON_MOVES:
             penalty = min(penalty, ABILITY_PENALTY_SEVERE)
             reason = "Poison Heal (poison heals them)"
+
+        # Purifying Salt: status immunity + ghost damage reduction.
+        if ability_state.has_purifying_salt and move_norm in {
+            normalize_name(m) for m in STATUS_INFLICTING_MOVES
+        }:
+            penalty = min(penalty, ABILITY_PENALTY_SEVERE)
+            reason = "Purifying Salt (status blocked)"
+        if (
+            ability_state.has_purifying_salt
+            and move_category in {constants.PHYSICAL, constants.SPECIAL}
+            and move_type_norm == "ghost"
+        ):
+            penalty = min(penalty, 0.60)
+            reason = "Purifying Salt (Ghost damage halved)"
 
         # Water immunity: penalize water moves
         if ability_state.has_water_immunity and move_name in WATER_TYPE_MOVES:
@@ -2160,8 +2926,19 @@ def apply_ability_penalties(
         # Penalize hazard moves if opponent has revealed hazard removal
         if move_name in HAZARD_SETTING_MOVES and ability_state.opponent_has_hazard_removal:
             if penalty >= 0.5:  # Don't double-penalize
-                penalty = min(penalty, PENALTY_HAZARDS_VS_REMOVAL)
-                reason = "Opponent has hazard removal"
+                dynamic_penalty = PENALTY_HAZARDS_VS_REMOVAL
+                # If we currently have no hazards up, we still want to establish
+                # baseline chip before over-respecting future removal.
+                if getattr(ability_state, "opponent_hazard_layers", 0) <= 0:
+                    dynamic_penalty = max(dynamic_penalty, 0.88)
+                    reason = "Opponent has hazard removal (set baseline hazards first)"
+                # If the active foe can remove hazards now, lean toward pressure.
+                elif getattr(ability_state, "opponent_active_has_hazard_removal", False):
+                    dynamic_penalty = min(dynamic_penalty, 0.60)
+                    reason = "Active hazard remover present (pressure before restacking)"
+                else:
+                    reason = "Opponent has hazard removal"
+                penalty = min(penalty, dynamic_penalty)
 
         # Boost Defog/Rapid Spin when we have heavy hazards
         if move_name in HAZARD_REMOVAL_MOVES:
@@ -2327,7 +3104,7 @@ def apply_ability_penalties(
 
         # Negative momentum: boost pivots and safe switches
         elif ability_state.momentum_level == "negative":
-            if move_name in SAFE_MOVES or move_name in {"uturn", "voltswitch", "flipturn", "partingshot"}:
+            if move_name in SAFE_MOVES or move_name in PIVOT_MOVES_NORM:
                 if penalty >= 1.0:
                     penalty = max(penalty, BOOST_PIVOT_NEGATIVE_MOMENTUM)
                     reason = "Negative momentum (regroup with pivot)"
@@ -2430,9 +3207,49 @@ def apply_switch_penalties(
     adjusted_policy = {}
     penalties_applied = []
     boosts_applied = []
+    active_hp_ratio = getattr(battle.user.active, "hp", 1) / max(
+        getattr(battle.user.active, "max_hp", 1), 1
+    )
+    turn_number = int(getattr(battle, "turn", 0) or 0)
+    last_selected_raw = str(
+        getattr(getattr(battle.user, "last_selected_move", None), "move", "") or ""
+    ).lower()
+    switched_last_turn = turn_number > 1 and last_selected_raw.startswith("switch ")
 
     opponent = battle.opponent.active
     opponent_types = getattr(opponent, "types", []) if opponent else []
+    opp_boosts = getattr(opponent, "boosts", {}) or {} if opponent else {}
+    opponent_offensive_boost_level = max(
+        int(opp_boosts.get(constants.ATTACK, 0) or 0),
+        int(opp_boosts.get(constants.SPECIAL_ATTACK, 0) or 0),
+    ) if opponent else 0
+
+    # If we are guaranteed to move second and have a pivot move available,
+    # prefer slow-pivot lines over hard switching where practical.
+    can_slow_pivot_now = False
+    if (
+        battle.user.active is not None
+        and not getattr(battle, "force_switch", False)
+        and opponent_offensive_boost_level < 2
+        and active_hp_ratio >= 0.40
+    ):
+        active_moves = getattr(battle.user.active, "moves", []) or []
+        has_pivot_available = False
+        for mv in active_moves:
+            mv_name = normalize_name(mv.name if hasattr(mv, "name") else str(mv))
+            mv_disabled = bool(getattr(mv, "disabled", False))
+            mv_pp = getattr(mv, "current_pp", 1)
+            if mv_name in PIVOT_MOVES_NORM and not mv_disabled and mv_pp != 0:
+                has_pivot_available = True
+                break
+        if has_pivot_available:
+            try:
+                speed_assessment = assess_speed_order(battle)
+                can_slow_pivot_now = bool(
+                    getattr(speed_assessment, "guaranteed_move_second", False)
+                )
+            except Exception:
+                can_slow_pivot_now = False
 
     # Build a map of our reserve Pokemon for quick lookup
     reserve_map = {}
@@ -2462,10 +3279,56 @@ def apply_switch_penalties(
 
         multiplier = 1.0
         reasons = []
+        critical_penalty = False
         target_moves = getattr(target_pkmn, "moves", []) or []
         target_move_names = [
             m.name if hasattr(m, "name") else str(m) for m in target_moves
         ]
+        target_move_names_norm = {normalize_name(m) for m in target_move_names}
+        target_types_norm = {
+            normalize_name(t) for t in (getattr(target_pkmn, "types", []) or [])
+        }
+        target_hp_ratio = target_pkmn.hp / max(target_pkmn.max_hp, 1)
+        target_has_recovery = bool(target_move_names_norm & {normalize_name(m) for m in POKEMON_RECOVERY_MOVES})
+        target_has_regenerator = normalize_name(getattr(target_pkmn, "ability", None) or "") == "regenerator"
+
+        # === TARGET STATUS RELIABILITY PENALTY ===
+        target_status = getattr(target_pkmn, "status", None)
+        if target_status == constants.FROZEN:
+            multiplier *= 0.25
+            reasons.append("frozen target (unreliable switch-in)")
+            critical_penalty = True
+        elif target_status == constants.SLEEP:
+            has_sleep_talk = "sleeptalk" in target_move_names_norm
+            rest_turns = int(getattr(target_pkmn, "rest_turns", 0) or 0)
+            if has_sleep_talk and rest_turns > 0:
+                multiplier *= 0.78
+                reasons.append("asleep (Sleep Talk available)")
+            else:
+                multiplier *= 0.35
+                reasons.append("asleep without Sleep Talk line")
+                critical_penalty = True
+
+        # === SALT CURE MATCHUP SAFETY ===
+        # Revealed Salt Cure makes Water/Steel pivots far worse in long games:
+        # they take 25%/turn chip and get forced into passive recovery loops.
+        if getattr(ability_state, "opponent_has_salt_cure", False):
+            salted_types = {"water", "steel"}
+            if target_types_norm & salted_types:
+                salt_mult = 0.64
+                if target_has_recovery or target_has_regenerator:
+                    salt_mult = 0.76
+                if target_hp_ratio <= 0.55:
+                    salt_mult = min(salt_mult, 0.70)
+                multiplier *= salt_mult
+                reasons.append("Salt Cure risk (Water/Steel chip)")
+                if not (target_has_recovery or target_has_regenerator):
+                    critical_penalty = True
+            elif getattr(ability_state, "our_active_is_salt_cured", False):
+                # If we're currently salted, switching to a safer non-Water/Steel
+                # target can reset chip and preserve long-term board health.
+                multiplier *= 1.08
+                reasons.append("reset active Salt Cure chip")
 
         # === HAZARD DAMAGE PENALTY ===
         if ability_state.our_hazard_layers > 0:
@@ -2507,7 +3370,7 @@ def apply_switch_penalties(
                 reasons.append("Intimidate vs Defiant/Competitive")
 
         # === LOW HP PENALTY ===
-        hp_ratio = target_pkmn.hp / max(target_pkmn.max_hp, 1)
+        hp_ratio = target_hp_ratio
         if hp_ratio < 0.25:
             multiplier *= PENALTY_SWITCH_LOW_HP
             reasons.append(f"low HP ({int(hp_ratio * 100)}%)")
@@ -2522,6 +3385,16 @@ def apply_switch_penalties(
                     if effectiveness >= 2.0:
                         multiplier *= PENALTY_SWITCH_WEAK_TO_OPPONENT
                         reasons.append(f"weak to {opp_type}")
+                        if opponent_offensive_boost_level >= 2:
+                            multiplier *= 0.55
+                            reasons.append(
+                                f"weak to +{opponent_offensive_boost_level} boosted STAB"
+                            )
+                            critical_penalty = True
+                        elif getattr(ability_state, "opponent_has_offensive_boost", False):
+                            multiplier *= 0.75
+                            reasons.append("weak to boosted STAB")
+                            critical_penalty = True
                         break
 
         # === TYPE RESISTANCE BOOST ===
@@ -2536,7 +3409,15 @@ def apply_switch_penalties(
                         resists_both = False
                         break
                 if resists_both and len(opponent_types) > 0:
-                    multiplier *= BOOST_SWITCH_RESISTS_STAB
+                    resist_boost = BOOST_SWITCH_RESISTS_STAB
+                    if (
+                        not getattr(ability_state, "opponent_has_offensive_boost", False)
+                        and active_hp_ratio >= 0.55
+                    ):
+                        # Keep defensive switching available, but avoid overvaluing
+                        # it when our current board is still healthy.
+                        resist_boost = 1.0 + (BOOST_SWITCH_RESISTS_STAB - 1.0) * 0.5
+                    multiplier *= resist_boost
                     reasons.append("resists opponent STAB")
 
         # === UNAWARE VS SETUP BOOST (ENHANCED 2026-02-08) ===
@@ -2566,10 +3447,32 @@ def apply_switch_penalties(
                     reasons.append(f"Unaware vs +{boost_level} boosted (PERFECT WALL)")
                 
                 # CRITICAL: Phazing resets all boosts
-                elif any(m in PHAZING_MOVES or m == "haze" for m in target_move_names):
-                    phaze_boost = BOOST_SWITCH_COUNTERS + (boost_level - 1) * 0.1
-                    multiplier *= phaze_boost
-                    reasons.append(f"Phaze/Haze vs +{boost_level} boosted (RESET THREAT)")
+                elif any(
+                    normalize_name(m) in PHAZING_MOVES
+                    or normalize_name(m) in {"haze", "clearsmog"}
+                    for m in target_move_names
+                ):
+                    normalized_moves = {normalize_name(m) for m in target_move_names}
+                    has_fast_reset = bool(normalized_moves & {"haze", "clearsmog"})
+                    opp_speed_boost = opp_boosts.get(constants.SPEED, 0)
+                    target_hp_ratio = target_pkmn.hp / max(target_pkmn.max_hp, 1)
+
+                    # Whirlwind/Roar are negative priority. If opponent already has speed boosts,
+                    # blindly switching to a low-HP phazer often hands over another KO.
+                    if has_fast_reset:
+                        phaze_boost = BOOST_SWITCH_COUNTERS + (boost_level - 1) * 0.1
+                        multiplier *= phaze_boost
+                        reasons.append(f"Haze/Clear Smog vs +{boost_level} boosted (RESET THREAT)")
+                    elif opp_speed_boost > 0:
+                        cautious_mult = 1.05 if target_hp_ratio >= 0.70 else 0.95
+                        multiplier *= cautious_mult
+                        reasons.append(
+                            f"Phaze user vs +{opp_speed_boost} Spe threat (low-priority risk)"
+                        )
+                    else:
+                        phaze_boost = BOOST_SWITCH_COUNTERS + (boost_level - 1) * 0.1
+                        multiplier *= phaze_boost
+                        reasons.append(f"Phaze vs +{boost_level} boosted (RESET THREAT)")
                 
                 # HIGH PRIORITY: Priority moves can revenge kill
                 elif any(m in PRIORITY_MOVES for m in target_move_names):
@@ -2595,13 +3498,45 @@ def apply_switch_penalties(
 
         # === RECOVERY MOVE BOOST ===
         has_recovery = False
-        for move_name in target_move_names:
+        for move_name in target_move_names_norm:
             if move_name in POKEMON_RECOVERY_MOVES:
                 has_recovery = True
                 break
-        if has_recovery:
-            multiplier *= BOOST_SWITCH_HAS_RECOVERY
-            reasons.append("has recovery")
+        if has_recovery and (
+            hp_ratio <= 0.75
+            or getattr(ability_state, "opponent_has_offensive_boost", False)
+            or active_hp_ratio <= 0.45
+        ):
+            recovery_mult = BOOST_SWITCH_HAS_RECOVERY
+            if getattr(ability_state, "opponent_has_offensive_boost", False):
+                has_direct_reset = bool(
+                    target_move_names_norm & (set(PHAZING_MOVES) | {"haze", "clearsmog"})
+                )
+                target_ability_norm = normalize_name(getattr(target_pkmn, "ability", None) or "")
+                target_name_norm = normalize_name(target_pkmn.name)
+                target_base_norm = normalize_name(
+                    getattr(target_pkmn, "base_name", "") or target_pkmn.name
+                )
+                has_unaware_like = (
+                    target_ability_norm == "unaware"
+                    or target_name_norm in POKEMON_COMMONLY_UNAWARE
+                    or target_base_norm in POKEMON_COMMONLY_UNAWARE
+                )
+                if has_direct_reset or has_unaware_like:
+                    recovery_mult = min(recovery_mult, 1.08)
+                    reasons.append("has recovery (limited vs boosted threat)")
+                else:
+                    recovery_mult = min(recovery_mult, 0.94)
+                    reasons.append("has recovery (de-emphasized vs boosted threat)")
+                critical_penalty = True
+            else:
+                reasons.append("has recovery")
+            multiplier *= recovery_mult
+
+        # === SLOW PIVOT PREFERENCE ===
+        if can_slow_pivot_now:
+            multiplier *= 0.80
+            reasons.append("prefer slow pivot (U-turn/Chilly Reception)")
 
         # === POISON HEAL STATUS VULNERABILITY ===
         # Poison Heal mons (Gliscor, Breloom) are ruined if burned before Toxic Orb activates
@@ -2658,7 +3593,7 @@ def apply_switch_penalties(
         # For penalties (multiplier < 1.0), apply playstyle modulation
         # FAT/STALL teams get less harsh penalties (0.6x = 60% of base penalty)
         # HYPER_OFFENSE teams get harsher penalties (1.4x = 140% of base penalty)
-        if multiplier < 1.0 and switch_penalty_mult != 1.0:
+        if multiplier < 1.0 and switch_penalty_mult != 1.0 and not critical_penalty:
             # Convert penalty to "distance from 1.0"
             penalty_magnitude = 1.0 - multiplier
             # Adjust penalty magnitude by playstyle
@@ -2667,6 +3602,29 @@ def apply_switch_penalties(
             multiplier = 1.0 - adjusted_penalty_magnitude
             if switch_penalty_mult != 1.0:
                 reasons.append(f"playstyle {switch_penalty_mult:.1f}x")
+        elif multiplier < 1.0 and switch_penalty_mult != 1.0 and critical_penalty:
+            reasons.append("critical penalty (skip playstyle softening)")
+
+        # Repeated switch chains usually lose board progress. Penalize all switch
+        # options after we just switched, unless we are forced or too low to stay.
+        if (
+            switched_last_turn
+            and not getattr(battle, "force_switch", False)
+            and active_hp_ratio >= 0.40
+        ):
+            chain_mult = 0.72 if ability_state.opponent_has_offensive_boost else 0.82
+            multiplier *= chain_mult
+            reasons.append(f"break switch chain ({chain_mult:.2f}x)")
+
+        # Keep switch boosts bounded so stacked heuristics cannot drown out
+        # obvious progress lines from eval (main source of switch spam).
+        if multiplier > 1.0:
+            max_switch_boost = 1.25
+            if getattr(ability_state, "opponent_has_offensive_boost", False):
+                max_switch_boost = 1.40
+            if multiplier > max_switch_boost:
+                multiplier = max_switch_boost
+                reasons.append(f"cap switch boost ({max_switch_boost:.2f}x)")
 
         # Apply multiplier
         new_weight = weight * multiplier
@@ -2710,44 +3668,890 @@ def apply_switch_penalties(
     return adjusted_policy
 
 
+def _estimate_immediate_heal_fraction(move_norm: str, move_data: dict) -> float:
+    """Estimate immediate HP recovered this turn as a fraction of max HP."""
+    heal = move_data.get("heal")
+    if isinstance(heal, (list, tuple)) and len(heal) == 2:
+        num, den = heal
+        try:
+            value = float(num) / float(den)
+            return max(0.0, min(value, 1.0))
+        except Exception:
+            pass
+
+    # Weather-conditional or implicit half-heal moves often omit explicit fractions.
+    if move_norm in {
+        "recover",
+        "softboiled",
+        "roost",
+        "slackoff",
+        "milkdrink",
+        "healorder",
+        "moonlight",
+        "morningsun",
+        "synthesis",
+        "shoreup",
+    }:
+        return 0.50
+    return 0.0
+
+
+def _is_fixed_damage_attack(move_norm: str, move_data: dict) -> bool:
+    """True for fixed-damage attacks that can progress despite 0 base power."""
+    if move_norm in {"superfang", "ruination", "naturesmadness", "naturefury"}:
+        return True
+    fixed_damage = move_data.get("damage")
+    if isinstance(fixed_damage, (int, float)) and fixed_damage > 0:
+        return True
+    if isinstance(fixed_damage, str) and normalize_name(fixed_damage) == "level":
+        return True
+    return False
+
+
+def _is_stabilizing_recovery_line(
+    move_norm: str,
+    move_data: dict,
+    our_hp_ratio: float,
+    incoming_pressure: float | None,
+) -> bool:
+    """
+    Return True when an immediate recovery move is likely to improve our net HP
+    after a typical incoming hit this turn.
+    """
+    if incoming_pressure is None:
+        return False
+    if move_norm == "wish":
+        return False  # delayed recovery; treat as passive under immediate pressure
+
+    heal_fraction = _estimate_immediate_heal_fraction(move_norm, move_data)
+    if heal_fraction <= 0:
+        return False
+
+    # If expected incoming damage nearly cancels the heal, this is not stabilizing.
+    if incoming_pressure >= heal_fraction * 0.95:
+        return False
+
+    post_heal = min(1.0, our_hp_ratio + heal_fraction)
+    post_trade = post_heal - incoming_pressure
+    required_gain = max(0.06, heal_fraction * 0.20)
+    return post_trade >= our_hp_ratio + required_gain
+
+
+def _is_ghost_type(pokemon) -> bool:
+    if pokemon is None:
+        return False
+    pkmn_types = [normalize_name(t) for t in (getattr(pokemon, "types", []) or [])]
+    return "ghost" in pkmn_types
+
+
+def _is_unaware_like(pokemon) -> bool:
+    if pokemon is None:
+        return False
+    ability_norm = normalize_name(getattr(pokemon, "ability", None) or "")
+    if ability_norm == "unaware":
+        return True
+    name_norm = normalize_name(getattr(pokemon, "name", "") or "")
+    base_norm = normalize_name(getattr(pokemon, "base_name", "") or "")
+    return (
+        name_norm in POKEMON_COMMONLY_UNAWARE
+        or base_norm in POKEMON_COMMONLY_UNAWARE
+    )
+
+
+def _find_switch_target(battle: Battle | None, move: str):
+    if battle is None or not move.startswith("switch "):
+        return None
+    target_name = normalize_name(move.split("switch ", 1)[1])
+    for pkmn in getattr(getattr(battle, "user", None), "reserve", []) or []:
+        candidate_name = normalize_name(getattr(pkmn, "name", ""))
+        if candidate_name == target_name:
+            return pkmn
+    return None
+
+
+def _assess_immediate_survival_risk(battle: Battle | None) -> dict[str, float | bool]:
+    """
+    Estimate whether staying in is likely to get KOed before we can act.
+    Returns a compact dict used by both eval and MCTS-anchor safety rails.
+    """
+    if battle is None or getattr(battle, "user", None) is None or getattr(battle, "opponent", None) is None:
+        return {"risk": False, "incoming": 0.0, "our_hp_ratio": 1.0, "move_second": False, "uncertain_speed": False}
+    if battle.user.active is None or battle.opponent.active is None:
+        return {"risk": False, "incoming": 0.0, "our_hp_ratio": 1.0, "move_second": False, "uncertain_speed": False}
+
+    our_active = battle.user.active
+    our_hp_ratio = getattr(our_active, "hp", 1) / max(getattr(our_active, "max_hp", 1), 1)
+    incoming = 0.0
+    try:
+        incoming = float(_eval_opponent_best_damage(battle))
+    except Exception:
+        incoming = 0.0
+
+    move_second = False
+    uncertain_speed = False
+    try:
+        speed = assess_speed_order(battle)
+        move_second = bool(getattr(speed, "guaranteed_move_second", False))
+        uncertain_speed = bool(getattr(speed, "uncertain", False))
+    except Exception:
+        move_second = False
+        uncertain_speed = True
+
+    # Lethal-or-near-lethal pressure while we likely move second.
+    # For uncertain speed, require clear overkill to avoid overreacting.
+    lethal_if_second = incoming >= max(our_hp_ratio * 0.92, 0.35)
+    lethal_if_uncertain = incoming >= max(our_hp_ratio * 1.05, 0.50)
+    risk = (move_second and lethal_if_second) or (uncertain_speed and lethal_if_uncertain)
+    return {
+        "risk": bool(risk),
+        "incoming": float(incoming),
+        "our_hp_ratio": float(our_hp_ratio),
+        "move_second": bool(move_second),
+        "uncertain_speed": bool(uncertain_speed),
+    }
+
+
+def _is_non_switch_stall_survival_line(
+    move: str,
+    battle: Battle | None,
+    *,
+    incoming_pressure: float | None = None,
+) -> bool:
+    if move.startswith("switch "):
+        return False
+    move_name, move_norm = _move_name_and_norm(move)
+    if move_norm in STALL_SURVIVAL_MOVES_NORM:
+        return True
+    if move_norm in RECOVERY_MOVES_NORM:
+        move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+        our_active = getattr(getattr(battle, "user", None), "active", None)
+        our_hp_ratio = 1.0
+        if our_active is not None:
+            our_hp_ratio = getattr(our_active, "hp", 1) / max(getattr(our_active, "max_hp", 1), 1)
+        return _is_stabilizing_recovery_line(
+            move_norm,
+            move_data,
+            our_hp_ratio,
+            incoming_pressure,
+        )
+    return False
+
+
+def _is_meaningful_progress_move(
+    move: str,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    *,
+    include_status_pivots: bool = True,
+    incoming_pressure: float | None = None,
+) -> bool:
+    """
+    Decide whether a non-switch move produces immediate, defensible progress.
+
+    Progress here means one of:
+    - Direct board interaction (damage/phaze/haze/fixed damage),
+    - A hazard layer that still adds value right now,
+    - A stabilizing recovery line (net HP-positive under pressure),
+    - Optional status pivots (Parting Shot / Chilly Reception) when enabled.
+    """
+    if move.startswith("switch "):
+        return False
+
+    move_name = move.split(":")[-1] if ":" in move else move
+    move_norm = normalize_name(move_name)
+    move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+    category = move_data.get(constants.CATEGORY)
+    reset_moves = set(PHAZING_MOVES) | {"haze", "clearsmog"}
+
+    if move_norm in reset_moves:
+        return True
+
+    if category in {constants.PHYSICAL, constants.SPECIAL}:
+        base_power = float(move_data.get(constants.BASE_POWER, 0) or 0)
+        return (
+            base_power >= 55
+            or move_norm in PRIORITY_MOVES
+            or move_norm in {"knockoff", "trick", "switcheroo"}
+            or _is_fixed_damage_attack(move_norm, move_data)
+        )
+
+    if include_status_pivots and move_norm in PIVOT_MOVES_NORM and category == constants.STATUS:
+        return True
+
+    if move_norm in HAZARD_SETTING_MOVES:
+        if not _hazard_move_can_progress(move_norm, battle):
+            return False
+        # If active hazard removal is staring at us, restacking is usually not
+        # immediate progress; pressure/removal control should come first.
+        if (
+            ability_state is not None
+            and getattr(ability_state, "opponent_active_has_hazard_removal", False)
+            and getattr(ability_state, "opponent_hazard_layers", 0) > 0
+        ):
+            return False
+        return True
+
+    if move_norm in RECOVERY_MOVES_NORM:
+        our_active = getattr(getattr(battle, "user", None), "active", None)
+        our_hp_ratio = 1.0
+        if our_active is not None:
+            our_hp_ratio = getattr(our_active, "hp", 1) / max(
+                getattr(our_active, "max_hp", 1), 1
+            )
+        return _is_stabilizing_recovery_line(
+            move_norm,
+            move_data,
+            our_hp_ratio,
+            incoming_pressure,
+        )
+
+    return False
+
+
+def apply_hazard_maintenance_bias(
+    policy: dict[str, float],
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list[dict] | None = None,
+) -> dict[str, float]:
+    """
+    Preserve meaningful hazard pressure when the active opponent can remove hazards.
+
+    Core behavior:
+    - Prefer pressuring the remover now over passive loops.
+    - Prefer spinblocking switches against Rapid Spin / Mortal Spin.
+    - Avoid re-stacking hazards into immediate removal turns.
+    """
+    if battle is None or ability_state is None or getattr(battle, "force_switch", False):
+        return policy
+    if getattr(ability_state, "opponent_hazard_layers", 0) <= 0:
+        return policy
+    if not getattr(ability_state, "opponent_active_has_hazard_removal", False):
+        return policy
+
+    hazard_layers = max(1, int(getattr(ability_state, "opponent_hazard_layers", 0) or 0))
+    urgency = min(1.0, 0.30 + hazard_layers * 0.14)
+    spinner_active = bool(getattr(ability_state, "opponent_active_removal_is_spin", False))
+
+    best_pressure_weight = 0.0
+    for move, weight in policy.items():
+        if weight <= 0:
+            continue
+        if _is_meaningful_progress_move(
+            move,
+            battle,
+            ability_state,
+            include_status_pivots=False,
+        ):
+            best_pressure_weight = max(best_pressure_weight, weight)
+
+    adjusted = dict(policy)
+    for move, weight in policy.items():
+        if weight <= 0:
+            continue
+
+        move_name = move.split(":")[-1] if ":" in move else move
+        move_norm = normalize_name(move_name)
+        move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+        category = move_data.get(constants.CATEGORY)
+        new_weight = weight
+        reason = None
+
+        if move.startswith("switch "):
+            target = _find_switch_target(battle, move)
+            target_is_spinblocker = _is_ghost_type(target)
+
+            if (
+                spinner_active
+                and target_is_spinblocker
+                and getattr(target, "hp", 0) > 0
+            ):
+                multiplier = 1.10 + 0.22 * urgency
+                new_weight = weight * multiplier
+                reason = "hazard_preserve_spinblock"
+            elif best_pressure_weight > 0:
+                cap = best_pressure_weight * (0.96 if spinner_active else 0.92)
+                if new_weight > cap:
+                    new_weight = cap
+                    reason = "hazard_preserve_cap_switch"
+        else:
+            if category in {constants.PHYSICAL, constants.SPECIAL}:
+                base_power = float(move_data.get(constants.BASE_POWER, 0) or 0)
+                if (
+                    base_power >= 70
+                    or move_norm in {"knockoff"}
+                    or _is_fixed_damage_attack(move_norm, move_data)
+                ):
+                    multiplier = 1.08 + 0.20 * urgency
+                    new_weight = weight * multiplier
+                    reason = "hazard_preserve_pressure"
+            elif move_norm in HAZARD_SETTING_MOVES:
+                if _hazard_move_can_progress(move_norm, battle):
+                    new_weight = weight * 0.72
+                    reason = "hazard_preserve_delay_restack"
+                else:
+                    new_weight = weight * 0.35
+                    reason = "hazard_preserve_no_progress"
+            elif move_norm in RECOVERY_MOVES_NORM or move_norm in SETUP_MOVES:
+                if best_pressure_weight > 0:
+                    cap = best_pressure_weight * 0.80
+                    if new_weight > cap:
+                        new_weight = cap
+                        reason = "hazard_preserve_avoid_passive"
+            elif move_norm in PIVOT_MOVES_NORM and category == constants.STATUS:
+                if best_pressure_weight > 0:
+                    cap = best_pressure_weight * 0.84
+                    if new_weight > cap:
+                        new_weight = cap
+                        reason = "hazard_preserve_avoid_pivot_loop"
+
+        adjusted[move] = new_weight
+        if trace_events is not None and reason is not None and abs(new_weight - weight) > 1e-9:
+            trace_events.append(
+                {
+                    "type": "penalty" if new_weight < weight else "boost",
+                    "source": "hazard_maintenance",
+                    "move": move,
+                    "reason": reason,
+                    "before": weight,
+                    "after": new_weight,
+                }
+            )
+
+    return adjusted
+
+
 def apply_threat_switch_bias(
     policy: dict[str, float],
     battle: Battle | None,
     ability_state: OpponentAbilityState | None,
     trace_events: list[dict] | None = None,
 ) -> dict[str, float]:
-    """If opponent is a boosted threat, push switching above non-damaging moves."""
+    """
+    Threat-aware cleanup after other penalty layers.
+
+    Goals:
+    - Suppress passive status lines (hazards/recovery) while facing a boosted threat.
+    - Preserve and often prioritize direct reset lines (phaze/haze).
+    - If no switch exists, force proactive attacks over passive play.
+    """
     if battle is None or ability_state is None or not ability_state.opponent_active_is_threat:
         return policy
 
+    # Extra caution scales with current offensive boost level.
+    boost_level = max(
+        1,
+        int(getattr(ability_state, "opponent_attack_boost", 0) or 0),
+        int(getattr(ability_state, "opponent_spa_boost", 0) or 0),
+    )
+    force_switch = bool(getattr(battle, "force_switch", False))
+    turn_number = int(getattr(battle, "turn", 0) or 0)
+    user_battler = getattr(battle, "user", None)
+    last_selected_raw = str(
+        getattr(getattr(user_battler, "last_selected_move", None), "move", "") or ""
+    ).lower()
+    last_used_raw = str(
+        getattr(getattr(user_battler, "last_used_move", None), "move", "") or ""
+    ).lower()
+    switched_last_turn = (
+        turn_number > 1
+        and (last_selected_raw.startswith("switch ") or last_used_raw.startswith("switch "))
+    )
+
+    reset_moves = set(PHAZING_MOVES) | {"haze", "clearsmog"}
+    recovery_moves_norm = {normalize_name(m) for m in RECOVERY_MOVES}
+
     best_switch_weight = 0.0
+    best_attack_weight = 0.0
+    best_strong_attack_weight = 0.0
+    best_reset_weight = 0.0
     for move, weight in policy.items():
+        if weight <= 0:
+            continue
         if move.startswith("switch "):
             best_switch_weight = max(best_switch_weight, weight)
+            continue
+        move_name = move.split(":")[-1] if ":" in move else move
+        move_norm = normalize_name(move_name)
+        move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+        category = move_data.get(constants.CATEGORY)
+        if move_norm in reset_moves:
+            best_reset_weight = max(best_reset_weight, weight)
+        elif category in {constants.PHYSICAL, constants.SPECIAL}:
+            best_attack_weight = max(best_attack_weight, weight)
+            base_power = float(move_data.get(constants.BASE_POWER, 0) or 0)
+            if (
+                base_power >= 75
+                or move_norm in PRIORITY_MOVES
+                or _is_fixed_damage_attack(move_norm, move_data)
+            ):
+                best_strong_attack_weight = max(best_strong_attack_weight, weight)
 
-    if best_switch_weight <= 0:
+    anchor_weight = max(best_switch_weight, best_attack_weight, best_reset_weight)
+    if anchor_weight <= 0:
         return policy
+    best_progress_weight = max(best_reset_weight, best_strong_attack_weight)
+    has_viable_progress_line = best_progress_weight >= anchor_weight * 0.15
+
+    our_active = getattr(getattr(battle, "user", None), "active", None)
+    our_hp_ratio = 1.0
+    if our_active is not None:
+        our_hp_ratio = getattr(our_active, "hp", 1) / max(getattr(our_active, "max_hp", 1), 1)
+    our_is_unaware = _is_unaware_like(our_active)
+    healthy_enough_for_reset = our_hp_ratio >= 0.35
+    incoming_pressure = None
+    try:
+        incoming_pressure = float(_eval_opponent_best_damage(battle))
+    except Exception:
+        incoming_pressure = None
+    unaware_hold_mode = (
+        our_is_unaware
+        and boost_level >= 1
+        and not force_switch
+        and our_hp_ratio >= 0.30
+    )
 
     adjusted = {}
     for move, weight in policy.items():
         move_name = move.split(":")[-1] if ":" in move else move
-        move_data = all_move_json.get(move_name, {})
+        move_norm = normalize_name(move_name)
+        move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
         cat = move_data.get(constants.CATEGORY)
+        is_switch = move.startswith("switch ")
+        is_reset = move_norm in reset_moves
+        is_damaging = cat in {constants.PHYSICAL, constants.SPECIAL}
+        is_status = cat == constants.STATUS
+        base_power = float(move_data.get(constants.BASE_POWER, 0) or 0)
+        is_fixed_damage = _is_fixed_damage_attack(move_norm, move_data)
+        is_strong_attack = is_damaging and (
+            base_power >= 75 or move_norm in PRIORITY_MOVES or is_fixed_damage
+        )
         new_weight = weight
-        if not move.startswith("switch ") and cat == constants.STATUS:
-            new_weight = min(weight, best_switch_weight * 0.7)
+        reason = None
+
+        # If we can reset boosts now, do not get trapped in endless switching.
+        if is_reset:
+            if healthy_enough_for_reset:
+                # Ensure reset lines compete directly with switch options.
+                target = anchor_weight * (1.08 + min(0.04 * (boost_level - 1), 0.16))
+                if target > new_weight:
+                    new_weight = target
+                    reason = "boosted_threat_prefer_reset"
+            elif best_switch_weight > 0:
+                # Keep reset lines visible but don't overforce when we're too low.
+                floor = best_switch_weight * 0.70
+                if floor > new_weight:
+                    new_weight = floor
+                    reason = "boosted_threat_keep_reset_option"
+
+        elif is_status and not is_switch:
+            # Passive moves are usually bad while a boosted threat is active.
+            if move_norm == "partingshot":
+                status_cap = anchor_weight * (0.62 if best_switch_weight > 0 else 0.52)
+            elif move_norm in recovery_moves_norm:
+                stabilizing_recovery = _is_stabilizing_recovery_line(
+                    move_norm,
+                    move_data,
+                    our_hp_ratio,
+                    incoming_pressure,
+                )
+                if stabilizing_recovery:
+                    # If recovery is projected to net HP this turn, keep it live.
+                    status_cap = anchor_weight * (0.92 if best_switch_weight > 0 else 0.84)
+                elif our_hp_ratio <= 0.28:
+                    status_cap = anchor_weight * (0.80 if best_switch_weight > 0 else 0.70)
+                elif our_hp_ratio <= 0.45:
+                    status_cap = anchor_weight * (0.58 if best_switch_weight > 0 else 0.45)
+                else:
+                    status_cap = anchor_weight * (0.40 if best_switch_weight > 0 else 0.28)
+            else:
+                status_cap = anchor_weight * (0.45 if best_switch_weight > 0 else 0.30)
+            if has_viable_progress_line:
+                # Keep hazards/recovery below direct progress options under pressure.
+                if move_norm in recovery_moves_norm:
+                    stabilizing_recovery = _is_stabilizing_recovery_line(
+                        move_norm,
+                        move_data,
+                        our_hp_ratio,
+                        incoming_pressure,
+                    )
+                    if stabilizing_recovery:
+                        recovery_progress_cap = 1.05
+                    else:
+                        recovery_progress_cap = 0.82 if our_hp_ratio <= 0.45 else 0.70
+                    status_cap = min(status_cap, best_progress_weight * recovery_progress_cap)
+                elif move_norm == "partingshot":
+                    status_cap = min(status_cap, best_progress_weight * 0.88)
+                else:
+                    status_cap = min(status_cap, best_progress_weight * 0.85)
+            if new_weight > status_cap:
+                new_weight = status_cap
+                reason = "boosted_threat_suppress_passive"
+
+        elif is_switch:
+            if force_switch:
+                pass
+            elif healthy_enough_for_reset and best_reset_weight > 0:
+                # Prevent switch-looping when a healthy reset move exists now.
+                cap = max(best_reset_weight * 0.95, best_attack_weight * 1.05)
+                if cap > 0 and new_weight > cap:
+                    new_weight = cap
+                    reason = "boosted_threat_avoid_switch_loop"
+            elif has_viable_progress_line and our_hp_ratio >= 0.40 and boost_level >= 1:
+                if switched_last_turn:
+                    # Break back-to-back switch chains when we can make progress now.
+                    cap = best_progress_weight * (0.85 if boost_level >= 2 else 0.90)
+                    if new_weight > cap:
+                        new_weight = cap
+                        reason = "boosted_threat_break_switch_chain"
+                else:
+                    # Keep switch options close to proactive lines instead of dominating.
+                    cap = best_progress_weight * (0.95 if boost_level >= 2 else 0.98)
+                    if new_weight > cap:
+                        new_weight = cap
+                        reason = "boosted_threat_keep_progress_live"
+
+        elif is_damaging and best_switch_weight <= 0:
+            # Last-mon / trapped states: attack instead of hazards/recover spam.
+            attack_floor = anchor_weight * 0.90
+            if move_norm in PRIORITY_MOVES:
+                attack_floor = anchor_weight
+            if attack_floor > new_weight:
+                new_weight = attack_floor
+                reason = "boosted_threat_no_switch_attack_now"
+        elif is_strong_attack and best_switch_weight > 0 and boost_level >= 1 and not force_switch:
+            # Keep at least one meaningful attacking line alive when switches dominate.
+            floor = best_switch_weight * (0.92 if boost_level == 1 else 0.96)
+            if switched_last_turn:
+                floor = best_switch_weight * (0.96 if boost_level == 1 else 1.02)
+            if floor > new_weight:
+                new_weight = floor
+                reason = "boosted_threat_keep_attack_live"
+        elif is_strong_attack and switched_last_turn and has_viable_progress_line and not force_switch:
+            # When we switched last turn and are still under threat, keep attacking
+            # lines competitive so we do not oscillate forever.
+            floor = best_progress_weight * 1.05
+            if floor > new_weight:
+                new_weight = floor
+                reason = "boosted_threat_force_progress_attack"
+
+        # Unaware hold mode:
+        # If we pivoted to an Unaware wall against a boosted threat, avoid
+        # immediately switching back out unless the line is truly unsafe.
+        if unaware_hold_mode:
+            if (
+                is_switch
+                and has_viable_progress_line
+                and our_hp_ratio >= 0.45
+            ):
+                hold_cap = best_progress_weight * (0.78 if switched_last_turn else 0.86)
+                if new_weight > hold_cap:
+                    new_weight = hold_cap
+                    reason = "unaware_hold_avoid_immediate_switch"
+            elif (is_reset or is_strong_attack) and best_switch_weight > 0:
+                hold_floor = best_switch_weight * (0.98 if switched_last_turn else 0.90)
+                if hold_floor > new_weight:
+                    new_weight = hold_floor
+                    reason = "unaware_hold_keep_progress"
+            elif is_status and move_norm in recovery_moves_norm and best_switch_weight > 0:
+                stabilizing_recovery = _is_stabilizing_recovery_line(
+                    move_norm,
+                    move_data,
+                    our_hp_ratio,
+                    incoming_pressure,
+                )
+                if stabilizing_recovery and our_hp_ratio <= 0.72:
+                    hold_floor = best_switch_weight * 0.92
+                    if hold_floor > new_weight:
+                        new_weight = hold_floor
+                        reason = "unaware_hold_stabilize_and_stay"
+
+        if reason is not None and trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "penalty" if new_weight < weight else "boost",
+                    "source": "threat_switch",
+                    "move": move,
+                    "reason": reason,
+                    "before": weight,
+                    "after": new_weight,
+                }
+            )
+        adjusted[move] = new_weight
+    return adjusted
+
+
+def apply_switch_chain_progress_bias(
+    policy: dict[str, float],
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list[dict] | None = None,
+) -> dict[str, float]:
+    """
+    Prevent long switch loops when we just switched and have a viable progress line.
+
+    This is intentionally format-agnostic and applies outside explicit boosted-threat
+    scenarios because non-boosted pivot wars can still stall bot progress.
+    """
+    if battle is None or getattr(battle, "force_switch", False):
+        return policy
+
+    turn_number = int(getattr(battle, "turn", 0) or 0)
+    if turn_number <= 1:
+        return policy
+
+    user = getattr(battle, "user", None)
+    last_selected_raw = str(
+        getattr(getattr(user, "last_selected_move", None), "move", "") or ""
+    ).lower()
+    last_used_raw = str(
+        getattr(getattr(user, "last_used_move", None), "move", "") or ""
+    ).lower()
+    switched_last_turn = (
+        last_selected_raw.startswith("switch ") or last_used_raw.startswith("switch ")
+    )
+    if not switched_last_turn:
+        return policy
+
+    our_active = getattr(user, "active", None)
+    our_hp_ratio = 1.0
+    if our_active is not None:
+        our_hp_ratio = getattr(our_active, "hp", 1) / max(getattr(our_active, "max_hp", 1), 1)
+
+    boosted_threat = bool(
+        ability_state is not None and getattr(ability_state, "opponent_has_offensive_boost", False)
+    )
+    unaware_hold = bool(
+        boosted_threat and _is_unaware_like(our_active) and our_hp_ratio >= 0.40
+    )
+    if boosted_threat and our_hp_ratio < 0.35:
+        # If we're very low into a boosted threat, preserve emergency switching.
+        return policy
+
+    best_switch_weight = 0.0
+    best_progress_move = None
+    best_progress_weight = 0.0
+    best_fallback_non_switch_move = None
+    best_fallback_non_switch_weight = 0.0
+
+    for move, weight in policy.items():
+        if weight <= 0:
+            continue
+        if move.startswith("switch "):
+            best_switch_weight = max(best_switch_weight, weight)
+            continue
+
+        is_progress = _is_meaningful_progress_move(
+            move,
+            battle,
+            ability_state,
+            include_status_pivots=not boosted_threat,
+        )
+        if is_progress and weight > best_progress_weight:
+            best_progress_weight = weight
+            best_progress_move = move
+
+        if weight > best_fallback_non_switch_weight:
+            best_fallback_non_switch_weight = weight
+            best_fallback_non_switch_move = move
+
+    if best_switch_weight <= 0:
+        return policy
+
+    # Prefer progress moves, but fall back to any non-switch if that's all we have.
+    if best_progress_move is None:
+        best_progress_move = best_fallback_non_switch_move
+        best_progress_weight = best_fallback_non_switch_weight
+
+    if not best_progress_move or best_progress_weight <= 0:
+        return policy
+
+    ratio = best_progress_weight / best_switch_weight
+    min_ratio = 0.30 if boosted_threat else 0.20
+    if unaware_hold:
+        min_ratio = min(min_ratio, 0.12)
+    if ratio < min_ratio:
+        return policy
+
+    adjusted = dict(policy)
+    if unaware_hold:
+        switch_cap = best_progress_weight * 0.84
+    else:
+        switch_cap = best_progress_weight * (0.92 if boosted_threat else 0.98)
+    progress_floor = switch_cap * 1.03
+    if progress_floor > adjusted[best_progress_move]:
+        old = adjusted[best_progress_move]
+        adjusted[best_progress_move] = progress_floor
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "boost",
+                    "source": "switch_chain",
+                    "move": best_progress_move,
+                    "reason": "progress_after_switch_chain",
+                    "before": old,
+                    "after": adjusted[best_progress_move],
+                }
+            )
+
+    for move, weight in policy.items():
+        if not move.startswith("switch ") or weight <= 0:
+            continue
+        if weight > switch_cap:
+            adjusted[move] = switch_cap
             if trace_events is not None:
                 trace_events.append(
                     {
                         "type": "penalty",
-                        "source": "threat_switch",
+                        "source": "switch_chain",
                         "move": move,
-                        "reason": "boosted_threat_prefer_switch",
+                        "reason": "cap_switch_after_switch_chain",
                         "before": weight,
-                        "after": new_weight,
+                        "after": switch_cap,
                     }
                 )
+
+    return adjusted
+
+
+def apply_conversion_progress_bias(
+    policy: dict[str, float],
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list[dict] | None = None,
+) -> dict[str, float]:
+    """
+    When we are materially ahead, prefer converting advantage with direct progress
+    instead of extra passive/switch cycles.
+    """
+    if battle is None or getattr(battle, "force_switch", False):
+        return policy
+    if battle.user.active is None:
+        return policy
+
+    advantage_score, ahead = _estimate_board_advantage(battle, ability_state)
+    if not ahead:
+        return policy
+
+    our_active = battle.user.active
+    our_hp_ratio = getattr(our_active, "hp", 1) / max(getattr(our_active, "max_hp", 1), 1)
+    opp_boost_level = 0
+    if ability_state is not None:
+        opp_boost_level = max(
+            int(getattr(ability_state, "opponent_attack_boost", 0) or 0),
+            int(getattr(ability_state, "opponent_spa_boost", 0) or 0),
+        )
+    if opp_boost_level >= 2 and our_hp_ratio < 0.55:
+        # Do not force conversion when the board is volatile and we are low.
+        return policy
+
+    incoming_pressure = None
+    try:
+        incoming_pressure = float(_eval_opponent_best_damage(battle))
+    except Exception:
+        incoming_pressure = None
+
+    turn_number = int(getattr(battle, "turn", 0) or 0)
+    last_selected_raw = str(
+        getattr(getattr(getattr(battle, "user", None), "last_selected_move", None), "move", "") or ""
+    ).lower()
+    switched_last_turn = turn_number > 1 and last_selected_raw.startswith("switch ")
+
+    best_progress_weight = 0.0
+    best_switch_weight = 0.0
+    for move, weight in policy.items():
+        if weight <= 0:
+            continue
+        if move.startswith("switch "):
+            best_switch_weight = max(best_switch_weight, weight)
+            continue
+        if _is_meaningful_progress_move(
+            move,
+            battle,
+            ability_state,
+            include_status_pivots=False,
+            incoming_pressure=incoming_pressure,
+        ):
+            best_progress_weight = max(best_progress_weight, weight)
+
+    if best_progress_weight <= 0:
+        return policy
+
+    switch_cap = best_progress_weight * (0.88 if advantage_score >= 1.35 else 0.94)
+    if switched_last_turn:
+        switch_cap *= 0.93
+    if incoming_pressure is not None and incoming_pressure >= max(0.42, our_hp_ratio * 0.75):
+        # Keep emergency switching mostly intact under meaningful immediate pressure.
+        switch_cap = max(switch_cap, best_switch_weight * 0.95)
+
+    adjusted = dict(policy)
+    for move, weight in policy.items():
+        if weight <= 0:
+            continue
+
+        move_name = move.split(":")[-1] if ":" in move else move
+        move_norm = normalize_name(move_name)
+        move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+        cat = move_data.get(constants.CATEGORY)
+
+        new_weight = weight
+        reason = None
+
+        if move.startswith("switch ") and our_hp_ratio >= 0.35:
+            if weight > switch_cap:
+                new_weight = switch_cap
+                reason = "ahead_convert_cap_switch"
+        elif cat == constants.STATUS:
+            if move_norm in RECOVERY_MOVES_NORM:
+                stabilizing = _is_stabilizing_recovery_line(
+                    move_norm,
+                    move_data,
+                    our_hp_ratio,
+                    incoming_pressure,
+                )
+                if not (stabilizing and our_hp_ratio <= 0.58):
+                    status_cap = best_progress_weight * (
+                        0.78 if our_hp_ratio <= 0.45 else 0.66
+                    )
+                    if weight > status_cap:
+                        new_weight = status_cap
+                        reason = "ahead_convert_cap_recovery"
+            elif move_norm in HAZARD_SETTING_MOVES and _hazard_move_can_progress(move_norm, battle):
+                early_hazard_turn = turn_number <= 4 and (
+                    ability_state is None
+                    or (
+                        int(getattr(ability_state, "opponent_hazard_layers", 0) or 0) <= 0
+                        and int(getattr(ability_state, "opponent_alive_count", 6) or 6) >= 4
+                    )
+                )
+                hazard_cap = best_progress_weight * (0.92 if early_hazard_turn else 0.80)
+                if weight > hazard_cap:
+                    new_weight = hazard_cap
+                    reason = "ahead_convert_cap_hazard"
+            elif move_norm in PIVOT_MOVES_NORM:
+                pivot_cap = best_progress_weight * 0.90
+                if weight > pivot_cap:
+                    new_weight = pivot_cap
+                    reason = "ahead_convert_cap_pivot"
+            else:
+                passive_cap = best_progress_weight * 0.72
+                if weight > passive_cap:
+                    new_weight = passive_cap
+                    reason = "ahead_convert_cap_passive"
+
         adjusted[move] = new_weight
+        if reason is not None and trace_events is not None and abs(new_weight - weight) > 1e-9:
+            trace_events.append(
+                {
+                    "type": "penalty",
+                    "source": "conversion",
+                    "move": move,
+                    "reason": reason,
+                    "before": weight,
+                    "after": new_weight,
+                }
+            )
+
     return adjusted
 
 
@@ -3113,6 +4917,14 @@ def apply_team_strategy_bias(
             threat_category = get_threat_category(opponent.name)
         except Exception:
             threat_category = None
+    opp_boosts = getattr(opponent, "boosts", {}) or {} if opponent is not None else {}
+    opp_offensive_boost = max(
+        int(opp_boosts.get(constants.ATTACK, 0) or 0),
+        int(opp_boosts.get(constants.SPECIAL_ATTACK, 0) or 0),
+    )
+    # When the opponent is already boosted, avoid late-stage style multipliers
+    # re-inflating passive lines that earlier threat layers suppressed.
+    suppress_passive_style_boosts = opp_offensive_boost >= 1
 
     adjusted = {}
     for move, weight in policy.items():
@@ -3139,10 +4951,13 @@ def apply_team_strategy_bias(
 
         # Apply style multipliers
         if move_name in hazard_moves_norm:
-            if not hazards_on_opp or our_has_gholdengo:
-                new_weight *= hazard_mult * chip_mult
-            if switch_tendency > 0.5:
-                new_weight *= 1.0 + min((switch_tendency - 0.5) * 0.3, 0.2)
+            if suppress_passive_style_boosts:
+                new_weight *= 0.60
+            else:
+                if not hazards_on_opp or our_has_gholdengo:
+                    new_weight *= hazard_mult * chip_mult
+                if switch_tendency > 0.5:
+                    new_weight *= 1.0 + min((switch_tendency - 0.5) * 0.3, 0.2)
         if move_name in screen_moves_norm:
             if playstyle == Playstyle.HYPER_OFFENSE:
                 new_weight *= 1.3
@@ -3154,23 +4969,60 @@ def apply_team_strategy_bias(
             if opponent_has_gholdengo and move_name == "rapidspin":
                 new_weight *= 0.7
         if move_name in recovery_moves_norm:
-            new_weight *= recovery_mult
-            # FAT/STALL teams should recover more aggressively
-            # A wall below 60% HP should almost always recover
-            if playstyle in (Playstyle.FAT, Playstyle.STALL):
+            if suppress_passive_style_boosts:
+                active = battle.user.active
+                hp_ratio = 1.0
+                if active is not None and active.max_hp > 0:
+                    hp_ratio = active.hp / active.max_hp
+                # Keep emergency heals available at very low HP, but otherwise
+                # avoid over-prioritizing recovery into boosted threats.
+                if hp_ratio <= 0.25:
+                    new_weight *= 0.95
+                else:
+                    new_weight *= 0.55
+            else:
+                new_weight *= recovery_mult
+            # FAT/STALL: tempo-aware recovery
+            # Recover aggressively when threatened, but don't waste free turns healing
+            if playstyle in (Playstyle.FAT, Playstyle.STALL) and not suppress_passive_style_boosts:
                 active = battle.user.active
                 if active and active.max_hp > 0:
                     hp_ratio = active.hp / active.max_hp
+                    # Estimate if we're threatened (opponent can 2HKO)
+                    _threatened = False
+                    if opponent is not None:
+                        opp_moves_list = getattr(opponent, "moves", []) or []
+                        for om in opp_moves_list:
+                            om_name = om.name if hasattr(om, "name") else str(om)
+                            om_data = all_move_json.get(om_name, {})
+                            bp = om_data.get(constants.BASE_POWER, 0)
+                            if bp > 0:
+                                _threatened = True
+                                break
+                        if not _threatened and opponent.types:
+                            _threatened = True  # assume they have attacks
                     if hp_ratio <= 0.4:
-                        new_weight *= 2.5  # Strong: heal when critically low
+                        if _threatened:
+                            new_weight *= 2.5  # Heal: critically low AND threatened
+                        else:
+                            new_weight *= 1.3  # Low but safe: mild recovery urge
                     elif hp_ratio <= 0.6:
-                        new_weight *= 1.8  # Moderate: heal to stay healthy
+                        if _threatened:
+                            new_weight *= 1.8  # Moderate heal when threatened
+                        else:
+                            new_weight *= 1.1  # Barely boost if safe
         if move_name in setup_moves_norm:
-            new_weight *= setup_mult
-            if active_is_wincon:
-                new_weight *= 1.1
+            if suppress_passive_style_boosts:
+                new_weight *= 0.55
+            else:
+                new_weight *= setup_mult
+                if active_is_wincon:
+                    new_weight *= 1.1
         if move_name in pivot_moves_norm:
-            new_weight *= pivot_mult
+            if suppress_passive_style_boosts:
+                new_weight *= min(pivot_mult, 1.0)
+            else:
+                new_weight *= pivot_mult
 
         # Damage move bias
         if move_name in all_move_json:
@@ -3229,58 +5081,19 @@ def apply_team_strategy_bias(
     return adjusted
 
 
-def select_move_from_mcts_results(
-    mcts_results: list[(MctsResult, float, int)],
+def select_move_from_eval_scores(
+    eval_scores: dict[str, float],
     ability_state: OpponentAbilityState | None = None,
     battle: Battle | None = None,
     playstyle: Playstyle | None = None,
     decision_profile: DecisionProfile = DecisionProfile.DEFAULT,
     trace: dict | None = None,
 ) -> str:
-    final_policy = {}
-    score_policy = {}  # Track average scores for quality assessment
+    """Select a move from 1-ply eval scores, applying the 9 penalty layers."""
     trace_events = []
-    for mcts_result, sample_chance, index in mcts_results:
-        this_policy = max(mcts_result.side_one, key=lambda x: x.visits)
-        logger.info(
-            "Policy {}: {} visited {}% avg_score={} sample_chance_multiplier={}".format(
-                index,
-                this_policy.move_choice,
-                round(100 * this_policy.visits / mcts_result.total_visits, 2),
-                round(this_policy.total_score / this_policy.visits, 3),
-                round(sample_chance, 3),
-            )
-        )
-        for s1_option in mcts_result.side_one:
-            visit_weight = sample_chance * (s1_option.visits / mcts_result.total_visits)
-            final_policy[s1_option.move_choice] = final_policy.get(
-                s1_option.move_choice, 0
-            ) + visit_weight
+    pre_penalty_scores = dict(eval_scores)
 
-            # Accumulate weighted average scores
-            if s1_option.visits > 0:
-                avg_score = s1_option.total_score / s1_option.visits
-                if s1_option.move_choice not in score_policy:
-                    score_policy[s1_option.move_choice] = (0.0, 0.0)
-                old_score, old_weight = score_policy[s1_option.move_choice]
-                score_policy[s1_option.move_choice] = (
-                    old_score + avg_score * visit_weight,
-                    old_weight + visit_weight,
-                )
-
-    # Blend visit-based policy with score-based quality (80% visits, 20% score)
-    # This helps break ties and prefer moves with higher expected value
-    blended_policy = {}
-    for move, visit_weight in final_policy.items():
-        if move in score_policy and score_policy[move][1] > 0:
-            weighted_score, total_weight = score_policy[move]
-            avg_score = weighted_score / total_weight
-            # Normalize score contribution: scores typically range 0-1
-            # Use it as a tiebreaker multiplier
-            score_bonus = max(0.0, min(avg_score, 1.0))
-            blended_policy[move] = visit_weight * (0.8 + 0.2 * score_bonus)
-        else:
-            blended_policy[move] = visit_weight
+    blended_policy = dict(eval_scores)
 
     blended_policy = apply_heuristic_bias(
         blended_policy,
@@ -3331,6 +5144,12 @@ def select_move_from_mcts_results(
         ability_state,
         trace_events=trace_events,
     )
+    blended_policy = apply_hazard_maintenance_bias(
+        blended_policy,
+        battle,
+        ability_state,
+        trace_events=trace_events,
+    )
 
     # Pre-orb status safety: protect Toxic Orb activation (Poison Heal)
     if battle is not None:
@@ -3358,34 +5177,202 @@ def select_move_from_mcts_results(
             team_plan,
             playstyle,
         )
+        # Re-apply threat clamp after playstyle multipliers so +1/+2 threat safety
+        # cannot be accidentally undone by late-stage style boosts.
+        blended_policy = apply_threat_switch_bias(
+            blended_policy,
+            battle,
+            ability_state,
+            trace_events=trace_events,
+        )
+        blended_policy = apply_hazard_maintenance_bias(
+            blended_policy,
+            battle,
+            ability_state,
+            trace_events=trace_events,
+        )
+
+    # Final anti-loop pass: after all other multipliers, break repeated switch
+    # chains when we have a viable progress line.
+    blended_policy = apply_conversion_progress_bias(
+        blended_policy,
+        battle,
+        ability_state,
+        trace_events=trace_events,
+    )
+    blended_policy = apply_switch_chain_progress_bias(
+        blended_policy,
+        battle,
+        ability_state,
+        trace_events=trace_events,
+    )
+
+    # Stability gate: blend back toward raw eval to avoid compounded heuristic
+    # layers overwhelming high-confidence engine progress lines.
+    blended_policy = _stability_blend_policy(pre_penalty_scores, blended_policy)
+
+    # Final cleanup: down-weight explicitly odd/waste-turn choices.
+    blended_policy = apply_oddity_penalties(
+        blended_policy,
+        battle,
+        ability_state,
+        trace_events=trace_events,
+    )
+
+    # Hard legality filter: never keep switch options when trapped.
+    # This prevents illegal /switch submissions in partial-trap turns.
+    if battle is not None and not getattr(battle, "force_switch", False):
+        trapped = bool(getattr(getattr(battle, "user", None), "trapped", False))
+        request = getattr(battle, "request_json", None) or {}
+        active = request.get(constants.ACTIVE, []) if isinstance(request, dict) else []
+        if active:
+            trapped = trapped or bool(
+                active[0].get(constants.TRAPPED, False)
+                or active[0].get(constants.MAYBE_TRAPPED, False)
+            )
+
+        if trapped:
+            filtered_policy = {
+                move: weight
+                for move, weight in blended_policy.items()
+                if not move.startswith("switch ")
+            }
+            if filtered_policy:
+                removed = len(blended_policy) - len(filtered_policy)
+                if removed > 0:
+                    logger.info(
+                        "Switch legality filter: trapped state removed %s switch option(s)",
+                        removed,
+                    )
+                    if trace_events is not None:
+                        trace_events.append(
+                            {
+                                "type": "override",
+                                "source": "legality_filter",
+                                "move": "switch *",
+                                "reason": "trapped_state",
+                                "before": removed,
+                                "after": 0,
+                            }
+                        )
+                blended_policy = filtered_policy
 
     sorted_policy = sorted(blended_policy.items(), key=lambda x: x[1], reverse=True)
 
     if trace is not None:
-        raw_scores = {}
-        for move, (weighted_score, total_weight) in score_policy.items():
-            if total_weight > 0:
-                raw_scores[move] = weighted_score / total_weight
         top_moves = []
         for move, weight in sorted_policy[:5]:
             top_moves.append(
                 {
                     "move": move,
-                    "blended_weight": weight,
-                    "avg_score": raw_scores.get(move),
-                    "visit_weight": final_policy.get(move, 0.0),
+                    "eval_weight": weight,
+                    "pre_penalty_score": pre_penalty_scores.get(move, 0.0),
                 }
             )
-        trace["mcts"] = {
+        trace["eval"] = {
             "top_moves": top_moves,
-            "policy_pre_penalty": final_policy,
+            "policy_pre_penalty": pre_penalty_scores,
             "policy_post_penalty": blended_policy,
             "events": trace_events,
         }
 
-    logger.info("All Choices (post-blend, post-penalty):")
+    logger.info("All Choices (post-eval, post-penalty):")
     for i, (move, weight) in enumerate(sorted_policy):
         logger.info(f"\t{round(weight * 100, 3)}%: {move}")
+
+    # Immediate survival override:
+    # If we are likely to be KOed before acting, favor the best available switch
+    # over a close non-switch line (unless the line is itself a viable stall/survival move).
+    if (
+        battle is not None
+        and sorted_policy
+        and not getattr(battle, "force_switch", False)
+        and not sorted_policy[0][0].startswith("switch ")
+    ):
+        survival = _assess_immediate_survival_risk(battle)
+        if bool(survival.get("risk", False)):
+            top_move, top_weight = sorted_policy[0]
+            incoming_pressure = None
+            try:
+                incoming_pressure = float(survival.get("incoming", 0.0))
+            except Exception:
+                incoming_pressure = None
+            if not _is_non_switch_stall_survival_line(
+                top_move,
+                battle,
+                incoming_pressure=incoming_pressure,
+            ):
+                best_switch = next(
+                    ((m, w) for m, w in sorted_policy if m.startswith("switch ") and w > 0),
+                    None,
+                )
+                if best_switch is not None:
+                    # Require at least a minimally competitive switch score so we
+                    # do not hard-force obviously bad sacks.
+                    preserve_ratio = 0.62
+                    if best_switch[1] >= top_weight * preserve_ratio:
+                        if trace_events is not None:
+                            trace_events.append(
+                                {
+                                    "type": "override",
+                                    "source": "survival_preserve",
+                                    "move": best_switch[0],
+                                    "reason": "immediate_ko_risk_prefer_switch",
+                                    "before": top_weight,
+                                    "after": best_switch[1],
+                                }
+                            )
+                        logger.info(
+                            "Survival override: choosing %s over %s "
+                            "(incoming=%.3f hp=%.3f)",
+                            best_switch[0],
+                            top_move,
+                            float(survival.get("incoming", 0.0)),
+                            float(survival.get("our_hp_ratio", 1.0)),
+                        )
+                        return best_switch[0]
+
+    # If a switch is only marginally above the best progress line, prefer the
+    # non-switch option to reduce oscillation and preserve tempo.
+    if (
+        battle is not None
+        and sorted_policy
+        and not getattr(battle, "force_switch", False)
+        and sorted_policy[0][0].startswith("switch ")
+    ):
+        best_move, best_weight = sorted_policy[0]
+        best_non_switch = next(
+            ((m, w) for m, w in sorted_policy if not m.startswith("switch ") and w > 0),
+            None,
+        )
+        if best_non_switch is not None:
+            tie_ratio = 0.96
+            turn_number = int(getattr(battle, "turn", 0) or 0)
+            last_selected_raw = str(
+                getattr(getattr(getattr(battle, "user", None), "last_selected_move", None), "move", "") or ""
+            ).lower()
+            advantage_score, ahead = _estimate_board_advantage(battle, ability_state)
+            if ahead:
+                tie_ratio = min(tie_ratio, 0.88 if advantage_score < 1.35 else 0.84)
+            if turn_number > 1 and last_selected_raw.startswith("switch "):
+                tie_ratio = min(tie_ratio, 0.84 if ahead else 0.90)
+            if best_non_switch[1] >= best_weight * tie_ratio:
+                if trace_events is not None:
+                    trace_events.append(
+                        {
+                            "type": "override",
+                            "source": "switch_tie_break",
+                            "move": best_non_switch[0],
+                            "reason": "prefer_non_switch_when_close",
+                            "before": best_weight,
+                            "after": best_non_switch[1],
+                        }
+                    )
+                logger.info(
+                    f"Switch tie-break: choosing {best_non_switch[0]} over {best_move} "
+                    f"(ratio={best_non_switch[1] / best_weight:.2f})"
+                )
+                return best_non_switch[0]
 
     # Deterministic selection when one move is clearly dominant
     if len(sorted_policy) >= 2:
@@ -3410,21 +5397,117 @@ def select_move_from_mcts_results(
         considered_threshold = 0.85
 
     considered = [i for i in sorted_policy if i[1] >= highest_percentage * considered_threshold]
+    if (
+        battle is not None
+        and ability_state is not None
+        and ability_state.opponent_active_is_threat
+        and not getattr(battle, "force_switch", False)
+        and considered
+        and all(move.startswith("switch ") for move, _ in considered)
+    ):
+        progress_pick = None
+        for move, weight in sorted_policy:
+            if move.startswith("switch "):
+                continue
+            if _is_meaningful_progress_move(
+                move,
+                battle,
+                ability_state,
+                include_status_pivots=False,
+            ):
+                progress_pick = (move, weight)
+                break
+        if progress_pick is not None:
+            considered.append(progress_pick)
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "override",
+                        "source": "threat_considered",
+                        "move": progress_pick[0],
+                        "reason": "inject_progress_when_considered_all_switches",
+                        "before": progress_pick[1],
+                        "after": progress_pick[1],
+                    }
+                )
+            logger.info(
+                "Threat override: injecting progress move %s into considered pool",
+                progress_pick[0],
+            )
     logger.info(f"Considered Choices ({int(considered_threshold * 100)}% threshold):")
     for i, policy in enumerate(considered):
         logger.info(f"\t{round(policy[1] * 100, 3)}%: {policy[0]}")
 
+    # If we switched last turn, prefer a considered progress move
+    # (damaging or direct reset) over another random switch.
+    if battle is not None and not getattr(battle, "force_switch", False):
+        turn_number = int(getattr(battle, "turn", 0) or 0)
+        last_selected_raw = str(
+            getattr(getattr(getattr(battle, "user", None), "last_selected_move", None), "move", "") or ""
+        ).lower()
+        if turn_number > 1 and last_selected_raw.startswith("switch "):
+            progress_choices = []
+            for move, weight in considered:
+                if move.startswith("switch "):
+                    continue
+                if _is_meaningful_progress_move(
+                    move,
+                    battle,
+                    ability_state,
+                    include_status_pivots=True,
+                ):
+                    progress_choices.append((move, weight))
+            if progress_choices:
+                progress_pick = max(progress_choices, key=lambda x: x[1])
+                if trace_events is not None:
+                    trace_events.append(
+                        {
+                            "type": "override",
+                            "source": "switch_chain",
+                            "move": progress_pick[0],
+                            "reason": "prefer_progress_after_switch",
+                            "before": progress_pick[1],
+                            "after": progress_pick[1],
+                        }
+                    )
+                logger.info(f"Switch-chain override: choosing progress move {progress_pick[0]}")
+                return progress_pick[0]
+
+    # Conversion lock: if we are ahead and already have the best non-switch line,
+    # do not re-randomize into a close defensive switch.
+    if battle is not None and considered and not getattr(battle, "force_switch", False):
+        advantage_score, ahead = _estimate_board_advantage(battle, ability_state)
+        if ahead:
+            best_move, best_weight = sorted_policy[0]
+            if not best_move.startswith("switch "):
+                best_switch = next(
+                    ((m, w) for m, w in sorted_policy if m.startswith("switch ") and w > 0),
+                    None,
+                )
+                if best_switch is not None:
+                    keep_ratio = 0.94 if advantage_score < 1.35 else 0.90
+                    if best_weight >= best_switch[1] * keep_ratio:
+                        if trace_events is not None:
+                            trace_events.append(
+                                {
+                                    "type": "override",
+                                    "source": "conversion_lock",
+                                    "move": best_move,
+                                    "reason": "ahead_keep_progress_over_close_switch",
+                                    "before": best_switch[1],
+                                    "after": best_weight,
+                                }
+                            )
+                        return best_move
+
+    # Low profile should be deterministic to reduce variance/regression noise
+    # during ladder grinding and make behavior easier to debug.
+    if decision_profile == DecisionProfile.LOW and considered:
+        deterministic = max(considered, key=lambda x: x[1])[0]
+        return deterministic
+
     choice = random.choices(considered, weights=[p[1] for p in considered])[0]
     return choice[0]
-
-
-def get_result_from_mcts(state: str, search_time_ms: int, index: int) -> MctsResult:
-    logger.debug("Calling with {} state: {}".format(index, state))
-    poke_engine_state = PokeEngineState.from_string(state)
-
-    res = monte_carlo_tree_search(poke_engine_state, search_time_ms)
-    logger.info("Iterations {}: {}".format(index, res.total_visits))
-    return res
 
 
 def _get_time_pressure_level(battle):
@@ -3440,64 +5523,6 @@ def _get_time_pressure_level(battle):
     return 0
 
 
-def search_time_num_battles_randombattles(battle):
-    revealed_pkmn = len(battle.opponent.reserve)
-    if battle.opponent.active is not None:
-        revealed_pkmn += 1
-
-    opponent_active_num_moves = len(battle.opponent.active.moves)
-    pressure = _get_time_pressure_level(battle)
-
-    # Emergency: minimal search
-    if pressure >= 3:
-        return FoulPlayConfig.parallelism, int(FoulPlayConfig.search_time_ms // 4)
-
-    # Critical: reduced search
-    if pressure >= 2:
-        return FoulPlayConfig.parallelism, int(FoulPlayConfig.search_time_ms // 2)
-
-    # it is still quite early in the battle and the pkmn in front of us
-    # hasn't revealed any moves: search a lot of battles shallowly
-    if (
-        revealed_pkmn <= 3
-        and battle.opponent.active.hp > 0
-        and opponent_active_num_moves == 0
-    ):
-        num_battles_multiplier = 2 if pressure >= 1 else 4
-        return FoulPlayConfig.parallelism * num_battles_multiplier, int(
-            FoulPlayConfig.search_time_ms // 2
-        )
-
-    else:
-        num_battles_multiplier = 1 if pressure >= 1 else 2
-        return FoulPlayConfig.parallelism * num_battles_multiplier, int(
-            FoulPlayConfig.search_time_ms
-        )
-
-
-def search_time_num_battles_standard_battle(battle):
-    opponent_active_num_moves = len(battle.opponent.active.moves)
-    pressure = _get_time_pressure_level(battle)
-
-    # Emergency: minimal search
-    if pressure >= 3:
-        return FoulPlayConfig.parallelism, int(FoulPlayConfig.search_time_ms // 4)
-
-    # Critical: reduced search
-    if pressure >= 2:
-        return FoulPlayConfig.parallelism, int(FoulPlayConfig.search_time_ms // 2)
-
-    if (
-        battle.team_preview
-        or (battle.opponent.active.hp > 0 and opponent_active_num_moves == 0)
-        or opponent_active_num_moves < 3
-    ):
-        num_battles_multiplier = 1 if pressure >= 1 else 2
-        return FoulPlayConfig.parallelism * num_battles_multiplier, int(
-            FoulPlayConfig.search_time_ms
-        )
-    else:
-        return FoulPlayConfig.parallelism, FoulPlayConfig.search_time_ms
 
 
 # Maximum total time budget for a single decision (seconds)
@@ -3604,6 +5629,8 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         detected_abilities.append("Guts/Marvel Scale/Quick Feet")
     if ability_state.has_poison_heal:
         detected_abilities.append("Poison Heal")
+    if ability_state.has_purifying_salt:
+        detected_abilities.append("Purifying Salt")
     if ability_state.has_water_immunity:
         detected_abilities.append("Water Absorb/Storm Drain")
     if ability_state.has_electric_immunity:
@@ -3723,6 +5750,8 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         detected_abilities.append("Opponent has SR-weak Pokemon")
     if ability_state.opponent_has_hazard_removal:
         detected_abilities.append("Opponent has hazard removal")
+    if ability_state.opponent_has_salt_cure:
+        detected_abilities.append("Opponent has Salt Cure")
     # PHASE 2.3: Tera Prediction
     if ability_state.opponent_has_terastallized:
         detected_abilities.append(f"Opponent Terastallized ({ability_state.opponent_tera_type})")
@@ -3736,6 +5765,8 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
     # PHASE 3.3: Momentum Tracking
     if ability_state.momentum_level != "neutral":
         detected_abilities.append(f"Momentum: {ability_state.momentum_level} ({ability_state.momentum:.1f})")
+    if ability_state.our_active_is_salt_cured:
+        detected_abilities.append("(Our active is Salt Cured)")
 
     if detected_abilities:
         logger.info(
@@ -3805,136 +5836,281 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
     except Exception as e:
         logger.debug(f"Endgame solver error: {e}")
 
-    if battle.battle_type == BattleType.RANDOM_BATTLE:
-        num_battles, search_time_per_battle = search_time_num_battles_randombattles(
-            battle
-        )
-        prepare_fn = prepare_random_battles
-    elif battle.battle_type == BattleType.BATTLE_FACTORY:
-        num_battles, search_time_per_battle = search_time_num_battles_standard_battle(
-            battle
-        )
-        prepare_fn = prepare_random_battles
-    elif battle.battle_type == BattleType.STANDARD_BATTLE:
-        num_battles, search_time_per_battle = search_time_num_battles_standard_battle(
-            battle
-        )
-        prepare_fn = prepare_battles
-    else:
-        raise ValueError("Unsupported battle type: {}".format(battle.battle_type))
-
-    if FoulPlayConfig.max_mcts_battles is not None:
-        desired = max(1, FoulPlayConfig.max_mcts_battles)
-        if in_time_pressure and desired > num_battles:
-            logger.info(
-                f"Time pressure: keeping reduced MCTS samples at {num_battles} "
-                f"(desired {desired})"
-            )
-        else:
-            if num_battles != desired:
-                logger.info(
-                    f"Overriding MCTS samples from {num_battles} to {desired}"
-                )
-            num_battles = desired
-
-    # Adaptive search time: invest more in high-stakes turns
-    high_stakes = ability_state.opponent_active_is_threat or ability_state.ko_line_available
-    if high_stakes and not in_time_pressure:
-        boosted = int(search_time_per_battle * 1.5)
-        search_time_per_battle = min(boosted, FoulPlayConfig.search_time_ms * 2)
-
-    battles = prepare_fn(battle, num_battles)
-
-    # Adjust search time if we're running low on time budget
-    elapsed = time.time() - start_time
-    remaining_budget = time_budget - elapsed - 2.0  # 2s safety margin
-    if remaining_budget <= 0:
-        logger.warning("No time left for MCTS, using fallback")
-        fallback = _get_fallback_move(battle)
-        trace["decision_mode"] = "fallback"
-        trace["fallback_reason"] = "time_budget_exhausted"
-        trace["choice"] = fallback
-        oddities = detect_odd_move(battle, fallback, ability_state)
-        trace["oddities"] = oddities
-        _log_oddities(fallback, oddities)
-        return fallback, trace
-
-    # Cap per-battle search time to fit within budget
-    max_per_battle_ms = int((remaining_budget * 1000) / max(num_battles / FoulPlayConfig.parallelism, 1))
-    if max_per_battle_ms < search_time_per_battle:
-        logger.info(
-            f"Reducing search time from {search_time_per_battle}ms to "
-            f"{max_per_battle_ms}ms to fit time budget"
-        )
-        search_time_per_battle = max(max_per_battle_ms, 10)  # minimum 10ms
-
-    trace["search"] = {
-        "num_battles": num_battles,
-        "search_time_ms": search_time_per_battle,
-        "parallelism": FoulPlayConfig.parallelism,
-        "time_budget_s": time_budget,
-    }
-
-    logger.info("Searching for a move using MCTS...")
-    logger.info(
-        "Sampling {} simulated battles (MCTS) at {}ms each".format(
-            num_battles, search_time_per_battle
-        )
-    )
-
-    # Calculate timeout for the executor (remaining budget in seconds)
-    executor_timeout = max(time_budget - (time.time() - start_time) - 1.0, 0.5)
-
-    mcts_results = []
+    # =========================================================================
+    # FORCED LINE CHECK
+    # =========================================================================
+    # Check for forced lines BEFORE eval (short-circuits when play is obvious)
     try:
-        # Use global executor instead of creating a new one (fixes zombie process leak)
-        executor = _get_executor()
-        futures = []
-        for index, (b, chance) in enumerate(battles):
-            fut = executor.submit(
-                get_result_from_mcts,
-                battle_to_poke_engine_state(b).to_string(),
-                search_time_per_battle,
-                index,
+        forced = detect_forced_line(battle)
+        if forced and forced.confidence >= 0.90:
+            logger.info(
+                f"FORCED LINE (high confidence {forced.confidence}): "
+                f"{forced.move} - {forced.reason}"
             )
-            futures.append((fut, chance, index))
+            trace["decision_mode"] = "forced_line"
+            trace["forced_line"] = {
+                "move": forced.move,
+                "confidence": forced.confidence,
+                "reason": forced.reason,
+                "line_type": forced.line_type,
+            }
+            trace["choice"] = forced.move
+            oddities = detect_odd_move(battle, forced.move, ability_state)
+            trace["oddities"] = oddities
+            _log_oddities(forced.move, oddities)
+            elapsed_total = time.time() - start_time
+            trace["decision_time_s"] = round(elapsed_total, 3)
+            return forced.move, trace
+    except Exception as e:
+        logger.debug(f"Forced line check error: {e}")
 
-        # Collect results with timeout
-        for fut, chance, index in futures:
+    # =========================================================================
+    # 1-PLY EVAL + PENALTY PIPELINE
+    # =========================================================================
+    logger.info("Evaluating position with 1-ply eval...")
+
+    try:
+        # Sample a few opponent variations for robustness
+        num_samples = 3
+        if battle.battle_type == BattleType.STANDARD_BATTLE:
+            prepare_fn = prepare_battles
+        elif battle.battle_type in (BattleType.RANDOM_BATTLE, BattleType.BATTLE_FACTORY):
+            prepare_fn = prepare_random_battles
+        else:
+            prepare_fn = prepare_battles
+
+        try:
+            sampled_battles = prepare_fn(battle, num_samples)
+        except Exception as e:
+            logger.warning(f"Battle sampling failed, using original: {e}")
+            sampled_battles = [(battle, 1.0)]
+
+        # Evaluate each sampled battle and aggregate scores
+        aggregated_scores = {}
+        total_weight = 0.0
+        for sampled_battle, weight in sampled_battles:
             try:
-                remaining = max(executor_timeout - (time.time() - start_time), 0.5)
-                result = fut.result(timeout=remaining)
-                mcts_results.append((result, chance, index))
-            except (FuturesTimeoutError, TimeoutError):
-                logger.warning(f"MCTS battle {index} timed out, skipping")
-                fut.cancel()
+                scores = evaluate_position(sampled_battle)
+                for move, score in scores.items():
+                    aggregated_scores[move] = aggregated_scores.get(move, 0.0) + score * weight
+                total_weight += weight
             except Exception as e:
-                logger.warning(f"MCTS battle {index} failed: {e}")
+                logger.warning(f"Eval failed for sample: {e}")
 
-        if not mcts_results:
-            logger.warning("All MCTS searches failed/timed out, using fallback")
+        # Normalize by total weight
+        if total_weight > 0:
+            aggregated_scores = {k: v / total_weight for k, v in aggregated_scores.items()}
+
+        # If eval produced no scores, use fallback
+        if not aggregated_scores:
+            logger.warning("Eval produced no scores, using fallback")
+            # Fall back to eval on the original battle directly
+            aggregated_scores = evaluate_position(battle)
+
+        if not aggregated_scores:
             fallback = _get_fallback_move(battle)
             trace["decision_mode"] = "fallback"
-            trace["fallback_reason"] = "mcts_failed"
+            trace["fallback_reason"] = "eval_empty"
             trace["choice"] = fallback
             oddities = detect_odd_move(battle, fallback, ability_state)
             trace["oddities"] = oddities
             _log_oddities(fallback, oddities)
             return fallback, trace
 
-        choice = select_move_from_mcts_results(
-            mcts_results,
+        # Incorporate forced line as a bias if it exists but wasn't high-confidence
+        if forced and forced.confidence >= 0.75:
+            if forced.move in aggregated_scores:
+                boost = 1.0 + forced.confidence
+                aggregated_scores[forced.move] *= boost
+                logger.info(
+                    f"Forced line bias: {forced.move} boosted {boost:.2f}x "
+                    f"(confidence {forced.confidence})"
+                )
+
+        trace["eval_scores_raw"] = dict(aggregated_scores)
+
+        mcts_blend_applied = False
+        mcts_blend_meta = {
+            "enabled": bool(MCTS_BLEND_ENABLED),
+            "applied": False,
+            "reason": "not_evaluated",
+        }
+
+        choice = select_move_from_eval_scores(
+            aggregated_scores,
             ability_state=ability_state,
             battle=battle,
             playstyle=playstyle,
             decision_profile=decision_profile,
             trace=trace,
         )
+        eval_choice = choice
+
+        eval_policy_for_blend = (
+            trace.get("eval", {}).get("policy_post_penalty", {})
+            if isinstance(trace.get("eval"), dict)
+            else {}
+        )
+        if not isinstance(eval_policy_for_blend, dict) or not eval_policy_for_blend:
+            eval_policy_for_blend = dict(aggregated_scores)
+
+        should_blend, blend_reasons = _should_activate_mcts_blend(
+            battle=battle,
+            ability_state=ability_state,
+            eval_policy=eval_policy_for_blend,
+            decision_profile=decision_profile,
+        )
+
+        if should_blend:
+            elapsed_after_eval = time.time() - start_time
+            remaining_ms = int(max(0.0, time_budget - elapsed_after_eval - 1.0) * 1000)
+            if remaining_ms >= MCTS_BLEND_MIN_TIME_MS:
+                max_samples = max(
+                    1,
+                    min(
+                        int(MCTS_BLEND_MAX_SAMPLES),
+                        len(sampled_battles) if sampled_battles else 1,
+                    ),
+                )
+                capped_total_ms = min(
+                    remaining_ms,
+                    max_samples
+                    * max(int(FoulPlayConfig.search_time_ms), MCTS_BLEND_MIN_PER_SAMPLE_MS),
+                )
+                per_sample_ms = max(
+                    MCTS_BLEND_MIN_PER_SAMPLE_MS,
+                    int(capped_total_ms / max_samples),
+                )
+                legal_moves = _build_mcts_legal_move_set(
+                    eval_policy_for_blend,
+                    battle=battle,
+                    ability_state=ability_state,
+                )
+                if not legal_moves:
+                    legal_moves = {str(m) for m in eval_policy_for_blend.keys()}
+
+                mcts_policy, mcts_meta = _run_mcts_policy_pass(
+                    sampled_battles=sampled_battles,
+                    per_sample_ms=per_sample_ms,
+                    max_samples=max_samples,
+                    legal_moves=legal_moves if legal_moves else None,
+                )
+
+                if mcts_policy:
+                    alpha = MCTS_BLEND_BASE_ALPHA
+                    if any(
+                        r in {"uncertain_eval", "active_threat", "opponent_boosted"}
+                        for r in blend_reasons
+                    ):
+                        alpha = MCTS_BLEND_HIGH_ALPHA
+                    if "ko_line_present" in blend_reasons:
+                        alpha = min(1.0, alpha + 0.04)
+
+                    final_policy = _blend_eval_mcts_policy(
+                        eval_policy_for_blend,
+                        mcts_policy,
+                        alpha=alpha,
+                    )
+                    # Re-apply hard penalty guards post-blend so MCTS cannot
+                    # resurrect lines already known to be tactically unsound.
+                    if ability_state is not None:
+                        ability_guard = apply_ability_penalties(
+                            dict(final_policy),
+                            ability_state,
+                            battle=battle,
+                        )
+                        final_policy = _apply_penalty_guard(final_policy, ability_guard)
+                    final_policy = apply_oddity_penalties(
+                        final_policy,
+                        battle,
+                        ability_state,
+                    )
+                    final_policy = _normalize_policy_weights(final_policy)
+                    if not final_policy:
+                        final_policy = _normalize_policy_weights(eval_policy_for_blend)
+
+                    blended_choice = _choose_from_weighted_policy(
+                        final_policy,
+                        decision_profile=decision_profile,
+                    )
+                    guard_meta = {
+                        "applied": False,
+                        "reason": "not_evaluated",
+                        "eval_choice": eval_choice,
+                        "proposed_choice": blended_choice,
+                    }
+                    if blended_choice:
+                        guarded_choice, guard_meta = _apply_mcts_eval_anchor_choice_guard(
+                            battle=battle,
+                            ability_state=ability_state,
+                            eval_policy=eval_policy_for_blend,
+                            final_policy=final_policy,
+                            eval_choice=eval_choice,
+                            proposed_choice=blended_choice,
+                            decision_profile=decision_profile,
+                        )
+                        if guarded_choice:
+                            choice = guarded_choice
+                            mcts_blend_applied = bool(choice != eval_choice)
+
+                    mcts_blend_meta = {
+                        "enabled": True,
+                        "applied": bool(mcts_blend_applied),
+                        "reason": ",".join(blend_reasons) if blend_reasons else "triggered",
+                        "alpha": round(alpha, 3),
+                        "eval_choice": eval_choice,
+                        "mcts_choice": (
+                            max(mcts_policy.items(), key=lambda x: x[1])[0]
+                            if mcts_policy
+                            else None
+                        ),
+                        "final_choice": choice,
+                        "eval_top": _top_policy_entries(
+                            _normalize_policy_weights(eval_policy_for_blend)
+                        ),
+                        "mcts_top": _top_policy_entries(mcts_policy),
+                        "final_top": _top_policy_entries(final_policy),
+                        "anchor_guard": guard_meta,
+                        "mcts_meta": mcts_meta,
+                        "legal_moves_considered": sorted(legal_moves),
+                        "remaining_time_ms_at_blend": remaining_ms,
+                    }
+                    logger.info(
+                        "MCTS blend applied=%s alpha=%.2f eval=%s final=%s reasons=%s",
+                        mcts_blend_applied,
+                        alpha,
+                        eval_choice,
+                        choice,
+                        ",".join(blend_reasons) if blend_reasons else "none",
+                    )
+                else:
+                    mcts_blend_meta = {
+                        "enabled": True,
+                        "applied": False,
+                        "reason": "mcts_policy_empty",
+                        "trigger_reasons": blend_reasons,
+                        "remaining_time_ms_at_blend": remaining_ms,
+                    }
+            else:
+                mcts_blend_meta = {
+                    "enabled": True,
+                    "applied": False,
+                    "reason": "insufficient_time_budget",
+                    "trigger_reasons": blend_reasons,
+                    "remaining_time_ms_at_blend": remaining_ms,
+                }
+        else:
+            mcts_blend_meta = {
+                "enabled": bool(MCTS_BLEND_ENABLED),
+                "applied": False,
+                "reason": ",".join(blend_reasons) if blend_reasons else "no_trigger",
+            }
+        trace["mcts_blend"] = mcts_blend_meta
     except Exception as e:
-        logger.error(f"MCTS search failed entirely: {e}")
+        logger.error(f"Eval search failed: {e}", exc_info=True)
         fallback = _get_fallback_move(battle)
         trace["decision_mode"] = "fallback"
-        trace["fallback_reason"] = "mcts_exception"
+        trace["fallback_reason"] = "eval_exception"
         trace["choice"] = fallback
         oddities = detect_odd_move(battle, fallback, ability_state)
         trace["oddities"] = oddities
@@ -3943,7 +6119,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
 
     elapsed_total = time.time() - start_time
     logger.info(f"Choice: {choice} (decided in {elapsed_total:.1f}s)")
-    trace["decision_mode"] = "mcts"
+    trace["decision_mode"] = "mcts_blend" if mcts_blend_applied else "eval"
     trace["choice"] = choice
     oddities = detect_odd_move(battle, choice, ability_state)
     trace["oddities"] = oddities

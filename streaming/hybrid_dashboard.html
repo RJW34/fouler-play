@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hybrid Decision Dashboard</title>
+<style>
+:root {
+  --bg: #f4f6f8;
+  --card: #ffffff;
+  --ink: #17212d;
+  --muted: #5b6674;
+  --line: #d9e0e8;
+  --accent: #0058b5;
+  --ok: #0a8a3c;
+  --warn: #a04f00;
+  --bad: #a61d24;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(180deg, #f6f8fb 0%, #eef2f7 100%);
+  color: var(--ink);
+}
+.shell {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px;
+}
+.row {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.row.top { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.row.mid { grid-template-columns: 1.2fr 1fr; }
+.row.bot { grid-template-columns: 1fr 1fr; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(14, 31, 53, 0.06);
+}
+h1 {
+  margin: 0;
+  font-size: 22px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+.big {
+  font-size: 24px;
+  font-weight: 700;
+}
+.label {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.value {
+  font-weight: 700;
+}
+.ok { color: var(--ok); }
+.warn { color: var(--warn); }
+.bad { color: var(--bad); }
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  border: 1px solid #c3d4ea;
+  background: #eef4fb;
+  color: #194272;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 12px;
+}
+.mono {
+  font-family: "Cascadia Mono", "Consolas", monospace;
+}
+ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+li {
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.subgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 1100px) {
+  .row.top { grid-template-columns: 1fr 1fr; }
+  .row.mid { grid-template-columns: 1fr; }
+  .row.bot { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="header">
+    <h1>Hybrid Decision Dashboard</h1>
+    <div class="meta">
+      <span>Policy: <strong id="policy">-</strong></span>
+      <span>Status: <strong id="statusText">-</strong></span>
+      <span>Updated: <strong id="updated">-</strong></span>
+      <span>Trace: <strong id="traceHealth">-</strong></span>
+    </div>
+  </div>
+
+  <div class="row top">
+    <div class="card"><div class="label">Wins</div><div class="big ok" id="wins">0</div></div>
+    <div class="card"><div class="label">Losses</div><div class="big bad" id="losses">0</div></div>
+    <div class="card"><div class="label">Battles</div><div class="big" id="battleCount">0</div></div>
+    <div class="card"><div class="label">Override Rate</div><div class="big warn" id="overrideRate">0%</div></div>
+    <div class="card"><div class="label">Hybrid Turns</div><div class="big" id="hybridTurns">0</div></div>
+  </div>
+
+  <div class="row mid">
+    <div class="card">
+      <div class="label">Latest Decision</div>
+      <div class="subgrid" style="margin-top:8px;">
+        <div><span class="label">Battle</span><div class="value mono" id="latestBattle">-</div></div>
+        <div><span class="label">Turn</span><div class="value" id="latestTurn">-</div></div>
+        <div><span class="label">Mode</span><div class="value" id="latestMode">-</div></div>
+        <div><span class="label">Hybrid Status</span><div class="value" id="latestHybridStatus">-</div></div>
+        <div><span class="label">Engine Choice</span><div class="value mono" id="latestEngine">-</div></div>
+        <div><span class="label">Selected Choice</span><div class="value mono" id="latestSelected">-</div></div>
+        <div><span class="label">Override</span><div class="value" id="latestOverride">No</div></div>
+        <div><span class="label">Reason</span><div class="value" id="latestReason">-</div></div>
+      </div>
+      <div class="label" style="margin-top:10px;">Candidates</div>
+      <div class="chips" id="latestCandidates" style="margin-top:6px;"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">Active Battles</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Slot</th><th>Battle</th><th>Opponent</th><th>Turn</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="activeBattlesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px;">
+    <div class="label">Recent Timeline (Last 20 Turns)</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th><th>Battle</th><th>Turn</th><th>Mode</th><th>Engine</th><th>Selected</th><th>Override</th><th>Reason</th>
+        </tr>
+      </thead>
+      <tbody id="timelineBody"></tbody>
+    </table>
+  </div>
+
+  <div class="row bot">
+    <div class="card">
+      <div class="label">Learning Signals</div>
+      <div class="label" style="margin-top:8px;">Top Override Patterns</div>
+      <ul id="overridePatterns"></ul>
+      <div class="label" style="margin-top:10px;">Top Skip Reasons</div>
+      <ul id="skipReasons"></ul>
+    </div>
+    <div class="card">
+      <div class="label">Recent Trend</div>
+      <div style="margin-top:8px;">
+        <div><span class="label">Direction</span> <span class="value" id="trendDirection">flat</span></div>
+        <div><span class="label">Latest Override Rate</span> <span class="value" id="trendLatest">0</span></div>
+        <div><span class="label">Previous Override Rate</span> <span class="value" id="trendPrevious">0</span></div>
+        <div><span class="label">Delta</span> <span class="value" id="trendDelta">0</span></div>
+        <div><span class="label">Window</span> <span class="value" id="trendWindow">0</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const REFRESH_MS = 1500;
+let inFlight = false;
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+}
+
+function e(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderList(id, rows, formatter, emptyText) {
+  const target = document.getElementById(id);
+  if (!target) return;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    target.innerHTML = `<li>${e(emptyText)}</li>`;
+    return;
+  }
+  target.innerHTML = rows.map(formatter).join("");
+}
+
+function renderState(data) {
+  const stats = data?.stats || {};
+  const latest = data?.latest_decision || {};
+  const learning = data?.learning || {};
+  const trend = learning?.recent_trend || {};
+  const trace = data?.trace_health || {};
+  const timeline = Array.isArray(data?.timeline) ? data.timeline : [];
+  const activeBattles = Array.isArray(data?.active_battles) ? data.active_battles : [];
+
+  setText("policy", data?.decision_policy || "-");
+  setText("statusText", data?.status?.status_text || "-");
+  setText("updated", data?.updated || "-");
+  setText(
+    "traceHealth",
+    `${trace.trace_count || 0} traces / ${trace.parse_errors || 0} parse errors`
+  );
+
+  setText("wins", stats.wins ?? 0);
+  setText("losses", stats.losses ?? 0);
+  setText("battleCount", stats.battle_count ?? 0);
+  setText("overrideRate", `${stats.override_rate ?? 0}%`);
+  setText("hybridTurns", stats.hybrid_turn_count ?? 0);
+
+  setText("latestBattle", latest.battle_id || "-");
+  setText("latestTurn", latest.turn ?? "-");
+  setText("latestMode", latest.decision_mode || "-");
+  setText("latestHybridStatus", latest.hybrid_status || "-");
+  setText("latestEngine", latest.engine_choice || "-");
+  setText("latestSelected", latest.hybrid_selected_choice || "-");
+  setText("latestOverride", latest.override ? "Yes" : "No");
+  setText("latestReason", latest.reason || "-");
+
+  const candidates = Array.isArray(latest.candidate_list) ? latest.candidate_list : [];
+  const candidatesTarget = document.getElementById("latestCandidates");
+  if (candidatesTarget) {
+    candidatesTarget.innerHTML = candidates.length
+      ? candidates.map((item) => `<span class="chip mono">${e(item)}</span>`).join("")
+      : `<span class="chip">No candidates</span>`;
+  }
+
+  const activeBody = document.getElementById("activeBattlesBody");
+  if (activeBody) {
+    activeBody.innerHTML = activeBattles.length
+      ? activeBattles.map((b) => `
+        <tr>
+          <td>${e(b.slot ?? "-")}</td>
+          <td class="mono">${e(b.id || "-")}</td>
+          <td>${e(b.opponent || "Unknown")}</td>
+          <td>${e(b.current_turn ?? "-")}</td>
+          <td>${e(b.status || "-")}</td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="5">No active battles</td></tr>`;
+  }
+
+  const timelineBody = document.getElementById("timelineBody");
+  if (timelineBody) {
+    timelineBody.innerHTML = timeline.length
+      ? timeline.map((t) => `
+        <tr>
+          <td>${e(t.timestamp || "-")}</td>
+          <td class="mono">${e(t.battle_id || "-")}</td>
+          <td>${e(t.turn ?? "-")}</td>
+          <td>${e(t.decision_mode || "-")}</td>
+          <td class="mono">${e(t.engine_choice || "-")}</td>
+          <td class="mono">${e(t.selected_choice || "-")}</td>
+          <td>${e(t.override ? "Yes" : "No")}</td>
+          <td>${e(t.reason || "-")}</td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="8">No trace data yet</td></tr>`;
+  }
+
+  renderList(
+    "overridePatterns",
+    learning.top_override_patterns || [],
+    (item) => `<li><span class="mono">${e(item.pattern)}</span> (${e(item.count)})</li>`,
+    "No override patterns yet"
+  );
+  renderList(
+    "skipReasons",
+    learning.top_skip_reasons || [],
+    (item) => `<li>${e(item.reason)} (${e(item.count)})</li>`,
+    "No skip reasons yet"
+  );
+
+  setText("trendDirection", trend.direction || "flat");
+  setText("trendLatest", trend.latest_override_rate ?? 0);
+  setText("trendPrevious", trend.previous_override_rate ?? 0);
+  setText("trendDelta", trend.delta ?? 0);
+  setText("trendWindow", trend.window_size ?? 0);
+}
+
+async function refresh() {
+  if (inFlight) return;
+  inFlight = true;
+  try {
+    const resp = await fetch(`/api/dashboard/state?t=${Date.now()}`, { cache: "no-store" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    renderState(data);
+  } catch (err) {
+    setText("updated", `Error: ${err.message}`);
+  } finally {
+    inFlight = false;
+  }
+}
+
+refresh();
+setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

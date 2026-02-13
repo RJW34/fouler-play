@@ -111,6 +111,17 @@ def check_dictionaries_are_unmodified(original_pokedex, original_move_json):
 BATTLE_STATS_FILE = Path(__file__).resolve().parent / "battle_stats.json"
 
 
+def _battle_stats_max_entries() -> int:
+    raw = os.getenv("BATTLE_STATS_MAX_ENTRIES", "5000").strip()
+    try:
+        return max(100, int(raw))
+    except ValueError:
+        return 5000
+
+
+BATTLE_STATS_MAX_ENTRIES = _battle_stats_max_entries()
+
+
 class BattleStats:
     """Thread-safe battle statistics tracker with per-team persistence"""
     def __init__(self):
@@ -124,7 +135,12 @@ class BattleStats:
         try:
             if BATTLE_STATS_FILE.exists():
                 data = json.loads(BATTLE_STATS_FILE.read_text(encoding="utf-8"))
-                return data.get("battles", [])
+                battles = data.get("battles", [])
+                if not isinstance(battles, list):
+                    return []
+                if len(battles) > BATTLE_STATS_MAX_ENTRIES:
+                    battles = battles[-BATTLE_STATS_MAX_ENTRIES:]
+                return battles
         except Exception as e:
             logger.warning("Failed to load battle_stats.json: %s", e)
         return []
@@ -149,6 +165,8 @@ class BattleStats:
             "replay_id": battle_tag or "",
         }
         self._battles.append(entry)
+        if len(self._battles) > BATTLE_STATS_MAX_ENTRIES:
+            del self._battles[:-BATTLE_STATS_MAX_ENTRIES]
         self._save_battles()
 
     async def record_win(self, team_file_name, battle_tag=None):
@@ -455,6 +473,25 @@ async def run_foul_play():
         logger.info("Discord battle reporting: ENABLED")
     else:
         logger.warning("Discord battle reporting: DISABLED (DISCORD_BATTLES_WEBHOOK_URL not set)")
+    logger.info("Decision policy: %s", FoulPlayConfig.decision_policy)
+    if FoulPlayConfig.decision_policy == "hybrid":
+        if FoulPlayConfig.openai_api_key:
+            logger.info(
+                "Hybrid reranker: enabled (model=%s, timeout=%.1fs, top_k=%s)",
+                FoulPlayConfig.openai_model,
+                FoulPlayConfig.llm_timeout_sec,
+                FoulPlayConfig.llm_rerank_top_k,
+            )
+        else:
+            logger.warning(
+                "Hybrid policy selected but player API key not set "
+                "(OPENAI_API_KEY_PLAYER or OPENAI_API_KEY); "
+                "bot will run eval-only until a key is provided."
+            )
+    if getattr(FoulPlayConfig, "openai_api_key_learner", None):
+        logger.info("Learner API key detected (OPENAI_API_KEY_LEARNER).")
+    else:
+        logger.info("Learner API key not set (optional).")
     
     apply_mods(FoulPlayConfig.pokemon_format)
     validate_constants()
@@ -740,12 +777,14 @@ async def run_foul_play():
 if __name__ == "__main__":
     # Prevent duplicate bot instances
     try:
-        from process_lock import acquire_lock, release_lock
-        if not acquire_lock(username=FoulPlayConfig.pokemon_showdown_username if hasattr(FoulPlayConfig, 'pokemon_showdown_username') else "unknown"):
+        from process_lock import acquire_lock
+        if not acquire_lock(username=getattr(FoulPlayConfig, "username", "unknown")):
             logger.error("Another bot instance is already running. Exiting.")
             sys.exit(1)
-    except ImportError:
-        pass  # process_lock not available, continue without it
+    except ImportError as e:
+        logger.warning("Process lock unavailable (%s); continuing without singleton lock.", e)
+    except Exception as e:
+        logger.warning("Process lock failed (%s); continuing without singleton lock.", e)
 
     try:
         asyncio.run(run_foul_play())

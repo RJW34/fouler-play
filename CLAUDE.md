@@ -37,7 +37,7 @@ systemctl --user start fouler-play
 ```
 
 ### Your responsibilities (in priority order)
-1. **Improve the bot's decision-making** — see TASKBOARD.md for the current phase. The bot is stuck at ~1200 with 50% win rate across 219 games. It needs to play fat/stall correctly at a higher level. Focus on improvements that help the bot play these archetypes faithfully: better switching, hazard management, recovery timing, PP awareness, matchup-based pivoting. Run `python -m pytest tests/ -v` after each change.
+1. **Improve the bot's decision-making** — see TASKBOARD.md for the current phase. Check `battle_stats.json` for current ELO and win rate. The bot needs to play fat/stall correctly at a higher level. Focus on improvements that help the bot play these archetypes faithfully: better switching, hazard management, recovery timing, PP awareness, matchup-based pivoting. Run `python -m pytest tests/ -v` after each change.
 2. **Improve the morning report** — `replay_analysis/team_performance.py` generates per-team analysis. Make this output more useful for a competitive player studying their teams. The report should answer: "Is this team viable? What does it lose to? Which Pokemon are the weak links? Which replays should I watch?" This is the primary deliverable the player consumes.
 3. **Fix anything broken** — if tests fail, if imports break, if the developer loop crashes, diagnose and fix.
 4. **Push to GitHub** — all code goes to `master` branch. Update TASKBOARD.md when completing items. Never modify files in the `never_modify` list in `infrastructure/guardrails.json`.
@@ -76,7 +76,6 @@ schtasks /run /tn "FoulerPlayPlayerLoop"
 5. **Streaming (low priority)** — the streaming pipeline in `streaming/` is built and functional but is NOT critical to the mission. Only work on it if everything above is running smoothly.
    - `serve_obs_page.py`: HTTP + WebSocket server on port 8777
    - `state_store.py`: Reads/writes `active_battles.json` and `stream_status.json`
-   - Dead code to ignore: `auto_stream*.py` files reference wrong username, do not use
    - Start with: `python streaming/serve_obs_page.py`
 
 ### Coordinating with DEKU
@@ -104,8 +103,11 @@ fouler-play/
 │   ├── run_battle.py         # Main battle loop + data collection hooks
 │   ├── websocket_client.py   # PS websocket + multi-battle routing
 │   ├── search/
-│   │   ├── main.py           # MCTS + ability penalty system (core logic)
-│   │   ├── endgame.py        # Endgame solver
+│   │   ├── main.py           # 1-ply eval + penalty pipeline (core logic)
+│   │   ├── eval.py           # Position evaluation (damage, recovery, hazards, switches)
+│   │   ├── forced_lines.py   # Forced sequence detection (OHKOs, forced switches, phazing)
+│   │   ├── speed_order.py    # Speed comparison utilities
+│   │   ├── endgame.py        # Endgame solver for 1v1/2v1 scenarios
 │   │   ├── standard_battles.py  # Battle sampling + weighted selection
 │   │   └── move_validators.py   # Move validation
 │   ├── team_analysis.py      # Win condition identification

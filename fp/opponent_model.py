@@ -1,8 +1,17 @@
+import os
 import time
 from collections import defaultdict
 
 import constants
 from data import all_move_json
+
+
+def _env_int(name: str, default: int, minimum: int) -> int:
+    raw = os.getenv(name, str(default)).strip()
+    try:
+        return max(minimum, int(raw))
+    except ValueError:
+        return default
 
 
 class OpponentModel:
@@ -17,15 +26,60 @@ class OpponentModel:
             "last_seen": 0.0,
         })
         self._by_battle = {}
+        self._last_prune = 0.0
+        self._max_battle_states = _env_int("OPPONENT_MODEL_MAX_BATTLES", 2000, 100)
+        self._battle_ttl_sec = _env_int("OPPONENT_MODEL_BATTLE_TTL_SEC", 3600, 60)
+        self._max_opponents = _env_int("OPPONENT_MODEL_MAX_OPPONENTS", 5000, 100)
+        self._opponent_ttl_sec = _env_int("OPPONENT_MODEL_OPPONENT_TTL_SEC", 2592000, 3600)
+        self._prune_interval_sec = _env_int("OPPONENT_MODEL_PRUNE_INTERVAL_SEC", 120, 30)
+
+    def _prune_if_needed(self, now: float) -> None:
+        if (now - self._last_prune) < self._prune_interval_sec:
+            return
+        self._last_prune = now
+
+        opponent_cutoff = now - self._opponent_ttl_sec
+        stale_opponents = [
+            name for name, rec in self._by_name.items()
+            if rec.get("last_seen", 0.0) < opponent_cutoff
+        ]
+        for name in stale_opponents:
+            self._by_name.pop(name, None)
+        if len(self._by_name) > self._max_opponents:
+            overflow = len(self._by_name) - self._max_opponents
+            oldest = sorted(
+                self._by_name.items(),
+                key=lambda item: item[1].get("last_seen", 0.0),
+            )[:overflow]
+            for name, _ in oldest:
+                self._by_name.pop(name, None)
+
+        battle_cutoff = now - self._battle_ttl_sec
+        stale_battles = [
+            battle_tag for battle_tag, state in self._by_battle.items()
+            if state.get("updated_at", 0.0) < battle_cutoff
+        ]
+        for battle_tag in stale_battles:
+            self._by_battle.pop(battle_tag, None)
+        if len(self._by_battle) > self._max_battle_states:
+            overflow = len(self._by_battle) - self._max_battle_states
+            oldest = sorted(
+                self._by_battle.items(),
+                key=lambda item: item[1].get("updated_at", 0.0),
+            )[:overflow]
+            for battle_tag, _ in oldest:
+                self._by_battle.pop(battle_tag, None)
 
     def observe(self, battle):
         opponent_name = getattr(battle.opponent, "account_name", None) or getattr(battle.opponent, "name", None)
         if not opponent_name:
             return
+        now = time.time()
+        self._prune_if_needed(now)
 
         rec = self._by_name[opponent_name]
         rec["turns"] += 1
-        rec["last_seen"] = time.time()
+        rec["last_seen"] = now
 
         state = self._by_battle.get(battle.battle_tag, {})
         prev_active = state.get("active_name")
@@ -58,6 +112,7 @@ class OpponentModel:
 
         state["active_name"] = curr_active
         state["active_hp_ratio"] = curr_hp_ratio
+        state["updated_at"] = now
         self._by_battle[battle.battle_tag] = state
 
     def get_switch_tendency(self, opponent_name: str) -> float:

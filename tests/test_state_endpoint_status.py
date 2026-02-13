@@ -6,13 +6,12 @@ Regression test for: Status field stuck on "Searching" during active battles.
 """
 
 import sys
-import json
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
-from streaming import state_store
+state_store = __import__("streaming.state_store", fromlist=["state_store"])
 
 
 def test_status_reflects_active_battles():
@@ -72,7 +71,7 @@ def test_status_reflects_active_battles():
     assert status["status"] == "Searching", f"Expected 'Searching', got {status['status']}"
     assert status["battle_info"] == "Searching...", f"Expected 'Searching...', got {status['battle_info']}"
     
-    print("✅ All status field tests passed")
+    print("All status field tests passed")
 
 
 if __name__ == "__main__":

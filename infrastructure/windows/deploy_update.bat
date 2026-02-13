@@ -33,7 +33,7 @@ echo [%date% %time%] Post-deploy commit: %POST_DEPLOY_COMMIT%
 
 REM Step 4: Log the deploy event to deploy_log.json
 echo [%date% %time%] Logging deploy event...
-python -c "
+py -3 -c "
 import json, os, datetime
 
 deploy_log_path = r'%DEPLOY_LOG%'

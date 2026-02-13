@@ -58,6 +58,7 @@ from fp.battle_modifier import zpower
 from fp.battle_modifier import clearnegativeboost
 from fp.battle_modifier import check_speed_ranges
 from fp.battle_modifier import check_choicescarf
+from fp.battle_modifier import check_choicescarf_from_ability_order
 from fp.battle_modifier import check_heavydutyboots
 from fp.battle_modifier import get_damage_dealt
 from fp.battle_modifier import singleturn
@@ -5148,6 +5149,64 @@ class TestGuessChoiceScarf(unittest.TestCase):
         check_choicescarf(self.battle, messages)
 
         self.assertEqual("choicescarf", self.battle.opponent.active.item)
+
+    def test_guesses_choicescarf_from_switch_in_ability_order(self):
+        self.battle.user.active = Pokemon("kyurem", 100)
+        self.battle.user.active.set_spread("timid", "0,0,0,252,4,252")
+        self.battle.opponent.active = Pokemon("landorustherian", 100)
+        self.battle.opponent.active.item = constants.UNKNOWN_ITEM
+        self.battle.opponent.active.can_have_choice_item = True
+
+        messages = [
+            "|switch|p1a: Kyurem|Kyurem|100/100",
+            "|switch|p2a: Landorus-Therian|Landorus-Therian, M|100/100",
+            "|-ability|p2a: Landorus-Therian|Intimidate|boost",
+            "|-unboost|p1a: Kyurem|atk|1",
+            "|-ability|p1a: Kyurem|Pressure",
+        ]
+
+        check_choicescarf_from_ability_order(self.battle, messages)
+
+        self.assertEqual("choicescarf", self.battle.opponent.active.item)
+        self.assertTrue(self.battle.opponent.active.item_inferred)
+
+    def test_does_not_guess_choicescarf_from_ability_order_when_naturally_faster_is_possible(
+        self,
+    ):
+        self.battle.user.active = Pokemon("suicune", 100)
+        self.battle.user.active.set_spread("timid", "0,0,0,252,4,252")
+        self.battle.opponent.active = Pokemon("landorustherian", 100)
+        self.battle.opponent.active.item = constants.UNKNOWN_ITEM
+        self.battle.opponent.active.can_have_choice_item = True
+
+        messages = [
+            "|switch|p1a: Suicune|Suicune|100/100",
+            "|switch|p2a: Landorus-Therian|Landorus-Therian, M|100/100",
+            "|-ability|p2a: Landorus-Therian|Intimidate|boost",
+            "|-ability|p1a: Suicune|Pressure",
+        ]
+
+        check_choicescarf_from_ability_order(self.battle, messages)
+
+        self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
+
+    def test_does_not_guess_choicescarf_from_ability_order_when_we_activate_first(self):
+        self.battle.user.active = Pokemon("kyurem", 100)
+        self.battle.user.active.set_spread("timid", "0,0,0,252,4,252")
+        self.battle.opponent.active = Pokemon("landorustherian", 100)
+        self.battle.opponent.active.item = constants.UNKNOWN_ITEM
+        self.battle.opponent.active.can_have_choice_item = True
+
+        messages = [
+            "|switch|p1a: Kyurem|Kyurem|100/100",
+            "|switch|p2a: Landorus-Therian|Landorus-Therian, M|100/100",
+            "|-ability|p1a: Kyurem|Pressure",
+            "|-ability|p2a: Landorus-Therian|Intimidate|boost",
+        ]
+
+        check_choicescarf_from_ability_order(self.battle, messages)
+
+        self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
 
     def test_guesses_choicescarf_when_enemy_knocks_out_user(self):
         self.battle.user.active.stats[constants.SPEED] = (
