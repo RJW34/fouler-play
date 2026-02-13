@@ -6,19 +6,33 @@ from enum import Enum, auto
 from logging.handlers import RotatingFileHandler
 from typing import Optional
 
-# Fix Windows console encoding for Unicode characters
-if sys.platform == "win32":
-    import io
-    if hasattr(sys.stdout, 'buffer'):
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    if hasattr(sys.stderr, 'buffer'):
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+def _configure_windows_stdio() -> None:
+    """Prefer UTF-8 console output on Windows without replacing stream objects."""
+    if sys.platform != "win32":
+        return
+    # pytest capture can close wrapped streams; skip stream reconfiguration in tests.
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        if stream is None:
+            continue
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+_configure_windows_stdio()
 
 
 class CustomFormatter(logging.Formatter):
     def format(self, record):
         lvl = "{}".format(record.levelname)
-        return "{} {}".format(lvl.ljust(8), record.msg)
+        return "{} {}".format(lvl.ljust(8), record.getMessage())
 
 
 class CustomRotatingFileHandler(RotatingFileHandler):
@@ -58,12 +72,7 @@ def init_logging(level, log_to_file):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     
-    # Use a custom stream handler that handles Unicode properly on Windows
-    if sys.platform == "win32" and hasattr(sys.stdout, 'buffer'):
-        import io
-        stdout_handler = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace'))
-    else:
-        stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler = logging.StreamHandler(sys.stdout)
     
     stdout_handler.setLevel(level)
     stdout_handler.setFormatter(CustomFormatter())
@@ -91,6 +100,48 @@ class BotModes(Enum):
     search_ladder = auto()
 
 
+def _env_int_prefer(names: tuple[str, ...], default: int) -> int:
+    """Read the first valid int env var from names; otherwise return default."""
+    for name in names:
+        raw = os.getenv(name)
+        if raw is None or raw == "":
+            continue
+        try:
+            return int(raw)
+        except ValueError:
+            continue
+    return default
+
+
+def _coerce_ladder_search_time_ms(
+    *,
+    search_time_ms: int,
+    bot_mode: BotModes,
+    pokemon_format: str,
+    decision_policy: str,
+    min_search_time_ms: int,
+) -> tuple[int, bool]:
+    """
+    Apply a conservative floor for ladder quality to avoid accidental low-time runs.
+    Returns (effective_search_time_ms, clamped).
+    """
+    fmt = (pokemon_format or "").lower()
+    is_ladder_ou = bot_mode == BotModes.search_ladder and "gen9ou" in fmt
+    if not is_ladder_ou:
+        return int(search_time_ms), False
+
+    floor = max(0, int(min_search_time_ms))
+    if (decision_policy or "").lower() == "hybrid":
+        floor = max(floor, 1500)
+    else:
+        floor = max(floor, 1200)
+
+    current = int(search_time_ms)
+    if floor > 0 and current < floor:
+        return floor, True
+    return current, False
+
+
 class _FoulPlayConfig:
     websocket_uri: str
     username: str
@@ -114,6 +165,13 @@ class _FoulPlayConfig:
     log_level: str
     log_to_file: bool
     playstyle: str = "balance"  # Team playstyle: hyper_offense, bulky_offense, balance, fat, stall
+    decision_policy: str = "eval"  # Decision policy: eval, hybrid
+    openai_api_key: str | None = None
+    openai_api_key_learner: str | None = None
+    openai_model: str = "gpt-4.1-mini"
+    openai_api_base: str = "https://api.openai.com/v1"
+    llm_timeout_sec: float = 3.0
+    llm_rerank_top_k: int = 5
     stdout_log_handler: logging.StreamHandler
     file_log_handler: Optional[CustomRotatingFileHandler]
 
@@ -124,6 +182,15 @@ class _FoulPlayConfig:
                 return default
             try:
                 return int(raw)
+            except ValueError:
+                return default
+
+        def _env_float(name: str, default: float) -> float:
+            raw = os.getenv(name)
+            if raw is None or raw == "":
+                return default
+            try:
+                return float(raw)
             except ValueError:
                 return default
 
@@ -155,7 +222,7 @@ class _FoulPlayConfig:
         parser.add_argument(
             "--search-time-ms",
             type=int,
-            default=_env_int("SEARCH_TIME_MS", 100),
+            default=_env_int_prefer(("SEARCH_TIME_MS", "PS_SEARCH_TIME_MS"), 100),
             help="Time to search per battle in milliseconds",
         )
         parser.add_argument(
@@ -167,13 +234,13 @@ class _FoulPlayConfig:
         parser.add_argument(
             "--max-concurrent-battles",
             type=int,
-            default=_env_int("MAX_CONCURRENT_BATTLES", 3),
+            default=_env_int("MAX_CONCURRENT_BATTLES", 1),
             help="Maximum number of concurrent ladder battles (workers)",
         )
         parser.add_argument(
             "--max-mcts-battles",
             type=int,
-            default=_env_int("MAX_MCTS_BATTLES", 0),
+            default=_env_int("MAX_MCTS_BATTLES", 1),
             help="Cap the number of simulated battles for MCTS (0 = no cap)",
         )
         parser.add_argument(
@@ -224,6 +291,47 @@ class _FoulPlayConfig:
             help="Team playstyle (auto = detect from team name)",
         )
         parser.add_argument(
+            "--decision-policy",
+            default=os.getenv("DECISION_POLICY", "eval"),
+            choices=["eval", "hybrid"],
+            help="Move policy: eval-only or hybrid (engine + LLM rerank)",
+        )
+        parser.add_argument(
+            "--openai-api-key",
+            default=os.getenv("OPENAI_API_KEY_PLAYER") or os.getenv("OPENAI_API_KEY"),
+            help=(
+                "OpenAI API key for live hybrid decisions. "
+                "Reads OPENAI_API_KEY_PLAYER first, then OPENAI_API_KEY."
+            ),
+        )
+        parser.add_argument(
+            "--openai-api-key-learner",
+            default=os.getenv("OPENAI_API_KEY_LEARNER"),
+            help="OpenAI API key reserved for learner/offline analysis jobs",
+        )
+        parser.add_argument(
+            "--openai-model",
+            default=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+            help="OpenAI model used for hybrid reranking",
+        )
+        parser.add_argument(
+            "--openai-api-base",
+            default=os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
+            help="OpenAI API base URL",
+        )
+        parser.add_argument(
+            "--llm-timeout-sec",
+            type=float,
+            default=_env_float("LLM_TIMEOUT_SEC", 3.0),
+            help="Timeout in seconds for LLM rerank call",
+        )
+        parser.add_argument(
+            "--llm-rerank-top-k",
+            type=int,
+            default=_env_int("LLM_RERANK_TOP_K", 5),
+            help="Number of top eval candidates sent to the LLM reranker",
+        )
+        parser.add_argument(
             "--spectator-username",
             default=None,
             help="Username to automatically invite to battles",
@@ -240,10 +348,7 @@ class _FoulPlayConfig:
         self.search_time_ms = args.search_time_ms
         self.parallelism = args.search_parallelism
         self.max_concurrent_battles = max(1, args.max_concurrent_battles)
-        self.max_mcts_battles = args.max_mcts_battles if args.max_mcts_battles > 0 else None
-        if self.max_mcts_battles is None:
-            # Default MCTS samples to 4 — sample count is independent of concurrency.
-            self.max_mcts_battles = 4
+        self.max_mcts_battles = args.max_mcts_battles if args.max_mcts_battles > 0 else 1
         self.run_count = args.run_count
         self.team_name = args.team_name or self.pokemon_format
         self.team_names = [t.strip() for t in args.team_names.split(",")] if args.team_names else None
@@ -254,6 +359,27 @@ class _FoulPlayConfig:
         self.log_level = args.log_level
         self.log_to_file = args.log_to_file
         self.playstyle = args.playstyle
+        self.decision_policy = args.decision_policy
+        min_search_time_ms = _env_int_prefer(("MIN_SEARCH_TIME_MS",), 1200)
+        self.search_time_ms, clamped = _coerce_ladder_search_time_ms(
+            search_time_ms=self.search_time_ms,
+            bot_mode=self.bot_mode,
+            pokemon_format=self.pokemon_format,
+            decision_policy=self.decision_policy,
+            min_search_time_ms=min_search_time_ms,
+        )
+        if clamped:
+            logging.getLogger(__name__).warning(
+                "search-time-ms increased to %sms for ladder stability "
+                "(set MIN_SEARCH_TIME_MS=0 to disable floor).",
+                self.search_time_ms,
+            )
+        self.openai_api_key = args.openai_api_key
+        self.openai_api_key_learner = args.openai_api_key_learner
+        self.openai_model = args.openai_model
+        self.openai_api_base = args.openai_api_base
+        self.llm_timeout_sec = max(0.5, float(args.llm_timeout_sec))
+        self.llm_rerank_top_k = max(2, int(args.llm_rerank_top_k))
         self.spectator_username = args.spectator_username
 
     def validate_config(self):
@@ -267,11 +393,6 @@ class _FoulPlayConfig:
             "random" in self.pokemon_format or "battlefactory" in self.pokemon_format
         )
 
-    def validate_config(self):
-        if self.bot_mode == BotModes.challenge_user:
-            assert (
-                self.user_to_challenge is not None
-            ), "If bot_mode is `CHALLENGE_USER`, you must declare USER_TO_CHALLENGE"
-
 
 FoulPlayConfig = _FoulPlayConfig()
+

@@ -122,6 +122,7 @@ def detect_playstyle_from_counts(
     hazard_count: int,
     bulky_count: int,
     breaker_count: int,
+    pivot_count: int,
 ) -> Playstyle:
     if screen_count >= 1 and setup_count >= 2:
         return Playstyle.HYPER_OFFENSE
@@ -129,9 +130,15 @@ def detect_playstyle_from_counts(
         # If little breaking power, call it stall
         if breaker_count <= 1:
             return Playstyle.STALL
+        # Hazard-stacking teams with multiple pivots/breakers usually need
+        # proactive conversion lines, not pure fat/stall passivity.
+        if breaker_count >= 2 and pivot_count >= 2:
+            return Playstyle.BULKY_OFFENSE
         return Playstyle.FAT
     if setup_count >= 2 and recovery_count <= 1:
         return Playstyle.HYPER_OFFENSE
+    if bulky_count >= 3 and breaker_count >= 2 and pivot_count >= 2:
+        return Playstyle.BULKY_OFFENSE
     if bulky_count >= 3 and setup_count >= 1:
         return Playstyle.FAT
     if breaker_count >= 2 and recovery_count >= 1:
@@ -196,7 +203,13 @@ def analyze_team(team_dict: List[Dict]) -> TeamAnalysis:
             wincons.add(species)
 
     playstyle = detect_playstyle_from_counts(
-        setup_count, screen_count, recovery_count, hazard_count, bulky_count, breaker_count
+        setup_count,
+        screen_count,
+        recovery_count,
+        hazard_count,
+        bulky_count,
+        breaker_count,
+        len(pivots),
     )
 
     return TeamAnalysis(

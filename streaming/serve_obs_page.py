@@ -39,6 +39,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from streaming import state_store
+from streaming.hybrid_dashboard import register_dashboard_routes
 
 # Load .env if present so OBS WebSocket settings are available
 if load_dotenv:
@@ -72,6 +73,8 @@ PARENT_CHECK_SEC = int(os.getenv("FP_PARENT_CHECK_SEC", "5") or 5)
 REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "60"))
 REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
+REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
+REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
 
 ws_clients: set[web.WebSocketResponse] = set()
 _obs_client = None
@@ -448,10 +451,30 @@ async def fetch_showdown_elo(user_id: str | None = None) -> int | None:
         return None
 
 
+def _prune_replay_cache(now: float) -> None:
+    stale_ids = [
+        replay_id
+        for replay_id, payload in _replay_cache.items()
+        if (now - float(payload.get("checked", 0.0))) > REPLAY_CACHE_RETENTION_SEC
+    ]
+    for replay_id in stale_ids:
+        _replay_cache.pop(replay_id, None)
+
+    overflow = len(_replay_cache) - REPLAY_CACHE_MAX_ENTRIES
+    if overflow > 0:
+        oldest = sorted(
+            _replay_cache.items(),
+            key=lambda item: float(item[1].get("checked", 0.0)),
+        )[:overflow]
+        for replay_id, _ in oldest:
+            _replay_cache.pop(replay_id, None)
+
+
 async def _replay_exists(replay_id: str) -> bool:
     if not replay_id:
         return False
     now = time.time()
+    _prune_replay_cache(now)
     cached = _replay_cache.get(replay_id)
     if cached and (now - float(cached.get("checked", 0.0))) < REPLAY_CHECK_TTL_SEC:
         return bool(cached.get("exists", False))
@@ -473,6 +496,7 @@ async def _replay_exists(replay_id: str) -> bool:
         exists = False
 
     _replay_cache[replay_id] = {"exists": exists, "checked": now}
+    _prune_replay_cache(now)
     return exists
 
 
@@ -956,6 +980,7 @@ def create_app() -> web.Application:
     app.router.add_get("/debug_state", handle_debug_state)
     app.router.add_get("/obs-debug", handle_debug_state)  # Alias for debug_state
     app.router.add_get("/active_battles.json", handle_battles_file)
+    register_dashboard_routes(app)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
     return app

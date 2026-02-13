@@ -2,7 +2,7 @@ import json
 import os
 import asyncio
 import time
-import concurrent.futures
+from collections import OrderedDict
 from copy import deepcopy
 import logging
 import re
@@ -21,6 +21,7 @@ from fp.search.main import find_best_move
 from fp.decision_trace import write_decision_trace, build_trace_base
 from fp.movepool_tracker import get_threat_category, ThreatCategory
 from fp.opponent_model import OPPONENT_MODEL
+from fp.hybrid_policy import run_hybrid_rerank
 from fp.helpers import type_effectiveness_modifier
 
 from fp.websocket_client import PSWebsocketClient
@@ -33,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 # Blacklist for dead battles (forcibly terminated due to timeout)
 # Prevents re-claiming the same stuck battle immediately after termination
-_dead_battle_blacklist: set[str] = set()
+_dead_battle_blacklist: "OrderedDict[str, float]" = OrderedDict()
 
 # Active battles tracking for stream overlay
 # battle_id -> {"opponent": str, "started": datetime, "worker_id": int | None}
@@ -67,8 +68,12 @@ RESUME_JOIN_TIMEOUT_SEC = int(os.getenv("RESUME_JOIN_TIMEOUT_SEC", "10"))
 REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "60"))
 REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
+REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
+REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
+DEAD_BATTLE_BLACKLIST_MAX = max(100, int(os.getenv("DEAD_BATTLE_BLACKLIST_MAX", "2000")))
 
-BATTLE_HARD_TIMEOUT_SEC = int(os.getenv("BATTLE_HARD_TIMEOUT_SEC", "900"))  # 15 min max per battle
+# Hard battle timeout (seconds). 0 disables forced battle termination.
+BATTLE_HARD_TIMEOUT_SEC = int(os.getenv("BATTLE_HARD_TIMEOUT_SEC", "0"))
 
 # Battle chat defaults
 OPENING_CHAT_MESSAGE = "hf"
@@ -79,6 +84,34 @@ _resume_lock = asyncio.Lock()
 _resume_by_worker: dict[int, list[dict]] = {}
 _resume_queue: list[dict] = []
 _replay_cache: dict[str, dict[str, float | bool]] = {}
+
+
+def _blacklist_battle_tag(battle_tag: str) -> None:
+    if not battle_tag:
+        return
+    _dead_battle_blacklist[battle_tag] = time.time()
+    _dead_battle_blacklist.move_to_end(battle_tag)
+    while len(_dead_battle_blacklist) > DEAD_BATTLE_BLACKLIST_MAX:
+        _dead_battle_blacklist.popitem(last=False)
+
+
+def _prune_replay_cache(now: float) -> None:
+    stale_replays = [
+        replay_id
+        for replay_id, payload in _replay_cache.items()
+        if (now - float(payload.get("checked", 0.0))) > REPLAY_CACHE_RETENTION_SEC
+    ]
+    for replay_id in stale_replays:
+        _replay_cache.pop(replay_id, None)
+
+    overflow = len(_replay_cache) - REPLAY_CACHE_MAX_ENTRIES
+    if overflow > 0:
+        oldest = sorted(
+            _replay_cache.items(),
+            key=lambda item: float(item[1].get("checked", 0.0)),
+        )[:overflow]
+        for replay_id, _ in oldest:
+            _replay_cache.pop(replay_id, None)
 
 
 def _parse_started_ts(value: str | None) -> datetime | None:
@@ -132,6 +165,7 @@ async def _replay_exists(replay_id: str) -> bool:
     if not replay_id:
         return False
     now = time.time()
+    _prune_replay_cache(now)
     cached = _replay_cache.get(replay_id)
     if cached and (now - float(cached.get("checked", 0.0))) < REPLAY_CHECK_TTL_SEC:
         return bool(cached.get("exists", False))
@@ -151,6 +185,7 @@ async def _replay_exists(replay_id: str) -> bool:
     except Exception:
         exists = False
     _replay_cache[replay_id] = {"exists": exists, "checked": now}
+    _prune_replay_cache(now)
     return exists
 
 
@@ -435,7 +470,7 @@ async def _attempt_resume_battle(
         if battle_room_closed(battle_tag, msg) or battle_is_finished(battle_tag, msg):
             logger.info("Resume drop: battle already closed/finished %s", battle_tag)
             # Blacklist to prevent search loop from re-claiming this dead battle
-            _dead_battle_blacklist.add(battle_tag)
+            _blacklist_battle_tag(battle_tag)
             logger.info(f"Blacklisted resumed-but-closed battle: {battle_tag} (blacklist size: {len(_dead_battle_blacklist)})")
             try:
                 ps_websocket_client.unregister_battle(battle_tag)
@@ -751,6 +786,58 @@ async def async_pick_move(battle):
         best_move = _fallback_decision(battle_copy)
         trace_reason = trace_reason or "fallback"
 
+    # Optional hybrid rerank: engine proposes candidates, LLM reranks among them.
+    if FoulPlayConfig.decision_policy == "hybrid" and best_move:
+        try:
+            engine_move = best_move
+            hybrid_result = await run_hybrid_rerank(
+                battle=battle_copy,
+                engine_choice=engine_move,
+                trace=trace,
+                api_key=FoulPlayConfig.openai_api_key or "",
+                model=FoulPlayConfig.openai_model,
+                api_base=FoulPlayConfig.openai_api_base,
+                timeout_sec=FoulPlayConfig.llm_timeout_sec,
+                top_k=FoulPlayConfig.llm_rerank_top_k,
+            )
+
+            if hybrid_result.decision and hybrid_result.decision != engine_move:
+                logger.info(
+                    "Hybrid rerank override: %s -> %s",
+                    engine_move,
+                    hybrid_result.decision,
+                )
+                best_move = hybrid_result.decision
+
+            hybrid_meta = (
+                dict(hybrid_result.metadata)
+                if isinstance(hybrid_result.metadata, dict)
+                else {}
+            )
+            if hybrid_meta:
+                hybrid_meta.setdefault("engine_choice", engine_move)
+                hybrid_meta.setdefault("selected_decision", best_move)
+                hybrid_meta.setdefault(
+                    "override",
+                    bool(
+                        hybrid_result.decision
+                        and hybrid_result.decision != engine_move
+                    ),
+                )
+
+            if TRACE_DECISIONS and trace is None and hybrid_result.metadata:
+                trace = build_trace_base(battle_copy, reason=trace_reason or "hybrid")
+                trace["choice"] = best_move
+            if trace is not None and hybrid_meta:
+                trace["hybrid"] = hybrid_meta
+        except Exception as e:
+            logger.warning(f"Hybrid rerank failed; using engine choice: {e}")
+            if TRACE_DECISIONS and trace is not None:
+                trace["hybrid"] = {
+                    "status": "error",
+                    "reason": f"exception:{e}",
+                }
+
     # Safety check: if force_switch is active but MCTS returned a move, override with a switch
     if battle.force_switch and not best_move.startswith(constants.SWITCH_STRING + " "):
         logger.warning(
@@ -863,6 +950,102 @@ def _fallback_decision(battle):
 
     # Last resort: splash (no-op). Only used if we truly have nothing else.
     return constants.DO_NOTHING_MOVE
+
+
+def _choose_first_request_move_id(battle) -> str | None:
+    request = getattr(battle, "request_json", None) or {}
+    active = request.get(constants.ACTIVE, [])
+    if not active:
+        return None
+
+    moves = active[0].get(constants.MOVES, [])
+    for move in moves:
+        if move.get(constants.DISABLED, False):
+            continue
+        if move.get(constants.PP, 1) == 0:
+            continue
+        move_id = move.get(constants.ID) or normalize_name(move.get("move", ""))
+        if not move_id:
+            continue
+        if move_id == constants.HIDDEN_POWER:
+            move_id = normalize_name(move.get("move", move_id))
+        return move_id
+    return None
+
+
+def _choose_first_request_switch_slot(battle) -> int | None:
+    request = getattr(battle, "request_json", None) or {}
+    side = request.get(constants.SIDE, {})
+    side_pokemon = side.get(constants.POKEMON, [])
+    for index, pkmn in enumerate(side_pokemon, start=1):
+        if pkmn.get(constants.ACTIVE, False):
+            continue
+        condition = str(pkmn.get(constants.CONDITION, "")).lower()
+        if "fnt" in condition:
+            continue
+        return index
+    return None
+
+
+def _request_indicates_trapped(battle) -> bool:
+    request = getattr(battle, "request_json", None) or {}
+    active = request.get(constants.ACTIVE, [])
+    if not active:
+        return bool(getattr(getattr(battle, "user", None), "trapped", False))
+    trapped = bool(active[0].get(constants.TRAPPED, False))
+    maybe_trapped = bool(active[0].get(constants.MAYBE_TRAPPED, False))
+    return trapped or maybe_trapped
+
+
+def _build_recovery_choice_from_request(
+    battle, error_message: str = ""
+) -> list[str] | None:
+    """
+    Build a legal immediate retry command after Showdown rejects a choice.
+    """
+    rqid = getattr(battle, "rqid", None)
+    if rqid is None:
+        return None
+
+    request = getattr(battle, "request_json", None) or {}
+    trapped = _request_indicates_trapped(battle)
+    force_switch = bool(request.get(constants.FORCE_SWITCH, False) or getattr(battle, "force_switch", False))
+
+    reason = (error_message or "").lower()
+    prefer_move = ("can't switch" in reason) or ("trapped" in reason) or trapped
+    prefer_switch = ("can't move" in reason) or ("must switch" in reason) or force_switch
+
+    if force_switch:
+        prefer_switch = True
+        prefer_move = False
+    elif trapped:
+        prefer_move = True
+        prefer_switch = False
+
+    if prefer_move:
+        order = ("move", "switch")
+    elif prefer_switch:
+        order = ("switch", "move")
+    else:
+        order = ("move", "switch")
+
+    for choice_type in order:
+        if choice_type == "move":
+            move_id = _choose_first_request_move_id(battle)
+            if move_id:
+                return [f"/choose move {move_id}", str(rqid)]
+        elif choice_type == "switch":
+            if trapped and not force_switch:
+                continue
+            switch_slot = _choose_first_request_switch_slot(battle)
+            if switch_slot is not None:
+                return [f"/switch {switch_slot}", str(rqid)]
+
+    return None
+
+
+def _is_invalid_choice_message(msg: str) -> bool:
+    return "|error|[Invalid choice]" in (msg or "")
 
 
 async def handle_team_preview(battle, ps_websocket_client):
@@ -1188,7 +1371,7 @@ async def start_battle_common(
         if battle_room_closed(battle_tag, msg):
             logger.warning(f"Battle room closed before init: {battle_tag}")
             # Blacklist to prevent immediate re-claim from buffered messages
-            _dead_battle_blacklist.add(battle_tag)
+            _blacklist_battle_tag(battle_tag)
             logger.info(f"Blacklisted closed-before-init battle: {battle_tag} (blacklist size: {len(_dead_battle_blacklist)})")
             try:
                 ps_websocket_client.unregister_battle(battle_tag)
@@ -1489,6 +1672,44 @@ async def start_battle(
     return battle
 
 
+async def _finalize_battle_runtime(
+    ps_websocket_client: PSWebsocketClient,
+    battle_tag: str,
+    *,
+    send_end_event: bool,
+) -> None:
+    try:
+        await ps_websocket_client.leave_battle(battle_tag)
+    except Exception:
+        pass
+
+    try:
+        ps_websocket_client.unregister_battle(battle_tag)
+    except Exception:
+        pass
+
+    removed = False
+    async with _battles_lock:
+        if battle_tag in _active_battles:
+            del _active_battles[battle_tag]
+            removed = True
+    if removed:
+        await update_active_battles_file()
+
+    if send_end_event:
+        try:
+            await send_stream_event(
+                "BATTLE_END",
+                {
+                    "id": battle_tag,
+                    "winner": None,
+                    "ended": time.time(),
+                },
+            )
+        except Exception:
+            pass
+
+
 async def pokemon_battle(
     ps_websocket_client,
     pokemon_battle_type,
@@ -1522,234 +1743,288 @@ async def pokemon_battle(
     timeout_strikes = 0
     message_timeout = MESSAGE_TIMEOUT_SEC
     battle_start_time = time.time()
+    battle_end_event_sent = False
 
-    while True:
-        # Hard timeout safety: forcibly end battles that run too long
-        if BATTLE_HARD_TIMEOUT_SEC > 0:
-            elapsed = time.time() - battle_start_time
-            if elapsed > BATTLE_HARD_TIMEOUT_SEC:
-                logger.error(
-                    f"Battle {battle_tag} exceeded hard timeout "
-                    f"({elapsed:.0f}s > {BATTLE_HARD_TIMEOUT_SEC}s) - forcibly terminating"
+    try:
+        while True:
+            # Hard timeout safety: forcibly end battles that run too long
+            if BATTLE_HARD_TIMEOUT_SEC > 0:
+                elapsed = time.time() - battle_start_time
+                if elapsed > BATTLE_HARD_TIMEOUT_SEC:
+                    logger.error(
+                        f"Battle {battle_tag} exceeded hard timeout "
+                        f"({elapsed:.0f}s > {BATTLE_HARD_TIMEOUT_SEC}s) - forcibly terminating"
+                    )
+                    _blacklist_battle_tag(battle_tag)
+                    logger.info(
+                        "Added %s to dead battle blacklist (size: %s)",
+                        battle_tag,
+                        len(_dead_battle_blacklist),
+                    )
+                    await send_stream_event(
+                        "BATTLE_END",
+                        {
+                            "id": battle_tag,
+                            "winner": None,
+                            "ended": time.time(),
+                        },
+                    )
+                    battle_end_event_sent = True
+                    return None, battle_tag
+
+            try:
+                msg = await asyncio.wait_for(
+                    ps_websocket_client.receive_battle_message(battle_tag),
+                    timeout=message_timeout,
                 )
-                # Blacklist this battle to prevent re-claiming the same dead room
-                _dead_battle_blacklist.add(battle_tag)
-                logger.info(f"Added {battle_tag} to dead battle blacklist (size: {len(_dead_battle_blacklist)})")
+                if not msg.startswith(f">{battle_tag}"):
+                    logger.warning(
+                        "Battle message tag mismatch: expected %s, got %s",
+                        battle_tag,
+                        msg.split("\n")[0] if msg else "<empty>",
+                    )
+                timeout_strikes = 0
+                # If we had marked this battle stale, promote it back to active once messages resume.
+                needs_update = False
+                async with _battles_lock:
+                    info = _active_battles.get(battle_tag)
+                    if info and info.get("status") == "stale":
+                        info["status"] = "active"
+                        info.pop("stale_since", None)
+                        needs_update = True
+                if needs_update:
+                    await update_active_battles_file()
+            except asyncio.TimeoutError:
+                timeout_strikes += 1
+                logger.warning(
+                    f"No messages for {message_timeout}s in {battle_tag} "
+                    f"(strike {timeout_strikes}/{STALE_STRIKES})."
+                )
+                # Try to ensure connection/rejoin before giving up
                 try:
-                    await ps_websocket_client.leave_battle(battle_tag)
+                    await ps_websocket_client.ensure_connection()
+                    await ps_websocket_client.join_room(battle_tag)
                 except Exception:
                     pass
-                ps_websocket_client.unregister_battle(battle_tag)
-                async with _battles_lock:
-                    _active_battles.pop(battle_tag, None)
-                await update_active_battles_file()
-                await send_stream_event("BATTLE_END", {
-                    "id": battle_tag,
-                    "winner": None,
-                    "ended": time.time(),
-                })
-                return None, battle_tag
+                if timeout_strikes < STALE_STRIKES:
+                    continue
 
-        try:
-            msg = await asyncio.wait_for(
-                ps_websocket_client.receive_battle_message(battle_tag),
-                timeout=message_timeout,
-            )
-            if not msg.startswith(f">{battle_tag}"):
-                logger.warning(
-                    "Battle message tag mismatch: expected %s, got %s",
-                    battle_tag,
-                    msg.split("\n")[0] if msg else "<empty>",
-                )
-            timeout_strikes = 0
-            # If we had marked this battle stale, promote it back to active once messages resume.
-            needs_update = False
-            async with _battles_lock:
-                info = _active_battles.get(battle_tag)
-                if info and info.get("status") == "stale":
-                    info["status"] = "active"
-                    info.pop("stale_since", None)
-                    needs_update = True
-            if needs_update:
-                await update_active_battles_file()
-        except asyncio.TimeoutError:
-            timeout_strikes += 1
-            logger.warning(
-                f"No messages for {message_timeout}s in {battle_tag} "
-                f"(strike {timeout_strikes}/{STALE_STRIKES})."
-            )
-            # Try to ensure connection/rejoin before giving up
-            try:
-                await ps_websocket_client.ensure_connection()
-                await ps_websocket_client.join_room(battle_tag)
-            except Exception:
-                pass
-            if timeout_strikes < STALE_STRIKES:
+                # Mark stale but keep the battle visible/attached so OBS doesn't drop it.
+                needs_update = False
+                async with _battles_lock:
+                    info = _active_battles.get(battle_tag)
+                    if info and info.get("status") != "stale":
+                        info["status"] = "stale"
+                        info["stale_since"] = time.time()
+                        needs_update = True
+                if needs_update:
+                    await update_active_battles_file()
+                    logger.warning(f"Battle {battle_tag} marked stale; waiting for updates.")
                 continue
 
-            # Mark stale but keep the battle visible/attached so OBS doesn't drop it.
-            needs_update = False
-            async with _battles_lock:
-                info = _active_battles.get(battle_tag)
-                if info and info.get("status") != "stale":
-                    info["status"] = "stale"
-                    info["stale_since"] = time.time()
-                    needs_update = True
-            if needs_update:
-                await update_active_battles_file()
-                logger.warning(f"Battle {battle_tag} marked stale; waiting for updates.")
-            continue
-
-        if battle_is_finished(battle_tag, msg):
-            winner = (
-                msg.split(constants.WIN_STRING)[-1].split("\n")[0].strip()
-                if constants.WIN_STRING in msg
-                else None
-            )
-            logger.info("Battle finished: {} Winner: {}".format(battle_tag, winner))
-            await _send_battle_chat(ps_websocket_client, battle_tag, POST_BATTLE_MESSAGES)
-            
-            # Save replay and capture URL if configured
-            replay_url = None
-            
-            # Check if winner is one of our accounts (normalize for Showdown's format)
-            showdown_accounts = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
-            showdown_accounts = [_normalize_username(acc) for acc in showdown_accounts if acc.strip()]
-            we_won = winner and _normalize_username(winner) in showdown_accounts
-            
-            if (
-                FoulPlayConfig.save_replay == SaveReplay.always
-                or (
-                    FoulPlayConfig.save_replay == SaveReplay.on_loss
-                    and not we_won
-                )
-                or (
-                    FoulPlayConfig.save_replay == SaveReplay.on_win
-                    and we_won
-                )
-            ):
-                replay_url = await ps_websocket_client.save_replay(battle_tag)
-            
-            # Post battle result to Discord
-            team_name = FoulPlayConfig.team_name if hasattr(FoulPlayConfig, 'team_name') else None
-            our_player_name = battle.user.account_name if battle.user and battle.user.account_name else None
-            await _post_battle_to_discord(
-                battle_tag=battle_tag,
-                winner=winner,
-                opponent_name=opponent_name,
-                replay_url=replay_url,
-                team_name=team_name,
-                our_player_name=our_player_name,
-            )
-            
-            await ps_websocket_client.leave_battle(battle_tag)
-
-            # Cleanup battle queue to prevent buildup over time
-            timeout = 5
-            start = time.time()
-            while time.time() - start < timeout:
-                try:
-                    msg = await asyncio.wait_for(
-                        ps_websocket_client.receive_battle_message(battle_tag),
-                        timeout=1.0,
-                    )
-                    if "deinit" in msg:
-                        break
-                except asyncio.TimeoutError:
+            if _is_invalid_choice_message(msg):
+                lower_msg = msg.lower()
+                if "not your turn" in lower_msg:
+                    logger.debug("Ignoring stale invalid choice in %s: not our turn", battle_tag)
                     continue
-                except ValueError:
-                    break
-            ps_websocket_client.unregister_battle(battle_tag)
-            
-            # Remove from active battles tracking
-            removed = False
-            async with _battles_lock:
-                if battle_tag in _active_battles:
-                    del _active_battles[battle_tag]
-                    removed = True
-            if removed:
-                await update_active_battles_file()
 
-            # Update stream overlay stats
-            try:
-                # Check if winner is one of our accounts
-                showdown_accounts_stats = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
-                showdown_accounts_stats = [_normalize_username(acc) for acc in showdown_accounts_stats if acc.strip()]
-                is_win = winner and _normalize_username(winner) in showdown_accounts_stats
-                
-                if winner and winner != "None":
-                    update_daily_stats(
-                        wins_delta=1 if is_win else 0,
-                        losses_delta=0 if is_win else 1
+                retry_choice = _build_recovery_choice_from_request(battle, error_message=msg)
+                if retry_choice:
+                    logger.warning(
+                        "Invalid choice in %s; retrying with legal fallback %s",
+                        battle_tag,
+                        retry_choice[0],
                     )
-                daily = __import__('streaming.state_store', fromlist=['read_daily_stats']).read_daily_stats()
-                battle_count = 0
+                    await ps_websocket_client.send_message(battle_tag, retry_choice)
+                    continue
+                logger.warning(
+                    "Invalid choice in %s but no legal fallback could be built from request_json",
+                    battle_tag,
+                )
+
+            if battle_is_finished(battle_tag, msg):
+                winner = (
+                    msg.split(constants.WIN_STRING)[-1].split("\n")[0].strip()
+                    if constants.WIN_STRING in msg
+                    else None
+                )
+                logger.info("Battle finished: %s Winner: %s", battle_tag, winner)
+                await _send_battle_chat(ps_websocket_client, battle_tag, POST_BATTLE_MESSAGES)
+
+                # Save replay and capture URL if configured
+                replay_url = None
+
+                # Check if winner is one of our accounts (normalize for Showdown's format)
+                showdown_accounts = os.getenv(
+                    "SHOWDOWN_ACCOUNTS", FoulPlayConfig.username
+                ).strip().lower().split(",")
+                showdown_accounts = [
+                    _normalize_username(acc) for acc in showdown_accounts if acc.strip()
+                ]
+                we_won = winner and _normalize_username(winner) in showdown_accounts
+
+                if (
+                    FoulPlayConfig.save_replay == SaveReplay.always
+                    or (
+                        FoulPlayConfig.save_replay == SaveReplay.on_loss and not we_won
+                    )
+                    or (
+                        FoulPlayConfig.save_replay == SaveReplay.on_win and we_won
+                    )
+                ):
+                    replay_url = await ps_websocket_client.save_replay(battle_tag)
+
+                # Post battle result to Discord
+                team_name = (
+                    FoulPlayConfig.team_name
+                    if hasattr(FoulPlayConfig, "team_name")
+                    else None
+                )
+                our_player_name = (
+                    battle.user.account_name
+                    if battle.user and battle.user.account_name
+                    else None
+                )
+                await _post_battle_to_discord(
+                    battle_tag=battle_tag,
+                    winner=winner,
+                    opponent_name=opponent_name,
+                    replay_url=replay_url,
+                    team_name=team_name,
+                    our_player_name=our_player_name,
+                )
+
+                # Cleanup battle queue to prevent buildup over time.
+                timeout = 5
+                start = time.time()
+                while time.time() - start < timeout:
+                    try:
+                        msg = await asyncio.wait_for(
+                            ps_websocket_client.receive_battle_message(battle_tag),
+                            timeout=1.0,
+                        )
+                        if "deinit" in msg:
+                            break
+                    except asyncio.TimeoutError:
+                        continue
+                    except ValueError:
+                        break
+
+                # Remove from active battles tracking so stream status immediately
+                # shows "Searching" when this was the final battle.
+                removed = False
                 async with _battles_lock:
-                    battle_count = len(_active_battles)
-                write_status({
-                    "wins": daily.get("wins", 0),
-                    "losses": daily.get("losses", 0),
-                    "today_wins": daily.get("wins", 0),
-                    "today_losses": daily.get("losses", 0),
-                    "status": "Searching" if battle_count == 0 else "Battling",
-                    "battle_info": f"vs {winner}" if not is_win and winner else "Searching...",
-                })
-            except Exception as e:
-                logger.warning(f"Failed to update stream status: {e}")
+                    if battle_tag in _active_battles:
+                        del _active_battles[battle_tag]
+                        removed = True
+                if removed:
+                    await update_active_battles_file()
 
-            # Signal battle end instantly
-            await send_stream_event("BATTLE_END", {
-                "id": battle_tag,
-                "winner": winner,
-                "ended": time.time()
-            })
+                # Update stream overlay stats
+                try:
+                    showdown_accounts_stats = os.getenv(
+                        "SHOWDOWN_ACCOUNTS", FoulPlayConfig.username
+                    ).strip().lower().split(",")
+                    showdown_accounts_stats = [
+                        _normalize_username(acc)
+                        for acc in showdown_accounts_stats
+                        if acc.strip()
+                    ]
+                    is_win = winner and _normalize_username(winner) in showdown_accounts_stats
 
-            return winner, battle_tag
-        elif battle_room_closed(battle_tag, msg):
-            logger.warning(f"Battle room closed without win/tie: {battle_tag}")
-            try:
-                await ps_websocket_client.leave_battle(battle_tag)
-            except Exception:
-                pass
-            ps_websocket_client.unregister_battle(battle_tag)
+                    if winner and winner != "None":
+                        update_daily_stats(
+                            wins_delta=1 if is_win else 0,
+                            losses_delta=0 if is_win else 1,
+                        )
+                    daily = __import__(
+                        "streaming.state_store", fromlist=["read_daily_stats"]
+                    ).read_daily_stats()
+                    async with _battles_lock:
+                        battle_count = len(_active_battles)
+                    write_status(
+                        {
+                            "wins": daily.get("wins", 0),
+                            "losses": daily.get("losses", 0),
+                            "today_wins": daily.get("wins", 0),
+                            "today_losses": daily.get("losses", 0),
+                            "status": "Searching" if battle_count == 0 else "Battling",
+                            "battle_info": (
+                                f"vs {winner}"
+                                if not is_win and winner
+                                else "Searching..."
+                            ),
+                        }
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to update stream status: {e}")
 
-            removed = False
-            async with _battles_lock:
-                if battle_tag in _active_battles:
-                    del _active_battles[battle_tag]
-                    removed = True
-            if removed:
-                await update_active_battles_file()
-            await send_stream_event("BATTLE_END", {
-                "id": battle_tag,
-                "winner": None,
-                "ended": time.time()
-            })
+                await send_stream_event(
+                    "BATTLE_END",
+                    {
+                        "id": battle_tag,
+                        "winner": winner,
+                        "ended": time.time(),
+                    },
+                )
+                battle_end_event_sent = True
+                return winner, battle_tag
 
-            return None, battle_tag
-        else:
+            if battle_room_closed(battle_tag, msg):
+                logger.warning(f"Battle room closed without win/tie: {battle_tag}")
+                await send_stream_event(
+                    "BATTLE_END",
+                    {
+                        "id": battle_tag,
+                        "winner": None,
+                        "ended": time.time(),
+                    },
+                )
+                battle_end_event_sent = True
+                return None, battle_tag
+
             action_required = await async_update_battle(battle, msg)
             try:
                 OPPONENT_MODEL.observe(battle)
             except Exception as e:
                 logger.debug(f"Opponent model update failed: {e}")
-            
+
             # Send turn update for real-time OBS updates
             if action_required and "|turn|" in msg:
                 try:
-                    turn_num = battle.turn if hasattr(battle, 'turn') else None
-                    our_active = battle.user.active.name if battle.user and battle.user.active else None
-                    opp_active = battle.opponent.active.name if battle.opponent and battle.opponent.active else None
-                    await send_stream_event("TURN_UPDATE", {
-                        "id": battle_tag,
-                        "turn": turn_num,
-                        "our_pokemon": our_active,
-                        "opponent_pokemon": opp_active,
-                        "timestamp": time.time(),
-                    })
+                    turn_num = battle.turn if hasattr(battle, "turn") else None
+                    our_active = (
+                        battle.user.active.name
+                        if battle.user and battle.user.active
+                        else None
+                    )
+                    opp_active = (
+                        battle.opponent.active.name
+                        if battle.opponent and battle.opponent.active
+                        else None
+                    )
+                    await send_stream_event(
+                        "TURN_UPDATE",
+                        {
+                            "id": battle_tag,
+                            "turn": turn_num,
+                            "our_pokemon": our_active,
+                            "opponent_pokemon": opp_active,
+                            "timestamp": time.time(),
+                        },
+                    )
                 except Exception as e:
                     logger.debug(f"Failed to send turn update event: {e}")
-            
+
             if action_required and not battle.wait:
                 best_move = await async_pick_move(battle)
                 await ps_websocket_client.send_message(battle_tag, best_move)
+    except Exception:
+        logger.exception("Unhandled exception in battle loop for %s", battle_tag)
+        raise
+    finally:
+        await _finalize_battle_runtime(
+            ps_websocket_client,
+            battle_tag,
+            send_end_event=not battle_end_event_sent,
+        )

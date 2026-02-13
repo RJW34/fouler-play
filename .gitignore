@@ -14,6 +14,7 @@ node_modules/
 
 # Logs
 *.log
+*.out
 logs/
 
 # PID files
@@ -51,6 +52,20 @@ replay_check.json
 stream_status.json
 diagnostics/health_report.json
 teams/.team_iterator_index
+.bot.pid
+twitch_key.txt
+
+# Generated reports
+replay_analysis/reports/
+
+# Temp directory
+tmp/
+
+# Temp pytest output
+tmp_*.txt
+
+# Auto-stream backups (dead code)
+streaming/auto_stream.py.backup*
 
 # Console output fragments
 Bot

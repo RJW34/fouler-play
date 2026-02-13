@@ -1,101 +1,53 @@
-# Foul Play ![umbreon](https://play.pokemonshowdown.com/sprites/xyani/umbreon.gif)
-A Pokémon battle-bot that can play battles on [Pokemon Showdown](https://pokemonshowdown.com/).
+# Fouler Play
 
-Foul Play can play single battles in all generations
-though currently dynamax and z-moves are not supported.
+An overnight team-testing service for competitive Pokemon (gen9ou). Load your fat/stall teams, let the bot play them on ladder while you sleep, and get a morning report: which matchups were hard, which Pokemon underperformed, which replays to study.
 
-![badge](https://github.com/pmariglia/foul-play/actions/workflows/ci.yml/badge.svg)
+Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).
 
-## Python version
-Requires Python 3.11+.
+## Quick Start
 
-## Getting Started
+1. Copy `.env.example` to `.env` and set `PS_USERNAME` and `PS_PASSWORD`
+2. Install requirements: `pip install -r requirements.txt`
+3. Run: `python run.py` or double-click `start_one_touch.bat` (Windows)
 
-### Configuration
+## Architecture
 
-Command-line arguments are used to configure Foul Play
-
-use `python run.py --help` to see all options.
-
-### Running Locally
-
-**1. Clone**
-
-Clone the repository with `git clone https://github.com/pmariglia/foul-play.git`
-
-**2. Install Requirements**
-
-Install the requirements with `pip install -r requirements.txt`.
-
-Note: Requires Rust to be installed on your machine to build the engine.
-
-**4. Run**
-
-Run with `python run.py`
-
-Here is a minimal example that plays a gen9randombattle on Pokemon Showdown:
-```bash
-python run.py \
---websocket-uri wss://sim3.psim.us/showdown/websocket \
---ps-username 'My Username' \
---ps-password sekret \
---bot-mode search_ladder \
---pokemon-format gen9randombattle
+```
+run.py                     Entry point
+fp/search/main.py          Decision engine: forced_lines -> eval -> penalty pipeline
+fp/search/eval.py          1-ply position evaluation
+fp/search/forced_lines.py  Forced sequence detection (OHKOs, forced switches)
+fp/battle_modifier.py      Pokemon Showdown protocol parser
+fp/run_battle.py           Battle loop + data collection
+replay_analysis/           Morning report generator
 ```
 
-### Running with Docker
+The bot uses a 1-ply eval engine with 9 penalty layers to make decisions. It plays teams faithfully to their archetype (fat/stall) rather than optimizing for cheese wins.
 
-**1. Clone the repository**
+## Agent Instructions
 
-`git clone https://github.com/pmariglia/foul-play.git`
-
-**2. Build the Docker image**
-
-Use the `Makefile` to build a Docker image
-```shell
-make docker
-```
-
-or for a specific generation:
-```shell
-make docker GEN=gen4
-```
-
-**3. Run the Docker Image**
-```bash
-docker run --rm --network host foul-play:latest \
---websocket-uri wss://sim3.psim.us/showdown/websocket \
---ps-username 'My Username' \
---ps-password sekret \
---bot-mode search_ladder \
---pokemon-format gen9randombattle
-```
+See [CLAUDE.md](CLAUDE.md) for autonomous agent operating instructions (DEKU/BAKUGO machines).
 
 ## Engine
 
-This project uses [poke-engine](https://github.com/pmariglia/poke-engine) to search through battles.
-See [the engine docs](https://poke-engine.readthedocs.io/en/latest/) for more information.
+This project uses [poke-engine](https://github.com/pmariglia/poke-engine) for battle simulation. Rust must be installed to build the engine from source.
 
-The engine must be built from source if installing locally so you must have rust installed on your machine.
-
-### Re-Installing the Engine
-
-It is common to want to re-install the engine for different generations of Pokémon.
-
-`pip` will used cached .whl artifacts when installing packages
-and cannot detect the `--config-settings` flag that was used to build the engine.
-
-The following command will ensure that the engine is re-installed properly:
-```shell
-pip uninstall -y poke-engine && pip install -v --force-reinstall --no-cache-dir poke-engine --config-settings="build-args=--features poke-engine/<GENERATION> --no-default-features"
+```bash
+pip install -r requirements.txt
 ```
 
-Or using the Makefile:
-```shell
-make poke_engine GEN=<generation>
+To reinstall for a specific generation:
+```bash
+pip uninstall -y poke-engine && pip install -v --force-reinstall --no-cache-dir poke-engine --config-settings="build-args=--features poke-engine/gen9 --no-default-features"
 ```
 
-For example, to re-install the engine for generation 4:
-```shell
-make poke_engine GEN=gen4
+## Optional: Hybrid LLM Reranking
+
+Hybrid mode keeps the normal eval engine, then asks an OpenAI model to rerank the top candidates. Set in `.env`:
+
+```bash
+DECISION_POLICY=hybrid
+OPENAI_API_KEY_PLAYER=sk-...
 ```
+
+Falls back to eval-only if no API key is configured.

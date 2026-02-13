@@ -9,7 +9,7 @@ This replaces the blanket 85% stay penalty with nuanced counterplay that conside
 5. Only penalize if actually threatened AND can't fight back
 """
 
-from fp.helpers import normalize_name
+from fp.helpers import normalize_name, type_effectiveness_modifier
 from data import all_move_json
 import constants
 
@@ -17,6 +17,47 @@ import constants
 PHAZING_MOVES = {"roar", "whirlwind", "dragontail", "circlethrow"}
 HAZE_MOVES = {"haze", "clearsmog"}
 UNAWARE_MONS = {"dondozo", "quagsire", "clefable", "skeledirge"}  # Common Unaware users
+HALF_HP_DAMAGE_MOVES = {"superfang", "ruination", "naturesmadness", "naturefury"}
+
+
+def _is_fixed_damage_attack(move_name: str, move_data: dict | None = None) -> bool:
+    """Return True for fixed-damage attacks (0 BP but real progress)."""
+    norm = normalize_name(move_name)
+    if norm in HALF_HP_DAMAGE_MOVES:
+        return True
+    data = move_data if isinstance(move_data, dict) else all_move_json.get(move_name, {})
+    fixed_damage = data.get("damage")
+    if isinstance(fixed_damage, (int, float)) and fixed_damage > 0:
+        return True
+    if isinstance(fixed_damage, str) and normalize_name(fixed_damage) == "level":
+        return True
+    return False
+
+
+def _estimate_fixed_damage_ratio(battle, move_name: str, move_data: dict) -> float:
+    """Estimate fixed-damage output as fraction of opponent max HP."""
+    if not battle or not getattr(battle, "opponent", None) or not battle.opponent.active:
+        return 0.0
+
+    defender = battle.opponent.active
+    defender_max_hp = max(float(getattr(defender, "max_hp", 1) or 1), 1.0)
+    defender_hp = max(float(getattr(defender, "hp", 0) or 0), 0.0)
+    norm = normalize_name(move_name)
+
+    fixed_damage = move_data.get("damage")
+    if isinstance(fixed_damage, (int, float)) and fixed_damage > 0:
+        return min(float(fixed_damage) / defender_max_hp, 1.0)
+    if isinstance(fixed_damage, str) and normalize_name(fixed_damage) == "level":
+        attacker = getattr(getattr(battle, "user", None), "active", None)
+        raw_level = getattr(attacker, "level", None)
+        if isinstance(raw_level, (int, float)) and raw_level > 0:
+            level = float(raw_level)
+        else:
+            level = 100.0
+        return min(level / defender_max_hp, 1.0)
+    if norm in HALF_HP_DAMAGE_MOVES:
+        return min((0.5 * defender_hp) / defender_max_hp, 1.0)
+    return 0.0
 
 
 def has_unaware_on_team(battle):
@@ -95,6 +136,16 @@ def can_likely_ko_boosted_opponent(battle, move_name, ability_state):
     # Not a damaging move
     if move_category not in {constants.PHYSICAL, constants.SPECIAL}:
         return False
+
+    # Fixed-damage lines (Seismic Toss, Night Shade, Ruination, etc.)
+    # can be immediate KO/progress even though BP is 0.
+    if _is_fixed_damage_attack(move_name, move_data):
+        fixed_ratio = _estimate_fixed_damage_ratio(battle, move_name, move_data)
+        if fixed_ratio >= max(float(ability_state.opponent_hp_percent or 0.0), 0.01):
+            return True
+        if fixed_ratio >= 0.30 and ability_state.opponent_hp_percent <= 0.35:
+            return True
+        return False
     
     # Priority move + low HP opponent = likely KO
     priority = move_data.get(constants.PRIORITY, 0)
@@ -162,6 +213,77 @@ def is_current_mon_bulky(battle):
     return name in bulky_mons or base_name in bulky_mons
 
 
+def _get_switch_target_pokemon(battle, move):
+    """Resolve switch target Pokemon object from a move string like 'switch dondozo'."""
+    if not battle or not move.startswith("switch "):
+        return None
+
+    target_name = normalize_name(move.split("switch ", 1)[1].strip())
+    for p in getattr(battle.user, "reserve", []) or []:
+        if not p:
+            continue
+        name = normalize_name(getattr(p, "name", "") or "")
+        base_name = normalize_name(getattr(p, "base_name", "") or name)
+        if target_name in {name, base_name}:
+            return p
+    return None
+
+
+def _switch_target_has_reset_or_unaware(target):
+    """Return True when a switch target has direct anti-setup counterplay."""
+    if target is None:
+        return False
+
+    ability = normalize_name(getattr(target, "ability", None) or "")
+    if ability == "unaware":
+        return True
+
+    name = normalize_name(getattr(target, "name", "") or "")
+    base_name = normalize_name(getattr(target, "base_name", "") or name)
+    if name in UNAWARE_MONS or base_name in UNAWARE_MONS:
+        return True
+
+    moves = getattr(target, "moves", []) or []
+    for mv in moves:
+        mv_name = normalize_name(mv.name if hasattr(mv, "name") else str(mv))
+        if mv_name in HAZE_MOVES or mv_name in PHAZING_MOVES:
+            return True
+    return False
+
+
+def _switch_target_is_safe_vs_boosted_threat(battle, target):
+    """Conservative check for whether a switch target is a sane anti-sweep pivot."""
+    if target is None:
+        return True
+    opp = getattr(getattr(battle, "opponent", None), "active", None)
+    if opp is None:
+        return True
+
+    target_hp = float(getattr(target, "hp", 0) or 0)
+    target_max_hp = max(float(getattr(target, "max_hp", 1) or 1), 1.0)
+    if target_hp <= 0:
+        return False
+    if target_hp / target_max_hp < 0.35:
+        return False
+
+    status = getattr(target, "status", None)
+    moves = getattr(target, "moves", []) or []
+    move_names = {normalize_name(m.name if hasattr(m, "name") else str(m)) for m in moves}
+    if status == constants.FROZEN:
+        return False
+    if status == constants.SLEEP and "sleeptalk" not in move_names:
+        return False
+
+    target_types = getattr(target, "types", []) or []
+    opp_types = getattr(opp, "types", []) or []
+    if target_types and opp_types:
+        worst_stab = max(type_effectiveness_modifier(t, target_types) for t in opp_types)
+        if worst_stab >= 2.0 and not _switch_target_has_reset_or_unaware(target):
+            return False
+
+    return True
+
+
 def smart_sweep_prevention(
     penalty,
     reason,
@@ -183,22 +305,62 @@ def smart_sweep_prevention(
     
     Returns: (penalty, reason) tuple
     """
+    move_name = normalize_name(move_name)
+
     if not ability_state.opponent_has_offensive_boost:
         return penalty, reason
     
     boost_level = max(ability_state.opponent_attack_boost, ability_state.opponent_spa_boost)
+    has_counterplay = current_mon_has_counterplay(battle, move_name)
+    is_bulky = is_current_mon_bulky(battle)
+    has_unaware_available = has_unaware_on_team(battle)
     
-    # PRIORITY 1: Heavily boost switching vs boosted opponent (unchanged, this is good)
+    # PRIORITY 1: Switching vs boosted opponents.
+    # Keep this conservative at +1 to avoid unnecessary ping-ponging.
     if move.startswith("switch "):
+        switch_target = _get_switch_target_pokemon(battle, move)
+        if (
+            switch_target is not None
+            and not _switch_target_is_safe_vs_boosted_threat(battle, switch_target)
+        ):
+            if penalty >= 1.0:
+                unsafe_penalty = 0.78 if boost_level >= 2 else 0.90
+                penalty = min(penalty, unsafe_penalty)
+                reason = f"Avoid unsafe switch vs +{boost_level} threat"
+            return penalty, reason
+
         if penalty >= 1.0:
-            # Scale boost with boost level (+1 = 1.6x, +2 = 2.0x, +3+ = 2.4x)
-            switch_boost = BOOST_SWITCH_VS_BOOSTED + (boost_level - 1) * 0.2
+            our_hp_percent = float(getattr(ability_state, "our_hp_percent", 1.0) or 1.0)
+            switch_boost = 1.0
+
+            if boost_level >= 3:
+                switch_boost = BOOST_SWITCH_VS_BOOSTED + min(0.05 * (boost_level - 3), 0.15)
+                if has_counterplay:
+                    switch_boost = min(switch_boost, 1.25)
+                    reason = f"Switch vs +{boost_level} threat (counterplay available)"
+                else:
+                    switch_boost = min(switch_boost, 1.55)
+                    reason = f"Switch vs +{boost_level} boosted threat (CRITICAL)"
+            elif boost_level == 2:
+                if has_counterplay:
+                    switch_boost = 1.0
+                elif is_bulky:
+                    switch_boost = 1.08
+                    reason = "Switch vs +2 threat (bulky stay viable)"
+                else:
+                    switch_boost = 1.22
+                    reason = "Switch vs +2 boosted threat"
+            else:
+                # At +1, avoid forcing switches unless we are low and lack answers.
+                if not has_counterplay and not is_bulky and our_hp_percent <= 0.50:
+                    switch_boost = 1.10
+                    reason = "Switch vs +1 threat (low HP, limited counterplay)"
+
             penalty = max(penalty, switch_boost)
-            reason = f"Switch vs +{boost_level} boosted threat (CRITICAL)"
         return penalty, reason
     
     # PRIORITY 2: Massively boost phazing moves vs boosted opponent (unchanged)
-    if move_name in PHAZING_MOVES:
+    if move_name in PHAZING_MOVES or move_name in HAZE_MOVES:
         if penalty >= 1.0:
             penalty = max(penalty, BOOST_PHAZE_VS_BOOSTED)
             reason = f"Phaze +{boost_level} boosted sweeper (reset threat)"
@@ -218,31 +380,46 @@ def smart_sweep_prevention(
         return penalty, reason
     
     # PRIORITY 4: HEAVILY penalize passive/setup moves vs boosted opponent (unchanged, this is correct)
-    if move_name in SETUP_MOVES or move_name in STATUS_ONLY_MOVES:
-        # Exception: If we have Unaware on the team, setting up isn't as bad
-        if has_unaware_on_team(battle):
-            penalty = min(penalty, 0.4)  # 60% penalty instead of 75%
-            reason = f"Setup vs +{boost_level} threat (have Unaware wall available)"
-        else:
-            penalty = min(penalty, PENALTY_PASSIVE_VS_BOOSTED)
-            reason = f"PASSIVE vs +{boost_level} boosted threat (will sweep)"
-        return penalty, reason
-    
-    # PRIORITY 5: Smart stay evaluation (THIS IS THE KEY FIX)
     move_data = all_move_json.get(move_name, {})
     move_category = move_data.get(constants.CATEGORY, "")
     base_power = move_data.get(constants.BASE_POWER, 0)
+    is_status_move = move_category == constants.STATUS
+    is_reset_move = move_name in PHAZING_MOVES or move_name in HAZE_MOVES
+    is_parting_shot = move_name == "partingshot"
+
+    if move_name in SETUP_MOVES or (is_status_move and not is_reset_move and not is_parting_shot):
+        passive_penalty = PENALTY_PASSIVE_VS_BOOSTED
+        if boost_level <= 1:
+            passive_penalty = max(passive_penalty, 0.45)
+        elif boost_level == 2:
+            passive_penalty = max(passive_penalty, 0.32)
+
+        # Exception: If we have Unaware on the team, setting up isn't as bad
+        if has_unaware_on_team(battle):
+            # Still discourage passive lines, but don't hard-force out at low boosts.
+            unaware_floor = 0.50 if boost_level <= 1 else 0.40
+            penalty = min(penalty, max(passive_penalty, unaware_floor))
+            reason = f"Setup vs +{boost_level} threat (have Unaware wall available)"
+        else:
+            penalty = min(penalty, passive_penalty)
+            reason = f"PASSIVE vs +{boost_level} boosted threat (will sweep)"
+        return penalty, reason
+
+    # Parting Shot is disruptive, but still usually weaker than direct anti-sweep lines.
+    if is_parting_shot:
+        penalty = min(penalty, 0.75)
+        reason = f"Parting Shot vs +{boost_level} threat (situational tempo line)"
+        return penalty, reason
+
+    # PRIORITY 5: Smart stay evaluation (THIS IS THE KEY FIX)
     
     is_strong_attack = (
-        move_category in {constants.PHYSICAL, constants.SPECIAL} 
-        and base_power >= 80
+        move_category in {constants.PHYSICAL, constants.SPECIAL}
+        and (base_power >= 80 or _is_fixed_damage_attack(move_name, move_data))
     )
     
     # Check if staying is actually viable
     can_ko = can_likely_ko_boosted_opponent(battle, move_name, ability_state)
-    has_counterplay = current_mon_has_counterplay(battle, move_name)
-    is_bulky = is_current_mon_bulky(battle)
-    has_unaware_available = has_unaware_on_team(battle)
     
     # CASE 1: We can KO them - staying is GOOD
     if can_ko:
@@ -251,11 +428,12 @@ def smart_sweep_prevention(
             reason = f"Can KO +{boost_level} threat (end sweep attempt)"
         return penalty, reason
     
-    # CASE 2: We have Haze/phazing moves - staying is GOOD
+    # CASE 2: We have Haze/phazing available - don't auto-boost every move.
+    # Only attack lines may get a slight bump for pressuring while keeping reset in pocket.
     if has_counterplay:
-        if penalty >= 1.0:
-            penalty = max(penalty, 1.4)
-            reason = f"Have Haze/Phaze vs +{boost_level} threat (can reset)"
+        if penalty >= 1.0 and move_category in {constants.PHYSICAL, constants.SPECIAL}:
+            penalty = max(penalty, 1.1)
+            reason = f"Attack while reset option exists vs +{boost_level} threat"
         return penalty, reason
     
     # CASE 3: We're bulky and above 70% HP - staying is OKAY for at least +1

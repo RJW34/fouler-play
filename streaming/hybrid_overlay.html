@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hybrid Overlay</title>
+<style>
+:root {
+  --bg: rgba(8, 10, 12, 0.92);
+  --panel: rgba(18, 23, 30, 0.94);
+  --line: rgba(120, 150, 180, 0.35);
+  --text: #f5f8fb;
+  --muted: #b8c7d8;
+  --good: #25d366;
+  --warn: #ffbf47;
+  --bad: #ff6b6b;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: "Segoe UI", "Tahoma", "Arial", sans-serif;
+  color: var(--text);
+  background: transparent;
+}
+.overlay {
+  width: 100%;
+  height: 100%;
+  padding: 14px;
+  background: var(--bg);
+  border: 2px solid var(--line);
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 10px;
+}
+.row {
+  display: grid;
+  gap: 10px;
+}
+.head {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.main {
+  grid-template-columns: 1.2fr 1fr;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+.k {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.v {
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.v.small {
+  font-size: 18px;
+}
+.mono {
+  font-family: "Cascadia Mono", "Consolas", monospace;
+}
+.good { color: var(--good); }
+.warn { color: var(--warn); }
+.bad { color: var(--bad); }
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  font-size: 13px;
+  text-align: left;
+  padding: 5px 4px;
+  border-bottom: 1px solid rgba(141, 167, 194, 0.24);
+}
+th {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.stack > div {
+  margin-bottom: 7px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.chip {
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(34, 56, 80, 0.65);
+  font-size: 12px;
+}
+@media (max-width: 1400px) {
+  .v { font-size: 21px; }
+  .v.small { font-size: 16px; }
+  th, td { font-size: 12px; }
+}
+@media (max-width: 900px) {
+  .overlay { padding: 10px; gap: 8px; }
+  .head { grid-template-columns: 1fr 1fr; }
+  .main { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="overlay">
+  <div class="row head">
+    <div class="panel"><div class="k">Policy</div><div class="v" id="policy">-</div></div>
+    <div class="panel"><div class="k">W-L</div><div class="v" id="record">0-0</div></div>
+    <div class="panel"><div class="k">Override Rate</div><div class="v warn" id="overrideRate">0%</div></div>
+    <div class="panel"><div class="k">Active Battles</div><div class="v good" id="activeCount">0</div></div>
+  </div>
+
+  <div class="row main">
+    <div class="panel stack">
+      <div>
+        <div class="k">Latest Decision</div>
+        <div class="v mono small" id="latestPair">-</div>
+      </div>
+      <div>
+        <div class="k">Battle / Turn</div>
+        <div class="v small mono" id="latestBattleTurn">-</div>
+      </div>
+      <div>
+        <div class="k">Override / Hybrid</div>
+        <div class="v small" id="latestOverride">No / unavailable</div>
+      </div>
+      <div>
+        <div class="k">Reason</div>
+        <div class="v small" id="latestReason">-</div>
+      </div>
+      <div>
+        <div class="k">Candidates</div>
+        <div class="chips" id="candidates"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="k" style="margin-bottom:6px;">Active Battle Slots</div>
+      <table>
+        <thead>
+          <tr><th>Slot</th><th>Opponent</th><th>Turn</th><th>Status</th></tr>
+        </thead>
+        <tbody id="battlesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="k" style="margin-bottom:6px;">Recent Timeline</div>
+    <table>
+      <thead>
+        <tr><th>Battle</th><th>Turn</th><th>Engine</th><th>Selected</th><th>Override</th><th>Reason</th></tr>
+      </thead>
+      <tbody id="timelineBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const POLL_MS = 1500;
+let busy = false;
+
+function byId(id) { return document.getElementById(id); }
+function txt(id, value) {
+  const el = byId(id);
+  if (!el) return;
+  el.textContent = value;
+}
+
+function e(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function render(data) {
+  const stats = data?.stats || {};
+  const latest = data?.latest_decision || {};
+  const battles = Array.isArray(data?.active_battles) ? data.active_battles : [];
+  const timeline = Array.isArray(data?.timeline) ? data.timeline.slice(0, 6) : [];
+
+  txt("policy", (data?.decision_policy || "-").toUpperCase());
+  txt("record", `${stats.wins ?? 0}-${stats.losses ?? 0}`);
+  txt("overrideRate", `${stats.override_rate ?? 0}%`);
+  txt("activeCount", data?.active_battle_count ?? battles.length);
+
+  const engine = latest.engine_choice || "-";
+  const selected = latest.hybrid_selected_choice || "-";
+  txt("latestPair", `${engine} -> ${selected}`);
+  txt("latestBattleTurn", `${latest.battle_id || "-"} / ${latest.turn ?? "-"}`);
+  txt("latestOverride", `${latest.override ? "Yes" : "No"} / ${latest.hybrid_status || "unavailable"}`);
+  txt("latestReason", latest.reason || "-");
+
+  const candidates = Array.isArray(latest.candidate_list) ? latest.candidate_list : [];
+  const chips = byId("candidates");
+  if (chips) {
+    chips.innerHTML = candidates.length
+      ? candidates.map((c) => `<span class="chip mono">${e(c)}</span>`).join("")
+      : `<span class="chip">No candidates</span>`;
+  }
+
+  const battlesBody = byId("battlesBody");
+  if (battlesBody) {
+    battlesBody.innerHTML = battles.length
+      ? battles.map((b) => `
+        <tr>
+          <td>${e(b.slot ?? "-")}</td>
+          <td>${e(b.opponent || "Unknown")}</td>
+          <td>${e(b.current_turn ?? "-")}</td>
+          <td>${e(b.status || "-")}</td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="4">No active battles</td></tr>`;
+  }
+
+  const timelineBody = byId("timelineBody");
+  if (timelineBody) {
+    timelineBody.innerHTML = timeline.length
+      ? timeline.map((t) => `
+        <tr>
+          <td class="mono">${e(t.battle_id || "-")}</td>
+          <td>${e(t.turn ?? "-")}</td>
+          <td class="mono">${e(t.engine_choice || "-")}</td>
+          <td class="mono">${e(t.selected_choice || "-")}</td>
+          <td>${e(t.override ? "Yes" : "No")}</td>
+          <td>${e(t.reason || "-")}</td>
+        </tr>
+      `).join("")
+      : `<tr><td colspan="6">No timeline data</td></tr>`;
+  }
+}
+
+async function poll() {
+  if (busy) return;
+  busy = true;
+  try {
+    const resp = await fetch(`/api/dashboard/state?t=${Date.now()}`, { cache: "no-store" });
+    if (!resp.ok) throw new Error(String(resp.status));
+    const data = await resp.json();
+    render(data);
+  } catch (_err) {
+    txt("latestReason", "dashboard fetch error");
+  } finally {
+    busy = false;
+  }
+}
+
+poll();
+setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>

@@ -104,15 +104,43 @@ def get_dummy_poke_engine_pkmn():
     return PokeEnginePokemon(id="pikachu", level=1, hp=0)
 
 
+def _resolve_side_active_and_reserve(battler: Battler):
+    """
+    Return (active, reserve_list, synthesized_active) for state serialization.
+
+    In rare desync/reconnect windows battler.active can be None while reserve is
+    populated. We pick a live reserve mon as temporary active to avoid crashing
+    conversion paths used by damage checks and evaluators.
+    """
+    reserve = list(getattr(battler, "reserve", []) or [])
+    active = getattr(battler, "active", None)
+    if active is not None:
+        return active, reserve, False
+
+    for i, pkmn in enumerate(reserve):
+        if getattr(pkmn, "hp", 0) > 0:
+            return reserve.pop(i), reserve, True
+
+    if reserve:
+        return reserve.pop(0), reserve, True
+
+    return None, reserve, False
+
+
 def battler_to_poke_engine_side(
     battler: Battler, force_switch=False, stayed_in_on_switchout_move=False
 ):
-    num_reserves = len(battler.reserve)
+    active, reserve_for_side, synthesized_active = _resolve_side_active_and_reserve(battler)
+    if synthesized_active:
+        logger.warning(
+            "battler.active missing during state conversion; using reserve placeholder active."
+        )
+    num_reserves = len(reserve_for_side)
     last_used_move = "move:none"
     if battler.last_used_move.move.startswith("switch "):
         last_used_move = "switch:0"
-    elif battler.last_used_move.move:
-        pkmn_moves = [m.name for m in battler.active.moves]
+    elif battler.last_used_move.move and active is not None:
+        pkmn_moves = [m.name for m in active.moves]
         for i, move in enumerate(pkmn_moves):
             if move == battler.last_used_move.move:
                 last_used_move = "move:{}".format(i)
@@ -123,22 +151,24 @@ def battler_to_poke_engine_side(
     # substitute health can't be known with certainty but the client can keep track of if the substitute was hit
     # to approximate: the substitute health is 1/10 of the pokemon's max_hp if it was hit, 1/4 if it wasn't
     substitute_health = 0
-    if constants.SUBSTITUTE in battler.active.volatile_statuses:
-        if battler.active.substitute_hit:
-            substitute_health = int(battler.active.max_hp / 10)
+    if active is not None and constants.SUBSTITUTE in active.volatile_statuses:
+        if active.substitute_hit:
+            substitute_health = int(active.max_hp / 10)
         else:
-            substitute_health = int(battler.active.max_hp / 4)
+            substitute_health = int(active.max_hp / 4)
 
     future_sight_index = 0
     if battler.future_sight[0] > 0:
-        if (
-            battler.active.name == battler.future_sight[1]
-            or battler.active.base_name == battler.future_sight[1]
+        if active is None:
+            future_sight_index = 0
+        elif (
+            active.name == battler.future_sight[1]
+            or active.base_name == battler.future_sight[1]
         ):
             future_sight_index = 0
         else:
             index = 1
-            for pkmn in battler.reserve:
+            for pkmn in reserve_for_side:
                 if (
                     pkmn.name == battler.future_sight[1]
                     or pkmn.base_name == battler.future_sight[1]
@@ -150,17 +180,51 @@ def battler_to_poke_engine_side(
                 raise ValueError(
                     "Couldnt find future sight source: {} not in {} + {}".format(
                         battler.future_sight[1],
-                        battler.active.name,
-                        [p.name for p in battler.reserve],
+                        active.name,
+                        [p.name for p in reserve_for_side],
                     )
                 )
+
+    if active is not None:
+        active_pkmn = pokemon_to_poke_engine_pkmn(active)
+        active_volatile = set(active.volatile_statuses)
+        active_volatile_durations = PokeEngineVolatileStatusDurations(
+            confusion=active.volatile_status_durations[constants.CONFUSION],
+            lockedmove=active.volatile_status_durations[constants.LOCKED_MOVE],
+            encore=active.volatile_status_durations["encore"],
+            slowstart=active.volatile_status_durations[constants.SLOW_START],
+            taunt=active.volatile_status_durations[constants.TAUNT],
+            yawn=active.volatile_status_durations[constants.YAWN],
+        )
+        attack_boost = active.boosts[constants.ATTACK]
+        defense_boost = active.boosts[constants.DEFENSE]
+        special_attack_boost = active.boosts[constants.SPECIAL_ATTACK]
+        special_defense_boost = active.boosts[constants.SPECIAL_DEFENSE]
+        speed_boost = active.boosts[constants.SPEED]
+    else:
+        logger.warning("battler.active and reserve missing during state conversion; using dummy side.")
+        active_pkmn = get_dummy_poke_engine_pkmn()
+        active_volatile = set()
+        active_volatile_durations = PokeEngineVolatileStatusDurations(
+            confusion=0,
+            lockedmove=0,
+            encore=0,
+            slowstart=0,
+            taunt=0,
+            yawn=0,
+        )
+        attack_boost = 0
+        defense_boost = 0
+        special_attack_boost = 0
+        special_defense_boost = 0
+        speed_boost = 0
 
     side = PokeEngineSide(
         active_index="0",
         baton_passing=battler.baton_passing,
         shed_tailing=battler.shed_tailing,
-        pokemon=[pokemon_to_poke_engine_pkmn(battler.active)]
-        + [pokemon_to_poke_engine_pkmn(p) for p in battler.reserve],
+        pokemon=[active_pkmn]
+        + [pokemon_to_poke_engine_pkmn(p) for p in reserve_for_side],
         side_conditions=PokeEngineSideConditions(
             aurora_veil=battler.side_conditions[constants.AURORA_VEIL],
             crafty_shield=battler.side_conditions["craftyshield"],
@@ -187,21 +251,14 @@ def battler_to_poke_engine_side(
         force_switch=force_switch,
         force_trapped=battler.trapped,
         slow_uturn_move=stayed_in_on_switchout_move,
-        volatile_statuses=set(battler.active.volatile_statuses),
-        volatile_status_durations=PokeEngineVolatileStatusDurations(
-            confusion=battler.active.volatile_status_durations[constants.CONFUSION],
-            lockedmove=battler.active.volatile_status_durations[constants.LOCKED_MOVE],
-            encore=battler.active.volatile_status_durations["encore"],
-            slowstart=battler.active.volatile_status_durations[constants.SLOW_START],
-            taunt=battler.active.volatile_status_durations[constants.TAUNT],
-            yawn=battler.active.volatile_status_durations[constants.YAWN],
-        ),
+        volatile_statuses=active_volatile,
+        volatile_status_durations=active_volatile_durations,
         substitute_health=substitute_health,
-        attack_boost=battler.active.boosts[constants.ATTACK],
-        defense_boost=battler.active.boosts[constants.DEFENSE],
-        special_attack_boost=battler.active.boosts[constants.SPECIAL_ATTACK],
-        special_defense_boost=battler.active.boosts[constants.SPECIAL_DEFENSE],
-        speed_boost=battler.active.boosts[constants.SPEED],
+        attack_boost=attack_boost,
+        defense_boost=defense_boost,
+        special_attack_boost=special_attack_boost,
+        special_defense_boost=special_defense_boost,
+        speed_boost=speed_boost,
         accuracy_boost=0,
         evasion_boost=0,
         last_used_move=last_used_move,

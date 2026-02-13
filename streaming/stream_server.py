@@ -19,12 +19,21 @@ import sys
 import time
 from aiohttp import web
 from pathlib import Path
+
+# Ensure repo root is on sys.path so "streaming" is importable when run as a script.
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 from streaming import state_store
+from streaming.hybrid_dashboard import register_dashboard_routes
 
 STREAM_KEY_FILE = os.environ.get("STREAM_KEY_PATH", "twitch_key.txt")
 TWITCH_RTMP = "rtmp://live.twitch.tv/app"
 OVERLAY_HTML = str(Path(__file__).parent / "overlay.html")
 OBS_BATTLES_HTML = str(Path(__file__).parent / "obs_battles.html")
+OBS_IDLE_HTML = str(Path(__file__).parent / "obs_idle.html")
+PORT = int(os.getenv("OBS_SERVER_PORT", "8777"))
 
 # Track connected WebSocket clients for real-time broadcast
 ws_clients = set()
@@ -338,6 +347,11 @@ async def handle_obs_battles(request):
     return web.FileResponse(OBS_BATTLES_HTML)
 
 
+async def handle_idle(request):
+    """Serve idle placeholder used by OBS battle slot browser sources."""
+    return web.FileResponse(OBS_IDLE_HTML)
+
+
 async def check_ffmpeg_health(app):
     """Periodically check if ffmpeg is still running"""
     while True:
@@ -369,12 +383,14 @@ def create_app():
     app.router.add_post('/stream/stop', handle_stream_stop)
     app.router.add_get('/overlay', handle_overlay)
     app.router.add_get('/obs', handle_obs_battles)
+    app.router.add_get('/idle', handle_idle)
+    register_dashboard_routes(app)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
     return app
 
 
 if __name__ == '__main__':
-    print("[STREAM] Starting Fouler Play stream server on :8777")
+    print(f"[STREAM] Starting Fouler Play stream server on :{PORT}")
     app = create_app()
-    web.run_app(app, host='0.0.0.0', port=8777)
+    web.run_app(app, host='0.0.0.0', port=PORT)
