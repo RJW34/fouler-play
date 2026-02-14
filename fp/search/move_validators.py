@@ -369,6 +369,30 @@ def filter_blocked_moves(
                         )
                     applied_penalty = True
 
+            # Penalize pivoting when we are the last Pokemon alive.
+            # U-turn/Volt Switch still deal damage but the switch doesn't happen,
+            # so we're just using a weak 70 BP move for no pivoting benefit.
+            if (
+                not applied_penalty
+                and move_name in PIVOT_MOVES_NORM
+                and ability_state is not None
+                and getattr(ability_state, "our_alive_count", 6) <= 1
+            ):
+                new_weight = weight * 0.25
+                filtered[move] = new_weight
+                if trace_events is not None:
+                    trace_events.append(
+                        {
+                            "type": "penalty",
+                            "source": "ability_filter",
+                            "move": move,
+                            "reason": "pivot_last_pokemon_alive",
+                            "before": weight,
+                            "after": new_weight,
+                        }
+                    )
+                applied_penalty = True
+
             if not applied_penalty:
                 filtered[move] = weight
     return filtered

@@ -2034,10 +2034,39 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
         has_attack_boost |= (spa_boost >= 1 and spa_stat >= 100)
         has_speed_threat = spe_boost >= 1 and spe_stat >= 90
 
+        # Check if opponent's known moves can actually hit our active Pokemon.
+        # If ALL revealed moves are type-immune, the opponent isn't a real threat
+        # (e.g. Skarmory Body Press vs Ghost-type Pecharunt).
+        our_types = []
+        if battle.user.active is not None:
+            our_types = getattr(battle.user.active, "types", []) or []
+        all_moves_immune = False
+        if our_types and hasattr(opponent, "moves") and opponent.moves:
+            revealed_damaging = []
+            for opp_move in opponent.moves:
+                opp_move_name = opp_move.name if hasattr(opp_move, "name") else str(opp_move)
+                opp_move_data = all_move_json.get(normalize_name(opp_move_name), {})
+                opp_bp = float(opp_move_data.get(constants.BASE_POWER, 0) or 0)
+                if opp_bp > 0 or normalize_name(opp_move_name) in {"seismictoss", "nightshade", "superfang", "naturesmadness", "finalgambit"}:
+                    revealed_damaging.append(opp_move_data)
+            if revealed_damaging:
+                can_hit = False
+                for md in revealed_damaging:
+                    move_type = md.get(constants.TYPE, "typeless")
+                    eff = type_effectiveness_modifier(move_type, our_types)
+                    if eff > 0:
+                        can_hit = True
+                        break
+                if not can_hit:
+                    all_moves_immune = True
+
         if has_attack_boost or has_speed_threat:
-            state.opponent_active_is_threat = True
+            if not all_moves_immune:
+                state.opponent_active_is_threat = True
+            # else: opponent has boosts but can't hit us — not a real threat
         elif is_likely_wincon(opponent, battle):
-            state.opponent_active_is_threat = True
+            if not all_moves_immune:
+                state.opponent_active_is_threat = True
 
     # =========================================================================
     # PHASE 3.2: PP TRACKING
@@ -2672,9 +2701,16 @@ def apply_ability_penalties(
                     reason = f"Choice-locked into {ability_state.choice_locked_move} (free setup opportunity)"
 
         # Contact punishment: penalize contact moves
+        # Harsher when our HP is low enough that recoil would KO us
         if ability_state.has_contact_punish and move_name in CONTACT_MOVES:
-            penalty = min(penalty, ABILITY_PENALTY_LIGHT)
-            reason = f"Contact punishment (Iron Barbs/Rough Skin/Rocky Helmet)"
+            our_hp = getattr(ability_state, "our_hp_percent", 1.0)
+            if our_hp <= 0.17:
+                # At ≤17% HP, Rocky Helmet recoil (1/6 ≈ 16.7%) would KO us
+                penalty = min(penalty, ABILITY_PENALTY_SEVERE)
+                reason = "Contact move at critical HP (recoil KO)"
+            else:
+                penalty = min(penalty, ABILITY_PENALTY_LIGHT)
+                reason = "Contact punishment (Iron Barbs/Rough Skin/Rocky Helmet)"
 
         # =====================================================================
         # NEW PHASE 2: HIGH PRIORITY ABILITIES

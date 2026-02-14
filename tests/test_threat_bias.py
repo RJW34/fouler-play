@@ -19,8 +19,10 @@ from fp.search.main import (
     apply_switch_penalties,
     apply_heuristic_bias,
     detect_odd_move,
+    detect_opponent_abilities,
     select_move_from_eval_scores,
 )
+from fp.search.move_validators import filter_blocked_moves
 from fp.playstyle_config import Playstyle
 from sweep_fix import smart_sweep_prevention
 
@@ -1560,6 +1562,255 @@ class TestPivotAndSwitchSafety(unittest.TestCase):
         adjusted = apply_switch_penalties(policy, battle, ability_state, playstyle=Playstyle.FAT)
 
         self.assertLess(adjusted["switch slowkinggalar"], adjusted["switch dondozo"])
+
+
+class TestThreatClassificationImmunity(unittest.TestCase):
+    """Test that opponent_active_is_threat respects type immunities."""
+
+    def _mk_battle_for_detect(self, our_active, opp_active):
+        """Helper to create a battle mock suitable for detect_opponent_abilities."""
+        # Add estimate_pp_remaining if not present on opponent
+        if not hasattr(opp_active, "estimate_pp_remaining"):
+            opp_active.estimate_pp_remaining = lambda m: (None, None)
+        user = SimpleNamespace(
+            active=our_active,
+            reserve=[],
+            last_selected_move=SimpleNamespace(move=""),
+            last_used_move=SimpleNamespace(move=""),
+            side_conditions=defaultdict(int),
+        )
+        opponent = SimpleNamespace(
+            active=opp_active,
+            reserve=[],
+            last_used_move=SimpleNamespace(move=""),
+            side_conditions=defaultdict(int),
+        )
+        return SimpleNamespace(user=user, opponent=opponent, force_switch=False, turn=15)
+
+    def test_body_press_not_threat_to_ghost(self):
+        """Skarmory with Body Press (Fighting) at +6 Def should NOT be a threat
+        to Ghost-type Pecharunt because Ghost is immune to Fighting."""
+        pecharunt = SimpleNamespace(
+            name="pecharunt",
+            base_name="pecharunt",
+            hp=380,
+            max_hp=380,
+            ability="poisonpuppeteer",
+            moves=[_mk_move("recover"), _mk_move("foulplay"), _mk_move("shadowball")],
+            types=["poison", "ghost"],
+            base_stats={constants.HITPOINTS: 88, constants.DEFENSE: 88, constants.SPECIAL_DEFENSE: 88},
+            stats={constants.ATTACK: 88, constants.DEFENSE: 88, constants.SPECIAL_ATTACK: 88,
+                   constants.SPECIAL_DEFENSE: 88, constants.SPEED: 88},
+        )
+        skarmory = SimpleNamespace(
+            name="skarmory",
+            base_name="skarmory",
+            hp=200,
+            max_hp=334,
+            ability="sturdy",
+            item="rockyhelmet",
+            moves=[_mk_move("bodypress")],
+            boosts={constants.ATTACK: 0, constants.SPECIAL_ATTACK: 0,
+                    constants.SPEED: 0, constants.DEFENSE: 6},
+            types=["steel", "flying"],
+            stats={constants.ATTACK: 80, constants.DEFENSE: 140,
+                   constants.SPECIAL_ATTACK: 40, constants.SPECIAL_DEFENSE: 70,
+                   constants.SPEED: 70},
+            status=None,
+            volatile_statuses=[],
+        )
+        battle = self._mk_battle_for_detect(pecharunt, skarmory)
+
+        state = detect_opponent_abilities(battle)
+
+        self.assertFalse(
+            state.opponent_active_is_threat,
+            "Skarmory with Body Press should NOT be a threat to Ghost-type "
+            "(Fighting is immune to Ghost)")
+
+    def test_boosted_attacker_with_effective_moves_is_threat(self):
+        """Opponent with +2 Atk and moves that CAN hit us should still be a threat."""
+        corviknight = SimpleNamespace(
+            name="corviknight",
+            base_name="corviknight",
+            hp=399,
+            max_hp=399,
+            ability="pressure",
+            moves=[_mk_move("uturn"), _mk_move("roost")],
+            types=["flying", "steel"],
+            base_stats={constants.HITPOINTS: 98, constants.DEFENSE: 105, constants.SPECIAL_DEFENSE: 85},
+            stats={constants.ATTACK: 87, constants.DEFENSE: 105,
+                   constants.SPECIAL_ATTACK: 53, constants.SPECIAL_DEFENSE: 85,
+                   constants.SPEED: 67},
+        )
+        garchomp = SimpleNamespace(
+            name="garchomp",
+            base_name="garchomp",
+            hp=357,
+            max_hp=357,
+            ability="roughskin",
+            item="leftovers",
+            moves=[_mk_move("earthquake"), _mk_move("scaleshot")],
+            boosts={constants.ATTACK: 2, constants.SPECIAL_ATTACK: 0,
+                    constants.SPEED: 0},
+            types=["dragon", "ground"],
+            stats={constants.ATTACK: 130, constants.DEFENSE: 95,
+                   constants.SPECIAL_ATTACK: 80, constants.SPECIAL_DEFENSE: 85,
+                   constants.SPEED: 102},
+            status=None,
+            volatile_statuses=[],
+        )
+        battle = self._mk_battle_for_detect(corviknight, garchomp)
+
+        state = detect_opponent_abilities(battle)
+
+        self.assertTrue(
+            state.opponent_active_is_threat,
+            "Garchomp with +2 Atk and Scale Shot (Dragon) should threaten Corviknight")
+
+    def test_unrevealed_moves_still_counts_as_threat(self):
+        """If opponent has boosts but no moves revealed yet, treat as threat (conservative)."""
+        dondozo = SimpleNamespace(
+            name="dondozo",
+            base_name="dondozo",
+            hp=503,
+            max_hp=503,
+            ability="unaware",
+            moves=[_mk_move("waterfall"), _mk_move("rest")],
+            types=["water"],
+            base_stats={constants.HITPOINTS: 150, constants.DEFENSE: 115, constants.SPECIAL_DEFENSE: 65},
+            stats={constants.ATTACK: 100, constants.DEFENSE: 115,
+                   constants.SPECIAL_ATTACK: 65, constants.SPECIAL_DEFENSE: 65,
+                   constants.SPEED: 35},
+        )
+        mystery_boosted = SimpleNamespace(
+            name="ironvaliant",
+            base_name="ironvaliant",
+            hp=290,
+            max_hp=290,
+            ability="quarkdrive",
+            item="boosterenergy",
+            moves=[],  # No moves revealed yet
+            boosts={constants.ATTACK: 0, constants.SPECIAL_ATTACK: 2,
+                    constants.SPEED: 0},
+            types=["fairy", "fighting"],
+            stats={constants.ATTACK: 130, constants.DEFENSE: 90,
+                   constants.SPECIAL_ATTACK: 120, constants.SPECIAL_DEFENSE: 60,
+                   constants.SPEED: 116},
+            status=None,
+            volatile_statuses=[],
+        )
+        battle = self._mk_battle_for_detect(dondozo, mystery_boosted)
+
+        state = detect_opponent_abilities(battle)
+
+        self.assertTrue(
+            state.opponent_active_is_threat,
+            "Boosted opponent with no revealed moves should still be treated as threat")
+
+
+class TestContactRecoilAtLowHP(unittest.TestCase):
+    """Test that contact moves get harsh penalties when recoil would KO us."""
+
+    def test_contact_severe_penalty_at_critical_hp(self):
+        """Foul Play at ≤17% HP into Rocky Helmet should get severe (0.1x) penalty."""
+        battle = _mk_battle(
+            active_hp=30,
+            active_max_hp=380,
+            move_names=["foulplay", "recover", "shadowball"],
+        )
+        battle.user.active.types = ["poison", "ghost"]
+        ability_state = OpponentAbilityState(
+            has_contact_punish=True,
+            our_hp_percent=30 / 380,  # ~7.9%, well below 17%
+        )
+        policy = {
+            "foulplay": 0.5,
+            "recover": 0.3,
+            "shadowball": 0.5,
+        }
+
+        adjusted = apply_ability_penalties(policy, ability_state, battle=battle)
+
+        # Foul Play should be severely penalized (0.1x), not just 0.5x
+        self.assertLess(adjusted["foulplay"], 0.15,
+                        "Contact move at critical HP into Rocky Helmet should be severely penalized")
+        # Shadow Ball (non-contact) should not get contact penalty
+        self.assertGreaterEqual(adjusted["shadowball"], 0.5)
+
+    def test_contact_light_penalty_at_safe_hp(self):
+        """Contact moves at healthy HP should get standard 0.5x penalty."""
+        battle = _mk_battle(
+            active_hp=300,
+            active_max_hp=380,
+            move_names=["foulplay", "recover", "shadowball"],
+        )
+        battle.user.active.types = ["poison", "ghost"]
+        ability_state = OpponentAbilityState(
+            has_contact_punish=True,
+            our_hp_percent=300 / 380,  # ~79%
+        )
+        policy = {
+            "foulplay": 0.5,
+            "recover": 0.3,
+            "shadowball": 0.5,
+        }
+
+        adjusted = apply_ability_penalties(policy, ability_state, battle=battle)
+
+        # Foul Play should get standard 0.5x, not severe
+        self.assertAlmostEqual(adjusted["foulplay"], 0.25, delta=0.01,
+                               msg="Contact at healthy HP should get standard 0.5x penalty")
+
+
+class TestPivotLastPokemonAlive(unittest.TestCase):
+    """Test that pivot moves get penalized when we're the last Pokemon alive."""
+
+    def test_uturn_penalized_as_last_pokemon(self):
+        """U-turn should be penalized when no teammates are alive to switch to."""
+        battle = _mk_battle(
+            active_hp=200,
+            active_max_hp=380,
+            move_names=["uturn", "recover", "shadowball"],
+        )
+        ability_state = OpponentAbilityState(
+            our_alive_count=1,
+            our_hp_percent=200 / 380,
+        )
+        policy = {
+            "uturn": 0.5,
+            "recover": 0.3,
+            "shadowball": 0.5,
+        }
+
+        adjusted = filter_blocked_moves(policy, ability_state, battle=battle)
+
+        self.assertLess(adjusted["uturn"], 0.15,
+                        "U-turn should be penalized as last Pokemon alive (no switch target)")
+        # Other moves unaffected
+        self.assertEqual(adjusted["shadowball"], 0.5)
+
+    def test_uturn_not_penalized_with_teammates(self):
+        """U-turn should NOT be penalized when teammates are alive."""
+        battle = _mk_battle(
+            active_hp=200,
+            active_max_hp=380,
+            move_names=["uturn", "recover", "shadowball"],
+        )
+        ability_state = OpponentAbilityState(
+            our_alive_count=4,
+            our_hp_percent=200 / 380,
+        )
+        policy = {
+            "uturn": 0.5,
+            "recover": 0.3,
+            "shadowball": 0.5,
+        }
+
+        adjusted = filter_blocked_moves(policy, ability_state, battle=battle)
+
+        self.assertEqual(adjusted["uturn"], 0.5,
+                         "U-turn should keep full weight when teammates are alive")
 
 
 if __name__ == "__main__":
