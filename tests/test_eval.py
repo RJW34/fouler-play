@@ -1494,5 +1494,55 @@ class TestDecisionFixes(unittest.TestCase):
                            f"with MB reserve on free turn")
 
 
+    def test_thunder_wave_boosted_when_opponent_faster(self):
+        """Thunder Wave should score higher when paralysis would flip the speed matchup."""
+        from fp.search.eval import evaluate_position
+
+        # Slow user (60 Speed) vs fast opponent (120 Speed)
+        # Paralysis: 120 * 0.5 = 60, so we'd tie/outspeed
+        user_slow = _make_pokemon(
+            name="blissey", hp=600, max_hp=652, types=["normal"],
+            stats={constants.ATTACK: 10, constants.DEFENSE: 10,
+                   constants.SPECIAL_ATTACK: 75, constants.SPECIAL_DEFENSE: 135,
+                   constants.SPEED: 60, constants.HITPOINTS: 652},
+            moves=["thunderwave", "seismictoss", "softboiled"],
+        )
+        opp_fast = _make_pokemon(
+            name="dragapult", hp=300, max_hp=300, types=["dragon", "ghost"],
+            stats={constants.ATTACK: 120, constants.DEFENSE: 75,
+                   constants.SPECIAL_ATTACK: 100, constants.SPECIAL_DEFENSE: 75,
+                   constants.SPEED: 142, constants.HITPOINTS: 300},
+            moves=["shadowball"],
+        )
+        battle_slow = _make_battle(user_active=user_slow, opp_active=opp_fast)
+
+        # Fast user (130 Speed) vs slow opponent (60 Speed) — already outspeeds
+        user_fast = _make_pokemon(
+            name="jolteon", hp=270, max_hp=270, types=["electric"],
+            stats={constants.ATTACK: 65, constants.DEFENSE: 60,
+                   constants.SPECIAL_ATTACK: 110, constants.SPECIAL_DEFENSE: 95,
+                   constants.SPEED: 130, constants.HITPOINTS: 270},
+            moves=["thunderwave", "thunderbolt", "voltswitch"],
+        )
+        opp_slow = _make_pokemon(
+            name="dondozo", hp=500, max_hp=500, types=["water"],
+            stats={constants.ATTACK: 100, constants.DEFENSE: 115,
+                   constants.SPECIAL_ATTACK: 65, constants.SPECIAL_DEFENSE: 65,
+                   constants.SPEED: 35, constants.HITPOINTS: 500},
+            moves=["waterfall"],
+        )
+        battle_fast = _make_battle(user_active=user_fast, opp_active=opp_slow)
+
+        scores_slow = evaluate_position(battle_slow)
+        scores_fast = evaluate_position(battle_fast)
+
+        twave_when_slower = scores_slow.get("thunderwave", 0)
+        twave_when_faster = scores_fast.get("thunderwave", 0)
+
+        self.assertGreater(twave_when_slower, twave_when_faster,
+                           f"Thunder Wave should be worth more when we're slower "
+                           f"({twave_when_slower:.4f}) vs already faster ({twave_when_faster:.4f})")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -843,7 +843,24 @@ def _score_status_move(battle: Battle, move_name: str) -> float:
         # Immune: Ground, Electric types
         if "ground" in opp_types or "electric" in opp_types:
             return 0.0
-        return 0.3
+        # Boost Thunder Wave when paralysis would flip the speed matchup.
+        # Outspeeding next turn enables safe Recover, attacks, or switches.
+        base = 0.3
+        try:
+            our_speed = battle.get_effective_speed(battle.user)
+            opp_speed = battle.get_effective_speed(battle.opponent)
+            if opp_speed > our_speed:
+                # Opponent is faster. Paralysis halves their speed.
+                paralyzed_opp_speed = opp_speed * 0.5
+                if our_speed > paralyzed_opp_speed:
+                    # Paralysis flips the speed matchup — high value
+                    base = 0.55
+                else:
+                    # Still won't outspeed even after paralysis, but some value
+                    base = 0.35
+        except Exception:
+            pass
+        return base
 
     if norm in ("spore", "sleeppowder", "hypnosis", "yawn"):
         # Immune: Grass types (for powder)
