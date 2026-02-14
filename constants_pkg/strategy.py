@@ -1277,11 +1277,17 @@ SAFE_MOVES = {
     "substitute",
 }
 
-# Pre-orb status safety (Poison Heal + Toxic Orb)
-# When Toxic Orb hasn't activated yet, avoid letting opponents status first.
+# Pre-orb safety (Poison Heal + Toxic Orb)
+# When Toxic Orb hasn't activated yet, avoid letting opponents remove it or status us first.
 PRE_ORB_STATUS_THREAT_MIN_PROB = 0.2  # Minimum inferred status threat to trigger adjustment
-BOOST_PRE_ORB_PROTECT = 1.35          # Up to +35% weight for Protect to safely activate orb
-PENALTY_PRE_ORB_NONPROTECT = 0.85     # Up to -15% weight for non-Protect, non-switch plays
+BOOST_PRE_ORB_PROTECT = 1.35          # Up to +35% weight for Protect vs status threats
+PENALTY_PRE_ORB_NONPROTECT = 0.85     # Up to -15% weight for non-Protect vs status threats
+# Knock Off / item removal is MORE catastrophic than status (item gone forever = no Poison Heal)
+BOOST_PRE_ORB_PROTECT_KNOCK = 1.8     # +80% weight for Protect when opponent likely has Knock Off
+PENALTY_PRE_ORB_NONPROTECT_KNOCK = 0.6  # -40% weight for attacking into Knock Off threat
+BOOST_PRE_ORB_SWITCH_KNOCK = 1.5      # +50% weight for switching out to absorb Knock Off
+# Item-removal moves that deny Toxic Orb activation
+ITEM_REMOVAL_MOVES = {"knockoff", "trick", "switcheroo", "corrosivegas"}
 
 
 # =============================================================================

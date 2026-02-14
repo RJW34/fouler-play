@@ -69,12 +69,14 @@ def normalize_name(name):
 
 def update_stats_from_nature(stats, nature):
     new_stats = stats.copy()
-    try:
-        new_stats[natures[nature]["plus"]] *= 1.1
-        new_stats[natures[nature]["minus"]] *= 0.9
-    except KeyError:
+    nature_data = natures.get(nature)
+    if nature_data is None:
         logger.debug("Unknown nature '%s', stats unchanged", nature)
-
+        return new_stats
+    plus, minus = nature_data["plus"], nature_data["minus"]
+    if plus is not None and minus is not None:
+        new_stats[plus] *= 1.1
+        new_stats[minus] *= 0.9
     return new_stats
 
 

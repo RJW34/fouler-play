@@ -125,8 +125,12 @@ def filter_blocked_moves(
         opp_types = []
         opp_volatiles = []
         if battle is not None and getattr(battle, "opponent", None) and battle.opponent.active:
-            opp_types = [t for t in (battle.opponent.active.types or []) if t]
-            opp_volatiles = [v for v in (battle.opponent.active.volatile_statuses or []) if v]
+            opp_active = battle.opponent.active
+            if getattr(opp_active, "terastallized", False) and getattr(opp_active, "tera_type", None):
+                opp_types = [opp_active.tera_type]
+            else:
+                opp_types = [t for t in (opp_active.types or []) if t]
+            opp_volatiles = [v for v in (opp_active.volatile_statuses or []) if v]
 
         # Status into Substitute usually fails (unless sound-based or Infiltrator)
         if (
@@ -160,11 +164,17 @@ def filter_blocked_moves(
                 reason = "paralysis_status_immunity"
 
         # General type immunity check (only for damaging moves)
+        # Scrappy allows Normal/Fighting to hit Ghost — skip immunity check.
+        our_ability = ""
+        if battle is not None and getattr(battle, "user", None) and battle.user.active:
+            our_ability = normalize_name(battle.user.active.ability or "")
+        has_scrappy = our_ability == "scrappy"
         if (
             allowed
             and move_type
             and opp_types
             and category in constants.DAMAGING_CATEGORIES
+            and not has_scrappy
         ):
             if type_effectiveness_modifier(move_type, opp_types) == 0:
                 allowed = False
@@ -182,7 +192,12 @@ def filter_blocked_moves(
                 reason = "future_sight_already_pending"
 
         if not allowed:
-            new_weight = weight * 0.001
+            # Type immunity = move literally deals 0 damage; near-zero weight.
+            # Other blocks (status immunity, substitute, etc.) keep tiny residual.
+            if reason == "type_immunity":
+                new_weight = 0.0
+            else:
+                new_weight = weight * 0.001
             filtered[move] = new_weight
             if trace_events is not None:
                 trace_events.append(

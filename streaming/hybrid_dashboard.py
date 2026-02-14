@@ -674,6 +674,8 @@ class DashboardDataProvider:
             "decision_policy": policy,
             "active_battles": battles_payload.get("battles", []),
             "active_battle_count": battles_payload.get("count", 0),
+            "max_slots": battles_payload.get("max_slots") or 3,
+            "elo": status.get("elo", "---"),
             "latest_decision": latest_payload,
             "timeline": timeline,
             "stats": {

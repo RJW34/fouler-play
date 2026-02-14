@@ -133,7 +133,7 @@ class ObsWebsocketClient:
 
     async def set_browser_source_url(self, input_name: str, url: str) -> bool:
         last_err: Exception | None = None
-        for attempt in range(2):
+        for attempt in range(3):
             try:
                 resp = await self._send_request(
                     "SetInputSettings",
@@ -151,8 +151,10 @@ class ObsWebsocketClient:
             except Exception as e:
                 last_err = e
                 logger.warning("[OBS-WS] Failed to set URL for %s (attempt %s): %s", input_name, attempt + 1, e)
-                # Drop connection to allow reconnect next time
+                # Drop connection and wait before reconnecting to avoid
+                # WinError 1225 (connection refused on rapid reconnect)
                 await self.disconnect()
+                await asyncio.sleep(0.5 * (attempt + 1))
         if last_err:
             logger.warning("[OBS-WS] Giving up on setting URL for %s: %s", input_name, last_err)
         return False

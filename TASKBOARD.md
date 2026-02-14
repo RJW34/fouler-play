@@ -122,6 +122,19 @@ These systems are **complete and working**. Do not recreate them from scratch:
 ## Bug Reports
 - 2026-02-06: Some files still reference old bot account "LEBOTJAMESXD" (check `bot_monitor.py`, `replay_analysis/turn_review.py`, `register_ps_account.py`). Should use "ALL CHUNG" or read from .env.
 
+### Decision Engine Bugs (from 2026-02-14 battle analysis)
+
+**Fixed this session:**
+- [x] **Destiny Bond awareness** — Bot KO'd opponent's Ceruledge with its win-condition Gliscor when Destiny Bond was revealed and Ceruledge was at low HP. Fixed: `detect_odd_move()` now checks for revealed Destiny Bond + ≤40% HP and applies 85% penalty to damaging attacks.
+- [x] **Toxic suppressed vs boosted threats when no offensive answer** — Blissey had Seismic Toss (immune to Ghost) as its only damaging move vs Gholdengo (+2 SpA). `apply_threat_switch_bias()` suppressed Toxic as "passive" even though it was the only progress line. Fixed: Added `no_offensive_answer` exemption for status moves when all attacks are weight-0.
+- [x] **Calm Mind + fixed damage** — Blissey used Calm Mind to boost SpA when its only damaging move was Seismic Toss (fixed 100 damage, ignores SpA). Fixed: `detect_odd_move()` now flags setup moves when no non-fixed-damage attack uses the boosted stat.
+
+**Documented for later:**
+- [ ] **#3: Ghost-immune-to-Dark not recognized before committing** — Gholdengo spent 8 turns using Hex (Ghost) into Ting-Lu (Dark type, immune to Ghost). The type immunity wasn't caught until the move was already selected. Root cause unclear — may be in eval scoring or move data. Needs investigation of how type matchups are evaluated in `fp/search/eval.py` when the bot's moves are Ghost-type vs Dark-type opponents.
+- [ ] **#5: Recover loop detection** — Blissey entered a 4-turn Recover loop vs Drain Punch Conkeldurr. The opponent was healing more than Blissey could stall out. Needs cross-turn state tracking to detect when we're in a losing Recover loop (opponent gains net HP per cycle). Architectural challenge: current system is 1-ply and doesn't track multi-turn patterns.
+- [ ] **#6: Body Press vs Waterfall type matchup** — Dondozo used Waterfall (neutral) instead of Body Press (4x SE) into Kingambit (Dark/Steel). Two turns wasted on a 2HKO when it could have been a clean OHKO. Likely an MCTS/eval scoring issue — Body Press damage may not be calculated correctly (it uses Defense stat, not Attack). Check `fp/search/eval.py:_estimate_damage_ratio()` for Body Press special handling.
+- [ ] **#7: Infinite switch loop detection** — Corviknight and Blissey alternated switches for 11 turns vs Tera Normal Dragonite without ever using Toxic. Needs cross-turn state tracking to detect when we're in a non-progressing switch loop. Similar architectural challenge to #5 — needs multi-turn awareness.
+
 ---
 
 ## Communication Protocol

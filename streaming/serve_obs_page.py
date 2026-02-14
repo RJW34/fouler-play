@@ -284,9 +284,9 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
                 state = await _merge_deku_battles(state)
                 await maybe_update_obs_sources(state)
             else:
-                print(f"[EVENT] ❌ No OBS client available for {event_type} update")
+                print(f"[EVENT] FAIL: No OBS client available for {event_type} update")
     except Exception as e:
-        print(f"[EVENT] ❌ Error processing event {event_type}: {e}")
+        print(f"[EVENT] FAIL: Error processing event {event_type}: {e}")
         import traceback
         traceback.print_exc()
 
@@ -687,31 +687,31 @@ async def maybe_update_obs_sources(payload: dict) -> None:
     print(f"[OBS-UPDATE] maybe_update_obs_sources() called")
     
     if not _obs_client:
-        print(f"[OBS-UPDATE] ❌ No OBS client (_obs_client is None)")
+        print(f"[OBS-UPDATE] FAIL: No OBS client (_obs_client is None)")
         return
     
     obs_connected = False
     try:
         obs_connected = not _obs_client.is_closed()
     except Exception as e:
-        print(f"[OBS-UPDATE] ❌ Failed to check OBS client status: {e}")
+        print(f"[OBS-UPDATE] FAIL: Failed to check OBS client status: {e}")
     
     print(f"[OBS-UPDATE] OBS client connected: {obs_connected}")
     
     if not _obs_sources:
         await ensure_obs_sources()
     if not _obs_sources:
-        print(f"[OBS-UPDATE] ❌ No OBS sources configured")
+        print(f"[OBS-UPDATE] FAIL: No OBS sources configured")
         return
     
+    # Trust active_battles.json as the single source of truth.
+    # The bot adds battles when they start and removes them when they finish.
+    # No replay-checking or second-guessing needed.
     battles = payload.get("battles") or []
     print(f"[OBS-UPDATE] Battles in payload: {len(battles)}")
     for b in battles:
         print(f"[OBS-UPDATE]   - {b.get('id')} (slot {b.get('slot')}, opponent: {b.get('opponent')})")
-    
-    battles = await _filter_finished_battles(battles)
-    print(f"[OBS-UPDATE] Battles after filtering: {len(battles)}")
-    
+
     slot_map = _build_slot_map(battles)
     print(f"[OBS-UPDATE] Slot map: {dict((k, v.get('id')) for k, v in slot_map.items())}")
     print(f"[OBS-UPDATE] OBS sources: {_obs_sources}")
@@ -747,10 +747,12 @@ async def maybe_update_obs_sources(payload: dict) -> None:
             _last_obs_status[idx] = "ok" if ok else "fail"
             
             if ok:
-                print(f"[OBS-UPDATE] ✅ Slot {idx}: Successfully updated to {url}")
+                print(f"[OBS-UPDATE] OK: Slot {idx}: Successfully updated to {url}")
                 _last_obs_ids[idx] = desired_id
             else:
-                print(f"[OBS-UPDATE] ❌ Slot {idx}: Failed to update to {url}")
+                print(f"[OBS-UPDATE] FAIL: Slot {idx}: Failed to update to {url}")
+                # Clear tracked id so periodic sync retries this slot
+                _last_obs_ids.pop(idx, None)
 
 
 async def handle_obs(request: web.Request) -> web.FileResponse:
