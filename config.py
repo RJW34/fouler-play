@@ -72,8 +72,15 @@ def init_logging(level, log_to_file):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
     
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    
+    # Use a UTF-8 wrapper for stdout to avoid cp1252 crashes from PS Unicode chars
+    # (e.g. ☆ in player names). StreamHandler.emit() calls stream.write() directly,
+    # so the stream itself must handle encoding.
+    _stdout = sys.stdout
+    if sys.platform == "win32" and hasattr(_stdout, "buffer"):
+        import io
+        _stdout = io.TextIOWrapper(_stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
+    stdout_handler = logging.StreamHandler(_stdout)
+
     stdout_handler.setLevel(level)
     stdout_handler.setFormatter(CustomFormatter())
     logger.addHandler(stdout_handler)

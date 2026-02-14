@@ -9,6 +9,9 @@ Lines detected (in priority order):
 2. Opponent OHKOs us + we can't KO back → must switch to resist (confidence 0.85)
 3. Opponent at +2 and we have phaze → use it (confidence 0.80)
 4. We 2HKO and they can't 2HKO us → stay in (confidence 0.75)
+5. Safe hazard opportunity → set rocks/spikes (confidence 0.75)
+6. Toxic stall win condition → recover (confidence 0.75)
+7. Predicted switch → punish with hazards/status (confidence 0.70)
 """
 
 import logging
@@ -19,6 +22,7 @@ import constants
 from fp.battle import Battle
 from fp.helpers import POKEMON_TYPE_INDICES, normalize_name, type_effectiveness_modifier
 from fp.movepool_tracker import get_threat_category, ThreatCategory
+from fp.playstyle_config import RECOVERY_MOVES
 from fp.search.speed_order import assess_speed_order
 from data import all_move_json
 
@@ -31,6 +35,11 @@ PRIORITY_MOVES_SET = {
 }
 
 PHAZE_MOVES_SET = {"whirlwind", "roar", "dragontail", "circlethrow", "haze", "clearsmog"}
+
+# Normalized sets for new forced line patterns
+_RECOVERY_NORM = {normalize_name(m) for m in RECOVERY_MOVES}
+_HAZARD_SET = {"stealthrock", "spikes", "toxicspikes", "stickyweb"}
+_STATUS_SET = {"toxic", "willowisp", "thunderwave", "spore", "sleeppowder"}
 
 
 _VALID_TYPES = set(POKEMON_TYPE_INDICES)
@@ -437,4 +446,133 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
                     line_type="stay_in",
                 )
 
+    # === LINE 5: Safe hazard opportunity ===
+    # Not threatened + rocks not up + we have stealthrock → set hazards
+    opp_alive_reserves = _count_alive_reserve(battle.opponent)
+    if opp_best_dmg * 2 < our_hp_ratio and opp_alive_reserves >= 2:
+        opp_sc = battle.opponent.side_conditions
+        # Try Stealth Rock first
+        if opp_sc.get(constants.STEALTH_ROCK, 0) == 0:
+            sr_move = _has_usable_move_in_set(our, {"stealthrock"})
+            if sr_move:
+                logger.info(
+                    f"FORCED LINE: safe hazard opportunity with {sr_move} "
+                    f"(opp best dmg {opp_best_dmg:.2f} vs our HP {our_hp_ratio:.2f})"
+                )
+                return ForcedLine(
+                    move=sr_move,
+                    confidence=0.75,
+                    reason=f"Safe hazard: not threatened ({opp_best_dmg:.0%} dmg), setting {sr_move}",
+                    line_type="safe_hazard",
+                )
+        # Fall through to Spikes if rocks already up
+        spikes_layers = opp_sc.get(constants.SPIKES, 0)
+        if spikes_layers < 3:
+            spikes_move = _has_usable_move_in_set(our, {"spikes"})
+            if spikes_move:
+                logger.info(
+                    f"FORCED LINE: safe hazard opportunity with {spikes_move} "
+                    f"(rocks already up, spikes at {spikes_layers})"
+                )
+                return ForcedLine(
+                    move=spikes_move,
+                    confidence=0.75,
+                    reason=f"Safe hazard: rocks up, setting {spikes_move} (layer {spikes_layers + 1})",
+                    line_type="safe_hazard",
+                )
+
+    # === LINE 6: Toxic stall win condition ===
+    # Opponent is Toxic'd, can't 2HKO us, we have recovery, HP < 85%
+    opp_status = getattr(opp, "status", None)
+    if opp_status == "tox" and opp_best_dmg * 2 < our_hp_ratio and our_hp_ratio < 0.85:
+        recovery_move = _has_usable_move_in_set(our, _RECOVERY_NORM)
+        if recovery_move:
+            logger.info(
+                f"FORCED LINE: toxic stall with {recovery_move} "
+                f"(opp toxic'd, can't 2HKO, our HP {our_hp_ratio:.0%})"
+            )
+            return ForcedLine(
+                move=recovery_move,
+                confidence=0.75,
+                reason=f"Toxic stall: opponent poisoned, can't break through ({opp_best_dmg:.0%}), recovering with {recovery_move}",
+                line_type="toxic_stall",
+            )
+
+    # === LINE 7: Predicted switch — punish with hazards/status ===
+    # Opponent in terrible matchup (their best < 12%, our best > 40%)
+    # and they have reserves → they're switching, use the free turn
+    our_best_dmg_for_switch = 0.0
+    for move_name in our_moves:
+        d = _estimate_damage(our, opp, move_name)
+        our_best_dmg_for_switch = max(our_best_dmg_for_switch, d)
+
+    if (opp_best_dmg < 0.12 and our_best_dmg_for_switch > 0.40
+            and opp_alive_reserves >= 1):
+        opp_sc = battle.opponent.side_conditions
+        # Priority: rocks > toxic > spikes
+        if opp_sc.get(constants.STEALTH_ROCK, 0) == 0:
+            sr_move = _has_usable_move_in_set(our, {"stealthrock"})
+            if sr_move:
+                logger.info(
+                    f"FORCED LINE: predicted switch, setting {sr_move}"
+                )
+                return ForcedLine(
+                    move=sr_move,
+                    confidence=0.70,
+                    reason=f"Predicted switch: opp dmg {opp_best_dmg:.0%}, our dmg {our_best_dmg_for_switch:.0%}, setting {sr_move}",
+                    line_type="predicted_switch",
+                )
+        toxic_move = _has_usable_move_in_set(our, {"toxic"})
+        if toxic_move:
+            logger.info(
+                f"FORCED LINE: predicted switch, using {toxic_move}"
+            )
+            return ForcedLine(
+                move=toxic_move,
+                confidence=0.70,
+                reason=f"Predicted switch: opp dmg {opp_best_dmg:.0%}, our dmg {our_best_dmg_for_switch:.0%}, using {toxic_move}",
+                line_type="predicted_switch",
+            )
+        spikes_layers = opp_sc.get(constants.SPIKES, 0)
+        if spikes_layers < 3:
+            spikes_move = _has_usable_move_in_set(our, {"spikes"})
+            if spikes_move:
+                logger.info(
+                    f"FORCED LINE: predicted switch, setting {spikes_move}"
+                )
+                return ForcedLine(
+                    move=spikes_move,
+                    confidence=0.70,
+                    reason=f"Predicted switch: opp dmg {opp_best_dmg:.0%}, our dmg {our_best_dmg_for_switch:.0%}, setting {spikes_move}",
+                    line_type="predicted_switch",
+                )
+
     return None
+
+
+def _has_usable_move_in_set(pokemon, move_set: set) -> Optional[str]:
+    """Return the first usable move whose normalized name is in move_set, or None."""
+    for move in getattr(pokemon, "moves", []) or []:
+        move_name = move.name if hasattr(move, "name") else str(move)
+        if hasattr(move, "disabled") and move.disabled:
+            continue
+        if hasattr(move, "current_pp") and move.current_pp <= 0:
+            continue
+        if normalize_name(move_name) in move_set:
+            return move_name
+    return None
+
+
+def _count_alive_reserve(battler) -> int:
+    """Count alive reserve Pokemon (excludes active)."""
+    count = 0
+    for p in getattr(battler, "reserve", []):
+        if p is None:
+            continue
+        fainted = getattr(p, "fainted", False)
+        if isinstance(fainted, bool) and fainted:
+            continue
+        if getattr(p, "hp", 0) <= 0:
+            continue
+        count += 1
+    return count

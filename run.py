@@ -28,6 +28,8 @@ from fp.run_battle import (
     get_resume_pending_count,
     has_resume_battle,
     prime_resume_battles,
+    cleanup_old_logs,
+    _current_worker_id,
 )
 from fp.websocket_client import PSWebsocketClient
 
@@ -275,16 +277,25 @@ async def battle_worker(
     original_move_json,
     use_search_manager: bool,
     shutdown_event: asyncio.Event,
-    drain_event: asyncio.Event
+    drain_event: asyncio.Event,
+    assigned_team: str = None,
+    per_worker_quota: int = 0,
 ):
     """Worker that continuously runs battles until shutdown or run_count reached"""
-    logger.info(f"Battle worker {worker_id} started")
+    # Set worker context so per-worker log handlers receive only this worker's records
+    _current_worker_id.set(worker_id)
+    logger.info(f"Battle worker {worker_id} started" + (f" (quota: {per_worker_quota})" if per_worker_quota > 0 else ""))
+    worker_battles = 0
 
     while not shutdown_event.is_set():
         if drain_event.is_set():
             logger.info(f"Worker {worker_id}: Drain mode active, stopping before new battle")
             break
-        # Check if we've hit run_count
+        # Check per-worker quota first (if set)
+        if per_worker_quota > 0 and worker_battles >= per_worker_quota:
+            logger.info(f"Worker {worker_id}: Per-worker quota reached ({worker_battles}/{per_worker_quota}), stopping")
+            break
+        # Check global run_count (safety net)
         battles_run = await stats.get_battles_run()
         if battles_run >= FoulPlayConfig.run_count:
             logger.info(f"Worker {worker_id}: Run count reached, stopping")
@@ -321,8 +332,10 @@ async def battle_worker(
             team_file_name = "None"
 
             if FoulPlayConfig.requires_team():
-                # Priority: team_iterator (cycling team_names/team_list) > team_name (single)
-                if team_iterator is not None:
+                # Priority: assigned_team (fixed per-worker) > team_iterator (cycling) > team_name (single)
+                if assigned_team is not None:
+                    team_name = assigned_team
+                elif team_iterator is not None:
                     team_name = team_iterator.get_next_team()
                 else:
                     team_name = FoulPlayConfig.team_name
@@ -391,6 +404,7 @@ async def battle_worker(
             lost_battle = False
             if winner == FoulPlayConfig.username:
                 await stats.record_win(team_file_name, battle_tag)
+                worker_battles += 1
             elif winner is None:
                 logger.info(
                     "Worker %s: battle ended without winner (tag=%s)",
@@ -399,7 +413,11 @@ async def battle_worker(
                 )
             else:
                 await stats.record_loss(team_file_name, battle_tag)
+                worker_battles += 1
                 lost_battle = True
+
+            if per_worker_quota > 0:
+                logger.info(f"Worker {worker_id}: battle {worker_battles}/{per_worker_quota} complete")
 
             check_dictionaries_are_unmodified(original_pokedex, original_move_json)
 
@@ -465,7 +483,13 @@ async def battle_worker(
 async def run_foul_play():
     FoulPlayConfig.configure()
     init_logging(FoulPlayConfig.log_level, FoulPlayConfig.log_to_file)
-    
+
+    # Prune old logs before they eat the disk
+    try:
+        cleanup_old_logs()
+    except Exception as e:
+        logger.warning(f"Log cleanup failed: {e}")
+
     # Log .env status for debugging
     logger.info(f".env loading: {'success' if _dotenv_loaded else 'skipped/failed (using systemd EnvironmentFile)'}")
     discord_webhook = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
@@ -511,11 +535,62 @@ async def run_foul_play():
     # Start the message dispatcher
     ps_websocket_client.start_dispatcher()
 
+    # Clear stale active_battles.json from previous runs so OBS doesn't show dead battles.
+    try:
+        from streaming.state_store import write_active_battles
+        write_active_battles({"battles": [], "count": 0, "max_slots": FoulPlayConfig.max_concurrent_battles, "updated": ""})
+        logger.info("Cleared active_battles.json for fresh start")
+    except Exception as e:
+        logger.warning(f"Failed to clear active_battles.json: {e}")
+
+    # Cancel any stale ladder search left running from a previous session.
+    # Without this, PS keeps matching us into new games before workers start.
+    try:
+        await ps_websocket_client.cancel_search()
+        logger.info("Cancelled any stale ladder search from previous session")
+    except Exception as e:
+        logger.warning(f"Failed to cancel stale search: {e}")
+
+    # Handle stale battles from previous session.
+    # If RESUME_ACTIVE_BATTLES is on, let the resume system reclaim them.
+    # Otherwise, forfeit them to avoid workers claiming them with wrong team_dict.
+    from fp.run_battle import RESUME_ACTIVE_BATTLES
+    await asyncio.sleep(3)  # Let dispatcher receive updatesearch with existing games
+
     # Prime any in-progress battles so workers can resume instead of re-searching.
     try:
         await prime_resume_battles()
     except Exception as e:
         logger.warning(f"Failed to prime resume battles: {e}")
+
+    if not RESUME_ACTIVE_BATTLES:
+        stale_tags = list(ps_websocket_client.pending_battle_messages.keys())
+        if stale_tags:
+            logger.info(f"Forfeiting {len(stale_tags)} stale battle(s) from previous session: {stale_tags}")
+            for tag in stale_tags:
+                try:
+                    await ps_websocket_client.forfeit_battle(tag)
+                except Exception as e:
+                    logger.warning(f"Failed to forfeit stale battle {tag}: {e}")
+            ps_websocket_client.pending_battle_messages.clear()
+            ps_websocket_client.pending_battle_times.clear()
+            await asyncio.sleep(1)
+        # Second pass: battles can arrive between cancel_search and the first pass
+        stale_tags_2 = list(ps_websocket_client.pending_battle_messages.keys())
+        if stale_tags_2:
+            logger.info(f"Forfeiting {len(stale_tags_2)} late-arriving stale battle(s): {stale_tags_2}")
+            for tag in stale_tags_2:
+                try:
+                    await ps_websocket_client.forfeit_battle(tag)
+                except Exception as e:
+                    logger.warning(f"Failed to forfeit stale battle {tag}: {e}")
+            ps_websocket_client.pending_battle_messages.clear()
+            ps_websocket_client.pending_battle_times.clear()
+            await asyncio.sleep(1)
+    else:
+        stale_count = len(ps_websocket_client.pending_battle_messages)
+        if stale_count:
+            logger.info(f"RESUME_ACTIVE_BATTLES on: keeping {stale_count} battle(s) for resume instead of forfeiting")
 
     # Initialize team iterator for both TEAM_LIST (file) and TEAM_NAMES (env var)
     if FoulPlayConfig.team_names is not None:
@@ -620,7 +695,20 @@ async def run_foul_play():
         for i, team in enumerate(FoulPlayConfig.team_names):
             logger.info(f"  Worker {i} -> {team}")
 
-    # Create and run workers
+    # Create and run workers — assign fixed teams when team_names are available
+    team_names_list = FoulPlayConfig.team_names or []
+
+    # Compute per-worker quotas for even distribution
+    per_worker_quotas = []
+    if num_workers > 1 and FoulPlayConfig.run_count < 999999:
+        base = FoulPlayConfig.run_count // num_workers
+        remainder = FoulPlayConfig.run_count % num_workers
+        for i in range(num_workers):
+            per_worker_quotas.append(base + (1 if i < remainder else 0))
+        logger.info(f"Per-worker quotas: {per_worker_quotas} (total={FoulPlayConfig.run_count})")
+    else:
+        per_worker_quotas = [0] * num_workers  # 0 = no per-worker limit
+
     workers = [
         asyncio.create_task(
             battle_worker(
@@ -632,7 +720,9 @@ async def run_foul_play():
                 original_move_json,
                 use_search_manager,
                 shutdown_event,
-                drain_event
+                drain_event,
+                assigned_team=team_names_list[i % len(team_names_list)] if team_names_list else None,
+                per_worker_quota=per_worker_quotas[i],
             )
         )
         for i in range(num_workers)
@@ -755,6 +845,28 @@ async def run_foul_play():
                     await asyncio.sleep(2)
             except Exception as e:
                 logger.error(f"Error during forfeit cleanup: {e}")
+
+        # Clean up orphaned battles: cancel any active search, forfeit+leave
+        # any pending battles so PS doesn't think we're still in them.
+        try:
+            await ps_websocket_client.cancel_search()
+        except Exception:
+            pass
+        orphan_tags = list(ps_websocket_client.pending_battle_messages.keys())
+        if orphan_tags:
+            logger.info(f"Cleaning up {len(orphan_tags)} orphaned pending battle(s): {orphan_tags}")
+            for tag in orphan_tags:
+                try:
+                    await ps_websocket_client.forfeit_battle(tag)
+                except Exception:
+                    pass
+                try:
+                    await ps_websocket_client.leave_battle(tag)
+                except Exception:
+                    pass
+            ps_websocket_client.pending_battle_messages.clear()
+            ps_websocket_client.pending_battle_times.clear()
+            await asyncio.sleep(2)
 
         if drain_file_task and not drain_file_task.done():
             drain_file_task.cancel()

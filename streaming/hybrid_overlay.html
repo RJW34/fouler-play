@@ -6,71 +6,271 @@
 <title>Hybrid Overlay</title>
 <style>
 :root {
-  --bg: rgba(8, 10, 12, 0.92);
-  --panel: rgba(18, 23, 30, 0.94);
-  --line: rgba(120, 150, 180, 0.35);
-  --text: #f5f8fb;
-  --muted: #b8c7d8;
-  --good: #25d366;
+  --bg: rgba(10, 10, 18, 0.96);
+  --panel: rgba(18, 22, 32, 0.95);
+  --panel-hover: rgba(24, 30, 44, 0.98);
+  --line: rgba(100, 130, 165, 0.18);
+  --line-bright: rgba(140, 165, 195, 0.3);
+  --text: #f0f4f8;
+  --muted: #8da3b8;
+  --good: #3cff6d;
+  --good-dim: rgba(60, 255, 109, 0.12);
   --warn: #ffbf47;
+  --warn-dim: rgba(255, 191, 71, 0.12);
   --bad: #ff6b6b;
+  --bad-dim: rgba(255, 107, 107, 0.12);
+  --accent: #ef4444;
+  --accent-dim: rgba(239, 68, 68, 0.15);
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  margin: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  font-family: "Segoe UI", "Tahoma", "Arial", sans-serif;
+  font-family: 'Bahnschrift', 'Segoe UI Variable', 'Segoe UI', sans-serif;
   color: var(--text);
   background: transparent;
 }
+
+/* ===== MAIN CONTAINER ===== */
 .overlay {
   width: 100%;
   height: 100%;
-  padding: 14px;
+  padding: 16px 18px;
   background: var(--bg);
-  border: 2px solid var(--line);
+  border-top: 3px solid var(--accent);
   display: grid;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 12px;
+}
+
+/* ===== BRAND BAR ===== */
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+.brand-left {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
-.row {
-  display: grid;
-  gap: 10px;
+.logo-icon {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--accent) 0 50%, #f8fafc 50% 100%);
+  border: 2px solid rgba(0,0,0,0.75);
+  position: relative;
+  flex: 0 0 auto;
 }
-.head {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.logo-icon::before {
+  content: '';
+  position: absolute;
+  left: -2px; right: -2px;
+  top: 50%;
+  height: 2px;
+  background: rgba(0,0,0,0.85);
+  transform: translateY(-1px);
 }
-.main {
-  grid-template-columns: 1.2fr 1fr;
+.logo-icon::after {
+  content: '';
+  position: absolute;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #f8fafc;
+  border: 2px solid rgba(0,0,0,0.85);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
 }
+.brand-name {
+  font-family: 'Agency FB', 'Bahnschrift', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.brand-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.03);
+}
+
+/* ===== STAT CARDS ROW ===== */
+.row { display: grid; gap: 10px; }
+.head { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 10px;
+  padding: 10px 12px;
+  transition: background 0.2s ease;
 }
+.panel:hover { background: var(--panel-hover); }
+
+/* Stat card with colored top accent */
+.stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 10px 10px 0 0;
+}
+.stat-card.accent-good::before { background: var(--good); }
+.stat-card.accent-warn::before { background: var(--warn); }
+.stat-card.accent-bad::before  { background: var(--bad); }
+.stat-card.accent-red::before  { background: var(--accent); }
+
 .k {
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 1.2px;
   color: var(--muted);
+  margin-bottom: 2px;
 }
 .v {
-  font-size: 25px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-.v.small {
-  font-size: 18px;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
 }
 .mono {
   font-family: "Cascadia Mono", "Consolas", monospace;
 }
 .good { color: var(--good); }
 .warn { color: var(--warn); }
-.bad { color: var(--bad); }
+.bad  { color: var(--bad); }
+
+/* W-L record special styling */
+.record-row {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.record-w { color: var(--good); font-size: 26px; font-weight: 900; }
+.record-sep { color: var(--muted); font-size: 18px; font-weight: 400; opacity: 0.5; }
+.record-l { color: var(--bad); font-size: 26px; font-weight: 900; }
+.record-pct {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+/* ===== SLOT CARDS ===== */
+.slots-row {
+  display: grid;
+  gap: 10px;
+}
+.slot-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.2s ease, border-color 0.3s ease;
+}
+.slot-card:hover { background: var(--panel-hover); }
+.slot-card.active { border-color: rgba(60, 255, 109, 0.35); }
+.slot-card.searching { border-color: rgba(255, 191, 71, 0.3); }
+
+.slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.slot-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.slot-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.slot-status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.slot-status.st-active { background: var(--good-dim); color: var(--good); }
+.slot-status.st-active .dot { background: var(--good); }
+.slot-status.st-searching { background: var(--warn-dim); color: var(--warn); }
+.slot-status.st-searching .dot { background: var(--warn); }
+.slot-status.st-idle { background: rgba(148, 163, 184, 0.12); color: #94a3b8; }
+.slot-status.st-idle .dot { background: #94a3b8; }
+
+.slot-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+}
+.slot-field .sf-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  margin-bottom: 1px;
+}
+.slot-field .sf-value {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: break-all;
+}
+.slot-field .sf-value.mono {
+  font-family: "Cascadia Mono", "Consolas", monospace;
+}
+.slot-field.full { grid-column: 1 / -1; }
+.slot-idle-msg {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 8px 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Override badge */
+.override-yes {
+  color: var(--warn);
+  font-weight: 700;
+}
+.override-no {
+  color: var(--muted);
+}
+
+/* ===== TABLES ===== */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -78,91 +278,128 @@ table {
 th, td {
   font-size: 13px;
   text-align: left;
-  padding: 5px 4px;
-  border-bottom: 1px solid rgba(141, 167, 194, 0.24);
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--line);
 }
 th {
-  font-size: 11px;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-bright);
 }
-.stack > div {
-  margin-bottom: 7px;
+tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.015);
 }
-.chips {
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ===== TIMELINE (bottom) ===== */
+.timeline-panel {
+  overflow-y: auto;
+  min-height: 0;
+}
+.timeline-panel::-webkit-scrollbar {
+  width: 4px;
+}
+.timeline-panel::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+/* ===== SECTION HEADERS ===== */
+.section-header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
 }
-.chip {
-  padding: 2px 7px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(34, 56, 80, 0.65);
-  font-size: 12px;
+.section-header .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
 }
+.section-header .label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+
+/* ===== RESPONSIVE ===== */
 @media (max-width: 1400px) {
-  .v { font-size: 21px; }
-  .v.small { font-size: 16px; }
+  .v { font-size: 22px; }
+  .record-w, .record-l { font-size: 22px; }
   th, td { font-size: 12px; }
 }
 @media (max-width: 900px) {
   .overlay { padding: 10px; gap: 8px; }
   .head { grid-template-columns: 1fr 1fr; }
-  .main { grid-template-columns: 1fr; }
+  .slots-row { grid-template-columns: 1fr !important; }
 }
 </style>
 </head>
 <body>
 <div class="overlay">
+  <!-- Brand bar -->
+  <div class="brand">
+    <div class="brand-left">
+      <span class="logo-icon" aria-hidden="true"></span>
+      <span class="brand-name">All Chung</span>
+    </div>
+    <span class="brand-badge">Hybrid Decision Engine</span>
+  </div>
+
+  <!-- Stat cards -->
   <div class="row head">
-    <div class="panel"><div class="k">Policy</div><div class="v" id="policy">-</div></div>
-    <div class="panel"><div class="k">W-L</div><div class="v" id="record">0-0</div></div>
-    <div class="panel"><div class="k">Override Rate</div><div class="v warn" id="overrideRate">0%</div></div>
-    <div class="panel"><div class="k">Active Battles</div><div class="v good" id="activeCount">0</div></div>
-  </div>
-
-  <div class="row main">
-    <div class="panel stack">
-      <div>
-        <div class="k">Latest Decision</div>
-        <div class="v mono small" id="latestPair">-</div>
-      </div>
-      <div>
-        <div class="k">Battle / Turn</div>
-        <div class="v small mono" id="latestBattleTurn">-</div>
-      </div>
-      <div>
-        <div class="k">Override / Hybrid</div>
-        <div class="v small" id="latestOverride">No / unavailable</div>
-      </div>
-      <div>
-        <div class="k">Reason</div>
-        <div class="v small" id="latestReason">-</div>
-      </div>
-      <div>
-        <div class="k">Candidates</div>
-        <div class="chips" id="candidates"></div>
+    <div class="panel stat-card accent-red">
+      <div class="k">ELO</div>
+      <div class="v" id="elo">---</div>
+    </div>
+    <div class="panel stat-card accent-good">
+      <div class="k">Record</div>
+      <div class="record-row">
+        <span class="record-w" id="wins">0</span>
+        <span class="record-sep">-</span>
+        <span class="record-l" id="losses">0</span>
+        <span class="record-pct" id="winPct"></span>
       </div>
     </div>
-
-    <div class="panel">
-      <div class="k" style="margin-bottom:6px;">Active Battle Slots</div>
-      <table>
-        <thead>
-          <tr><th>Slot</th><th>Opponent</th><th>Turn</th><th>Status</th></tr>
-        </thead>
-        <tbody id="battlesBody"></tbody>
-      </table>
+    <div class="panel stat-card accent-warn">
+      <div class="k">Override Rate</div>
+      <div class="v warn" id="overrideRate">0%</div>
+    </div>
+    <div class="panel stat-card accent-good">
+      <div class="k">Status</div>
+      <div class="v good" id="botStatus">Idle</div>
     </div>
   </div>
 
-  <div class="panel">
-    <div class="k" style="margin-bottom:6px;">Recent Timeline</div>
+  <!-- Persistent worker slot cards -->
+  <div class="slots-row" id="slotsContainer"></div>
+
+  <!-- Timeline -->
+  <div class="panel timeline-panel">
+    <div class="section-header">
+      <div class="dot"></div>
+      <div class="label">Recent Timeline</div>
+    </div>
     <table>
       <thead>
-        <tr><th>Battle</th><th>Turn</th><th>Engine</th><th>Selected</th><th>Override</th><th>Reason</th></tr>
+        <tr>
+          <th>Battle</th>
+          <th style="width:50px">Turn</th>
+          <th>Engine</th>
+          <th>Selected</th>
+          <th style="width:70px">Override</th>
+          <th>Reason</th>
+        </tr>
       </thead>
       <tbody id="timelineBody"></tbody>
     </table>
@@ -172,15 +409,17 @@ th {
 <script>
 const POLL_MS = 1500;
 let busy = false;
+let wsConnected = false;
+let lastBattleState = null;
 
 function byId(id) { return document.getElementById(id); }
 function txt(id, value) {
   const el = byId(id);
   if (!el) return;
-  el.textContent = value;
+  if (el.textContent !== String(value)) el.textContent = value;
 }
 
-function e(value) {
+function esc(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -189,63 +428,217 @@ function e(value) {
     .replace(/'/g, "&#39;");
 }
 
-function render(data) {
-  const stats = data?.stats || {};
-  const latest = data?.latest_decision || {};
-  const battles = Array.isArray(data?.active_battles) ? data.active_battles : [];
-  const timeline = Array.isArray(data?.timeline) ? data.timeline.slice(0, 6) : [];
-
-  txt("policy", (data?.decision_policy || "-").toUpperCase());
-  txt("record", `${stats.wins ?? 0}-${stats.losses ?? 0}`);
-  txt("overrideRate", `${stats.override_rate ?? 0}%`);
-  txt("activeCount", data?.active_battle_count ?? battles.length);
-
-  const engine = latest.engine_choice || "-";
-  const selected = latest.hybrid_selected_choice || "-";
-  txt("latestPair", `${engine} -> ${selected}`);
-  txt("latestBattleTurn", `${latest.battle_id || "-"} / ${latest.turn ?? "-"}`);
-  txt("latestOverride", `${latest.override ? "Yes" : "No"} / ${latest.hybrid_status || "unavailable"}`);
-  txt("latestReason", latest.reason || "-");
-
-  const candidates = Array.isArray(latest.candidate_list) ? latest.candidate_list : [];
-  const chips = byId("candidates");
-  if (chips) {
-    chips.innerHTML = candidates.length
-      ? candidates.map((c) => `<span class="chip mono">${e(c)}</span>`).join("")
-      : `<span class="chip">No candidates</span>`;
+/* ===== WebSocket for instant battle updates ===== */
+function connectWs() {
+  let ws;
+  try {
+    ws = new WebSocket(`ws://${location.host}/ws`);
+  } catch (_) {
+    setTimeout(connectWs, 3000);
+    return;
   }
-
-  const battlesBody = byId("battlesBody");
-  if (battlesBody) {
-    battlesBody.innerHTML = battles.length
-      ? battles.map((b) => `
-        <tr>
-          <td>${e(b.slot ?? "-")}</td>
-          <td>${e(b.opponent || "Unknown")}</td>
-          <td>${e(b.current_turn ?? "-")}</td>
-          <td>${e(b.status || "-")}</td>
-        </tr>
-      `).join("")
-      : `<tr><td colspan="4">No active battles</td></tr>`;
-  }
-
-  const timelineBody = byId("timelineBody");
-  if (timelineBody) {
-    timelineBody.innerHTML = timeline.length
-      ? timeline.map((t) => `
-        <tr>
-          <td class="mono">${e(t.battle_id || "-")}</td>
-          <td>${e(t.turn ?? "-")}</td>
-          <td class="mono">${e(t.engine_choice || "-")}</td>
-          <td class="mono">${e(t.selected_choice || "-")}</td>
-          <td>${e(t.override ? "Yes" : "No")}</td>
-          <td>${e(t.reason || "-")}</td>
-        </tr>
-      `).join("")
-      : `<tr><td colspan="6">No timeline data</td></tr>`;
-  }
+  ws.onopen = () => { wsConnected = true; };
+  ws.onmessage = (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+      if (msg.payload) {
+        updateBattleState(msg.payload);
+      }
+    } catch (_) { /* ignore parse errors */ }
+  };
+  ws.onclose = () => {
+    wsConnected = false;
+    setTimeout(connectWs, 3000);
+  };
+  ws.onerror = () => {
+    wsConnected = false;
+    ws.close();
+  };
 }
 
+function updateBattleState(payload) {
+  // WS payload comes from build_state_payload() in serve_obs_page.py
+  // Shape: {status, battles, count, max_slots, updated, accounts_elo}
+  lastBattleState = {
+    battles: payload.battles || [],
+    max_slots: payload.max_slots || 3,
+    status: payload.status || {},
+    elo: (payload.status && payload.status.elo) || payload.elo || null,
+  };
+  // Re-render slots immediately with whatever decision data we have
+  renderAll(null);
+}
+
+/* ===== State merging ===== */
+let lastDashboardData = null;
+
+function renderAll(dashboardData) {
+  if (dashboardData) lastDashboardData = dashboardData;
+  const dd = lastDashboardData;
+  const bs = lastBattleState;
+
+  // Stat cards from dashboard data
+  if (dd) {
+    const stats = dd.stats || {};
+    const w = stats.wins ?? 0;
+    const l = stats.losses ?? 0;
+    txt("wins", w);
+    txt("losses", l);
+    const total = w + l;
+    txt("winPct", total > 0 ? Math.round((w / total) * 100) + "%" : "");
+    txt("overrideRate", `${stats.override_rate ?? 0}%`);
+  }
+
+  // ELO: prefer WS battle state (live from Showdown), fall back to dashboard
+  const elo = (bs && bs.elo) || (dd && dd.elo) || "---";
+  txt("elo", elo);
+
+  // Bot status: derive from battle state
+  const battles = (bs && bs.battles) || (dd && dd.active_battles) || [];
+  const activeBattles = battles.filter(b => {
+    const st = String(b.status || "").toLowerCase();
+    return st === "active" || st === "battling";
+  });
+  if (activeBattles.length > 0) {
+    txt("botStatus", "Active");
+    byId("botStatus").className = "v good";
+  } else if (battles.length > 0) {
+    txt("botStatus", "Searching");
+    byId("botStatus").className = "v warn";
+  } else {
+    txt("botStatus", "Searching");
+    byId("botStatus").className = "v warn";
+  }
+
+  // Render persistent slot cards
+  renderSlots(battles, dd);
+
+  // Timeline from dashboard data
+  if (dd) renderTimeline(dd.timeline || []);
+}
+
+/* ===== Persistent Slot Cards ===== */
+function renderSlots(battles, dashboardData) {
+  const maxSlots = (lastBattleState && lastBattleState.max_slots)
+    || (dashboardData && dashboardData.max_slots)
+    || 3;
+  const timeline = (dashboardData && dashboardData.timeline) || [];
+
+  // Build slot -> battle mapping
+  const slotMap = {};
+  for (const b of battles) {
+    const slot = b.slot || (b.worker_id != null && b.worker_id >= 0 ? b.worker_id + 1 : null);
+    if (slot && !slotMap[slot]) slotMap[slot] = b;
+  }
+
+  // Match latest decision per battle from timeline
+  const slotDecisions = {};
+  for (const t of timeline) {
+    for (const [slot, b] of Object.entries(slotMap)) {
+      if (t.battle_id === b.id && !slotDecisions[slot]) {
+        slotDecisions[slot] = t;
+      }
+    }
+  }
+
+  // Set grid columns based on slot count
+  const container = byId("slotsContainer");
+  if (!container) return;
+  container.style.gridTemplateColumns = `repeat(${maxSlots}, minmax(0, 1fr))`;
+
+  let html = "";
+  for (let i = 1; i <= maxSlots; i++) {
+    const battle = slotMap[i] || null;
+    const decision = slotDecisions[i] || null;
+    html += buildSlotCard(i, battle, decision);
+  }
+  container.innerHTML = html;
+}
+
+function buildSlotCard(slotNum, battle, decision) {
+  const isActive = battle && (
+    String(battle.status || "").toLowerCase() === "active" ||
+    String(battle.status || "").toLowerCase() === "battling"
+  );
+  const stateClass = isActive ? "active" : "searching";
+  const statusLabel = isActive ? "Active" : "Searching";
+  const statusCss = isActive ? "st-active" : "st-searching";
+
+  let bodyHtml = "";
+  if (battle) {
+    const opponent = esc(battle.opponent || "Unknown");
+    const turn = battle.current_turn != null ? esc(battle.current_turn) : "-";
+
+    // Decision info for this battle
+    let engineChoice = "-";
+    let selectedChoice = "-";
+    let overrideHtml = '<span class="override-no">-</span>';
+    if (decision) {
+      engineChoice = esc(decision.engine_choice || "-");
+      selectedChoice = esc(decision.selected_choice || "-");
+      overrideHtml = decision.override
+        ? '<span class="override-yes">YES</span>'
+        : '<span class="override-no">No</span>';
+    }
+
+    bodyHtml = `
+      <div class="slot-field">
+        <div class="sf-label">Opponent</div>
+        <div class="sf-value">${opponent}</div>
+      </div>
+      <div class="slot-field">
+        <div class="sf-label">Turn</div>
+        <div class="sf-value">${turn}</div>
+      </div>
+      <div class="slot-field">
+        <div class="sf-label">Engine</div>
+        <div class="sf-value mono">${engineChoice}</div>
+      </div>
+      <div class="slot-field">
+        <div class="sf-label">Selected</div>
+        <div class="sf-value mono">${selectedChoice}</div>
+      </div>
+      <div class="slot-field">
+        <div class="sf-label">Override</div>
+        <div class="sf-value">${overrideHtml}</div>
+      </div>`;
+  } else {
+    bodyHtml = '<div class="slot-idle-msg">Waiting for battle...</div>';
+  }
+
+  return `
+    <div class="slot-card ${stateClass}">
+      <div class="slot-header">
+        <span class="slot-label">Slot ${slotNum}</span>
+        <span class="slot-status ${statusCss}"><span class="dot"></span>${statusLabel}</span>
+      </div>
+      <div class="slot-body">${bodyHtml}</div>
+    </div>`;
+}
+
+/* ===== Timeline Table ===== */
+function renderTimeline(timeline) {
+  const rows = timeline.slice(0, 8);
+  const body = byId("timelineBody");
+  if (!body) return;
+
+  body.innerHTML = rows.length
+    ? rows.map(t => `
+      <tr>
+        <td class="mono" style="font-size:12px">${esc(t.battle_id || "-")}</td>
+        <td style="font-variant-numeric:tabular-nums">${esc(t.turn ?? "-")}</td>
+        <td class="mono">${esc(t.engine_choice || "-")}</td>
+        <td class="mono" style="font-weight:700">${esc(t.selected_choice || "-")}</td>
+        <td>${t.override
+            ? '<span class="override-yes">Yes</span>'
+            : '<span class="override-no">No</span>'}</td>
+        <td style="color:var(--muted);font-size:12px">${esc(t.reason || "-")}</td>
+      </tr>
+    `).join("")
+    : '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:16px 0">No timeline data</td></tr>';
+}
+
+/* ===== Polling for dashboard data (decisions, stats, timeline) ===== */
 async function poll() {
   if (busy) return;
   busy = true;
@@ -253,14 +646,16 @@ async function poll() {
     const resp = await fetch(`/api/dashboard/state?t=${Date.now()}`, { cache: "no-store" });
     if (!resp.ok) throw new Error(String(resp.status));
     const data = await resp.json();
-    render(data);
+    renderAll(data);
   } catch (_err) {
-    txt("latestReason", "dashboard fetch error");
+    /* silently retry next interval */
   } finally {
     busy = false;
   }
 }
 
+/* ===== Init ===== */
+connectWs();
 poll();
 setInterval(poll, POLL_MS);
 </script>

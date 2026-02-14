@@ -15,7 +15,14 @@ from fp.battle import Battle
 from fp.helpers import POKEMON_TYPE_INDICES, normalize_name, type_effectiveness_modifier
 from fp.playstyle_config import RECOVERY_MOVES, PIVOT_MOVES, HAZARD_MOVES
 from fp.movepool_tracker import get_threat_category, ThreatCategory
+from fp.search.opponent_predict import predict_opponent_action, predict_after_ko_switchin
 from fp.search.speed_order import assess_speed_order
+from constants_pkg.strategy import (
+    POKEMON_COMMONLY_MAGIC_BOUNCE,
+    MAGIC_BOUNCE_REFLECTED_MOVES,
+    POKEMON_COMMONLY_CONTRARY,
+    POKEMON_COMMONLY_UNAWARE,
+)
 from data import all_move_json
 
 logger = logging.getLogger(__name__)
@@ -248,6 +255,7 @@ def _apply_switch_progress_cap(
     opp_can_ko: bool,
     bad_matchup: bool,
     can_slow_pivot_now: bool,
+    wrong_wall: bool = False,
 ) -> None:
     """
     Keep switch scores from drowning out obvious on-board progress lines.
@@ -256,7 +264,7 @@ def _apply_switch_progress_cap(
     - No cap when we are in danger or in a bad matchup.
     - Only cap when we already have a solid direct progress move.
     """
-    if opp_can_ko or bad_matchup:
+    if opp_can_ko or bad_matchup or wrong_wall:
         return
 
     best_progress = 0.0
@@ -303,16 +311,32 @@ def _opponent_best_damage(battle: Battle) -> float:
         if dmg > best:
             best = dmg
 
-    # If opponent has no revealed moves, estimate from STAB
+    # If opponent has no revealed moves, estimate from STAB using actual stats.
+    # The old flat 0.12 multiplier catastrophically underestimates damage when
+    # there's a stat mismatch (e.g. physical Fighting STAB vs Blissey's 10 base Def).
     opp_eff_types = _get_effective_types(opp)
     if not opp_moves and opp_eff_types:
-        # Conservative fallback when no moves are revealed yet.
-        # Keep this modest; overestimating unknown damage creates premature
-        # defensive lines (over-switching / over-healing) in neutral states.
         our_eff_types = _get_effective_types(our)
+        our_max_hp = max(float(getattr(our, "max_hp", 1) or 1), 1.0)
+        opp_stats = getattr(opp, "stats", {})
+        our_stats = getattr(our, "stats", {})
+        opp_atk = opp_stats.get(constants.ATTACK, 100) if isinstance(opp_stats, dict) else 100
+        opp_spa = opp_stats.get(constants.SPECIAL_ATTACK, 100) if isinstance(opp_stats, dict) else 100
+        our_def = our_stats.get(constants.DEFENSE, 100) if isinstance(our_stats, dict) else 100
+        our_spd = our_stats.get(constants.SPECIAL_DEFENSE, 100) if isinstance(our_stats, dict) else 100
+
+        # Use 85 BP assumed STAB move, check both physical and special
+        assumed_bp = 85
         for t in opp_eff_types:
             eff = type_effectiveness_modifier(t, our_eff_types)
-            estimated = 0.12 * eff
+            if eff == 0:
+                continue
+            stab = 1.5
+            phys_dmg = (((42 * assumed_bp * opp_atk / max(our_def, 1)) / 50 + 2)
+                        * eff * stab) / our_max_hp
+            spec_dmg = (((42 * assumed_bp * opp_spa / max(our_spd, 1)) / 50 + 2)
+                        * eff * stab) / our_max_hp
+            estimated = max(phys_dmg, spec_dmg)
             if estimated > best:
                 best = estimated
 
@@ -408,7 +432,94 @@ def _opponent_best_damage_to(opp, target) -> float:
         if dmg > best:
             best = dmg
 
+    # STAB fallback when no moves are revealed (mirrors _opponent_best_damage)
+    if not opp_moves:
+        opp_eff_types = _get_effective_types(opp)
+        target_eff_types = _get_effective_types(target)
+        if opp_eff_types:
+            target_max_hp = max(float(getattr(target, "max_hp", 1) or 1), 1.0)
+            opp_stats = getattr(opp, "stats", {})
+            target_stats = getattr(target, "stats", {})
+            opp_atk = opp_stats.get(constants.ATTACK, 100) if isinstance(opp_stats, dict) else 100
+            opp_spa = opp_stats.get(constants.SPECIAL_ATTACK, 100) if isinstance(opp_stats, dict) else 100
+            t_def = target_stats.get(constants.DEFENSE, 100) if isinstance(target_stats, dict) else 100
+            t_spd = target_stats.get(constants.SPECIAL_DEFENSE, 100) if isinstance(target_stats, dict) else 100
+
+            assumed_bp = 85
+            for t in opp_eff_types:
+                eff = type_effectiveness_modifier(t, target_eff_types)
+                if eff == 0:
+                    continue
+                stab = 1.5
+                phys = (((42 * assumed_bp * opp_atk / max(t_def, 1)) / 50 + 2)
+                        * eff * stab) / target_max_hp
+                spec = (((42 * assumed_bp * opp_spa / max(t_spd, 1)) / 50 + 2)
+                        * eff * stab) / target_max_hp
+                estimated = max(phys, spec)
+                if estimated > best:
+                    best = estimated
+
     return best
+
+
+def _is_wrong_wall(battle: Battle) -> bool:
+    """Detect when our active's weak defensive side faces the opponent's strong attacking side.
+
+    Example: Blissey (Def ~130, SpDef ~405) vs Cinderace (Atk ~336, SpA ~186).
+    Blissey's physical defense is terrible relative to its special defense,
+    and Cinderace is a physical attacker. Blissey is the "wrong wall" here.
+
+    Returns True when the stat mismatch is severe enough that we should switch out.
+    """
+    our = battle.user.active
+    opp = battle.opponent.active
+    if our is None or opp is None:
+        return False
+
+    our_stats = getattr(our, "stats", {})
+    opp_stats = getattr(opp, "stats", {})
+    if not isinstance(our_stats, dict) or not isinstance(opp_stats, dict):
+        return False
+
+    our_def = our_stats.get(constants.DEFENSE, 100)
+    our_spd = our_stats.get(constants.SPECIAL_DEFENSE, 100)
+    opp_atk = opp_stats.get(constants.ATTACK, 100)
+    opp_spa = opp_stats.get(constants.SPECIAL_ATTACK, 100)
+
+    # Also check movepool tracker for the opponent's threat category
+    opp_name = getattr(opp, "name", "") or ""
+    threat_cat = ThreatCategory.UNKNOWN
+    if opp_name:
+        try:
+            threat_cat = get_threat_category(opp_name)
+        except Exception:
+            pass
+
+    # Determine if opponent is physically or specially oriented
+    opp_is_physical = False
+    opp_is_special = False
+
+    if threat_cat == ThreatCategory.PHYSICAL_ONLY:
+        opp_is_physical = True
+    elif threat_cat == ThreatCategory.SPECIAL_ONLY:
+        opp_is_special = True
+    elif opp_atk >= opp_spa * 1.3:
+        opp_is_physical = True
+    elif opp_spa >= opp_atk * 1.3:
+        opp_is_special = True
+
+    # Check for severe defensive stat asymmetry on the wrong side
+    # "Wrong wall" = our weak side faces their strong side
+    if opp_is_physical and our_def < our_spd * 0.55:
+        # Our Def is less than 55% of our SpDef, and opponent is physical
+        # e.g. Blissey: Def 130 / SpDef 405 = 0.32 → triggers
+        return True
+    if opp_is_special and our_spd < our_def * 0.55:
+        # Our SpDef is less than 55% of our Def, and opponent is special
+        # e.g. Skarmory: SpDef ~176 / Def ~416 = 0.42 → triggers
+        return True
+
+    return False
 
 
 def _opp_has_setup_potential(opp) -> bool:
@@ -439,6 +550,30 @@ def _opp_has_setup_potential(opp) -> bool:
             return True
 
     return False
+
+
+def _opponent_has_unaware(battle: Battle) -> bool:
+    """Check if the opponent's active Pokemon has or likely has Unaware."""
+    opp = battle.opponent.active
+    if opp is None:
+        return False
+    ability = normalize_name(getattr(opp, "ability", "") or "")
+    if ability == "unaware":
+        return True
+    name = normalize_name(getattr(opp, "name", "") or "")
+    return name in POKEMON_COMMONLY_UNAWARE
+
+
+def _find_opponent_reserve(battle: Battle, name: str):
+    """Look up an opponent reserve Pokemon by name for damage calculations."""
+    if name is None:
+        return None
+    for p in battle.opponent.reserve:
+        if p is None:
+            continue
+        if getattr(p, "name", None) == name:
+            return p
+    return None
 
 
 def _score_switch(battle: Battle, target_name: str) -> float:
@@ -614,6 +749,7 @@ def _score_switch(battle: Battle, target_name: str) -> float:
     score -= h_cost * 0.5
 
     # Can we threaten the opponent offensively?
+    best_off = 0.0
     if target_types and opp_types:
         best_off = max(
             type_effectiveness_modifier(t, opp_types) for t in target_types
@@ -622,6 +758,41 @@ def _score_switch(battle: Battle, target_name: str) -> float:
             score += 0.15
         elif best_off >= 1.0:
             score += 0.05
+
+    # === CONTRARY RESIST-SWITCH BOOST (Fix 2A) ===
+    # When opponent has Contrary and is accumulating boosts, urgently switch
+    # to a Pokemon that resists their STAB and can threaten them back.
+    opp_ability_sw = normalize_name(getattr(opp, "ability", "") or "")
+    opp_name_sw = normalize_name(getattr(opp, "name", "") or "")
+    opp_is_contrary = (
+        opp_ability_sw == "contrary"
+        or (not opp_ability_sw and opp_name_sw in POKEMON_COMMONLY_CONTRARY)
+    )
+    if opp_is_contrary:
+        opp_boosts_sw = getattr(opp, "boosts", {}) or {}
+        contrary_off_boosts = max(
+            opp_boosts_sw.get(constants.ATTACK, 0),
+            opp_boosts_sw.get(constants.SPECIAL_ATTACK, 0),
+        )
+        if contrary_off_boosts >= 1:
+            # Check: does target resist opponent's STAB?
+            worst_stab_into_target = max(
+                (type_effectiveness_modifier(t, target_types) for t in opp_types),
+                default=1.0,
+            )
+            # Check: can target threaten opponent? (best STAB eff > 1.0 or direct dmg calc)
+            target_can_threaten = best_off >= 1.0
+            if not target_can_threaten:
+                # Fallback: check actual damage from target's moves
+                for tmove in getattr(target, "moves", []) or []:
+                    tmove_name = tmove.name if hasattr(tmove, "name") else str(tmove)
+                    if _estimate_damage_ratio(target, opp, tmove_name) > 0.15:
+                        target_can_threaten = True
+                        break
+
+            if worst_stab_into_target <= 1.0 and target_can_threaten:
+                boost_mult = 1.5 + (0.2 * contrary_off_boosts)
+                score *= min(boost_mult, 2.7)
 
     return max(score, 0.01)  # never completely zero
 
@@ -761,6 +932,16 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
     our_item = _our_item_normalized(battle)
     our_hp_ratio = our.hp / max(our.max_hp, 1)
 
+    # Opponent response prediction
+    opp_prediction = predict_opponent_action(battle)
+    opp_switching = (opp_prediction.action == "switches"
+                     and opp_prediction.confidence > 0.50)
+    predicted_switchin = None
+    if opp_switching and opp_prediction.predicted_switchin:
+        predicted_switchin = _find_opponent_reserve(
+            battle, opp_prediction.predicted_switchin
+        )
+
     # Is our Pokemon Choice-locked?
     is_choice_locked = our_item in CHOICE_ITEMS and constants.LOCKED_MOVE in (getattr(our, "volatile_statuses", []) or [])
 
@@ -795,6 +976,35 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
 
     # "Bad matchup" = our best attack does less than 10% to them
     bad_matchup = opp is not None and our_best_damage < 0.10
+
+    # "Wrong wall" = our weak defensive side faces opponent's strong attacking side
+    wrong_wall = _is_wrong_wall(battle)
+
+    # Unaware wasted boosts: we have offensive boosts but opponent ignores them
+    opp_has_unaware = _opponent_has_unaware(battle)
+    our_boosts = getattr(our, "boosts", {}) or {}
+    our_atk_boost = int(our_boosts.get("attack", 0) or 0)
+    our_spa_boost = int(our_boosts.get("special-attack", 0) or 0)
+    unaware_wasted = opp_has_unaware and (our_atk_boost > 0 or our_spa_boost > 0)
+
+    # === MAGIC BOUNCE RESERVE DETECTION (Fix 5) ===
+    mb_reserve_mon = None
+    if opp is not None:
+        opp_ability_norm = normalize_name(getattr(opp, "ability", "") or "")
+        opp_name_norm = normalize_name(getattr(opp, "name", "") or "")
+        opp_has_mb_active = (
+            opp_ability_norm == "magicbounce"
+            or (not opp_ability_norm and opp_name_norm in POKEMON_COMMONLY_MAGIC_BOUNCE)
+        )
+        if not opp_has_mb_active:
+            for reserve_mon in battle.opponent.reserve:
+                if reserve_mon is None or getattr(reserve_mon, "hp", 0) <= 0:
+                    continue
+                r_name = normalize_name(getattr(reserve_mon, "name", "") or "")
+                if r_name in POKEMON_COMMONLY_MAGIC_BOUNCE:
+                    mb_reserve_mon = reserve_mon
+                    break
+
     for move_name, move_data in moves:
         norm = normalize_name(move_name)
         category = move_data.get(constants.CATEGORY, "Status")
@@ -819,15 +1029,45 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
 
             # KO bonus
             opp_hp_ratio = opp.hp / max(opp.max_hp, 1) if opp else 1.0
+            is_guaranteed_ko = (dmg_ratio >= opp_hp_ratio
+                                and (guaranteed_move_first or _has_priority(move_name)))
             if dmg_ratio >= opp_hp_ratio:
                 score += 0.5  # can KO
-                if guaranteed_move_first or _has_priority(move_name):
+                if is_guaranteed_ko:
                     score += 0.3  # guaranteed KO
 
-            # Minimax: subtract opponent's best response (dampened)
-            if not (dmg_ratio >= opp_hp_ratio and (guaranteed_move_first or _has_priority(move_name))):
-                # Only penalize if we're not getting a guaranteed KO
-                score -= 0.5 * opp_best_dmg
+            # Minimax: opponent's best response (blended with switch prediction)
+            if not is_guaranteed_ko:
+                if opp_switching and predicted_switchin is not None:
+                    # Blend stay vs switch penalty based on prediction confidence
+                    stay_penalty = 0.5 * opp_best_dmg
+                    switchin_dmg = opp_prediction.switchin_best_damage_to_us
+                    switch_penalty = 0.15 * switchin_dmg
+                    sc = opp_prediction.confidence
+                    blended_penalty = (1.0 - sc) * stay_penalty + sc * switch_penalty
+                    score -= blended_penalty
+
+                    # Partial credit for damage to predicted switch-in
+                    dmg_to_switchin = _estimate_damage_ratio(
+                        our, predicted_switchin, move_name
+                    )
+                    score += sc * dmg_to_switchin * 0.5
+                else:
+                    # Default: assume opponent clicks strongest attack
+                    score -= 0.5 * opp_best_dmg
+
+            # After-KO: differentiate KO moves by damage to predicted next-in
+            if dmg_ratio >= opp_hp_ratio:
+                after_ko_target_name = predict_after_ko_switchin(battle)
+                if after_ko_target_name:
+                    after_ko_target = _find_opponent_reserve(
+                        battle, after_ko_target_name
+                    )
+                    if after_ko_target is not None:
+                        dmg_to_next = _estimate_damage_ratio(
+                            our, after_ko_target, move_name
+                        )
+                        score += dmg_to_next * 0.05
 
             # Pivot bonus: damage + switch advantage
             if norm in _PIVOT_NORM:
@@ -849,7 +1089,11 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
             hp_deficit = 1.0 - our_hp_ratio
             recovery_value = hp_deficit * 0.6
 
-            if free_turn:
+            # Fix 3: Heal Block suppresses recovery (move literally fails)
+            if "healblock" in (getattr(our, "volatile_statuses", []) or []):
+                recovery_value = 0.01
+                logger.info("Recovery suppressed: Heal Block active")
+            elif free_turn:
                 # TEMPO FIX (Phase 3A): suppress recovery on free turns
                 recovery_value *= 0.2
             elif threatened:
@@ -919,6 +1163,18 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
             # Give a baseline score; penalty layers handle context
             scores[move_name] = 0.15
 
+    # === OPPONENT SWITCH PREDICTION: boost hazards/status ===
+    if opp_switching:
+        sc = opp_prediction.confidence
+        for move_name in list(scores.keys()):
+            if move_name.startswith("switch "):
+                continue
+            norm = normalize_name(move_name)
+            if norm in _HAZARD_NORM:
+                scores[move_name] *= 1.0 + sc * 0.5
+            elif norm in STATUS_MOVES_OFFENSIVE:
+                scores[move_name] *= 1.0 + sc * 0.3
+
     # === SACKING PREVENTION (Phase 3C) ===
     if opp_can_ko and opp is not None:
         our_best_dmg_ratio = 0.0
@@ -957,6 +1213,70 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
             f"suppressing non-switch/non-phaze moves"
         )
 
+    # === WRONG WALL PENALTY ===
+    # When our Pokemon's weak defensive side faces the opponent's strong attacking side,
+    # staying in is terrible even if we're not technically 2HKO'd. The opponent chunks us
+    # hard and we can't accomplish anything meaningful. Get out.
+    # Example: Blissey (10 base Def) vs Cinderace (116 base Atk) — Blissey takes massive
+    # physical damage and Shadow Ball barely scratches Cinderace even at +2.
+    if wrong_wall and not battle.force_switch and not bad_matchup:
+        for move_name in list(scores.keys()):
+            if move_name.startswith("switch "):
+                continue
+            norm = normalize_name(move_name)
+            # Pivots are great — escape with momentum
+            if norm in _PIVOT_NORM:
+                scores[move_name] *= 1.3
+                continue
+            # Phazing is still useful
+            if norm in PHAZE_MOVES:
+                continue
+            # Setup moves are the worst — boosting the wrong stat or wasting turns
+            if norm in SETUP_MOVES_SET:
+                scores[move_name] *= 0.08
+                continue
+            # Recovery just prolongs a losing position
+            if norm in _RECOVERY_NORM:
+                scores[move_name] *= 0.15
+                continue
+            # Damaging moves get a mild penalty (chip is okay before switching)
+            if _is_damaging_move(move_name):
+                scores[move_name] *= 0.5
+                continue
+            # Other non-damaging moves (hazards, status) — wasted turns
+            scores[move_name] *= 0.15
+        logger.info(
+            f"Wrong wall: {getattr(our, 'name', '?')} defensive mismatch vs "
+            f"{getattr(opp, 'name', '?')}, penalizing staying in"
+        )
+
+    # === UNAWARE WASTED BOOSTS ===
+    # When we have offensive boosts but the opponent has Unaware, those boosts
+    # are worthless. Penalize staying in (recovery, setup, weak attacks) and
+    # strongly encourage switching to a teammate that can actually threaten.
+    if unaware_wasted and not battle.force_switch:
+        for move_name in list(scores.keys()):
+            if move_name.startswith("switch "):
+                continue
+            norm = normalize_name(move_name)
+            if norm in _PIVOT_NORM:
+                scores[move_name] *= 1.3  # Pivoting out is fine
+                continue
+            if norm in SETUP_MOVES_SET:
+                scores[move_name] *= 0.05  # More boosts = pointless
+                continue
+            if norm in _RECOVERY_NORM:
+                scores[move_name] *= 0.15  # Stalling with worthless boosts
+                continue
+            if _is_damaging_move(move_name):
+                scores[move_name] *= 0.6  # Attacks work but boosts don't help
+                continue
+            scores[move_name] *= 0.15
+        for move_name in list(scores.keys()):
+            if move_name.startswith("switch "):
+                scores[move_name] *= 2.0  # Strongly encourage switching out
+        logger.info("Unaware wasted boosts: penalized staying in (boosts ignored)")
+
     # === SETUP THREAT DETECTION ===
     # If the opponent is a known setup sweeper and we don't threaten them
     # enough to force them out, suppress passive plays (recovery, status).
@@ -989,6 +1309,33 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                 f"our best damage = {our_best_damage:.1%}, suppressing passive plays"
             )
 
+    # === THREATENED PASSIVE PENALTY ===
+    # When the opponent 2HKOs us, wasting turns on hazards/status is suicidal.
+    # The Pokemon will die before the hazards pay off. Switch or fight.
+    if threatened and not battle.force_switch:
+        for move_name in list(scores.keys()):
+            if move_name.startswith("switch "):
+                continue
+            norm = normalize_name(move_name)
+            # Phaze moves are still fine (reset opponent boosts)
+            if norm in PHAZE_MOVES:
+                continue
+            # Pivots are fine (escape safely)
+            if norm in _PIVOT_NORM:
+                continue
+            # Damaging moves are fine (trade before dying)
+            if _is_damaging_move(move_name):
+                continue
+            # Recovery is already boosted by the threatened check above
+            if norm in _RECOVERY_NORM:
+                continue
+            # Hazards, status, setup — all wasted turns when you're about to die
+            scores[move_name] *= 0.15
+        logger.info(
+            f"Threatened passive penalty: {getattr(our, 'name', '?')} "
+            f"2HKO'd (opp best dmg={opp_best_dmg:.1%}), penalizing passive moves"
+        )
+
     # === ITEM AWARENESS (Phase 3B) ===
     # Rocky Helmet: boost staying in vs physical/contact attackers
     if our_item == "rockyhelmet" and opp is not None:
@@ -1008,6 +1355,92 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
             if norm in _RECOVERY_NORM:
                 scores[move_name] *= 0.9
 
+    # === MAGIC BOUNCE RESERVE PENALTY & PUNISH (Fix 5) ===
+    if mb_reserve_mon is not None and not battle.force_switch:
+        # Part A: Penalize reflected moves (hazards/status) — opponent may switch MB in
+        for move_name in list(scores.keys()):
+            if move_name.startswith("switch "):
+                continue
+            norm = normalize_name(move_name)
+            if norm in MAGIC_BOUNCE_REFLECTED_MOVES:
+                scores[move_name] *= 0.7
+
+        # Part B: On free turns, boost momentum-positive responses
+        if free_turn:
+            for move_name in list(scores.keys()):
+                if move_name.startswith("switch "):
+                    continue
+                norm = normalize_name(move_name)
+                # Boost damaging moves that hit the predicted MB switch-in
+                if _is_damaging_move(move_name):
+                    dmg_to_mb = _estimate_damage_ratio(our, mb_reserve_mon, move_name)
+                    if dmg_to_mb > 0.15:
+                        scores[move_name] *= 1.0 + dmg_to_mb
+                # Boost pivots (chip + bring in a counter)
+                if norm in _PIVOT_NORM:
+                    scores[move_name] *= 1.3
+
+        logger.info(
+            f"Magic Bounce reserve: {getattr(mb_reserve_mon, 'name', '?')} detected, "
+            f"penalizing reflected moves"
+        )
+
+    # === CONTRARY SNOWBALL STAY PENALTY (Fix 2B) ===
+    if opp is not None and not battle.force_switch:
+        opp_ability_c = normalize_name(getattr(opp, "ability", "") or "")
+        opp_name_c = normalize_name(getattr(opp, "name", "") or "")
+        opp_has_contrary = (
+            opp_ability_c == "contrary"
+            or (not opp_ability_c and opp_name_c in POKEMON_COMMONLY_CONTRARY)
+        )
+        if opp_has_contrary:
+            opp_contrary_boosts = max(
+                (getattr(opp, "boosts", {}) or {}).get(constants.SPECIAL_ATTACK, 0),
+                (getattr(opp, "boosts", {}) or {}).get(constants.ATTACK, 0),
+            )
+            if opp_contrary_boosts >= 2 and our_best_damage < 0.20:
+                for move_name in list(scores.keys()):
+                    if move_name.startswith("switch "):
+                        continue
+                    norm = normalize_name(move_name)
+                    if norm in PHAZE_MOVES:
+                        continue  # phazing resets their boosts
+                    if norm in _PIVOT_NORM:
+                        scores[move_name] *= 1.4  # get out with momentum
+                        continue
+                    scores[move_name] *= 0.3  # can't pressure, get out
+                logger.info(
+                    f"Contrary snowball: {getattr(opp, 'name', '?')} at "
+                    f"+{opp_contrary_boosts}, our best damage = {our_best_damage:.1%}, "
+                    f"suppressing passive plays"
+                )
+
+    # === LOW-HP NON-DAMAGING MOVE PENALTY (Fix 1 + Fix 4) ===
+    if (our_hp_ratio <= 0.15 and not battle.force_switch
+            and (guaranteed_move_second or speed_assessment.uncertain)):
+        for move_name in list(scores.keys()):
+            if move_name.startswith("switch "):
+                continue
+            norm = normalize_name(move_name)
+            move_data_lh = all_move_json.get(move_name, {})
+            # Exception: priority moves can still act before opponent
+            if _has_priority(move_name):
+                continue
+            # Exception: Protect/Detect have scouting value
+            if norm in {"protect", "detect", "kingsshield", "banefulbunker", "spikyshield", "silktrap", "burningbulwark"}:
+                continue
+            # Pivots: reduced penalty (still useful for safe exit)
+            if norm in _PIVOT_NORM:
+                scores[move_name] *= 0.5
+                continue
+            # Non-damaging moves at death range are near-useless
+            if not _is_damaging_move(move_name, move_data_lh):
+                scores[move_name] *= 0.05
+        logger.info(
+            f"Low HP penalty: {getattr(our, 'name', '?')} at "
+            f"{our_hp_ratio:.0%} HP, penalizing non-damaging moves"
+        )
+
     # === SCORE SWITCHES ===
     # Detect if opponent is boosted (switching gives them free turns to sweep)
     opp_boosts = getattr(opp, "boosts", {}) or {} if opp else {}
@@ -1023,9 +1456,13 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                 switch_name = f"switch {pkmn.name}"
                 sw_score = _score_switch(battle, pkmn.name)
 
+                # Wrong wall: strongly boost switches to get to the right wall
+                if wrong_wall:
+                    sw_score *= 1.8
+
                 # Tempo tax: if we can already pressure the board, do not let
                 # baseline switch scores dominate by default.
-                if not bad_matchup and not opp_can_ko and our_best_damage >= 0.18:
+                if not bad_matchup and not wrong_wall and not opp_can_ko and our_best_damage >= 0.18:
                     sw_score *= 0.82
 
                 # If we have a clean slow-pivot line, hard switching is usually inferior.
@@ -1069,6 +1506,7 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
             opp_can_ko=opp_can_ko,
             bad_matchup=bad_matchup,
             can_slow_pivot_now=can_slow_pivot_now,
+            wrong_wall=wrong_wall,
         )
 
     # Normalize scores so they sum to ~1.0 (makes them compatible with penalty pipeline)

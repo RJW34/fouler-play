@@ -54,6 +54,7 @@ class PSWebsocketClient:
         self._search_owner = None
         self._search_owner_since = None
         self.active_searches = set()
+        self._recently_finished = {}  # battle_tag -> unregister timestamp
         await self._connect_websocket()
         return self
 
@@ -200,6 +201,9 @@ class PSWebsocketClient:
                         if queue is not None:
                             queue.put_nowait(msg)
                             routed = True
+                        elif battle_tag in self._recently_finished:
+                            # Stray message from a battle we just finished — discard
+                            pass
                         else:
                             # Battle not registered yet - buffer messages until registration
                             if battle_tag not in self.pending_battle_messages:
@@ -212,7 +216,7 @@ class PSWebsocketClient:
                             buffered_count = len(self.pending_battle_messages[battle_tag])
                     if routed:
                         logger.debug(f"Routed message to battle {battle_tag}")
-                    else:
+                    elif buffered_count is not None:
                         logger.debug(
                             f"Battle {battle_tag} not registered, buffered ({buffered_count} msgs)"
                         )
@@ -265,6 +269,14 @@ class PSWebsocketClient:
         if battle_tag in self.battle_queues:
             del self.battle_queues[battle_tag]
             logger.info(f"Unregistered battle queue: {battle_tag}")
+        # Mark as recently finished so the dispatcher won't re-buffer
+        # stray messages (like |deinit) as a new pending battle.
+        self._recently_finished[battle_tag] = time.time()
+        # Purge entries older than 60s to avoid unbounded growth.
+        cutoff = time.time() - 60
+        self._recently_finished = {
+            t: ts for t, ts in self._recently_finished.items() if ts > cutoff
+        }
 
     def get_registered_battle_count(self):
         """Return count of registered battle queues."""

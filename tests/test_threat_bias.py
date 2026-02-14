@@ -203,6 +203,47 @@ class TestThreatSwitchBias(unittest.TestCase):
         self.assertGreater(adjusted["softboiled"], adjusted["stealthrock"])
         self.assertGreaterEqual(adjusted["softboiled"], adjusted["seismictoss"] * 0.90)
 
+    def test_type_immune_move_stays_zero_vs_boosted_threat(self):
+        """Seismic Toss (Fighting) vs Ghost type: weight 0.0 must never be boosted."""
+        battle = _mk_battle(
+            active_hp=652,
+            active_max_hp=652,
+            move_names=["softboiled", "calmmind", "seismictoss", "stealthrock"],
+        )
+        battle.user.active.name = "blissey"
+        battle.user.active.types = ["normal"]
+        battle.opponent.active = SimpleNamespace(
+            name="gholdengo",
+            hp=265,
+            max_hp=336,
+            moves=[_mk_move("nastyplot"), _mk_move("shadowball")],
+            boosts={constants.SPECIAL_ATTACK: 4},
+            types=["steel", "ghost"],
+            stats={
+                constants.ATTACK: 60,
+                constants.DEFENSE: 91,
+                constants.SPECIAL_ATTACK: 133,
+                constants.SPECIAL_DEFENSE: 91,
+                constants.SPEED: 84,
+                constants.HITPOINTS: 336,
+            },
+        )
+        ability_state = _mk_ability_state(boost=4)
+        policy = {
+            "softboiled": 0.026,
+            "calmmind": 0.378,
+            "seismictoss": 0.0,   # Blocked by type immunity filter
+            "stealthrock": 1.005,
+            "switch corviknight": 0.005,
+            "switch gliscor": 0.002,
+            "switch pecharunt": 0.002,
+        }
+
+        adjusted = apply_threat_switch_bias(policy, battle, ability_state)
+
+        self.assertEqual(adjusted["seismictoss"], 0.0,
+                         "Type-immune move must stay at 0.0 after threat bias")
+
     def test_unaware_hold_mode_avoids_immediate_switch_out(self):
         battle = _mk_battle(
             active_hp=410,
@@ -1023,6 +1064,153 @@ class TestConversionAndMCTSBlend(unittest.TestCase):
             metadata.get("reason"),
             {"block_setup_override_under_pressure", "block_setup_override_over_progress"},
         )
+
+    def test_destiny_bond_penalizes_attack_at_low_hp(self):
+        """Fix: Damaging moves penalized when opponent has Destiny Bond at ≤40% HP."""
+        battle = _mk_battle(
+            active_hp=300,
+            active_max_hp=334,
+            move_names=["shadowball", "recover"],
+        )
+        battle.opponent.active = SimpleNamespace(
+            name="gengar",
+            hp=80,
+            max_hp=261,
+            moves=[_mk_move("destinybond"), _mk_move("shadowball")],
+            types=["ghost", "poison"],
+            boosts={},
+            stats={},
+        )
+
+        oddities = detect_odd_move(battle, "shadowball", ability_state=None)
+
+        self.assertIn("risk:destiny_bond_likely", oddities)
+
+    def test_destiny_bond_not_triggered_at_high_hp(self):
+        """Destiny Bond penalty should NOT apply when opponent is healthy."""
+        battle = _mk_battle(
+            active_hp=300,
+            active_max_hp=334,
+            move_names=["shadowball", "recover"],
+        )
+        battle.opponent.active = SimpleNamespace(
+            name="gengar",
+            hp=220,
+            max_hp=261,
+            moves=[_mk_move("destinybond"), _mk_move("shadowball")],
+            types=["ghost", "poison"],
+            boosts={},
+            stats={},
+        )
+
+        oddities = detect_odd_move(battle, "shadowball", ability_state=None)
+
+        self.assertNotIn("risk:destiny_bond_likely", oddities)
+
+    def test_destiny_bond_not_triggered_for_status_moves(self):
+        """Status moves should not be penalized by Destiny Bond (they don't KO)."""
+        battle = _mk_battle(
+            active_hp=300,
+            active_max_hp=334,
+            move_names=["toxic", "recover"],
+        )
+        battle.opponent.active = SimpleNamespace(
+            name="gengar",
+            hp=50,
+            max_hp=261,
+            moves=[_mk_move("destinybond"), _mk_move("shadowball")],
+            types=["ghost", "poison"],
+            boosts={},
+            stats={},
+        )
+
+        oddities = detect_odd_move(battle, "toxic", ability_state=None)
+
+        self.assertNotIn("risk:destiny_bond_likely", oddities)
+
+    def test_setup_no_stat_attack_flags_calm_mind_with_seismic_toss(self):
+        """Fix: Calm Mind flagged when only damaging move is fixed-damage Seismic Toss."""
+        battle = _mk_battle(
+            active_hp=652,
+            active_max_hp=652,
+            move_names=["calmmind", "seismictoss", "softboiled", "thunderwave"],
+        )
+        battle.user.active.name = "blissey"
+
+        oddities = detect_odd_move(battle, "calmmind", ability_state=None)
+
+        self.assertIn("waste_turn:setup_no_stat_attack", oddities)
+
+    def test_setup_no_stat_attack_allows_nasty_plot_with_real_special(self):
+        """Nasty Plot should NOT be flagged when a real SpA move exists."""
+        battle = _mk_battle(
+            active_hp=300,
+            active_max_hp=380,
+            move_names=["nastyplot", "shadowball", "hex", "recover"],
+        )
+        battle.user.active.name = "gholdengo"
+
+        oddities = detect_odd_move(battle, "nastyplot", ability_state=None)
+
+        self.assertNotIn("waste_turn:setup_no_stat_attack", oddities)
+
+    def test_setup_no_stat_attack_flags_swords_dance_without_physical(self):
+        """Swords Dance flagged when no physical attack exists."""
+        battle = _mk_battle(
+            active_hp=300,
+            active_max_hp=334,
+            move_names=["swordsdance", "seismictoss", "recover", "toxic"],
+        )
+
+        oddities = detect_odd_move(battle, "swordsdance", ability_state=None)
+
+        self.assertIn("waste_turn:setup_no_stat_attack", oddities)
+
+    def test_toxic_exempt_when_no_offensive_answer(self):
+        """Fix: Toxic should not be suppressed when all attacks are type-immune."""
+        battle = _mk_battle(
+            active_hp=652,
+            active_max_hp=652,
+            move_names=["softboiled", "calmmind", "seismictoss", "toxic"],
+        )
+        battle.user.active.name = "blissey"
+        battle.user.active.types = ["normal"]
+        battle.opponent.active = SimpleNamespace(
+            name="gholdengo",
+            hp=265,
+            max_hp=336,
+            moves=[_mk_move("nastyplot"), _mk_move("shadowball")],
+            boosts={constants.SPECIAL_ATTACK: 2},
+            types=["steel", "ghost"],
+            stats={
+                constants.ATTACK: 60,
+                constants.DEFENSE: 91,
+                constants.SPECIAL_ATTACK: 133,
+                constants.SPECIAL_DEFENSE: 91,
+                constants.SPEED: 84,
+                constants.HITPOINTS: 336,
+            },
+        )
+        ability_state = _mk_ability_state(boost=2)
+        # Seismic Toss is type-immune (Fighting vs Ghost) → weight 0
+        # Calm Mind is useless (no real SpA move) → very low
+        # Toxic is the ONLY progress move
+        policy = {
+            "softboiled": 0.026,
+            "calmmind": 0.020,
+            "seismictoss": 0.0,
+            "toxic": 0.50,
+            "switch corviknight": 0.005,
+        }
+
+        adjusted = apply_threat_switch_bias(policy, battle, ability_state)
+
+        # Toxic must NOT be suppressed below its initial weight
+        self.assertGreater(adjusted["toxic"], 0.10,
+                           f"Toxic ({adjusted['toxic']:.4f}) should remain high "
+                           f"when no offensive answer exists")
+        # Seismic Toss must stay at 0
+        self.assertEqual(adjusted["seismictoss"], 0.0)
 
     def test_oddity_flags_status_into_poison_heal(self):
         battle = _mk_battle(

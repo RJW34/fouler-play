@@ -1,5 +1,5 @@
 @echo off
-setlocal EnableExtensions DisableDelayedExpansion
+setlocal EnableExtensions EnableDelayedExpansion
 
 set "REPO_DIR=%~dp0"
 cd /d "%REPO_DIR%" || (
@@ -34,7 +34,6 @@ if not defined PS_PASSWORD (
 if not defined PS_WEBSOCKET_URI set "PS_WEBSOCKET_URI=wss://sim3.psim.us/showdown/websocket"
 if not defined PS_FORMAT set "PS_FORMAT=gen9ou"
 if not defined PS_SEARCH_TIME_MS set "PS_SEARCH_TIME_MS=3000"
-if not defined PS_RUN_COUNT set "PS_RUN_COUNT=999999"
 if not defined BOT_LOG_LEVEL set "BOT_LOG_LEVEL=INFO"
 if not defined SAVE_REPLAY set "SAVE_REPLAY=always"
 if not defined MAX_MCTS_BATTLES set "MAX_MCTS_BATTLES=1"
@@ -42,6 +41,31 @@ if not defined OBS_SERVER_PORT set "OBS_SERVER_PORT=8777"
 if not defined AUTO_START_OBS_SERVER set "AUTO_START_OBS_SERVER=1"
 
 if not defined TEAM_NAMES if not defined TEAM_LIST if not defined TEAM_NAME set "TEAM_NAME=gen9/ou/fat-team-1-stall"
+
+:: =========================================================================
+:: Ask user how many battles to play
+:: =========================================================================
+echo.
+echo =============================================
+echo   Fouler-Play Battle Launcher
+echo   Account: %PS_USERNAME%
+echo   Format : %PS_FORMAT%
+echo =============================================
+echo.
+set /p "BATTLE_COUNT=How many battles? (0 = infinite): "
+if not defined BATTLE_COUNT set "BATTLE_COUNT=0"
+if "!BATTLE_COUNT!"=="0" (
+    set "PS_RUN_COUNT=999999"
+    echo [START] Running in infinite mode (999999 battles)
+) else (
+    set "PS_RUN_COUNT=!BATTLE_COUNT!"
+    echo [START] Running !BATTLE_COUNT! battle(s)
+)
+set /p "CONCURRENT_BATTLES=Concurrent battles? (default 1): "
+if not defined CONCURRENT_BATTLES set "CONCURRENT_BATTLES=1"
+if "!CONCURRENT_BATTLES!"=="" set "CONCURRENT_BATTLES=1"
+echo [START] Concurrent battles: !CONCURRENT_BATTLES!
+echo.
 
 set "SPECTATOR_FLAG="
 if defined SPECTATOR_USERNAME (
@@ -61,10 +85,11 @@ if errorlevel 1 (
     echo [OBS] Auto-start disabled: AUTO_START_OBS_SERVER=%AUTO_START_OBS_SERVER%.
 )
 
-echo [START] Fouler-Play one-touch launcher
-echo [START] Account: %PS_USERNAME%
-echo [START] Format : %PS_FORMAT%
-echo [START] Mode   : single battle worker
+if "!CONCURRENT_BATTLES!"=="1" (
+    echo [START] Mode   : single battle worker
+) else (
+    echo [START] Mode   : !CONCURRENT_BATTLES! concurrent battle workers
+)
 if defined SPECTATOR_USERNAME (
     if defined SPECTATOR_FLAG (
         echo [SPECTATOR] Inviting spectator account: %SPECTATOR_USERNAME%
@@ -87,10 +112,10 @@ call py -3 run.py ^
   --bot-mode search_ladder ^
   --pokemon-format "%PS_FORMAT%" ^
   --search-time-ms "%PS_SEARCH_TIME_MS%" ^
-  --run-count "%PS_RUN_COUNT%" ^
+  --run-count "!PS_RUN_COUNT!" ^
   --save-replay "%SAVE_REPLAY%" ^
   --log-level "%BOT_LOG_LEVEL%" ^
-  --max-concurrent-battles 1 ^
+  --max-concurrent-battles "!CONCURRENT_BATTLES!" ^
   --search-parallelism 1 ^
   --max-mcts-battles "%MAX_MCTS_BATTLES%" ^
   --team-names "%TEAM_NAMES%" ^
@@ -106,10 +131,10 @@ call py -3 run.py ^
   --bot-mode search_ladder ^
   --pokemon-format "%PS_FORMAT%" ^
   --search-time-ms "%PS_SEARCH_TIME_MS%" ^
-  --run-count "%PS_RUN_COUNT%" ^
+  --run-count "!PS_RUN_COUNT!" ^
   --save-replay "%SAVE_REPLAY%" ^
   --log-level "%BOT_LOG_LEVEL%" ^
-  --max-concurrent-battles 1 ^
+  --max-concurrent-battles "!CONCURRENT_BATTLES!" ^
   --search-parallelism 1 ^
   --max-mcts-battles "%MAX_MCTS_BATTLES%" ^
   --team-list "%TEAM_LIST%" ^
@@ -125,10 +150,10 @@ call py -3 run.py ^
   --bot-mode search_ladder ^
   --pokemon-format "%PS_FORMAT%" ^
   --search-time-ms "%PS_SEARCH_TIME_MS%" ^
-  --run-count "%PS_RUN_COUNT%" ^
+  --run-count "!PS_RUN_COUNT!" ^
   --save-replay "%SAVE_REPLAY%" ^
   --log-level "%BOT_LOG_LEVEL%" ^
-  --max-concurrent-battles 1 ^
+  --max-concurrent-battles "!CONCURRENT_BATTLES!" ^
   --search-parallelism 1 ^
   --max-mcts-battles "%MAX_MCTS_BATTLES%" ^
   --team-name "%TEAM_NAME%" ^

@@ -1,16 +1,118 @@
 import json
 import os
 import asyncio
+import contextvars
 import time
 from collections import OrderedDict
 from copy import deepcopy
 import logging
+from logging.handlers import RotatingFileHandler
 import re
 import aiohttp
 from datetime import datetime
 
 from data.pkmn_sets import RandomBattleTeamDatasets, TeamDatasets
 from data.pkmn_sets import SmogonSets
+
+# ---------------------------------------------------------------------------
+# Startup log cleanup
+# ---------------------------------------------------------------------------
+# Limits for how many files to keep per category.
+LOG_KEEP_BATTLE_FILES = int(os.getenv("LOG_KEEP_BATTLE_FILES", "60"))
+LOG_KEEP_TRACE_FILES = int(os.getenv("LOG_KEEP_TRACE_FILES", "500"))
+LOG_KEEP_STDOUT_FILES = int(os.getenv("LOG_KEEP_STDOUT_FILES", "3"))
+
+
+def cleanup_old_logs(log_dir: str = "logs", trace_dir: str | None = None):
+    """Prune old battle logs, rotated backups, phantom logs, decision traces,
+    and stdout logs on startup.  Keeps the most recent files by mtime."""
+    _log = logging.getLogger(__name__)
+    trace_dir = trace_dir or os.path.join(log_dir, "decision_traces")
+    removed = 0
+
+    # --- 1. Phantom _None.log files (always delete all — they're from dead rooms) ---
+    for fname in os.listdir(log_dir):
+        if "_None.log" in fname:
+            try:
+                os.remove(os.path.join(log_dir, fname))
+                removed += 1
+            except OSError:
+                pass
+
+    # --- 2. Battle log files and their rotated backups ---
+    # Collect battle-*.log* (but not worker_*_init.log or init.log)
+    battle_logs = []
+    for fname in os.listdir(log_dir):
+        if not fname.startswith("battle-"):
+            continue
+        if "_None.log" in fname:
+            continue  # already handled above
+        path = os.path.join(log_dir, fname)
+        try:
+            battle_logs.append((os.path.getmtime(path), path))
+        except OSError:
+            pass
+
+    # Group by base name (strip .1/.2/.3 suffix) so we prune whole families
+    base_names: dict[str, list[str]] = {}
+    for _mtime, path in battle_logs:
+        fname = os.path.basename(path)
+        base = re.sub(r"\.log(\.\d+)?$", ".log", fname)
+        base_names.setdefault(base, []).append(path)
+
+    # Sort base names by newest file in each family, keep most recent N
+    family_newest = []
+    for base, paths in base_names.items():
+        newest = max(os.path.getmtime(p) for p in paths)
+        family_newest.append((newest, base, paths))
+    family_newest.sort(reverse=True)
+
+    for _newest, _base, paths in family_newest[LOG_KEEP_BATTLE_FILES:]:
+        for p in paths:
+            try:
+                os.remove(p)
+                removed += 1
+            except OSError:
+                pass
+
+    # --- 3. Decision trace JSON files ---
+    if os.path.isdir(trace_dir):
+        traces = []
+        for fname in os.listdir(trace_dir):
+            if not fname.endswith(".json"):
+                continue
+            path = os.path.join(trace_dir, fname)
+            try:
+                traces.append((os.path.getmtime(path), path))
+            except OSError:
+                pass
+        traces.sort(reverse=True)
+        for _mtime, path in traces[LOG_KEEP_TRACE_FILES:]:
+            try:
+                os.remove(path)
+                removed += 1
+            except OSError:
+                pass
+
+    # --- 4. Old stdout batch logs ---
+    stdout_logs = []
+    for fname in os.listdir(log_dir):
+        if "stdout" in fname and fname.endswith(".log"):
+            path = os.path.join(log_dir, fname)
+            try:
+                stdout_logs.append((os.path.getmtime(path), path))
+            except OSError:
+                pass
+    stdout_logs.sort(reverse=True)
+    for _mtime, path in stdout_logs[LOG_KEEP_STDOUT_FILES:]:
+        try:
+            os.remove(path)
+            removed += 1
+        except OSError:
+            pass
+
+    if removed:
+        _log.info(f"Log cleanup: removed {removed} old files")
 import constants
 from constants import BattleType
 from config import FoulPlayConfig, SaveReplay
@@ -49,6 +151,8 @@ STALE_STRIKES = int(os.getenv("BATTLE_STALE_STRIKES", "2"))
 STALE_DISPLAY_GRACE_SEC = int(os.getenv("BATTLE_STALE_DISPLAY_GRACE_SEC", "900"))
 # Throttle active_battles.json writes to avoid excessive disk churn.
 ACTIVE_BATTLES_WRITE_INTERVAL_SEC = float(os.getenv("ACTIVE_BATTLES_WRITE_INTERVAL_SEC", "1.0"))
+# How often (seconds) the battle loop refreshes active_battles.json heartbeat.
+ACTIVE_BATTLES_HEARTBEAT_SEC = float(os.getenv("ACTIVE_BATTLES_HEARTBEAT_SEC", "30.0"))
 # Hard cap for move selection (seconds). If exceeded, use fallback move.
 DECISION_TIMEOUT_SEC = int(os.getenv("DECISION_TIMEOUT_SEC", "25"))
 TRACE_DECISIONS = os.getenv("DECISION_TRACE", "1").strip().lower() not in (
@@ -74,6 +178,77 @@ DEAD_BATTLE_BLACKLIST_MAX = max(100, int(os.getenv("DEAD_BATTLE_BLACKLIST_MAX", 
 
 # Hard battle timeout (seconds). 0 disables forced battle termination.
 BATTLE_HARD_TIMEOUT_SEC = int(os.getenv("BATTLE_HARD_TIMEOUT_SEC", "0"))
+
+# Prevents heartbeat from re-registering battles that already finished.
+# Capped at 200 entries to avoid unbounded growth.
+_concluded_battles: set[str] = set()
+_CONCLUDED_BATTLES_MAX = 200
+
+# --- Per-worker logging ---
+# ContextVar tracks which worker (and battle) the current coroutine belongs to.
+# Each worker gets its own RotatingFileHandler so log files don't clobber each other.
+_current_worker_id: contextvars.ContextVar[int | None] = contextvars.ContextVar(
+    "current_worker_id", default=None
+)
+_worker_handlers: dict[int, RotatingFileHandler] = {}
+
+
+class _WorkerFilter(logging.Filter):
+    """Only accept records from the matching worker coroutine."""
+
+    def __init__(self, worker_id: int):
+        super().__init__()
+        self.worker_id = worker_id
+
+    def filter(self, record):
+        return _current_worker_id.get(None) == self.worker_id
+
+
+class _InitOnlyFilter(logging.Filter):
+    """Only accept records that have no worker context (init/shared messages)."""
+
+    def filter(self, record):
+        return _current_worker_id.get(None) is None
+
+
+_shared_handler_filtered = False
+
+
+def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
+    """Return the RotatingFileHandler for *worker_id*, creating one if needed."""
+    global _shared_handler_filtered
+    if worker_id in _worker_handlers:
+        return _worker_handlers[worker_id]
+    log_dir = "logs"
+    os.makedirs(log_dir, exist_ok=True)
+    handler = RotatingFileHandler(
+        os.path.join(log_dir, f"worker_{worker_id}_init.log"),
+        maxBytes=10 * 1024 * 1024,
+        backupCount=3,
+    )
+    handler.setLevel(logging.DEBUG)
+    from config import CustomFormatter
+    handler.setFormatter(CustomFormatter())
+    handler.addFilter(_WorkerFilter(worker_id))
+    logging.getLogger().addHandler(handler)
+    _worker_handlers[worker_id] = handler
+    # Add init-only filter to the shared handler so it stops duplicating
+    # worker output into init.log. Only needs to happen once.
+    if not _shared_handler_filtered and FoulPlayConfig.file_log_handler:
+        FoulPlayConfig.file_log_handler.addFilter(_InitOnlyFilter())
+        _shared_handler_filtered = True
+    logger.info("Created per-worker log handler for worker %d", worker_id)
+    return handler
+
+
+def _rollover_worker_handler(worker_id: int, battle_tag: str, opponent_name: str):
+    """Switch worker's log handler to a new battle-specific file."""
+    handler = _get_or_create_worker_handler(worker_id)
+    new_name = f"{battle_tag}_{opponent_name}.log".replace("/", "_")
+    handler.baseFilename = os.path.join("logs", new_name)
+    # doRollover() renames the current file to .1 and opens a fresh file
+    # with the new baseFilename — exactly like the original do_rollover().
+    handler.doRollover()
 
 # Battle chat defaults
 OPENING_CHAT_MESSAGE = "hf"
@@ -124,9 +299,11 @@ def _parse_started_ts(value: str | None) -> datetime | None:
 
 
 async def _send_battle_chat(ps_websocket_client, battle_tag: str, messages: list[str]) -> None:
-    for message in messages:
+    for i, message in enumerate(messages):
         if not message:
             continue
+        if i > 0:
+            await asyncio.sleep(0.6)  # Avoid Showdown message throttle
         logger.info("Sending battle chat in %s: %s", battle_tag, message)
         await ps_websocket_client.send_message(battle_tag, [message])
 
@@ -461,6 +638,7 @@ async def _attempt_resume_battle(
             except Exception:
                 pass
             if battle_tag in _active_battles:
+                _log_battle_removal(battle_tag, "resume_timeout")
                 del _active_battles[battle_tag]
                 await update_active_battles_file()
             return battle_tag, opponent_name, "timeout"
@@ -481,6 +659,7 @@ async def _attempt_resume_battle(
             except Exception:
                 pass
             if battle_tag in _active_battles:
+                _log_battle_removal(battle_tag, "resume_closed")
                 del _active_battles[battle_tag]
                 await update_active_battles_file()
             return battle_tag, opponent_name, "closed"
@@ -523,6 +702,20 @@ def get_active_battle_count():
     )
 
 
+def _log_battle_removal(battle_tag: str, reason: str):
+    """Log every removal from _active_battles so we can trace ghost disappearances."""
+    remaining = [bid for bid in _active_battles if bid != battle_tag]
+    logger.info(
+        "TRACKING: removed %s (reason: %s) | remaining: %d entries %s",
+        battle_tag, reason, len(remaining), remaining,
+    )
+    # Mark as concluded so heartbeat never re-registers it
+    _concluded_battles.add(battle_tag)
+    if len(_concluded_battles) > _CONCLUDED_BATTLES_MAX:
+        # Evict oldest (arbitrary since set is unordered, but prevents unbounded growth)
+        _concluded_battles.pop()
+
+
 async def update_active_battles_file():
     """Write active battles to JSON file for stream overlay integration.
 
@@ -541,6 +734,7 @@ async def update_active_battles_file():
                 and info.get("stale_since") < cutoff
             ]
             for bid in stale_tags:
+                _log_battle_removal(bid, f"stale_grace_expired ({STALE_DISPLAY_GRACE_SEC}s)")
                 _active_battles.pop(bid, None)
 
         battles = []
@@ -1326,6 +1520,7 @@ async def start_battle_common(
             if worker_id is not None:
                 for existing_tag, info in list(_active_battles.items()):
                     if info.get("worker_id") == worker_id and existing_tag != battle_tag:
+                        _log_battle_removal(existing_tag, f"replaced_by_worker_{worker_id}_new_battle_{battle_tag}")
                         _active_battles.pop(existing_tag, None)
             existing = _active_battles.get(battle_tag, {})
             if resume_started and not existing.get("started"):
@@ -1346,9 +1541,14 @@ async def start_battle_common(
     # Battle is already registered atomically in get_battle_tag_and_opponent()
 
     if FoulPlayConfig.log_to_file:
-        FoulPlayConfig.file_log_handler.do_rollover(
-            "{}_{}.log".format(battle_tag, opponent_name)
-        )
+        if worker_id is not None:
+            # Per-worker handler: each worker logs to its own file
+            _rollover_worker_handler(worker_id, battle_tag, opponent_name)
+        else:
+            # Fallback: single-worker mode uses the shared handler
+            FoulPlayConfig.file_log_handler.do_rollover(
+                "{}_{}.log".format(battle_tag, opponent_name)
+            )
 
     battle = Battle(battle_tag)
     battle.worker_id = worker_id
@@ -1384,6 +1584,7 @@ async def start_battle_common(
             removed = False
             async with _battles_lock:
                 if battle_tag in _active_battles:
+                    _log_battle_removal(battle_tag, "room_closed_before_init")
                     del _active_battles[battle_tag]
                     removed = True
             if removed:
@@ -1691,6 +1892,7 @@ async def _finalize_battle_runtime(
     removed = False
     async with _battles_lock:
         if battle_tag in _active_battles:
+            _log_battle_removal(battle_tag, "finalize_battle_runtime")
             del _active_battles[battle_tag]
             removed = True
     if removed:
@@ -1718,6 +1920,11 @@ async def pokemon_battle(
     worker_id: int | None = None,
 ):
     """Run a single battle to completion. Returns (winner, battle_tag)."""
+    # Set worker context for per-worker log filtering
+    if worker_id is not None:
+        _current_worker_id.set(worker_id)
+        _get_or_create_worker_handler(worker_id)
+
     battle = await start_battle(
         ps_websocket_client,
         pokemon_battle_type,
@@ -1744,9 +1951,44 @@ async def pokemon_battle(
     message_timeout = MESSAGE_TIMEOUT_SEC
     battle_start_time = time.time()
     battle_end_event_sent = False
+    last_heartbeat = time.time()
 
     try:
         while True:
+            # Heartbeat: periodically verify tracking + refresh file
+            now_hb = time.time()
+            if now_hb - last_heartbeat >= ACTIVE_BATTLES_HEARTBEAT_SEC:
+                last_heartbeat = now_hb
+                needs_reregister = False
+                async with _battles_lock:
+                    if battle_tag not in _active_battles:
+                        # Don't re-register battles that already concluded
+                        if battle_tag in _concluded_battles:
+                            logger.debug(
+                                "TRACKING: %s missing but already concluded, skipping re-register",
+                                battle_tag,
+                            )
+                        else:
+                            logger.warning(
+                                "TRACKING: %s missing from _active_battles! Re-registering (worker=%s, opp=%s)",
+                                battle_tag, worker_id, opponent_name,
+                            )
+                            _active_battles[battle_tag] = {
+                                "opponent": opponent_name,
+                                "started": datetime.fromtimestamp(battle_start_time),
+                                "worker_id": worker_id,
+                                "status": "active",
+                            }
+                            needs_reregister = True
+                if needs_reregister:
+                    await update_active_battles_file()
+                    logger.info("TRACKING: re-registered %s successfully", battle_tag)
+                else:
+                    # Force a write to keep the file fresh for OBS
+                    global _last_active_battles_payload
+                    _last_active_battles_payload = None  # Bypass dedup
+                    await update_active_battles_file()
+
             # Hard timeout safety: forcibly end battles that run too long
             if BATTLE_HARD_TIMEOUT_SEC > 0:
                 elapsed = time.time() - battle_start_time
@@ -1915,6 +2157,7 @@ async def pokemon_battle(
                 removed = False
                 async with _battles_lock:
                     if battle_tag in _active_battles:
+                        _log_battle_removal(battle_tag, f"battle_finished (winner={winner})")
                         del _active_battles[battle_tag]
                         removed = True
                 if removed:
