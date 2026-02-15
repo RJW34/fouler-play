@@ -533,31 +533,51 @@ class Pipeline:
         }
 
     def watch_mode(self):
-        """Daemon mode: watch for batch completions."""
+        """Daemon mode: watch for batch completions. Spawns analysis as background subprocess."""
+        import subprocess
+        
         print(f"👁️  Pipeline watcher started")
         print(f"📊 Batch size: {BATCH_SIZE} battles")
         print(f"📍 Current batch: {self.current_batch}")
         print(f"🔄 Checking every 60 seconds...\n")
         
+        active_analysis = None  # Track background analysis process
+        
         try:
             while True:
-                if self.should_analyze():
-                    print(f"\n🚀 Batch threshold reached! Starting analysis...")
-                    report = self.run_analysis()
-                    if report:
-                        # Get top issues for wake message
-                        content = report.read_text()
-                        analysis_section = content.split("## AI Analysis")[-1] if "## AI Analysis" in content else ""
-                        top_issues = self._extract_top_issues(analysis_section)
-                        
-                        # Send notifications
-                        self.send_discord_notification(report)
-                        self.send_wake_notification(report, top_issues)
+                # Check if background analysis completed
+                if active_analysis:
+                    ret = active_analysis.poll()
+                    if ret is not None:  # Process finished
+                        if ret == 0:
+                            print(f"✅ Background analysis completed (PID {active_analysis.pid})")
+                        else:
+                            print(f"⚠️  Analysis exited with code {ret}")
+                        active_analysis = None
                 
-                time.sleep(60)  # Check every minute
+                # If no analysis running and threshold met, spawn async analysis
+                if not active_analysis and self.should_analyze():
+                    print(f"\n🚀 Batch threshold reached! Spawning background analysis (PID {subprocess.Popen.__name__})...")
+                    
+                    # Spawn as subprocess — watcher loop continues while Ollama processes
+                    active_analysis = subprocess.Popen(
+                        [sys.executable, __file__, "analyze"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True
+                    )
+                    print(f"   Background task started. Watcher continues monitoring...\n")
+                
+                time.sleep(60)  # Check every minute (does NOT wait for analysis)
                 
         except KeyboardInterrupt:
             print(f"\n\n👋 Pipeline watcher stopped")
+            if active_analysis:
+                active_analysis.terminate()
+                try:
+                    active_analysis.wait(timeout=5)
+                except:
+                    active_analysis.kill()
 
     def show_latest_report(self):
         """Display the latest analysis report."""

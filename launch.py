@@ -33,6 +33,11 @@ def load_env():
         key, _, val = line.partition("=")
         key = key.strip()
         val = val.strip()
+        # Strip inline comments (everything after # that's not in quotes)
+        if "#" in val:
+            # Simple approach: split on # and take first part
+            # (doesn't handle quoted # but .env files rarely do)
+            val = val.split("#")[0].strip()
         # Remove surrounding quotes if present
         if len(val) >= 2 and val[0] == val[-1] and val[0] in ('"', "'"):
             val = val[1:-1]

@@ -1,0 +1,112 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                    FOULER PLAY - 6 BATTLE MONITOR LAYOUT                     ║
+║                           1920×1080 @ 60fps                                   ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────┬──────────────────────┬──────────────────────┐
+│  640×360             │  640×360             │  640×360             │
+│ ┌──────────────────┐ │ ┌──────────────────┐ │ ┌──────────────────┐ │
+│ │ DEKU-1 | STALL   │ │ │ DEKU-2 | PIVOT   │ │ │ DEKU-3 | DONDOZO │ │
+│ ├──────────────────┤ │ ├──────────────────┤ │ ├──────────────────┤ │
+│ │                  │ │ │                  │ │ │                  │ │
+│ │  CoolTrainer123  │ │ │  PikachuMaster   │ │ │  Searching...    │ │
+│ │                  │ │ │                  │ │ │                  │ │
+│ │   [BATTLING]     │ │ │     [WON]        │ │ │   [SEARCHING]    │ │
+│ │                  │ │ │                  │ │ │                  │ │
+│ │   ELO: 1450      │ │ │   ELO: 1472      │ │ │   ELO: 1401      │ │
+│ │   Turn: 12       │ │ │   Turn: 24       │ │ │   Turn: 0        │ │
+│ │   Record: 15-8   │ │ │   Record: 16-8   │ │ │   Record: 10-5   │ │
+│ │                  │ │ │                  │ │ │                  │ │
+│ └──────────────────┘ │ └──────────────────┘ │ └──────────────────┘ │
+│  [BLUE THEME]        │  [BLUE THEME]        │  [BLUE THEME]        │
+└──────────────────────┴──────────────────────┴──────────────────────┘
+                              Y = 0-360
+
+┌──────────────────────┬──────────────────────┬──────────────────────┐
+│  640×360             │  640×360             │  640×360             │
+│ ┌──────────────────┐ │ ┌──────────────────┐ │ ┌──────────────────┐ │
+│ │ CHUNG-1 | STALL  │ │ │ CHUNG-2 | PIVOT  │ │ │ CHUNG-3 | DONDOZO│ │
+│ ├──────────────────┤ │ ├──────────────────┤ │ ├──────────────────┤ │
+│ │                  │ │ │                  │ │ │                  │ │
+│ │  DragonSlayer99  │ │ │  TeamBuilder42   │ │ │  MetaGamer       │ │
+│ │                  │ │ │                  │ │ │                  │ │
+│ │   [BATTLING]     │ │ │     [LOST]       │ │ │   [BATTLING]     │ │
+│ │                  │ │ │                  │ │ │                  │ │
+│ │   ELO: 1523      │ │ │   ELO: 1498      │ │ │   ELO: 1445      │ │
+│ │   Turn: 8        │ │ │   Turn: 18       │ │ │   Turn: 15       │ │
+│ │   Record: 18-7   │ │ │   Record: 17-8   │ │ │   Record: 14-9   │ │
+│ │                  │ │ │                  │ │ │                  │ │
+│ └──────────────────┘ │ └──────────────────┘ │ └──────────────────┘ │
+│  [RED THEME]         │  [RED THEME]         │  [RED THEME]         │
+└──────────────────────┴──────────────────────┴──────────────────────┘
+                             Y = 360-720
+
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                         OPTIONAL: AGGREGATE PANEL                             ║
+║                              Y = 720-1080 (360px)                             ║
+╠═══════════════════════════╦═══════════════════════════╦═══════════════════════╣
+║      DEKU TOTALS          ║      CHUNG TOTALS         ║   COMBINED SESSION    ║
+║                           ║                           ║                       ║
+║  Battles: 3               ║  Battles: 3               ║  Total Battles: 6     ║
+║  Record: 41-21            ║  Record: 49-24            ║  Combined: 90-45      ║
+║  Avg ELO: 1441            ║  Avg ELO: 1489            ║  Win Rate: 66.7%      ║
+║  Streak: ↑ W2             ║  Streak: ↓ L1             ║  Session: 2h 15m      ║
+║                           ║                           ║                       ║
+╚═══════════════════════════╩═══════════════════════════╩═══════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TILE POSITIONS (X, Y, Width, Height):
+
+┌────────┬───────┬───────┬───────┬────────┬──────┬──────────┐
+│ Tile   │   X   │   Y   │ Width │ Height │ Bot  │ Team     │
+├────────┼───────┼───────┼───────┼────────┼──────┼──────────┤
+│ DEKU-1 │     0 │     0 │   640 │    360 │ DEKU │ Stall    │
+│ DEKU-2 │   640 │     0 │   640 │    360 │ DEKU │ Pivot    │
+│ DEKU-3 │  1280 │     0 │   640 │    360 │ DEKU │ Dondozo  │
+│ CHUNG-1│     0 │   360 │   640 │    360 │ CHUNG│ Stall    │
+│ CHUNG-2│   640 │   360 │   640 │    360 │ CHUNG│ Pivot    │
+│ CHUNG-3│  1280 │   360 │   640 │    360 │ CHUNG│ Dondozo  │
+└────────┴───────┴───────┴───────┴────────┴──────┴──────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+COLOR PALETTE:
+
+DEKU (Blue Theme):
+  - Background: #001a33 (dark navy)
+  - Header: #4da6ff (bright blue)
+  - Border: #333333 (gray)
+
+CHUNG (Red Theme):
+  - Background: #330000 (dark maroon)
+  - Header: #ff6666 (bright red)
+  - Border: #333333 (gray)
+
+Shared:
+  - Opponent name: #FFFFFF (white)
+  - Status badges:
+      searching → #FFAA00 (orange)
+      battling  → #00FF00 (green)
+      won       → #00FFFF (cyan)
+      lost      → #FF0000 (red)
+  - ELO: #FFD700 (gold)
+  - Turn/Record: #CCCCCC / #AAAAAA (light gray)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+DATA FILE STRUCTURE:
+
+File: deku-battle-1.txt (or chung-battle-1.txt)
+─────────────────────────────────
+opponent=CoolTrainer123    ← Line 1 (opponent name)
+team=stall                 ← Line 2 (team identifier)
+status=battling            ← Line 3 (battle status)
+elo=1450                   ← Line 4 (current ELO)
+turns=12                   ← Line 5 (turn count)
+record=15-8                ← Line 6 (W-L record)
+─────────────────────────────────
+
+OBS reads this file and extracts each line via text filters.
+
+═══════════════════════════════════════════════════════════════════════════════
