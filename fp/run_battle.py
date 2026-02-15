@@ -130,6 +130,7 @@ from fp.websocket_client import PSWebsocketClient
 from streaming.state_store import write_active_battles, read_active_battles, write_status, update_daily_stats
 from fp.team_analysis import analyze_team
 from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_MOVES
+from fp.gameplan_integration import generate_and_store_gameplan, get_gameplan, clear_gameplan
 from constants_pkg.strategy import SETUP_MOVES
 
 logger = logging.getLogger(__name__)
@@ -1947,6 +1948,20 @@ async def pokemon_battle(
         "slot": (worker_id + 1) if worker_id is not None else None,
     })
 
+    # Generate pre-battle gameplan for strategic decision-making
+    gameplan = generate_and_store_gameplan(battle_tag, battle)
+    if gameplan:
+        # Store gameplan in battle object for access by decision layer
+        battle.gameplan = gameplan
+        logger.info(f"🎮 GAMEPLAN GENERATED: {gameplan.our_strategy}")
+        logger.info(f"📌 OUR WIN CONDITION: {gameplan.win_condition}")
+        logger.info(f"⚔️ OPPONENT WIN CONDITION: {gameplan.opponent_win_condition}")
+        logger.info(f"🔄 KEY PIVOTS: {', '.join(gameplan.key_pivot_triggers)}")
+        logger.info(f"💡 BACKUP PLAN: {gameplan.backup_plan or 'None'}")
+    else:
+        battle.gameplan = None
+        logger.warning(f"Failed to generate gameplan for {battle_tag}")
+
     timeout_strikes = 0
     message_timeout = MESSAGE_TIMEOUT_SEC
     battle_start_time = time.time()
@@ -2266,6 +2281,8 @@ async def pokemon_battle(
         logger.exception("Unhandled exception in battle loop for %s", battle_tag)
         raise
     finally:
+        # Clean up gameplan from memory
+        clear_gameplan(battle_tag)
         await _finalize_battle_runtime(
             ps_websocket_client,
             battle_tag,

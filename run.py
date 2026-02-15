@@ -701,7 +701,7 @@ async def run_foul_play():
 
     # Compute per-worker quotas for even distribution
     per_worker_quotas = []
-    if num_workers > 1 and FoulPlayConfig.run_count < 999999:
+    if num_workers > 1 and FoulPlayConfig.run_count <= 999999:
         base = FoulPlayConfig.run_count // num_workers
         remainder = FoulPlayConfig.run_count % num_workers
         for i in range(num_workers):

@@ -1,111 +1,111 @@
 {
-  "generated_at": "2026-02-15T10:30:17.339932+00:00",
+  "generated_at": "2026-02-15T18:30:23.252790+00:00",
   "stability": {
     "battles_last_100": 100,
-    "wins": 53,
-    "total_losses": 47,
+    "wins": 62,
+    "total_losses": 38,
     "timeout_losses": 10,
-    "skill_losses": 37,
+    "skill_losses": 28,
     "unknown_losses": 0,
-    "timeout_loss_rate": 21.3,
+    "timeout_loss_rate": 26.3,
     "memory_trend": "stable",
-    "avg_memory_mb": 194.8,
-    "max_memory_mb": 194.8,
+    "avg_memory_mb": 212.2,
+    "max_memory_mb": 212.2,
     "avg_cpu_percent": 0.0,
-    "avg_gap_seconds": 359.3,
-    "max_gap_seconds": 2987.8842,
-    "timeout_gaps_count": 43,
-    "service_restarts_24h": 146,
-    "health": "\ud83d\udd34 CRITICAL - \ud83d\udd34 CRITICAL timeout rate, \ud83d\udd34 frequent restarts"
+    "avg_gap_seconds": 372.6,
+    "max_gap_seconds": 1929.727035,
+    "timeout_gaps_count": 51,
+    "service_restarts_24h": -1,
+    "health": "\ud83d\udd34 CRITICAL - \ud83d\udd34 CRITICAL timeout rate"
   },
   "details": {
     "recent_timeout_losses": [
       {
-        "battle_id": "battle-gen9ou-2539993092",
-        "timestamp": "2026-02-15T07:33:19.996335+00:00",
-        "reason": "large_gap_after_14min"
-      },
-      {
-        "battle_id": "battle-gen9ou-2539996136",
-        "timestamp": "2026-02-15T07:48:10.097598+00:00",
-        "reason": "large_gap_before_14min"
-      },
-      {
-        "battle_id": "battle-gen9ou-2540006137",
-        "timestamp": "2026-02-15T08:16:58.695287+00:00",
+        "battle_id": "battle-gen9ou-2540063434",
+        "timestamp": "2026-02-15T11:36:18.240270+00:00",
         "reason": "large_gap_after_23min"
       },
       {
-        "battle_id": "battle-gen9ou-2540018680",
-        "timestamp": "2026-02-15T09:00:19.052730+00:00",
-        "reason": "large_gap_after_22min"
+        "battle_id": "battle-gen9ou-2540065619",
+        "timestamp": "2026-02-15T11:59:45.078965+00:00",
+        "reason": "large_gap_before_23min"
       },
       {
-        "battle_id": "battle-gen9ou-2540035935",
-        "timestamp": "2026-02-15T10:14:58.345456+00:00",
-        "reason": "large_gap_before_15min"
+        "battle_id": "battle-gen9ou-2540096774",
+        "timestamp": "2026-02-15T13:19:02.944512+00:00",
+        "reason": "large_gap_after_10min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2540098899",
+        "timestamp": "2026-02-15T13:29:47.211144+00:00",
+        "reason": "large_gap_before_10min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2540178766-v33ssf7k2ooqwf30nkhga860wmpgcu4pw",
+        "timestamp": "2026-02-15T16:32:12.481157+00:00",
+        "reason": "large_gap_before_11min"
       }
     ],
     "large_gaps": [
       {
-        "before_battle": "battle-gen9ou-2539833445",
-        "after_battle": "battle-gen9ou-2539836046",
-        "gap_seconds": 328.849089,
-        "gap_minutes": 5.5
-      },
-      {
-        "before_battle": "battle-gen9ou-2539839423",
-        "after_battle": "battle-gen9ou-2539840003",
-        "gap_seconds": 397.946392,
-        "gap_minutes": 6.6
-      },
-      {
-        "before_battle": "battle-gen9ou-2539845374",
-        "after_battle": "battle-gen9ou-2539846625",
-        "gap_seconds": 310.111038,
-        "gap_minutes": 5.2
-      },
-      {
-        "before_battle": "battle-gen9ou-2539848663-p3x23ue0jvs8qj5x388ws90rhumdxtgpw",
-        "after_battle": "battle-gen9ou-2539850284",
-        "gap_seconds": 439.956323,
-        "gap_minutes": 7.3
-      },
-      {
-        "before_battle": "battle-gen9ou-2539856208",
-        "after_battle": "battle-gen9ou-2539857663",
-        "gap_seconds": 394.270296,
-        "gap_minutes": 6.6
-      },
-      {
-        "before_battle": "battle-gen9ou-2539857663",
-        "after_battle": "battle-gen9ou-2539860409",
-        "gap_seconds": 480.832621,
-        "gap_minutes": 8.0
-      },
-      {
-        "before_battle": "battle-gen9ou-2539860409",
-        "after_battle": "battle-gen9ou-2539863915-trye8yqowbkvymhj400sdv30y4c5snspw",
-        "gap_seconds": 366.094106,
+        "before_battle": "battle-gen9ou-2540005299",
+        "after_battle": "battle-gen9ou-2540006137",
+        "gap_seconds": 366.802733,
         "gap_minutes": 6.1
       },
       {
-        "before_battle": "battle-gen9ou-2539863915-trye8yqowbkvymhj400sdv30y4c5snspw",
-        "after_battle": "battle-gen9ou-2539866554",
-        "gap_seconds": 839.80094,
-        "gap_minutes": 14.0
+        "before_battle": "battle-gen9ou-2540006137",
+        "after_battle": "battle-gen9ou-2540007752",
+        "gap_seconds": 1427.043613,
+        "gap_minutes": 23.8
       },
       {
-        "before_battle": "battle-gen9ou-2539866554",
-        "after_battle": "battle-gen9ou-2539872681-dl3qwhrqewdjegi78gbrvboxojl1kd3pw",
-        "gap_seconds": 470.949505,
-        "gap_minutes": 7.8
+        "before_battle": "battle-gen9ou-2540015995",
+        "after_battle": "battle-gen9ou-2540017120",
+        "gap_seconds": 366.702204,
+        "gap_minutes": 6.1
       },
       {
-        "before_battle": "battle-gen9ou-2539877358-mbnvjrd1csclfsdoq2onr971s6i6o28pw",
-        "after_battle": "battle-gen9ou-2539878765",
-        "gap_seconds": 379.468339,
-        "gap_minutes": 6.3
+        "before_battle": "battle-gen9ou-2540018680",
+        "after_battle": "battle-gen9ou-2540019681",
+        "gap_seconds": 1375.834785,
+        "gap_minutes": 22.9
+      },
+      {
+        "before_battle": "battle-gen9ou-2540019681",
+        "after_battle": "battle-gen9ou-2540025750",
+        "gap_seconds": 369.667952,
+        "gap_minutes": 6.2
+      },
+      {
+        "before_battle": "battle-gen9ou-2540028999",
+        "after_battle": "battle-gen9ou-2540029803-vwkh7l36laps81oustsou67o5xd801tpw",
+        "gap_seconds": 455.734261,
+        "gap_minutes": 7.6
+      },
+      {
+        "before_battle": "battle-gen9ou-2540029803-vwkh7l36laps81oustsou67o5xd801tpw",
+        "after_battle": "battle-gen9ou-2540031752",
+        "gap_seconds": 874.657142,
+        "gap_minutes": 14.6
+      },
+      {
+        "before_battle": "battle-gen9ou-2540031752",
+        "after_battle": "battle-gen9ou-2540035935",
+        "gap_seconds": 921.021651,
+        "gap_minutes": 15.4
+      },
+      {
+        "before_battle": "battle-gen9ou-2540035935",
+        "after_battle": "battle-gen9ou-2540040509-s19034c3y1bjvskck9n4w79nncj2rj6pw",
+        "gap_seconds": 434.909102,
+        "gap_minutes": 7.2
+      },
+      {
+        "before_battle": "battle-gen9ou-2540040509-s19034c3y1bjvskck9n4w79nncj2rj6pw",
+        "after_battle": "battle-gen9ou-2540042590-x3iw1v8wy1x2oajr2ho4j5s7vcebp2xpw",
+        "gap_seconds": 1006.102946,
+        "gap_minutes": 16.8
       }
     ]
   }
