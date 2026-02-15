@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-02-15T18:30:23.252790+00:00",
+  "generated_at": "2026-02-15T19:00:54.749760+00:00",
   "stability": {
     "battles_last_100": 100,
     "wins": 62,
@@ -9,22 +9,17 @@
     "unknown_losses": 0,
     "timeout_loss_rate": 26.3,
     "memory_trend": "stable",
-    "avg_memory_mb": 212.2,
-    "max_memory_mb": 212.2,
+    "avg_memory_mb": 177.3,
+    "max_memory_mb": 177.3,
     "avg_cpu_percent": 0.0,
-    "avg_gap_seconds": 372.6,
+    "avg_gap_seconds": 370.3,
     "max_gap_seconds": 1929.727035,
-    "timeout_gaps_count": 51,
+    "timeout_gaps_count": 53,
     "service_restarts_24h": -1,
     "health": "\ud83d\udd34 CRITICAL - \ud83d\udd34 CRITICAL timeout rate"
   },
   "details": {
     "recent_timeout_losses": [
-      {
-        "battle_id": "battle-gen9ou-2540063434",
-        "timestamp": "2026-02-15T11:36:18.240270+00:00",
-        "reason": "large_gap_after_23min"
-      },
       {
         "battle_id": "battle-gen9ou-2540065619",
         "timestamp": "2026-02-15T11:59:45.078965+00:00",
@@ -44,21 +39,14 @@
         "battle_id": "battle-gen9ou-2540178766-v33ssf7k2ooqwf30nkhga860wmpgcu4pw",
         "timestamp": "2026-02-15T16:32:12.481157+00:00",
         "reason": "large_gap_before_11min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2540246748",
+        "timestamp": "2026-02-15T18:41:52.231151+00:00",
+        "reason": "large_gap_before_10min"
       }
     ],
     "large_gaps": [
-      {
-        "before_battle": "battle-gen9ou-2540005299",
-        "after_battle": "battle-gen9ou-2540006137",
-        "gap_seconds": 366.802733,
-        "gap_minutes": 6.1
-      },
-      {
-        "before_battle": "battle-gen9ou-2540006137",
-        "after_battle": "battle-gen9ou-2540007752",
-        "gap_seconds": 1427.043613,
-        "gap_minutes": 23.8
-      },
       {
         "before_battle": "battle-gen9ou-2540015995",
         "after_battle": "battle-gen9ou-2540017120",
@@ -106,6 +94,18 @@
         "after_battle": "battle-gen9ou-2540042590-x3iw1v8wy1x2oajr2ho4j5s7vcebp2xpw",
         "gap_seconds": 1006.102946,
         "gap_minutes": 16.8
+      },
+      {
+        "before_battle": "battle-gen9ou-2540042590-x3iw1v8wy1x2oajr2ho4j5s7vcebp2xpw",
+        "after_battle": "battle-gen9ou-2540048211",
+        "gap_seconds": 656.306122,
+        "gap_minutes": 10.9
+      },
+      {
+        "before_battle": "battle-gen9ou-2540048211",
+        "after_battle": "battle-gen9ou-2540052171",
+        "gap_seconds": 504.947758,
+        "gap_minutes": 8.4
       }
     ]
   }

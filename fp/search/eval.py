@@ -498,8 +498,8 @@ def _is_wrong_wall(battle: Battle) -> bool:
     if opp_name:
         try:
             threat_cat = get_threat_category(opp_name)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[EVAL] Failed to detect threat category for {opp_name}: {e}. Defaulting to UNKNOWN.")
 
     # Determine if opponent is physically or specially oriented
     opp_is_physical = False
@@ -546,8 +546,8 @@ def _opp_has_setup_potential(opp) -> bool:
         if data and data.status_moves:
             if data.status_moves & SETUP_MOVES_SET:
                 return True
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[EVAL] Failed to check movepool for setup moves ({opp_name}): {e}")
 
     # Check currently revealed moves
     for move in getattr(opp, "moves", []) or []:
@@ -706,8 +706,8 @@ def _score_switch(battle: Battle, target_name: str) -> float:
     if opp_name:
         try:
             threat_cat = get_threat_category(opp_name)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[EVAL] Failed to detect threat category for switch-in routing ({opp_name}): {e}. Defaulting to UNKNOWN.")
 
     target_stats = getattr(target, "stats", {})
     if isinstance(target_stats, dict):
@@ -887,8 +887,9 @@ def _score_status_move(battle: Battle, move_name: str) -> float:
                 else:
                     # Still won't outspeed even after paralysis, but some value
                     base = 0.35
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[EVAL] Failed to calculate paralysis speed bonus: {e}. Using conservative base.")
+            base = 0.25
         return base
 
     if norm in ("spore", "sleeppowder", "hypnosis", "yawn"):

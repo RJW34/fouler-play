@@ -2246,6 +2246,20 @@
       "team_file": "fat-team-1-stall",
       "result": "win",
       "replay_id": "battle-gen9ou-2540254548"
+    },
+    {
+      "battle_id": "battle-gen9ou-2540255682",
+      "timestamp": "2026-02-15T18:51:51.434352+00:00",
+      "team_file": "fat-team-2-pivot",
+      "result": "loss",
+      "replay_id": "battle-gen9ou-2540255682"
+    },
+    {
+      "battle_id": "battle-gen9ou-2540257471",
+      "timestamp": "2026-02-15T18:58:30.921654+00:00",
+      "team_file": "fat-team-3-dondozo",
+      "result": "win",
+      "replay_id": "battle-gen9ou-2540257471"
     }
   ]
 }
