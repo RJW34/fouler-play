@@ -16,6 +16,14 @@ import sys
 import time
 from pathlib import Path
 
+# Import pre-flight verification
+try:
+    from pre_flight_check import run_pre_flight_check
+    PRE_FLIGHT_AVAILABLE = True
+except ImportError:
+    PRE_FLIGHT_AVAILABLE = False
+    print("[WARNING] pre_flight_check module not found. Pre-flight verification skipped.")
+
 REPO = Path(__file__).resolve().parent
 ENV_FILE = REPO / ".env"
 
@@ -179,6 +187,17 @@ def main():
         auto_obs = os.environ.get("AUTO_START_OBS_SERVER", "1").lower()
         if auto_obs not in ("0", "false", "no", "off"):
             ensure_obs_server(port)
+
+    # ========== PRE-FLIGHT VERIFICATION (MANDATORY) ==========
+    if PRE_FLIGHT_AVAILABLE and args.battles > 0:
+        print("\n[PRE-FLIGHT] Running verification checks...")
+        if not run_pre_flight_check(run_count=args.battles, num_workers=args.concurrent):
+            print("\n[FATAL] Pre-flight check FAILED. Fix issues above and retry.")
+            print("[FATAL] Refusing to launch batch with broken configuration.")
+            sys.exit(1)
+        print("[PRE-FLIGHT] ✅ All checks passed. Proceeding with batch launch.\n")
+    elif args.battles == 0:
+        print("[PRE-FLIGHT] Infinite mode detected. Skipping quota verification.")
 
     bot_args = build_bot_args(args.battles, args.concurrent)
 

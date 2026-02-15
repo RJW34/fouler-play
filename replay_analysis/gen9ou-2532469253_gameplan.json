@@ -1,0 +1,15 @@
+{
+  "opponent_win_condition": "BALANCE strategy with Unknown threats",
+  "opponent_weaknesses": [
+    "Lack of hazard removal",
+    "Specific type weaknesses"
+  ],
+  "our_strategy": "Execute BALANCE gameplan, control hazards, preserve Standard play",
+  "key_pivot_triggers": [
+    "Pivot on predicted setup moves",
+    "Preserve momentum with U-turn/Volt Switch"
+  ],
+  "win_condition": "Set up Standard play after weakening checks",
+  "lead_preference": null,
+  "backup_plan": "Play conservatively, maintain chip damage, avoid overextending"
+}
