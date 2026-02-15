@@ -3232,6 +3232,11 @@ def get_damage_dealt(battle, split_msg, next_messages):
             ) * maxhp - final_health
             damage_percentage = round(damage_dealt / maxhp, 4)
 
+            # Guard: attacking_side.active can also be None during async transitions
+            if attacking_side.active is None:
+                logger.warning(f"attacking_side.active is None for damage calculation, skipping")
+                return None
+
             logger.info(
                 "{} did {}% damage to {} with {}".format(
                     attacking_side.active.name,
