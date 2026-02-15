@@ -1803,23 +1803,29 @@ def sidestart(battle, split_msg):
 
     if condition in SIDE_CONDITION_DEFAULT_DURATION:
         increment_amount = SIDE_CONDITION_DEFAULT_DURATION[condition]
+        # Guard: side.active can be None during async transitions
         if (
             condition in ["reflect", "lightscreen", "auroraveil"]
+            and side.active is not None
             and side.active.item == "lightclay"
         ):
             increment_amount += 3
 
         side.side_conditions[condition] = increment_amount
+        # Guard: side.active can be None during async transitions
+        active_name = side.active.name if side.active is not None else "None"
         logger.info(
             "Setting side condition {} to {} for {}".format(
-                condition, SIDE_CONDITION_DEFAULT_DURATION[condition], side.active.name
+                condition, SIDE_CONDITION_DEFAULT_DURATION[condition], active_name
             )
         )
     else:
         side.side_conditions[condition] += 1
+        # Guard: side.active can be None during async transitions
+        active_name = side.active.name if side.active is not None else "None"
         logger.info(
             "Incremented side condition {} to {} for {}".format(
-                condition, side.side_conditions[condition], side.active.name
+                condition, side.side_conditions[condition], active_name
             )
         )
 
