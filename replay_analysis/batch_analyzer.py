@@ -207,7 +207,9 @@ class BatchAnalyzer:
             if not replay_id:
                 continue
             
-            replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+            # FIX: battle_stats.json stores "battle-gen9ou-X" but PS URLs need "gen9ou-X"
+            clean_id = replay_id.replace("battle-", "", 1) if replay_id.startswith("battle-") else replay_id
+            replay_url = f"https://replay.pokemonshowdown.com/{clean_id}"
             review = self.analyze_replay(replay_url)
             
             if review:
@@ -327,13 +329,18 @@ Be specific and cite battle examples. Format your response as a structured analy
             return None
 
     def generate_report(self, last_n: int = 10) -> Optional[Path]:
-        """Generate a full analysis report for the last N battles."""
+        """Generate a full analysis report for the last N battles.
+        
+        ROOT CAUSE FIX: Fallback to stats-only analysis when replays unavailable.
+        Pokemon Showdown purges replays after ~1 week, so we need this fallback.
+        """
         print(f"Collecting reviews for last {last_n} battles...")
         reviews, stats = self.collect_batch_reviews(last_n)
         
         if not reviews:
-            print("No reviews collected. Aborting analysis.")
-            return None
+            print("⚠ No replay data available. Falling back to stats-only analysis...")
+            # Use stats-only analysis mode
+            return self.generate_stats_only_report(last_n, stats)
         
         print(f"Collected {len(reviews)} battle reviews.")
         print(f"Stats: {stats['wins']}-{stats['losses']} ({stats['wins']/(stats['wins']+stats['losses'])*100:.1f}% WR)")
@@ -374,6 +381,107 @@ Be specific and cite battle examples. Format your response as a structured analy
         report_file.write_text(report_content)
         print(f"Report saved to: {report_file}")
         return report_file
+    
+    def generate_stats_only_report(self, last_n: int, stats: Dict) -> Optional[Path]:
+        """Generate analysis report using only battle stats (no replays).
+        
+        WORKAROUND: When Pokemon Showdown has purged replays and we don't have
+        local replay JSONs saved, we can still provide value by analyzing win rates,
+        team performance, and making recommendations based on aggregate stats.
+        """
+        battles = self.get_battle_stats()
+        recent = battles[-last_n:] if len(battles) > last_n else battles
+        
+        # Build stats-focused prompt
+        prompt = f"""You are analyzing Pokemon Showdown competitive bot performance data for BugInTheCode.
+
+NOTE: Detailed replay data is unavailable (Pokemon Showdown purged replays). 
+Provide analysis based on AGGREGATE STATISTICS and TEAM PERFORMANCE patterns.
+
+BATCH STATISTICS ({last_n} battles):
+- Total: {stats['total']}
+- Wins: {stats['wins']}
+- Losses: {stats['losses']}
+- Win Rate: {stats['wins']/(stats['wins']+stats['losses'])*100:.1f}%
+
+TEAM PERFORMANCE BREAKDOWN:
+{self._format_team_breakdown(stats['teams'])}
+
+DETAILED BATTLE LOG:
+{self._format_battle_list(recent)}
+
+ANALYSIS TASK (stats-only mode):
+Without access to turn-by-turn replay data, focus on aggregate patterns:
+
+1. **TEAM WIN RATE ANALYSIS**: Which teams are underperforming? Which are succeeding?
+2. **CONSISTENCY**: Are certain teams volatile (inconsistent results)?
+3. **SAMPLE SIZE**: Is the data sufficient to draw conclusions, or do we need more battles?
+4. **TEAM COMPOSITION HYPOTHESIS**: Based on team names and win rates, what might be working/failing?
+5. **NEXT STEPS**: What should we prioritize?
+   - More data collection?
+   - Team rotation changes?
+   - Saving replay JSONs locally for future detailed analysis?
+
+Be specific and actionable. Acknowledge the limitation of not having replay data.
+"""
+        
+        print(f"Querying Ollama for stats-only analysis...")
+        analysis = self.query_ollama(prompt)
+        
+        if not analysis:
+            print("✗ Failed to get Ollama analysis")
+            return None
+        
+        # Generate report
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        batch_num = len(list(REPORTS_DIR.glob("batch_*.md"))) + 1
+        report_file = REPORTS_DIR / f"batch_{batch_num:04d}_{timestamp}_stats_only.md"
+        
+        report_content = f"""# Fouler Play Analysis Report - Batch {batch_num} (Stats-Only Mode)
+
+**Generated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+**Battles Analyzed:** {stats['total']} (last {last_n})
+**Record:** {stats['wins']}-{stats['losses']} ({stats['wins']/(stats['wins']+stats['losses'])*100:.1f}% WR)
+
+⚠️ **NOTE:** This analysis is based on aggregate statistics only.  
+Replay data unavailable (Pokemon Showdown purged replays after ~1 week).  
+**RECOMMENDATION:** Modify bot to save replay JSONs locally after each battle.
+
+## Team Performance
+
+{self._format_team_breakdown(stats['teams'])}
+
+## Battle History
+
+{self._format_battle_list(recent)}
+
+## AI Analysis
+
+{analysis}
+
+---
+
+*Stats-only analysis powered by {OLLAMA_MODEL} on ubunztu (local)*  
+*For detailed turn-by-turn analysis, implement local replay JSON storage.*
+"""
+        
+        report_file.write_text(report_content)
+        print(f"✓ Stats-only report saved to: {report_file}")
+        return report_file
+    
+    def _format_battle_list(self, battles: List[Dict]) -> str:
+        """Format a list of battles for stats-only analysis."""
+        lines = []
+        for i, battle in enumerate(battles, 1):
+            result = battle.get('result', 'unknown')
+            team = battle.get('team_file', 'unknown').replace('fat-team-', 'Team ').replace('-', ' ').title()
+            opponent = battle.get('opponent', 'Unknown')
+            replay_id = battle.get('replay_id', 'N/A')[-12:]  # Last 12 chars
+            
+            result_emoji = "✅" if result == "win" else "❌" if result == "loss" else "❓"
+            lines.append(f"{i}. {result_emoji} {result.upper()} vs {opponent} using {team} (ID: {replay_id})")
+        
+        return '\n'.join(lines) if lines else "No battle data available"
 
     def get_latest_report(self) -> Optional[Path]:
         """Get the most recent report file."""

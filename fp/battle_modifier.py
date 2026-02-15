@@ -811,6 +811,11 @@ def faint(battle, split_msg):
     else:
         side = battle.user
 
+    # Guard: side.active can be None during async transitions (already processed faint)
+    if side.active is None:
+        logger.debug("faint: side.active is None, skipping")
+        return
+
     side.active.hp = 0
 
 
@@ -827,10 +832,12 @@ def fail(battle, split_msg):
             else battle.opponent
         )
         ability = normalize_name(split_msg[4].split("ability: ")[-1])
-        logger.info(
-            "Setting {}'s ability to: {}".format(ability_side.active.name, ability)
-        )
-        ability_side.active.ability = ability
+        # Guard: ability_side.active can be None during async transitions
+        if ability_side.active is not None:
+            logger.info(
+                "Setting {}'s ability to: {}".format(ability_side.active.name, ability)
+            )
+            ability_side.active.ability = ability
 
 
 def move(battle, split_msg):
@@ -1914,6 +1921,11 @@ def remove_item(battle, split_msg):
     else:
         side = battle.user
 
+    # Guard: side.active can be None during async transitions (faint/switchout)
+    if side.active is None:
+        logger.debug("remove_item: side.active is None, skipping")
+        return
+
     item = normalize_name(split_msg[3].strip())
 
     logger.info("Removing {}'s item: {}".format(side.active.name, item))
@@ -1942,6 +1954,11 @@ def immune(battle, split_msg):
     else:
         side = battle.user
         pkmn = side.active
+
+    # Guard: pkmn/side.active can be None during async transitions (faint/switchout)
+    if pkmn is None or side.active is None:
+        logger.debug("immune: pkmn/side.active is None, skipping")
+        return
 
     for msg in split_msg:
         if constants.ABILITY in normalize_name(msg):
@@ -2259,6 +2276,11 @@ def zpower(battle, split_msg):
         side = battle.opponent
     else:
         side = battle.user
+
+    # Guard: side.active can be None during async transitions (faint/switchout)
+    if side.active is None:
+        logger.debug("zpower: side.active is None, skipping")
+        return
 
     logger.info("{} Used a Z-Move, setting item to None".format(side.active.name))
     side.active.item = None
@@ -2704,6 +2726,11 @@ def mega(battle, split_msg):
         side = battle.opponent
     else:
         side = battle.user
+
+    # Guard: side.active can be None during async transitions (faint/switchout)
+    if side.active is None:
+        logger.debug("mega: side.active is None, skipping")
+        return
 
     side.active.is_mega = True
     forced_mega_ability = normalize_name(
@@ -3586,6 +3613,9 @@ def check_rocky_helmet(battle, split_msg, msg_lines):
         return
 
     opponent = battle.opponent.active
+    # Guard: opponent can be None during async transitions (faint/switchout)
+    if opponent is None:
+        return
     if opponent.item != constants.UNKNOWN_ITEM:
         return
     if "rockyhelmet" in opponent.impossible_items:
