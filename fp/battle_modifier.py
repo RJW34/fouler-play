@@ -661,10 +661,18 @@ def sethp(battle, split_msg):
     # |-sethp|p2a: Jellicent|317/403|[from] move: Pain Split|[silent]
     if is_opponent(battle, split_msg):
         pkmn = battle.opponent.active
+        # Guard: pkmn can be None during async transitions (faint/switchout)
+        if pkmn is None:
+            logger.debug("sethp: opponent pkmn is None, skipping")
+            return
         new_hp_percentage = float(split_msg[3].split("/")[0]) / 100
         pkmn.hp = int(pkmn.max_hp * new_hp_percentage)
     else:
         pkmn = battle.user.active
+        # Guard: pkmn can be None during async transitions (faint/switchout)
+        if pkmn is None:
+            logger.debug("sethp: user pkmn is None, skipping")
+            return
         pkmn.hp = int(split_msg[3].split("/")[0])
         pkmn.max_hp = int(split_msg[3].split("/")[1].split()[0])
 
@@ -679,6 +687,11 @@ def heal_or_damage(battle, split_msg):
                 split_msg[2]
             )
             pkmn = side.find_reserve_pokemon_by_nickname(nickname)
+
+        # Guard: pkmn can be None during async transitions (faint/switchout)
+        if pkmn is None:
+            logger.debug("heal_or_damage: opponent pkmn is None, skipping")
+            return
 
         # opponent hp is given as a percentage
         if constants.FNT in split_msg[3]:
@@ -696,6 +709,12 @@ def heal_or_damage(battle, split_msg):
                 split_msg[2]
             )
             pkmn = side.find_reserve_pokemon_by_nickname(nickname)
+        
+        # Guard: pkmn can be None during async transitions (faint/switchout)
+        if pkmn is None:
+            logger.debug("heal_or_damage: user pkmn is None, skipping")
+            return
+        
         if constants.FNT in split_msg[3]:
             pkmn.hp = 0
         else:
@@ -716,8 +735,10 @@ def heal_or_damage(battle, split_msg):
         and other_side.name in split_msg[5]
     ):
         item = normalize_name(split_msg[4].split("item:")[-1])
-        logger.info("Setting {}'s item to: {}".format(other_side.active.name, item))
-        other_side.active.item = item
+        # Guard: other_side.active can be None during async transitions
+        if other_side.active is not None:
+            logger.info("Setting {}'s item to: {}".format(other_side.active.name, item))
+            other_side.active.item = item
 
     if (
         len(split_msg) >= 5
@@ -739,10 +760,12 @@ def heal_or_damage(battle, split_msg):
         and split_msg[1] == "-damage"
     ):
         ability = normalize_name(split_msg[4].split("ability:")[-1])
-        logger.info(
-            "Setting {}'s ability to: {}".format(other_side.active.name, ability)
-        )
-        other_side.active.ability = ability
+        # Guard: other_side.active can be None during async transitions
+        if other_side.active is not None:
+            logger.info(
+                "Setting {}'s ability to: {}".format(other_side.active.name, ability)
+            )
+            other_side.active.ability = ability
 
     # set the ability of the side (the side being healed, '-heal' only)
     if (
@@ -768,6 +791,7 @@ def heal_or_damage(battle, split_msg):
     if (
         battle.generation == "gen1"
         and split_msg[-1] == "[from] confusion"
+        and other_side.active is not None
         and (
             constants.PARTIALLY_TRAPPED in other_side.active.volatile_statuses
             or other_side.active.volatile_status_durations[constants.PARTIALLY_TRAPPED]
@@ -1241,6 +1265,11 @@ def status(battle, split_msg):
         pkmn = battle.user.active
         other_side = battle.opponent
 
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("status: pkmn is None, skipping")
+        return
+
     if len(split_msg) > 4 and "item: " in split_msg[4]:
         pkmn.item = normalize_name(split_msg[4].split("item:")[-1])
 
@@ -1272,8 +1301,10 @@ def status(battle, split_msg):
         and split_msg[5].startswith(f"[of] {other_side.name}")
     ):
         ability = normalize_name(split_msg[4].split("ability: ")[-1])
-        logger.info("Setting {}'s ability to: {}".format(pkmn.name, ability))
-        other_side.active.ability = ability
+        # Guard: other_side.active can be None during async transitions
+        if other_side.active is not None:
+            logger.info("Setting {}'s ability to: {}".format(other_side.active.name, ability))
+            other_side.active.ability = ability
 
 
 def activate(battle, split_msg):
@@ -1283,6 +1314,11 @@ def activate(battle, split_msg):
     else:
         pkmn = battle.user.active
         other_pkmn = battle.opponent.active
+
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("activate: pkmn is None, skipping")
+        return
 
     if (
         normalize_name(split_msg[3]) == constants.SUBSTITUTE
@@ -1339,6 +1375,11 @@ def anim(battle, split_msg):
     else:
         pkmn = battle.user.active
 
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("anim: pkmn is None, skipping")
+        return
+
     anim_name = normalize_name(split_msg[3].strip())
     if anim_name in pkmn.volatile_statuses:
         logger.info(
@@ -1354,6 +1395,11 @@ def prepare(battle, split_msg):
         pkmn = battle.opponent.active
     else:
         pkmn = battle.user.active
+
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("prepare: pkmn is None, skipping")
+        return
 
     being_prepared = normalize_name(split_msg[3])
     if being_prepared in pkmn.volatile_statuses:
@@ -1373,6 +1419,11 @@ def terastallize(battle, split_msg):
     else:
         pkmn = battle.user.active
 
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("terastallize: pkmn is None, skipping")
+        return
+
     pkmn.terastallized = True
     pkmn.tera_type = normalize_name(split_msg[3])
     logger.info(
@@ -1389,6 +1440,11 @@ def start_volatile_status(battle, split_msg):
     else:
         pkmn = battle.user.active
         side = battle.user
+
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("start_volatile_status: pkmn is None, skipping")
+        return
 
     volatile_status = normalize_name(split_msg[3].split(":")[-1])
 
@@ -1480,6 +1536,11 @@ def end_volatile_status(battle, split_msg):
         pkmn = battle.opponent.active
     else:
         pkmn = battle.user.active
+
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("end_volatile_status: pkmn is None, skipping")
+        return
 
     volatile_status = normalize_name(split_msg[3].split(":")[-1])
     if volatile_status == constants.SUBSTITUTE:
@@ -1811,6 +1872,7 @@ def set_item(battle, split_msg):
         len(split_msg) >= 5
         and "[from] move: Trick" in split_msg[4]
         and not is_opponent(battle, split_msg)
+        and other_side.active is not None
         and other_side.active.removed_item is None
     ):
         logger.info("Setting opponent's removed_item to {}".format(item))
@@ -1830,8 +1892,10 @@ def set_item(battle, split_msg):
         logger.info(
             "{} frisked the opponent's item as {}".format(side.active.name, item)
         )
-        logger.info("Setting {}'s item to {}".format(other_side.active.name, item))
-        other_side.active.item = item
+        # Guard: other_side.active can be None during async transitions
+        if other_side.active is not None:
+            logger.info("Setting {}'s item to {}".format(other_side.active.name, item))
+            other_side.active.item = item
     else:
         logger.info("Setting {}'s item to {}".format(side.active.name, item))
         side.active.item = item
@@ -2062,10 +2126,12 @@ def update_ability(battle, split_msg):
         side.active.original_ability = original_ability
 
         if split_msg[5].startswith("[of]") and other_side.name in split_msg[5]:
-            logger.info(
-                "Setting {}'s ability to {}".format(other_side.active.name, ability)
-            )
-            other_side.active.ability = ability
+            # Guard: other_side.active can be None during async transitions
+            if other_side.active is not None:
+                logger.info(
+                    "Setting {}'s ability to {}".format(other_side.active.name, ability)
+                )
+                other_side.active.ability = ability
     elif ability == "asone":
         if side.active.name == "calyrexice":
             ability = "asoneglastrier"
@@ -2198,6 +2264,11 @@ def clearnegativeboost(battle, split_msg):
     else:
         pkmn = battle.user.active
 
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("clearnegativeboost: pkmn is None, skipping")
+        return
+
     for stat, value in pkmn.boosts.items():
         if value < 0:
             logger.info("Setting {}'s {} boost to 0".format(pkmn.name, stat))
@@ -2210,6 +2281,11 @@ def clearboost(battle, split_msg):
     else:
         pkmn = battle.user.active
 
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is None:
+        logger.debug("clearboost: pkmn is None, skipping")
+        return
+
     for stat, value in pkmn.boosts.items():
         logger.info("Setting {}'s {} boost to 0".format(pkmn.name, stat))
         pkmn.boosts[stat] = 0
@@ -2217,16 +2293,20 @@ def clearboost(battle, split_msg):
 
 def clearallboost(battle, _):
     pkmn = battle.user.active
-    for stat, value in pkmn.boosts.items():
-        if value != 0:
-            logger.info("Setting {}'s {} boost to 0".format(pkmn.name, stat))
-            pkmn.boosts[stat] = 0
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is not None:
+        for stat, value in pkmn.boosts.items():
+            if value != 0:
+                logger.info("Setting {}'s {} boost to 0".format(pkmn.name, stat))
+                pkmn.boosts[stat] = 0
 
     pkmn = battle.opponent.active
-    for stat, value in pkmn.boosts.items():
-        if value != 0:
-            logger.info("Setting {}'s {} boost to 0".format(pkmn.name, stat))
-            pkmn.boosts[stat] = 0
+    # Guard: pkmn can be None during async transitions (faint/switchout)
+    if pkmn is not None:
+        for stat, value in pkmn.boosts.items():
+            if value != 0:
+                logger.info("Setting {}'s {} boost to 0".format(pkmn.name, stat))
+                pkmn.boosts[stat] = 0
 
 
 def singleturn(battle, split_msg):
@@ -2360,6 +2440,7 @@ def cant(battle, split_msg):
         battle.generation == "gen1"
         and len(split_msg) == 4
         and split_msg[3] == constants.PARALYZED
+        and other_side.active is not None
         and (
             constants.PARTIALLY_TRAPPED in other_side.active.volatile_statuses
             or other_side.active.volatile_status_durations[constants.PARTIALLY_TRAPPED]
@@ -2411,6 +2492,10 @@ def upkeep(battle, _):
 
     for side in [battle.user, battle.opponent]:
         side_string = "opponent" if side == battle.opponent else "user"
+
+        # Guard: side.active can be None during async transitions (faint/switchout)
+        if side.active is None:
+            continue
 
         if (
             "taunt" in side.active.volatile_statuses
