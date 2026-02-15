@@ -17,8 +17,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from replay_analysis.turn_review import TurnReviewer
 
-MAGNETON_HOST = "Ryan@192.168.1.181"
-OLLAMA_MODEL = "qwen2.5-coder:7b"
+# ROOT CAUSE FIX: Use local Ollama instead of remote MAGNETON
+# Local Ollama is running on ubunztu at localhost:11434
+OLLAMA_HOST = "http://localhost:11434"
+OLLAMA_MODEL = "qwen2.5-coder:3b"
 REPORTS_DIR = PROJECT_ROOT / "replay_analysis" / "reports"
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
 REPLAY_ANALYSIS_DIR = PROJECT_ROOT / "replay_analysis"
@@ -67,28 +69,54 @@ class BatchAnalyzer:
         return unreviewed
 
     def analyze_replay(self, replay_url: str) -> Optional[str]:
-        """Run turn_review.py on a replay and return full review text."""
+        """Run turn_review.py on a replay and return full review text.
+        
+        ROOT CAUSE FIX: Check local files FIRST before hitting Pokemon Showdown.
+        Priority: logs/*.log > replay_analysis/*.json > Pokemon Showdown API
+        """
         try:
-            # Fetch replay JSON
             import requests
             replay_id = replay_url.rstrip("/").split("/")[-1]
-            json_url = f"https://replay.pokemonshowdown.com/{replay_id}.json"
+            replay_data = None
             
-            resp = requests.get(json_url, timeout=15)
-            if resp.status_code != 200:
-                # Try to load from local file as fallback
-                # Strip "battle-" prefix if present for local file lookup
+            # PRIORITY 1: Check logs directory for battle log file
+            logs_dir = PROJECT_ROOT / "logs"
+            # Battle IDs in logs have format: battle-gen9ou-2539943964_OpponentName.log
+            log_files = list(logs_dir.glob(f"{replay_id}_*.log")) + list(logs_dir.glob(f"{replay_id}.log"))
+            
+            if log_files:
+                log_file = log_files[0]
+                print(f"✓ Using local battle log: {log_file.name}")
+                # Parse battle log to extract replay-compatible data
+                # For now, we'll still try to convert it to replay JSON format
+                # The battle logger should have saved a .json file too
+                json_from_log = log_file.with_suffix('.json')
+                if json_from_log.exists():
+                    with open(json_from_log, 'r') as f:
+                        replay_data = json.load(f)
+            
+            # PRIORITY 2: Check replay_analysis directory for saved replay JSON
+            if not replay_data:
                 local_replay_id = replay_id.replace("battle-", "") if replay_id.startswith("battle-") else replay_id
                 local_file = REPLAY_ANALYSIS_DIR / f"{local_replay_id}.json"
+                
                 if local_file.exists():
-                    print(f"Web replay expired, using local file: {local_replay_id}")
+                    print(f"✓ Using saved replay JSON: {local_replay_id}.json")
                     with open(local_file, 'r') as f:
                         replay_data = json.load(f)
-                else:
-                    print(f"Failed to fetch replay {replay_id}: {resp.status_code} (no local fallback)")
+            
+            # PRIORITY 3 (LAST RESORT): Fetch from Pokemon Showdown API
+            if not replay_data:
+                print(f"⚠ Local replay not found, fetching from Pokemon Showdown...")
+                json_url = f"https://replay.pokemonshowdown.com/{replay_id}.json"
+                resp = requests.get(json_url, timeout=15)
+                
+                if resp.status_code != 200:
+                    print(f"✗ Failed to fetch replay {replay_id}: {resp.status_code} (no local fallback)")
                     return None
-            else:
+                
                 replay_data = resp.json()
+                print(f"✓ Fetched from Pokemon Showdown API")
             
             # Extract full turn review
             turns = self.reviewer.extract_full_turns(replay_data, replay_url)
@@ -206,52 +234,57 @@ Be specific and cite battle examples. Format your response as a structured analy
         return "\n".join(lines) if lines else "  No team data available"
 
     def query_ollama(self, prompt: str) -> Optional[str]:
-        """Send prompt to Ollama on MAGNETON via SSH and return response."""
+        """Send prompt to local Ollama and return response.
+        
+        ROOT CAUSE FIX: Query local Ollama on ubunztu instead of remote MAGNETON.
+        Local Ollama runs at http://localhost:11434
+        """
         try:
+            import requests
+            
+            print(f"Querying local Ollama (model: {OLLAMA_MODEL})...")
+            print(f"Prompt size: {len(prompt)} chars")
+            
             # Build JSON payload
-            prompt_json = json.dumps({"model": OLLAMA_MODEL, "prompt": prompt, "stream": False})
+            payload = {
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False
+            }
             
-            # Use SSH with stdin piping to avoid command line length limits
-            ssh_cmd = [
-                "ssh", MAGNETON_HOST,
-                "curl -s -X POST http://localhost:11434/api/generate "
-                "-H 'Content-Type: application/json' "
-                "-d @-"  # Read from stdin
-            ]
-            
-            print(f"Querying Ollama on MAGNETON (model: {OLLAMA_MODEL})...")
-            print(f"Prompt size: {len(prompt)} chars, payload: {len(prompt_json)} bytes")
-            
-            result = subprocess.run(
-                ssh_cmd,
-                input=prompt_json,
-                capture_output=True,
-                text=True,
+            # Query local Ollama API
+            response = requests.post(
+                f"{OLLAMA_HOST}/api/generate",
+                json=payload,
                 timeout=300  # 5 minute timeout for generation
             )
             
-            # Check for output even if exit code is non-zero (curl sometimes returns 6 but still works)
-            if not result.stdout or not result.stdout.strip():
-                print(f"SSH/Ollama error (exit {result.returncode}): {result.stderr}")
+            if response.status_code != 200:
+                print(f"✗ Ollama API error: HTTP {response.status_code}")
+                print(f"Response: {response.text[:200]}")
                 return None
             
-            # Parse Ollama response
-            try:
-                response_data = json.loads(result.stdout)
-                if "error" in response_data:
-                    print(f"Ollama API error: {response_data['error']}")
-                    return None
-                return response_data.get("response", "")
-            except json.JSONDecodeError as e:
-                print(f"Failed to parse Ollama response: {e}")
-                print(f"Raw output: {result.stdout[:200]}")
+            # Parse response
+            response_data = response.json()
+            
+            if "error" in response_data:
+                print(f"✗ Ollama API error: {response_data['error']}")
                 return None
             
-        except subprocess.TimeoutExpired:
-            print("Ollama query timed out after 5 minutes")
+            analysis_text = response_data.get("response", "")
+            print(f"✓ Ollama analysis complete ({len(analysis_text)} chars)")
+            return analysis_text
+            
+        except requests.Timeout:
+            print("✗ Ollama query timed out after 5 minutes")
+            return None
+        except requests.ConnectionError:
+            print("✗ Cannot connect to Ollama. Is it running? Check: ollama serve")
             return None
         except Exception as e:
-            print(f"Error querying Ollama: {e}")
+            print(f"✗ Error querying Ollama: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def generate_report(self, last_n: int = 10) -> Optional[Path]:
@@ -296,7 +329,7 @@ Be specific and cite battle examples. Format your response as a structured analy
 
 ---
 
-*Analysis powered by {OLLAMA_MODEL} on MAGNETON*
+*Analysis powered by {OLLAMA_MODEL} on ubunztu (local)*
 """
         
         report_file.write_text(report_content)
