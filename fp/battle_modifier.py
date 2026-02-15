@@ -2282,6 +2282,14 @@ def cant(battle, split_msg):
         other_side = battle.opponent
         opponent = False
 
+    # Guard: Pokemon not active yet (race condition during team preview/switch)
+    if side.active is None:
+        logger.warning(
+            f"Received 'cant' message but pokemon not active yet for {split_msg}. "
+            f"Ignoring (likely team preview or delayed switch message)."
+        )
+        return
+
     side.last_used_move = LastUsedMove(
         pokemon_name=side.active.name,
         move=side.last_used_move.move,

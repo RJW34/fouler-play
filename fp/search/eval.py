@@ -368,13 +368,19 @@ def _is_free_turn(battle: Battle) -> bool:
 
 
 def _is_threatened(battle: Battle) -> bool:
-    """Check if opponent can 2HKO us (we're threatened)."""
+    """Check if opponent can 2HKO us (we're threatened).
+    
+    Was staying in losing matchups; improved threat detection prevents unnecessary KOs.
+    Lowered threshold from 0.5 to 0.35 to recognize threats earlier.
+    """
     our = battle.user.active
     if our is None:
         return False
     hp_ratio = our.hp / max(our.max_hp, 1)
     opp_best = _opponent_best_damage(battle)
-    return opp_best * 2 >= hp_ratio
+    # Changed from opp_best * 2 >= hp_ratio (equivalent to opp_best >= 0.5)
+    # to opp_best >= 0.35 for earlier threat detection
+    return opp_best >= 0.35
 
 
 def _our_item_normalized(battle: Battle) -> str:
@@ -584,6 +590,9 @@ def _score_switch(battle: Battle, target_name: str) -> float:
     2. STAB type matchup as fallback when no moves are revealed
     3. THREAT CATEGORY from movepool tracker to route to the right wall
        (e.g., Blissey for special threats, Skarmory for physical)
+    
+    Was staying in losing matchups; improved threat detection prevents unnecessary KOs.
+    Added type matchup check to boost switching when current mon is weak to opponent.
     """
     opp = battle.opponent.active
     if opp is None:
@@ -600,6 +609,26 @@ def _score_switch(battle: Battle, target_name: str) -> float:
     score = 0.0
     target_types = _get_effective_types(target)
     opp_types = _get_effective_types(opp)
+    
+    # Check current active's type matchup vs opponent to boost switching from bad matchups
+    our_active = battle.user.active
+    if our_active is not None and opp_types:
+        our_types = _get_effective_types(our_active)
+        # Check if our current mon is weak to opponent's STAB
+        worst_stab_vs_us = max(
+            type_effectiveness_modifier(t, our_types) for t in opp_types
+        )
+        if worst_stab_vs_us >= 2.0:
+            # We're weak to their STAB — boost switching
+            score += 0.25
+        
+        # Check if target resists better than we do
+        worst_stab_vs_target = max(
+            type_effectiveness_modifier(t, target_types) for t in opp_types
+        )
+        if worst_stab_vs_us > worst_stab_vs_target:
+            # Target takes less from their STAB — reward switch
+            score += 0.15
 
     # PRIMARY: Check opponent's revealed moves for actual damage to this target
     opp_moves = getattr(opp, "moves", []) or []
@@ -873,7 +902,11 @@ def _score_status_move(battle: Battle, move_name: str) -> float:
 
 
 def _score_hazard_move(battle: Battle, move_name: str) -> float:
-    """Score a hazard-setting move."""
+    """Score a hazard-setting move.
+    
+    Bot was setting SR too late; early hazard setup critical for chip damage strategy.
+    Turns 1-3 get massive boost (150 base), turns 4+ still strong (80 base).
+    """
     opp_alive = sum(
         1 for p in ([battle.opponent.active] + battle.opponent.reserve)
         if p is not None and p.hp > 0
@@ -881,30 +914,41 @@ def _score_hazard_move(battle: Battle, move_name: str) -> float:
 
     norm = normalize_name(move_name)
     sc = battle.opponent.side_conditions
+    
+    # Early-game hazard priority boost
+    turn = getattr(battle, "turn", 1)
+    if turn <= 3:
+        early_multiplier = 3.0  # 50 * 3.0 = 150
+    else:
+        early_multiplier = 1.6  # 50 * 1.6 = 80
 
     if norm == "stealthrock":
         if sc.get(constants.STEALTH_ROCK, 0) > 0:
             return 0.02  # already up
-        return 0.15 * max(opp_alive - 1, 1)  # more value with more opponents
+        base = 0.15 * max(opp_alive - 1, 1)  # more value with more opponents
+        return base * early_multiplier
 
     if norm == "spikes":
         layers = sc.get(constants.SPIKES, 0)
         if layers >= 3:
             return 0.02
-        return 0.10 * max(opp_alive - 1, 1) * (1.0 - layers * 0.25)
+        base = 0.10 * max(opp_alive - 1, 1) * (1.0 - layers * 0.25)
+        return base * early_multiplier
 
     if norm == "toxicspikes":
         layers = sc.get(constants.TOXIC_SPIKES, 0)
         if layers >= 2:
             return 0.02
-        return 0.10 * max(opp_alive - 1, 1)
+        base = 0.10 * max(opp_alive - 1, 1)
+        return base * early_multiplier
 
     if norm == "stickyweb":
         if sc.get(constants.STICKY_WEB, 0) > 0:
             return 0.02
-        return 0.10 * max(opp_alive - 1, 1)
+        base = 0.10 * max(opp_alive - 1, 1)
+        return base * early_multiplier
 
-    return 0.1
+    return 0.1 * early_multiplier
 
 
 def evaluate_position(battle: Battle) -> dict[str, float]:
@@ -1098,6 +1142,11 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                     # Fast pivots are still useful, but expose the switch-in.
                     pivot_bonus += 0.03
                 score += pivot_bonus
+            
+            # Was choosing passive moves in critical moments; improved priority logic.
+            # Boost offensive moves when opponent can KO us — trade damage instead of going passive
+            if opp_can_ko:
+                score += 0.35
 
             scores[move_name] = max(score, 0.01)
 
@@ -1136,6 +1185,12 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
 
             if free_turn:
                 score *= 1.5
+            
+            # Was choosing passive moves in critical moments; improved priority logic.
+            # Penalize status moves when opponent already has status (they will fail)
+            opp_status = getattr(opp, "status", None) if opp else None
+            if opp_status:
+                score *= 0.05  # Heavy penalty - move will likely fail
 
             scores[move_name] = max(score, 0.01)
 
@@ -1178,7 +1233,14 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
         else:
             # === OTHER MOVES (setup, protect, etc.) ===
             # Give a baseline score; penalty layers handle context
-            scores[move_name] = 0.15
+            score = 0.15
+            
+            # Was choosing passive moves in critical moments; improved priority logic.
+            # Penalize setup/passive moves when opponent can KO us
+            if opp_can_ko:
+                score *= 0.3
+            
+            scores[move_name] = score
 
     # === OPPONENT SWITCH PREDICTION: boost hazards/status ===
     if opp_switching:
