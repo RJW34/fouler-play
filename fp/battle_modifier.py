@@ -2707,7 +2707,8 @@ def upkeep(battle, _):
     # we do not want to guess leftovers/blacksludge anymore when it is time to guess an item
     # leftovers and blacksludge will reveal themselves at the end of the turn if they exist
     opp_pkmn = battle.opponent.active
-    if opp_pkmn.hp < opp_pkmn.max_hp:
+    # Guard: opp_pkmn can be None during async transitions (faint/switchout)
+    if opp_pkmn is not None and opp_pkmn.hp < opp_pkmn.max_hp:
         logger.info(
             "{} has less than maxhp during upkeep, no longer guessing leftovers or blacksludge".format(
                 opp_pkmn.name
@@ -2716,7 +2717,8 @@ def upkeep(battle, _):
         opp_pkmn.impossible_items.add(constants.LEFTOVERS)
         opp_pkmn.impossible_items.add(constants.BLACK_SLUDGE)
 
-    if opp_pkmn.status is None:
+    # Guard: opp_pkmn can be None during async transitions (faint/switchout)
+    if opp_pkmn is not None and opp_pkmn.status is None:
         opp_pkmn.impossible_items.add("flameorb")
         opp_pkmn.impossible_items.add("toxicorb")
 
