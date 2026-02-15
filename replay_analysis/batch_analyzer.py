@@ -144,13 +144,39 @@ class BatchAnalyzer:
             print(f"Error analyzing replay {replay_url}: {e}")
             return None
 
-    def collect_batch_reviews(self, last_n: int = 10) -> tuple[List[str], Dict]:
-        """Collect reviews for the last N battles. Returns (reviews, stats)."""
+    def collect_batch_reviews(self, last_n: int = 10, min_age_hours: int = 2) -> tuple[List[str], Dict]:
+        """Collect reviews for N battles that are old enough to have public replays.
+        
+        ROOT CAUSE FIX: Pokemon Showdown replays aren't instantly available.
+        Filter battles to only those >= min_age_hours old before trying to fetch.
+        Skip unavailable replays gracefully instead of aborting.
+        """
+        from datetime import datetime, timedelta, timezone
+        
         battles = self.get_battle_stats()
         if not battles:
             return [], {"total": 0, "wins": 0, "losses": 0}
         
-        recent = battles[-last_n:] if len(battles) > last_n else battles
+        # Filter to battles older than min_age_hours
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=min_age_hours)
+        old_enough = [
+            b for b in battles 
+            if datetime.fromisoformat(b["timestamp"].replace("Z", "+00:00")) < cutoff_time
+        ]
+        
+        if not old_enough:
+            print(f"⚠ No battles older than {min_age_hours}h found. Replays may not be available yet.")
+            print(f"  Total battles: {len(battles)}")
+            if battles:
+                latest = datetime.fromisoformat(battles[-1]["timestamp"].replace("Z", "+00:00"))
+                age_hours = (datetime.now(timezone.utc) - latest).total_seconds() / 3600
+                print(f"  Latest battle age: {age_hours:.1f}h")
+            return [], {"total": 0, "wins": 0, "losses": 0}
+        
+        # Take the last N battles from the filtered set
+        recent = old_enough[-last_n:] if len(old_enough) > last_n else old_enough
+        
+        print(f"✓ Found {len(old_enough)} battles older than {min_age_hours}h, analyzing last {len(recent)}")
         
         # Calculate stats
         stats = {
@@ -171,8 +197,11 @@ class BatchAnalyzer:
             elif result == "loss":
                 stats["teams"][team]["losses"] += 1
         
-        # Collect reviews
+        # Collect reviews (skip unavailable replays gracefully)
         reviews = []
+        success_count = 0
+        fail_count = 0
+        
         for battle in recent:
             replay_id = battle.get("replay_id", "")
             if not replay_id:
@@ -180,11 +209,21 @@ class BatchAnalyzer:
             
             replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
             review = self.analyze_replay(replay_url)
+            
             if review:
                 reviews.append(f"--- Battle: {replay_id} (Result: {battle.get('result', 'unknown')}) ---")
                 reviews.append(review)
                 reviews.append("")
+                success_count += 1
+            else:
+                fail_count += 1
+                print(f"  ✗ Skipping {replay_id} (404 or parse error)")
+                # Continue instead of abort
         
+        print(f"Review collection: {success_count} succeeded, {fail_count} failed")
+        
+        if success_count == 0 and fail_count > 0:
+            print(f"⚠ ALL {fail_count} replays failed to fetch. Try increasing min_age_hours or wait longer.")
         return reviews, stats
 
     def build_analysis_prompt(self, reviews: List[str], stats: Dict) -> str:
