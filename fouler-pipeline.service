@@ -1,0 +1,17 @@
+[Unit]
+Description=Fouler Play Autonomous Improvement Pipeline
+After=network.target
+
+[Service]
+Type=simple
+User=ryan
+WorkingDirectory=/home/ryan/projects/fouler-play
+Environment="PATH=/home/ryan/projects/fouler-play/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/ryan/projects/fouler-play/venv/bin/python /home/ryan/projects/fouler-play/pipeline.py watch
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/ryan/projects/fouler-play/logs/pipeline.log
+StandardError=append:/home/ryan/projects/fouler-play/logs/pipeline_error.log
+
+[Install]
+WantedBy=multi-user.target

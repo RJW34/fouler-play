@@ -28,12 +28,13 @@ class PSWebsocketClient:
     last_challenge_time = 0
 
     @classmethod
-    async def create(cls, username, password, address):
+    async def create(cls, username, password, address, expected_format=None):
         self = PSWebsocketClient()
         self.username = username
         self.password = password
         self.address = address
         self.websocket = None
+        self.expected_format = expected_format  # CRITICAL: validate claimed battles match this format
         self.login_uri = (
             "https://play.pokemonshowdown.com/api/login"
             if password
@@ -314,6 +315,9 @@ class PSWebsocketClient:
         If worker_id is provided, only battles initiated by that worker (or with
         no recorded owner) are claimable. This keeps per-worker team assignments
         aligned to the search that created the battle.
+        
+        CRITICAL: Validates battle format matches expected_format to prevent
+        claiming gen9randombattle when searching gen9ou (root cause of 9h freeze).
         """
         async with self._pending_lock:
             if not self.pending_battle_messages:
@@ -323,6 +327,25 @@ class PSWebsocketClient:
                 owner = self.pending_battle_owners.get(battle_tag)
                 if worker_id is not None and owner is not None and owner != worker_id:
                     continue
+
+                # CRITICAL FIX: Validate format matches expected format
+                if self.expected_format:
+                    # Extract format from battle_tag (e.g., "battle-gen9ou-2539622417" -> "gen9ou")
+                    match = re.match(r'battle-([a-z0-9]+)-', battle_tag)
+                    if match:
+                        battle_format = match.group(1)
+                        if battle_format != self.expected_format:
+                            # Reject this battle, it's wrong format
+                            logger.warning(
+                                f"Format mismatch: battle {battle_tag} is '{battle_format}', "
+                                f"but we're searching '{self.expected_format}'. Rejecting (prevents 9h freeze)."
+                            )
+                            self.pending_battle_messages.pop(battle_tag, None)
+                            self.pending_battle_times.pop(battle_tag, None)
+                            self.pending_battle_owners.pop(battle_tag, None)
+                            continue
+                    else:
+                        logger.warning(f"Could not parse format from battle_tag: {battle_tag}")
 
                 # Drop stale pending battles to avoid blocking capacity
                 ts = self.pending_battle_times.get(battle_tag)
