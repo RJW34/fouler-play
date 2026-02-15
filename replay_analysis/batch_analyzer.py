@@ -17,9 +17,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from replay_analysis.turn_review import TurnReviewer
 
-# ROOT CAUSE FIX: Use local Ollama instead of remote MAGNETON
-# Local Ollama is running on ubunztu at localhost:11434
-OLLAMA_HOST = "http://localhost:11434"
+# FIX: Use localhost Ollama temporarily (MAGNETON offline)
+# PREFER: http://192.168.1.181:11434 (MAGNETON GPU) when available
+# FALLBACK: localhost (ubunztu) — slower but works when Windows node down
+OLLAMA_HOST = "http://localhost:11434"  # ubunztu qwen2.5-coder:3b (was timing out on 7b from MAGNETON)
 OLLAMA_MODEL = "qwen2.5-coder:3b"
 REPORTS_DIR = PROJECT_ROOT / "replay_analysis" / "reports"
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
@@ -229,9 +230,40 @@ class BatchAnalyzer:
         return reviews, stats
 
     def build_analysis_prompt(self, reviews: List[str], stats: Dict) -> str:
-        """Build a structured prompt for Ollama analysis."""
-        prompt = """You are analyzing Pokemon Showdown battle replays for a competitive bot named BugInTheCode.
+        """Build a structured prompt for Ollama analysis with domain grounding."""
+        prompt = """You are analyzing Pokemon Showdown Gen9 OU battle replays for a competitive bot named BugInTheCode.
 
+=== DOMAIN KNOWLEDGE & CONSTRAINTS ===
+DO NOT hallucinate Pokemon knowledge. Ground analysis in these facts:
+
+GEN9 OU META FUNDAMENTALS:
+- Stall/Fat teams REQUIRE Stealth Rock. No exceptions. Missing Stealth Rock = immediate threat accumulation = loss.
+- Common walls: Blissey, Tyranitar, Weavile (hazard control), Corviknight (phys wall)
+- Common threats: Raging Bolt (special sweeper), Gholdengo (coverage), Hydreigon (special attacker), Ting-Lu (sand setter)
+- Pivot moves are core to tempo: U-turn, Chilly Reception, Teleport essential for positioning
+- Recovery moves on stall are MANDATORY: Roost, Recover, Moonlight, Synthesis
+- Type immunities grant free switches: Ghost immunity to Normal/Fighting, Water immunity via Storm Drain/Dry Skin
+
+BugInTheCode'S TEAMS & STRATEGIES:
+1. STALL (fat-team-*): Walls + recovery + Stealth Rock setter. Win condition: chip damage via status/hazards.
+   - Role: Support hazard control, wall key threats, maintain defenses
+   - KNOWN ISSUE: 76% of losses had NO Stealth Rock. This is critical—force rock early.
+   
+2. PIVOT (pivot-team-*): Fast pivots, chip damage, force switches. Win condition: accumulate damage + threat advantage.
+   - Role: Tempo control, coverage gaps, speed control
+   - Expected pattern: Early U-turns, switch advantage into threats
+   
+3. DONDOZO (dondozo-team-*): Dondozo is bulky water sweeper. Win condition: sweep after walls broken.
+   - Role: Late-game threat, aqua jet priority for finish
+   - Expected pattern: Bait in walling pokemon, then pivot to sweep
+
+PREVIOUS BATCH FINDINGS:
+- Switchout decisions: Too aggressive (switching on predicted incoming threats without hazard/health advantage)
+- Move selection: Good coverage, but underutilizing recovery moves on stall
+- Hazard management: Critical weakness—Stealth Rock setup timing often poor
+- Team matchups: All three teams have viable matchup spreads; issue is execution, not composition
+
+=== BATCH ANALYSIS ===
 BATCH STATISTICS:
 - Total battles: {total}
 - Wins: {wins}
@@ -244,16 +276,22 @@ TEAM PERFORMANCE:
 BATTLE REVIEWS:
 {reviews}
 
-ANALYSIS TASK:
-Identify patterns and provide actionable improvements. Focus on:
+=== ANALYSIS TASK ===
+Identify CONCRETE, VERIFIABLE patterns. Cite specific battles and turn numbers.
 
-1. RECURRING MISTAKES: What decision-making errors appear across multiple battles?
-2. MATCHUP WEAKNESSES: Which opponent strategies consistently cause problems?
-3. TEAM COMPOSITION ISSUES: Which teams underperform? Why?
-4. LOSS PATTERNS: What common factors appear in losses? (e.g., never sets hazards, switches too aggressively)
-5. TOP 3 IMPROVEMENTS: Rank by expected impact on win rate.
+DO NOT:
+- Suggest Pokemon that don't exist or aren't viable in Gen9 OU
+- Make claims about moves/abilities without grounding in the meta knowledge above
+- Hallucinate metagame shifts—only reference what's in the reviews
 
-Be specific and cite battle examples. Format your response as a structured analysis report.
+DO:
+1. RECURRING MISTAKES: What errors repeat? (Stealth Rock delays, bad switches, missed recoveries?)
+2. MATCHUP PATTERNS: Which opponent archetypes cause consistent losses?
+3. TEAM EXECUTION: Are teams underperforming due to composition OR pilot error?
+4. LOSS ROOT CAUSES: Factor in: hazard control, recovery usage, switch timing, threat management
+5. TOP 3 IMPROVEMENTS: Rank by expected win-rate impact. Be specific—"Use Roost on turn X vs threat Y" not "switch more"
+
+Format response as structured improvement report with battle citations.
 """.format(
             total=stats["total"],
             wins=stats["wins"],
@@ -297,7 +335,7 @@ Be specific and cite battle examples. Format your response as a structured analy
             response = requests.post(
                 f"{OLLAMA_HOST}/api/generate",
                 json=payload,
-                timeout=300  # 5 minute timeout for generation
+                timeout=None  # No timeout — subprocess handles blocking, watcher stays responsive
             )
             
             if response.status_code != 200:
@@ -351,8 +389,8 @@ Be specific and cite battle examples. Format your response as a structured analy
         # Query Ollama
         analysis = self.query_ollama(prompt)
         if not analysis:
-            print("Failed to get analysis from Ollama")
-            return None
+            print("⚠ Ollama analysis failed—falling back to stats-only report")
+            return self.generate_stats_only_report(last_n, stats)
         
         # Generate report
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -375,7 +413,7 @@ Be specific and cite battle examples. Format your response as a structured analy
 
 ---
 
-*Analysis powered by {OLLAMA_MODEL} on ubunztu (local)*
+*Analysis powered by {OLLAMA_MODEL} on MAGNETON (GPU)*
 """
         
         report_file.write_text(report_content)

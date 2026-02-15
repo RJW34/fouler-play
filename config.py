@@ -92,6 +92,8 @@ def init_logging(level, log_to_file):
         file_handler.setFormatter(CustomFormatter())
         logger.addHandler(file_handler)
         FoulPlayConfig.file_log_handler = file_handler
+    else:
+        FoulPlayConfig.file_log_handler = None
 
 
 class SaveReplay(Enum):
