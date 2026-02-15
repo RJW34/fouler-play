@@ -117,8 +117,13 @@ def build_bot_args(battles, concurrent):
 
     run_count = 999999 if battles == 0 else battles
 
+    # Force venv Python explicitly
+    venv_python = REPO / "venv" / "bin" / "python"
+    if not venv_python.exists():
+        venv_python = sys.executable  # Fallback to current Python if venv not found
+    
     args = [
-        sys.executable, str(REPO / "run.py"),
+        str(venv_python), str(REPO / "run.py"),
         "--websocket-uri", env("PS_WEBSOCKET_URI", "wss://sim3.psim.us/showdown/websocket"),
         "--ps-username", env("PS_USERNAME"),
         "--ps-password", env("PS_PASSWORD"),

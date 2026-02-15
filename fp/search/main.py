@@ -5405,14 +5405,11 @@ def select_move_from_eval_scores(
             team_plan,
             playstyle,
         )
-        # Re-apply threat clamp after playstyle multipliers so +1/+2 threat safety
-        # cannot be accidentally undone by late-stage style boosts.
-        blended_policy = apply_threat_switch_bias(
-            blended_policy,
-            battle,
-            ability_state,
-            trace_events=trace_events,
-        )
+        # NOTE: Removed duplicate apply_threat_switch_bias() call here.
+        # Threat safety is already enforced at line 5369 (FIRST PASS).
+        # Re-applying here after team_strategy_bias causes override ping-pong
+        # where threat logic contradicts earlier decisions. Single-pass is correct.
+        # See FOULER_PLAY_MAINTENANCE.md Phase 1.
         blended_policy = apply_hazard_maintenance_bias(
             blended_policy,
             battle,
