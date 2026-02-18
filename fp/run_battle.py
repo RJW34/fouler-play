@@ -125,6 +125,7 @@ from fp.movepool_tracker import get_threat_category, ThreatCategory
 from fp.opponent_model import OPPONENT_MODEL
 from fp.hybrid_policy import run_hybrid_rerank
 from fp.helpers import type_effectiveness_modifier
+from fp.battle_decision import StrategicDecisionLayer
 
 from fp.websocket_client import PSWebsocketClient
 from streaming.state_store import write_active_battles, read_active_battles, write_status, update_daily_stats
@@ -980,6 +981,76 @@ async def async_pick_move(battle):
     if not best_move:
         best_move = _fallback_decision(battle_copy)
         trace_reason = trace_reason or "fallback"
+
+    # === STRATEGIC LAYER INTEGRATION ===
+    # Log archetype detection (full move selection integration in next phase)
+    try:
+        strategic_layer = StrategicDecisionLayer()
+        battle_tag = battle_copy.battle_tag
+        
+        # Convert Pokemon objects to dicts for archetype analyzer
+        def pokemon_to_dict(pokemon):
+            if pokemon is None:
+                return None
+            # Extract move names - ensure all are strings
+            move_names = []
+            if pokemon.moves:
+                for move in pokemon.moves:
+                    try:
+                        if isinstance(move, str):
+                            move_names.append(move.strip() if move else "")
+                        elif hasattr(move, 'name'):
+                            move_names.append(str(move.name).strip() if move.name else "")
+                        else:
+                            move_str = str(move).strip() if move else ""
+                            # Try to extract move name from __repr__ or similar
+                            if move_str.startswith("<") and ">" in move_str:
+                                # Likely a Move object repr, skip
+                                continue
+                            move_names.append(move_str)
+                    except Exception as e:
+                        logger.debug(f"Failed to extract move: {e}")
+                        continue
+            
+            return {
+                "name": pokemon.name,
+                "species": pokemon.name,  # Pokemon.name is already normalized species name
+                "types": list(pokemon.types) if pokemon.types else [],
+                "hp": pokemon.hp,
+                "max_hp": pokemon.max_hp,
+                "moves": [m for m in move_names if m],  # Filter out empty strings
+                "ability": pokemon.ability or "unknown",
+                "item": pokemon.item or "unknown",
+            }
+        
+        team_data = []
+        if battle_copy.user.active:
+            team_data.append(pokemon_to_dict(battle_copy.user.active))
+        for p in battle_copy.user.reserve:
+            if p is not None:
+                team_data.append(pokemon_to_dict(p))
+        
+        # Initialize strategic layer for this battle
+        archetype, gameplan = strategic_layer.initialize_for_battle(battle_tag, team_data)
+        
+        # Log archetype for analysis
+        logger.info(f"[STRATEGIC] Archetype={archetype.archetype}, Confidence={archetype.confidence:.2f}")
+        logger.info(f"[STRATEGIC] Win Condition: {archetype.primary_win_condition}")
+        
+        if trace is not None:
+            trace["strategic"] = {
+                "archetype": archetype.archetype,
+                "confidence": archetype.confidence,
+                "win_condition": archetype.primary_win_condition,
+                "engine_choice": best_move,
+            }
+    except Exception as e:
+        logger.warning(f"Strategic layer initialization failed: {e}")
+        if trace is not None:
+            trace["strategic"] = {
+                "status": "error",
+                "reason": str(e),
+            }
 
     # Optional hybrid rerank: engine proposes candidates, LLM reranks among them.
     if FoulPlayConfig.decision_policy == "hybrid" and best_move:

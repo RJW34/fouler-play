@@ -83,6 +83,7 @@ if BOT_DISPLAY_NAME:
 
 # Import turn reviewer for turn-by-turn loss analysis from turn 1 onward.
 from replay_analysis.turn_review import TurnReviewer
+from infrastructure.event_queue_lib import queue_event
 update_daily_stats = __import__(
     "streaming.state_store", fromlist=["update_daily_stats"]
 ).update_daily_stats
@@ -484,8 +485,10 @@ class BotMonitor:
         if self.batch_losses:
             msg += f"\nðŸ” **Analyzing {len(self.batch_losses)} loss(es)...**"
 
-        # Suppress all auto-embeds on the batch message; losses get their own embed messages below
-        await self.send_discord_message(msg, channel="battles", suppress_embeds=True)
+        # Queue batch report via event queue (suppress embeds)
+        queue_event("batch_complete", "battles", msg,
+                     precondition_check_fn="bot_is_alive",
+                     suppress_embeds=True)
 
         # Run loss analyses in background
         for replay_url, opponent in self.batch_losses:
@@ -558,7 +561,9 @@ class BotMonitor:
                     f"Note: {lead.why_critical}\n"
                     f"Saved full review: {report_path}"
                 )
-                await self.send_discord_message(summary, channel="feedback", suppress_embeds=True)
+                queue_event("loss_analysis", "feedback", summary,
+                            precondition_check_fn="bot_is_alive",
+                            suppress_embeds=True)
 
         except Exception as e:
             print(f"[MONITOR] Error in loss analysis: {e}")
@@ -1010,10 +1015,7 @@ class BotMonitor:
                 startup_msg += f"\nðŸ“Š **Account:** [{username}]({user_page})"
                 startup_msg += "\nâ³ *ELO stats will be posted once ladder data loads*"
             
-            await self.send_discord_message(
-                startup_msg,
-                channel="battles"
-            )
+            queue_event("bot_started", "battles", startup_msg)
             record_startup_message()
         else:
             print("[MONITOR] Skipping startup message (throttled)")

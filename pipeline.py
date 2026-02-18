@@ -32,14 +32,15 @@ except ImportError:
     pass  # python-dotenv not required, but recommended
 
 from replay_analysis.batch_analyzer import BatchAnalyzer
+from infrastructure.event_queue_lib import queue_event
 
 # Configuration
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
 STATE_FILE = PROJECT_ROOT / ".pipeline_state"
 BATCH_SIZE = int(os.getenv("FOULER_BATCH_SIZE", "30"))  # 30 battles = 10 per team (3 teams)
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
-DISCORD_CHANNEL_ID = "1466642788472066296"  # #deku-workspace
-OPENCLAW_SESSION = "agent:main:discord:channel:1466642788472066296"  # main DEKU session
+DISCORD_CHANNEL_ID = "1466691161363054840"  # #project-fouler-play (where analysis belongs)
+OPENCLAW_SESSION = "agent:main:discord:channel:1466691161363054840"  # fouler-play project channel
 
 
 class Pipeline:
@@ -630,7 +631,10 @@ Examples:
             analysis_section = content.split("## AI Analysis")[-1] if "## AI Analysis" in content else ""
             top_issues = pipeline._extract_top_issues(analysis_section)
             
-            # Send notifications
+            # Queue notification via event queue
+            queue_event("batch_analyzed", DISCORD_CHANNEL_ID,
+                        f"🔍 **Batch Analysis #{pipeline.current_batch}** complete\n{top_issues[:500]}")
+            # Also send rich webhook notification
             pipeline.send_discord_notification(report)
             pipeline.send_wake_notification(report, top_issues)
             print(f"\n📄 View report: cat {report}")
