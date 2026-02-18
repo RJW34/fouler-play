@@ -17,11 +17,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from replay_analysis.turn_review import TurnReviewer
 
-# FIX: Use localhost Ollama temporarily (MAGNETON offline)
-# PREFER: http://192.168.1.181:11434 (MAGNETON GPU) when available
-# FALLBACK: localhost (ubunztu) — slower but works when Windows node down
-OLLAMA_HOST = "http://localhost:11434"  # ubunztu qwen2.5-coder:3b (was timing out on 7b from MAGNETON)
-OLLAMA_MODEL = "qwen2.5-coder:3b"
+# Analysis Source: Claude via OpenClaw (Pokemon-competent reasoning)
+# DO NOT use qwen or local LLM (prone to hallucinations about Pokemon mechanics)
+USE_CLAUDE = True
+CLAUDE_MODEL = "anthropic/claude-opus-4-6"  # Use Opus for accurate analysis
 REPORTS_DIR = PROJECT_ROOT / "replay_analysis" / "reports"
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
 REPLAY_ANALYSIS_DIR = PROJECT_ROOT / "replay_analysis"
@@ -312,56 +311,50 @@ Format response as structured improvement report with battle citations.
             lines.append(f"  - {team}: {perf['wins']}-{perf['losses']} ({wr:.1%})")
         return "\n".join(lines) if lines else "  No team data available"
 
-    def query_ollama(self, prompt: str) -> Optional[str]:
-        """Send prompt to local Ollama and return response.
+    def query_claude(self, prompt: str) -> Optional[str]:
+        """Query Claude via OpenClaw for Pokemon-competent analysis.
         
-        ROOT CAUSE FIX: Query local Ollama on ubunztu instead of remote MAGNETON.
-        Local Ollama runs at http://localhost:11434
+        Uses Claude Opus for accurate Gen 9 OU reasoning (no hallucinations).
+        Calls 'openclaw agent turn' to invoke Claude in isolated session.
         """
         try:
-            import requests
-            
-            print(f"Querying local Ollama (model: {OLLAMA_MODEL})...")
+            print(f"Querying Claude via OpenClaw (model: {CLAUDE_MODEL})...")
             print(f"Prompt size: {len(prompt)} chars")
             
-            # Build JSON payload
-            payload = {
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": False
-            }
-            
-            # Query local Ollama API
-            response = requests.post(
-                f"{OLLAMA_HOST}/api/generate",
-                json=payload,
-                timeout=None  # No timeout — subprocess handles blocking, watcher stays responsive
+            # Use subprocess to call OpenClaw agent
+            result = subprocess.run(
+                [
+                    "openclaw", "agent", "turn",
+                    "--model", CLAUDE_MODEL,
+                    "--message", prompt,
+                    "--timeoutSeconds", "120"
+                ],
+                capture_output=True,
+                text=True,
+                timeout=150
             )
             
-            if response.status_code != 200:
-                print(f"✗ Ollama API error: HTTP {response.status_code}")
-                print(f"Response: {response.text[:200]}")
+            if result.returncode != 0:
+                print(f"✗ Claude query failed: {result.stderr}")
                 return None
             
-            # Parse response
-            response_data = response.json()
-            
-            if "error" in response_data:
-                print(f"✗ Ollama API error: {response_data['error']}")
+            # Extract response text
+            response_text = result.stdout.strip()
+            if not response_text:
+                print("✗ Claude returned empty response")
                 return None
             
-            analysis_text = response_data.get("response", "")
-            print(f"✓ Ollama analysis complete ({len(analysis_text)} chars)")
-            return analysis_text
+            print(f"✓ Claude analysis complete ({len(response_text)} chars)")
+            return response_text
             
-        except requests.Timeout:
-            print("✗ Ollama query timed out after 5 minutes")
+        except subprocess.TimeoutExpired:
+            print("✗ Claude query timed out after 2 minutes")
             return None
-        except requests.ConnectionError:
-            print("✗ Cannot connect to Ollama. Is it running? Check: ollama serve")
+        except FileNotFoundError:
+            print("✗ openclaw CLI not found. Is it installed?")
             return None
         except Exception as e:
-            print(f"✗ Error querying Ollama: {e}")
+            print(f"✗ Error querying Claude: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -387,7 +380,7 @@ Format response as structured improvement report with battle citations.
         prompt = self.build_analysis_prompt(reviews, stats)
         
         # Query Ollama
-        analysis = self.query_ollama(prompt)
+        analysis = self.query_claude(prompt)
         if not analysis:
             print("⚠ Ollama analysis failed—falling back to stats-only report")
             return self.generate_stats_only_report(last_n, stats)
@@ -464,7 +457,7 @@ Be specific and actionable. Acknowledge the limitation of not having replay data
 """
         
         print(f"Querying Ollama for stats-only analysis...")
-        analysis = self.query_ollama(prompt)
+        analysis = self.query_claude(prompt)
         
         if not analysis:
             print("✗ Failed to get Ollama analysis")

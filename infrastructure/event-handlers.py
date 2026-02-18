@@ -11,6 +11,8 @@ import requests
 from datetime import datetime
 from pathlib import Path
 
+from infrastructure.event_queue_lib import queue_event as _queue_event
+
 DISCORD_WORKSPACE = "1466642788472066296"
 BATTLE_STATS_PATH = Path("/home/ryan/projects/fouler-play/battle_stats.json")
 UNIFIED_PERF_PATH = Path("/home/ryan/projects/UNIFIED_PERFORMANCE.json")
@@ -48,11 +50,11 @@ class EventHandler:
         # Immediately trigger unified performance update
         EventHandler.update_unified_performance()
         
-        # Post to Discord
+        # Queue to Discord
         msg = f"✅ Batch {batch_num} analyzed: {wr_pct}% WR"
         if issues:
             msg += f" | Issues found: {', '.join(issues[:2])}"
-        EventHandler.post_to_discord(msg)
+        _queue_event("batch_analyzed", DISCORD_WORKSPACE, msg)
     
     @staticmethod
     def on_wr_drop(machine: str, new_wr: float, previous_wr: float, delta: float):
@@ -64,9 +66,8 @@ class EventHandler:
             "delta": delta
         })
         
-        EventHandler.post_to_discord(
-            f"⚠️ {machine} WR dropped {delta:.1f}% ({previous_wr:.1f}% → {new_wr:.1f}%)"
-        )
+        _queue_event("wr_drop", DISCORD_WORKSPACE,
+                     f"⚠️ {machine} WR dropped {delta:.1f}% ({previous_wr:.1f}% → {new_wr:.1f}%)")
     
     @staticmethod
     def on_process_crash(process_name: str, pid: int, error_log: str = ""):
@@ -77,9 +78,10 @@ class EventHandler:
             "error": error_log[:200]  # First 200 chars
         })
         
-        EventHandler.post_to_discord(
-            f"🚨 {process_name} crashed (PID {pid}). Systemd will auto-restart."
-        )
+        _queue_event("process_crash", DISCORD_WORKSPACE,
+                     f"🚨 {process_name} crashed (PID {pid}). Systemd will auto-restart.",
+                     precondition_check_fn="bot_is_dead",
+                     dedup_window_sec=60)
     
     @staticmethod
     def on_ssh_failure(machine: str, error: str):
@@ -89,9 +91,8 @@ class EventHandler:
             "error": error[:100]
         })
         
-        EventHandler.post_to_discord(
-            f"⚠️ Cannot reach {machine} via SSH. Check network/gateway."
-        )
+        _queue_event("ssh_failure", DISCORD_WORKSPACE,
+                     f"⚠️ Cannot reach {machine} via SSH. Check network/gateway.")
     
     @staticmethod
     def update_unified_performance():
@@ -126,14 +127,10 @@ class EventHandler:
     
     @staticmethod
     def post_to_discord(message: str):
-        """Post event summary to #deku-workspace"""
-        # Use message tool (already integrated with OpenClaw)
-        subprocess.run([
-            "openclaw", "message", "send",
-            "--target", DISCORD_WORKSPACE,
-            "--channel", "discord",
-            "--message", message
-        ], capture_output=True)
+        """DISABLED: Events post to internal logs only, not workspace
+        Will be routed through event queue system when implemented.
+        """
+        pass  # No-op: don't post workspace alerts
 
 
 # Example usage (called from webhooks or file watchers)
