@@ -160,6 +160,8 @@ from constants import (
     PENALTY_SWITCH_INTO_HAZARDS_PER_LAYER,
     PENALTY_SWITCH_INTIMIDATE_VS_DEFIANT,
     PENALTY_SWITCH_LOW_HP,
+    PENALTY_SWITCH_VERY_LOW_HP,
+    PENALTY_SWITCH_LOW_HP_VS_BOOSTED,
     PENALTY_SWITCH_WEAK_TO_OPPONENT,
     BOOST_SWITCH_RESISTS_STAB,
     BOOST_SWITCH_HAS_RECOVERY,
@@ -177,6 +179,7 @@ from constants import (
     BOOST_REMOVE_HAZARDS_HEAVY,
     PENALTY_REMOVE_HAZARDS_NONE,
     PENALTY_HAZARDS_VS_REMOVAL,
+    PENALTY_HAZARD_VS_ACTIVE_SWEEPER,
     # PHASE 2.3: Tera Prediction
     DEFENSIVE_TERA_TYPES,
     OFFENSIVE_TERA_TYPES,
@@ -2566,6 +2569,14 @@ def apply_ability_penalties(
 
     recovery_moves_norm = {normalize_name(m) for m in RECOVERY_MOVES}
 
+    # Compute opponent offensive boost level for setup-denial logic
+    _opp = battle.opponent.active if battle is not None and battle.opponent else None
+    _opp_boosts = getattr(_opp, "boosts", {}) or {} if _opp else {}
+    opp_offensive_boost_level = max(
+        int(_opp_boosts.get("atk", 0) or 0),
+        int(_opp_boosts.get("spa", 0) or 0),
+    )
+
     for move, weight in final_policy.items():
         # Extract the move name from the move choice format
         # Move choices can be "move:swordsdance" or just "swordsdance"
@@ -3094,6 +3105,16 @@ def apply_ability_penalties(
                     penalty = max(penalty, BOOST_REMOVE_HAZARDS_HEAVY)
                     reason = f"Heavy hazards on our side ({ability_state.our_hazard_layers} layers)"
 
+        # === SETUP DENIAL: Don't stack hazards vs active boosted sweeper ===
+        # If opponent has >= 2 offensive boosts, non-damaging moves (hazards, status, setup)
+        # give them free turns to keep boosting. Heavily penalize.
+        if (
+            opp_offensive_boost_level >= 2
+            and move_category not in {"Physical", "Special"}
+        ):
+            penalty = min(penalty, PENALTY_HAZARD_VS_ACTIVE_SWEEPER)
+            reason = "opp_boosted_dont_stack_hazards"
+
         # =====================================================================
         # PHASE 2.3: TERA PREDICTION
         # =====================================================================
@@ -3515,9 +3536,20 @@ def apply_switch_penalties(
 
         # === LOW HP PENALTY ===
         hp_ratio = target_hp_ratio
-        if hp_ratio < 0.25:
+        if hp_ratio < 0.15:
+            # Tier 1: Near-certain death — critical penalty, cannot be overridden by type boosts
+            multiplier *= PENALTY_SWITCH_VERY_LOW_HP
+            reasons.append(f"very low HP ({int(hp_ratio * 100)}%) - near-certain death")
+            critical_penalty = True
+        elif hp_ratio < 0.25:
+            # Tier 2: Standard low HP penalty
             multiplier *= PENALTY_SWITCH_LOW_HP
             reasons.append(f"low HP ({int(hp_ratio * 100)}%)")
+        elif hp_ratio < 0.40 and opponent_offensive_boost_level >= 2:
+            # Tier 3: Below 40% HP into a highly boosted sweeper — likely KO
+            multiplier *= PENALTY_SWITCH_LOW_HP_VS_BOOSTED
+            reasons.append(f"low HP ({int(hp_ratio * 100)}%) vs +{opponent_offensive_boost_level} boosted sweeper")
+            critical_penalty = True
 
         # === TYPE WEAKNESS PENALTY ===
         if opponent and opponent_types:
