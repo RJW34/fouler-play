@@ -348,7 +348,12 @@
         }
 
         /* Max Slots Support (from /state max_slots) - only 2 slots now */
-        body.max-slots-1 #slot2 {
+        body.max-slots-1 #slot2,
+        body.max-slots-1 #slot3 {
+            display: none;
+        }
+
+        body.max-slots-2 #slot3 {
             display: none;
         }
     </style>
@@ -420,7 +425,37 @@
             </div>
         </div>
 
-        <!-- Only 2 slots now - Worker 3 removed -->
+        <!-- Slot 3 -->
+        <div class="battle-slot" id="slot3">
+            <div class="searching-overlay" id="searching3">
+                <div class="sonar">
+                    <div class="sonar-scanner"></div>
+                    <div class="sonar-circle"></div>
+                    <div class="sonar-circle"></div>
+                    <div class="sonar-circle"></div>
+                    <div class="sonar-circle"></div>
+                </div>
+                <div class="searching-text">SCANNING...</div>
+            </div>
+
+            <iframe id="frame3"></iframe>
+
+            <div class="ui-layer">
+                <div class="slot-header">
+                    <div class="badge purple">WORKER 03</div>
+                    <div class="badge">LIVE BATTLE</div>
+                </div>
+                <div class="battle-card" id="card3">
+                    <div class="opp-info">
+                        <h4>Opponent</h4>
+                        <div id="opp3">----------</div>
+                    </div>
+                    <div class="match-stats">
+                        <div class="turn">ACTIVE MATCH</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Status Bar -->
@@ -443,6 +478,7 @@
         <div id="debugUpdated">Last: -</div>
         <div id="debugSlot1">Slot1: -</div>
         <div id="debugSlot2">Slot2: -</div>
+        <div id="debugSlot3">Slot3: -</div>
     </div>
 
     <script>
@@ -454,8 +490,8 @@
         let wsOnline = false;
         const currentBattles = {}; // Tracking battle tags to slots
         const currentBattleUrls = {}; // Canonical battle URL per slot
-        const slotReloadTimers = { 1: [], 2: [] }; // Only 2 slots now
-        let maxSlots = 2; // Only 2 concurrent battles now
+        const slotReloadTimers = { 1: [], 2: [], 3: [] };
+        let maxSlots = 3; // 3 concurrent battles
 
         // Single slot mode
         const params = new URLSearchParams(window.location.search);
@@ -735,6 +771,8 @@
             const s2 = slotMap[2] ? `${slotMap[2].id}` : '-';
             document.getElementById('debugSlot1').textContent = `Slot1: ${s1}`;
             document.getElementById('debugSlot2').textContent = `Slot2: ${s2}`;
+            const s3 = slotMap[3] ? `${slotMap[3].id}` : '-';
+            document.getElementById('debugSlot3').textContent = `Slot3: ${s3}`;
         }
 
         async function fetchStateFallback() {

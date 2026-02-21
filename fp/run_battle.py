@@ -817,7 +817,7 @@ async def update_active_battles_file():
 
 async def send_stream_event(event_type, payload):
     """Send a real-time event signal to the stream server."""
-    url = "http://localhost:8777/event"
+    url = os.getenv("STREAM_EVENT_URL", "http://localhost:8777/event")
     for attempt in range(3):  # Try 3 times: initial + 2 retries
         try:
             timeout = aiohttp.ClientTimeout(total=5)
