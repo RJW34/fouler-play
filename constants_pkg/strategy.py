@@ -1106,6 +1106,8 @@ INTIMIDATE_ABILITIES = {"intimidate"}
 PENALTY_SWITCH_INTO_HAZARDS_PER_LAYER = 0.92  # -8% per effective hazard layer
 PENALTY_SWITCH_INTIMIDATE_VS_DEFIANT = 0.3    # -70% for Intimidate vs Defiant/Competitive
 PENALTY_SWITCH_LOW_HP = 0.6                    # -40% for switching to <25% HP Pokemon
+PENALTY_SWITCH_VERY_LOW_HP = 0.10              # -90% for switching to <15% HP Pokemon: near-certain death
+PENALTY_SWITCH_LOW_HP_VS_BOOSTED = 0.20        # -80% for switching to <40% HP when opponent has >=2 offensive boosts
 PENALTY_SWITCH_WEAK_TO_OPPONENT = 0.7          # -30% for switching to type-weak Pokemon
 
 BOOST_SWITCH_RESISTS_STAB = 1.3               # +30% for switching to STAB resister
@@ -1206,6 +1208,7 @@ PENALTY_SET_HAZARDS_ALREADY_UP = 0.2          # -80% when hazards already up
 BOOST_REMOVE_HAZARDS_HEAVY = 1.4              # +40% Defog/Spin when we have heavy hazards
 PENALTY_REMOVE_HAZARDS_NONE = 0.1             # -90% Defog/Spin when no hazards to remove
 PENALTY_HAZARDS_VS_REMOVAL = 0.7              # -30% hazard moves when opponent has revealed removal
+PENALTY_HAZARD_VS_ACTIVE_SWEEPER = 0.25        # -75% dont stack hazards when opponent is actively boosting
 
 
 # =============================================================================
