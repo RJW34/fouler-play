@@ -1,0 +1,41 @@
+[
+  {
+    "team_name": "Fat Team 1 (Stall)",
+    "archetype": "ArchetypeEnum.HAZARD_STACK",
+    "confidence": 0.7,
+    "critical_pokemon": [
+      "skarmory",
+      "blissey",
+      "skarmory"
+    ],
+    "gameplan_early": "Set all hazards by turn 5-6, establish defensive positioning",
+    "gameplan_mid": "Maintain hazards, wall opponent's offense, chip damage",
+    "gameplan_late": "Execute finisher when opponent is worn down"
+  },
+  {
+    "team_name": "Fat Team 2 (Pivot)",
+    "archetype": "ArchetypeEnum.HAZARD_STACK",
+    "confidence": 0.7,
+    "critical_pokemon": [
+      "gliscor",
+      "blissey",
+      "corviknight"
+    ],
+    "gameplan_early": "Set all hazards by turn 5-6, establish defensive positioning",
+    "gameplan_mid": "Maintain hazards, wall opponent's offense, chip damage",
+    "gameplan_late": "Execute finisher when opponent is worn down"
+  },
+  {
+    "team_name": "Fat Team 3 (Dondozo)",
+    "archetype": "ArchetypeEnum.STALL_CORE",
+    "confidence": 0.95,
+    "critical_pokemon": [
+      "corviknight",
+      "tinglu",
+      "dondozo"
+    ],
+    "gameplan_early": "Establish defensive wall by turn 5, scout opponent",
+    "gameplan_mid": "Survive through recovery and status, chip opponent",
+    "gameplan_late": "Wear down opponent completely, finisher cleanup"
+  }
+]

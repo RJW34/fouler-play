@@ -1,0 +1,156 @@
+{
+  "battle-gen9ou-2540341788": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)"
+    ]
+  },
+  "battle-gen9ou-2540351598": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)",
+      "No hazard setup detected (hazard team failing to set hazards)"
+    ]
+  },
+  "battle-gen9ou-2540357415": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)",
+      "No hazard setup detected (hazard team failing to set hazards)"
+    ]
+  },
+  "battle-gen9ou-2540368572": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [
+        52
+      ],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)"
+    ]
+  },
+  "battle-gen9ou-2540374888": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [
+        28,
+        29
+      ],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)",
+      "No hazard setup detected (hazard team failing to set hazards)"
+    ]
+  },
+  "battle-gen9ou-2540377938": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)"
+    ]
+  },
+  "battle-gen9ou-2540380579": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [
+        38
+      ],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": []
+  },
+  "battle-gen9ou-2540386458": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [
+        23,
+        24
+      ],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)"
+    ]
+  },
+  "battle-gen9ou-2540389208": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [
+        15
+      ],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)",
+      "No hazard setup detected (hazard team failing to set hazards)"
+    ]
+  },
+  "battle-gen9ou-2540391282": {
+    "info": {
+      "battle_id": null,
+      "opponent_team": [],
+      "our_team": null,
+      "turns": [],
+      "decisions": [],
+      "critical_moments": [],
+      "errors": []
+    },
+    "issues": [
+      "Excessive switching detected (possible pivot confusion)"
+    ]
+  }
+}

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Battle Slot</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-dark: #0f0f1b;
+  --accent-blue: #08d9d6;
+  --accent-red: #ff2e63;
+  --accent-green: #4ade80;
+  --glass: rgba(255,255,255,0.05);
+  --glass-border: rgba(255,255,255,0.1);
+  --text-main: #eaeaea;
+  --text-dim: #888;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  width:640px;height:540px;overflow:hidden;
+  background:var(--bg-dark);
+  font-family:'Outfit',sans-serif;color:var(--text-main);
+  position:relative;
+}
+
+/* Battle iframe fills the cell */
+.battle-frame{
+  position:absolute;inset:0;
+  border:none;width:100%;height:100%;
+  opacity:0;transition:opacity 0.8s ease-in-out;
+  z-index:1;
+}
+.battle-frame.visible{opacity:1}
+
+/* Overlay badges */
+.ui-layer{
+  position:absolute;inset:0;z-index:10;pointer-events:none;
+}
+.slot-header{
+  position:absolute;top:8px;left:10px;
+  display:flex;align-items:center;gap:6px;
+}
+.badge{
+  padding:4px 10px;border-radius:16px;
+  font-size:10px;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);
+  border:1px solid var(--glass-border);
+}
+.badge.slot1{color:var(--accent-red);border-color:var(--accent-red);box-shadow:0 0 8px rgba(255,46,99,0.2)}
+.badge.slot2{color:var(--accent-blue);border-color:var(--accent-blue);box-shadow:0 0 8px rgba(8,217,214,0.2)}
+.badge.slot3{color:#bd93f9;border-color:#bd93f9;box-shadow:0 0 8px rgba(189,147,249,0.2)}
+.badge.live{color:var(--accent-green);border-color:var(--accent-green);box-shadow:0 0 8px rgba(74,222,128,0.2)}
+
+.battle-card{
+  position:absolute;bottom:8px;left:8px;right:8px;
+  background:rgba(0,0,0,0.65);backdrop-filter:blur(16px);
+  border:1px solid var(--glass-border);
+  padding:8px 14px;border-radius:12px;
+  display:flex;justify-content:space-between;align-items:center;
+  transform:translateY(120%);transition:transform 0.5s cubic-bezier(0.23,1,0.32,1);
+  pointer-events:auto;
+}
+.battle-card.show{transform:translateY(0)}
+.opp-info h4{font-size:9px;text-transform:uppercase;color:#888;margin-bottom:1px}
+.opp-info div{font-size:14px;font-weight:800;color:#fff}
+.match-stats{text-align:right}
+.match-stats .turn{font-size:12px;font-weight:600;color:var(--accent-blue)}
+
+/* Idle/searching state */
+.searching-overlay{
+  position:absolute;inset:0;z-index:5;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:var(--bg-dark);
+  transition:opacity 0.5s;
+}
+.searching-overlay.hidden{opacity:0;pointer-events:none}
+
+.sonar{width:140px;height:140px;position:relative;margin-bottom:20px}
+.sonar-circle{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  border:1px solid var(--accent-blue);
+  border-radius:50%;opacity:0;
+  animation:sonar-ping 4s infinite linear;
+}
+.sonar-circle:nth-child(2){animation-delay:1s}
+.sonar-circle:nth-child(3){animation-delay:2s}
+.sonar-circle:nth-child(4){animation-delay:3s}
+@keyframes sonar-ping{
+  0%{width:0;height:0;opacity:1}
+  100%{width:100%;height:100%;opacity:0}
+}
+.sonar-scanner{
+  position:absolute;inset:0;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--accent-blue) 360deg);
+  opacity:0.08;border-radius:50%;
+  animation:rotate 4s linear infinite;
+}
+@keyframes rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+.searching-text{
+  font-size:16px;font-weight:800;
+  letter-spacing:3px;text-transform:uppercase;
+  color:var(--accent-blue);
+  text-shadow:0 0 12px rgba(8,217,214,0.4);
+}
+.searching-sub{
+  margin-top:6px;font-size:11px;
+  color:var(--text-dim);letter-spacing:2px;
+}
+.slot-number{
+  font-size:60px;font-weight:900;
+  color:rgba(255,255,255,0.04);
+  position:absolute;bottom:20px;right:20px;
+}
+</style>
+</head>
+<body>
+<!-- Searching/idle state -->
+<div class="searching-overlay" id="searchingOverlay">
+  <div class="sonar">
+    <div class="sonar-scanner"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+  </div>
+  <div class="searching-text">SCANNING...</div>
+  <div class="searching-sub" id="searchingSub">Slot <span id="slotLabel">?</span> &mdash; Waiting for battle</div>
+  <div class="slot-number" id="bigSlotNum"></div>
+</div>
+
+<!-- Battle iframe -->
+<iframe class="battle-frame" id="battleFrame"></iframe>
+
+<!-- UI overlay -->
+<div class="ui-layer">
+  <div class="slot-header">
+    <div class="badge" id="slotBadge">SLOT ?</div>
+    <div class="badge live" id="liveBadge" style="display:none">LIVE</div>
+  </div>
+  <div class="battle-card" id="battleCard">
+    <div class="opp-info">
+      <h4>Opponent</h4>
+      <div id="oppName">----------</div>
+    </div>
+    <div class="match-stats"><div class="turn" id="turnInfo">ACTIVE</div></div>
+  </div>
+</div>
+
+<script>
+// Get slot number from URL path: /slot/1, /slot/2, /slot/3
+const pathParts = window.location.pathname.split('/');
+const SLOT_NUM = parseInt(pathParts[pathParts.length - 1]) || 1;
+const STATE_URL = '/magneton-state';
+const REFRESH_MS = 5000;
+
+const badgeColors = {1:'slot1', 2:'slot2', 3:'slot3'};
+const badgeLabels = {1:'BATTLE 01', 2:'BATTLE 02', 3:'BATTLE 03'};
+
+// Init labels
+document.getElementById('slotLabel').textContent = SLOT_NUM;
+document.getElementById('bigSlotNum').textContent = SLOT_NUM;
+document.getElementById('slotBadge').textContent = badgeLabels[SLOT_NUM] || ('SLOT ' + SLOT_NUM);
+document.getElementById('slotBadge').classList.add(badgeColors[SLOT_NUM] || 'slot1');
+
+let currentBattleId = null;
+let currentBattleUrl = null;
+
+function buildBattleUrl(bid) {
+  return 'https://play.pokemonshowdown.com/' + bid + '?r=' + Date.now();
+}
+
+function stripCache(url) {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    u.searchParams.delete('r');
+    return u.toString();
+  } catch(e) { return url; }
+}
+
+function getBattleUrl(battle) {
+  if (!battle) return null;
+  return stripCache(battle.url || ('https://play.pokemonshowdown.com/' + battle.id));
+}
+
+async function fetchState() {
+  try {
+    const resp = await fetch(STATE_URL + '?t=' + Date.now(), {cache:'no-store'});
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.error) return;
+    const battles = data.battles || [];
+    const slotMap = {};
+    battles.forEach((b, i) => { slotMap[b.slot || (i+1)] = b; });
+    const battle = slotMap[SLOT_NUM] || null;
+    updateSlot(battle);
+  } catch(e) {}
+}
+
+function updateSlot(battle) {
+  const frame = document.getElementById('battleFrame');
+  const overlay = document.getElementById('searchingOverlay');
+  const card = document.getElementById('battleCard');
+  const liveBadge = document.getElementById('liveBadge');
+
+  if (battle) {
+    const bid = battle.id;
+    const bUrl = getBattleUrl(battle);
+
+    if (bid !== currentBattleId || bUrl !== currentBattleUrl) {
+      currentBattleId = bid;
+      currentBattleUrl = bUrl;
+      frame.src = buildBattleUrl(bid);
+      frame.classList.add('visible');
+      overlay.classList.add('hidden');
+      document.getElementById('oppName').textContent = battle.opponent || 'Unknown';
+      liveBadge.style.display = '';
+      setTimeout(() => card.classList.add('show'), 400);
+    }
+  } else if (currentBattleId) {
+    currentBattleId = null;
+    currentBattleUrl = null;
+    card.classList.remove('show');
+    liveBadge.style.display = 'none';
+    frame.classList.remove('visible');
+    setTimeout(() => {
+      frame.src = 'about:blank';
+      overlay.classList.remove('hidden');
+    }, 500);
+  }
+}
+
+fetchState();
+setInterval(fetchState, REFRESH_MS);
+</script>
+</body>
+</html>
