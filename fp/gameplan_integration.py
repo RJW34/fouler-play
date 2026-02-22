@@ -13,11 +13,16 @@ logger = logging.getLogger(__name__)
 # In-memory storage for active gameplans
 # battle_tag -> Gameplan
 _active_gameplans: Dict[str, Gameplan] = {}
+_ACTIVE_GAMEPLANS_MAX = 50  # Safety cap for memory leak prevention
 
 
 def store_gameplan(battle_tag: str, gameplan: Gameplan) -> None:
     """Store a gameplan for an active battle."""
     _active_gameplans[battle_tag] = gameplan
+    # Memory leak guard: evict oldest if cap exceeded
+    while len(_active_gameplans) > _ACTIVE_GAMEPLANS_MAX:
+        oldest_key = next(iter(_active_gameplans))
+        del _active_gameplans[oldest_key]
     logger.info(f"Stored gameplan for {battle_tag}: {gameplan.win_condition}")
 
 

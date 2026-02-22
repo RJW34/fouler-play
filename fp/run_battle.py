@@ -125,7 +125,7 @@ from fp.movepool_tracker import get_threat_category, ThreatCategory
 from fp.opponent_model import OPPONENT_MODEL
 from fp.hybrid_policy import run_hybrid_rerank
 from fp.helpers import type_effectiveness_modifier
-from fp.battle_decision import StrategicDecisionLayer
+from fp.battle_decision import StrategicDecisionLayer, clear_battle_strategy
 
 from fp.websocket_client import PSWebsocketClient
 from streaming.state_store import write_active_battles, read_active_battles, write_status, update_daily_stats
@@ -182,8 +182,8 @@ DEAD_BATTLE_BLACKLIST_MAX = max(100, int(os.getenv("DEAD_BATTLE_BLACKLIST_MAX", 
 BATTLE_HARD_TIMEOUT_SEC = int(os.getenv("BATTLE_HARD_TIMEOUT_SEC", "0"))
 
 # Prevents heartbeat from re-registering battles that already finished.
-# Capped at 200 entries to avoid unbounded growth.
-_concluded_battles: set[str] = set()
+# Uses OrderedDict for FIFO eviction (set.pop() was evicting arbitrarily).
+_concluded_battles: OrderedDict[str, float] = OrderedDict()
 _CONCLUDED_BATTLES_MAX = 200
 
 # --- Per-worker logging ---
@@ -712,10 +712,10 @@ def _log_battle_removal(battle_tag: str, reason: str):
         battle_tag, reason, len(remaining), remaining,
     )
     # Mark as concluded so heartbeat never re-registers it
-    _concluded_battles.add(battle_tag)
-    if len(_concluded_battles) > _CONCLUDED_BATTLES_MAX:
-        # Evict oldest (arbitrary since set is unordered, but prevents unbounded growth)
-        _concluded_battles.pop()
+    _concluded_battles[battle_tag] = time.time()
+    _concluded_battles.move_to_end(battle_tag)
+    while len(_concluded_battles) > _CONCLUDED_BATTLES_MAX:
+        _concluded_battles.popitem(last=False)  # FIFO: evict oldest, not arbitrary
 
 
 async def update_active_battles_file():
@@ -2352,8 +2352,9 @@ async def pokemon_battle(
         logger.exception("Unhandled exception in battle loop for %s", battle_tag)
         raise
     finally:
-        # Clean up gameplan from memory
+        # Clean up gameplan and strategic cache from memory (memory leak fix)
         clear_gameplan(battle_tag)
+        clear_battle_strategy(battle_tag)
         await _finalize_battle_runtime(
             ps_websocket_client,
             battle_tag,

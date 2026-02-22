@@ -48,6 +48,7 @@ class PSWebsocketClient:
         self.global_queue = asyncio.Queue()  # for non-battle messages (login, search, etc.)
         self.dispatcher_task = None
         self._dispatcher_running = False
+        self._reconnect_task = None  # Track reconnect task to prevent duplicates
         self._dispatcher_started = False
         self._pending_lock = asyncio.Lock()  # Lock for atomic battle claiming
         self._reconnect_lock = asyncio.Lock()
@@ -247,7 +248,9 @@ class PSWebsocketClient:
                 self._dispatcher_running = False
                 # Fire off reconnection as a separate task (can't call reconnect from within dispatcher
                 # since reconnect() cancels the dispatcher task)
-                asyncio.create_task(self._auto_reconnect())
+                # Guard: only spawn reconnect if none already running
+                if self._reconnect_task is None or self._reconnect_task.done():
+                    self._reconnect_task = asyncio.create_task(self._auto_reconnect())
                 break
             except asyncio.CancelledError:
                 logger.info("Dispatcher cancelled")
@@ -457,6 +460,10 @@ class PSWebsocketClient:
 
     async def close(self):
         self.stop_dispatcher()
+        # Cancel any pending reconnect task
+        if self._reconnect_task and not self._reconnect_task.done():
+            self._reconnect_task.cancel()
+            self._reconnect_task = None
         if self.websocket is not None:
             await self.websocket.close()
 
