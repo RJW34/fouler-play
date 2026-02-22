@@ -287,7 +287,11 @@ class _FoulPlayConfig:
             default=None,
             help="If bot_mode is `accept_challenge`, the room to join while waiting",
         )
-        parser.add_argument("--log-level", default="DEBUG", help="Python logging level")
+        parser.add_argument(
+            "--log-level",
+            default="DEBUG" if os.getenv("FOULER_DEBUG") == "1" else "INFO",
+            help="Python logging level (defaults to INFO; set FOULER_DEBUG=1 for DEBUG)",
+        )
         parser.add_argument(
             "--log-to-file",
             action="store_true",

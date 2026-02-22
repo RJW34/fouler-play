@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fouler Stats</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-dark: #0f0f1b;
+  --bg-card: rgba(255,255,255,0.04);
+  --accent-blue: #08d9d6;
+  --accent-red: #ff2e63;
+  --accent-green: #4ade80;
+  --accent-gold: #ffd700;
+  --glass-border: rgba(255,255,255,0.1);
+  --text-main: #eaeaea;
+  --text-dim: #888;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  width:640px;height:540px;overflow:hidden;
+  background:var(--bg-dark);
+  font-family:'Outfit',sans-serif;color:var(--text-main);
+  display:flex;flex-direction:column;
+}
+.header{
+  display:flex;align-items:center;gap:10px;
+  padding:16px 20px 8px;
+}
+.badge{
+  padding:5px 14px;border-radius:18px;
+  font-size:11px;font-weight:800;letter-spacing:1.5px;
+  text-transform:uppercase;
+  background:rgba(0,0,0,0.4);
+  border:1px solid var(--accent-blue);
+  color:var(--accent-blue);
+  box-shadow:0 0 12px rgba(8,217,214,0.25);
+}
+.badge-live{
+  border-color:var(--accent-green);color:var(--accent-green);
+  box-shadow:0 0 12px rgba(74,222,128,0.25);
+  animation:pulse-badge 2s ease-in-out infinite;
+}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.6}}
+.account-name{
+  font-size:14px;font-weight:600;color:var(--text-dim);
+  margin-left:auto;letter-spacing:1px;
+}
+
+.elo-section{
+  text-align:center;padding:12px 20px 8px;
+}
+.elo-label{font-size:11px;color:var(--text-dim);letter-spacing:3px;text-transform:uppercase;margin-bottom:2px}
+.elo-value{
+  font-size:72px;font-weight:900;
+  background:linear-gradient(135deg,var(--accent-blue),var(--accent-gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  line-height:1;
+  filter:drop-shadow(0 0 20px rgba(8,217,214,0.3));
+}
+.elo-source{font-size:10px;color:var(--text-dim);margin-top:2px}
+
+.stats-grid{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  gap:8px;padding:8px 20px;
+}
+.stat-card{
+  background:var(--bg-card);
+  border:1px solid var(--glass-border);
+  border-radius:12px;padding:12px 14px;
+  text-align:center;
+}
+.stat-card .label{font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.stat-card .value{font-size:24px;font-weight:800}
+.stat-card .value.wins{color:var(--accent-green)}
+.stat-card .value.losses{color:var(--accent-red)}
+.stat-card .value.winrate{color:var(--accent-gold)}
+
+.session-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 20px;gap:12px;
+}
+.session-label{font-size:11px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase}
+.session-stats{display:flex;gap:16px;font-size:13px;font-weight:600}
+.session-stats .w{color:var(--accent-green)}
+.session-stats .l{color:var(--accent-red)}
+
+.battle-indicators{
+  display:flex;justify-content:center;gap:10px;
+  padding:8px 20px;
+}
+.slot-dot{
+  width:14px;height:14px;border-radius:50%;
+  border:2px solid var(--glass-border);
+  background:transparent;
+  transition:all 0.3s;
+}
+.slot-dot.active{
+  background:var(--accent-green);border-color:var(--accent-green);
+  box-shadow:0 0 10px rgba(74,222,128,0.5);
+}
+.slot-dot-label{font-size:9px;color:var(--text-dim);text-align:center;margin-top:2px}
+
+.status-bar{
+  margin-top:auto;
+  padding:8px 20px;
+  background:rgba(0,0,0,0.4);
+  border-top:1px solid var(--glass-border);
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:11px;color:var(--text-dim);
+}
+.status-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:#ff4b2b;display:inline-block;margin-right:6px;
+}
+.status-dot.ok{background:var(--accent-green);box-shadow:0 0 6px var(--accent-green)}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="badge">&#x2694;&#xFE0F; FOULER STATS</div>
+  <div class="badge badge-live" id="liveBadge" style="display:none">LIVE</div>
+  <div class="account-name" id="accountName">---</div>
+</div>
+
+<div class="elo-section">
+  <div class="elo-label">Current ELO</div>
+  <div class="elo-value" id="eloValue">----</div>
+  <div class="elo-source" id="eloSource">loading...</div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="label">Wins</div>
+    <div class="value wins" id="totalWins">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Losses</div>
+    <div class="value losses" id="totalLosses">0</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">Win Rate</div>
+    <div class="value winrate" id="winRate">0%</div>
+  </div>
+</div>
+
+<div class="session-row">
+  <div class="session-label">Today's Session</div>
+  <div class="session-stats">
+    <span class="w" id="todayWins">0W</span>
+    <span class="l" id="todayLosses">0L</span>
+  </div>
+</div>
+
+<div style="text-align:center;padding:4px 0">
+  <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Active Battles</div>
+  <div class="battle-indicators" id="battleDots">
+    <div><div class="slot-dot" id="dot1"></div><div class="slot-dot-label">1</div></div>
+    <div><div class="slot-dot" id="dot2"></div><div class="slot-dot-label">2</div></div>
+    <div><div class="slot-dot" id="dot3"></div><div class="slot-dot-label">3</div></div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div><span class="status-dot" id="connDot"></span><span id="connText">Connecting...</span></div>
+  <div id="lastUpdate">--</div>
+</div>
+
+<script>
+const STATE_URL = '/magneton-state';
+const REFRESH_MS = 5000;
+
+async function fetchState() {
+  try {
+    const resp = await fetch(STATE_URL + '?t=' + Date.now(), {cache:'no-store'});
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    render(data);
+    setConn(true);
+  } catch(e) {
+    setConn(false, e.message);
+  }
+}
+
+function render(data) {
+  const s = data.status || {};
+  const battles = data.battles || [];
+  const accounts = Object.keys(data.accounts_elo || s.accounts_elo || {});
+  const primary = accounts[0] || 'Unknown';
+  document.getElementById('accountName').textContent = primary.toUpperCase();
+
+  const elo = s.elo || '----';
+  document.getElementById('eloValue').textContent = elo;
+  document.getElementById('eloSource').textContent = s.elo_source === 'showdown' ? 'via Showdown Ladder' : 'local';
+
+  const wins = s.wins || 0;
+  const losses = s.losses || 0;
+  document.getElementById('totalWins').textContent = wins;
+  document.getElementById('totalLosses').textContent = losses;
+  const total = wins + losses;
+  const wr = total > 0 ? ((wins/total)*100).toFixed(1) + '%' : '0%';
+  document.getElementById('winRate').textContent = wr;
+
+  document.getElementById('todayWins').textContent = (s.today_wins||0) + 'W';
+  document.getElementById('todayLosses').textContent = (s.today_losses||0) + 'L';
+
+  const slotMap = {};
+  battles.forEach((b,i) => { slotMap[b.slot || (i+1)] = b; });
+  [1,2,3].forEach(n => {
+    const dot = document.getElementById('dot'+n);
+    if (dot) dot.classList.toggle('active', !!slotMap[n]);
+  });
+
+  document.getElementById('liveBadge').style.display = battles.length > 0 ? '' : 'none';
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+}
+
+function setConn(ok, msg) {
+  document.getElementById('connDot').classList.toggle('ok', ok);
+  document.getElementById('connText').textContent = ok ? 'Connected to MAGNETON' : (msg || 'Offline');
+}
+
+fetchState();
+setInterval(fetchState, REFRESH_MS);
+</script>
+</body>
+</html>
