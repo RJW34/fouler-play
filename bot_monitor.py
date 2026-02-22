@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Fouler Play Bot Monitor - Event-driven Discord notifications
 Monitors bot output and instantly posts battle results/replays to Discord
@@ -71,7 +71,7 @@ DISCORD_BATTLES_WEBHOOK = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")  # For battle
 DISCORD_FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL")  # For turn reviews
 
 # Bot identity for multi-bot reporting
-BOT_DISPLAY_NAME = os.getenv("BOT_DISPLAY_NAME", "").strip()  # e.g. "ðŸª² DEKU" or "ðŸ’¥ BAKUGO"
+BOT_DISPLAY_NAME = os.getenv("BOT_DISPLAY_NAME", "").strip()  # e.g. "🪲 DEKU" or "💥 BAKUGO"
 
 # Fix Windows latin-1 encoded UTF-8 bytes (Issue 3)
 if BOT_DISPLAY_NAME:
@@ -201,7 +201,7 @@ class BotMonitor:
         self.battle_message_map = {}  # Track most recent battle for each message stream
         self.finished_battles = OrderedDict()  # battle_id -> (opponent, result) awaiting replay
         self.analyzer = None  # ReplayAnalyzer remains disabled during upgrade
-        self.turn_reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "ALL CHUNG"))
+        self.turn_reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "npctypebeat"))
         self.posted_replays = set()  # Track posted replays with bounded retention
         self._posted_replay_order = deque()
         self.num_workers = 0
@@ -459,10 +459,10 @@ class BotMonitor:
                 elo_str += f" ({gxe:.1f} GXE)"
 
         name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
-        msg = f"ðŸ“Š **Batch Report{name_tag} ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR){elo_str}\n"
+        msg = f"📊 **Batch Report{name_tag} ({total} games):** {wins}W - {losses}L ({wr:.0f}% WR){elo_str}\n"
         msg += f"**Overall Record:** {self.wins}W - {self.losses}L\n\n"
 
-        # List results â€” suppress Discord embeds on non-loss replays with <url>
+        # List results — suppress Discord embeds on non-loss replays with <url>
         for opp, result, replay in self.batch_results:
             if result == "won":
                 icon = "W"
@@ -473,17 +473,17 @@ class BotMonitor:
             if replay:
                 if result == "lost":
                     # Losses get full embed (bare URL on its own line)
-                    replay_link = f" â€” [replay]({replay})"
+                    replay_link = f" — [replay]({replay})"
                 else:
                     # Wins/ties get suppressed embed (angle brackets)
-                    replay_link = f" â€” [replay](<{replay}>)"
+                    replay_link = f" — [replay](<{replay}>)"
             else:
                 replay_link = ""
             msg += f"{icon} vs {opp}{replay_link}\n"
 
         # Loss analysis summary
         if self.batch_losses:
-            msg += f"\nðŸ” **Analyzing {len(self.batch_losses)} loss(es)...**"
+            msg += f"\n🔍 **Analyzing {len(self.batch_losses)} loss(es)...**"
 
         # Queue batch report via event queue (suppress embeds)
         queue_event("batch_complete", "battles", msg,
@@ -1009,11 +1009,11 @@ class BotMonitor:
         # Only post startup message if enough time has passed since last startup
         if should_post_startup_message():
             name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
-            startup_msg = f"ðŸš€ **Fouler Play bot{name_tag} starting...**"
+            startup_msg = f"🚀 **Fouler Play bot{name_tag} starting...**"
             if username:
                 user_page = f"https://pokemonshowdown.com/users/{username.lower().replace(' ', '')}"
-                startup_msg += f"\nðŸ“Š **Account:** [{username}]({user_page})"
-                startup_msg += "\nâ³ *ELO stats will be posted once ladder data loads*"
+                startup_msg += f"\n📊 **Account:** [{username}]({user_page})"
+                startup_msg += "\n⏳ *ELO stats will be posted once ladder data loads*"
             
             queue_event("bot_started", "battles", startup_msg)
             record_startup_message()
