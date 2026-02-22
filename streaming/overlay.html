@@ -663,7 +663,7 @@ body.hide-recent #mid-form {
   <div class="dead-column col-left">
     <div class="worker-pill" id="worker-1">
       <div class="worker-left">
-        <div class="worker-label">ALL CHUNG</div>
+        <div class="worker-label" id="worker-1-label">BUGINTHECODE</div>
         <div class="worker-opponent" id="worker-1-name">Idle</div>
       </div>
       <div class="worker-status idle" id="worker-1-status">Idle</div>
@@ -721,7 +721,7 @@ body.hide-recent #mid-form {
       <div id="recent-results"></div>
       <div id="streak"></div>
     </div>
-    <div id="ticker">ALL CHUNG - Gen 9 OU Bot Development</div>
+    <div id="ticker">BUGINTHECODE - Gen 9 OU Bot Development</div>
   </div>
 </div>
 
@@ -956,6 +956,14 @@ function updateOverlay(status, battles) {
     }
   }
   
+    // Update name labels dynamically from state
+  const firstAcctName = Object.keys(accountsElo)[0];
+  if (firstAcctName) {
+    const lbl = document.getElementById("worker-1-label");
+    const tkr = document.getElementById("ticker");
+    if (lbl) lbl.textContent = firstAcctName.toUpperCase();
+    if (tkr) tkr.textContent = firstAcctName.toUpperCase() + " - Gen 9 OU Bot Development";
+  }
   // Backward compat: update top bar ELO with primary account
   const newElo = data.elo || '---';
   if (eloEl) {
