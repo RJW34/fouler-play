@@ -251,6 +251,7 @@ class Battler:
 
         self.team_dict = None
         self.team_plan = None
+        self.team_context = None  # TeamContext from team_intent — lazily built
 
         # last_selected_move: The last move that was selected (Bot only)
         # last_used_move: The last move that was observed publicly (Bot and Opponent)
@@ -607,6 +608,7 @@ class Battler:
                 )
                 self.team_dict = None
                 self.team_plan = None
+        self.team_context = None  # TeamContext from team_intent — lazily built
 
         if self.team_dict is not None:
             team_by_species = {
