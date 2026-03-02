@@ -50,6 +50,8 @@ def get_pokemon_info_from_condition(condition_string: str):
 
 
 def normalize_name(name):
+    if name is None:
+        return ""
     return (
         name.replace(" ", "")
         .replace("-", "")

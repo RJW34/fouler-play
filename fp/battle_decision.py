@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 # Global cache for archetypes and gameplans (per battle)
+# Safety cap: cleared per-battle via clear_battle_strategy(),
+# but cap prevents unbounded growth if cleanup is missed.
 _battle_cache: Dict[str, Dict[str, Any]] = {}
+_BATTLE_CACHE_MAX = 50
 
 
 class StrategicDecisionLayer:
@@ -69,6 +72,10 @@ class StrategicDecisionLayer:
             "gameplan": gameplan,
             "team_data": team_data
         }
+        # Memory leak guard: evict oldest entries if cache exceeds cap
+        while len(_battle_cache) > _BATTLE_CACHE_MAX:
+            oldest_key = next(iter(_battle_cache))
+            del _battle_cache[oldest_key]
         
         return archetype, gameplan
     

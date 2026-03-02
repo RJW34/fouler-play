@@ -1,0 +1,143 @@
+timestamp: 2026-02-17T19:56:37-05:00
+host: ubunztu
+
+[git]
+branch: master
+head: ad7a02e801eaae53401da90c554971bc23846472
+upstream: origin/master
+ahead_behind: 0 0
+
+status_porcelain:
+ M .bot.pid
+ M .pipeline_state
+ M TASKBOARD.md
+ M battle_stats.json
+ M bot_monitor.py
+ M fp/data/movepool_data.json
+ M fp/run_battle.py
+ M infrastructure/event-handlers.py
+ M pipeline.py
+ M replay_analysis/batch_analyzer.py
+ M stability_report.json
+?? DIAGNOSIS_STRUCTURAL_2026-02-15.md
+?? HALLUCINATION-REPORT.md
+?? OVERHAUL_COMPLETION_REPORT.md
+?? RUN_STATE_SNAPSHOT_20260217-195637.txt
+?? SINGLE_BATTLE_LOOP.md
+?? STRATEGIC_OVERHAUL_PLAN.md
+?? analyze_losses.py
+?? data/strategic_overhaul_test_results.json
+?? docs/EVENT_QUEUE_DESIGN.md
+?? events_queue.json
+?? fp/archetype_analyzer.py
+?? fp/battle_decision.py
+?? fp/gameplan_generator.py
+?? fp/multi_turn_planner.py
+?? fp/strategic_filter.py
+?? infrastructure/event_poster.py
+?? infrastructure/event_queue_lib.py
+?? infrastructure/gen9-validation.py
+?? infrastructure/test_event_queue.py
+?? loss_analysis_results.json
+?? start_bot.sh
+?? test_strategic_overhaul.py
+?? tests/test_archetype_analyzer.py
+?? tests/test_gameplan_generator.py
+?? tests/test_multi_turn_planner.py
+?? tests/test_strategic_filter.py
+
+diff_stat:
+ .bot.pid                          |    2 +-
+ .pipeline_state                   |    6 +-
+ TASKBOARD.md                      |   38 +-
+ battle_stats.json                 | 2611 ++++++++++++++++++++++++++++++++++++
+ bot_monitor.py                    |   16 +-
+ fp/data/movepool_data.json        | 2618 ++++++++++++++++++++++++++-----------
+ fp/run_battle.py                  |   71 +
+ infrastructure/event-handlers.py  |   35 +-
+ pipeline.py                       |   10 +-
+ replay_analysis/batch_analyzer.py |   77 +-
+ stability_report.json             |  130 +-
+ 11 files changed, 4712 insertions(+), 902 deletions(-)
+
+untracked:
+DIAGNOSIS_STRUCTURAL_2026-02-15.md
+HALLUCINATION-REPORT.md
+OVERHAUL_COMPLETION_REPORT.md
+RUN_STATE_SNAPSHOT_20260217-195637.txt
+SINGLE_BATTLE_LOOP.md
+STRATEGIC_OVERHAUL_PLAN.md
+analyze_losses.py
+data/strategic_overhaul_test_results.json
+docs/EVENT_QUEUE_DESIGN.md
+events_queue.json
+fp/archetype_analyzer.py
+fp/battle_decision.py
+fp/gameplan_generator.py
+fp/multi_turn_planner.py
+fp/strategic_filter.py
+infrastructure/event_poster.py
+infrastructure/event_queue_lib.py
+infrastructure/gen9-validation.py
+infrastructure/test_event_queue.py
+loss_analysis_results.json
+start_bot.sh
+test_strategic_overhaul.py
+tests/test_archetype_analyzer.py
+tests/test_gameplan_generator.py
+tests/test_multi_turn_planner.py
+tests/test_strategic_filter.py
+
+[service]
+● fouler-play.service - Fouler Play Pokemon Showdown Bot
+     Loaded: loaded (/home/ryan/.config/systemd/user/fouler-play.service; disabled; preset: enabled)
+     Active: active (running) since Tue 2026-02-17 19:52:02 EST; 4min 35s ago
+   Main PID: 1172104 (python)
+      Tasks: 2 (limit: 9062)
+     Memory: 265.4M (peak: 271.2M)
+        CPU: 1min 21.119s
+     CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/fouler-play.service
+             └─1172104 /home/ryan/projects/fouler-play/venv/bin/python run.py --ps-username BugInTheCode --ps-password "HeracrossBattle2026!" --websocket-uri wss://sim3.psim.us/showdown/websocket --bot-mode search_ladder --pokemon-format gen9ou --team-list deku-team.list --search-time-ms 3000 --search-parallelism 2 --max-concurrent-battles 1 --max-mcts-battles 4 --run-count 999999 --save-replay always --log-to-file --log-level INFO --spectator-username CHUNGMIGHT
+
+Feb 17 19:56:35 ubunztu python[1172104]: INFO     Battle finished: battle-gen9ou-2541845084 Winner: BugInTheCode
+Feb 17 19:56:35 ubunztu python[1172104]: INFO     Sending battle chat in battle-gen9ou-2541845084: gg
+Feb 17 19:56:36 ubunztu python[1172104]: INFO     Sending battle chat in battle-gen9ou-2541845084: ttv/thepeakmos
+Feb 17 19:56:37 ubunztu python[1172104]: INFO     Replay saved: https://replay.pokemonshowdown.com/gen9ou-2541845084
+Feb 17 19:56:37 ubunztu python[1172104]: INFO     Posted battle result to Discord: won vs EurusTheWitch
+
+[running_processes]
+
+[fouler-play unit]
+# /home/ryan/.config/systemd/user/fouler-play.service
+[Unit]
+Description=Fouler Play Pokemon Showdown Bot
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/ryan/projects/fouler-play
+ExecStart=/home/ryan/projects/fouler-play/venv/bin/python run.py \
+    --ps-username "BugInTheCode" \
+    --ps-password "HeracrossBattle2026!" \
+    --websocket-uri wss://sim3.psim.us/showdown/websocket \
+    --bot-mode search_ladder \
+    --pokemon-format gen9ou \
+    --team-list deku-team.list \
+    --search-time-ms 3000 \
+    --search-parallelism 2 \
+    --max-concurrent-battles 1 \
+    --max-mcts-battles 4 \
+    --run-count 999999 \
+    --save-replay always \
+    --log-to-file \
+    --log-level INFO \
+    --spectator-username CHUNGMIGHT
+Restart=always
+RestartSec=30
+EnvironmentFile=/home/ryan/projects/fouler-play/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=LOSS_TRIGGERED_DRAIN=0
+Environment=STREAM_EVENT_URL=http://192.168.1.40:8777/event
+
+[Install]
+WantedBy=default.target
