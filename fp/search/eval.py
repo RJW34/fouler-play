@@ -39,6 +39,12 @@ STATUS_MOVES_OFFENSIVE = {
 
 PHAZE_MOVES = {"whirlwind", "roar", "dragontail", "circlethrow"}
 
+# Snowball ability names (Moxie, Beast Boost, etc.) - available for eval use
+try:
+    from constants_pkg.strategy import SNOWBALL_ABILITY_NAMES as _EVAL_SNOWBALL_NAMES
+except ImportError:
+    _EVAL_SNOWBALL_NAMES = set()
+
 # Items that grant hazard immunity on switch
 HAZARD_IMMUNITY_ITEMS = {"heavydutyboots"}
 
@@ -558,6 +564,27 @@ def _opp_has_setup_potential(opp) -> bool:
     return False
 
 
+def _target_has_anti_setup_tool(target) -> bool:
+    """True if this switch target can directly deny or absorb setup lines."""
+    if target is None or getattr(target, "hp", 0) <= 0:
+        return False
+
+    ability = normalize_name(getattr(target, "ability", "") or "")
+    if ability == "unaware":
+        return True
+
+    name = normalize_name(getattr(target, "name", "") or "")
+    if name in POKEMON_COMMONLY_UNAWARE:
+        return True
+
+    for mv in getattr(target, "moves", []) or []:
+        mv_name = normalize_name(mv.name if hasattr(mv, "name") else str(mv))
+        if mv_name in PHAZE_MOVES or mv_name in {"haze", "clearsmog", "encore", "taunt"}:
+            return True
+
+    return False
+
+
 def _opponent_has_unaware(battle: Battle) -> bool:
     """Check if the opponent's active Pokemon has or likely has Unaware."""
     opp = battle.opponent.active
@@ -763,6 +790,16 @@ def _score_switch(battle: Battle, target_name: str) -> float:
                         target_stats.get(constants.SPECIAL_DEFENSE, 100))
                 if bulk >= 450:
                     score += 0.15
+
+        # Role-preservation gate (agnostic): preserve anti-setup answers.
+        if _target_has_anti_setup_tool(target):
+            hp_ratio_as = target.hp / max(target.max_hp, 1)
+            if hp_ratio_as >= 0.70:
+                score += 0.30
+            elif hp_ratio_as >= 0.45:
+                score += 0.18
+            else:
+                score += 0.05
 
     # HP preservation
     hp_ratio = target.hp / max(target.max_hp, 1)

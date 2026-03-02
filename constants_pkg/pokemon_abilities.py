@@ -138,6 +138,27 @@ POKEMON_COMMONLY_ARMOR_TAIL = _get_pokemon_with_ability("Armor Tail")
 # Intimidate: Drops opponent's Atk on switch-in (triggers Defiant/Competitive)
 POKEMON_WITH_INTIMIDATE = _get_pokemon_with_ability("Intimidate")
 
+# Snowball/KO-boost abilities: gain stat boosts on every KO -- snowball if not stopped
+# Moxie: +1 Atk per KO (Salamence, Gyarados, Heracross, Krookodile, etc.)
+# Beast Boost: +1 to highest stat per KO (Ultra Beasts)
+# Chilling Neigh: +1 Atk per KO (Glastrier, Ice Rider Calyrex)
+# Grim Neigh: +1 SpA per KO (Spectrier, Shadow Rider Calyrex)
+# As One: combines Unnerve + Chilling/Grim Neigh (Calyrex forms)
+# Soul-Heart: +1 SpA when any Pokemon faints (Magearna)
+POKEMON_COMMONLY_SNOWBALL = _get_pokemon_with_any_ability([
+    "Moxie", "Beast Boost", "Chilling Neigh", "Grim Neigh",
+    "As One (Glastrier)", "As One (Spectrier)", "Soul-Heart",
+])
+# Normalize: also include calyrex forms that may not match the exact ability string
+POKEMON_COMMONLY_SNOWBALL |= {
+    "calyrexice", "calyrexshadow", "calyrex-ice", "calyrex-shadow",
+    "glastrier", "spectrier", "magearna",
+}
+SNOWBALL_ABILITY_NAMES = {
+    "moxie", "beastboost", "chillingneigh", "grimneigh",
+    "asone", "asonechillingneigh", "asonegrimneigh", "soulheart",
+}
+
 # Air Balloon holders - this is item-based, not ability, so we define manually
 # Common leads and setup sweepers that often hold Air Balloon
 POKEMON_COMMONLY_AIR_BALLOON = {

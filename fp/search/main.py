@@ -1053,6 +1053,7 @@ class OpponentAbilityState:
     # === PHASE 3.1: WIN CONDITION AWARENESS ===
     our_active_is_wincon: bool = False  # Our active is a win condition
     opponent_active_is_threat: bool = False  # Opponent active is a major threat
+    has_snowball_ability: bool = False  # Opponent has Moxie/Beast Boost/etc (gets +stat per KO)
     ko_line_available: bool = False  # We have a simple KO line this turn
     ko_line_turns: int = 0  # 1 or 2 when a KO line is detected
     ko_line_move: str = ""  # Suggested KO move
@@ -1710,6 +1711,20 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     # Supreme Overlord - Kingambit (gets stronger as allies faint)
     state.has_supreme_overlord = _check_ability_or_pokemon(
         ability, name, base_name, {"supremeoverlord"}, POKEMON_COMMONLY_SUPREME_OVERLORD
+    )
+
+    # === SNOWBALL ABILITY DETECTION (Moxie/Beast Boost/etc.) ===
+    # These abilities gain offensive boosts on every KO, creating exponential threat.
+    # Priority: send in a phazer (Whirlwind/Roar) to reset, NOT a passive wall.
+    from constants_pkg.strategy import SNOWBALL_ABILITY_NAMES as _SNOWBALL_NAMES
+    from constants_pkg.strategy import POKEMON_COMMONLY_SNOWBALL as _SNOWBALL_POKEMON
+    _opp_ability_norm_sb = normalize_name(opponent_ability) if opponent_ability else ''
+    _opp_name_norm_sb = normalize_name(opponent.name) if opponent else ''
+    _opp_base_norm_sb = normalize_name(getattr(opponent, 'base_name', '') or (opponent.name if opponent else ''))
+    state.has_snowball_ability = (
+        _opp_ability_norm_sb in _SNOWBALL_NAMES
+        or _opp_name_norm_sb in _SNOWBALL_POKEMON
+        or _opp_base_norm_sb in _SNOWBALL_POKEMON
     )
 
     # Clear Body / White Smoke / Full Metal Body - stat drop immunity
@@ -3671,6 +3686,53 @@ def apply_switch_penalties(
                             resist_boost = 1.3 + (boost_level - 1) * 0.1
                             multiplier *= resist_boost
                             reasons.append(f"Resists STAB vs +{boost_level} boosted (defensive check)")
+
+        # === SNOWBALL ABILITY AWARENESS (Moxie/Beast Boost/etc.) ===
+        # Against snowball abilities, EVERY KO makes the next one easier.
+        # Priority #1: send the phazer. Priority #2: send something that resists.
+        # Priority #NEVER: send a passive wall with no phaze (Blissey into Moxie Salamence).
+        if getattr(ability_state, 'has_snowball_ability', False):
+            _tgt_ability_sb = normalize_name(getattr(target_pkmn, 'ability', None) or '')
+            _tgt_name_sb = normalize_name(target_pkmn.name)
+            _tgt_base_sb = normalize_name(getattr(target_pkmn, 'base_name', '') or target_pkmn.name)
+
+            _has_phaze_sb = bool(target_move_names_norm & (set(PHAZING_MOVES) | {'haze', 'clearsmog'}))
+            _has_unaware_sb = (
+                _tgt_ability_sb == 'unaware'
+                or _tgt_name_sb in POKEMON_COMMONLY_UNAWARE
+                or _tgt_base_sb in POKEMON_COMMONLY_UNAWARE
+            )
+
+            if _has_phaze_sb:
+                # Phazer is THE answer to snowball abilities -- force switch resets boosts
+                # AND wastes the KO boost they just got
+                _sb_phaze_boost = 1.50 + opponent_offensive_boost_level * 0.15
+                multiplier *= _sb_phaze_boost
+                reasons.append(f'PHAZER vs snowball ability (+{opponent_offensive_boost_level})')
+            elif _has_unaware_sb:
+                # Unaware ignores boosts -- still good but does not reset them
+                multiplier *= 1.25
+                reasons.append(f'Unaware vs snowball ability (+{opponent_offensive_boost_level})')
+            else:
+                # Non-phazer, non-Unaware switch into a snowball threat
+                _tgt_types_sb = getattr(target_pkmn, 'types', []) or []
+                _resists_stab_sb = False
+                if opponent_types and _tgt_types_sb:
+                    _resists_stab_sb = all(
+                        type_effectiveness_modifier(ot, _tgt_types_sb) <= 0.5
+                        for ot in opponent_types
+                    )
+
+                if _resists_stab_sb:
+                    # At least we resist, but still not ideal -- snowball grows
+                    multiplier *= 0.90
+                    reasons.append('resists STAB but no phaze vs snowball (risky)')
+                else:
+                    # This is the Blissey-into-Salamence disaster scenario
+                    # Passive wall with no resistance = free KO = snowball grows
+                    multiplier *= 0.45
+                    reasons.append('NO phaze/resist vs snowball ability (DANGER)')
+                    critical_penalty = True
 
         # === RECOVERY MOVE BOOST ===
         has_recovery = False
@@ -6060,6 +6122,8 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         detected_abilities.append("(Our active is win condition)")
     if ability_state.opponent_active_is_threat:
         detected_abilities.append("Opponent active is THREAT")
+        if state.has_snowball_ability:
+            detected.append("SNOWBALL ABILITY (Moxie/Beast Boost) - PHAZE PRIORITY")
     # PHASE 3.3: Momentum Tracking
     if ability_state.momentum_level != "neutral":
         detected_abilities.append(f"Momentum: {ability_state.momentum_level} ({ability_state.momentum:.1f})")
