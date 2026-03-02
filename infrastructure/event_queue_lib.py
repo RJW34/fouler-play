@@ -12,22 +12,30 @@ Usage:
                 precondition_check_fn="bot_is_alive", dedup_window_sec=10)
 """
 
-import fcntl
 import hashlib
 import json
 import logging
 import os
+import sys
 import time
 import uuid
 from pathlib import Path
 from typing import Optional, Callable
 
+# Cross-platform file locking
+if sys.platform == "win32":
+    import msvcrt
+else:
+    import fcntl
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 QUEUE_FILE = Path(os.getenv(
     "EVENT_QUEUE_FILE",
-    "/home/ryan/projects/fouler-play/events_queue.json"
+    str(PROJECT_ROOT / "events_queue.json")
 ))
 
-LOG_DIR = Path("/home/ryan/projects/fouler-play/logs")
+LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger("event_queue_lib")
@@ -77,15 +85,24 @@ def _write_queue_locked(f, events: list):
 
 
 def _with_lock(fn):
-    """Execute fn(file_handle) with exclusive flock on queue file."""
+    """Execute fn(file_handle) with exclusive lock on queue file (cross-platform)."""
     QUEUE_FILE.parent.mkdir(parents=True, exist_ok=True)
     QUEUE_FILE.touch(exist_ok=True)
     with open(QUEUE_FILE, "r+") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        try:
-            return fn(f)
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+        if sys.platform == "win32":
+            # Windows: lock first byte
+            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
+            try:
+                return fn(f)
+            finally:
+                f.seek(0)
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                return fn(f)
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def queue_event(

@@ -43,7 +43,7 @@ BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
 # Logging
 LOG_FILE = Path(os.getenv(
     "EVENT_POSTER_LOG",
-    "/home/ryan/projects/fouler-play/logs/event_poster.log"
+    str(PROJECT_ROOT / "logs" / "event_poster.log")
 ))
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
@@ -167,7 +167,7 @@ def validate_event_content(event: dict) -> Tuple[bool, str]:
 
 
 def post_to_discord(event: dict) -> bool:
-    """Post event to Discord via OpenClaw CLI. Returns True on success."""
+    """Post event to Discord via webhook (or OpenClaw CLI fallback)."""
     channel = event["channel"]
     content = event["content"]
     suppress = event.get("suppress_embeds", False)
@@ -178,24 +178,68 @@ def post_to_discord(event: dict) -> bool:
         logger.error(f"Blocking post: {event['id']} - {error_reason}")
         return False
 
+    # Map channel labels to webhook URLs from environment
+    WEBHOOK_MAP = {
+        "battles": os.getenv("DISCORD_BATTLES_WEBHOOK_URL", os.getenv("DISCORD_WEBHOOK_URL", "")),
+        "feedback": os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL", os.getenv("DISCORD_WEBHOOK_URL", "")),
+    }
+    webhook_url = WEBHOOK_MAP.get(channel, os.getenv("DISCORD_WEBHOOK_URL", ""))
+
+    if webhook_url:
+        return _post_via_webhook(event, webhook_url, content, suppress)
+    else:
+        return _post_via_cli(event, channel, content)
+
+
+def _post_via_webhook(event, webhook_url, content, suppress=False):
+    """Post to Discord via webhook URL."""
+    import urllib.request
+    import urllib.error
+
     try:
-        # Build openclaw command
+        payload = {"content": content[:2000]}
+        if suppress:
+            payload["flags"] = 4
+
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(
+            webhook_url,
+            data=data,
+            headers={"Content-Type": "application/json", "User-Agent": "DiscordBot (https://github.com/fouler-play, 1.0)"},
+            method="POST",
+        )
+
+        logger.info(f"Posting {event['event_type']} id={event['id']} via webhook")
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            status = resp.status
+            if status in (200, 204):
+                logger.info(f"Posted successfully: {event['event_type']} id={event['id']} (HTTP {status})")
+                return True
+            else:
+                body = resp.read().decode("utf-8", errors="replace")[:200]
+                logger.error(f"Webhook returned HTTP {status}: {body}")
+                return False
+
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:200] if e.fp else ""
+        logger.error(f"Webhook HTTP error {e.code}: {body}")
+        return False
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return False
+
+
+def _post_via_cli(event, channel, content):
+    """Fallback: post via OpenClaw CLI (for non-Docker environments)."""
+    try:
         cmd = [
             "openclaw", "message", "send",
             "--target", channel,
             "--channel", "discord",
             "--message", content,
         ]
-
-        logger.info(f"Posting {event['event_type']} id={event['id']} to {channel}")
-        
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-
+        logger.info(f"Posting {event['event_type']} id={event['id']} via CLI to {channel}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
             logger.info(f"Posted successfully: {event['event_type']} id={event['id']}")
             return True
@@ -203,7 +247,6 @@ def post_to_discord(event: dict) -> bool:
             error = result.stderr.strip() or result.stdout.strip()
             logger.error(f"Post failed (rc={result.returncode}): {error[:200]}")
             return False
-
     except subprocess.TimeoutExpired:
         logger.error(f"Post timed out: {event['event_type']} id={event['id']}")
         return False

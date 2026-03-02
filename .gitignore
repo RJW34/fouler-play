@@ -47,9 +47,12 @@ data/smogon_cache/
 # Runtime data
 active_battles.json
 daily_stats.json
+battle_stats.json
 aiohttp_replay_check.json
 replay_check.json
 stream_status.json
+events_queue.json
+.last_startup.json
 diagnostics/health_report.json
 teams/.team_iterator_index
 .bot.pid

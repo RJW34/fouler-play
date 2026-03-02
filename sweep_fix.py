@@ -18,6 +18,10 @@ PHAZING_MOVES = {"roar", "whirlwind", "dragontail", "circlethrow"}
 HAZE_MOVES = {"haze", "clearsmog"}
 UNAWARE_MONS = {"dondozo", "quagsire", "clefable", "skeledirge"}  # Common Unaware users
 HALF_HP_DAMAGE_MOVES = {"superfang", "ruination", "naturesmadness", "naturefury"}
+RECOVERY_MOVES = {
+    "recover", "roost", "softboiled", "slackoff", "shoreup", "morningsun", "moonlight",
+    "synthesis", "milkdrink", "healorder", "strengthsap", "rest", "wish", "protect"
+}
 
 
 def _is_fixed_damage_attack(move_name: str, move_data: dict | None = None) -> bool:
@@ -64,29 +68,41 @@ def has_unaware_on_team(battle):
     """Check if we have an Unaware Pokemon on our team."""
     if not battle or not battle.user:
         return False
-    
-    # Check active Pokemon
-    if battle.user.active:
-        ability = getattr(battle.user.active, "ability", None)
+
+    for pkmn in [getattr(battle.user, "active", None)] + list(getattr(battle.user, "reserve", []) or []):
+        if not pkmn or getattr(pkmn, "hp", 0) <= 0:
+            continue
+        ability = getattr(pkmn, "ability", None)
         if ability and normalize_name(ability) == "unaware":
             return True
-        # Check if it's a common Unaware user (ability unknown)
-        name = normalize_name(battle.user.active.name)
-        base_name = normalize_name(getattr(battle.user.active, "base_name", "") or battle.user.active.name)
+        name = normalize_name(getattr(pkmn, "name", "") or "")
+        base_name = normalize_name(getattr(pkmn, "base_name", "") or name)
         if name in UNAWARE_MONS or base_name in UNAWARE_MONS:
             return True
-    
-    # Check reserves
-    for reserve_pkmn in battle.user.reserve:
-        ability = getattr(reserve_pkmn, "ability", None)
-        if ability and normalize_name(ability) == "unaware":
+
+    return False
+
+
+def _alive_team_members(battle):
+    if not battle or not getattr(battle, "user", None):
+        return []
+    mons = [getattr(battle.user, "active", None)] + list(getattr(battle.user, "reserve", []) or [])
+    return [m for m in mons if m is not None and getattr(m, "hp", 0) > 0]
+
+
+def _team_has_reset_option_alive(battle) -> bool:
+    for mon in _alive_team_members(battle):
+        ability = normalize_name(getattr(mon, "ability", "") or "")
+        if ability == "unaware":
             return True
-        # Check if it's a common Unaware user (ability unknown)
-        name = normalize_name(reserve_pkmn.name)
-        base_name = normalize_name(getattr(reserve_pkmn, "base_name", "") or reserve_pkmn.name)
-        if name in UNAWARE_MONS or base_name in UNAWARE_MONS:
+        mon_name = normalize_name(getattr(mon, "name", "") or "")
+        mon_base = normalize_name(getattr(mon, "base_name", "") or mon_name)
+        if mon_name in UNAWARE_MONS or mon_base in UNAWARE_MONS:
             return True
-    
+        for mv in getattr(mon, "moves", []) or []:
+            mv_name = normalize_name(mv.name if hasattr(mv, "name") else str(mv))
+            if mv_name in HAZE_MOVES or mv_name in PHAZING_MOVES:
+                return True
     return False
 
 
@@ -314,7 +330,21 @@ def smart_sweep_prevention(
     has_counterplay = current_mon_has_counterplay(battle, move_name)
     is_bulky = is_current_mon_bulky(battle)
     has_unaware_available = has_unaware_on_team(battle)
+    has_team_reset_alive = _team_has_reset_option_alive(battle)
     
+    # EMERGENCY MODE: setup seen + no alive reset answer -> force deny lines now.
+    # This is matchup-agnostic and only triggers under real sweep pressure.
+    if boost_level >= 1 and not has_team_reset_alive:
+        move_data = all_move_json.get(move_name, {})
+        move_category = move_data.get(constants.CATEGORY, "")
+        is_passive_recovery = move_name in RECOVERY_MOVES
+        is_status_nonreset = (move_category == constants.STATUS and move_name not in (PHAZING_MOVES | HAZE_MOVES))
+        if is_passive_recovery or move_name in SETUP_MOVES or is_status_nonreset:
+            emergency_floor = 0.22 if boost_level >= 2 else 0.35
+            penalty = min(penalty, emergency_floor)
+            reason = f"Emergency anti-setup: deny +{boost_level} threat (no reset answer alive)"
+            return penalty, reason
+
     # PRIORITY 1: Switching vs boosted opponents.
     # Keep this conservative at +1 to avoid unnecessary ping-ponging.
     if move.startswith("switch "):
@@ -379,6 +409,19 @@ def smart_sweep_prevention(
                 reason = f"Priority vs +{boost_level} threat (uncertain KO)"
         return penalty, reason
     
+    # PRIORITY 4: Recovery-window guardrail.
+    # If opponent is boosted and can likely 2HKO after setup, avoid greedy recovery turns.
+    if move_name in RECOVERY_MOVES:
+        our_hp_percent = float(getattr(ability_state, "our_hp_percent", 1.0) or 1.0)
+        if boost_level >= 2:
+            penalty = min(penalty, 0.30)
+            reason = f"Avoid greedy recovery vs +{boost_level} threat"
+            return penalty, reason
+        if boost_level == 1 and our_hp_percent < 0.65 and not has_counterplay:
+            penalty = min(penalty, 0.45)
+            reason = "Avoid recovery window trap vs setup threat"
+            return penalty, reason
+
     # PRIORITY 4: HEAVILY penalize passive/setup moves vs boosted opponent (unchanged, this is correct)
     move_data = all_move_json.get(move_name, {})
     move_category = move_data.get(constants.CATEGORY, "")
