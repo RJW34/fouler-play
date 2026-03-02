@@ -3,9 +3,9 @@
 **This is the single source of truth for fouler-play operations.** If anything contradicts this file, this file wins. `fouler-play-v2` has been archived — it was a duplicate clone DEKU created. Only `/home/ryan/projects/fouler-play` exists now.
 
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
-**Branch:** master
+**Branch:** master (foulest-play merged and deleted 2026-03-02)
 **Bot Account:** BugInTheCode on DEKU, ALL CHUNG on BAKUGO
-**Updated:** 2026-02-12
+**Updated:** 2026-03-02
 
 ---
 
@@ -21,6 +21,12 @@
 ## Current Status
 
 The bot has been overhauled from MCTS to a 1-ply eval engine with forced line detection (completed 2026-02-09). The new decision pipeline is: forced_lines -> eval -> penalty pipeline. Check `battle_stats.json` for current game count and ELO. The bot needs to reach 1700+ for matchup data to be meaningful.
+
+**2026-03-02 changes:**
+- Merged foulest-play branch (106 commits) into master, deleted old branch
+- **Round system implemented:** All battle outcomes (win/loss/disconnect) now count toward PS_RUN_COUNT quota. When all workers finish, a ROUND COMPLETE summary prints per-team W/L/DC stats. The bot stops for human evaluation -- no auto-start of next round.
+- **Disconnect resilience:** Dead battles are forcibly terminated after BATTLE_DISCONNECT_STRIKES (default 5 = 10 min) consecutive message timeouts, preventing infinite stale loops.
+- Runtime artifacts (.bot.pid, battle_stats.json, etc.) cleaned out of git tracking
 
 ---
 
@@ -152,3 +158,4 @@ These systems are **complete and working**. Do not recreate them from scratch:
 - [x] Replay analysis pipeline (built, needs quality improvements)
 - [x] Win-rate diagnosis (2026-02-07): 76% of losses had no Stealth Rock, recovery underused, excessive switching. Fixed with early-game hazard urgency + FAT/STALL recovery boost.
 - [x] MCTS-to-Eval overhaul (2026-02-09): Replaced MCTS with 1-ply eval engine + forced line detection. Created `fp/search/eval.py`, `fp/search/forced_lines.py`. Pipeline: forced_lines -> eval -> penalty pipeline. All 9 penalty layers preserved.
+- [x] Round system + disconnect tracking (2026-03-02): All battle outcomes count toward quota. Round-complete summary with per-team stats. Dead battle timeout (DISCONNECT_STRIKES). Branch consolidation (foulest-play -> master).
