@@ -1718,7 +1718,7 @@ def detect_opponent_abilities(battle: Battle) -> OpponentAbilityState:
     # Priority: send in a phazer (Whirlwind/Roar) to reset, NOT a passive wall.
     from constants_pkg.strategy import SNOWBALL_ABILITY_NAMES as _SNOWBALL_NAMES
     from constants_pkg.strategy import POKEMON_COMMONLY_SNOWBALL as _SNOWBALL_POKEMON
-    _opp_ability_norm_sb = normalize_name(opponent_ability) if opponent_ability else ''
+    _opp_ability_norm_sb = normalize_name(ability) if ability else ''
     _opp_name_norm_sb = normalize_name(opponent.name) if opponent else ''
     _opp_base_norm_sb = normalize_name(getattr(opponent, 'base_name', '') or (opponent.name if opponent else ''))
     state.has_snowball_ability = (
