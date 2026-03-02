@@ -6122,8 +6122,8 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         detected_abilities.append("(Our active is win condition)")
     if ability_state.opponent_active_is_threat:
         detected_abilities.append("Opponent active is THREAT")
-        if state.has_snowball_ability:
-            detected.append("SNOWBALL ABILITY (Moxie/Beast Boost) - PHAZE PRIORITY")
+        if ability_state.has_snowball_ability:
+            detected_abilities.append("SNOWBALL ABILITY (Moxie/Beast Boost) - PHAZE PRIORITY")
     # PHASE 3.3: Momentum Tracking
     if ability_state.momentum_level != "neutral":
         detected_abilities.append(f"Momentum: {ability_state.momentum_level} ({ability_state.momentum:.1f})")
