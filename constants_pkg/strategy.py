@@ -36,6 +36,8 @@ from constants_pkg.pokemon_abilities import (
     POKEMON_WITH_INTIMIDATE,
     POKEMON_COMMONLY_AIR_BALLOON,
     POKEMON_COMMONLY_SUPREME_OVERLORD,
+    POKEMON_COMMONLY_SNOWBALL,
+    SNOWBALL_ABILITY_NAMES,
 )
 
 # Moves that boost offensive stats (Attack, Special Attack, or both)
