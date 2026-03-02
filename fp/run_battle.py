@@ -150,6 +150,10 @@ _last_active_battles_payload = None
 # Battle message timeout tuning (seconds)
 MESSAGE_TIMEOUT_SEC = int(os.getenv("BATTLE_MESSAGE_TIMEOUT_SEC", "120"))
 STALE_STRIKES = int(os.getenv("BATTLE_STALE_STRIKES", "2"))
+# After this many consecutive timeout strikes, declare the battle a disconnect
+# and return winner=None so it counts toward the quota. Default: 5 strikes
+# (= 5 * 120s = 10 minutes of silence).
+DISCONNECT_STRIKES = int(os.getenv("BATTLE_DISCONNECT_STRIKES", "5"))
 STALE_DISPLAY_GRACE_SEC = int(os.getenv("BATTLE_STALE_DISPLAY_GRACE_SEC", "900"))
 # Throttle active_battles.json writes to avoid excessive disk churn.
 ACTIVE_BATTLES_WRITE_INTERVAL_SEC = float(os.getenv("ACTIVE_BATTLES_WRITE_INTERVAL_SEC", "1.0"))
@@ -2136,6 +2140,24 @@ async def pokemon_battle(
                     pass
                 if timeout_strikes < STALE_STRIKES:
                     continue
+
+                # After DISCONNECT_STRIKES consecutive timeouts, declare disconnected
+                if timeout_strikes >= DISCONNECT_STRIKES:
+                    logger.error(
+                        f"Battle {battle_tag} unresponsive for {timeout_strikes} strikes "
+                        f"({timeout_strikes * message_timeout}s) - declaring disconnect"
+                    )
+                    _blacklist_battle_tag(battle_tag)
+                    await send_stream_event(
+                        "BATTLE_END",
+                        {
+                            "id": battle_tag,
+                            "winner": None,
+                            "ended": time.time(),
+                        },
+                    )
+                    battle_end_event_sent = True
+                    return None, battle_tag
 
                 # Mark stale but keep the battle visible/attached so OBS doesn't drop it.
                 needs_update = False
