@@ -973,7 +973,7 @@ async def async_pick_move(battle):
         best_move = _fallback_decision(battle_copy)
         trace_reason = "timeout"
     except Exception as e:
-        logger.error(f"MCTS error: {e}")
+        logger.error(f"MCTS error: {e}", exc_info=True)
         logger.debug("Falling back to safe move selection")
         best_move = _fallback_decision(battle_copy)
         trace_reason = "error"
