@@ -330,8 +330,8 @@ def analyze_matchup_from_battle(battle) -> Optional[Gameplan]:
             pkmn_dict = {
                 "species": pkmn.name,
                 "moves": [m.name for m in pkmn.moves if m.name],
-                "item": getattr(pkmn, "item", ""),
-                "ability": getattr(pkmn, "ability", ""),
+                "item": getattr(pkmn, "item", "") or "",
+                "ability": getattr(pkmn, "ability", "") or "",
             }
             opp_team_data.append(pkmn_dict)
     

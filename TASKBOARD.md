@@ -11,10 +11,11 @@
 
 ## Standing Rules (check every session — fix drift immediately)
 
-1. **1 battle per machine.** DEKU runs `--max-concurrent-battles 1`. BAKUGO runs `--max-concurrent-battles 1`. This is enforced in the systemd service file — do not override it.
-2. **Discord battle reporting must work.** Completed results, replays, and ELO should post to #fouler-play-battles. If battles are happening but nothing's posting, fix it before doing anything else.
-3. **One fouler-play process per machine.** Managed by systemd on DEKU. Check before any restart: `pgrep -c -f "run.py.*BugInTheCode"` should return 1.
-4. **One source of truth.** This file. `fouler-play-v2/` is archived. `BOT_PROTOCOL.md` is supplementary. If they conflict, this file wins.
+1. **3 concurrent battles per machine.** DEKU runs `--max-concurrent-battles 3` with `--search-parallelism 2`. BAKUGO runs `--max-concurrent-battles 3` with same parallelism. Total: 6 battles across both machines.
+2. **Analysis posts to #project-fouler-play.** Batch analysis reports (with AI insights) post to #project-fouler-play, NOT #deku-workspace. Discord delivery: use OpenClaw event queue.
+3. **Analysis source: Claude, not local LLM.** Batch analysis uses Claude (Opus or Sonnet) for Pokemon-competent reasoning. qwen2.5-coder:3b is banned for Pokemon analysis (hallucinations).
+4. **One fouler-play process per machine.** Run directly (not systemd) on DEKU. Start BAKUGO's bot manually when online. Check: `pgrep -c -f "run.py.*BugInTheCode"` should return 1 on DEKU, `pgrep -c -f "run.py.*ALL_CHUNG"` should return 1 on BAKUGO (when running).
+5. **One source of truth.** This file. `fouler-play-v2/` is archived. `BOT_PROTOCOL.md` is supplementary. If they conflict, this file wins.
 
 ---
 
@@ -32,13 +33,30 @@ The bot has been overhauled from MCTS to a 1-ply eval engine with forced line de
 
 ## NEXT ACTION (read this first)
 
-**DEKU:** The MCTS-to-eval overhaul is complete. Next steps:
-1. Run games with the new eval engine and monitor ELO trend in `battle_stats.json`
-2. Continue Phase 2-4 roadmap items below (opponent modeling, fat/stall play, advanced features)
-3. Run `python replay_analysis/team_performance.py` to study loss patterns with the new engine
-4. Make ONE improvement per cycle targeting the most common mistake pattern
+**🚨 STRATEGIC OVERHAUL IN PROGRESS (2026-02-15 19:35 EST)**
 
-**BAKUGO:** Keep the bot playing. Ensure `battle_stats.json` and replays are being pushed after each batch. Everything else is secondary.
+**Diagnosis:** Bot plays move-by-move (57% WR) with zero archetype awareness. Hazard teams skip hazards, pivot teams switch randomly, stall teams don't stall. Root cause: No strategic layer.
+
+**Plan:** 18-22 hour overhaul to add:
+1. Archetype recognition (stall/pivot/hazard/setup)
+2. Gameplan generation (what we win by)
+3. Strategic move filtering (hard constraints)
+4. Multi-turn lookahead (3-turn sequences)
+5. Game phase awareness (early/mid/late eval)
+6. Commitment heuristic (reduce switching indecision)
+
+**See:** `/fouler-play/STRATEGIC_OVERHAUL_PLAN.md` (full spec)
+
+**ALL BATTLES HALTED** — Bot not running. Awaiting strategic layer implementation.
+
+**DEKU Action:**
+1. Implement Phase 1: Archetype Analysis (`fp/archetype_analyzer.py`)
+2. Implement Phase 3: Strategic Filtering (`fp/strategic_filter.py`)
+3. Test quick-win improvements (hazard setup, reduce switches)
+4. Proceed through phases 2, 4, 5, 6 as planned
+5. Target: 70%+ WR after full overhaul
+
+**BAKUGO:** Stand by. No battles until strategic layer deployed and tested.
 
 ---
 

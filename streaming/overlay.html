@@ -663,7 +663,7 @@ body.hide-recent #mid-form {
   <div class="dead-column col-left">
     <div class="worker-pill" id="worker-1">
       <div class="worker-left">
-        <div class="worker-label">ALL CHUNG</div>
+        <div class="worker-label" id="worker-1-label">WORKER 01</div>
         <div class="worker-opponent" id="worker-1-name">Idle</div>
       </div>
       <div class="worker-status idle" id="worker-1-status">Idle</div>
@@ -683,7 +683,7 @@ body.hide-recent #mid-form {
     <div class="dead-card emerald-card">
       <div class="hud-label" style="color: #4ade80;">🎮 EMERALD AI</div>
       <div class="hud-sub" id="emerald-status" style="color: rgba(255,255,255,0.85);">Title Screen — Awaiting Start</div>
-      <div class="hud-sub" style="font-size: 11px; opacity: 0.6;">Claude plays Pokémon Emerald to 100% via BizHawk</div>
+      <div class="hud-sub" style="font-size: 11px; opacity: 0.6;">DEKU plays Pokémon Emerald to 100% via mGBA</div>
     </div>
     <div class="dead-card" style="padding: 14px 20px;">
       <div class="hud-label">ELO</div>
@@ -698,7 +698,7 @@ body.hide-recent #mid-form {
   <div class="dead-column col-right">
     <div class="worker-pill" id="worker-2">
       <div class="worker-left">
-        <div class="worker-label">BUGINTHECODE</div>
+        <div class="worker-label">WORKER 02</div>
         <div class="worker-opponent" id="worker-2-name">Idle</div>
       </div>
       <div class="worker-status idle" id="worker-2-status">Idle</div>
@@ -721,7 +721,7 @@ body.hide-recent #mid-form {
       <div id="recent-results"></div>
       <div id="streak"></div>
     </div>
-    <div id="ticker">ALL CHUNG - Gen 9 OU Bot Development</div>
+    <div id="ticker">DEKU SIMULCAST — Gen 9 OU Ladder</div>
   </div>
 </div>
 
@@ -956,6 +956,14 @@ function updateOverlay(status, battles) {
     }
   }
   
+    // Update name labels dynamically from state
+  const firstAcctName = Object.keys(accountsElo)[0];
+  if (firstAcctName) {
+    const lbl = document.getElementById("worker-1-label");
+    const tkr = document.getElementById("ticker");
+    if (lbl) lbl.textContent = firstAcctName.toUpperCase();
+    if (tkr) tkr.textContent = "DEKU SIMULCAST — Gen 9 OU Ladder";
+  }
   // Backward compat: update top bar ELO with primary account
   const newElo = data.elo || '---';
   if (eloEl) {
@@ -1295,7 +1303,7 @@ function connectWs() {
   });
 }
 
-// DEKU (BugInTheCode) poller — updates Worker 2 pill + merged stats
+// DEKU worker poller — updates Worker 2 pill + merged stats
 const DEKU_STATE_URL = '/deku-state';
 let dekuWins = 0, dekuLosses = 0, dekuOpponent = '';
 async function pollDeku() {
@@ -1314,7 +1322,7 @@ async function pollDeku() {
     const battles = data.battles || dStatus.active_battles || [];
     if (battles.length > 0) {
       const b = battles[0];
-      dekuOpponent = (b && typeof b === 'object') ? (b.opponent || b.id || 'BugInTheCode') : String(b);
+      dekuOpponent = (b && typeof b === 'object') ? (b.opponent || b.id || 'Unknown') : String(b);
       w2Name.textContent = dekuOpponent;
       w2Status.textContent = 'Active';
       w2Status.className = 'worker-status active';

@@ -1357,6 +1357,123 @@ def _log_oddities(choice: str, oddities: list[str]):
         logger.warning(f"Odd move detected: {choice} -> {', '.join(oddities)}")
 
 
+
+
+def apply_team_intent_bias(
+    policy: dict[str, float],
+    battle: Battle | None,
+    trace_events: list[dict] | None = None,
+) -> dict[str, float]:
+    """Apply team-intent-based scoring adjustments from build-signal inference.
+
+    Uses the agnostic TeamContext (built from team_dict) to adjust move weights
+    based on each Pokemon's inferred role, matchup handles, and team style.
+    """
+    if battle is None or battle.user.active is None:
+        return policy
+
+    team_context = getattr(battle.user, "team_context", None)
+    if team_context is None:
+        return policy
+
+    from fp.team_intent import get_role_score_adjustments
+
+    our = battle.user.active
+    opponent = battle.opponent.active if battle.opponent else None
+
+    # Gather opponent info for adjustment calculation
+    opponent_types = getattr(opponent, "types", []) or [] if opponent else []
+    opp_boosts = getattr(opponent, "boosts", {}) or {} if opponent else {}
+    opp_atk = int(opp_boosts.get(constants.ATTACK, 0) or 0)
+    opp_spa = int(opp_boosts.get(constants.SPECIAL_ATTACK, 0) or 0)
+    is_opponent_physical = opp_atk > opp_spa if (opp_atk or opp_spa) else False
+    is_opponent_special = opp_spa > opp_atk if (opp_atk or opp_spa) else False
+    is_opponent_boosted = max(opp_atk, opp_spa) >= 1
+
+    try:
+        adjustments = get_role_score_adjustments(
+            team_context,
+            our.name,
+            opponent_types,
+            is_opponent_physical,
+            is_opponent_special,
+            is_opponent_boosted,
+        )
+    except Exception as e:
+        logger.warning(f"Team intent adjustments failed: {e}")
+        return policy
+
+    if not adjustments:
+        return policy
+
+    recovery_boost = adjustments.get("recovery_boost", 1.0)
+    stay_in_bonus = adjustments.get("stay_in_bonus", 1.0)
+    switch_bonus = adjustments.get("switch_bonus", 1.0)
+    setup_boost = adjustments.get("setup_boost", 1.0)
+    pivot_boost = adjustments.get("pivot_boost", 1.0)
+
+    adjusted = dict(policy)
+    for move, weight in policy.items():
+        if weight <= 0:
+            adjusted[move] = weight
+            continue
+
+        is_switch = move.startswith("switch ")
+        multiplier = 1.0
+
+        if is_switch:
+            # Switch options
+            if switch_bonus != 1.0:
+                multiplier *= switch_bonus
+        else:
+            # Non-switch options get stay-in bonus
+            if stay_in_bonus != 1.0:
+                multiplier *= stay_in_bonus
+
+            # Classify the move for specific boosts
+            base_move = move
+            if base_move.endswith("-tera"):
+                base_move = base_move[:-5]
+            move_norm = normalize_name(base_move)
+
+            if move_norm in RECOVERY_MOVES_NORM and recovery_boost != 1.0:
+                multiplier *= recovery_boost
+            if move_norm in SETUP_MOVES_NORM and setup_boost != 1.0:
+                multiplier *= setup_boost
+            if move_norm in PIVOT_MOVES_NORM and pivot_boost != 1.0:
+                multiplier *= pivot_boost
+
+        if abs(multiplier - 1.0) > 1e-6:
+            new_weight = weight * multiplier
+            adjusted[move] = new_weight
+            if trace_events is not None:
+                # Build reason string from active adjustments
+                reasons = []
+                if is_switch and switch_bonus != 1.0:
+                    reasons.append(f"switch_bonus={switch_bonus:.2f}")
+                if not is_switch and stay_in_bonus != 1.0:
+                    reasons.append(f"stay_in={stay_in_bonus:.2f}")
+                move_norm_check = normalize_name(move[:-5] if move.endswith("-tera") else move) if not is_switch else ""
+                if not is_switch and move_norm_check in RECOVERY_MOVES_NORM and recovery_boost != 1.0:
+                    reasons.append(f"recovery={recovery_boost:.2f}")
+                if not is_switch and move_norm_check in SETUP_MOVES_NORM and setup_boost != 1.0:
+                    reasons.append(f"setup={setup_boost:.2f}")
+                if not is_switch and move_norm_check in PIVOT_MOVES_NORM and pivot_boost != 1.0:
+                    reasons.append(f"pivot={pivot_boost:.2f}")
+                trace_events.append(
+                    {
+                        "type": "boost" if multiplier > 1.0 else "penalty",
+                        "source": "team_intent",
+                        "move": move,
+                        "reason": f"team_intent({', '.join(reasons)})",
+                        "before": weight,
+                        "after": new_weight,
+                    }
+                )
+
+    return adjusted
+
+
 def apply_oddity_penalties(
     policy: dict[str, float],
     battle: Battle | None,
@@ -5511,6 +5628,13 @@ def select_move_from_eval_scores(
             trace_events=trace_events,
         )
 
+    # Team intent bias: adjust scores based on build-signal inference
+    blended_policy = apply_team_intent_bias(
+        blended_policy,
+        battle,
+        trace_events=trace_events,
+    )
+
     # Final cleanup: down-weight explicitly odd/waste-turn choices.
     blended_policy = apply_oddity_penalties(
         blended_policy,
@@ -6154,6 +6278,39 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         except Exception as e:
             logger.warning(f"Failed to analyze team: {e}")
             team_plan = None
+
+    # Team intent context (agnostic build-signal inference)
+    team_context = getattr(battle.user, 'team_context', None)
+    if team_context is None and battle.user.team_dict:
+        try:
+            from fp.team_intent import build_team_context
+            team_context = build_team_context(battle.user.team_dict)
+            battle.user.team_context = team_context
+            logger.info(f'Team intent: style={team_context.team_style}, '
+                        f'wincons={team_context.win_conditions}')
+        except Exception as e:
+            logger.warning(f'Failed to build team context: {e}')
+            team_context = None
+
+    if team_context is not None:
+        active_name = battle.user.active.name if battle.user.active else None
+        intent_summary = {}
+        if active_name:
+            from fp.team_intent import get_intent_for_pokemon
+            active_intent = get_intent_for_pokemon(team_context, active_name)
+            if active_intent:
+                intent_summary = {
+                    "role": active_intent.role,
+                    "role_tags": active_intent.role_tags,
+                    "handles_types": active_intent.handles_types,
+                    "is_win_condition": active_intent.is_win_condition,
+                    "recovery_threshold": active_intent.recovery_threshold,
+                }
+        trace["team_intent"] = {
+            "team_style": team_context.team_style,
+            "win_conditions": team_context.win_conditions,
+            "active_intent": intent_summary,
+        }
 
     # Resolve playstyle + decision profile (gen9ou only)
     playstyle = _resolve_playstyle(team_plan)

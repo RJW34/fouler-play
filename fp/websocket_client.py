@@ -48,6 +48,7 @@ class PSWebsocketClient:
         self.global_queue = asyncio.Queue()  # for non-battle messages (login, search, etc.)
         self.dispatcher_task = None
         self._dispatcher_running = False
+        self._reconnect_task = None  # Track reconnect task to prevent duplicates
         self._dispatcher_started = False
         self._pending_lock = asyncio.Lock()  # Lock for atomic battle claiming
         self._reconnect_lock = asyncio.Lock()
@@ -168,6 +169,23 @@ class PSWebsocketClient:
             if self._dispatcher_started:
                 self.start_dispatcher()
 
+    async def _auto_reconnect(self):
+        """Auto-reconnect with exponential backoff when dispatcher detects disconnection."""
+        backoff = 1
+        max_backoff = 60
+        max_attempts = 10
+        for attempt in range(1, max_attempts + 1):
+            logger.info(f"Auto-reconnect attempt {attempt}/{max_attempts} in {backoff}s...")
+            await asyncio.sleep(backoff)
+            try:
+                await self.reconnect()
+                logger.info(f"Auto-reconnect succeeded on attempt {attempt}")
+                return
+            except Exception as e:
+                logger.error(f"Auto-reconnect attempt {attempt} failed: {e}")
+                backoff = min(backoff * 2, max_backoff)
+        logger.error(f"Auto-reconnect failed after {max_attempts} attempts. Giving up.")
+
     async def _message_dispatcher(self):
         """Background task that routes incoming messages to correct queues"""
         battle_tag_pattern = re.compile(r'^>(battle-[a-z0-9-]+)')
@@ -226,8 +244,13 @@ class PSWebsocketClient:
                     await self.global_queue.put(msg)
 
             except websockets.exceptions.ConnectionClosed:
-                logger.error("WebSocket connection closed")
+                logger.error("WebSocket connection closed in dispatcher")
                 self._dispatcher_running = False
+                # Fire off reconnection as a separate task (can't call reconnect from within dispatcher
+                # since reconnect() cancels the dispatcher task)
+                # Guard: only spawn reconnect if none already running
+                if self._reconnect_task is None or self._reconnect_task.done():
+                    self._reconnect_task = asyncio.create_task(self._auto_reconnect())
                 break
             except asyncio.CancelledError:
                 logger.info("Dispatcher cancelled")
@@ -437,6 +460,10 @@ class PSWebsocketClient:
 
     async def close(self):
         self.stop_dispatcher()
+        # Cancel any pending reconnect task
+        if self._reconnect_task and not self._reconnect_task.done():
+            self._reconnect_task.cancel()
+            self._reconnect_task = None
         if self.websocket is not None:
             await self.websocket.close()
 
@@ -523,14 +550,22 @@ class PSWebsocketClient:
         await self.send_message("", message)
         self.last_challenge_time = time.time()
 
-    async def accept_challenge(self, battle_format, room_name):
+    async def accept_challenge(self, battle_format, room_name, timeout=30):
         if room_name is not None:
             await self.join_room(room_name)
 
-        logger.info("Waiting for a {} challenge".format(battle_format))
+        logger.info("Waiting for a {} challenge (timeout={}s)".format(battle_format, timeout))
         username = None
+        deadline = time.time() + timeout
         while username is None:
-            msg = await self.receive_message()
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                logger.warning("accept_challenge timed out after {}s".format(timeout))
+                raise asyncio.TimeoutError("No challenge received within {}s".format(timeout))
+            try:
+                msg = await asyncio.wait_for(self.receive_message(), timeout=min(remaining, 5.0))
+            except asyncio.TimeoutError:
+                continue
             split_msg = msg.split("|")
             if (
                 len(split_msg) == 9
