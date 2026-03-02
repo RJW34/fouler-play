@@ -922,7 +922,41 @@ async def run_foul_play():
 
         await ps_websocket_client.close()
 
-    logger.info(f"Final stats: W: {stats.wins}\tL: {stats.losses}\tDC: {stats.disconnects}")
+    # ---- ROUND COMPLETE SUMMARY ----
+    summary = await stats.get_summary()
+    total = summary["battles_run"]
+    wins = summary["wins"]
+    losses = summary["losses"]
+    disconnects = summary["disconnects"]
+    win_rate = (wins / total * 100) if total > 0 else 0.0
+
+    print("\n" + "=" * 60)
+    print("  ROUND COMPLETE")
+    print("=" * 60)
+    print(f"  Total battles:  {total}")
+    print(f"  Wins:           {wins}")
+    print(f"  Losses:         {losses}")
+    print(f"  Disconnects:    {disconnects}")
+    print(f"  Win rate:       {win_rate:.1f}%")
+    print("-" * 60)
+
+    # Per-team breakdown (uses full battle history loaded from disk)
+    per_team = stats.get_per_team_stats()
+    if per_team:
+        print("  Per-team breakdown (this session + history):")
+        for team_name, ts in sorted(per_team.items()):
+            t_wr = (ts["wins"] / ts["total"] * 100) if ts["total"] > 0 else 0.0
+            dc_str = f"  DC:{ts['disconnects']}" if ts["disconnects"] > 0 else ""
+            print(f"    {team_name:30s}  W:{ts['wins']}  L:{ts['losses']}{dc_str}  ({t_wr:.0f}% WR, {ts['total']} games)")
+    print("-" * 60)
+    print("  Evaluation time: review replays, adjust teams, then re-run.")
+    print("  The bot will NOT auto-start the next round.")
+    print("=" * 60 + "\n")
+
+    logger.info(
+        "Round complete: W:%d L:%d DC:%d Total:%d WinRate:%.1f%%",
+        wins, losses, disconnects, total, win_rate,
+    )
 
 
 if __name__ == "__main__":
