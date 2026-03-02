@@ -602,9 +602,13 @@ class Battler:
             if match_count < max(3, len(request_species) // 2):
                 logger.warning(
                     "Team preview species do not match team_dict (matches=%s/%s); "
-                    "disabling team_dict for this battle",
+                    "disabling team_dict for this battle. "
+                    "request_species=%s team_dict_species=%s team_dict_canon=%s",
                     match_count,
                     len(request_species),
+                    request_species,
+                    team_dict_pkmn_names,
+                    team_dict_canon,
                 )
                 self.team_dict = None
                 self.team_plan = None

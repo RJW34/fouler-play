@@ -231,6 +231,7 @@ def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
         os.path.join(log_dir, f"worker_{worker_id}_init.log"),
         maxBytes=10 * 1024 * 1024,
         backupCount=3,
+        encoding="utf-8",
     )
     handler.setLevel(logging.DEBUG)
     from config import CustomFormatter
@@ -1382,6 +1383,36 @@ async def handle_team_preview(battle, ps_websocket_client):
     else:
         best_move = await async_pick_move(battle_copy)
 
+    # FIX: Before sending /team, check if team preview has already ended.
+    # The server's inactivity timer may have auto-selected a team while we
+    # were computing the lead pick. Drain any queued messages to detect this.
+    battle_tag = battle.battle_tag
+    queue = ps_websocket_client.battle_queues.get(battle_tag)
+    team_preview_expired = False
+    drained_msgs = []
+    if queue:
+        while not queue.empty():
+            try:
+                peeked = queue.get_nowait()
+                drained_msgs.append(peeked)
+                if constants.START_STRING in peeked or "|turn|" in peeked:
+                    team_preview_expired = True
+                    logger.warning(
+                        "Team preview expired before /team was sent in %s "
+                        "(server auto-selected). Skipping /team command.",
+                        battle_tag,
+                    )
+                    break
+            except asyncio.QueueEmpty:
+                break
+        # Put drained messages back so the main battle loop can process them
+        for m in drained_msgs:
+            queue.put_nowait(m)
+
+    if team_preview_expired:
+        logger.info("Team preview auto-resolved for %s; proceeding to battle loop", battle_tag)
+        return
+
     # because we copied the battle before sending it in, we need to update the last selected move here
     pkmn_name = battle.user.reserve[int(best_move[0].split()[1]) - 1].name
     battle.user.last_selected_move = LastUsedMove(
@@ -1803,7 +1834,21 @@ async def start_standard_battle(
     if battle is None:
         return None
     resume_mode = getattr(battle, "resume_pending", False)
-    battle.user.team_dict = team_dict
+    # FIX: For resumed battles, the server's actual team may not match the
+    # team_dict loaded by this worker (e.g., worker 1 resumes a battle that
+    # worker 0 originally started with a different team). Setting a wrong
+    # team_dict causes matches=1/6 which disables all team knowledge for the
+    # entire battle. Safer to skip team_dict for resumes and let the bot use
+    # server-provided stats instead.
+    if resume_mode:
+        logger.info(
+            "Resumed battle %s: skipping team_dict assignment "
+            "(server team may differ from loaded team)",
+            battle.battle_tag,
+        )
+        battle.user.team_dict = None
+    else:
+        battle.user.team_dict = team_dict
     if "battlefactory" in pokemon_battle_type:
         battle.battle_type = BattleType.BATTLE_FACTORY
     else:
@@ -2177,6 +2222,26 @@ async def pokemon_battle(
                 if "not your turn" in lower_msg:
                     logger.debug("Ignoring stale invalid choice in %s: not our turn", battle_tag)
                     continue
+                if "nothing to choose" in lower_msg:
+                    # Server has no pending request for us. This typically means
+                    # the server's inactivity timer auto-selected a move/switch
+                    # while we were still computing. Safe to skip -- the server
+                    # will send a new |request| when it needs our next command.
+                    logger.info(
+                        "Ignoring 'nothing to choose' in %s: server already advanced",
+                        battle_tag,
+                    )
+                    continue
+                if "team preview" in lower_msg:
+                    # Bot tried to send /team but team preview already ended.
+                    # The server auto-picked a team order. Nothing to retry --
+                    # wait for the next |request| from the main battle loop.
+                    logger.info(
+                        "Ignoring team preview invalid choice in %s: "
+                        "server auto-selected team order",
+                        battle_tag,
+                    )
+                    continue
 
                 retry_choice = _build_recovery_choice_from_request(battle, error_message=msg)
                 if retry_choice:
@@ -2368,7 +2433,27 @@ async def pokemon_battle(
                     logger.debug(f"Failed to send turn update event: {e}")
 
             if action_required and not battle.wait:
+                # Capture the rqid BEFORE the potentially slow move computation.
+                # If the server advances while we compute (timer auto-pick),
+                # a new |request| will update battle.rqid. We detect that
+                # stale-rqid scenario and skip sending the outdated command.
+                pre_pick_rqid = battle.rqid
+
                 best_move = await async_pick_move(battle)
+
+                # Guard: if new messages arrived during move computation that
+                # updated the rqid, our command is stale. Skip it to avoid
+                # "Invalid choice" / "nothing to choose" errors.
+                if battle.rqid != pre_pick_rqid:
+                    logger.info(
+                        "Skipping stale command in %s: rqid changed %s -> %s "
+                        "during move computation (server advanced)",
+                        battle_tag,
+                        pre_pick_rqid,
+                        battle.rqid,
+                    )
+                    continue
+
                 await ps_websocket_client.send_message(battle_tag, best_move)
     except Exception:
         logger.exception("Unhandled exception in battle loop for %s", battle_tag)
