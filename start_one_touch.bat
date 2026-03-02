@@ -52,6 +52,11 @@ echo   Account: %PS_USERNAME%
 echo   Format : %PS_FORMAT%
 echo =============================================
 echo.
+if defined PS_RUN_COUNT (
+    echo [START] PS_RUN_COUNT preset: !PS_RUN_COUNT! - non-interactive mode
+    if not defined CONCURRENT_BATTLES set "CONCURRENT_BATTLES=1"
+    goto skip_prompts
+)
 set /p "BATTLE_COUNT=How many battles? (0 = infinite): "
 if not defined BATTLE_COUNT set "BATTLE_COUNT=0"
 if "!BATTLE_COUNT!"=="0" (
@@ -65,6 +70,7 @@ set /p "CONCURRENT_BATTLES=Concurrent battles? (default 1): "
 if not defined CONCURRENT_BATTLES set "CONCURRENT_BATTLES=1"
 if "!CONCURRENT_BATTLES!"=="" set "CONCURRENT_BATTLES=1"
 echo [START] Concurrent battles: !CONCURRENT_BATTLES!
+:skip_prompts
 echo.
 
 set "SPECTATOR_FLAG="
@@ -105,7 +111,7 @@ if defined TEAM_LIST goto run_with_team_list
 goto run_with_team_name
 
 :run_with_team_names
-call py -3 run.py ^
+call python run.py ^
   --websocket-uri "%PS_WEBSOCKET_URI%" ^
   --ps-username "%PS_USERNAME%" ^
   --ps-password "%PS_PASSWORD%" ^
@@ -124,7 +130,7 @@ call py -3 run.py ^
 goto done
 
 :run_with_team_list
-call py -3 run.py ^
+call python run.py ^
   --websocket-uri "%PS_WEBSOCKET_URI%" ^
   --ps-username "%PS_USERNAME%" ^
   --ps-password "%PS_PASSWORD%" ^
@@ -143,7 +149,7 @@ call py -3 run.py ^
 goto done
 
 :run_with_team_name
-call py -3 run.py ^
+call python run.py ^
   --websocket-uri "%PS_WEBSOCKET_URI%" ^
   --ps-username "%PS_USERNAME%" ^
   --ps-password "%PS_PASSWORD%" ^
