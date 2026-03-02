@@ -129,6 +129,7 @@ class BattleStats:
     def __init__(self):
         self.wins = 0
         self.losses = 0
+        self.disconnects = 0
         self.battles_run = 0
         self._lock = asyncio.Lock()
         self._battles = self._load_battles()
@@ -187,9 +188,44 @@ class BattleStats:
             logger.info("Lost with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
+    async def record_disconnect(self, team_file_name, battle_tag=None):
+        async with self._lock:
+            self.disconnects += 1
+            self.battles_run += 1
+            self._record_battle(team_file_name, "disconnect", battle_tag)
+            logger.info("Disconnect with team: {}".format(team_file_name))
+            logger.info("W: {}\tL: {}\tDC: {}".format(self.wins, self.losses, self.disconnects))
+
     async def get_battles_run(self):
         async with self._lock:
             return self.battles_run
+
+    async def get_summary(self):
+        """Return a snapshot of current stats."""
+        async with self._lock:
+            return {
+                "wins": self.wins,
+                "losses": self.losses,
+                "disconnects": self.disconnects,
+                "battles_run": self.battles_run,
+            }
+
+    def get_per_team_stats(self):
+        """Compute per-team win/loss/disconnect counts from battle history."""
+        team_stats = {}
+        for entry in self._battles:
+            team = entry.get("team_file", "unknown")
+            result = entry.get("result", "unknown")
+            if team not in team_stats:
+                team_stats[team] = {"wins": 0, "losses": 0, "disconnects": 0, "total": 0}
+            team_stats[team]["total"] += 1
+            if result == "win":
+                team_stats[team]["wins"] += 1
+            elif result == "loss":
+                team_stats[team]["losses"] += 1
+            elif result == "disconnect":
+                team_stats[team]["disconnects"] += 1
+        return team_stats
 
 
 # Keep global reference to prevent GC
@@ -400,17 +436,19 @@ async def battle_worker(
                 logger.info(f"Worker {worker_id}: Drain mode active, exiting")
                 break
 
-            # Record result
+            # Record result — ALL outcomes count toward quota
             lost_battle = False
             if winner == FoulPlayConfig.username:
                 await stats.record_win(team_file_name, battle_tag)
                 worker_battles += 1
             elif winner is None:
                 logger.info(
-                    "Worker %s: battle ended without winner (tag=%s)",
+                    "Worker %s: battle ended without winner (disconnect/timeout, tag=%s)",
                     worker_id,
                     battle_tag,
                 )
+                await stats.record_disconnect(team_file_name, battle_tag)
+                worker_battles += 1
             else:
                 await stats.record_loss(team_file_name, battle_tag)
                 worker_battles += 1
@@ -884,7 +922,7 @@ async def run_foul_play():
 
         await ps_websocket_client.close()
 
-    logger.info(f"Final stats: W: {stats.wins}\tL: {stats.losses}")
+    logger.info(f"Final stats: W: {stats.wins}\tL: {stats.losses}\tDC: {stats.disconnects}")
 
 
 if __name__ == "__main__":
