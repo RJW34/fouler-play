@@ -49,6 +49,9 @@ class CustomRotatingFileHandler(RotatingFileHandler):
         if not os.path.exists(self.base_dir):
             os.mkdir(self.base_dir)
 
+        # Use UTF-8 encoding to handle Pokemon Showdown unicode chars
+        # (e.g. ☆ in usernames) without crashing on Windows cp1252
+        kwargs.setdefault("encoding", "utf-8")
         super().__init__(
             "{}/{}".format(self.base_dir, file_name),
             maxBytes=maxBytes,

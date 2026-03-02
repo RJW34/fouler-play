@@ -316,6 +316,7 @@ async def battle_worker(
     drain_event: asyncio.Event,
     assigned_team: str = None,
     per_worker_quota: int = 0,
+    cached_team_dict=None,
 ):
     """Worker that continuously runs battles until shutdown or run_count reached"""
     # Set worker context so per-worker log handlers receive only this worker's records
@@ -368,24 +369,32 @@ async def battle_worker(
             team_file_name = "None"
 
             if FoulPlayConfig.requires_team():
-                # Priority: assigned_team (fixed per-worker) > team_iterator (cycling) > team_name (single)
-                if assigned_team is not None:
-                    team_name = assigned_team
-                elif team_iterator is not None:
-                    team_name = team_iterator.get_next_team()
+                # FIX: In search_manager mode, use the cached team_dict that
+                # was loaded once before workers started. This ensures all
+                # workers share the same team_dict that matches the /utm sent
+                # to the server, avoiding the matches=1/6 mismatch.
+                if use_search_manager and cached_team_dict is not None:
+                    team_dict = cached_team_dict
+                    team_file_name = FoulPlayConfig.team_name or "cached"
+                    # Don't send /utm again -- it was already sent once
                 else:
-                    team_name = FoulPlayConfig.team_name
-                team_packed, team_dict, team_file_name = load_team(team_name)
-                logger.info(f"Team selected: {team_name} -> {team_file_name}")
+                    # Priority: assigned_team (fixed per-worker) > team_iterator (cycling) > team_name (single)
+                    if assigned_team is not None:
+                        team_name = assigned_team
+                    elif team_iterator is not None:
+                        team_name = team_iterator.get_next_team()
+                    else:
+                        team_name = FoulPlayConfig.team_name
+                    team_packed, team_dict, team_file_name = load_team(team_name)
+                    logger.info(f"Team selected: {team_name} -> {team_file_name}")
 
-                # Only update the server team when starting a new ladder search,
-                # or always when using the global search manager (single-team mode).
-                if (
-                    FoulPlayConfig.bot_mode != BotModes.search_ladder
-                    or start_search
-                    or use_search_manager
-                ):
-                    await ps_websocket_client.update_team(team_packed)
+                    # Only update the server team when starting a new ladder search,
+                    # or always when using the global search manager (single-team mode).
+                    if (
+                        FoulPlayConfig.bot_mode != BotModes.search_ladder
+                        or start_search
+                    ):
+                        await ps_websocket_client.update_team(team_packed)
             else:
                 if (
                     FoulPlayConfig.bot_mode != BotModes.search_ladder
@@ -659,6 +668,25 @@ async def run_foul_play():
         logger.info(
             "Search manager disabled: per-battle team selection active (team_names/team_list)."
         )
+
+    # FIX: In search_manager mode, send /utm ONCE before workers start and
+    # cache the team_dict. This prevents a race where multiple workers each
+    # call load_team() (which picks randomly from a directory), send /utm with
+    # different teams, and the last /utm wins -- leaving other workers with a
+    # team_dict that doesn't match the server's actual team (matches=1/6).
+    _search_manager_team_dict = None
+    if use_search_manager and FoulPlayConfig.requires_team():
+        try:
+            _sm_packed, _search_manager_team_dict, _sm_file = load_team(FoulPlayConfig.team_name)
+            await ps_websocket_client.update_team(_sm_packed)
+            logger.info(
+                "Search manager mode: sent /utm once for team '%s' (%s)",
+                FoulPlayConfig.team_name,
+                _sm_file,
+            )
+        except Exception as e:
+            logger.error("Failed to send initial /utm in search manager mode: %s", e)
+
     search_task = None
     parent_watch_task = None
     logger.info(f"Max concurrent battles: {FoulPlayConfig.max_concurrent_battles}")
@@ -762,6 +790,7 @@ async def run_foul_play():
                 drain_event,
                 assigned_team=team_names_list[i % len(team_names_list)] if team_names_list else None,
                 per_worker_quota=per_worker_quotas[i],
+                cached_team_dict=_search_manager_team_dict,
             )
         )
         for i in range(num_workers)
