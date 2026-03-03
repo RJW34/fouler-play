@@ -1,6 +1,4 @@
-﻿version: "3.8"
-
-services:
+﻿services:
   stream-server:
     image: fouler-play-stream-server:latest
     container_name: fouler-play-stream-server-1
