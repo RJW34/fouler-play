@@ -1,0 +1,36 @@
+﻿version: "3.8"
+
+services:
+  stream-server:
+    image: fouler-play-stream-server:latest
+    container_name: fouler-play-stream-server-1
+    working_dir: /app
+    command: python -m streaming.serve_obs_page
+    volumes:
+      - .:/app
+      - D:/docker-data/fouler-play-stream:/app/data/stream
+    ports:
+      - "8777:8777"
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPATH=/app
+      - OBS_WS_HOST=192.168.1.40
+
+  event-poster:
+    image: fouler-play-event-poster:latest
+    container_name: fouler-play-event-poster-1
+    working_dir: /app
+    command: python infrastructure/event_poster.py
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPATH=/app
