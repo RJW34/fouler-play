@@ -1320,6 +1320,7 @@ def _is_invalid_choice_message(msg: str) -> bool:
 
 
 async def handle_team_preview(battle, ps_websocket_client):
+    _preview_start = time.time()
     battle_copy = deepcopy(battle)
     battle_copy.user.active = Pokemon.get_dummy()
     battle_copy.opponent.active = Pokemon.get_dummy()
@@ -1385,29 +1386,48 @@ async def handle_team_preview(battle, ps_websocket_client):
 
     # FIX: Before sending /team, check if team preview has already ended.
     # The server's inactivity timer may have auto-selected a team while we
-    # were computing the lead pick. Drain any queued messages to detect this.
+    # were computing the lead pick. Two checks:
+    # 1. Time-based: PS team preview timer is 90-150s. If we've been in preview
+    #    for >85s, skip sending /team (it will be rejected anyway).
+    # 2. Queue-based: yield to event loop so any pending WS messages arrive,
+    #    then drain queue looking for START_STRING or |turn|.
     battle_tag = battle.battle_tag
-    queue = ps_websocket_client.battle_queues.get(battle_tag)
+    _elapsed = time.time() - _preview_start
     team_preview_expired = False
-    drained_msgs = []
-    if queue:
-        while not queue.empty():
-            try:
-                peeked = queue.get_nowait()
-                drained_msgs.append(peeked)
-                if constants.START_STRING in peeked or "|turn|" in peeked:
-                    team_preview_expired = True
-                    logger.warning(
-                        "Team preview expired before /team was sent in %s "
-                        "(server auto-selected). Skipping /team command.",
-                        battle_tag,
-                    )
+
+    # Check 1: time-based guard (PS timer is typically 90-150s)
+    TEAM_PREVIEW_SAFE_WINDOW_SEC = 85
+    if _elapsed > TEAM_PREVIEW_SAFE_WINDOW_SEC:
+        team_preview_expired = True
+        logger.warning(
+            "Team preview took %.1fs in %s (>%ds safe window). "
+            "Skipping /team to avoid inactivity forfeit.",
+            _elapsed, battle_tag, TEAM_PREVIEW_SAFE_WINDOW_SEC,
+        )
+
+    # Check 2: queue-drain (yield first so WS messages can arrive)
+    if not team_preview_expired:
+        await asyncio.sleep(0)  # yield to event loop — let pending WS messages queue up
+        queue = ps_websocket_client.battle_queues.get(battle_tag)
+        drained_msgs = []
+        if queue:
+            while not queue.empty():
+                try:
+                    peeked = queue.get_nowait()
+                    drained_msgs.append(peeked)
+                    if constants.START_STRING in peeked or "|turn|" in peeked:
+                        team_preview_expired = True
+                        logger.warning(
+                            "Team preview expired before /team was sent in %s "
+                            "(server auto-selected). Skipping /team command.",
+                            battle_tag,
+                        )
+                        break
+                except asyncio.QueueEmpty:
                     break
-            except asyncio.QueueEmpty:
-                break
-        # Put drained messages back so the main battle loop can process them
-        for m in drained_msgs:
-            queue.put_nowait(m)
+            # Put drained messages back so the main battle loop can process them
+            for m in drained_msgs:
+                queue.put_nowait(m)
 
     if team_preview_expired:
         logger.info("Team preview auto-resolved for %s; proceeding to battle loop", battle_tag)
