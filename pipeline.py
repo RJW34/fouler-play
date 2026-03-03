@@ -120,42 +120,114 @@ class Pipeline:
         return report
 
     def send_discord_notification(self, report_path: Path):
-        """Send analysis summary to Discord with actionable intelligence."""
-        if not DISCORD_WEBHOOK_URL:
-            print("⚠️  No DISCORD_WEBHOOK_URL configured, skipping notification")
-            return
+        """Send clean batch analysis report to Discord via Lucario webhook.
         
+        Format:
+            📊 **Batch #N Analysis** (30 battles)
+            Record: 18-12 (60% WR) | ELO: 1050 → 1095
+            
+            **Team Performance:**
+            • fat-team-1-stall: 7-3 (70%) ✅
+            • fat-team-2-pivot: 6-4 (60%)
+            ...
+            
+            **Top Issues Found:**
+            1. 🟢 Issue description
+            ...
+        """
+        webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL") or DISCORD_WEBHOOK_URL
+        if not webhook_url:
+            print("⚠️  No Discord webhook configured, skipping notification")
+            return
+
         try:
-            # Read report and battle data
-            content = report_path.read_text()
+            report_content = report_path.read_text()
             battles = self._get_recent_battles(BATCH_SIZE)
-            
+
             # Extract metadata
-            batch_num = self._extract_batch_number(content)
-            record = self._extract_record(content)
-            wins, losses = map(int, record.split('-'))
-            
-            # Parse AI analysis into structured issues
-            analysis_section = content.split("## AI Analysis")[-1] if "## AI Analysis" in content else ""
+            batch_num = self._extract_batch_number(report_content)
+            record = self._extract_record(report_content)
+            try:
+                wins, losses = map(int, record.split("-"))
+            except Exception:
+                wins, losses = 0, 0
+            total = wins + losses
+            wr = (wins / total * 100) if total > 0 else 0
+
+            # Team performance breakdown
+            team_stats: dict = {}
+            for b in battles:
+                team = b.get("team_file", "unknown")
+                result = b.get("result", "unknown")
+                if team not in team_stats:
+                    team_stats[team] = {"wins": 0, "losses": 0}
+                if result == "win":
+                    team_stats[team]["wins"] += 1
+                elif result == "loss":
+                    team_stats[team]["losses"] += 1
+
+            team_lines = []
+            for team, stats in sorted(team_stats.items()):
+                t_total = stats["wins"] + stats["losses"]
+                t_wr = (stats["wins"] / t_total * 100) if t_total > 0 else 0
+                flag = " ✅" if t_wr >= 60 else (" ⚠️" if t_wr < 40 else "")
+                team_lines.append(f"• {team}: {stats['wins']}-{stats['losses']} ({t_wr:.0f}%){flag}")
+
+            # Extract AI analysis issues
+            analysis_section = report_content.split("## AI Analysis")[-1] if "## AI Analysis" in report_content else report_content
             issues = self._parse_issues(analysis_section, battles)
-            
-            # Build primary embed (summary)
-            embeds = [self._build_summary_embed(batch_num, record, wins, losses, battles)]
-            
-            # Add issue embeds (max 3 most impactful)
+
+            issue_lines = []
             for i, issue in enumerate(issues[:3], 1):
-                embeds.append(self._build_issue_embed(issue, i, batch_num))
-            
-            # Add footer embed with links
-            embeds.append(self._build_footer_embed(report_path, batch_num))
-            
-            # Send to Discord
-            response = requests.post(DISCORD_WEBHOOK_URL, json={"embeds": embeds[:10]}, timeout=10)
+                badge = issue.get("effort_badge", "🟡")
+                # Extract just the emoji badge character
+                if "🟢" in badge:
+                    icon = "🟢"
+                elif "🔴" in badge:
+                    icon = "🔴"
+                else:
+                    icon = "🟡"
+                title = issue.get("title", "Unknown issue")[:80]
+                issue_lines.append(f"{i}. {icon} {title}")
+
+            if not issue_lines:
+                # Fallback: extract first few lines from analysis
+                for line in analysis_section.split("\n")[:5]:
+                    line = line.strip()
+                    if line and len(line) > 20:
+                        issue_lines.append(f"• {line[:100]}")
+                        if len(issue_lines) >= 3:
+                            break
+
+            # Build the message
+            lines = [
+                f"📊 **Batch #{batch_num} Analysis** ({total} battles)",
+                f"Record: {wins}-{losses} ({wr:.0f}% WR)",
+            ]
+            if team_lines:
+                lines.append("")
+                lines.append("**Team Performance:**")
+                lines.extend(team_lines)
+            if issue_lines:
+                lines.append("")
+                lines.append("**Top Issues Found:**")
+                lines.extend(issue_lines)
+
+            message = "\n".join(lines)
+            # Discord has a 2000 char limit
+            if len(message) > 1900:
+                message = message[:1897] + "..."
+
+            response = requests.post(
+                webhook_url,
+                json={"content": message},
+                timeout=10,
+            )
             if response.status_code == 204:
-                print(f"✅ Discord notification sent to #deku-workspace ({len(issues)} issues)")
+                print(f"✅ Discord batch report sent (Batch #{batch_num}, {len(issues)} issues)")
             else:
-                print(f"⚠️  Discord notification failed: {response.status_code}")
-                
+                print(f"⚠️  Discord webhook returned {response.status_code}: {response.text[:200]}")
+
         except Exception as e:
             print(f"⚠️  Failed to send Discord notification: {e}")
             import traceback
