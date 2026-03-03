@@ -61,7 +61,11 @@ class PSWebsocketClient:
         self._recently_finished = {}  # battle_tag -> unregister timestamp
         # Rate limiter: serialises all outbound WS messages with 100ms minimum gap
         # to prevent PS rate throttle hits when 3 workers share one connection.
+        # NOTE: Must be started BEFORE _connect_websocket() because the login
+        # handshake calls send_message() → enqueue() → awaits fut, and the sender
+        # task must already be running to drain the queue and resolve that future.
         self._send_queue = WSSendQueue()
+        self._send_queue.start()
         await self._connect_websocket()
         return self
 
