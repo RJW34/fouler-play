@@ -267,6 +267,10 @@ _resume_by_worker: dict[int, list[dict]] = {}
 _resume_queue: list[dict] = []
 _replay_cache: dict[str, dict[str, float | bool]] = {}
 
+# Per-battle ELO cache: battle_tag -> pre-battle ELO value
+# Used to compute ELO delta for Discord reports
+_elo_before_cache: dict[str, float] = {}
+
 
 def _blacklist_battle_tag(battle_tag: str) -> None:
     if not battle_tag:
@@ -391,6 +395,56 @@ async def _fetch_elo(username: str, fmt: str = "gen9ou") -> tuple:
     return (None, None)
 
 
+
+async def _save_replay_json_locally(replay_id: str) -> dict | None:
+    """Fetch replay JSON from Pokemon Showdown and save it locally.
+    
+    This runs immediately after a battle ends so replays don't expire.
+    Saves to replay_analysis/{replay_id}.json
+    """
+    if not replay_id:
+        return None
+    # Normalize the replay ID (strip battle- prefix, keep hash variants)
+    clean_id = replay_id
+    if clean_id.startswith("battle-"):
+        clean_id = clean_id[len("battle-"):]
+    
+    # Check if already saved
+    replay_dir = Path(__file__).resolve().parent.parent / "replay_analysis"
+    replay_dir.mkdir(parents=True, exist_ok=True)
+    local_path = replay_dir / f"{clean_id}.json"
+    if local_path.exists():
+        logger.debug(f"Replay already saved locally: {clean_id}.json")
+        try:
+            import json as _json
+            with open(local_path, "r", encoding="utf-8") as f:
+                return _json.load(f)
+        except Exception:
+            pass
+    
+    # Fetch from Pokemon Showdown
+    url = f"https://replay.pokemonshowdown.com/{clean_id}.json"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    data = await resp.json(content_type=None)
+                    # Save locally
+                    import json as _json
+                    local_path.write_text(
+                        _json.dumps(data, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                    logger.info(f"Saved replay JSON locally: {clean_id}.json")
+                    return data
+                else:
+                    logger.debug(f"Replay not yet available on PS: {clean_id} (HTTP {resp.status})")
+    except asyncio.TimeoutError:
+        logger.debug(f"Timed out fetching replay JSON: {clean_id}")
+    except Exception as e:
+        logger.debug(f"Failed to save replay JSON for {clean_id}: {e}")
+    return None
+
 async def _post_battle_to_discord(
     battle_tag: str,
     winner: str | None,
@@ -398,8 +452,15 @@ async def _post_battle_to_discord(
     replay_url: str | None = None,
     team_name: str | None = None,
     our_player_name: str | None = None,
+    elo_before: float | None = None,
+    turn_count: int | None = None,
 ) -> None:
-    """Post battle result to Discord webhook.
+    """Post battle result to Discord webhook using the Lucario reporting format.
+    
+    Format:
+        ⚔️ WIN vs Opponent (1050 → 1065 ELO)
+        🏆 Team: fat-team-a | Turns: 42
+        🔗 <https://replay.pokemonshowdown.com/gen9ou-XXXXX>
     
     Args:
         battle_tag: Battle ID
@@ -407,83 +468,81 @@ async def _post_battle_to_discord(
         opponent_name: Opponent's username
         replay_url: Replay URL (if available)
         team_name: Team name used (if applicable)
-        our_player_name: Our actual player name in this battle (e.g., "ALL CHUNG" or "BugInTheCode")
+        our_player_name: Our actual player name in this battle
+        elo_before: ELO before battle (for delta display)
+        turn_count: Number of turns the battle lasted
     """
     webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
     if not webhook_url:
         logger.debug("DISCORD_BATTLES_WEBHOOK_URL not configured, skipping Discord post")
         return
-    
-    # Get bot display name from environment (e.g., "💥 BAKUGO" or "🪲 DEKU")
-    bot_display_name = os.getenv("BOT_DISPLAY_NAME", "").strip()
-    if not bot_display_name:
-        bot_display_name = FoulPlayConfig.username
-    
-    # Determine if we won by checking if winner matches any of our known accounts
-    # Normalize both sides (Showdown strips spaces/special chars)
+
+    # Determine if we won
     showdown_accounts = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
     showdown_accounts = [_normalize_username(acc) for acc in showdown_accounts if acc.strip()]
-    
     is_win = winner and _normalize_username(winner) in showdown_accounts
     is_tie = winner is None or winner == "tie"
-    
-    # Format emoji based on result
-    if is_tie:
-        emoji = "🤝"
-    elif is_win:
-        emoji = "✅"
-    else:
-        emoji = "💀"
-    
-    # Build message
-    result_text = "won" if is_win else "lost" if not is_tie else "tied"
-    
-    # Use the actual player name from the battle for attribution
-    # If not provided, determine from winner or fall back to FoulPlayConfig.username
+
     if not our_player_name:
         our_player_name = winner if is_win else FoulPlayConfig.username
-    
-    # Build embed title showing the actual matchup
-    message = f"{emoji} **{bot_display_name}** {result_text} vs **{opponent_name}**"
-    
-    # Add team info if available
-    if team_name and team_name != "gen9ou":  # Skip if it's just the default format name
-        message += f" (Team: {team_name})"
-    
-    # Add replay link if available
-    if replay_url:
-        # Normalize replay URL to strip any spectator hashes
-        # Extract replay ID from URL
-        replay_id = replay_url.split("/")[-1]
-        # Strip hash if present (format: gen9ou-NUMBER or gen9ou-NUMBER-HASH)
-        replay_id = _normalize_replay_id(replay_id)
-        normalized_url = f"https://replay.pokemonshowdown.com/{replay_id}"
-        
-        # Wrap non-loss replays in <> to suppress Discord embed
-        if is_win or is_tie:
-            message += f"\n<{normalized_url}>"
-        else:
-            message += f"\n{normalized_url}"
+
+    # Fetch current ELO (post-battle)
+    ps_username = our_player_name or FoulPlayConfig.username
+    elo_after, gxe = await _fetch_elo(ps_username)
+
+    # --- Line 1: Result header ---
+    if is_tie:
+        result_word = "TIE"
+        emoji = "🤝"
+    elif is_win:
+        result_word = "WIN"
+        emoji = "⚔️"
     else:
-        # Construct replay URL from battle_tag and verify it exists
+        result_word = "LOSS"
+        emoji = "💀"
+
+    # ELO delta
+    if elo_after is not None and elo_before is not None:
+        elo_str = f"({elo_before:.0f} → {elo_after:.0f} ELO)"
+    elif elo_after is not None:
+        elo_str = f"(ELO: {elo_after:.0f})"
+    else:
+        elo_str = ""
+
+    line1 = f"{emoji} **{result_word}** vs {opponent_name}"
+    if elo_str:
+        line1 += f" {elo_str}"
+
+    # --- Line 2: Team + turns ---
+    team_display = ""
+    if team_name and team_name != "gen9ou":
+        # Shorten long team names for display
+        short_name = team_name.split("/")[-1] if "/" in team_name else team_name
+        team_display = f"Team: {short_name}"
+    turn_display = f"Turns: {turn_count}" if turn_count else ""
+    line2_parts = [p for p in [team_display, turn_display] if p]
+    line2 = ("🏆 " + " | ".join(line2_parts)) if line2_parts else ""
+
+    # --- Line 3: Replay link ---
+    replay_line = ""
+    if replay_url:
+        replay_id = _normalize_replay_id(replay_url.split("/")[-1])
+        normalized_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+        replay_line = f"🔗 <{normalized_url}>"
+    else:
         replay_id = _normalize_replay_id(battle_tag)
         if replay_id:
             constructed_url = f"https://replay.pokemonshowdown.com/{replay_id}"
             if await _replay_exists(replay_id):
-                if is_win or is_tie:
-                    message += f"\n<{constructed_url}>"
-                else:
-                    message += f"\n{constructed_url}"
-                # else: replay doesn't exist (not uploaded), skip link
-    
-    # Fetch and append current ELO
-    ps_username = our_player_name or FoulPlayConfig.username
-    elo, gxe = await _fetch_elo(ps_username)
-    if elo is not None:
-        elo_line = f"📊 **ELO: {elo:.0f}**"
-        if gxe is not None:
-            elo_line += f" ({gxe:.1f}% GXE)"
-        message += f"\n{elo_line}"
+                replay_line = f"🔗 <{constructed_url}>"
+
+    # Assemble message
+    lines = [line1]
+    if line2:
+        lines.append(line2)
+    if replay_line:
+        lines.append(replay_line)
+    message = "\n".join(lines)
 
     # Send to Discord
     try:
@@ -491,7 +550,7 @@ async def _post_battle_to_discord(
             payload = {"content": message}
             async with session.post(webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as resp:
                 if resp.status == 204:
-                    logger.info(f"Posted battle result to Discord: {result_text} vs {opponent_name}")
+                    logger.info(f"Posted battle result to Discord: {result_word} vs {opponent_name} (ELO: {elo_after})")
                 else:
                     logger.warning(f"Discord webhook returned status {resp.status}")
     except asyncio.TimeoutError:
@@ -2108,6 +2167,16 @@ async def pokemon_battle(
     battle_end_event_sent = False
     last_heartbeat = time.time()
 
+    # Cache pre-battle ELO for delta display in Discord reports
+    try:
+        _pre_battle_username = FoulPlayConfig.username
+        _pre_elo, _ = await _fetch_elo(_pre_battle_username)
+        if _pre_elo is not None:
+            _elo_before_cache[battle_tag] = _pre_elo
+            logger.debug(f"Pre-battle ELO cached: {_pre_elo:.0f} for {battle_tag}")
+    except Exception:
+        pass
+
     try:
         while True:
             # Heartbeat: periodically verify tracking + refresh file
@@ -2320,6 +2389,27 @@ async def pokemon_battle(
                     if battle.user and battle.user.account_name
                     else None
                 )
+                # Get pre-battle ELO for delta display (fetched now = post-battle)
+                # We fetch ELO inside _post_battle_to_discord; pass pre-battle value
+                # Note: elo_before should ideally be cached at battle start; here we
+                # pass None and rely on post-only display if not available.
+                battle_turn_count = getattr(battle, "turn", None)
+
+                # Save replay JSON locally immediately (before PS expires it)
+                if replay_url:
+                    _replay_save_id = _normalize_replay_id(replay_url.split("/")[-1])
+                elif battle_tag:
+                    _replay_save_id = _normalize_replay_id(battle_tag)
+                else:
+                    _replay_save_id = None
+                if _replay_save_id:
+                    asyncio.ensure_future(
+                        _save_replay_json_locally(_replay_save_id)
+                    )
+
+                # Retrieve pre-battle ELO for delta display
+                _elo_before_val = _elo_before_cache.pop(battle_tag, None)
+
                 await _post_battle_to_discord(
                     battle_tag=battle_tag,
                     winner=winner,
@@ -2327,6 +2417,8 @@ async def pokemon_battle(
                     replay_url=replay_url,
                     team_name=team_name,
                     our_player_name=our_player_name,
+                    turn_count=battle_turn_count,
+                    elo_before=_elo_before_val,
                 )
 
                 # Cleanup battle queue to prevent buildup over time.
