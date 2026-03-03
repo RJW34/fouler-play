@@ -7,6 +7,8 @@ import re
 
 import logging
 
+from fp.ws_rate_limiter import WSSendQueue, _classify
+
 logger = logging.getLogger(__name__)
 
 
@@ -57,19 +59,24 @@ class PSWebsocketClient:
         self._search_owner_since = None
         self.active_searches = set()
         self._recently_finished = {}  # battle_tag -> unregister timestamp
+        # Rate limiter: serialises all outbound WS messages with 100ms minimum gap
+        # to prevent PS rate throttle hits when 3 workers share one connection.
+        self._send_queue = WSSendQueue()
         await self._connect_websocket()
         return self
 
     def start_dispatcher(self):
-        """Start the background message dispatcher"""
+        """Start the background message dispatcher and rate-limited send queue"""
         self._dispatcher_started = True
         if not self._dispatcher_running:
             self._dispatcher_running = True
             self.dispatcher_task = asyncio.create_task(self._message_dispatcher())
             logger.info("Message dispatcher started")
+        # Always ensure the send queue is running
+        self._send_queue.start()
 
     def stop_dispatcher(self):
-        """Stop the background message dispatcher"""
+        """Stop the background message dispatcher (send queue stays alive until close())"""
         self._dispatcher_running = False
         if self.dispatcher_task:
             self.dispatcher_task.cancel()
@@ -423,12 +430,14 @@ class PSWebsocketClient:
 
     async def send_message(self, room, message_list):
         message = room + "|" + "|".join(message_list)
-        logger.debug("Sending message to websocket: {}".format(message))
+        priority = _classify(message)
+        logger.debug("Sending message to websocket (priority=%d): %s", priority, message)
         last_error = None
         for attempt in range(2):
             try:
                 await self.ensure_connection()
-                await self.websocket.send(message)
+                # Route through rate limiter (100ms min gap, priority queue)
+                await self._send_queue.enqueue(self.websocket, message, priority=priority)
                 self.last_message = message
                 return
             except websockets.exceptions.ConnectionClosed as e:
@@ -460,6 +469,8 @@ class PSWebsocketClient:
 
     async def close(self):
         self.stop_dispatcher()
+        # Stop the rate-limited send queue (drains/cancels pending items)
+        await self._send_queue.stop()
         # Cancel any pending reconnect task
         if self._reconnect_task and not self._reconnect_task.done():
             self._reconnect_task.cancel()
