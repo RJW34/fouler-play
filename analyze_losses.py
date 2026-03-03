@@ -1,180 +1,160 @@
-#!/usr/bin/env python3
-"""
-Analyze recent losses to identify structural decision-making problems
-"""
-
-import json
-import re
-import glob
+"""Deep-dive into loss patterns from the 30-battle batch."""
+import re, glob, datetime
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from collections import defaultdict
+from collections import Counter, defaultdict
 
-# Battle IDs from recent losses
-LOSSES_TO_ANALYZE = [
-    "battle-gen9ou-2540341788",
-    "battle-gen9ou-2540351598",
-    "battle-gen9ou-2540357415",
-    "battle-gen9ou-2540368572",
-    "battle-gen9ou-2540374888",
-    "battle-gen9ou-2540377938",
-    "battle-gen9ou-2540380579",
-    "battle-gen9ou-2540386458",
-    "battle-gen9ou-2540389208",
-    "battle-gen9ou-2540391282",
-]
+LOGS_DIR = Path("logs")
+cutoff = datetime.datetime(2026, 3, 3, 6, 15)
+battle_logs = sorted(LOGS_DIR.glob("battle-gen9ou-*.log"), key=lambda p: p.stat().st_mtime)
+batch_logs = [f for f in battle_logs if datetime.datetime.fromtimestamp(f.stat().st_mtime) > cutoff]
 
-def find_log_file(battle_id):
-    """Find the main log file for a battle"""
-    pattern = f"logs/{battle_id}*.log"
-    files = glob.glob(pattern)
-    # Get the main .log file (not .log.1, .log.2, etc.)
-    for f in files:
-        if f.endswith('.log') and not re.search(r'\.log\.\d+$', f):
-            return f
-    return None
+losses = []
+for log_path in batch_logs:
+    text = log_path.read_text(encoding='utf-8', errors='replace')
+    lines = text.split('\n')
+    
+    # Is this a loss?
+    winner = ''
+    opponent = ''
+    team = ''
+    max_turn = 0
+    replay = ''
+    
+    for line in lines:
+        if 'Battle finished:' in line and 'Winner:' in line:
+            m = re.search(r'Winner:\s*(.+)', line)
+            if m: winner = m.group(1).strip()
+        if 'against:' in line and 'Claimed' in line:
+            m = re.search(r'against:\s*(.+)', line)
+            if m: opponent = m.group(1).strip()
+        if 'with team:' in line:
+            m = re.search(r'with team:\s*(.+)', line)
+            if m: team = m.group(1).strip()
+        tm = re.search(r'Turn:\s+(\d+)', line)
+        if tm:
+            max_turn = max(max_turn, int(tm.group(1)))
+        if 'replay.pokemonshowdown.com' in line:
+            m = re.search(r'(https://replay\.pokemonshowdown\.com/\S+)', line)
+            if m: replay = m.group(1)
+    
+    if 'npctypebeat' not in winner.lower() and winner:
+        losses.append({
+            'file': log_path.name,
+            'path': log_path,
+            'opponent': opponent,
+            'team': team,
+            'turns': max_turn,
+            'replay': replay,
+            'text': text,
+            'lines': lines,
+        })
 
-def extract_battle_info(log_path):
-    """Extract key info from battle log"""
-    info = {
-        'battle_id': None,
-        'opponent_team': [],
-        'our_team': None,
-        'turns': [],
-        'decisions': [],
-        'critical_moments': [],
-        'errors': [],
-    }
-    
-    with open(log_path, 'r', errors='ignore') as f:
-        content = f.read()
-    
-    # Extract team info
-    team_match = re.search(r'Team file:\s*(\S+)', content)
-    if team_match:
-        info['our_team'] = team_match.group(1)
-    
-    # Look for opponent's team
-    poke_lines = re.findall(r'\|poke\|p2\|([^,\|]+)', content)
-    info['opponent_team'] = list(set(poke_lines))
-    
-    # Extract turns and decisions
-    turn_pattern = r'\|turn\|(\d+)'
-    turns = re.findall(turn_pattern, content)
-    info['turns'] = [int(t) for t in turns]
-    
-    # Look for decision logs
-    decision_pattern = r'Decision for turn (\d+):\s*([^\n]+)'
-    decisions = re.findall(decision_pattern, content)
-    info['decisions'] = decisions
-    
-    # Look for forced switches or critical moments
-    switch_pattern = r'Forced to switch'
-    if re.search(switch_pattern, content):
-        info['critical_moments'].append('Forced switch detected')
-    
-    # Look for errors
-    error_pattern = r'ERROR|Exception|Traceback'
-    if re.search(error_pattern, content, re.IGNORECASE):
-        info['errors'].append('Error found in log')
-    
-    # Look for game state issues
-    if 'damaged by hazards' in content:
-        info['critical_moments'].append('Hazard damage accumulation')
-    
-    if 'knocked out' in content.lower() or 'fainted' in content.lower():
-        faint_count = len(re.findall(r'fainted|knocked out', content, re.IGNORECASE))
-        info['critical_moments'].append(f'Pokemon fainted: {faint_count} times')
-    
-    return info
+print(f"Analyzing {len(losses)} losses...\n")
 
-def analyze_decision_quality(log_path):
-    """Look for questionable decisions in logs"""
-    issues = []
+# For each loss, extract the key battle narrative
+for i, loss in enumerate(losses):
+    lines = loss['lines']
+    print(f"{'='*80}")
+    print(f"LOSS {i+1}: vs {loss['opponent']} | {loss['team']} | {loss['turns']} turns")
+    print(f"Replay: {loss['replay']}")
     
-    with open(log_path, 'r', errors='ignore') as f:
-        content = f.read()
+    # Extract turn-by-turn summary: moves, switches, faints, damage
+    turn_events = []
+    current_turn = 0
+    our_fainted = []
+    their_fainted = []
+    our_pokemon_active = ''
+    their_pokemon_active = ''
     
-    # Check for repeated switches (pivot loop)
-    if content.count('switch') > 20:
-        issues.append('Excessive switching detected (possible pivot confusion)')
-    
-    # Check for not setting hazards when should
-    if 'Stealth Rock' not in content and 'Spikes' not in content:
-        issues.append('No hazard setup detected (hazard team failing to set hazards)')
-    
-    # Check for letting opponent set up
-    setup_moves = ['Swords Dance', 'Nasty Plot', 'Calm Mind', 'Dragon Dance']
-    for move in setup_moves:
-        if content.count(move) > 3:
-            issues.append(f'Opponent allowed to set up with {move} multiple times')
-    
-    # Check for bad switches into obvious threats
-    # This would need more context parsing
-    
-    return issues
-
-def main():
-    print("ANALYZING RECENT LOSSES - STRUCTURAL DIAGNOSIS")
-    print("=" * 70)
-    
-    results = {}
-    
-    for battle_id in LOSSES_TO_ANALYZE:
-        print(f"\n\nAnalyzing {battle_id}...")
-        log_path = find_log_file(battle_id)
-        
-        if not log_path:
-            print(f"  ❌ Log file not found")
+    for line in lines:
+        # Turn marker
+        tm = re.search(r'\|turn\|(\d+)', line)
+        if tm:
+            current_turn = int(tm.group(1))
             continue
         
-        print(f"  ✓ Found log: {log_path}")
+        # Our faints
+        if '|faint|p1a:' in line:
+            m = re.search(r'\|faint\|p1a:\s*(.+)', line)
+            if m: our_fainted.append(f"T{current_turn}: {m.group(1).strip()}")
         
-        info = extract_battle_info(log_path)
-        issues = analyze_decision_quality(log_path)
-        
-        results[battle_id] = {
-            'info': info,
-            'issues': issues,
-        }
-        
-        print(f"  Team: {info['our_team']}")
-        print(f"  Opponent: {', '.join(info['opponent_team'][:6])}")
-        print(f"  Turns: {max(info['turns']) if info['turns'] else 'Unknown'}")
-        print(f"  Critical moments: {len(info['critical_moments'])}")
-        if issues:
-            print(f"  Issues found:")
-            for issue in issues:
-                print(f"    - {issue}")
+        # Their faints
+        if '|faint|p2a:' in line:
+            m = re.search(r'\|faint\|p2a:\s*(.+)', line)
+            if m: their_fainted.append(f"T{current_turn}: {m.group(1).strip()}")
     
-    # Pattern analysis
-    print("\n\n" + "=" * 70)
-    print("PATTERN ANALYSIS")
-    print("=" * 70)
+    print(f"Our mons fainted ({len(our_fainted)}):")
+    for f in our_fainted:
+        print(f"  {f}")
+    print(f"Their mons fainted ({len(their_fainted)}):")
+    for f in their_fainted:
+        print(f"  {f}")
     
-    team_losses = defaultdict(int)
-    all_issues = defaultdict(int)
+    # Key decision moments: look at Choice lines in last half of battle
+    mid_turn = loss['turns'] // 2
+    choices = []
+    forced_lines = []
+    for line in lines:
+        if 'Choice:' in line and 'INFO' in line:
+            m = re.search(r'Choice:\s*(.+?)(?:\s*\(decided|\s*$)', line)
+            if m: choices.append(m.group(1).strip())
+        if 'FORCED LINE' in line:
+            m = re.search(r'FORCED LINE:\s*(.+)', line)
+            if m: forced_lines.append(m.group(1).strip()[:80])
     
-    for battle_id, data in results.items():
-        team = data['info']['our_team']
-        if team:
-            team_losses[team] += 1
-        for issue in data['issues']:
-            all_issues[issue] += 1
+    # Show last 10 choices
+    print(f"Last 10 choices:")
+    for c in choices[-10:]:
+        print(f"  {c}")
     
-    print("\nLosses by team:")
-    for team, count in sorted(team_losses.items(), key=lambda x: x[1], reverse=True):
-        print(f"  {team}: {count} losses")
+    # Show forced lines
+    if forced_lines:
+        print(f"Forced lines used ({len(forced_lines)}):")
+        for fl in forced_lines[-5:]:
+            print(f"  {fl}")
     
-    print("\nCommon issues:")
-    for issue, count in sorted(all_issues.items(), key=lambda x: x[1], reverse=True):
-        print(f"  [{count}x] {issue}")
+    # Look for switch loops (same pokemon switched in 3+ times in last 15 turns)
+    switch_pattern = Counter()
+    for line in lines:
+        m = re.search(r'\|switch\|p1a:\s*([^|]+)', line)
+        if m:
+            switch_pattern[m.group(1).strip().split('|')[0]] += 1
     
-    # Save detailed results
-    with open('loss_analysis_results.json', 'w') as f:
-        json.dump(results, f, indent=2, default=str)
+    excessive = {k: v for k, v in switch_pattern.items() if v >= 5}
+    if excessive:
+        print(f"Excessive switches:")
+        for mon, count in sorted(excessive.items(), key=lambda x: -x[1]):
+            print(f"  {mon}: switched in {count} times")
     
-    print("\n\n✓ Detailed results saved to loss_analysis_results.json")
+    # Look for key errors
+    errors = [l for l in lines if 'Invalid choice' in l or 'error' in l.lower() and 'ERROR' in l]
+    if errors:
+        print(f"Errors found: {len(errors)}")
+        for e in errors[-3:]:
+            print(f"  {e.strip()[:120]}")
+    
+    print()
 
-if __name__ == '__main__':
-    main()
+# Summary patterns
+print(f"{'='*80}")
+print("AGGREGATE LOSS PATTERNS:")
+print(f"{'='*80}")
+
+# Turn length distribution for losses
+short = sum(1 for l in losses if l['turns'] < 20)
+medium = sum(1 for l in losses if 20 <= l['turns'] < 40)
+long_ = sum(1 for l in losses if l['turns'] >= 40)
+print(f"Game length: {short} short (<20t), {medium} medium (20-40t), {long_} long (40+t)")
+
+# Team analysis
+team_losses = Counter(l['team'] for l in losses)
+print(f"\nLosses by team:")
+for team, count in team_losses.most_common():
+    print(f"  {team}: {count} losses")
+
+# Faint analysis - are we losing all 6 or getting close?
+print(f"\nDetailed faint counts per loss (who gets swept?):")
+for i, loss in enumerate(losses):
+    our_faints = loss['text'].count('|faint|p1a:')
+    their_faints = loss['text'].count('|faint|p2a:')
+    print(f"  Loss {i+1} vs {loss['opponent']:20} ({loss['team']:25}): Us={our_faints} fainted, Them={their_faints} fainted | {loss['turns']}t")

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DEKU Stream Identity — Compact</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-dark: #0a0a14;
+  --accent-gold: #f59e0b;
+  --accent-green: #4ade80;
+  --accent-red: #f87171;
+  --accent-blue: #60a5fa;
+  --glass-border: rgba(255,255,255,0.08);
+  --text-main: #eaeaea;
+  --text-dim: #666;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  width:640px; height:120px; overflow:hidden;
+  background: linear-gradient(180deg, rgba(245,158,11,0.06) 0%, var(--bg-dark) 100%);
+  font-family:'Outfit',sans-serif; color:var(--text-main);
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:6px;
+  padding:8px 16px;
+}
+body::before {
+  content:''; position:fixed; inset:0; z-index:999; pointer-events:none;
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(245,158,11,0.015) 2px, rgba(245,158,11,0.015) 4px);
+}
+
+/* Top: DEKU wordmark + subtitle inline */
+.header {
+  display:flex; align-items:baseline; gap:10px;
+  width:100%;
+  justify-content:center;
+}
+.deku-wordmark {
+  font-size:22px; font-weight:900; letter-spacing:4px;
+  text-transform:uppercase;
+  background: linear-gradient(135deg, #f59e0b 0%, #fde68a 50%, #f59e0b 100%);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter: drop-shadow(0 0 10px rgba(245,158,11,0.5));
+  line-height:1;
+}
+.deku-subtitle {
+  font-size:9px; font-weight:600; letter-spacing:3px;
+  text-transform:uppercase; color:var(--text-dim);
+}
+
+/* Middle: 3 agent dots in a row */
+.agents-row {
+  display:flex; align-items:center; gap:16px;
+  justify-content:center;
+}
+.agent-chip {
+  display:flex; align-items:center; gap:5px;
+}
+.agent-dot {
+  width:6px; height:6px; border-radius:50%; flex-shrink:0;
+}
+.agent-dot.green  { background:#4ade80; box-shadow:0 0 6px #4ade80; }
+.agent-dot.red    { background:#f87171; box-shadow:0 0 6px #f87171; }
+.agent-dot.yellow { background:#fbbf24; box-shadow:0 0 6px #fbbf24; }
+.agent-label {
+  font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+}
+.agent-label.green  { color:#4ade80; }
+.agent-label.yellow { color:#fbbf24; }
+.agent-label.red    { color:#f87171; }
+.agent-badge {
+  font-size:8px; font-weight:600; letter-spacing:1px; text-transform:uppercase;
+  padding:1px 5px; border-radius:4px;
+}
+.agent-badge.live    { color:#4ade80; background:rgba(74,222,128,0.12); border:1px solid rgba(74,222,128,0.3); }
+.agent-badge.init    { color:#fbbf24; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.3); }
+.agent-badge.offline { color:#555;    background:rgba(80,80,80,0.12);   border:1px solid rgba(80,80,80,0.3); }
+.chip-sep { width:1px; height:14px; background:var(--glass-border); }
+
+/* Bottom: stats row */
+.stats-row {
+  display:flex; align-items:center; gap:14px;
+  justify-content:center;
+}
+.stat {
+  display:flex; align-items:baseline; gap:4px;
+}
+.stat-label {
+  font-size:8px; font-weight:600; letter-spacing:1.5px;
+  text-transform:uppercase; color:var(--text-dim);
+}
+.stat-value {
+  font-size:16px; font-weight:800; font-variant-numeric:tabular-nums;
+}
+.stat-value.elo     { color:var(--accent-gold); text-shadow:0 0 8px rgba(245,158,11,0.4); }
+.stat-value.wins    { color:var(--accent-green); }
+.stat-value.losses  { color:var(--accent-red); }
+.stat-value.battles { color:var(--accent-blue); }
+.stat-sep { width:1px; height:16px; background:var(--glass-border); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="deku-wordmark">DEKU</div>
+  <div class="deku-subtitle">AI Pokémon Lab • Live</div>
+</div>
+
+<div class="agents-row">
+  <div class="agent-chip">
+    <div class="agent-dot green" id="lucario-dot"></div>
+    <div class="agent-label green">Lucario</div>
+    <div class="agent-badge live" id="lucario-status">LIVE</div>
+  </div>
+  <div class="chip-sep"></div>
+  <div class="agent-chip">
+    <div class="agent-dot yellow" id="porygonz-dot"></div>
+    <div class="agent-label yellow">Porygon-Z</div>
+    <div class="agent-badge init" id="porygonz-status">INIT</div>
+  </div>
+  <div class="chip-sep"></div>
+  <div class="agent-chip">
+    <div class="agent-dot red" id="rotom-dot"></div>
+    <div class="agent-label red">Rotom</div>
+    <div class="agent-badge init" id="rotom-status">INIT</div>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat">
+    <div class="stat-label">ELO</div>
+    <div class="stat-value elo" id="elo">—</div>
+  </div>
+  <div class="stat-sep"></div>
+  <div class="stat">
+    <div class="stat-label">W</div>
+    <div class="stat-value wins" id="wins">—</div>
+  </div>
+  <div class="stat-sep"></div>
+  <div class="stat">
+    <div class="stat-label">L</div>
+    <div class="stat-value losses" id="losses">—</div>
+  </div>
+  <div class="stat-sep"></div>
+  <div class="stat">
+    <div class="stat-label">Total</div>
+    <div class="stat-value battles" id="total">—</div>
+  </div>
+</div>
+
+<script>
+async function fetchState() {
+  try {
+    const r = await fetch('/magneton-state');
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.elo) document.getElementById('elo').textContent = d.elo;
+    if (d.wins !== undefined) document.getElementById('wins').textContent = d.wins;
+    if (d.losses !== undefined) document.getElementById('losses').textContent = d.losses;
+    if (d.total !== undefined) document.getElementById('total').textContent = d.total;
+    if (d.lucario_status) updateAgent('lucario', d.lucario_status);
+    if (d.porygonz_status) updateAgent('porygonz', d.porygonz_status);
+    if (d.rotom_status) updateAgent('rotom', d.rotom_status);
+  } catch(e) {}
+}
+function updateAgent(name, status) {
+  const badge = document.getElementById(name + '-status');
+  if (badge) {
+    badge.textContent = status.toUpperCase();
+    badge.className = 'agent-badge ' + (status === 'live' ? 'live' : status === 'init' ? 'init' : 'offline');
+  }
+}
+fetchState();
+setInterval(fetchState, 5000);
+</script>
+</body>
+</html>
