@@ -44,6 +44,9 @@ diagnostics/obs_projector_capture.png
 # Smogon cache
 data/smogon_cache/
 
+# Matchup cache (runtime generated)
+data/matchup_cache/
+
 # Runtime data
 active_battles.json
 daily_stats.json
