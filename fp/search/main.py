@@ -2282,6 +2282,20 @@ def apply_ko_line_bias(
     adjusted = {}
     ko_move = ability_state.ko_line_move
     turns = ability_state.ko_line_turns
+
+    # FIX: Scale KO urgency by turns remaining — 1-turn KO should be near-forced
+    ko_move_boost = 1.2  # default
+    passive_suppress_1t = 0.1   # recovery/hazards during 1-turn KO
+    status_suppress_1t = 0.3    # status moves during 1-turn KO
+    switch_suppress_1t = 0.15   # switching away from a 1-turn KO opportunity
+    if turns == 1:
+        ko_move_boost = 3.0     # Near-mandatory: take the KO
+        passive_suppress_1t = 0.04
+        status_suppress_1t = 0.08
+        switch_suppress_1t = 0.10  # Still allow if outright forced
+    elif turns == 2:
+        ko_move_boost = 1.8     # Strong preference: begin the KO sequence
+
     for move, weight in policy.items():
         move_name = move.split(":")[-1] if ":" in move else move
         move_data = all_move_json.get(move_name, {})
@@ -2289,30 +2303,33 @@ def apply_ko_line_bias(
 
         new_weight = weight
         if move_name == ko_move:
-            new_weight *= 1.2
+            new_weight *= ko_move_boost
             if trace_events is not None:
                 trace_events.append(
                     {
                         "type": "boost",
                         "source": "ko_line",
                         "move": move,
-                        "reason": "ko_line_move",
+                        "reason": f"ko_line_move ({turns}t KO, {ko_move_boost:.1f}x)",
                         "before": weight,
                         "after": new_weight,
                     }
                 )
         elif turns == 1:
+            # 1-turn KO available — virtually everything else is wrong
             if move_name in HAZARD_REMOVAL_MOVES or move_name in HAZARD_SETTING_MOVES:
-                new_weight *= 0.05
+                new_weight *= 0.03
             elif move_name in RECOVERY_MOVES:
-                new_weight *= 0.1
+                new_weight *= passive_suppress_1t
             elif cat == constants.STATUS:
-                new_weight *= 0.3
+                new_weight *= status_suppress_1t
+            elif move.startswith('switch '):
+                new_weight *= switch_suppress_1t
         elif turns == 2:
             if move_name in HAZARD_REMOVAL_MOVES or move_name in HAZARD_SETTING_MOVES:
-                new_weight *= 0.2
+                new_weight *= 0.15
             elif move_name in RECOVERY_MOVES:
-                new_weight *= 0.4
+                new_weight *= 0.35
 
         adjusted[move] = new_weight
     return adjusted
@@ -3061,6 +3078,7 @@ def apply_ability_penalties(
         )
 
         # Anti-setup punishment: boost aggressive replies after opponent sets up
+        # Also heavily suppress passive options (they give the sweeper free setup turns)
         if ability_state.opponent_used_setup:
             move_data = all_move_json.get(move_name, {})
             move_category = move_data.get(constants.CATEGORY, "")
@@ -3073,6 +3091,19 @@ def apply_ability_penalties(
                 if penalty >= 1.0:
                     penalty = max(penalty, BOOST_PRESSURE_MOMENTUM)
                     reason = "Punish setup (hard hit)"
+            elif move_name in HAZARD_SETTING_MOVES:
+                # Setting hazards while they setup = free turns for them
+                penalty = min(penalty, 0.08)
+                reason = "Suppress hazard setting vs setup (free turn)"
+            elif move_name in RECOVERY_MOVES:
+                # Recovering while they setup = extending the threat, not solving it
+                penalty = min(penalty, 0.10)
+                reason = "Suppress recovery vs setup (let them grow)"
+            elif move_name in {"protect", "detect", "kingsshield", "spikyshield",
+                                "banefulbunker", "silktrap", "obstruct"}:
+                # Protect vs setup = gift them another free turn
+                penalty = min(penalty, 0.05)
+                reason = "Suppress Protect vs setup (gift turn)"
 
         # Boost setup when opponent is already statused (they're weakened)
         if ability_state.has_status and move_name in SETUP_MOVES:
@@ -3970,6 +4001,22 @@ def apply_switch_penalties(
             chain_mult = 0.72 if ability_state.opponent_has_offensive_boost else 0.82
             multiplier *= chain_mult
             reasons.append(f"break switch chain ({chain_mult:.2f}x)")
+
+        # === MATERIAL DEFICIT SWITCH PENALTY ===
+        # When we're down 2+ mons vs opponent, switching burns turns we can't afford.
+        # We need to attack and trade, not cycle defensively.
+        _our_alive = int(getattr(ability_state, 'our_alive_count', 6) or 6)
+        _opp_alive = int(getattr(ability_state, 'opponent_alive_count', 6) or 6)
+        _material_deficit = _opp_alive - _our_alive
+        if (
+            _material_deficit >= 2
+            and not getattr(battle, 'force_switch', False)
+            and active_hp_ratio >= 0.35
+        ):
+            # Scale penalty with deficit size
+            _deficit_mult = 0.70 if _material_deficit >= 3 else 0.82
+            multiplier *= _deficit_mult
+            reasons.append(f'material deficit ({_our_alive} vs {_opp_alive}) - attack not switch')
 
         # Keep switch boosts bounded so stacked heuristics cannot drown out
         # obvious progress lines from eval (main source of switch spam).

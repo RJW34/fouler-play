@@ -558,6 +558,29 @@ async def _post_battle_to_discord(
     except Exception as e:
         logger.warning(f"Failed to post to Discord webhook: {e}")
 
+    # Cross-post to #deku-workspace operational feed
+    deku_channel_id = os.getenv("DISCORD_DEKU_CHANNEL_ID", "1466642788472066296")
+    deku_bot_token = os.getenv("DISCORD_BOT_TOKEN", "")
+    if deku_bot_token and deku_channel_id:
+        deku_msg = f"\U0001fab2 {message}"  # prefix with beetle emoji
+        try:
+            async with aiohttp.ClientSession() as session:
+                deku_url = f"https://discord.com/api/v10/channels/{deku_channel_id}/messages"
+                deku_headers = {
+                    "Authorization": f"Bot {deku_bot_token}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "DiscordBot (https://deku.dev, 1.0)",
+                }
+                deku_payload = {"content": deku_msg[:2000]}
+                async with session.post(deku_url, json=deku_payload, headers=deku_headers,
+                                       timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                    if resp.status in (200, 201):
+                        logger.debug(f"Cross-posted battle result to #deku-workspace")
+                    else:
+                        logger.debug(f"Deku channel post returned {resp.status}")
+        except Exception as e:
+            logger.debug(f"Failed to cross-post to deku channel: {e}")
+
 
 async def prime_resume_battles() -> int:
     """Load in-progress battles from active_battles.json so workers can resume them."""

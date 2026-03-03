@@ -350,6 +350,24 @@ class BotMonitor:
             except Exception as e:
                 print(f"[MONITOR] Error sending message: {e}")
 
+        # Cross-post to #deku-workspace operational feed
+        deku_channel_id = os.getenv("DISCORD_DEKU_CHANNEL_ID", "1466642788472066296")
+        deku_bot_token = os.getenv("DISCORD_BOT_TOKEN", "")
+        if deku_bot_token and deku_channel_id and channel in ("battles", "project"):
+            try:
+                deku_url = f"https://discord.com/api/v10/channels/{deku_channel_id}/messages"
+                deku_headers = {
+                    "Authorization": f"Bot {deku_bot_token}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "DiscordBot (https://deku.dev, 1.0)",
+                }
+                async with aiohttp.ClientSession() as s2:
+                    async with s2.post(deku_url, json={"content": message[:2000]}, headers=deku_headers) as r:
+                        if r.status in (200, 201):
+                            print(f"[MONITOR] Cross-posted to #deku-workspace")
+            except Exception:
+                pass  # Best-effort cross-post
+
     async def request_drain(self, reason="operator"):
         """Ask the bot process to enter drain mode (no new battles)."""
         if not self.process or self.process.returncode is not None:
