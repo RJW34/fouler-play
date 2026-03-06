@@ -14,6 +14,7 @@ import constants
 from fp.battle import Battle
 from fp.helpers import POKEMON_TYPE_INDICES, normalize_name, type_effectiveness_modifier
 from fp.playstyle_config import RECOVERY_MOVES, PIVOT_MOVES, HAZARD_MOVES
+from constants_pkg.strategy import HAZARD_REMOVAL_MOVES
 from fp.movepool_tracker import get_threat_category, ThreatCategory
 from fp.search.opponent_predict import predict_opponent_action, predict_after_ko_switchin
 from fp.search.speed_order import assess_speed_order
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 _RECOVERY_NORM = {normalize_name(m) for m in RECOVERY_MOVES}
 _PIVOT_NORM = {normalize_name(m) for m in PIVOT_MOVES}
 _HAZARD_NORM = {normalize_name(m) for m in HAZARD_MOVES}
+_HAZARD_REMOVAL_NORM = {normalize_name(m) for m in HAZARD_REMOVAL_MOVES}
 
 STATUS_MOVES_OFFENSIVE = {
     "toxic", "willowisp", "thunderwave", "spore", "sleeppowder",
@@ -939,6 +941,81 @@ def _score_status_move(battle: Battle, move_name: str) -> float:
     return 0.2
 
 
+def _score_hazard_removal_move(battle: Battle, move_name: str) -> float:
+    """Score a hazard removal move (Defog, Rapid Spin, etc.) based on our side hazards.
+
+    Hazard removal is critical when our side has accumulated hazards that
+    chip our team on every switch. Each layer of hazards costs us HP every
+    time we switch, compounding over the game. The bot was massively
+    undervaluing removal — Defog got 0.15 base and Rapid Spin was scored
+    only as a weak 50BP attack with no removal bonus.
+
+    Scoring principles:
+    - Base value scales with hazard layers on our side
+    - Bonus for team members that are weak to SR (4x weak = huge value)
+    - Bonus when many switches expected (more alive Pokemon = more value)
+    - Penalty when opponent can just re-set hazards easily
+    """
+    sc = battle.user.side_conditions
+
+    # Count hazard layers on our side
+    sr_up = sc.get(constants.STEALTH_ROCK, 0) > 0
+    spikes = sc.get(constants.SPIKES, 0)
+    t_spikes = sc.get(constants.TOXIC_SPIKES, 0)
+    s_web = sc.get(constants.STICKY_WEB, 0) > 0
+
+    total_layers = (1 if sr_up else 0) + spikes + t_spikes + (1 if s_web else 0)
+
+    if total_layers == 0:
+        return 0.03  # No hazards to remove — near-zero value
+
+    # Base value per hazard layer
+    base = 0.0
+
+    # Stealth Rock is the most impactful hazard
+    if sr_up:
+        # Check if we have Pokemon weak to SR in reserve
+        sr_bonus = 0.15
+        for pkmn in battle.user.reserve:
+            if pkmn is None or pkmn.hp <= 0:
+                continue
+            item = normalize_name(getattr(pkmn, "item", "") or "")
+            if item == "heavydutyboots":
+                continue
+            pkmn_types = _get_effective_types(pkmn)
+            sr_eff = type_effectiveness_modifier("rock", pkmn_types)
+            if sr_eff >= 4.0:
+                sr_bonus += 0.20  # 4x weak to SR — critical to remove
+            elif sr_eff >= 2.0:
+                sr_bonus += 0.08  # 2x weak
+        base += sr_bonus
+
+    # Spikes
+    if spikes > 0:
+        spike_value = {1: 0.10, 2: 0.15, 3: 0.22}
+        base += spike_value.get(min(spikes, 3), 0.22)
+
+    # Toxic Spikes
+    if t_spikes > 0:
+        base += 0.10 * t_spikes
+
+    # Sticky Web
+    if s_web:
+        base += 0.12
+
+    # More value when we have more alive Pokemon (more switches = more chip)
+    our_alive = sum(
+        1 for p in ([battle.user.active] + battle.user.reserve)
+        if p is not None and p.hp > 0
+    )
+    if our_alive >= 4:
+        base *= 1.3
+    elif our_alive >= 3:
+        base *= 1.1
+
+    return base
+
+
 def _score_hazard_move(battle: Battle, move_name: str) -> float:
     """Score a hazard-setting move.
     
@@ -1168,6 +1245,13 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                         )
                         score += dmg_to_next * 0.05
 
+            # Hazard removal bonus for damaging removal moves (Rapid Spin, Mortal Spin)
+            # These moves deal damage AND remove hazards — the removal value is a
+            # critical side effect that was completely ignored before.
+            if norm in _HAZARD_REMOVAL_NORM:
+                removal_value = _score_hazard_removal_move(battle, move_name)
+                score += removal_value
+
             # Pivot bonus: damage + switch advantage
             if norm in _PIVOT_NORM:
                 pivot_bonus = 0.1
@@ -1268,6 +1352,32 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                 score *= 0.9
             scores[move_name] = score
 
+        elif norm in _HAZARD_REMOVAL_NORM:
+            # === HAZARD REMOVAL (non-damaging: Defog, Court Change, Tidy Up) ===
+            # These were falling into the catch-all with 0.15 base, massively
+            # undervaluing critical hazard removal. When our side has SR+Spikes,
+            # every switch costs 25-50% HP — removal is often the highest-value play.
+            score = _score_hazard_removal_move(battle, move_name)
+
+            if free_turn:
+                # Free turns are ideal for removal — no cost
+                score *= 1.5
+
+            # Penalize removal when opponent can KO us (we may die before it matters)
+            if opp_can_ko and not guaranteed_move_first:
+                score *= 0.4
+
+            # Defog removes THEIR hazards too — penalize when their side has hazards
+            if norm == "defog":
+                opp_sc = battle.opponent.side_conditions
+                opp_sr = opp_sc.get(constants.STEALTH_ROCK, 0) > 0
+                opp_spikes = opp_sc.get(constants.SPIKES, 0)
+                if opp_sr or opp_spikes > 0:
+                    # Defogging removes our hazards from their side too — cost
+                    score *= 0.65
+
+            scores[move_name] = max(score, 0.01)
+
         else:
             # === OTHER MOVES (setup, protect, etc.) ===
             # Give a baseline score; penalty layers handle context
@@ -1280,7 +1390,7 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
             
             scores[move_name] = score
 
-    # === OPPONENT SWITCH PREDICTION: boost hazards/status ===
+    # === OPPONENT SWITCH PREDICTION: boost hazards/status/removal ===
     if opp_switching:
         sc = opp_prediction.confidence
         for move_name in list(scores.keys()):
@@ -1291,6 +1401,9 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                 scores[move_name] *= 1.0 + sc * 0.5
             elif norm in STATUS_MOVES_OFFENSIVE:
                 scores[move_name] *= 1.0 + sc * 0.3
+            elif norm in _HAZARD_REMOVAL_NORM:
+                # Opponent switching is a free turn — great time for hazard removal
+                scores[move_name] *= 1.0 + sc * 0.4
 
     # === SACKING PREVENTION (Phase 3C) ===
     if opp_can_ko and opp is not None:
@@ -1429,6 +1542,12 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
     # === THREATENED PASSIVE PENALTY ===
     # When the opponent 2HKOs us, wasting turns on hazards/status is suicidal.
     # The Pokemon will die before the hazards pay off. Switch or fight.
+    our_hazard_layers = (
+        (1 if battle.user.side_conditions.get(constants.STEALTH_ROCK, 0) > 0 else 0)
+        + battle.user.side_conditions.get(constants.SPIKES, 0)
+        + battle.user.side_conditions.get(constants.TOXIC_SPIKES, 0)
+        + (1 if battle.user.side_conditions.get(constants.STICKY_WEB, 0) > 0 else 0)
+    )
     if threatened and not battle.force_switch:
         for move_name in list(scores.keys()):
             if move_name.startswith("switch "):
@@ -1445,6 +1564,11 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                 continue
             # Recovery is already boosted by the threatened check above
             if norm in _RECOVERY_NORM:
+                continue
+            # Hazard removal is still valuable when our side has heavy hazards —
+            # even if this mon dies, clearing hazards saves HP for the rest of the team
+            if norm in _HAZARD_REMOVAL_NORM and our_hazard_layers >= 2:
+                scores[move_name] *= 0.6  # Mild penalty instead of 0.15
                 continue
             # Hazards, status, setup — all wasted turns when you're about to die
             scores[move_name] *= 0.15

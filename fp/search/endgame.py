@@ -157,6 +157,21 @@ def estimate_damage(attacker, defender, move_name: str) -> float:
     return damage_ratio
 
 
+def _has_priority_move(pokemon) -> bool:
+    """Check if a Pokemon has any positive priority move available."""
+    moves = getattr(pokemon, "moves", []) or []
+    for move in moves:
+        move_name = move.name if hasattr(move, "name") else str(move)
+        if hasattr(move, "disabled") and move.disabled:
+            continue
+        if hasattr(move, "current_pp") and move.current_pp <= 0:
+            continue
+        move_data = all_move_json.get(move_name, {})
+        if move_data.get(constants.PRIORITY, 0) > 0:
+            return True
+    return False
+
+
 def can_ko(attacker, defender) -> Tuple[bool, Optional[str], float]:
     """
     Check if attacker can KO defender.
@@ -188,8 +203,51 @@ def can_ko(attacker, defender) -> Tuple[bool, Optional[str], float]:
     return best_damage >= defender_hp_ratio, best_move, best_damage
 
 
+def can_ko_with_priority(attacker, defender) -> Tuple[bool, Optional[str], float]:
+    """
+    Check if attacker can KO defender using a priority move.
+    Returns (can_ko, best_priority_move, damage_ratio).
+
+    This is critical in endgames: a slower Pokemon with Aqua Jet or Mach Punch
+    can still "outspeed" for KO purposes since priority moves go first regardless
+    of speed. The old solver missed this entirely.
+    """
+    if attacker is None or defender is None:
+        return False, None, 0.0
+
+    best_damage = 0.0
+    best_move = None
+
+    moves = getattr(attacker, "moves", []) or []
+    for move in moves:
+        move_name = move.name if hasattr(move, "name") else str(move)
+        if hasattr(move, "disabled") and move.disabled:
+            continue
+        if hasattr(move, "current_pp") and move.current_pp <= 0:
+            continue
+
+        move_data = all_move_json.get(move_name, {})
+        priority = move_data.get(constants.PRIORITY, 0)
+        if priority <= 0:
+            continue  # Only consider priority moves
+
+        damage = estimate_damage(attacker, defender, move_name)
+        if damage > best_damage:
+            best_damage = damage
+            best_move = move_name
+
+    defender_hp_ratio = defender.hp / max(getattr(defender, "max_hp", 1), 1)
+
+    return best_damage >= defender_hp_ratio, best_move, best_damage
+
+
 def solve_1v1(our_pokemon, opp_pokemon) -> EndgameResult:
-    """Solve a 1v1 endgame."""
+    """Solve a 1v1 endgame.
+
+    Now considers priority moves as a speed override. A slower Pokemon
+    with Aqua Jet, Mach Punch, etc. can KO before the faster opponent
+    acts. This is often game-deciding in close endgames.
+    """
     if our_pokemon is None or opp_pokemon is None:
         return EndgameResult(None, 0.5, False, 1, "Missing Pokemon")
 
@@ -197,10 +255,37 @@ def solve_1v1(our_pokemon, opp_pokemon) -> EndgameResult:
     we_can_ko, our_best_move, our_damage = can_ko(our_pokemon, opp_pokemon)
     they_can_ko, _, their_damage = can_ko(opp_pokemon, our_pokemon)
 
+    # Priority move checks — these override speed for KO purposes
+    we_can_priority_ko, our_priority_move, _ = can_ko_with_priority(our_pokemon, opp_pokemon)
+    they_can_priority_ko, _, _ = can_ko_with_priority(opp_pokemon, our_pokemon)
+
     # Speed tie (rare, assume we lose)
     our_speed = get_speed(our_pokemon)
     opp_speed = get_speed(opp_pokemon)
     speed_tie = our_speed == opp_speed
+
+    # PRIORITY KO CHECK: If we can KO with a priority move, we always go first
+    # regardless of speed. This catches scenarios like:
+    # - Our Azumarill at 30% can Aqua Jet KO their Cinderace at 20%
+    # - They outspeed us normally, but priority lets us strike first
+    if we_can_priority_ko:
+        return EndgameResult(
+            our_priority_move, 1.0, True, 1,
+            f"Priority move KO ({our_priority_move}) — we act first regardless of speed"
+        )
+
+    # If THEY have priority KO, we lose even if we outspeed (unless we also priority KO above)
+    if they_can_priority_ko and not we_outspeed:
+        return EndgameResult(
+            our_best_move, 0.0, True, 1,
+            f"Opponent has priority KO — we can't outrun it"
+        )
+    # If they have priority KO AND we outspeed but can't KO... we still lose
+    if they_can_priority_ko and we_outspeed and not we_can_ko:
+        return EndgameResult(
+            our_best_move, 0.0, True, 1,
+            "We outspeed but can't KO, opponent priority KOs us"
+        )
 
     if we_outspeed and we_can_ko:
         return EndgameResult(
@@ -209,7 +294,8 @@ def solve_1v1(our_pokemon, opp_pokemon) -> EndgameResult:
         )
 
     if not we_outspeed and they_can_ko:
-        # They KO us first
+        # They KO us first — but check if we have priority that doesn't KO
+        # but still contributes to a 2HKO line
         return EndgameResult(
             our_best_move, 0.0, True, 1,
             f"They outspeed ({opp_speed} vs {our_speed}) and KO us"
@@ -239,6 +325,34 @@ def solve_1v1(our_pokemon, opp_pokemon) -> EndgameResult:
                 return EndgameResult(
                     our_best_move, 0.2, True, 2,
                     f"They win the slugfest ({turns_to_ko_us:.1f} vs {turns_to_ko_them:.1f} turns)"
+                )
+
+    if not we_outspeed and not they_can_ko:
+        # They're faster but can't KO us — we get to hit them
+        if we_can_ko:
+            return EndgameResult(
+                our_best_move, 0.8, True, 1,
+                "They outspeed but can't KO, we KO them back"
+            )
+        else:
+            # Slugfest from behind in speed
+            their_hp_ratio = opp_pokemon.hp / max(opp_pokemon.max_hp, 1)
+            our_hp_ratio = our_pokemon.hp / max(our_pokemon.max_hp, 1)
+
+            # We're slower, so they attack first each turn
+            turns_to_ko_them = their_hp_ratio / max(our_damage, 0.01)
+            turns_to_ko_us = our_hp_ratio / max(their_damage, 0.01)
+
+            # They hit first, so we need to KO them in fewer turns to win
+            if turns_to_ko_them <= turns_to_ko_us:
+                return EndgameResult(
+                    our_best_move, 0.7, True, 2,
+                    f"Slower but win slugfest ({turns_to_ko_them:.1f} vs {turns_to_ko_us:.1f} turns)"
+                )
+            else:
+                return EndgameResult(
+                    our_best_move, 0.2, True, 2,
+                    f"Slower and lose slugfest ({turns_to_ko_us:.1f} vs {turns_to_ko_them:.1f} turns)"
                 )
 
     if speed_tie:
