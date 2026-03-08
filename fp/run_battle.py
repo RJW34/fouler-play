@@ -133,6 +133,7 @@ from fp.team_analysis import analyze_team
 from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_MOVES
 from fp.gameplan_integration import generate_and_store_gameplan, get_gameplan, clear_gameplan
 from constants_pkg.strategy import SETUP_MOVES
+from infrastructure.event_queue_lib import queue_event
 
 logger = logging.getLogger(__name__)
 
@@ -2519,6 +2520,38 @@ async def pokemon_battle(
                     },
                 )
                 battle_end_event_sent = True
+
+                # Queue battle result event for Discord event poster
+                try:
+                    _showdown_accts_ev = os.getenv(
+                        "SHOWDOWN_ACCOUNTS", FoulPlayConfig.username
+                    ).strip().lower().split(",")
+                    _showdown_accts_ev = [
+                        _normalize_username(a) for a in _showdown_accts_ev if a.strip()
+                    ]
+                    _we_won_ev = winner and _normalize_username(winner) in _showdown_accts_ev
+                    _result_str = "win" if _we_won_ev else ("tie" if (winner is None or winner == "tie") else "loss")
+                    _team_name_ev = (
+                        FoulPlayConfig.team_name
+                        if hasattr(FoulPlayConfig, "team_name")
+                        else "unknown"
+                    )
+                    _turn_count_ev = getattr(battle, "turn", None)
+                    queue_event(
+                        "battle_result",
+                        "battles",
+                        json.dumps({
+                            "battle_id": battle_tag,
+                            "result": _result_str,
+                            "team_file": _team_name_ev or "unknown",
+                            "opponent": opponent_name,
+                            "turns": _turn_count_ev,
+                        }),
+                        dedup_window_sec=5,
+                    )
+                except Exception as _qe_err:
+                    logger.warning(f"Failed to queue battle_result event: {_qe_err}")
+
                 return winner, battle_tag
 
             if battle_room_closed(battle_tag, msg):
