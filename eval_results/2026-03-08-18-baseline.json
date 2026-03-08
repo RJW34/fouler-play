@@ -1,0 +1,24 @@
+{
+  "n": 41,
+  "wins": 23,
+  "losses": 18,
+  "win_rate": 0.561,
+  "baseline_date": "2026-03-08T18:11:04.889937+00:00",
+  "team_breakdown": {
+    "fat-team-1-stall": {
+      "wins": 10,
+      "losses": 7,
+      "win_rate": 0.5882
+    },
+    "fat-team-2-pivot": {
+      "wins": 5,
+      "losses": 7,
+      "win_rate": 0.4167
+    },
+    "fat-team-3-dondozo": {
+      "wins": 8,
+      "losses": 4,
+      "win_rate": 0.6667
+    }
+  }
+}
