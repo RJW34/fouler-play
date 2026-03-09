@@ -1,5 +1,10 @@
 {
   "allowed_modify": [
+    "CLAUDE.md",
+    "TASKBOARD.md",
+    "README.md",
+    "PIPELINE.md",
+    "docs/**/*.md",
     "fp/search/main.py",
     "fp/search/standard_battles.py",
     "fp/search/endgame.py",
