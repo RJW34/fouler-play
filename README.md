@@ -28,6 +28,29 @@ The bot uses a 1-ply eval engine with 9 penalty layers to make decisions. It pla
 
 See [CLAUDE.md](CLAUDE.md) for autonomous agent operating instructions (DEKU/BAKUGO machines).
 
+### Codex / coding-agent quick handoff
+
+For coding agents or fresh sessions, the shortest reliable startup sequence is:
+
+1. Read `CLAUDE.md`
+2. Read `TASKBOARD.md`
+3. Run `git status --short` and `git log --oneline -5`
+4. Respect `infrastructure/guardrails.json`
+5. Check for local runtime-only changes before editing (`battle_stats.json`, logs, generated reports, data refreshes)
+
+Recommended validation after any code change:
+
+```bash
+python -m pytest tests/ -v
+python -c "import ast; ast.parse(open('fp/search/main.py').read())"
+python -c "from fp.search.main import find_best_move; print('OK')"
+```
+
+Repo-specific cautions for coding agents:
+- `run.py`, `config.py`, `.env`, and `teams/**` are protected
+- working tree may contain unrelated local data churn (for example `fp/data/movepool_data.json`)
+- many root docs describe experiments or ops snapshots; prefer `CLAUDE.md` + `TASKBOARD.md` as current intent
+
 ## Engine
 
 This project uses [poke-engine](https://github.com/pmariglia/poke-engine) for battle simulation. Rust must be installed to build the engine from source.
