@@ -1474,6 +1474,162 @@ def apply_team_intent_bias(
     return adjusted
 
 
+def apply_repetition_penalty(
+    policy: dict[str, float],
+    battle: Battle | None,
+    trace_events: list[dict] | None = None,
+) -> dict[str, float]:
+    """
+    Penalize moves that have been repeated excessively in the recent action history.
+
+    Detects two patterns:
+    1. Same-move spam: e.g. recover, recover, recover — the bot is stuck in a
+       healing loop that can't make progress.
+    2. Switch-switch oscillation: e.g. switch A, attack, switch B, attack, switch A
+       — the bot is cycling between two Pokemon without making progress.
+
+    This breaks stalemates and forces the bot to try alternative lines. The penalty
+    only applies when the action history shows clear repetition (3+ of same action
+    in last 6 turns).
+    """
+    if battle is None:
+        return policy
+
+    user = getattr(battle, "user", None)
+    if user is None:
+        return policy
+
+    history = getattr(user, "action_history", [])
+    if len(history) < 3:
+        return policy
+
+    # Look at the last 6 actions
+    recent = history[-6:]
+    adjusted = dict(policy)
+
+    from collections import Counter
+    action_counts = Counter(recent)
+
+    for action, count in action_counts.items():
+        if count < 3:
+            continue
+
+        # This action has been repeated 3+ times in last 6 turns — penalize it.
+        # Find matching move in policy.
+        matching_move = None
+        for move in adjusted:
+            move_norm = move.lower().strip()
+            action_norm = action.lower().strip()
+            if move_norm == action_norm:
+                matching_move = move
+                break
+            # Handle "move X" vs "X" variations
+            if move_norm.startswith("move ") and move_norm[5:] == action_norm:
+                matching_move = move
+                break
+            if action_norm.startswith("move ") and action_norm[5:] == move_norm:
+                matching_move = move
+                break
+
+        if matching_move is None:
+            continue
+
+        old_weight = adjusted[matching_move]
+        if old_weight <= 0:
+            continue
+
+        # Scale penalty by repetition count:
+        # 3 repeats: 0.6x, 4 repeats: 0.35x, 5+: 0.15x
+        if count >= 5:
+            penalty_mult = 0.15
+        elif count >= 4:
+            penalty_mult = 0.35
+        else:
+            penalty_mult = 0.60
+
+        new_weight = old_weight * penalty_mult
+
+        # Never fully block — floor at 0.1 weight relative to original
+        floor = old_weight * 0.1
+        if new_weight < floor:
+            new_weight = floor
+
+        adjusted[matching_move] = new_weight
+
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "penalty",
+                    "source": "repetition_detection",
+                    "move": matching_move,
+                    "reason": f"repeated_{count}_of_last_{len(recent)}_turns",
+                    "before": old_weight,
+                    "after": new_weight,
+                }
+            )
+
+        logger.info(
+            "REPETITION PENALTY: %s repeated %d/%d recent turns, "
+            "weight %.3f -> %.3f (%.0f%%)",
+            matching_move,
+            count,
+            len(recent),
+            old_weight,
+            new_weight,
+            penalty_mult * 100,
+        )
+
+    # Also detect switch oscillation: A → B → A → B pattern
+    if len(recent) >= 4:
+        switch_actions = [a for a in recent if a.lower().startswith("switch ")]
+        if len(switch_actions) >= 3:
+            switch_counts = Counter(switch_actions)
+            # If any single switch target appears 3+ times, we're oscillating
+            for switch_target, sw_count in switch_counts.items():
+                if sw_count < 3:
+                    continue
+                # Penalize switching to this target
+                matching_switch = None
+                for move in adjusted:
+                    if move.lower().strip() == switch_target.lower().strip():
+                        matching_switch = move
+                        break
+                if matching_switch is None:
+                    continue
+                old_weight = adjusted[matching_switch]
+                if old_weight <= 0:
+                    continue
+
+                penalty_mult = 0.40
+                new_weight = old_weight * penalty_mult
+                floor = old_weight * 0.1
+                if new_weight < floor:
+                    new_weight = floor
+                adjusted[matching_switch] = new_weight
+
+                if trace_events is not None:
+                    trace_events.append(
+                        {
+                            "type": "penalty",
+                            "source": "switch_oscillation",
+                            "move": matching_switch,
+                            "reason": f"switch_to_{switch_target}_repeated_{sw_count}_times",
+                            "before": old_weight,
+                            "after": new_weight,
+                        }
+                    )
+                logger.info(
+                    "SWITCH OSCILLATION PENALTY: %s repeated %d times in "
+                    "recent turns, weight %.3f -> %.3f",
+                    matching_switch,
+                    sw_count,
+                    old_weight,
+                    new_weight,
+                )
+
+    return adjusted
+
+
 def apply_oddity_penalties(
     policy: dict[str, float],
     battle: Battle | None,
@@ -5677,6 +5833,13 @@ def select_move_from_eval_scores(
 
     # Team intent bias: adjust scores based on build-signal inference
     blended_policy = apply_team_intent_bias(
+        blended_policy,
+        battle,
+        trace_events=trace_events,
+    )
+
+    # Repetition detection: penalize moves that have been spammed recently
+    blended_policy = apply_repetition_penalty(
         blended_policy,
         battle,
         trace_events=trace_events,

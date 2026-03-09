@@ -1207,13 +1207,18 @@ async def async_pick_move(battle):
         trace = build_trace_base(battle_copy, reason=trace_reason or "fallback")
         trace["choice"] = best_move
 
+    _action_str = best_move.removesuffix("-tera").removesuffix("-mega")
     battle.user.last_selected_move = LastUsedMove(
         battle.user.active.name
         if battle.user.active
         else (battle_copy.user.active.name if battle_copy.user.active else ""),
-        best_move.removesuffix("-tera").removesuffix("-mega"),
+        _action_str,
         battle.turn,
     )
+    # Record action in rolling history for repetition detection (keep last 10)
+    battle.user.action_history.append(_action_str)
+    if len(battle.user.action_history) > 10:
+        battle.user.action_history = battle.user.action_history[-10:]
     formatted = format_decision(battle_copy, best_move)
     if TRACE_DECISIONS and trace is not None:
         trace["formatted_choice"] = formatted

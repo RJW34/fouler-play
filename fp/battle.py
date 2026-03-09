@@ -259,6 +259,9 @@ class Battler:
         #   a move but gets knocked out before it can use it
         self.last_selected_move = LastUsedMove("", "", 0)
         self.last_used_move = LastUsedMove("", "", 0)
+        # Rolling window of recent actions for repetition detection.
+        # Each entry is the normalized action string (e.g. "recover", "switch skarmory").
+        self.action_history: list[str] = []
 
     def possible_mega_evolutions(self):
         result = {}
