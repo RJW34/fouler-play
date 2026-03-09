@@ -30,11 +30,13 @@ This project runs on **two machines**. When you start a session, determine which
 **You own:** Decision-making improvements, replay analysis, morning report quality, developer loop, test suite, upstream merges.
 
 ### Your loop: `infrastructure/linux/developer_loop.sh`
-Runs continuously. Pulls battle data -> analyzes performance -> invokes Claude Code to make one improvement -> runs tests -> pushes if passing. Install as a persistent service:
+Runs continuously. Pulls battle data -> analyzes performance -> invokes a coding agent to make one improvement -> runs tests -> pushes if passing. Install as a persistent service:
 ```bash
 bash infrastructure/linux/install_service.sh
 systemctl --user start fouler-play
 ```
+
+**Codex migration note (2026-03):** treat this file as provider-agnostic intent/history, not Claude-only workflow. For automated coding sessions, the required startup remains: read `CLAUDE.md`, then `TASKBOARD.md`, then inspect `git status`/`git log`, then obey `infrastructure/guardrails.json` before editing.
 
 ### Your responsibilities (in priority order)
 1. **Improve the bot's decision-making** — see TASKBOARD.md for the current phase. Check `battle_stats.json` for current ELO and win rate. The bot needs to play fat/stall correctly at a higher level. Focus on improvements that help the bot play these archetypes faithfully: better switching, hazard management, recovery timing, PP awareness, matchup-based pivoting. Run `python -m pytest tests/ -v` after each change.
@@ -48,7 +50,7 @@ When you have multiple independent tasks, spawn sub-agents to work in parallel:
 - Agent 2: Analyze replay data for team weakness patterns
 - Agent 3: Improve team_performance.py report output
 
-Use the Task tool or `claude -p "prompt" --allowedTools "Edit,Write,Read,Bash,Glob,Grep"` for headless sub-agents.
+Use your current coding-agent runtime for headless sub-agents. The exact harness can change (Codex, Claude Code, etc.), but the repo workflow should not: read intent docs first, make one focused improvement, run validations, and push only clean, scoped changes.
 
 ### Coordinating with BAKUGO
 - Push code to `master`. BAKUGO pulls automatically in their player loop.
