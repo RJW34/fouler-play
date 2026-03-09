@@ -5,7 +5,7 @@
 | Item | Value |
 |------|-------|
 | **Install path** | `C:\Users\Ryan\projects\fouler-play\` |
-| **Branch** | `master` |
+| **Branch** | `master` for deployment/base; check `TASKBOARD.md` first if a newer docs/coding-agent branch is temporarily ahead |
 | **Bot account** | ALL CHUNG |
 | **Credentials** | `.env` file (PS_USERNAME, PS_PASSWORD) |
 | **Logs** | `logs/` dir (rotating, 10MB max, 3 backups) |
@@ -37,7 +37,8 @@ Get-WmiObject Win32_Process -Filter "Name='python.exe'" | Where-Object { $_.Comm
 # Check active battles
 Get-Content active_battles.json
 
-# Pull latest
+# Pull latest deployment/base branch
+# (If TASKBOARD.md says docs or migration work is temporarily ahead elsewhere, inspect that branch before assuming master is current.)
 git pull origin master
 
 # Restart streaming server

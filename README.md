@@ -35,8 +35,9 @@ For coding agents or fresh sessions, the shortest reliable startup sequence is:
 1. Read `CLAUDE.md`
 2. Read `TASKBOARD.md`
 3. Run `git status --short` and `git log --oneline -5`
-4. Respect `infrastructure/guardrails.json`
-5. Check for local runtime-only changes before editing (`battle_stats.json`, logs, generated reports, data refreshes)
+4. Confirm the working branch matches current repo reality before editing (do not assume `master` if `TASKBOARD.md` says otherwise)
+5. Respect `infrastructure/guardrails.json`
+6. Check for local runtime-only changes before editing (`battle_stats.json`, logs, generated reports, data refreshes). In this repo, `fp/data/movepool_data.json` can also be locally dirty from refresh/reordering churn; treat it as unrelated unless your task is specifically about movepool data.
 
 Recommended validation after any code change:
 
