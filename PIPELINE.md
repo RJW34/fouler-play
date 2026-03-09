@@ -2,10 +2,12 @@
 
 An automated system that analyzes battle replays, identifies patterns, and provides AI-powered insights to improve the bot's performance.
 
+> **Migration drift warning (2026-03):** this file documents an older Ollama-on-MAGNETON pipeline. Current project intent in `TASKBOARD.md` says batch analysis should use Claude-quality external reasoning rather than local qwen analysis. Treat this document as historical/implementation reference until the pipeline docs are refreshed to match the live workflow.
+
 ## Architecture
 
 ```
-Battle Completion → Watcher → Batch Analyzer → Ollama (MAGNETON) → Report → Discord Notification
+Battle Completion → Watcher → Batch Analyzer → AI Analysis Backend → Report → Discord Notification
 ```
 
 ### Components
@@ -18,22 +20,22 @@ Battle Completion → Watcher → Batch Analyzer → Ollama (MAGNETON) → Repor
 2. **replay_analysis/batch_analyzer.py** - Analysis engine
    - Collects replay data
    - Extracts turn-by-turn reviews
-   - Queries Ollama for AI analysis
+   - Queries the configured AI analysis backend
    - Generates markdown reports
 
-3. **MAGNETON Integration** - Remote AI processing
-   - SSH connection to 192.168.1.181
-   - Ollama with qwen2.5-coder:7b model
-   - GPU-accelerated inference
+3. **Analysis backend**
+   - Historically this was MAGNETON-hosted Ollama
+   - Current intent favors stronger external reasoning over local qwen-based analysis
+   - Verify the active backend in code/config before changing this pipeline
 
 ## Setup
 
 ### Prerequisites
 
 - Bot is running and generating battles
-- MAGNETON (192.168.1.181) accessible via passwordless SSH
-- Ollama running on MAGNETON with qwen2.5-coder:7b model
-- DISCORD_WEBHOOK_URL configured in .env
+- The configured analysis backend is reachable
+- Discord delivery path is configured if notifications are enabled
+- Confirm current intent in `TASKBOARD.md` before assuming Ollama/MAGNETON is still the production path
 
 ### Installation
 
@@ -87,7 +89,7 @@ python pipeline.py watch
 The watcher will:
 1. Check battle_stats.json every 60 seconds
 2. Trigger analysis after N new battles (default: 10)
-3. Generate a report using Ollama
+3. Generate a report using the configured analysis backend
 4. Post summary to Discord #project-fouler-play
 
 ### Manual Mode
