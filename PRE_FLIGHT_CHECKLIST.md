@@ -1,5 +1,9 @@
 # Pre-Flight Verification - Quick Reference
 
+## ⚠️ Scope note
+
+This checklist is for batch-launch verification only. Before editing repo docs/code, agents should still follow the canonical startup path in `CLAUDE.md` and `TASKBOARD.md`, confirm branch reality, and inspect `git status` for unrelated local churn (including possible `fp/data/movepool_data.json` refresh noise).
+
 ## ✅ What Was Built
 
 ### Files Created

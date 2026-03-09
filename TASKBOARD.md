@@ -3,9 +3,9 @@
 **This is the single source of truth for fouler-play operations.** If anything contradicts this file, this file wins. `fouler-play-v2` has been archived — it was a duplicate clone DEKU created. Only `/home/ryan/projects/fouler-play` exists now.
 
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
-**Branch:** master (foulest-play merged and deleted 2026-03-02)
+**Branch:** `nightly/2026-03-08-repetition-detection` is currently ahead with the latest Codex-readiness/doc cleanup; `master` remains the deployment/base branch until that work is intentionally merged
 **Bot Account:** BugInTheCode on DEKU, ALL CHUNG on BAKUGO
-**Updated:** 2026-03-02
+**Updated:** 2026-03-09
 
 ---
 
@@ -22,6 +22,8 @@
 ## Current Status
 
 The bot has been overhauled from MCTS to a 1-ply eval engine with forced line detection (completed 2026-02-09). The new decision pipeline is: forced_lines -> eval -> penalty pipeline. Check `battle_stats.json` for current game count and ELO. The bot needs to reach 1700+ for matchup data to be meaningful.
+
+**2026-03-09 repo hygiene note:** current docs/coding-agent cleanup lives on `nightly/2026-03-08-repetition-detection`, which is ahead of `master`. Until that branch is merged, agents must not assume `master` contains the latest repo guidance. The working tree may also show unrelated churn in `fp/data/movepool_data.json`; treat that file as non-blocking for doc-only tasks unless you are intentionally refreshing movepool data.
 
 **2026-03-02 changes:**
 - Merged foulest-play branch (106 commits) into master, deleted old branch
@@ -163,7 +165,7 @@ These systems are **complete and working**. Do not recreate them from scratch:
 
 ## Communication Protocol
 
-- Push code/data to `master` branch
+- Push code/data to the branch that matches current repo reality. Right now `master` is still the deployment/base branch, but Codex-readiness docs are being normalized on `nightly/2026-03-08-repetition-detection` until merged.
 - Update this TASKBOARD.md when completing items (check the box: `[x]`)
 - DEKU pushes code changes, BAKUGO pushes battle data
 - Check `battle_stats.json` for performance tracking
