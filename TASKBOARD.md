@@ -53,6 +53,8 @@ The bot has been overhauled from MCTS to a 1-ply eval engine with forced line de
 2. Keep report/taskboard/runtime truth aligned when fixes land
 3. Run the relevant validation for any code change and cite proof in the project channel
 
+**2026-03-10 runtime truth:** fresh 2026-03-09 logs showed replay persistence was broken even when Showdown replay upload succeeded: `_save_replay_json_locally()` in `fp/run_battle.py` raised `NameError: Path is not defined`, so local replay JSONs could fail to save immediately after battle end. Fixed by restoring `from pathlib import Path` in `fp/run_battle.py`. Validation: AST parse + direct module import both passed on Windows after the fix.
+
 **Current BAKUGO focus:**
 1. Keep the bot producing fresh battle data
 2. Push battle stats/replays and verify the loop is yielding useful outcomes, not just process uptime
