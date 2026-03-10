@@ -13,7 +13,7 @@
 
 1. **3 concurrent battles per machine.** DEKU runs `--max-concurrent-battles 3` with `--search-parallelism 2`. BAKUGO runs `--max-concurrent-battles 3` with same parallelism. Total: 6 battles across both machines.
 2. **Analysis posts to #project-fouler-play.** Batch analysis reports (with AI insights) post to #project-fouler-play, NOT #deku-workspace. Discord delivery: use OpenClaw event queue.
-3. **Analysis source: Claude, not local LLM.** Batch analysis uses Claude (Opus or Sonnet) for Pokemon-competent reasoning. qwen2.5-coder:3b is banned for Pokemon analysis (hallucinations).
+3. **Analysis source: external reasoning agent, not local LLM.** Batch analysis should use a strong external reasoning model via OpenClaw/OpenAI-compatible tooling. Claude (Opus or Sonnet) remains the preferred default for Pokemon-competent batch analysis today; qwen2.5-coder:3b and similar local lightweight models are banned for Pokemon analysis (hallucinations).
 4. **One fouler-play process per machine.** Run directly (not systemd) on DEKU. Start BAKUGO's bot manually when online. Check: `pgrep -c -f "run.py.*BugInTheCode"` should return 1 on DEKU, `pgrep -c -f "run.py.*ALL_CHUNG"` should return 1 on BAKUGO (when running).
 5. **One source of truth.** This file. `fouler-play-v2/` is archived. `BOT_PROTOCOL.md` is supplementary. If they conflict, this file wins.
 

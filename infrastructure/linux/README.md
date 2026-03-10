@@ -81,7 +81,7 @@ DEKU (Linux) → Git Pull → analyze_performance.sh
                                            ↓
                          Reports (text + JSON)
                                            ↓
-                      AI Assistant (Claude Code)
+                      AI Assistant (Codex / Claude-compatible runtime)
 ```
 
 ## Analysis Output
@@ -122,7 +122,8 @@ The analysis report includes:
    ```
 4. **Feed to AI for suggestions:**
    - Copy the report content
-   - Provide to Claude Code with context about team files
+   - Provide to your coding/runtime agent with context about team files
+   - Prefer Codex/OpenClaw ACP for coding loops; Claude-compatible agents remain supported for analysis or implementation
    - Implement suggested improvements
 
 ## Continuous Monitoring

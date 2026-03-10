@@ -6,6 +6,8 @@ You are improving the **fouler-play** Pokemon Showdown battle bot. Your goal is 
 make one targeted, high-impact improvement per cycle that increases the bot's win rate
 in Gen 9 OU ladder play.
 
+**Runtime note (2026-03):** this prompt is provider-agnostic. Prefer Codex / ChatGPT-class coding agents for implementation when available, but Claude-compatible agents may use the same workflow. Regardless of runtime, follow the repo startup contract before editing.
+
 **Before doing anything else**, read the file `CLAUDE.md` in the repository root for
 full project context, architecture details, and coding conventions.
 
