@@ -1499,11 +1499,16 @@ def apply_repetition_penalty(
     if user is None:
         return policy
 
-    history = getattr(user, "action_history", [])
+    history = list(getattr(user, "action_history", []) or [])
+    last_selected_move = getattr(getattr(user, "last_selected_move", None), "move", "") or ""
+    if last_selected_move:
+        history.append(last_selected_move)
+
     if len(history) < 3:
         return policy
 
-    # Look at the last 6 actions
+    # Look at the last 6 actions, including the immediately previous selected move
+    # when action_history has not been updated yet for the current decision frame.
     recent = history[-6:]
     adjusted = dict(policy)
 
@@ -1626,6 +1631,44 @@ def apply_repetition_penalty(
                     old_weight,
                     new_weight,
                 )
+
+    # Detect short alternating two-move loops before they become 3-of-6 spam.
+    # Example live loss: Protect / Earthquake / Protect in a last-mon endgame,
+    # where the second Protect was still treated as fresh because logging had not
+    # yet caught up and the simple repetition counter only saw 2-of-6.
+    if len(recent) >= 4:
+        tail = [str(a).lower().strip() for a in recent[-4:]]
+        if tail[0] == tail[2] and tail[1] == tail[3] and tail[0] != tail[1]:
+            looping_action = tail[3]
+            matching_move = None
+            for move in adjusted:
+                if move.lower().strip() == looping_action:
+                    matching_move = move
+                    break
+            if matching_move is not None:
+                old_weight = adjusted[matching_move]
+                if old_weight > 0:
+                    new_weight = max(old_weight * 0.55, old_weight * 0.1)
+                    adjusted[matching_move] = new_weight
+                    if trace_events is not None:
+                        trace_events.append(
+                            {
+                                "type": "penalty",
+                                "source": "alternating_loop",
+                                "move": matching_move,
+                                "reason": f"alternating_loop_{tail[0]}_{tail[1]}",
+                                "before": old_weight,
+                                "after": new_weight,
+                            }
+                        )
+                    logger.info(
+                        "ALTERNATING LOOP PENALTY: %s trapped in %s/%s loop, weight %.3f -> %.3f",
+                        matching_move,
+                        tail[0],
+                        tail[1],
+                        old_weight,
+                        new_weight,
+                    )
 
     return adjusted
 

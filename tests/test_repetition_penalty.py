@@ -6,10 +6,14 @@ from unittest.mock import MagicMock
 from fp.search.main import apply_repetition_penalty
 
 
-def _make_battle_with_history(history: list[str]):
+def _make_battle_with_history(history: list[str], last_selected_move: str | None = None):
     """Create a minimal battle mock with action_history on user."""
     battle = MagicMock()
     battle.user.action_history = list(history)
+    if last_selected_move is None:
+        battle.user.last_selected_move = None
+    else:
+        battle.user.last_selected_move = MagicMock(move=last_selected_move)
     return battle
 
 
@@ -94,6 +98,23 @@ class TestRepetitionPenalty:
         assert result["shadowball"] == 90.0
         assert result["recover"] == 80.0
         assert result["switch skarmory"] == 70.0
+
+    def test_last_selected_move_triggers_alternating_loop_penalty(self):
+        """Use last_selected_move so pending protect/attack loops get penalized before logging catches up."""
+        battle = _make_battle_with_history(
+            ["earthquake", "protect", "earthquake"],
+            last_selected_move="protect",
+        )
+        policy = {
+            "protect": 100.0,
+            "earthquake": 95.0,
+            "swordsdance": 60.0,
+        }
+        trace = []
+        result = apply_repetition_penalty(policy, battle, trace_events=trace)
+        assert result["protect"] == pytest.approx(55.0, abs=1.0)
+        assert result["earthquake"] == 95.0
+        assert any(event["source"] == "alternating_loop" for event in trace)
 
     def test_none_battle_returns_unchanged(self):
         """Returns unchanged policy when battle is None."""
