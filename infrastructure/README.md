@@ -36,13 +36,13 @@ Key scripts:
 Responsibilities:
 - Pulls latest battle data from `master`
 - Runs `replay_analysis/team_performance.py` to generate performance reports
-- Invokes Claude Code CLI with the analysis prompt and team report
-- If Claude produces changes that pass syntax checks and tests, commits and pushes
+- Invokes the current coding-agent/runtime with the analysis prompt and team report
+- If the agent produces changes that pass syntax checks and tests, commits and pushes
 - Sleeps, then repeats
 
 Key scripts:
 - `infrastructure/linux/developer_loop.sh` -- main loop
-- `infrastructure/linux/analysis_prompt.md` -- prompt template for Claude Code
+- `infrastructure/linux/analysis_prompt.md` -- prompt template for the coding agent / reasoning runtime
 
 ### GitHub as Coordination Layer
 
@@ -73,8 +73,8 @@ Key scripts:
 1. git pull origin master
 2. Check if new entries exist in battle_stats.json since last analysis
 3. If yes: run team_performance.py to generate report
-4. Invoke Claude Code with analysis_prompt.md + report
-5. If Claude's changes pass syntax check + tests: commit and push
+4. Invoke the current coding agent with analysis_prompt.md + report
+5. If the agent's changes pass syntax check + tests: commit and push
 6. Sleep for configured interval (default 30 minutes)
 7. Go to step 1
 ```
@@ -96,7 +96,7 @@ Key scripts:
 ### Linux Machine
 
 1. Clone the repo and checkout `master`
-2. Ensure Claude Code CLI is installed and authenticated
+2. Ensure your chosen coding-agent/runtime is installed and authenticated (Codex/OpenClaw ACP preferred; Claude Code remains compatible)
 3. Ensure Python dependencies are installed (`pip install -r requirements.txt`)
 4. Run:
    ```bash
@@ -105,6 +105,16 @@ Key scripts:
    ```
 
 ---
+
+## Reporting / proof contract
+
+This infrastructure should be operated under `D:\deku-workspace\docs\TEAM_REPORTING_CONTRACT.md`.
+
+Implications for Fouler Play ops:
+- Normal project reporting stays in Discord channel `1466691161363054840`; do not tag `@Ryan` unless a true `ESCALATION` condition is met.
+- Process-up/log-up is not enough to call the service healthy; useful proof should include battle_stats movement, replay output, deploy/test evidence, or clear before/after recovery evidence.
+- If the overnight loop is alive but produces no new battle/reporting outcome for an abnormal interval, emit `STAGNATION` instead of healthy.
+- Auto-revert / recovery paths should report `RECOVERY_ATTEMPT` and `RECOVERY_RESULT`, and use `ESCALATION` only when autonomous recovery has actually failed or a policy boundary is hit.
 
 ## Safety Guardrails
 
@@ -118,7 +128,7 @@ All guardrails are defined in `infrastructure/guardrails.json`:
 | `require_syntax_check` | true | Syntax check (`python -m py_compile`) must pass |
 
 File-level guardrails:
-- `allowed_modify`: Files Claude Code is permitted to change
+- `allowed_modify`: Files the coding agent is permitted to change
 - `never_modify`: Files that must never be touched (credentials, config, teams)
 
 The ELO watchdog (`infrastructure/elo_watchdog.py`) runs after each deploy and can

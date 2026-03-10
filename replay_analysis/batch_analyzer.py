@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Batch analyzer for Fouler Play bot replays.
-Collects turn reviews, sends to Ollama on MAGNETON for analysis.
+Collects turn reviews, then sends a grounded prompt to an external reasoning agent.
+Current default: Claude via OpenClaw for Pokemon-competent batch analysis.
 """
 
 import json
@@ -17,10 +18,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from replay_analysis.turn_review import TurnReviewer
 
-# Analysis Source: Claude via OpenClaw (Pokemon-competent reasoning)
-# DO NOT use qwen or local LLM (prone to hallucinations about Pokemon mechanics)
-USE_CLAUDE = True
-CLAUDE_MODEL = "anthropic/claude-opus-4-6"  # Use Opus for accurate analysis
+# Analysis source contract:
+# - Use a strong external reasoning agent via OpenClaw for Pokemon-competent analysis.
+# - Current default remains Claude Opus because it has been the most reliable for this task.
+# - Do NOT use qwen or other lightweight local LLMs for Pokemon analysis; they hallucinate mechanics.
+ANALYSIS_PROVIDER = "openclaw"
+ANALYSIS_MODEL = "anthropic/claude-opus-4-6"
 REPORTS_DIR = PROJECT_ROOT / "replay_analysis" / "reports"
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
 REPLAY_ANALYSIS_DIR = PROJECT_ROOT / "replay_analysis"
@@ -229,7 +232,7 @@ class BatchAnalyzer:
         return reviews, stats
 
     def build_analysis_prompt(self, reviews: List[str], stats: Dict) -> str:
-        """Build a structured prompt for Ollama analysis with domain grounding."""
+        """Build a structured prompt for external reasoning analysis with domain grounding."""
         prompt = """You are analyzing Pokemon Showdown Gen9 OU battle replays for a competitive bot named BugInTheCode.
 
 === DOMAIN KNOWLEDGE & CONSTRAINTS ===
@@ -311,21 +314,22 @@ Format response as structured improvement report with battle citations.
             lines.append(f"  - {team}: {perf['wins']}-{perf['losses']} ({wr:.1%})")
         return "\n".join(lines) if lines else "  No team data available"
 
-    def query_claude(self, prompt: str) -> Optional[str]:
-        """Query Claude via OpenClaw for Pokemon-competent analysis.
+    def query_reasoning_agent(self, prompt: str) -> Optional[str]:
+        """Query the configured external reasoning agent via OpenClaw.
         
-        Uses Claude Opus for accurate Gen 9 OU reasoning (no hallucinations).
-        Calls 'openclaw agent turn' to invoke Claude in isolated session.
+        Current default uses Claude Opus for accurate Gen 9 OU reasoning.
+        The surrounding workflow is provider-agnostic as long as the chosen model
+        remains Pokemon-competent and can follow grounded prompts reliably.
         """
         try:
-            print(f"Querying Claude via OpenClaw (model: {CLAUDE_MODEL})...")
+            print(f"Querying reasoning agent via OpenClaw (provider: {ANALYSIS_PROVIDER}, model: {ANALYSIS_MODEL})...")
             print(f"Prompt size: {len(prompt)} chars")
             
             # Use subprocess to call OpenClaw agent
             result = subprocess.run(
                 [
                     "openclaw", "agent", "turn",
-                    "--model", CLAUDE_MODEL,
+                    "--model", ANALYSIS_MODEL,
                     "--message", prompt,
                     "--timeoutSeconds", "120"
                 ],
@@ -335,26 +339,26 @@ Format response as structured improvement report with battle citations.
             )
             
             if result.returncode != 0:
-                print(f"✗ Claude query failed: {result.stderr}")
+                print(f"✗ Reasoning-agent query failed: {result.stderr}")
                 return None
             
             # Extract response text
             response_text = result.stdout.strip()
             if not response_text:
-                print("✗ Claude returned empty response")
+                print("✗ Reasoning agent returned empty response")
                 return None
             
-            print(f"✓ Claude analysis complete ({len(response_text)} chars)")
+            print(f"✓ Reasoning-agent analysis complete ({len(response_text)} chars)")
             return response_text
             
         except subprocess.TimeoutExpired:
-            print("✗ Claude query timed out after 2 minutes")
+            print("✗ Reasoning-agent query timed out after 2 minutes")
             return None
         except FileNotFoundError:
             print("✗ openclaw CLI not found. Is it installed?")
             return None
         except Exception as e:
-            print(f"✗ Error querying Claude: {e}")
+            print(f"✗ Error querying reasoning agent: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -379,10 +383,10 @@ Format response as structured improvement report with battle citations.
         # Build prompt
         prompt = self.build_analysis_prompt(reviews, stats)
         
-        # Query Ollama
-        analysis = self.query_claude(prompt)
+        # Query external reasoning agent
+        analysis = self.query_reasoning_agent(prompt)
         if not analysis:
-            print("⚠ Ollama analysis failed—falling back to stats-only report")
+            print("⚠ Reasoning-agent analysis failed—falling back to stats-only report")
             return self.generate_stats_only_report(last_n, stats)
         
         # Generate report
@@ -406,7 +410,7 @@ Format response as structured improvement report with battle citations.
 
 ---
 
-*Analysis powered by {OLLAMA_MODEL} on MAGNETON (GPU)*
+*Analysis powered by {ANALYSIS_MODEL} via OpenClaw ({ANALYSIS_PROVIDER})*
 """
         
         report_file.write_text(report_content)
@@ -456,11 +460,11 @@ Without access to turn-by-turn replay data, focus on aggregate patterns:
 Be specific and actionable. Acknowledge the limitation of not having replay data.
 """
         
-        print(f"Querying Ollama for stats-only analysis...")
-        analysis = self.query_claude(prompt)
+        print("Querying reasoning agent for stats-only analysis...")
+        analysis = self.query_reasoning_agent(prompt)
         
         if not analysis:
-            print("✗ Failed to get Ollama analysis")
+            print("✗ Failed to get reasoning-agent analysis")
             return None
         
         # Generate report
@@ -492,7 +496,7 @@ Replay data unavailable (Pokemon Showdown purged replays after ~1 week).
 
 ---
 
-*Stats-only analysis powered by {OLLAMA_MODEL} on ubunztu (local)*  
+*Stats-only analysis powered by {ANALYSIS_MODEL} via OpenClaw ({ANALYSIS_PROVIDER})*  
 *For detailed turn-by-turn analysis, implement local replay JSON storage.*
 """
         
