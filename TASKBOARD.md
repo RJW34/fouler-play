@@ -3,7 +3,7 @@
 **This is the single source of truth for fouler-play operations.** If anything contradicts this file, this file wins. `fouler-play-v2` has been archived — it was a duplicate clone DEKU created. Only `/home/ryan/projects/fouler-play` exists now.
 
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
-**Branch:** `nightly/2026-03-08-repetition-detection` is currently ahead with the latest Codex-readiness/doc cleanup; `master` remains the deployment/base branch until that work is intentionally merged
+**Branch:** `master` is the live deployment/base branch and now contains the latest Codex-readiness/doc cleanup merged on 2026-03-09 (`a8b2d31`). Treat older branch-specific notes as historical unless a newer branch is explicitly called out here.
 **Bot Account:** BugInTheCode on DEKU, ALL CHUNG on BAKUGO
 **Updated:** 2026-03-09
 
@@ -23,7 +23,7 @@
 
 The bot has been overhauled from MCTS to a 1-ply eval engine with forced line detection (completed 2026-02-09). The new decision pipeline is: forced_lines -> eval -> penalty pipeline. Check `battle_stats.json` for current game count and ELO. The bot needs to reach 1700+ for matchup data to be meaningful.
 
-**2026-03-09 repo hygiene note:** current docs/coding-agent cleanup lives on `nightly/2026-03-08-repetition-detection`, which is ahead of `master`. Until that branch is merged, agents must not assume `master` contains the latest repo guidance. The working tree may also show unrelated churn in `fp/data/movepool_data.json`; treat that file as non-blocking for doc-only tasks unless you are intentionally refreshing movepool data.
+**2026-03-09 repo hygiene note:** the docs/coding-agent cleanup has already been merged to `master` (`a8b2d31`). Agents can treat `master` as the current repo guidance baseline again. The working tree may still show unrelated churn in `fp/data/movepool_data.json`; treat that file as non-blocking for doc-only tasks unless you are intentionally refreshing movepool data.
 
 **2026-03-02 changes:**
 - Merged foulest-play branch (106 commits) into master, deleted old branch
@@ -35,30 +35,28 @@ The bot has been overhauled from MCTS to a 1-ply eval engine with forced line de
 
 ## NEXT ACTION (read this first)
 
-**🚨 STRATEGIC OVERHAUL IN PROGRESS (2026-02-15 19:35 EST)**
+**🔎 CURRENT TRUTH (updated 2026-03-09):** the repo is not in a "battles halted pending strategic overhaul" state anymore.
 
-**Diagnosis:** Bot plays move-by-move (57% WR) with zero archetype awareness. Hazard teams skip hazards, pivot teams switch randomly, stall teams don't stall. Root cause: No strategic layer.
+**Proof of drift that mattered:**
+- `master` already absorbed the recent repo-guidance cleanup (`a8b2d31 merge: codex-readiness cleanup and repetition detection into master`)
+- `battle_stats.json` contains fresh ladder results through `2026-03-09T12:56:55.902086+00:00`
+- Body Press proof work landed in `f4ab71e test: fix Body Press regression proof`
 
-**Plan:** 18-22 hour overhaul to add:
-1. Archetype recognition (stall/pivot/hazard/setup)
-2. Gameplan generation (what we win by)
-3. Strategic move filtering (hard constraints)
-4. Multi-turn lookahead (3-turn sequences)
-5. Game phase awareness (early/mid/late eval)
-6. Commitment heuristic (reduce switching indecision)
+**What agents should optimize for now:**
+1. Treat `master` as the active truth branch unless this file explicitly says otherwise
+2. Use fresh `battle_stats.json` / replay evidence to diagnose the current ELO problem instead of assuming the bot is intentionally halted
+3. Keep improvements bounded and evidence-backed: one decision-quality fix, one report-quality fix, or one runtime-truth correction per cycle
+4. Preserve the faithful fat/stall mission; do not substitute ladder cheese for useful overnight team-testing data
 
-**See:** `/fouler-play/STRATEGIC_OVERHAUL_PLAN.md` (full spec)
+**Current DEKU focus:**
+1. Investigate the next highest-value decision drift still wasting games at live ladder conditions
+2. Keep report/taskboard/runtime truth aligned when fixes land
+3. Run the relevant validation for any code change and cite proof in the project channel
 
-**ALL BATTLES HALTED** — Bot not running. Awaiting strategic layer implementation.
-
-**DEKU Action:**
-1. Implement Phase 1: Archetype Analysis (`fp/archetype_analyzer.py`)
-2. Implement Phase 3: Strategic Filtering (`fp/strategic_filter.py`)
-3. Test quick-win improvements (hazard setup, reduce switches)
-4. Proceed through phases 2, 4, 5, 6 as planned
-5. Target: 70%+ WR after full overhaul
-
-**BAKUGO:** Stand by. No battles until strategic layer deployed and tested.
+**Current BAKUGO focus:**
+1. Keep the bot producing fresh battle data
+2. Push battle stats/replays and verify the loop is yielding useful outcomes, not just process uptime
+3. Escalate only if autonomous recovery fails or useful output stalls abnormally
 
 ---
 
@@ -158,14 +156,14 @@ These systems are **complete and working**. Do not recreate them from scratch:
 **Documented for later:**
 - [ ] **#3: Ghost-immune-to-Dark not recognized before committing** — Gholdengo spent 8 turns using Hex (Ghost) into Ting-Lu (Dark type, immune to Ghost). The type immunity wasn't caught until the move was already selected. Root cause unclear — may be in eval scoring or move data. Needs investigation of how type matchups are evaluated in `fp/search/eval.py` when the bot's moves are Ghost-type vs Dark-type opponents.
 - [ ] **#5: Recover loop detection** — Blissey entered a 4-turn Recover loop vs Drain Punch Conkeldurr. The opponent was healing more than Blissey could stall out. Needs cross-turn state tracking to detect when we're in a losing Recover loop (opponent gains net HP per cycle). Architectural challenge: current system is 1-ply and doesn't track multi-turn patterns.
-- [ ] **#6: Body Press vs Waterfall type matchup** — Dondozo used Waterfall (neutral) instead of Body Press (4x SE) into Kingambit (Dark/Steel). Two turns wasted on a 2HKO when it could have been a clean OHKO. Likely an MCTS/eval scoring issue — Body Press damage may not be calculated correctly (it uses Defense stat, not Attack). Check `fp/search/eval.py:_estimate_damage_ratio()` for Body Press special handling.
+- [x] **#6: Body Press vs Waterfall type matchup** — Fixed and regression-proofed. `f4ab71e test: fix Body Press regression proof` documents the proof path so future agents should not keep treating this as an open mystery.
 - [ ] **#7: Infinite switch loop detection** — Corviknight and Blissey alternated switches for 11 turns vs Tera Normal Dragonite without ever using Toxic. Needs cross-turn state tracking to detect when we're in a non-progressing switch loop. Similar architectural challenge to #5 — needs multi-turn awareness.
 
 ---
 
 ## Communication Protocol
 
-- Push code/data to the branch that matches current repo reality. Right now `master` is still the deployment/base branch, but Codex-readiness docs are being normalized on `nightly/2026-03-08-repetition-detection` until merged.
+- Push code/data to the branch that matches current repo reality. As of `a8b2d31`, `master` is again the deployment/base branch and the repo-guidance baseline.
 - Update this TASKBOARD.md when completing items (check the box: `[x]`)
 - DEKU pushes code changes, BAKUGO pushes battle data
 - Check `battle_stats.json` for performance tracking
