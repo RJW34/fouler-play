@@ -215,10 +215,18 @@ def _estimate_damage_ratio(attacker, defender, move_name: str) -> float:
         current_hp = max(float(getattr(defender, "hp", 0) or 0), 0.0)
         return min((0.5 * current_hp) / defender_max_hp, 1.0)
 
+    if normalize_name(move_name) == "bodypress" and any(t == "ghost" for t in defender_types):
+        return 0.0
+
     if base_power == 0:
         return 0.0
 
-    if category == constants.PHYSICAL:
+    if normalize_name(move_name) == "bodypress":
+        atk = attacker.stats.get(constants.DEFENSE, 100) if isinstance(attacker.stats, dict) else 100
+        def_ = defender.stats.get(constants.DEFENSE, 100) if isinstance(defender.stats, dict) else 100
+        atk_boost = (getattr(attacker, "boosts", {}) or {}).get(constants.DEFENSE, 0)
+        def_boost = (getattr(defender, "boosts", {}) or {}).get(constants.DEFENSE, 0)
+    elif category == constants.PHYSICAL:
         atk = attacker.stats.get(constants.ATTACK, 100) if isinstance(attacker.stats, dict) else 100
         def_ = defender.stats.get(constants.DEFENSE, 100) if isinstance(defender.stats, dict) else 100
         atk_boost = (getattr(attacker, "boosts", {}) or {}).get(constants.ATTACK, 0)

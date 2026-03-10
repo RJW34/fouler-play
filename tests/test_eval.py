@@ -14,6 +14,7 @@ from unittest.mock import MagicMock
 from collections import defaultdict
 
 import constants
+from fp.search.eval import _estimate_damage_ratio
 
 
 def _make_pokemon(
@@ -342,6 +343,57 @@ class TestEvaluatePosition(unittest.TestCase):
         self.assertGreater(toss_ratio, 0.25)
         self.assertLess(toss_ratio, 0.40)
         self.assertGreater(scores.get("seismictoss", 0.0), scores.get("calmmind", 0.0))
+
+    def test_body_press_uses_defense_and_respects_ghost_immunity(self):
+        attacker = _make_pokemon(
+            name="skarmory",
+            types=["steel", "flying"],
+            hp=334,
+            max_hp=334,
+            moves=["bodypress"],
+            stats={
+                constants.ATTACK: 80,
+                constants.DEFENSE: 416,
+                constants.SPECIAL_ATTACK: 40,
+                constants.SPECIAL_DEFENSE: 176,
+                constants.SPEED: 176,
+            },
+            boosts={constants.DEFENSE: 2},
+        )
+        neutral = _make_pokemon(
+            name="tinglu",
+            types=["dark", "ground"],
+            hp=404,
+            max_hp=404,
+            moves=["earthquake"],
+            stats={
+                constants.ATTACK: 110,
+                constants.DEFENSE: 125,
+                constants.SPECIAL_ATTACK: 55,
+                constants.SPECIAL_DEFENSE: 80,
+                constants.SPEED: 45,
+            },
+        )
+        ghost = _make_pokemon(
+            name="pecharunt",
+            types=["poison", "ghost"],
+            hp=380,
+            max_hp=380,
+            moves=["shadowball"],
+            stats={
+                constants.ATTACK: 88,
+                constants.DEFENSE: 88,
+                constants.SPECIAL_ATTACK: 88,
+                constants.SPECIAL_DEFENSE: 160,
+                constants.SPEED: 88,
+            },
+        )
+
+        neutral_ratio = _estimate_damage_ratio(attacker, neutral, "bodypress")
+        ghost_ratio = _estimate_damage_ratio(attacker, ghost, "bodypress")
+
+        self.assertGreater(neutral_ratio, 0.20)
+        self.assertEqual(ghost_ratio, 0.0)
 
     def test_switches_do_not_drown_out_stable_progress_line(self):
         """When we can make safe progress, switch scores should be capped."""
