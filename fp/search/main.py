@@ -4673,6 +4673,12 @@ def apply_threat_switch_bias(
         incoming_pressure = float(_eval_opponent_best_damage(battle))
     except Exception:
         incoming_pressure = None
+    end_of_turn_pressure = 0.0
+    if getattr(ability_state, "our_active_is_salt_cured", False):
+        end_of_turn_pressure += 0.125
+        active_types = {normalize_name(t) for t in (getattr(our_active, "types", []) or [])}
+        if {"water", "steel"} & active_types:
+            end_of_turn_pressure += 0.125
     unaware_hold_mode = (
         our_is_unaware
         and boost_level >= 1
