@@ -33,6 +33,7 @@ except ImportError:
 
 from replay_analysis.batch_analyzer import BatchAnalyzer
 from infrastructure.event_queue_lib import queue_event
+from infrastructure.discord_reporting import build_contract_payload
 
 # Configuration
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
@@ -703,9 +704,20 @@ Examples:
             analysis_section = content.split("## AI Analysis")[-1] if "## AI Analysis" in content else ""
             top_issues = pipeline._extract_top_issues(analysis_section)
             
-            # Queue notification via event queue
-            queue_event("batch_analyzed", DISCORD_CHANNEL_ID,
-                        f"🔍 **Batch Analysis #{pipeline.current_batch}** complete\n{top_issues[:500]}")
+            # Queue notification via event queue using the reporting contract
+            queue_event(
+                "batch_analyzed",
+                DISCORD_CHANNEL_ID,
+                build_contract_payload(
+                    "PROOF",
+                    f"batch analysis #{pipeline.current_batch} complete",
+                    f"pipeline.py analyzed the latest batch and extracted the top issues summary for #{DISCORD_CHANNEL_ID}.",
+                    "Batch analysis only helps if the project channel gets a structured, proof-backed summary instead of an ad hoc fragment.",
+                    f"report={report}; top_issues={top_issues[:280]}",
+                    "Webhook mirror send_discord_notification still runs after the queued contract event.",
+                    source="pipeline.analyze",
+                ),
+            )
             # Also send rich webhook notification
             pipeline.send_discord_notification(report)
             pipeline.send_wake_notification(report, top_issues)

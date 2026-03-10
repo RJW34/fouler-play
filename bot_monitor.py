@@ -84,6 +84,7 @@ if BOT_DISPLAY_NAME:
 # Import turn reviewer for turn-by-turn loss analysis from turn 1 onward.
 from replay_analysis.turn_review import TurnReviewer
 from infrastructure.event_queue_lib import queue_event
+from infrastructure.discord_reporting import build_contract_payload
 update_daily_stats = __import__(
     "streaming.state_store", fromlist=["update_daily_stats"]
 ).update_daily_stats
@@ -503,10 +504,23 @@ class BotMonitor:
         if self.batch_losses:
             msg += f"\nðŸ” **Analyzing {len(self.batch_losses)} loss(es)...**"
 
-        # Queue batch report via event queue (suppress embeds)
-        queue_event("batch_complete", "battles", msg,
-                     precondition_check_fn="bot_is_alive",
-                     suppress_embeds=True)
+        # Queue batch report via event queue (contract-shaped, suppress embeds)
+        queue_event(
+            "batch_complete",
+            "battles",
+            build_contract_payload(
+                "PROOF",
+                f"batch complete {self.batch_wins_count}-{self.batch_losses_count}",
+                f"bot_monitor finished a result batch with {len(self.batch_results)} battle(s) and prepared the live summary for Discord.",
+                "Batch visibility should show actual outcomes and next actions in one consistent shape, not freeform fragments.",
+                msg,
+                f"Background loss analysis queued for {len(self.batch_losses)} loss replay(s).",
+                source="bot_monitor.batch_complete",
+                batch_results=self.batch_results,
+            ),
+            precondition_check_fn="bot_is_alive",
+            suppress_embeds=True,
+        )
 
         # Run loss analyses in background
         for replay_url, opponent in self.batch_losses:
@@ -572,12 +586,14 @@ class BotMonitor:
 
             if critical_turns:
                 lead = critical_turns[0]
-                summary = (
-                    f"[Turn Review] vs {battle_state.opponent}\n"
-                    f"Replay: {replay_url}\n"
-                    f"Turn 1 lead: {lead.bot_active} -> {lead.bot_choice}\n"
-                    f"Note: {lead.why_critical}\n"
-                    f"Saved full review: {report_path}"
+                summary = build_contract_payload(
+                    "PROOF",
+                    f"turn review captured vs {battle_state.opponent}",
+                    f"bot_monitor generated a turn review for a loss replay and extracted the first critical turn.",
+                    "Loss reviews are only actionable if they include replay-linked proof instead of an informal note.",
+                    f"Replay: {replay_url}; Turn 1 lead: {lead.bot_active} -> {lead.bot_choice}; Note: {lead.why_critical}; Saved full review: {report_path}",
+                    "Review the saved full turn review for additional mistakes beyond the lead sequence.",
+                    source="bot_monitor.loss_analysis",
                 )
                 queue_event("loss_analysis", "feedback", summary,
                             precondition_check_fn="bot_is_alive",
@@ -1027,12 +1043,20 @@ class BotMonitor:
         # Only post startup message if enough time has passed since last startup
         if should_post_startup_message():
             name_tag = f" [{BOT_DISPLAY_NAME}]" if BOT_DISPLAY_NAME else ""
-            startup_msg = f"ðŸš€ **Fouler Play bot{name_tag} starting...**"
+            proof_bits = [f"bot_monitor pid={os.getpid()}"]
             if username:
                 user_page = f"https://pokemonshowdown.com/users/{username.lower().replace(' ', '')}"
-                startup_msg += f"\nðŸ“Š **Account:** [{username}]({user_page})"
-                startup_msg += "\nâ³ *ELO stats will be posted once ladder data loads*"
-            
+                proof_bits.append(f"account={username} ({user_page})")
+            startup_msg = build_contract_payload(
+                "PROGRESSION",
+                f"fouler-play bot{name_tag} starting".strip(),
+                "bot_monitor spawned the main bot process and entered output monitoring.",
+                "Startup reports need to identify the active account/runtime so later battle and stagnation reports have clear provenance.",
+                "; ".join(proof_bits),
+                "Wait for ladder data load and fresh battle/result events.",
+                source="bot_monitor.startup",
+            )
+
             queue_event("bot_started", "battles", startup_msg)
             record_startup_message()
         else:

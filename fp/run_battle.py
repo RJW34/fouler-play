@@ -135,6 +135,7 @@ from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_
 from fp.gameplan_integration import generate_and_store_gameplan, get_gameplan, clear_gameplan
 from constants_pkg.strategy import SETUP_MOVES
 from infrastructure.event_queue_lib import queue_event
+from infrastructure.discord_reporting import build_contract_payload
 
 logger = logging.getLogger(__name__)
 
@@ -2525,13 +2526,20 @@ async def pokemon_battle(
                     queue_event(
                         "battle_result",
                         "battles",
-                        json.dumps({
-                            "battle_id": battle_tag,
-                            "result": _result_str,
-                            "team_file": _team_name_ev or "unknown",
-                            "opponent": opponent_name,
-                            "turns": _turn_count_ev,
-                        }),
+                        build_contract_payload(
+                            "PROOF",
+                            f"battle result {_result_str} vs {opponent_name}",
+                            f"run_battle finalized {battle_tag} and queued the outcome for Discord delivery.",
+                            "Battle-result reporting should include machine-readable proof without leaving the poster to infer context from raw JSON blobs.",
+                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}",
+                            "Poster can append replay/ELO context if available before or after posting this result.",
+                            source="fp.run_battle",
+                            battle_id=battle_tag,
+                            result=_result_str,
+                            team_file=_team_name_ev or "unknown",
+                            opponent=opponent_name,
+                            turns=_turn_count_ev,
+                        ),
                         dedup_window_sec=5,
                     )
                 except Exception as _qe_err:
