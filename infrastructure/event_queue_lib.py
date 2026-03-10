@@ -22,6 +22,8 @@ import uuid
 from pathlib import Path
 from typing import Optional, Callable
 
+from infrastructure.discord_reporting import format_payload_or_message
+
 # Cross-platform file locking
 if sys.platform == "win32":
     import msvcrt
@@ -130,6 +132,7 @@ def queue_event(
     if dedup_window_sec is None:
         dedup_window_sec = DEDUP_WINDOWS.get(event_type, 10)
 
+    content = format_payload_or_message(content)
     content_md5 = _content_hash(event_type, channel, content)
     now = time.time()
 
