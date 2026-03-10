@@ -710,12 +710,14 @@ Examples:
                 DISCORD_CHANNEL_ID,
                 build_contract_payload(
                     "PROOF",
-                    f"batch analysis #{pipeline.current_batch} complete",
-                    f"pipeline.py analyzed the latest batch and extracted the top issues summary for #{DISCORD_CHANNEL_ID}.",
-                    "Batch analysis only helps if the project channel gets a structured, proof-backed summary instead of an ad hoc fragment.",
-                    f"report={report}; top_issues={top_issues[:280]}",
-                    "Webhook mirror send_discord_notification still runs after the queued contract event.",
+                    f"batch analysis #{pipeline.current_batch} ready",
+                    f"pipeline analyzed the latest {BATCH_SIZE}-battle batch and prepared the channel summary.",
+                    "Batch analysis only helps if the report callout is compact, proof-backed, and easy to scan before opening the full report.",
+                    f"report={report.name}; top_issues={top_issues[:280]}",
+                    "Webhook summary should follow with the richer batch breakdown.",
                     source="pipeline.analyze",
+                    report=report.name,
+                    top_issues=top_issues[:280],
                 ),
             )
             # Also send rich webhook notification
