@@ -8,6 +8,7 @@ from copy import deepcopy
 import logging
 from logging.handlers import RotatingFileHandler
 import re
+from pathlib import Path
 import aiohttp
 from datetime import datetime
 
