@@ -4271,10 +4271,15 @@ def _is_stabilizing_recovery_line(
     move_data: dict,
     our_hp_ratio: float,
     incoming_pressure: float | None,
+    end_of_turn_pressure: float = 0.0,
 ) -> bool:
     """
     Return True when an immediate recovery move is likely to improve our net HP
     after a typical incoming hit this turn.
+
+    `incoming_pressure` models the direct hit we expect this turn.
+    `end_of_turn_pressure` models unavoidable follow-up chip (for example Salt Cure)
+    that still happens even if the recovery move resolves.
     """
     if incoming_pressure is None:
         return False
@@ -4285,12 +4290,18 @@ def _is_stabilizing_recovery_line(
     if heal_fraction <= 0:
         return False
 
-    # If expected incoming damage nearly cancels the heal, this is not stabilizing.
-    if incoming_pressure >= heal_fraction * 0.95:
+    total_pressure = max(0.0, incoming_pressure) + max(0.0, end_of_turn_pressure)
+
+    # If the expected pressure nearly cancels the heal, this is not stabilizing.
+    if total_pressure >= heal_fraction * 0.95:
+        return False
+
+    # If we are likely to faint even after recovering, do not treat the line as safe.
+    if our_hp_ratio + heal_fraction <= total_pressure + 0.02:
         return False
 
     post_heal = min(1.0, our_hp_ratio + heal_fraction)
-    post_trade = post_heal - incoming_pressure
+    post_trade = post_heal - total_pressure
     required_gain = max(0.06, heal_fraction * 0.20)
     return post_trade >= our_hp_ratio + required_gain
 
@@ -4726,6 +4737,7 @@ def apply_threat_switch_bias(
                     move_data,
                     our_hp_ratio,
                     incoming_pressure,
+                    end_of_turn_pressure,
                 )
                 if stabilizing_recovery:
                     # If recovery is projected to net HP this turn, keep it live.
@@ -4746,6 +4758,7 @@ def apply_threat_switch_bias(
                         move_data,
                         our_hp_ratio,
                         incoming_pressure,
+                        end_of_turn_pressure,
                     )
                     if stabilizing_recovery:
                         recovery_progress_cap = 1.05
@@ -4831,6 +4844,7 @@ def apply_threat_switch_bias(
                     move_data,
                     our_hp_ratio,
                     incoming_pressure,
+                    end_of_turn_pressure,
                 )
                 if stabilizing_recovery and our_hp_ratio <= 0.72:
                     hold_floor = best_switch_weight * 0.92
