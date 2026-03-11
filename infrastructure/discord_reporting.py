@@ -30,6 +30,7 @@ _TEAM_FILE_RE = re.compile(r"\b([A-Za-z0-9_-]+\.txt)\b")
 _REPORT_FILE_RE = re.compile(r"\b(batch_[A-Za-z0-9._-]+\.md)\b")
 _PATH_HINT_RE = re.compile(r"\b([A-Za-z]:\\[^;]+|/[^;]+(?:\.txt|\.md|\.json))\b")
 _MAX_FIELD_LEN = 340
+_MAX_WHAT_LEN = 420
 _MAX_HEADLINE_LEN = 90
 _MAX_PROOF_ITEMS = 6
 _SECTION_EMOJI = {
@@ -351,22 +352,47 @@ def _headline_from_payload(data: dict) -> str:
     return "update"
 
 
+def _subject_matter_summary(data: dict) -> list[str]:
+    summary: list[str] = []
+
+    strategic_issue = _clean_line(data.get("strategic_issue", ""))
+    if strategic_issue:
+        summary.append(strategic_issue)
+
+    performance_change = _clean_line(data.get("performance_change", ""))
+    if performance_change:
+        summary.append(performance_change)
+
+    loss_pattern = _clean_line(data.get("loss_pattern", ""))
+    if loss_pattern:
+        summary.append(loss_pattern)
+
+    next_battle_action = _clean_line(data.get("next_battle_action", ""))
+    if next_battle_action:
+        summary.append(f"next battle focus: {next_battle_action}")
+
+    return summary
+
+
 def _what_from_payload(data: dict) -> str:
     explicit = _clean_line(data.get("what_happened", ""))
+    subject_bits = _subject_matter_summary(data)
 
     result = _clean_line(data.get("result", ""))
     opponent = _clean_line(data.get("opponent", ""))
     turns = data.get("turns")
     team_file = data.get("team_file")
     if result:
-        parts = [f"battle finished {result}"]
+        battle_line = f"battle finished {result}"
         if opponent:
-            parts.append(f"vs {opponent}")
+            battle_line += f" vs {opponent}"
         if team_file:
-            parts.append(f"using {_short_team_name(team_file)}")
+            battle_line += f" using {_short_team_name(team_file)}"
         if turns not in (None, ""):
-            parts.append(f"in {turns} turns")
-        return _compact_sentence_parts([" ".join(parts)])
+            battle_line += f" in {turns} turns"
+        parts = [battle_line]
+        parts.extend(subject_bits)
+        return _compact_sentence_parts(parts, 320)
 
     batch_results = data.get("batch_results")
     if isinstance(batch_results, list) and batch_results:
@@ -374,22 +400,33 @@ def _what_from_payload(data: dict) -> str:
         wr = (wins / total * 100) if total else 0
         trend = _top_loss_pattern(batch_results)
         coverage = _batch_coverage_line(batch_results, data.get("analysis_count"))
-        return _compact_sentence_parts(
-            [
-                f"{total}-battle window finished at {wins}-{losses} ({wr:.0f}% WR)",
-                coverage,
-                f"top loss pattern: {trend}",
-            ],
-            220,
-        )
+        parts = [
+            f"{total}-battle window finished at {wins}-{losses} ({wr:.0f}% WR)",
+            f"top loss pattern: {trend}",
+        ]
+        if subject_bits:
+            parts.extend(subject_bits)
+            parts.append(coverage)
+            return _compact_sentence_parts(parts, 320)
+        parts.append(coverage)
+        return _compact_sentence_parts(parts, 220)
 
     if data.get("report") or data.get("top_issues"):
         report_name = Path(str(data.get("report") or data.get("report_path") or "report")).name
-        top_issue = _clean_line(data.get("top_issues", "")).split("\n", 1)[0]
-        parts = [f"batch analysis is ready in {report_name}"]
+        raw_top_issues = data.get("top_issues", "")
+        if isinstance(raw_top_issues, str):
+            top_issue = raw_top_issues.splitlines()[0].strip()
+        else:
+            top_issue = _clean_line(raw_top_issues)
+        parts = []
         if top_issue:
             parts.append(f"lead issue: {_truncate(top_issue, 100)}")
-        return _compact_sentence_parts(parts, 220)
+        if subject_bits:
+            parts.extend(subject_bits)
+        parts.append(f"full batch analysis: {report_name}")
+        if not top_issue:
+            parts.insert(0, f"batch analysis is ready in {report_name}")
+        return _compact_sentence_parts(parts, 320 if subject_bits or top_issue else 220)
 
     stalled_minutes = _safe_int(data.get("stalled_minutes"))
     if stalled_minutes is not None:
@@ -401,13 +438,15 @@ def _what_from_payload(data: dict) -> str:
 def _why_from_payload(data: dict) -> str:
     explicit = _clean_line(data.get("why_it_matters", ""))
 
+    if explicit:
+        return _truncate(explicit, 220)
     if data.get("result"):
-        return "battle outcomes are only useful in Discord if the proof is scannable without decoding raw payloads"
+        return "battle updates should tell us what matchup happened, what strategic issue showed up, and what the next ladder-relevant adjustment is"
     if data.get("batch_results"):
-        return "routine updates should highlight scoreline, replay coverage, and the clearest failure pattern instead of dumping raw recap text"
+        return "routine updates should center the win/loss pattern, the matchup issue behind it, and the next battle-relevant adjustment instead of recap mechanics"
     if data.get("report") or data.get("top_issues"):
-        return "batch analysis only helps if the channel gets the lead issue and report hook without duplicate filler"
-    return _truncate(explicit or "pending", 220)
+        return "batch analysis only helps if the channel sees the matchup issue, why it hurts results, and where the full breakdown lives"
+    return "pending"
 
 
 def build_contract_message(
@@ -429,7 +468,7 @@ def build_contract_message(
     parts = [
         f"[{event}] **{_truncate(header, _MAX_HEADLINE_LEN)}**",
         "",
-        _render_section("What happened:", what_happened, limit=220),
+        _render_section("What happened:", what_happened, limit=_MAX_WHAT_LEN),
         "",
         _render_section("Why it matters:", why_it_matters, limit=220),
         "",
