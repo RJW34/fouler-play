@@ -15,14 +15,14 @@ def test_contract_message_shape():
         "reporting path standardized",
         "central helper now builds the required message shape",
         "prevents ad hoc fragments from hitting the project channel",
-        "pytest target=test_contract_message_shape",
+        "pytest target=test_contract_message_shape; source=unit-test",
         "wire remaining call sites if new reporting surfaces appear",
     )
-    assert message.startswith("[CODE_FIX] reporting path standardized")
-    assert "What happened:" in message
-    assert "Why it matters:" in message
-    assert "Proof:" in message
-    assert "Remaining:" in message
+    assert message.startswith("[CODE_FIX] **reporting path standardized**")
+    assert "📝 **What happened:**\ncentral helper now builds the required message shape" in message
+    assert "🎯 **Why it matters:**\nprevents ad hoc fragments from hitting the project channel" in message
+    assert "🔎 **Proof:**\n- pytest target=test_contract_message_shape\n- source `unit-test`" in message
+    assert "⏭️ **Remaining:**\n- wire remaining call sites if new reporting surfaces appear" in message
     assert is_contract_message(message)
 
 
@@ -50,9 +50,9 @@ def test_payload_is_formatted_before_queue(monkeypatch, tmp_path):
     pending = event_queue_lib.get_pending_events()
     assert len(pending) == 1
     content = pending[0]["content"]
-    assert content.startswith("[PROOF] battle result win vs sample")
-    assert "What happened: run_battle queued a result" in content
-    assert "Proof: source=unit-test; battle 1" in content
+    assert content.startswith("[PROOF] **battle result win vs sample**")
+    assert "📝 **What happened:**\nrun_battle queued a result" in content
+    assert "🔎 **Proof:**\n- source `unit-test`\n- battle `1`" in content
     queue_file.unlink(missing_ok=True)
 
 
@@ -78,9 +78,9 @@ def test_payload_formatter_converts_json_payload():
         "read saved report",
     )
     formatted = format_payload_or_message(payload)
-    assert formatted.startswith("[PROOF] loss review ready")
-    assert "What happened: monitor generated a review" in formatted
-    assert "Remaining: read saved report" in formatted
+    assert formatted.startswith("[PROOF] **loss review ready**")
+    assert "📝 **What happened:**\nmonitor generated a review" in formatted
+    assert "⏭️ **Remaining:**\n- read saved report" in formatted
 
 
 def test_payload_formatter_summarizes_battle_result_payload():
@@ -99,11 +99,14 @@ def test_payload_formatter_summarizes_battle_result_payload():
         turns=37,
     )
     formatted = format_payload_or_message(payload)
-    assert formatted.startswith("[PROOF] battle result win vs Sample Opp")
-    assert "What happened: battle finished win vs Sample Opp using 1 stall in 37 turns" in formatted
-    assert "Proof: battle 123; win vs Sample Opp 37 turns; team 1 stall; source=fp.run_battle" in formatted
-    assert "Remaining: append replay or ladder delta if it becomes available" in formatted
-
+    assert formatted.startswith("[PROOF] **battle result win vs Sample Opp**")
+    assert "📝 **What happened:**\nbattle finished win vs Sample Opp using 1 stall in 37 turns" in formatted
+    assert "🎯 **Why it matters:**\nbattle outcomes are only useful in Discord if the proof is scannable without decoding raw payloads" in formatted
+    assert "- battle `123`" in formatted
+    assert "- win vs Sample Opp 37 turns" in formatted
+    assert "- team `1 stall`" in formatted
+    assert "- source `fp.run_battle`" in formatted
+    assert "⏭️ **Remaining:**\n- append replay or ladder delta if it becomes available" in formatted
 
 
 def test_payload_formatter_summarizes_batch_payload_without_blob_dump():
@@ -123,7 +126,24 @@ def test_payload_formatter_summarizes_batch_payload_without_blob_dump():
         analysis_count=1,
     )
     formatted = format_payload_or_message(payload)
-    assert formatted.startswith("[PROOF] batch complete 2-1")
-    assert "What happened: bot completed a battle batch at 2-1 and queued the live summary" in formatted
-    assert "Proof: replay 111: https://replay.pokemonshowdown.com/battle-gen9ou-111; replay 222: https://replay.pokemonshowdown.com/battle-gen9ou-222; batch 2-1; 2 replay link(s); …" in formatted
+    assert formatted.startswith("[PROOF] **batch complete 2-1**")
+    assert "📝 **What happened:**\nbot completed a battle batch at 2-1 and queued the live summary" in formatted
+    assert "- replay `111`: https://replay.pokemonshowdown.com/battle-gen9ou-111" in formatted
+    assert "- replay `222`: https://replay.pokemonshowdown.com/battle-gen9ou-222" in formatted
+    assert "- batch `2-1`" in formatted
+    assert "- `2` replay link(s)" in formatted
+    assert "- …" in formatted
     assert "✅ vs A" not in formatted
+
+
+def test_remaining_and_proof_sections_render_as_compact_lists():
+    message = build_contract_message(
+        "REPORTING_CORRECTION",
+        "format polish applied",
+        "renderer now emits compact status-card spacing",
+        "the project channel reads better when proof and next steps scan as bullets",
+        "artifact batch_2026-03-10.md; report batch_2026-03-10.md; source=tests.discord_reporting",
+        "verify live bot posts; monitor any awkward wrap cases",
+    )
+    assert "🔎 **Proof:**\n- artifact `batch_2026-03-10.md`\n- report `batch_2026-03-10.md`\n- source `tests.discord_reporting`" in message
+    assert "⏭️ **Remaining:**\n- verify live bot posts\n- monitor any awkward wrap cases" in message

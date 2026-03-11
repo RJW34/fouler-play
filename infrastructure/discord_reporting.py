@@ -32,6 +32,12 @@ _PATH_HINT_RE = re.compile(r"\b([A-Za-z]:\\[^;]+|/[^;]+(?:\.txt|\.md|\.json))\b"
 _MAX_FIELD_LEN = 340
 _MAX_HEADLINE_LEN = 90
 _MAX_PROOF_ITEMS = 4
+_SECTION_EMOJI = {
+    "What happened:": "📝",
+    "Why it matters:": "🎯",
+    "Proof:": "🔎",
+    "Remaining:": "⏭️",
+}
 
 
 def _clean_line(value: object) -> str:
@@ -139,6 +145,59 @@ def _compact_sentence_parts(parts: Sequence[str], limit: int = _MAX_FIELD_LEN) -
         return _truncate(joined, limit)
     suffix = "" if len(trimmed) == len(cleaned) else "; …"
     return "; ".join(trimmed) + suffix
+
+
+def _split_semicolon_list(text: str) -> list[str]:
+    cleaned = _clean_line(text)
+    if not cleaned or cleaned == "pending":
+        return []
+    parts = [part.strip() for part in cleaned.split(";")]
+    return [part for part in parts if part]
+
+
+def _stylize_proof_item(item: str) -> str:
+    cleaned = _clean_line(item)
+    if not cleaned:
+        return "pending"
+
+    patterns = [
+        (r"^source=(.+)$", lambda m: f"source `{m.group(1)}`"),
+        (r"^team (.+)$", lambda m: f"team `{m.group(1)}`"),
+        (r"^report (.+)$", lambda m: f"report `{m.group(1)}`"),
+        (r"^artifact (.+)$", lambda m: f"artifact `{m.group(1)}`"),
+        (r"^battle (.+)$", lambda m: f"battle `{m.group(1)}`"),
+        (r"^replay ([^:]+):\s+(.+)$", lambda m: f"replay `{m.group(1)}`: {m.group(2)}"),
+        (r"^(\d+) replay link\(s\)$", lambda m: f"`{m.group(1)}` replay link(s)"),
+        (r"^batch (.+)$", lambda m: f"batch `{m.group(1)}`"),
+        (r"^loss reviews queued=(.+)$", lambda m: f"loss reviews queued=`{m.group(1)}`"),
+        (r"^top issue (.+)$", lambda m: f"top issue `{m.group(1)}`"),
+        (r"^ELO (.+)$", lambda m: f"ELO `{m.group(1)}`"),
+    ]
+    for pattern, formatter in patterns:
+        match = re.match(pattern, cleaned)
+        if match:
+            return formatter(match)
+    return cleaned
+
+
+def _render_section(label: str, value: object, *, bulletize: bool = False, limit: int = _MAX_FIELD_LEN) -> str:
+    cleaned = _truncate(value, limit) or "pending"
+    emoji = _SECTION_EMOJI.get(label, "•")
+    lines = [f"{emoji} **{label}**"]
+
+    if bulletize:
+        items = _split_semicolon_list(cleaned)
+        if items:
+            if label == "Proof:":
+                lines.extend(f"- {_stylize_proof_item(item)}" for item in items)
+            else:
+                lines.extend(f"- {item}" for item in items)
+        else:
+            lines.append("- pending")
+    else:
+        lines.append(cleaned)
+
+    return "\n".join(lines)
 
 
 def _proof_from_payload(data: dict) -> str:
@@ -304,11 +363,15 @@ def build_contract_message(
         raise ValueError("Headline is required")
 
     parts = [
-        f"[{event}] {_truncate(header, _MAX_HEADLINE_LEN)}",
-        f"What happened: {_truncate(what_happened) or 'pending'}",
-        f"Why it matters: {_truncate(why_it_matters) or 'pending'}",
-        f"Proof: {_truncate(proof) or 'pending'}",
-        f"Remaining: {_truncate(remaining, 220) or 'pending'}",
+        f"[{event}] **{_truncate(header, _MAX_HEADLINE_LEN)}**",
+        "",
+        _render_section("What happened:", what_happened, limit=220),
+        "",
+        _render_section("Why it matters:", why_it_matters, limit=220),
+        "",
+        _render_section("Proof:", proof, bulletize=True),
+        "",
+        _render_section("Remaining:", remaining, bulletize=True, limit=220),
     ]
     return "\n".join(parts)
 
@@ -318,7 +381,7 @@ def is_contract_message(message: str) -> bool:
         return False
     stripped = message.strip()
     header = stripped.splitlines()[0] if stripped else ""
-    match = _HEADER_RE.match(header)
+    match = _HEADER_RE.match(header.replace("**", ""))
     if not match:
         return False
     if match.group("event") not in VALID_EVENT_CLASSES:
