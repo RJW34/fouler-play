@@ -24,6 +24,39 @@ replay_analysis/           Morning report generator
 
 The bot uses a 1-ply eval engine with 9 penalty layers to make decisions. It plays teams faithfully to their archetype (fat/stall) rather than optimizing for cheese wins.
 
+## Autoresearch MVP
+
+Fouler Play now includes a deterministic end-to-end autoresearch loop built on artifacts the bot already produces:
+- `battle_stats.json` for the recent result window
+- `replay_analysis/*.json` for saved replay logs
+- `logs/decision_traces/*.json` for per-turn choice/fallback evidence
+
+Run it directly:
+
+```bash
+python pipeline.py autoresearch -n 30
+```
+
+Or let the normal batch pipeline trigger it alongside the existing batch report:
+
+```bash
+python pipeline.py analyze -n 30
+```
+
+Outputs:
+- `replay_analysis/autoresearch_latest.json`
+- `replay_analysis/reports/autoresearch_latest.md`
+
+Discord wiring:
+- routine summary -> `1466691161363054840`
+- deeper autoresearch post -> `1466869808200028264`
+
+Current MVP focuses on real recurring-loss signals rather than fake AI commentary:
+- hazard-pressure failures
+- early-material bleeding
+- long-game/endgame conversion losses
+- decision-trace fallback/timeout instability
+
 ## Agent Instructions
 
 See [CLAUDE.md](CLAUDE.md) for autonomous agent operating instructions (DEKU/BAKUGO machines).

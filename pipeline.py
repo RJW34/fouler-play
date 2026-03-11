@@ -7,6 +7,7 @@ Orchestrates batch analysis, AI-powered insights, and notification delivery.
 Usage:
   python pipeline.py watch        # Daemon mode: watch for batch completions
   python pipeline.py analyze      # Manually trigger analysis on last N battles
+  python pipeline.py autoresearch # Run deterministic recent-battle autoresearch only
   python pipeline.py report       # Show latest report
 """
 
@@ -32,6 +33,7 @@ except ImportError:
     pass  # python-dotenv not required, but recommended
 
 from replay_analysis.batch_analyzer import BatchAnalyzer
+from replay_analysis.autoresearch import run_autoresearch
 from infrastructure.event_queue_lib import queue_event
 from infrastructure.discord_reporting import build_contract_payload
 
@@ -109,6 +111,9 @@ class Pipeline:
         print(f"{'='*60}\n")
         
         report = self.analyzer.generate_report(last_n=BATCH_SIZE)
+        autoresearch_report = run_autoresearch(last_n=BATCH_SIZE, queue_discord=True)
+        if autoresearch_report.get("top_issue"):
+            print(f"🧠 Autoresearch top issue: {autoresearch_report['top_issue']['title']}")
         
         if report:
             # Update state
@@ -670,16 +675,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python pipeline.py watch          # Start daemon (monitors battles)
-  python pipeline.py analyze        # Run analysis now
-  python pipeline.py analyze -n 20  # Analyze last 20 battles
-  python pipeline.py report         # Show latest report
+  python pipeline.py watch               # Start daemon (monitors battles)
+  python pipeline.py analyze             # Run analysis now
+  python pipeline.py analyze -n 20       # Analyze last 20 battles
+  python pipeline.py autoresearch -n 20  # Run deterministic autoresearch only
+  python pipeline.py report              # Show latest report
         """
     )
     
     parser.add_argument(
         "command",
-        choices=["watch", "analyze", "report"],
+        choices=["watch", "analyze", "autoresearch", "report"],
         help="Command to execute"
     )
     
@@ -724,6 +730,9 @@ Examples:
             pipeline.send_discord_notification(report)
             pipeline.send_wake_notification(report, top_issues)
             print(f"\n📄 View report: cat {report}")
+    elif args.command == "autoresearch":
+        report = run_autoresearch(last_n=args.num_battles, queue_discord=True)
+        print(json.dumps(report, indent=2))
     elif args.command == "report":
         pipeline.show_latest_report()
 
