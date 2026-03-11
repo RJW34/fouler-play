@@ -4,18 +4,18 @@
 
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
 **Branch:** `master` is the live deployment/base branch and now contains the latest Codex-readiness/doc cleanup merged on 2026-03-09 (`a8b2d31`). Treat older branch-specific notes as historical unless a newer branch is explicitly called out here.
-**Bot Account:** BugInTheCode on DEKU, ALL CHUNG on BAKUGO
-**Updated:** 2026-03-09
+**Bot Account:** Use live `.env` / process truth, not hard-coded names. As of 2026-03-10, BAKUGO/MAGNETON is running `PS_USERNAME=npctypebeat`.
+**Updated:** 2026-03-10
 
 ---
 
 ## Standing Rules (check every session — fix drift immediately)
 
-1. **3 concurrent battles per machine.** DEKU runs `--max-concurrent-battles 3` with `--search-parallelism 2`. BAKUGO runs `--max-concurrent-battles 3` with same parallelism. Total: 6 battles across both machines.
-2. **Analysis posts to #project-fouler-play.** Batch analysis reports (with AI insights) post to #project-fouler-play, NOT #deku-workspace. Discord delivery: use OpenClaw event queue.
-3. **Analysis source: external reasoning agent, not local LLM.** Batch analysis should use a strong external reasoning model via OpenClaw/OpenAI-compatible tooling. Claude (Opus or Sonnet) remains the preferred default for Pokemon-competent batch analysis today; qwen2.5-coder:3b and similar local lightweight models are banned for Pokemon analysis (hallucinations).
-4. **One fouler-play process per machine.** Run directly (not systemd) on DEKU. Start BAKUGO's bot manually when online. Check: `pgrep -c -f "run.py.*BugInTheCode"` should return 1 on DEKU, `pgrep -c -f "run.py.*ALL_CHUNG"` should return 1 on BAKUGO (when running).
-5. **One source of truth.** This file. `fouler-play-v2/` is archived. `BOT_PROTOCOL.md` is supplementary. If they conflict, this file wins.
+1. **Do not hard-code stale concurrency targets.** Live launcher truth wins. As of 2026-03-10, BAKUGO/MAGNETON is running `--max-concurrent-battles 1` with `--search-parallelism 1` via `infrastructure/windows/player_loop.bat` -> `start_one_touch.bat`. If concurrency changes later, update launcher/docs together.
+2. **Analysis posts to Fouler Play routine/research channels.** Use the configured channel ids (`FOULER_ROUTINE_CHANNEL=1466691161363054840`, `FOULER_RESEARCH_CHANNEL=1466869808200028264`) rather than stale channel-name prose.
+3. **Analysis source: external reasoning agent, not local lightweight LLM.** Batch analysis should use a strong external reasoning model via OpenClaw/OpenAI-compatible tooling; stale Ollama/qwen local-analysis assumptions are drift unless explicitly re-approved.
+4. **One fouler-play runtime on BAKUGO.** Verify by the actual running `run.py` command line, not by old account-name grep patterns. As of 2026-03-10 the live process is `python run.py ... --ps-username "npctypebeat" ... --max-concurrent-battles "1"` launched from `player_loop.bat`.
+5. **One source of truth.** This file plus current launcher/process evidence. If docs disagree with the running launcher or command line, fix the docs immediately.
 
 ---
 
@@ -128,15 +128,15 @@ These systems are **complete and working**. Do not recreate them from scratch:
 ## BAKUGO Action Items
 
 ### Keep the Bot Running
-1. Ensure `player_loop.bat` is running via scheduled task
+1. Ensure `player_loop.bat` is running (directly or via scheduled task)
 2. After each batch, verify `battle_stats.json` has new entries and push
 3. If the bot disconnects or crashes, check logs and restart
 
 ### Verified Setup
-- [x] Bot connects to Showdown and plays games (ALL CHUNG)
+- [x] Bot connects to Showdown and plays games (current live account: `npctypebeat` on 2026-03-10)
 - [x] battle_stats.json is being written (check file for current count)
 - [x] Replays saved to replay_analysis/
-- [x] Player loop runs unattended (scheduled task installed)
+- [x] Player loop runs unattended / looping on Windows
 - [x] Push battle_stats.json after each batch
 
 ---
@@ -146,7 +146,7 @@ These systems are **complete and working**. Do not recreate them from scratch:
 ---
 
 ## Bug Reports
-- 2026-02-06: Some files still reference old bot account "LEBOTJAMESXD" (check `bot_monitor.py`, `replay_analysis/turn_review.py`, `register_ps_account.py`). Should use "ALL CHUNG" or read from .env.
+- 2026-03-10: Drift audit found stale hard-coded account/runtime references (`ALL CHUNG`, `BugInTheCode`, `LEBOTJAMESXD*`, old concurrency targets, old task name/channel prose). Repo should prefer `.env` / current process truth over fixed names wherever practical.
 
 ### Decision Engine Bugs (from 2026-02-14 battle analysis)
 

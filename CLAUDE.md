@@ -2,7 +2,7 @@
 
 ## Mission
 
-Build an **overnight team-testing service** for a competitive Pokemon player. The player loads fat/stall teams, the bot plays them on ladder while they sleep, and in the morning they get a report: which matchups were hard, which Pokemon underperformed, which replays to study. The bot account is **"ALL CHUNG"** on Pokemon Showdown, playing **gen9ou**.
+Build an **overnight team-testing service** for a competitive Pokemon player. The player loads fat/stall teams, the bot plays them on ladder while they sleep, and in the morning they get a report: which matchups were hard, which Pokemon underperformed, which replays to study. The live bot account on this machine is the `.env`-configured `PS_USERNAME` (currently **"npctypebeat"** on BAKUGO/MAGNETON), playing **gen9ou**.
 
 **Why 1700 ELO matters:** At 1200 (where we are now), opponents play poorly and the data is meaningless for team evaluation. The bot must reach **1700+** so that matchup data reflects how the team performs against competent opponents. 1700 is not the goal — it's the minimum quality threshold for useful test data.
 
@@ -64,10 +64,10 @@ Use your current coding-agent runtime for headless sub-agents. The exact harness
 **You own:** Bot operation, battle data collection, environment, poke-engine builds, ELO monitoring. Streaming is secondary.
 
 ### Your loop: `infrastructure/windows/player_loop.bat`
-Runs continuously. Pulls latest code -> plays a batch of games -> pushes stats/replays -> checks for new deploys. Install as a persistent scheduled task:
+Runs continuously. Optionally pulls latest code -> runs `start_one_touch.bat` for a configured batch -> loops again. The current Windows runtime is intentionally **single-worker by default** unless explicitly overridden via environment or launcher args. Install as a persistent scheduled task:
 ```
 Run as Administrator: infrastructure\windows\install_task.bat
-schtasks /run /tn "FoulerPlayPlayerLoop"
+schtasks /run /tn "FoulerPlayOneTouch"
 ```
 
 ### Your responsibilities (in priority order)

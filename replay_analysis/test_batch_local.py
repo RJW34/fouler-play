@@ -4,6 +4,7 @@ Test batch analyzer with local replay files.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Dict, List
@@ -46,7 +47,7 @@ def analyze_local_replays(num_replays: int = 5):
     print(f"Loaded {len(replays)} replays\n")
     
     # Create analyzer components
-    reviewer = TurnReviewer(bot_username="BugInTheCode")
+    reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "ALL CHUNG"))
     analyzer = BatchAnalyzer()
     
     # Extract turn reviews
@@ -68,7 +69,8 @@ def analyze_local_replays(num_replays: int = 5):
             result = "unknown"
             if "winner" in replay_data:
                 winner = replay_data["winner"]
-                if "BugInTheCode" in winner or "buginthecode" in winner.lower():
+                bot_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+                if bot_username.lower() in winner.lower():
                     result = "win"
                     stats["wins"] += 1
                 else:

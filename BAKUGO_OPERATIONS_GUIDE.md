@@ -1,4 +1,4 @@
-# BAKUGO Operations Guide — ALL CHUNG (MAGNETON/Windows)
+# BAKUGO Operations Guide — live PS_USERNAME runtime (MAGNETON/Windows)
 
 ## Configuration Details
 
@@ -6,19 +6,19 @@
 |------|-------|
 | **Install path** | `C:\Users\Ryan\projects\fouler-play\` |
 | **Branch** | `master` for deployment/base; check `TASKBOARD.md` first if a newer docs/coding-agent branch is temporarily ahead |
-| **Bot account** | ALL CHUNG |
-| **Credentials** | `.env` file (PS_USERNAME, PS_PASSWORD) |
+| **Bot account** | `.env` `PS_USERNAME` (currently `npctypebeat` on 2026-03-10) |
+| **Credentials** | `.env` file (`PS_USERNAME`, `PS_PASSWORD`) |
 | **Logs** | `logs/` dir (rotating, 10MB max, 3 backups) |
-| **Start method** | `python launch.py 30 3` (30 battles, 3 concurrent) |
-| **Background/unattended** | `FoulerPlayWatchdog` scheduled task (1-min interval) runs `scripts/watchdog.ps1` |
+| **Start method** | `infrastructure\windows\player_loop.bat` -> `start_one_touch.bat` (current live process: 30 battles, 1 concurrent) |
+| **Background/unattended** | `FoulerPlayOneTouch` scheduled task if installed; otherwise verify the looping `player_loop.bat` cmd.exe is alive |
 | **Streaming server** | `python streaming/serve_obs_page.py` (port 8777) |
 | **OBS WebSocket** | `ws://127.0.0.1:4455` (no auth) |
 
 ## Key .env Settings
 ```
-PS_USERNAME=ALL CHUNG
-SHOWDOWN_ACCOUNTS=allchung,buginthecode
-MAX_CONCURRENT_BATTLES=3
+PS_USERNAME=npctypebeat
+SHOWDOWN_ACCOUNTS=npctypebeat
+MAX_CONCURRENT_BATTLES=1
 LOSS_TRIGGERED_DRAIN=0
 TEAM_NAMES=gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo
 BOT_DISPLAY_NAME=💥 BAKUGO
@@ -27,9 +27,9 @@ BOT_DISPLAY_NAME=💥 BAKUGO
 ## Quick Commands
 
 ```powershell
-# Start batch (foreground)
+# Start loop/runtime (foreground)
 cd C:\Users\Ryan\projects\fouler-play
-python launch.py 30 3
+infrastructure\windows\player_loop.bat
 
 # Kill all bot processes
 Get-WmiObject Win32_Process -Filter "Name='python.exe'" | Where-Object { $_.CommandLine -match "run\.py|bot_monitor|launch\.py|serve_obs" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
@@ -49,8 +49,8 @@ Start-Process python -ArgumentList "streaming/serve_obs_page.py" -WorkingDirecto
 
 | Symptom | Fix |
 |---------|-----|
-| Bot not searching | Kill all python, restart `launch.py` |
+| Bot not searching | Kill stale bot python, then restart `infrastructure\windows\player_loop.bat` |
 | Unicode errors in log | Cosmetic only, non-fatal |
 | `file_log_handler` missing | Cosmetic, non-fatal |
 | OBS showing homepage | Battle URL missing spectator hash — restart serve_obs_page |
-| Watchdog not restarting | `Get-ScheduledTask -TaskName FoulerPlayWatchdog` |
+| Scheduled task confusion | `Get-ScheduledTask -TaskName FoulerPlayOneTouch -ErrorAction SilentlyContinue` |

@@ -2,6 +2,7 @@
 """Quick batch analysis using local replay JSONs."""
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -19,7 +20,7 @@ REPORTS_DIR = REPLAY_DIR / "reports"
 
 def analyze_local_replays(max_count: int = 20):
     """Analyze local replay JSONs."""
-    reviewer = TurnReviewer(bot_username="BugInTheCode")
+    reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "ALL CHUNG"))
     replay_files = sorted(REPLAY_DIR.glob("gen9ou-*.json"))[-max_count:]
     
     print(f"Found {len(replay_files)} replay files to analyze")
@@ -46,7 +47,8 @@ def analyze_local_replays(max_count: int = 20):
             result = "unknown"
             if "log" in replay_data:
                 log = replay_data["log"]
-                if "BugInTheCode won the battle!" in log or "|win|BugInTheCode" in log:
+                bot_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+                if f"{bot_username} won the battle!" in log or f"|win|{bot_username}" in log:
                     result = "win"
                     stats["wins"] += 1
                 elif "won the battle!" in log:
@@ -81,7 +83,8 @@ def build_prompt(reviews: List[str], stats: Dict) -> str:
     """Build analysis prompt for Ollama."""
     winrate = stats["wins"] / stats["total"] if stats["total"] > 0 else 0
     
-    prompt = f"""You are analyzing Pokemon Showdown Gen 9 OU battle replays for a competitive bot named BugInTheCode.
+    bot_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+    prompt = f"""You are analyzing Pokemon Showdown Gen 9 OU battle replays for a competitive bot named {bot_username}.
 
 BATCH STATISTICS:
 - Total battles analyzed: {stats['analyzed']}
