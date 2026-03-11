@@ -695,6 +695,11 @@ Examples:
         default=BATCH_SIZE,
         help=f"Number of battles to analyze (default: {BATCH_SIZE})"
     )
+    parser.add_argument(
+        "--no-discord",
+        action="store_true",
+        help="Skip queueing autoresearch Discord events (autoresearch command only)"
+    )
     
     args = parser.parse_args()
     
@@ -731,7 +736,7 @@ Examples:
             pipeline.send_wake_notification(report, top_issues)
             print(f"\n📄 View report: cat {report}")
     elif args.command == "autoresearch":
-        report = run_autoresearch(last_n=args.num_battles, queue_discord=True)
+        report = run_autoresearch(last_n=args.num_battles, queue_discord=not args.no_discord)
         print(json.dumps(report, indent=2))
     elif args.command == "report":
         pipeline.show_latest_report()

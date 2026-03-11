@@ -1,4 +1,6 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
 
 from replay_analysis.autoresearch import AutoResearcher
@@ -130,3 +132,18 @@ def test_autoresearch_detects_long_game_conversion_issue(tmp_path: Path):
 
     issue_keys = [issue["key"] for issue in report["issues"]]
     assert "endgame_conversion" in issue_keys
+
+
+def test_pipeline_autoresearch_accepts_no_discord_flag():
+    repo = Path(__file__).resolve().parent.parent
+    result = subprocess.run(
+        [sys.executable, "pipeline.py", "autoresearch", "-n", "1", "--no-discord"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert "window_size" in payload
