@@ -2,7 +2,7 @@
 REM =============================================================================
 REM Fouler-Play Player Loop (Windows)
 REM =============================================================================
-REM Single-battle batch loop. Configure credentials and teams in .env.
+REM Batch loop wrapper. Current default runtime is single-worker unless overridden by env/launcher settings.
 REM =============================================================================
 
 setlocal EnableExtensions DisableDelayedExpansion
@@ -18,7 +18,7 @@ echo ==========================================
 echo  Fouler-Play Player Loop starting
 echo  Repo: %REPO_DIR%
 echo  Batch size: %BATCH_SIZE%
-echo  Mode: single battle worker
+echo  Mode: current launcher default worker profile
 echo ==========================================
 
 :loop_start

@@ -49,4 +49,8 @@ async def register_account(username, password):
         return False
 
 if __name__ == "__main__":
-    asyncio.run(register_account("LEBOTJAMESXD005", "LeBotPassword2026!"))
+    username = input("Showdown username: ").strip()
+    password = input("Showdown password: ").strip()
+    if not username or not password:
+        raise SystemExit("Username/password required")
+    asyncio.run(register_account(username, password))
