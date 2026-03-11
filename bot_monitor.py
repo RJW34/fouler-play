@@ -514,7 +514,7 @@ class BotMonitor:
                 f"bot_monitor closed a live batch with {len(self.batch_results)} battle(s) and queued the concise Discord summary.",
                 "Routine batch updates should show the scoreline, replay coverage, and follow-up work without dumping the raw multiline summary blob into Proof.",
                 msg,
-                f"Loss review queue: {len(self.batch_losses)} replay(s) pending deeper analysis.",
+                f"Review next queued loss replay ({len(self.batch_losses)} pending) if the loss pattern keeps repeating.",
                 source="bot_monitor.batch_complete",
                 batch_results=self.batch_results,
                 analysis_count=len(self.batch_losses),

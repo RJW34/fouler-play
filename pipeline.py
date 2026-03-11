@@ -714,7 +714,7 @@ Examples:
                     f"pipeline analyzed the latest {BATCH_SIZE}-battle batch and prepared the channel summary.",
                     "Batch analysis only helps if the report callout is compact, proof-backed, and easy to scan before opening the full report.",
                     f"report={report.name}; top_issues={top_issues[:280]}",
-                    "Webhook summary should follow with the richer batch breakdown.",
+                    "Open the report if the lead issue still needs a concrete fix after the summary.",
                     source="pipeline.analyze",
                     report=report.name,
                     top_issues=top_issues[:280],
