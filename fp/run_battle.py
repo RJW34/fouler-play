@@ -2523,22 +2523,61 @@ async def pokemon_battle(
                         else "unknown"
                     )
                     _turn_count_ev = getattr(battle, "turn", None)
+                    _recent_summary = ""
+                    try:
+                        from pathlib import Path as _Path
+                        _stats_path = _Path(__file__).resolve().parent.parent / "battle_stats.json"
+                        if _stats_path.exists():
+                            _stats_data = json.loads(_stats_path.read_text(encoding="utf-8"))
+                            _recent_battles = _stats_data.get("battles", [])[-5:]
+                            if _recent_battles:
+                                _recent_wins = sum(1 for _b in _recent_battles if str(_b.get("result", "")).lower() == "win")
+                                _recent_losses = sum(1 for _b in _recent_battles if str(_b.get("result", "")).lower() == "loss")
+                                _recent_total = len(_recent_battles)
+                                _recent_wr = int(round((_recent_wins / _recent_total) * 100)) if _recent_total else 0
+                                _recent_summary = f"last {_recent_total}: {_recent_wins}-{_recent_losses} ({_recent_wr}% WR)"
+                    except Exception:
+                        _recent_summary = ""
+
+                    _decisive_reason = ""
+                    if _result_str == "loss":
+                        if "forfeit" in (msg or "").lower():
+                            _decisive_reason = "Battle ended on forfeit rather than a clean board finish."
+                        elif "inactive" in (msg or "").lower() or "disconnect" in (msg or "").lower():
+                            _decisive_reason = "Loss came from inactivity/disconnect behavior, so this looks operational before it looks strategic."
+                        elif opponent_name:
+                            _decisive_reason = f"{opponent_name} closed the endgame before the bot stabilized the board."
+                    elif _result_str == "win" and opponent_name:
+                        _decisive_reason = f"{opponent_name} was converted once the bot secured the favorable endgame."
+
+                    _next_action = ""
+                    if _result_str == "loss":
+                        _next_action = "Review the replay before the next queue and tag whether this was policy, matchup, or ops."
+                    elif _result_str == "win":
+                        _next_action = "Keep watching whether this line keeps converting in the next few games."
+
                     queue_event(
                         "battle_result",
                         "battles",
                         build_contract_payload(
                             "PROOF",
                             f"battle result {_result_str} vs {opponent_name}",
-                            f"run_battle finalized {battle_tag} and queued the outcome for Discord delivery.",
-                            "Battle-result reporting should include machine-readable proof without leaving the poster to infer context from raw JSON blobs.",
-                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}",
-                            "Poster can append replay/ELO context if available before or after posting this result.",
+                            f"Battle {battle_tag} ended {_result_str} against {opponent_name}.",
+                            "Operator-facing battle posts should immediately show whether the bot is climbing through repeatable play, variance, or an operational failure.",
+                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={replay_url or ''}",
+                            "Append replay or ladder delta if more context lands after posting.",
                             source="fp.run_battle",
                             battle_id=battle_tag,
                             result=_result_str,
                             team_file=_team_name_ev or "unknown",
                             opponent=opponent_name,
                             turns=_turn_count_ev,
+                            replay_url=replay_url,
+                            elo_before=_elo_before_val,
+                            elo_after=elo_after if 'elo_after' in locals() else None,
+                            recent_record=_recent_summary,
+                            decisive_reason=_decisive_reason,
+                            next_battle_action=_next_action,
                         ),
                         dedup_window_sec=5,
                     )

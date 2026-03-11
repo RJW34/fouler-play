@@ -22,6 +22,7 @@ TRACE_DIR = PROJECT_ROOT / "logs" / "decision_traces"
 REPORTS_DIR = REPLAY_DIR / "reports"
 AUTORESEARCH_JSON_PATH = REPLAY_DIR / "autoresearch_latest.json"
 AUTORESEARCH_MD_PATH = REPLAY_DIR / "reports" / "autoresearch_latest.md"
+BATCH_HISTORY_DIR = REPLAY_DIR / "batches"
 
 ROUTINE_CHANNEL = os.getenv("FOULER_ROUTINE_CHANNEL", "1466691161363054840")
 RESEARCH_CHANNEL = os.getenv("FOULER_RESEARCH_CHANNEL", "1466869808200028264")
@@ -46,7 +47,9 @@ class AutoResearcher:
         self.replay_dir = self.project_root / "replay_analysis"
         self.trace_dir = self.project_root / "logs" / "decision_traces"
         self.reports_dir = self.replay_dir / "reports"
+        self.batch_history_dir = self.replay_dir / "batches"
         self.reports_dir.mkdir(parents=True, exist_ok=True)
+        self.batch_history_dir.mkdir(parents=True, exist_ok=True)
 
     def load_battles(self) -> list[dict[str, Any]]:
         if not self.battle_stats_path.exists():
@@ -58,6 +61,13 @@ class AutoResearcher:
 
     def recent_window(self, battles: list[dict[str, Any]], last_n: int = 30) -> list[dict[str, Any]]:
         return battles[-last_n:] if len(battles) > last_n else battles
+
+    def prior_window(self, battles: list[dict[str, Any]], last_n: int = 30) -> list[dict[str, Any]]:
+        if len(battles) <= last_n:
+            return []
+        start = max(0, len(battles) - (last_n * 2))
+        end = max(0, len(battles) - last_n)
+        return battles[start:end]
 
     def _normalize_replay_id(self, replay_id: str | None) -> str:
         if not replay_id:
@@ -112,13 +122,13 @@ class AutoResearcher:
         our_rocks = False
         opp_rocks = False
         for line in lines:
-            if "|-sidestart|" in line and "Stealth Rock" in line:
+            if "|-sidestart|" in line and ("Stealth Rock" in line or "Spikes" in line):
                 if f"|{bot_slot}:" in line:
                     opp_rocks = True
                 else:
                     our_rocks = True
         if opp_rocks and not our_rocks:
-            return True, "opponent got Stealth Rock up while bot never established its own hazards"
+            return True, "opponent won the hazard race while bot never established its own chip engine"
         if not our_rocks:
             return True, "bot never established Stealth Rock or equivalent chip pressure"
         return False, ""
@@ -157,22 +167,12 @@ class AutoResearcher:
         return False, ""
 
     def _trace_issue(self, traces: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
-        move_counter: Counter[str] = Counter()
         choice_counter: Counter[str] = Counter()
         reasons: list[str] = []
         for trace in traces:
             choice = str(trace.get("choice", "")).strip()
             if choice:
                 choice_counter[choice] += 1
-            snapshot = trace.get("snapshot", {}) or {}
-            active = (snapshot.get("user", {}) or {}).get("active", {}) if isinstance(snapshot, dict) else {}
-            moves = active.get("moves", []) if isinstance(active, dict) else []
-            for move in moves:
-                if isinstance(move, dict):
-                    name = str(move.get("id") or move.get("move") or "").strip()
-                    disabled = bool(move.get("disabled", False))
-                    if name and not disabled:
-                        move_counter[name] += 1
             reason = str(trace.get("reason", "")).strip()
             if reason:
                 reasons.append(reason)
@@ -186,8 +186,125 @@ class AutoResearcher:
                 findings.append(f"decision traces show {timeout_count} fallback/timeout/error selections")
         return findings, reasons
 
-    def analyze(self, *, last_n: int = 30) -> dict[str, Any]:
-        battles = self.load_battles()
+    def _build_batch_identity(self, window: list[dict[str, Any]]) -> dict[str, Any]:
+        if not window:
+            return {
+                "id": "batch-empty",
+                "start_battle_id": None,
+                "end_battle_id": None,
+                "start_timestamp": None,
+                "end_timestamp": None,
+                "size": 0,
+            }
+        start = window[0]
+        end = window[-1]
+        end_slug = str(end.get("battle_id") or "unknown").replace("battle-gen9ou-", "")[:16]
+        return {
+            "id": f"batch-{len(window)}-{end_slug}",
+            "start_battle_id": start.get("battle_id"),
+            "end_battle_id": end.get("battle_id"),
+            "start_timestamp": start.get("timestamp"),
+            "end_timestamp": end.get("timestamp"),
+            "size": len(window),
+        }
+
+    def _summarize_window(self, window: list[dict[str, Any]]) -> dict[str, Any]:
+        wins = sum(1 for battle in window if battle.get("result") == "win")
+        losses = sum(1 for battle in window if battle.get("result") == "loss")
+        total = len(window)
+        win_rate = (wins / total) if total else 0.0
+        teams = Counter(str(battle.get("team_file", "unknown")) for battle in window)
+        return {
+            "wins": wins,
+            "losses": losses,
+            "total": total,
+            "win_rate": win_rate,
+            "record": f"{wins}-{losses} ({round(win_rate * 100)}% WR)" if total else "0-0 (0% WR)",
+            "top_teams": [{"team": team, "count": count} for team, count in teams.most_common(3)],
+        }
+
+    def _compare_issue_maps(self, current: dict[str, Any], previous: dict[str, Any]) -> dict[str, Any]:
+        current_issues = {issue["key"]: issue for issue in current.get("issues", [])}
+        previous_issues = {issue["key"]: issue for issue in previous.get("issues", [])}
+        keys = sorted(set(current_issues) | set(previous_issues))
+        shifts = []
+        for key in keys:
+            cur = current_issues.get(key)
+            prev = previous_issues.get(key)
+            cur_count = int((cur or {}).get("evidence_count", 0))
+            prev_count = int((prev or {}).get("evidence_count", 0))
+            delta = cur_count - prev_count
+            if delta == 0 and cur_count == 0 and prev_count == 0:
+                continue
+            shifts.append({
+                "key": key,
+                "title": (cur or prev or {}).get("title", key),
+                "current_count": cur_count,
+                "previous_count": prev_count,
+                "delta": delta,
+                "direction": "worse" if delta > 0 else "better" if delta < 0 else "flat",
+            })
+        shifts.sort(key=lambda item: (abs(item["delta"]), item["current_count"], item["title"]), reverse=True)
+        return {
+            "top_shift": shifts[0] if shifts else None,
+            "shifts": shifts[:5],
+        }
+
+    def _compare_opponents(self, current: dict[str, Any], previous: dict[str, Any]) -> list[dict[str, Any]]:
+        current_map = {item["pokemon"]: item["count"] for item in current.get("top_opponent_pokemon", [])}
+        previous_map = {item["pokemon"]: item["count"] for item in previous.get("top_opponent_pokemon", [])}
+        rows = []
+        for pokemon in sorted(set(current_map) | set(previous_map)):
+            delta = current_map.get(pokemon, 0) - previous_map.get(pokemon, 0)
+            if delta:
+                rows.append({
+                    "pokemon": pokemon,
+                    "current_count": current_map.get(pokemon, 0),
+                    "previous_count": previous_map.get(pokemon, 0),
+                    "delta": delta,
+                })
+        rows.sort(key=lambda row: abs(row["delta"]), reverse=True)
+        return rows[:5]
+
+    def _build_regression_summary(self, current: dict[str, Any], previous: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not previous:
+            return None
+        current_wr = float(current.get("win_rate", 0.0))
+        previous_wr = float(previous.get("win_rate", 0.0))
+        wr_delta = current_wr - previous_wr
+        issue_compare = self._compare_issue_maps(current, previous)
+        opponent_shifts = self._compare_opponents(current, previous)
+        status = "flat"
+        if wr_delta >= 0.10:
+            status = "improving"
+        elif wr_delta <= -0.10:
+            status = "regressing"
+        elif issue_compare.get("top_shift") and issue_compare["top_shift"]["delta"] > 0:
+            status = "watch"
+        lead = issue_compare.get("top_shift")
+        summary_parts = [
+            f"current batch {current['window_summary']['record']} vs previous {previous['window_summary']['record']}"
+        ]
+        if wr_delta:
+            summary_parts.append(f"WR delta {wr_delta:+.0%}")
+        if lead:
+            verb = "up" if lead["delta"] > 0 else "down" if lead["delta"] < 0 else "flat"
+            summary_parts.append(f"lead issue shift: {lead['title']} {verb} ({lead['previous_count']}→{lead['current_count']})")
+        return {
+            "status": status,
+            "previous_batch_id": previous.get("batch", {}).get("id"),
+            "win_rate_delta": wr_delta,
+            "record_delta": {
+                "wins": current.get("wins", 0) - previous.get("wins", 0),
+                "losses": current.get("losses", 0) - previous.get("losses", 0),
+            },
+            "issue_compare": issue_compare,
+            "opponent_shifts": opponent_shifts,
+            "summary_line": "; ".join(summary_parts),
+        }
+
+    def analyze(self, *, last_n: int = 30, battles: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+        battles = battles or self.load_battles()
         window = self.recent_window(battles, last_n=last_n)
         losses = [b for b in window if b.get("result") == "loss"]
         wins = [b for b in window if b.get("result") == "win"]
@@ -273,13 +390,17 @@ class AutoResearcher:
         top_issue = issues[0] if issues else None
         top_opponents = [{"pokemon": k, "count": v} for k, v in opponent_counter.most_common(5)]
         top_teams = [{"team": k, "losses": v} for k, v in team_counter.most_common(5)]
+        batch_identity = self._build_batch_identity(window)
+        window_summary = self._summarize_window(window)
 
         result = {
             "generated_at": datetime.now().isoformat(),
+            "batch": batch_identity,
             "window_size": len(window),
             "wins": len(wins),
             "losses": len(losses),
             "win_rate": (len(wins) / len(window)) if window else 0.0,
+            "window_summary": window_summary,
             "top_issue": {
                 "key": top_issue.key,
                 "title": top_issue.title,
@@ -304,14 +425,41 @@ class AutoResearcher:
         }
         return result
 
+    def compare_with_previous(self, battles: list[dict[str, Any]], current_report: dict[str, Any], *, last_n: int) -> dict[str, Any] | None:
+        previous_window = self.prior_window(battles, last_n=last_n)
+        if not previous_window:
+            return None
+        previous_report = self.analyze(last_n=len(previous_window), battles=previous_window)
+        previous_report["batch"] = self._build_batch_identity(previous_window)
+        previous_report["window_summary"] = self._summarize_window(previous_window)
+        return self._build_regression_summary(current_report, previous_report) | {"previous_report": previous_report}
+
     def render_markdown(self, report: dict[str, Any]) -> str:
         lines = []
         lines.append("# Fouler Play Autoresearch")
         lines.append("")
         lines.append(f"Generated: {report['generated_at']}")
+        lines.append(f"Batch: {report.get('batch', {}).get('id', 'unknown')}")
         lines.append(f"Window: last {report['window_size']} battles")
         lines.append(f"Record: {report['wins']}-{report['losses']} ({report['win_rate']:.1%} WR)")
         lines.append("")
+
+        regression = report.get("regression") or {}
+        if regression:
+            lines.append("## Regression check vs previous batch")
+            lines.append(f"Status: **{regression.get('status', 'unknown')}**")
+            lines.append(f"Comparison: {regression.get('summary_line', 'n/a')}")
+            lead_shift = ((regression.get("issue_compare") or {}).get("top_shift")) or None
+            if lead_shift:
+                lines.append(
+                    f"Lead issue shift: {lead_shift['title']} ({lead_shift['previous_count']} → {lead_shift['current_count']}, delta {lead_shift['delta']:+d})"
+                )
+            for shift in regression.get("opponent_shifts", [])[:3]:
+                lines.append(
+                    f"- Opponent shift: {shift['pokemon']} ({shift['previous_count']} → {shift['current_count']}, delta {shift['delta']:+d})"
+                )
+            lines.append("")
+
         top = report.get("top_issue")
         if top:
             lines.append("## Top issue")
@@ -325,6 +473,7 @@ class AutoResearcher:
             lines.append("### Next action")
             lines.append(f"- {top['recommendation']}")
             lines.append("")
+
         lines.append("## Ranked issues")
         for idx, issue in enumerate(report.get("issues", []), start=1):
             lines.append(f"### {idx}. {issue['title']}")
@@ -333,6 +482,7 @@ class AutoResearcher:
             for proof in issue.get("proof", [])[:3]:
                 lines.append(f"- Proof: {proof}")
             lines.append("")
+
         lines.append("## Frequent loss contexts")
         for item in report.get("top_loss_teams", []):
             lines.append(f"- Team {item['team']}: {item['losses']} losses")
@@ -345,10 +495,21 @@ class AutoResearcher:
         md_path = self.reports_dir / "autoresearch_latest.md"
         json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         md_path.write_text(self.render_markdown(report), encoding="utf-8")
+
+        batch_id = report.get("batch", {}).get("id", "batch-unknown")
+        historical_json = self.batch_history_dir / f"{batch_id}.json"
+        historical_md = self.batch_history_dir / f"{batch_id}.md"
+        historical_json.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        historical_md.write_text(self.render_markdown(report), encoding="utf-8")
         return json_path, md_path
 
     def queue_discord_reports(self, report: dict[str, Any], *, json_path: Path, md_path: Path) -> None:
         top = report.get("top_issue") or {}
+        regression = report.get("regression") or {}
+        issue_shift = ((regression.get("issue_compare") or {}).get("top_shift")) or {}
+        regression_line = regression.get("summary_line", "")
+        trend_label = regression.get("status") or ("improving" if report['wins'] > report['losses'] else "slipping" if report['losses'] > report['wins'] else "flat")
+
         routine_payload = build_contract_payload(
             "PROOF",
             f"autoresearch refresh: {top.get('title', 'no top issue found')}",
@@ -362,6 +523,15 @@ class AutoResearcher:
             window=report["window_size"],
             top_issue=top.get("key", "none"),
             top_issues=top.get("title", "no dominant issue found"),
+            recent_record=f"last {report['window_size']}: {report['wins']}-{report['losses']} ({round(report['win_rate'] * 100)}% WR)",
+            loss_pattern=top.get("summary", ""),
+            next_battle_action=top.get("recommendation", "Collect more battles and rerun autoresearch."),
+            trend=trend_label,
+            performance_change=regression_line,
+            code_fix_hint=(
+                f"compare vs {regression.get('previous_batch_id')}: {issue_shift.get('title', '')} {issue_shift.get('previous_count', 0)}→{issue_shift.get('current_count', 0)}"
+                if regression.get("previous_batch_id") and issue_shift else ""
+            ),
         )
         queue_event("autoresearch_summary", ROUTINE_CHANNEL, routine_payload, dedup_window_sec=15)
 
@@ -370,7 +540,13 @@ class AutoResearcher:
             f"What happened: scanned last {report['window_size']} battles; record {report['wins']}-{report['losses']} ({report['win_rate']:.1%} WR); ranked {len(report.get('issues', []))} recurring loss patterns.",
             f"Why it matters: {top.get('summary', 'No dominant issue yet.')}"
         ]
+        if regression_line:
+            deep_lines.append(f"Regression check: {regression_line}")
         proof_bits = list(top.get("proof", []))[:4]
+        for shift in regression.get("opponent_shifts", [])[:3]:
+            proof_bits.append(
+                f"opponent shift {shift['pokemon']} {shift['previous_count']}→{shift['current_count']} ({shift['delta']:+d})"
+            )
         proof_bits.append(f"artifact {json_path.name}")
         proof_bits.append(f"artifact {md_path.name}")
         deep_lines.append("Proof: " + "; ".join(proof_bits))
@@ -380,7 +556,17 @@ class AutoResearcher:
 
 def run_autoresearch(*, last_n: int = 30, queue_discord: bool = True) -> dict[str, Any]:
     researcher = AutoResearcher()
-    report = researcher.analyze(last_n=last_n)
+    battles = researcher.load_battles()
+    report = researcher.analyze(last_n=last_n, battles=battles)
+    regression = researcher.compare_with_previous(battles, report, last_n=last_n)
+    if regression:
+        previous_report = regression.pop("previous_report")
+        report["regression"] = regression
+        report["previous_batch"] = {
+            "batch": previous_report.get("batch", {}),
+            "window_summary": previous_report.get("window_summary", {}),
+            "top_issue": previous_report.get("top_issue"),
+        }
     json_path, md_path = researcher.save_report(report)
     if queue_discord:
         researcher.queue_discord_reports(report, json_path=json_path, md_path=md_path)
