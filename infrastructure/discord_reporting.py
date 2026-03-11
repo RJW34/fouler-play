@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -32,18 +33,23 @@ _PATH_HINT_RE = re.compile(r"\b([A-Za-z]:\\[^;]+|/[^;]+(?:\.txt|\.md|\.json))\b"
 _MAX_FIELD_LEN = 340
 _MAX_WHAT_LEN = 420
 _MAX_HEADLINE_LEN = 90
-_MAX_PROOF_ITEMS = 6
+_MAX_PROOF_ITEMS = 8
 _SECTION_EMOJI = {
     "What happened:": "📝",
     "Why it matters:": "🎯",
     "Proof:": "🔎",
     "Remaining:": "⏭️",
 }
+_LOSS_WORDS = {"loss", "lost", "forfeit", "forfeited", "timeout", "disconnect", "disconnected", "inactive"}
+_WIN_WORDS = {"win", "won"}
 
 
 def _clean_line(value: object) -> str:
     text = "" if value is None else str(value)
-    return " ".join(text.replace("\r", " ").replace("\n", " ").split())
+    text = text.replace("\r", " ")
+    text = text.replace("\n", "\n")
+    lines = [" ".join(line.split()) for line in text.split("\n")]
+    return "\n".join(line for line in lines if line)
 
 
 def _truncate(text: object, limit: int = _MAX_FIELD_LEN) -> str:
@@ -57,16 +63,19 @@ def _short_team_name(team: object) -> str:
     text = _clean_line(team)
     if not text:
         return "unknown"
-    text = text.replace(".txt", "")
+    text = Path(text).name.replace(".txt", "")
     if text.startswith("fat-team-"):
+        parts = text.split("-")
+        if len(parts) >= 4:
+            return " ".join(parts[2:])
         text = text[len("fat-team-"):]
     return text.replace("-", " ")
 
 
 def _format_delta(before: object, after: object, label: str = "ELO") -> str:
     try:
-        before_num = int(before)
-        after_num = int(after)
+        before_num = int(round(float(before)))
+        after_num = int(round(float(after)))
     except Exception:
         return ""
     delta = after_num - before_num
@@ -171,7 +180,7 @@ def _stylize_proof_item(item: str) -> str:
         (r"^(\d+) replay link\(s\)$", lambda m: f"`{m.group(1)}` replay link(s)"),
         (r"^batch (.+)$", lambda m: f"batch `{m.group(1)}`"),
         (r"^loss reviews queued=(.+)$", lambda m: f"loss reviews queued=`{m.group(1)}`"),
-        (r"^top issue (.+)$", lambda m: f"top issue `{m.group(1)}`"),
+        (r"^top issue (.+)$", lambda m: f"top issue `{m.group(1).rstrip('…')}`"),
         (r"^coverage (.+)$", lambda m: f"coverage `{m.group(1)}`"),
         (r"^window (.+)$", lambda m: f"window `{m.group(1)}`"),
         (r"^stalled for (.+)$", lambda m: f"stalled for `{m.group(1)}`"),
@@ -211,18 +220,53 @@ def _safe_int(value: object) -> int | None:
         return None
 
 
+def _normalize_result(value: object) -> str:
+    text = _clean_line(value).lower()
+    if text in {"won", "win", "victory"}:
+        return "win"
+    if text in {"lost", "loss", "defeat"}:
+        return "loss"
+    if text in {"tie", "draw"}:
+        return "tie"
+    return text
+
+
+def _normalize_batch_outcome(item: object) -> str:
+    if isinstance(item, (list, tuple)) and len(item) > 1:
+        return _normalize_result(item[1])
+    if isinstance(item, dict):
+        return _normalize_result(item.get("result"))
+    return _normalize_result(item)
+
+
 def _record_from_batch_results(batch_results: list) -> tuple[int, int, int]:
-    wins = sum(1 for item in batch_results if len(item) > 1 and item[1] == "won")
-    losses = sum(1 for item in batch_results if len(item) > 1 and item[1] == "lost")
+    wins = sum(1 for item in batch_results if _normalize_batch_outcome(item) == "win")
+    losses = sum(1 for item in batch_results if _normalize_batch_outcome(item) == "loss")
     total = len(batch_results)
     return wins, losses, total
+
+
+def _opponent_from_batch_item(item: object) -> str:
+    if isinstance(item, dict):
+        return _clean_line(item.get("opponent") or item.get("matchup") or item.get("name"))
+    if isinstance(item, (list, tuple)) and item:
+        return _clean_line(item[0])
+    return ""
+
+
+def _replay_from_batch_item(item: object) -> str:
+    if isinstance(item, dict):
+        return _clean_line(item.get("replay") or item.get("replay_url") or item.get("url"))
+    if isinstance(item, (list, tuple)) and len(item) > 2:
+        return _clean_line(item[2])
+    return ""
 
 
 def _top_loss_pattern(batch_results: list) -> str:
     losses: dict[str, int] = {}
     for item in batch_results:
-        if len(item) > 1 and item[1] == "lost":
-            opponent = _clean_line(item[0]) or "opponent"
+        if _normalize_batch_outcome(item) == "loss":
+            opponent = _opponent_from_batch_item(item) or "opponent"
             losses[opponent] = losses.get(opponent, 0) + 1
     if not losses:
         return "no repeat loss pattern yet"
@@ -234,10 +278,53 @@ def _top_loss_pattern(batch_results: list) -> str:
 
 def _batch_coverage_line(batch_results: list, analysis_count: object) -> str:
     total = len(batch_results)
-    replay_count = sum(1 for item in batch_results if len(item) > 2 and item[2])
+    replay_count = sum(1 for item in batch_results if _replay_from_batch_item(item))
     pending = _safe_int(analysis_count) or 0
     reviewed = max(0, min(replay_count, replay_count - pending))
     return f"replays {replay_count}/{total}; loss reviews queued {pending}; reviewed {reviewed}"
+
+
+def _derive_loss_cause(data: dict) -> str:
+    for key in ("strategic_issue", "loss_pattern", "performance_change"):
+        text = _clean_line(data.get(key, ""))
+        if text:
+            return text
+    result = _normalize_result(data.get("result", ""))
+    opponent = _clean_line(data.get("opponent", ""))
+    if result == "loss" and opponent:
+        return f"loss vs {opponent} needs replay review before the next queue"
+    return ""
+
+
+def _detect_operational_flag(data: dict) -> str:
+    notes = " ".join(
+        _clean_line(data.get(key, "")).replace("\n", " ")
+        for key in (
+            "decisive_reason",
+            "why_it_matters",
+            "performance_change",
+            "strategic_issue",
+            "what_happened",
+            "proof",
+        )
+    ).lower()
+    if any(word in notes for word in ("inactivity", "disconnect", "timed out", "timeout", "reconnect")):
+        return "operational"
+    return ""
+
+
+def _status_line(data: dict) -> str:
+    result = _normalize_result(data.get("result", ""))
+    opponent = _clean_line(data.get("opponent", ""))
+    turns = data.get("turns")
+    details: list[str] = []
+    if result:
+        details.append(result)
+    if opponent:
+        details.append(f"vs {opponent}")
+    if turns not in (None, ""):
+        details.append(f"{turns} turns")
+    return " ".join(details)
 
 
 def _proof_from_payload(data: dict) -> str:
@@ -258,40 +345,39 @@ def _proof_from_payload(data: dict) -> str:
     if battle_id:
         add(f"battle {str(battle_id).replace('battle-gen9ou-', '').replace('battle-', '')}")
 
-    result = _clean_line(data.get("result", ""))
-    opponent = _clean_line(data.get("opponent", ""))
-    turns = data.get("turns")
-    if result or opponent or turns not in (None, ""):
-        details = []
-        if result:
-            details.append(result)
-        if opponent:
-            details.append(f"vs {opponent}")
-        if turns not in (None, ""):
-            details.append(f"{turns} turns")
-        add(" ".join(details))
+    replay_url = _clean_line(data.get("replay_url") or data.get("replay") or "")
+    for bit in _extract_replay_bits(replay_url):
+        add(bit)
+
+    status_line = _status_line(data)
+    if status_line:
+        add(status_line)
 
     team_file = data.get("team_file")
     if team_file:
         add(f"team {_short_team_name(team_file)}")
 
-    for key in ("report", "report_path"):
+    for key in ("report", "report_path", "markdown_report"):
         if data.get(key):
             add(f"report {Path(str(data[key])).name}")
 
     top_issues = _clean_line(data.get("top_issues", ""))
     if top_issues:
-        first_issue = top_issues.split("\n", 1)[0]
-        add(f"top issue {_truncate(first_issue, 90)}")
+        add(f"top issue {_truncate(top_issues.splitlines()[0], 90)}")
 
     batch_results = data.get("batch_results")
     if isinstance(batch_results, list) and batch_results:
         wins, losses, total = _record_from_batch_results(batch_results)
         add(f"batch {wins}-{losses}")
-        replay_count = sum(1 for item in batch_results if len(item) > 2 and item[2])
+        replay_count = sum(1 for item in batch_results if _replay_from_batch_item(item))
         if replay_count:
             add(f"{replay_count} replay link(s)")
         add(f"coverage {_batch_coverage_line(batch_results, data.get('analysis_count'))}")
+        for item in batch_results:
+            replay_url = _replay_from_batch_item(item)
+            if replay_url:
+                for bit in _extract_replay_bits(replay_url):
+                    add(bit)
 
     analysis_count = data.get("analysis_count")
     if analysis_count not in (None, ""):
@@ -308,8 +394,6 @@ def _proof_from_payload(data: dict) -> str:
         add(elo_delta)
 
     source = _clean_line(data.get("source", ""))
-    if source:
-        add(f"source={source}")
 
     for bit in _extract_named_bits(raw_proof):
         add(bit)
@@ -318,6 +402,9 @@ def _proof_from_payload(data: dict) -> str:
 
     if raw_proof and not proof_bits:
         add(_truncate(raw_proof))
+
+    if source:
+        add(f"source={source}")
 
     if len(proof_bits) > _MAX_PROOF_ITEMS:
         proof_bits = proof_bits[:_MAX_PROOF_ITEMS]
@@ -344,7 +431,7 @@ def _headline_from_payload(data: dict) -> str:
     if headline:
         return _truncate(headline, _MAX_HEADLINE_LEN)
 
-    result = _clean_line(data.get("result", ""))
+    result = _normalize_result(data.get("result", ""))
     opponent = _clean_line(data.get("opponent", ""))
     if result:
         return _truncate(f"battle {result} vs {opponent or 'opponent'}", _MAX_HEADLINE_LEN)
@@ -354,6 +441,10 @@ def _headline_from_payload(data: dict) -> str:
 
 def _subject_matter_summary(data: dict) -> list[str]:
     summary: list[str] = []
+
+    decisive_reason = _clean_line(data.get("decisive_reason", ""))
+    if decisive_reason:
+        summary.append(decisive_reason)
 
     strategic_issue = _clean_line(data.get("strategic_issue", ""))
     if strategic_issue:
@@ -374,11 +465,52 @@ def _subject_matter_summary(data: dict) -> list[str]:
     return summary
 
 
+def _recent_record_summary(data: dict) -> str:
+    recent_record = _clean_line(data.get("recent_record", ""))
+    if recent_record:
+        return recent_record
+    wins = _safe_int(data.get("recent_wins"))
+    losses = _safe_int(data.get("recent_losses"))
+    size = _safe_int(data.get("recent_window_size"))
+    if wins is None or losses is None:
+        return ""
+    if size is None:
+        size = wins + losses
+    wr = int(round((wins / size) * 100)) if size else 0
+    return f"last {size}: {wins}-{losses} ({wr}% WR)"
+
+
+def _trend_summary(data: dict) -> str:
+    trend = _clean_line(data.get("trend", ""))
+    if trend:
+        return trend
+    delta = _safe_int(data.get("recent_delta"))
+    if delta is None:
+        return ""
+    if delta > 0:
+        return f"trend improving ({delta:+d} over window)"
+    if delta < 0:
+        return f"trend slipping ({delta:+d} over window)"
+    return "trend flat over window"
+
+
+def _actionability_line(data: dict) -> str:
+    flag = _detect_operational_flag(data)
+    if flag == "operational":
+        return "this looks like an ops/runtime issue, not a ladder-behavior miss"
+    if _clean_line(data.get("code_fix_hint", "")):
+        return _clean_line(data.get("code_fix_hint"))
+    return ""
+
+
 def _what_from_payload(data: dict) -> str:
     explicit = _clean_line(data.get("what_happened", ""))
     subject_bits = _subject_matter_summary(data)
+    recent_record = _recent_record_summary(data)
+    trend = _trend_summary(data)
+    actionability = _actionability_line(data)
 
-    result = _clean_line(data.get("result", ""))
+    result = _normalize_result(data.get("result", ""))
     opponent = _clean_line(data.get("opponent", ""))
     turns = data.get("turns")
     team_file = data.get("team_file")
@@ -391,25 +523,34 @@ def _what_from_payload(data: dict) -> str:
         if turns not in (None, ""):
             battle_line += f" in {turns} turns"
         parts = [battle_line]
+        if recent_record:
+            parts.append(recent_record)
+        if trend:
+            parts.append(trend)
         parts.extend(subject_bits)
-        return _compact_sentence_parts(parts, 320)
+        if actionability:
+            parts.append(actionability)
+        return _compact_sentence_parts(parts, 360)
 
     batch_results = data.get("batch_results")
     if isinstance(batch_results, list) and batch_results:
         wins, losses, total = _record_from_batch_results(batch_results)
         wr = (wins / total * 100) if total else 0
-        trend = _top_loss_pattern(batch_results)
+        pattern = _top_loss_pattern(batch_results)
         coverage = _batch_coverage_line(batch_results, data.get("analysis_count"))
         parts = [
             f"{total}-battle window finished at {wins}-{losses} ({wr:.0f}% WR)",
-            f"top loss pattern: {trend}",
+            f"top loss pattern: {pattern}",
         ]
-        if subject_bits:
-            parts.extend(subject_bits)
-            parts.append(coverage)
-            return _compact_sentence_parts(parts, 320)
+        if recent_record:
+            parts.append(recent_record)
+        if trend:
+            parts.append(trend)
+        parts.extend(subject_bits)
         parts.append(coverage)
-        return _compact_sentence_parts(parts, 220)
+        if actionability:
+            parts.append(actionability)
+        return _compact_sentence_parts(parts, 360)
 
     if data.get("report") or data.get("top_issues"):
         report_name = Path(str(data.get("report") or data.get("report_path") or "report")).name
@@ -421,12 +562,19 @@ def _what_from_payload(data: dict) -> str:
         parts = []
         if top_issue:
             parts.append(f"lead issue: {_truncate(top_issue, 100)}")
-        if subject_bits:
-            parts.extend(subject_bits)
+        if recent_record:
+            parts.append(recent_record)
+        if trend:
+            parts.append(trend)
+        parts.extend(subject_bits)
+        if data.get("window"):
+            parts.append(f"window analyzed: {data.get('window')} battles")
         parts.append(f"full batch analysis: {report_name}")
+        if actionability:
+            parts.append(actionability)
         if not top_issue:
             parts.insert(0, f"batch analysis is ready in {report_name}")
-        return _compact_sentence_parts(parts, 320 if subject_bits or top_issue else 220)
+        return _compact_sentence_parts(parts, 360)
 
     stalled_minutes = _safe_int(data.get("stalled_minutes"))
     if stalled_minutes is not None:
@@ -437,15 +585,29 @@ def _what_from_payload(data: dict) -> str:
 
 def _why_from_payload(data: dict) -> str:
     explicit = _clean_line(data.get("why_it_matters", ""))
-
-    if explicit:
+    if explicit and not any(
+        phrase in explicit
+        for phrase in (
+            "queued the outcome for Discord delivery",
+            "queued the concise Discord summary",
+            "mechanics of posting",
+        )
+    ) and "operational failure" not in explicit.lower():
         return _truncate(explicit, 220)
-    if data.get("result"):
-        return "battle updates should tell us what matchup happened, what strategic issue showed up, and what the next ladder-relevant adjustment is"
+
+    flag = _detect_operational_flag(data)
+    if flag == "operational":
+        return "operator reports should flag ladder-invisible runtime failures immediately so losses caused by disconnects or inactivity are not mistaken for team or policy problems"
+
+    result = _normalize_result(data.get("result", ""))
+    if result:
+        if result == "loss":
+            return "battle updates should tell us whether this was a real matchup/policy miss or just variance, and what the next ladder-relevant adjustment is"
+        return "battle updates should confirm the win condition that worked so we know whether the bot is climbing through repeatable play or variance"
     if data.get("batch_results"):
-        return "routine updates should center the win/loss pattern, the matchup issue behind it, and the next battle-relevant adjustment instead of recap mechanics"
+        return "routine updates should center the win/loss trend, the matchup issue behind it, and the next battle-relevant adjustment instead of recap mechanics"
     if data.get("report") or data.get("top_issues"):
-        return "batch analysis only helps if the channel sees the matchup issue, why it hurts results, and where the full breakdown lives"
+        return "batch analysis only helps if the channel sees the recurring issue, why it hurts results, and where the full breakdown lives"
     return "pending"
 
 
@@ -551,3 +713,50 @@ def format_payload_or_message(content: str) -> str:
 def summarize_items(items: Iterable[str], fallback: str = "none") -> str:
     cleaned = [_clean_line(item) for item in items if _clean_line(item)]
     return "; ".join(cleaned) if cleaned else fallback
+
+
+def summarize_recent_results(battles: Sequence[dict], *, window: int = 5) -> dict[str, object]:
+    recent = list(battles)[-window:]
+    wins = sum(1 for battle in recent if _normalize_result(battle.get("result")) == "win")
+    losses = sum(1 for battle in recent if _normalize_result(battle.get("result")) == "loss")
+    streak_kind = "none"
+    streak = 0
+    for battle in reversed(recent):
+        outcome = _normalize_result(battle.get("result"))
+        if outcome not in {"win", "loss"}:
+            break
+        if streak_kind == "none":
+            streak_kind = outcome
+        if outcome != streak_kind:
+            break
+        streak += 1
+    return {
+        "window_size": len(recent),
+        "wins": wins,
+        "losses": losses,
+        "record": f"last {len(recent)}: {wins}-{losses} ({int(round((wins / len(recent)) * 100)) if recent else 0}% WR)",
+        "streak": f"{streak_kind} x{streak}" if streak and streak_kind != "none" else "no streak",
+    }
+
+
+def detect_notable_reason(text: str) -> str:
+    cleaned = _clean_line(text).lower()
+    if not cleaned:
+        return ""
+    if any(word in cleaned for word in ("inactive", "disconnect", "timed out", "timeout", "reconnected")):
+        return "battle ended through inactivity/disconnect behavior"
+    if "forfeit" in cleaned:
+        return "battle ended on forfeit"
+    if any(word in cleaned for word in ("hazard", "spikes", "stealth rock")):
+        return "hazard pressure shaped the result"
+    if any(word in cleaned for word in ("sweep", "cleaned", "setup")):
+        return "setup sequence decided the endgame"
+    return ""
+
+
+def top_recurring_issue(reasons: Sequence[str]) -> str:
+    cleaned = [detect_notable_reason(reason) or _clean_line(reason) for reason in reasons if _clean_line(reason)]
+    if not cleaned:
+        return ""
+    issue, count = Counter(cleaned).most_common(1)[0]
+    return issue if count <= 1 else f"{issue} ({count} recent cases)"
