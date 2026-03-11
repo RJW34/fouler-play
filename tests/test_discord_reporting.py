@@ -127,12 +127,13 @@ def test_payload_formatter_summarizes_batch_payload_without_blob_dump():
     )
     formatted = format_payload_or_message(payload)
     assert formatted.startswith("[PROOF] **batch complete 2-1**")
-    assert "📝 **What happened:**\nbot completed a battle batch at 2-1 and queued the live summary" in formatted
+    assert "📝 **What happened:**\n3-battle window finished at 2-1 (67% WR); replays 2/3; loss reviews queued 1; reviewed 1; top loss pattern: losses were split across opponents (1 unique)" in formatted
+    assert "🎯 **Why it matters:**\nroutine updates should highlight scoreline, replay coverage, and the clearest failure pattern instead of dumping raw recap text" in formatted
     assert "- replay `111`: https://replay.pokemonshowdown.com/battle-gen9ou-111" in formatted
     assert "- replay `222`: https://replay.pokemonshowdown.com/battle-gen9ou-222" in formatted
     assert "- batch `2-1`" in formatted
-    assert "- `2` replay link(s)" in formatted
-    assert "- …" in formatted
+    assert "- coverage `replays 2/3`" in formatted
+    assert "- loss reviews queued=`1`" in formatted
     assert "✅ vs A" not in formatted
 
 
@@ -147,3 +148,26 @@ def test_remaining_and_proof_sections_render_as_compact_lists():
     )
     assert "🔎 **Proof:**\n- artifact `batch_2026-03-10.md`\n- report `batch_2026-03-10.md`\n- source `tests.discord_reporting`" in message
     assert "⏭️ **Remaining:**\n- verify live bot posts\n- monitor any awkward wrap cases" in message
+
+
+def test_payload_formatter_summarizes_pipeline_report_with_lead_issue_only():
+    payload = build_contract_payload(
+        "PROOF",
+        "batch analysis #42 ready",
+        "pipeline analyzed the latest 30-battle batch and prepared the channel summary.",
+        "Batch analysis only helps if the report callout is compact, proof-backed, and easy to scan before opening the full report.",
+        "report=batch_0042_20260310.md; top_issues=1. Gholdengo structures still overload the Gliscor slot after Ting-Lu chip",
+        "Open the report if the lead issue still needs a concrete fix after the summary.",
+        source="pipeline.analyze",
+        report="batch_0042_20260310.md",
+        top_issues="1. Gholdengo structures still overload the Gliscor slot after Ting-Lu chip\n2. Booster Valiant forces too many emergency Tera lines",
+    )
+    formatted = format_payload_or_message(payload)
+    assert formatted.startswith("[PROOF] **batch analysis #42 ready**")
+    assert "📝 **What happened:**\nbatch analysis is ready in batch_0042_20260310.md; lead issue: 1. Gholdengo structures still overload the Gliscor slot after Ting-Lu chip" in formatted
+    assert "🎯 **Why it matters:**\nbatch analysis only helps if the channel gets the lead issue and report hook without duplicate filler" in formatted
+    assert "- report `batch_0042_20260310.md`" in formatted
+    assert "- top issue `1. Gholdengo structures still overload the Gliscor slot after Ting-Lu chip" in formatted
+    assert "- source `pipeline.analyze`" in formatted
+    assert "richer batch breakdown" not in formatted
+    assert "⏭️ **Remaining:**\n- Open the report if the lead issue still needs a concrete fix after the summary." in formatted

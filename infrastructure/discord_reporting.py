@@ -31,7 +31,7 @@ _REPORT_FILE_RE = re.compile(r"\b(batch_[A-Za-z0-9._-]+\.md)\b")
 _PATH_HINT_RE = re.compile(r"\b([A-Za-z]:\\[^;]+|/[^;]+(?:\.txt|\.md|\.json))\b")
 _MAX_FIELD_LEN = 340
 _MAX_HEADLINE_LEN = 90
-_MAX_PROOF_ITEMS = 4
+_MAX_PROOF_ITEMS = 6
 _SECTION_EMOJI = {
     "What happened:": "📝",
     "Why it matters:": "🎯",
@@ -171,6 +171,9 @@ def _stylize_proof_item(item: str) -> str:
         (r"^batch (.+)$", lambda m: f"batch `{m.group(1)}`"),
         (r"^loss reviews queued=(.+)$", lambda m: f"loss reviews queued=`{m.group(1)}`"),
         (r"^top issue (.+)$", lambda m: f"top issue `{m.group(1)}`"),
+        (r"^coverage (.+)$", lambda m: f"coverage `{m.group(1)}`"),
+        (r"^window (.+)$", lambda m: f"window `{m.group(1)}`"),
+        (r"^stalled for (.+)$", lambda m: f"stalled for `{m.group(1)}`"),
         (r"^ELO (.+)$", lambda m: f"ELO `{m.group(1)}`"),
     ]
     for pattern, formatter in patterns:
@@ -198,6 +201,42 @@ def _render_section(label: str, value: object, *, bulletize: bool = False, limit
         lines.append(cleaned)
 
     return "\n".join(lines)
+
+
+def _safe_int(value: object) -> int | None:
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+def _record_from_batch_results(batch_results: list) -> tuple[int, int, int]:
+    wins = sum(1 for item in batch_results if len(item) > 1 and item[1] == "won")
+    losses = sum(1 for item in batch_results if len(item) > 1 and item[1] == "lost")
+    total = len(batch_results)
+    return wins, losses, total
+
+
+def _top_loss_pattern(batch_results: list) -> str:
+    losses: dict[str, int] = {}
+    for item in batch_results:
+        if len(item) > 1 and item[1] == "lost":
+            opponent = _clean_line(item[0]) or "opponent"
+            losses[opponent] = losses.get(opponent, 0) + 1
+    if not losses:
+        return "no repeat loss pattern yet"
+    opponent, count = max(losses.items(), key=lambda kv: (kv[1], kv[0]))
+    if count <= 1:
+        return f"losses were split across opponents ({len(losses)} unique)"
+    return f"{opponent} caused {count} loss(es) in this window"
+
+
+def _batch_coverage_line(batch_results: list, analysis_count: object) -> str:
+    total = len(batch_results)
+    replay_count = sum(1 for item in batch_results if len(item) > 2 and item[2])
+    pending = _safe_int(analysis_count) or 0
+    reviewed = max(0, min(replay_count, replay_count - pending))
+    return f"replays {replay_count}/{total}; loss reviews queued {pending}; reviewed {reviewed}"
 
 
 def _proof_from_payload(data: dict) -> str:
@@ -246,16 +285,20 @@ def _proof_from_payload(data: dict) -> str:
 
     batch_results = data.get("batch_results")
     if isinstance(batch_results, list) and batch_results:
-        wins = sum(1 for item in batch_results if len(item) > 1 and item[1] == "won")
-        losses = sum(1 for item in batch_results if len(item) > 1 and item[1] == "lost")
+        wins, losses, total = _record_from_batch_results(batch_results)
         add(f"batch {wins}-{losses}")
         replay_count = sum(1 for item in batch_results if len(item) > 2 and item[2])
         if replay_count:
             add(f"{replay_count} replay link(s)")
+        add(f"coverage {_batch_coverage_line(batch_results, data.get('analysis_count'))}")
 
     analysis_count = data.get("analysis_count")
     if analysis_count not in (None, ""):
         add(f"loss reviews queued={analysis_count}")
+
+    recent_record = _clean_line(data.get("recent_record", ""))
+    if recent_record:
+        add(f"window {recent_record}")
 
     elo_before = data.get("elo_before")
     elo_after = data.get("elo_after")
@@ -288,7 +331,7 @@ def _remaining_from_payload(data: dict) -> str:
         return "pending"
     replacements = {
         "Poster can append replay/ELO context if available before or after posting this result.": "append replay or ladder delta if it becomes available",
-        "Webhook mirror send_discord_notification still runs after the queued contract event.": "webhook summary should follow with the richer batch breakdown",
+        "Webhook mirror send_discord_notification still runs after the queued contract event.": "full webhook summary should mirror the same signal if it stays enabled",
         "Review the saved full turn review for additional mistakes beyond the lead sequence.": "review the saved turn report if deeper mistakes need inspection",
     }
     remaining = replacements.get(remaining, remaining)
@@ -327,9 +370,30 @@ def _what_from_payload(data: dict) -> str:
 
     batch_results = data.get("batch_results")
     if isinstance(batch_results, list) and batch_results:
-        wins = sum(1 for item in batch_results if len(item) > 1 and item[1] == "won")
-        losses = sum(1 for item in batch_results if len(item) > 1 and item[1] == "lost")
-        return f"bot completed a battle batch at {wins}-{losses} and queued the live summary"
+        wins, losses, total = _record_from_batch_results(batch_results)
+        wr = (wins / total * 100) if total else 0
+        trend = _top_loss_pattern(batch_results)
+        coverage = _batch_coverage_line(batch_results, data.get("analysis_count"))
+        return _compact_sentence_parts(
+            [
+                f"{total}-battle window finished at {wins}-{losses} ({wr:.0f}% WR)",
+                coverage,
+                f"top loss pattern: {trend}",
+            ],
+            220,
+        )
+
+    if data.get("report") or data.get("top_issues"):
+        report_name = Path(str(data.get("report") or data.get("report_path") or "report")).name
+        top_issue = _clean_line(data.get("top_issues", "")).split("\n", 1)[0]
+        parts = [f"batch analysis is ready in {report_name}"]
+        if top_issue:
+            parts.append(f"lead issue: {_truncate(top_issue, 100)}")
+        return _compact_sentence_parts(parts, 220)
+
+    stalled_minutes = _safe_int(data.get("stalled_minutes"))
+    if stalled_minutes is not None:
+        return _compact_sentence_parts([explicit or "no new battle activity detected", f"stalled for {stalled_minutes} minute(s)"], 220)
 
     return _truncate(explicit or "pending", 220)
 
@@ -340,9 +404,9 @@ def _why_from_payload(data: dict) -> str:
     if data.get("result"):
         return "battle outcomes are only useful in Discord if the proof is scannable without decoding raw payloads"
     if data.get("batch_results"):
-        return "batch reporting should show outcomes and follow-up work in one quick scan"
+        return "routine updates should highlight scoreline, replay coverage, and the clearest failure pattern instead of dumping raw recap text"
     if data.get("report") or data.get("top_issues"):
-        return "batch analysis only helps if the channel gets a compact summary with clear proof"
+        return "batch analysis only helps if the channel gets the lead issue and report hook without duplicate filler"
     return _truncate(explicit or "pending", 220)
 
 
