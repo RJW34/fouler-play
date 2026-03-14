@@ -1,19 +1,26 @@
-# CLAUDE.md - Fouler-Play Autonomous Operations Manual
+﻿# CLAUDE.md - Fouler-Play Autonomous Operations Manual
 
 ## Mission
 
-Build an **overnight team-testing service** for a competitive Pokemon player. The player loads fat/stall teams, the bot plays them on ladder while they sleep, and in the morning they get a report: which matchups were hard, which Pokemon underperformed, which replays to study. The bot account is **"npctypebeat"** on Pokemon Showdown, playing **gen9ou**.
+Prove that **three specific fat/stall teams from a top competitive player can reach 1700 ELO** in gen9ou -- played faithfully by a bot, streamed live on Twitch, with a self-improving loop that closes the gap autonomously.
 
-**Why 1700 ELO matters:** At 1200 (where we are now), opponents play poorly and the data is meaningless for team evaluation. The bot must reach **1700+** so that matchup data reflects how the team performs against competent opponents. 1700 is not the goal — it's the minimum quality threshold for useful test data.
+The bot account is **"npctypebeat"** on Pokemon Showdown, playing **gen9ou**. It runs **3 concurrent battles** (one per team), reports results to Discord in real time, and streams all active battles via the OBS/Twitch overlay.
 
-**What the player actually consumes:**
-- Per-team win rates and trends across overnight sessions
-- Worst matchups: "You lose 70% of games when the opponent has Gholdengo"
-- Per-Pokemon performance: "Gliscor fainted in 80% of your losses"
+**The actual origin:** Ryan's competitive contact put it directly -- "if this process can get an account around 1700+ ELO and be used to test new teams vs strong players in a faster fashion than human testing, that would be ideal." That's the bar. The three fat teams in `teams/` are the ones being proven. The stream is how this gets shown to the world.
+
+**Why 1700 ELO matters:** Below ~1400, opponents play too poorly for the data to mean anything. 1700 is not the goal -- it's the minimum quality threshold where matchup data reflects how these teams actually perform against competent opponents.
+
+**The self-improvement loop (autoresearch):** Every batch of 30 battles (10 per team) feeds into replay analysis. Patterns in losses get identified, fixes get applied, and the next batch validates them. Regressions across multiple changes are tracked -- sometimes a regression only shows up after 2-3 features interact in a new way.
+
+**What gets reported to Discord (real-time):**
+- Live battle links and results as they complete
+- Per-team win rates across the current batch
+- Loss patterns: what the bot keeps losing to, which Pokemon are the weak links
 - Replay links for the most instructive wins and losses
-- Actionable team-building suggestions: "This team needs a Gholdengo answer"
 
-**Critical constraint — play the team faithfully.** The bot must play fat/stall teams *as a human would play them*: pivot for matchup advantage, preserve HP, chip with hazards, recover, stall PP. Do NOT take shortcuts that win at low ELO but wouldn't generalize (cheese strategies, hyper-aggressive plays with stall teams, etc.). The `playstyle_config.py` FAT/STALL tuning exists for this reason — respect it.
+**Critical constraint -- play the team faithfully.** The bot must play fat/stall teams *as a human would play them*: pivot for matchup advantage, preserve HP, chip with hazards, recover, stall PP. Do NOT take shortcuts that win at low ELO but wouldn't generalize (cheese strategies, hyper-aggressive plays with stall teams, etc.). The `playstyle_config.py` FAT/STALL tuning exists for this reason -- respect it.
+
+**Stream is a core requirement, not a nice-to-have.** The OBS overlay displaying all 3 concurrent battles must be functional before laddering counts as "live." Visual proof of the overlay working is the gate.
 
 ## You Own Your Machine
 
