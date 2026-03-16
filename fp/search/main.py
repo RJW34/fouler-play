@@ -3672,6 +3672,34 @@ def apply_switch_penalties(
                             multiplier *= resist_boost
                             reasons.append(f"Resists STAB vs +{boost_level} boosted (defensive check)")
 
+        # === OFFENSIVE COVERAGE BOOST ===
+        # Boost switching to a Pokemon whose known moves are super-effective against
+        # the active opponent. This addresses stall walls (e.g. Corviknight, Great Tusk)
+        # that the current active Pokemon cannot break — the bot should prefer switching
+        # to the breaker rather than staying and chipping ineffectively.
+        if opponent is not None and opponent_types:
+            opp_types_norm = [normalize_name(t) for t in opponent_types]
+            best_coverage_eff = 0.0
+            for mv_name in target_move_names_norm:
+                mv_data = all_move_json.get(mv_name, {})
+                mv_category = mv_data.get(constants.CATEGORY)
+                if mv_category not in {constants.PHYSICAL, constants.SPECIAL}:
+                    continue
+                mv_bp = float(mv_data.get(constants.BASE_POWER, 0) or 0)
+                if mv_bp < 50:
+                    continue
+                mv_type = normalize_name(mv_data.get("type", "") or "")
+                if not mv_type:
+                    continue
+                eff = type_effectiveness_modifier(mv_type, opp_types_norm)
+                if eff > best_coverage_eff:
+                    best_coverage_eff = eff
+            if best_coverage_eff >= 2.0:
+                # Target has a super-effective move vs the opponent — strong reason to send it in
+                coverage_boost = 1.20 if best_coverage_eff >= 4.0 else 1.12
+                multiplier *= coverage_boost
+                reasons.append(f"has SE coverage vs opponent ({best_coverage_eff:.1f}x effective)")
+
         # === RECOVERY MOVE BOOST ===
         has_recovery = False
         for move_name in target_move_names_norm:
