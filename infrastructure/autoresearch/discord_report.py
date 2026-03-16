@@ -127,14 +127,19 @@ def build_report(stats: dict, last_total: int) -> str | None:
 
 
 def send_to_discord(message: str) -> bool:
-    script = Path(r"D:\deku-workspace\scripts\send_discord_message.py")
+    # Use WSL-safe path (works on both Windows and Linux)
+    if os.name == "nt":
+        script = Path(r"D:\deku-workspace\scripts\send_discord_message.py")
+    else:
+        script = Path("/mnt/d/deku-workspace/scripts/send_discord_message.py")
     try:
         result = subprocess.run(
             [sys.executable, str(script), "--channel", CHANNEL_ID, "--message", message],
             capture_output=True, text=True, timeout=15,
         )
         return result.returncode == 0
-    except Exception:
+    except Exception as exc:
+        print(f"[DEBUG] Discord post error: {exc}", file=sys.stderr)
         return False
 
 

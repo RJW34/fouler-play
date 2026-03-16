@@ -147,6 +147,11 @@ def _get_effective_types(pokemon) -> list:
     base_types = _sanitize_type_list(getattr(pokemon, "types", []) or [])
     tera_type = _normalize_type_name(getattr(pokemon, "tera_type", None))
     if getattr(pokemon, "terastallized", False) and tera_type:
+        # Stellar tera is not a real type — it boosts all moves but has no
+        # defensive type chart interaction. Skip it to avoid KeyError in
+        # type_effectiveness_modifier (MCTS search failed: 'stellar').
+        if tera_type == "stellar":
+            return base_types
         return [tera_type]
     return base_types
 

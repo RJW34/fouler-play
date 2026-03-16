@@ -69,6 +69,9 @@ def _get_effective_types(pokemon) -> list[str]:
     base_types = _sanitize_type_list(getattr(pokemon, "types", []) or [])
     tera_type = _normalize_type_name(getattr(pokemon, "tera_type", None))
     if getattr(pokemon, "terastallized", False) and tera_type:
+        # Stellar tera is not a real type — skip to avoid KeyError in type chart
+        if tera_type == "stellar":
+            return base_types
         return [tera_type]
     return base_types
 
