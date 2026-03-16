@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Event Queue Library for Fouler Play Discord Notifications
 
@@ -12,7 +12,18 @@ Usage:
                 precondition_check_fn="bot_is_alive", dedup_window_sec=10)
 """
 
-import fcntl
+import sys as _sys
+if _sys.platform == 'win32':
+    import msvcrt as _msvcrt
+    class _fcntl_stub:
+        LOCK_EX = 2
+        LOCK_UN = 8
+        @staticmethod
+        def flock(f, flags):
+            pass  # Windows: no-op (single-process, thread-safe via GIL)
+    fcntl = _fcntl_stub()
+else:
+    import fcntl
 import hashlib
 import json
 import logging
@@ -27,7 +38,7 @@ QUEUE_FILE = Path(os.getenv(
     "/home/ryan/projects/fouler-play/events_queue.json"
 ))
 
-LOG_DIR = Path("/home/ryan/projects/fouler-play/logs")
+LOG_DIR = Path(os.getenv("LOG_DIR", str(Path(__file__).resolve().parent.parent / "logs")))
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger("event_queue_lib")
@@ -251,3 +262,4 @@ def queue_stats() -> dict:
         "expired": sum(1 for e in events if e["status"] == STATUS_EXPIRED),
     }
     return stats
+

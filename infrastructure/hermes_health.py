@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Hermes Health Check — single-call status for Symphony/DEKU monitoring.
 
@@ -38,6 +38,11 @@ def bot_is_running() -> bool:
         pid = data.get("pid")
         if not pid:
             return False
+        import platform
+        if platform.system() == "Windows":
+            import subprocess
+            r = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True, text=True)
+            return str(pid) in r.stdout
         os.kill(pid, 0)
         return True
     except (ProcessLookupError, PermissionError, json.JSONDecodeError):
@@ -206,3 +211,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
