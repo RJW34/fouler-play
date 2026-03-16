@@ -22,32 +22,35 @@ The bot account is **"npctypebeat"** on Pokemon Showdown, playing **gen9ou**. It
 
 **Stream is a core requirement, not a nice-to-have.** The OBS overlay displaying all 3 concurrent battles must be functional before laddering counts as "live." Visual proof of the overlay working is the gate.
 
-## You Own Your Machine
+## Machine Topology
 
-This project runs on **two machines**. When you start a session, determine which machine you are on and act accordingly.
+This project runs on **MAGNETON** (Windows, primary). DEKU orchestrates from WSL on MAGNETON.
 
-### How to identify your machine
-- Run `uname -s` or check `$OSTYPE`. Linux = **DEKU**. Windows / `MSYS` / `MINGW` = **BAKUGO**.
-- Or check the hostname: `hostname`.
+### Host contract
+- **MAGNETON** — Runs the battle bot (Windows Python + poke_engine), stream server, browser panels, control plane
+- **ubunztu** — Pokemon AI emulators (Emerald/Fire Red), RTMP feeds
+- **JIGGLYPUFF** — OBS / livestream host (Twitch)
 
----
+### Canonical repo path
+`D:\Projects with Claude\fouler-play` — this is the active working copy. `D:\Projects\fouler-play` is a stale copy (do not use).
 
-## DEKU (Linux) — Brains
+### Bot launch
+Non-interactive: `start_autoresearch.bat` (30 battles, 3 concurrent)
+Interactive: `start_one_touch.bat` (prompts for battle count)
+Direct: `python run.py --websocket-uri ... --ps-username npctypebeat ...` (see .env for all args)
 
-**You own:** Decision-making improvements, replay analysis, morning report quality, developer loop, test suite, upstream merges.
+### Autoresearch cycle
+1. Run 30 battles (10 per team × 3 teams) via `run.py`
+2. `pipeline.py watch` monitors and triggers analysis at batch completion
+3. `infrastructure/autoresearch/run_cycle.py --analyze` runs performance analysis
+4. ONE targeted fix per cycle, validated with pytest, committed with reasoning
+5. Respect `infrastructure/guardrails.json` (allowed/denied files, safety thresholds)
 
-### Your loop: `infrastructure/linux/developer_loop.sh`
-Runs continuously. Pulls battle data -> analyzes performance -> invokes Claude Code to make one improvement -> runs tests -> pushes if passing. Install as a persistent service:
-```bash
-bash infrastructure/linux/install_service.sh
-systemctl --user start fouler-play
-```
-
-### Your responsibilities (in priority order)
-1. **Improve the bot's decision-making** — see TASKBOARD.md for the current phase. Check `battle_stats.json` for current ELO and win rate. The bot needs to play fat/stall correctly at a higher level. Focus on improvements that help the bot play these archetypes faithfully: better switching, hazard management, recovery timing, PP awareness, matchup-based pivoting. Run `python -m pytest tests/ -v` after each change.
-2. **Improve the morning report** — `replay_analysis/team_performance.py` generates per-team analysis. Make this output more useful for a competitive player studying their teams. The report should answer: "Is this team viable? What does it lose to? Which Pokemon are the weak links? Which replays should I watch?" This is the primary deliverable the player consumes.
-3. **Fix anything broken** — if tests fail, if imports break, if the developer loop crashes, diagnose and fix.
-4. **Push to GitHub** — all code goes to `master` branch. Update TASKBOARD.md when completing items. Never modify files in the `never_modify` list in `infrastructure/guardrails.json`.
+### Responsibilities (in priority order)
+1. **Improve the bot's decision-making** — Check `battle_stats.json` for current ELO and win rate. Focus on: better switching, hazard management, recovery timing, PP awareness, matchup-based pivoting. Run `python -m pytest tests/ -v` after each change.
+2. **Run autoresearch cycles** — Use `infrastructure/autoresearch/run_cycle.py` to identify improvement targets, then implement ONE fix per cycle.
+3. **Fix anything broken** — if tests fail, if imports break, diagnose and fix.
+4. **Push to GitHub** — all code goes to `hermes-integration` branch. Never modify files in the `never_modify` list in `infrastructure/guardrails.json`.
 
 ### Sub-agent pattern (DEKU)
 When you have multiple independent tasks, spawn sub-agents to work in parallel:

@@ -25,7 +25,7 @@ from data import pokedex
 from fp.helpers import type_effectiveness_modifier
 
 
-DEFAULT_BOT_USERNAME = "ALL CHUNG"
+DEFAULT_BOT_USERNAME = "npctypebeat"
 SETUP_MOVES = {
     "calmmind",
     "curse",

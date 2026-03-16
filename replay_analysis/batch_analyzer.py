@@ -20,7 +20,7 @@ from replay_analysis.turn_review import TurnReviewer
 # Analysis Source: Claude via OpenClaw (Pokemon-competent reasoning)
 # DO NOT use qwen or local LLM (prone to hallucinations about Pokemon mechanics)
 USE_CLAUDE = True
-CLAUDE_MODEL = "anthropic/claude-opus-4-6"  # Use Opus for accurate analysis
+CLAUDE_MODEL = "anthropic/claude-sonnet-4-6"  # Use Opus for accurate analysis
 REPORTS_DIR = PROJECT_ROOT / "replay_analysis" / "reports"
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
 REPLAY_ANALYSIS_DIR = PROJECT_ROOT / "replay_analysis"
@@ -30,7 +30,7 @@ class BatchAnalyzer:
     """Analyzes batches of battles and generates improvement reports."""
 
     def __init__(self):
-        self.reviewer = TurnReviewer(bot_username="BugInTheCode")
+        self.reviewer = TurnReviewer(bot_username="npctypebeat")
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     def get_battle_stats(self) -> List[Dict]:
@@ -230,7 +230,7 @@ class BatchAnalyzer:
 
     def build_analysis_prompt(self, reviews: List[str], stats: Dict) -> str:
         """Build a structured prompt for Ollama analysis with domain grounding."""
-        prompt = """You are analyzing Pokemon Showdown Gen9 OU battle replays for a competitive bot named BugInTheCode.
+        prompt = """You are analyzing Pokemon Showdown Gen9 OU battle replays for a competitive bot named npctypebeat.
 
 === DOMAIN KNOWLEDGE & CONSTRAINTS ===
 DO NOT hallucinate Pokemon knowledge. Ground analysis in these facts:
@@ -243,7 +243,7 @@ GEN9 OU META FUNDAMENTALS:
 - Recovery moves on stall are MANDATORY: Roost, Recover, Moonlight, Synthesis
 - Type immunities grant free switches: Ghost immunity to Normal/Fighting, Water immunity via Storm Drain/Dry Skin
 
-BugInTheCode'S TEAMS & STRATEGIES:
+npctypebeat'S TEAMS & STRATEGIES:
 1. STALL (fat-team-*): Walls + recovery + Stealth Rock setter. Win condition: chip damage via status/hazards.
    - Role: Support hazard control, wall key threats, maintain defenses
    - KNOWN ISSUE: 76% of losses had NO Stealth Rock. This is critical—force rock early.
@@ -424,7 +424,7 @@ Format response as structured improvement report with battle citations.
         recent = battles[-last_n:] if len(battles) > last_n else battles
         
         # Build stats-focused prompt
-        prompt = f"""You are analyzing Pokemon Showdown competitive bot performance data for BugInTheCode.
+        prompt = f"""You are analyzing Pokemon Showdown competitive bot performance data for npctypebeat.
 
 NOTE: Detailed replay data is unavailable (Pokemon Showdown purged replays). 
 Provide analysis based on AGGREGATE STATISTICS and TEAM PERFORMANCE patterns.

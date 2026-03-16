@@ -24,7 +24,7 @@ def analyze_replay_for_issues(replay_file: Path, reviewer) -> dict:
         # Extract result
         if "log" in replay_data:
             log = replay_data["log"]
-            if "BugInTheCode won" in log or "|win|BugInTheCode" in log:
+            if "npctypebeat won" in log or "|win|npctypebeat" in log:
                 result = "win"
             elif "won the battle!" in log:
                 result = "loss"
@@ -98,7 +98,7 @@ def analyze_replay_for_issues(replay_file: Path, reviewer) -> dict:
         return None
 
 def main():
-    reviewer = TurnReviewer(bot_username="BugInTheCode")
+    reviewer = TurnReviewer(bot_username="npctypebeat")
     replay_dir = Path(__file__).parent
     replay_files = sorted(replay_dir.glob("gen9ou-*.json"))[-30:]  # Last 30 battles
     

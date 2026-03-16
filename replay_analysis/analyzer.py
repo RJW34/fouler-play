@@ -108,7 +108,7 @@ class ReplayAnalyzer:
         """Parse the replay log into structured turns"""
         turns = []
         current_turn = None
-        bot_name = "ALL CHUNG"
+        bot_name = "npctypebeat"
         
         for line in log_lines:
             line = line.strip()
@@ -149,7 +149,7 @@ class ReplayAnalyzer:
         mistakes = []
         log_lines = replay_data.get("log", "").split("\n")
         
-        bot_name = "ALL CHUNG"
+        bot_name = "npctypebeat"
         current_turn = 0
         
         # Tracking state

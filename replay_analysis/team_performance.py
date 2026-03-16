@@ -39,7 +39,7 @@ REPORT_OUTPUT_PATH = REPLAY_ANALYSIS_DIR / "team_report.json"
 
 # The bot's username on Showdown (used when parsing replay logs to determine
 # which side is "ours").
-BOT_USERNAME = "ALL CHUNG"
+BOT_USERNAME = "npctypebeat"
 
 
 # ---------------------------------------------------------------------------

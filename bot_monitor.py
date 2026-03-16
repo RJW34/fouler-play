@@ -612,7 +612,7 @@ class BotMonitor:
             
             # Periodic ELO fetch for stream overlay (every 60 seconds)
             if (datetime.now() - last_elo_fetch).total_seconds() > 60:
-                username = os.getenv("PS_USERNAME", "BugInTheCode")
+                username = os.getenv("PS_USERNAME", "npctypebeat")
                 elo, _ = await self.fetch_elo(username)
                 if elo is not None:
                     self.current_elo = elo

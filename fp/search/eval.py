@@ -213,9 +213,17 @@ def _estimate_damage_ratio(attacker, defender, move_name: str) -> float:
         return 0.0
 
     if category == constants.PHYSICAL:
-        atk = attacker.stats.get(constants.ATTACK, 100) if isinstance(attacker.stats, dict) else 100
+        # Body Press uses the attacker's Defense stat as the attacking stat
+        # (not Attack). Without this fix, Corviknight/Skarmory/Zamazenta
+        # Body Press damage is estimated at ~55% of its real value.
+        _norm = normalize_name(move_name)
+        if _norm == "bodypress":
+            atk = attacker.stats.get(constants.DEFENSE, 100) if isinstance(attacker.stats, dict) else 100
+            atk_boost = (getattr(attacker, "boosts", {}) or {}).get(constants.DEFENSE, 0)
+        else:
+            atk = attacker.stats.get(constants.ATTACK, 100) if isinstance(attacker.stats, dict) else 100
+            atk_boost = (getattr(attacker, "boosts", {}) or {}).get(constants.ATTACK, 0)
         def_ = defender.stats.get(constants.DEFENSE, 100) if isinstance(defender.stats, dict) else 100
-        atk_boost = (getattr(attacker, "boosts", {}) or {}).get(constants.ATTACK, 0)
         def_boost = (getattr(defender, "boosts", {}) or {}).get(constants.DEFENSE, 0)
     else:
         atk = attacker.stats.get(constants.SPECIAL_ATTACK, 100) if isinstance(attacker.stats, dict) else 100

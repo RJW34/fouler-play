@@ -795,6 +795,10 @@ async def handle_state(request: web.Request) -> web.Response:
 
 
 DEKU_STATE_URL = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
+MAGNETON_STATE_URL = os.getenv("MAGNETON_STATE_URL", "http://192.168.1.181:8777/state")
+
+_emerald_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Emerald ROM", "status_text": "INITIALIZING"}
+_firered_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Fire Red ROM", "status_text": "INITIALIZING"}
 
 async def handle_deku_state(request: web.Request) -> web.Response:
     """Proxy DEKU's state endpoint to avoid CORS issues in OBS browser."""
@@ -967,6 +971,194 @@ async def cleanup_background_tasks(app: web.Application) -> None:
             await retry
 
 
+# -- Grid Panel Handlers --
+
+async def handle_fouler_stats(request: web.Request) -> web.FileResponse:
+    """Serve the Fouler Stats panel HTML."""
+    return web.FileResponse(str(STREAMING_DIR / "fouler_stats.html"))
+
+
+async def handle_emerald_brain(request: web.Request) -> web.FileResponse:
+    """Serve the Emerald AI Brain panel HTML."""
+    return web.FileResponse(str(STREAMING_DIR / "emerald_brain.html"))
+
+
+async def handle_emerald_brain_state(request: web.Request) -> web.Response:
+    """Return current emerald brain state as JSON."""
+    return web.json_response(_emerald_brain_state)
+
+
+async def handle_emerald_update(request: web.Request) -> web.Response:
+    """POST endpoint to update Emerald AI brain state."""
+    global _emerald_brain_state
+    try:
+        data = await request.json()
+        if isinstance(data, dict):
+            for key in ("status", "objective", "last_action", "location", "title", "subtitle", "status_text", "progress"):
+                if key in data:
+                    _emerald_brain_state[key] = data[key]
+            _emerald_brain_state["updated"] = time.time()
+        return web.json_response({"ok": True, "state": _emerald_brain_state})
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=400)
+
+
+async def handle_firered_brain(request: web.Request) -> web.FileResponse:
+    """Serve the Fire Red AI Brain panel HTML."""
+    return web.FileResponse(str(STREAMING_DIR / "firered_brain.html"))
+
+
+async def handle_firered_brain_state(request: web.Request) -> web.Response:
+    """Return current fire red brain state as JSON."""
+    return web.json_response(_firered_brain_state)
+
+
+async def handle_firered_update(request: web.Request) -> web.Response:
+    """POST endpoint to update Fire Red AI brain state."""
+    global _firered_brain_state
+    try:
+        data = await request.json()
+        if isinstance(data, dict):
+            for key in ("status", "objective", "last_action", "location", "title", "subtitle", "status_text", "progress"):
+                if key in data:
+                    _firered_brain_state[key] = data[key]
+            _firered_brain_state["updated"] = time.time()
+        return web.json_response({"ok": True, "state": _firered_brain_state})
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=400)
+
+
+async def handle_magneton_state(request: web.Request) -> web.Response:
+    """Proxy MAGNETON state endpoint to avoid CORS issues in OBS browser sources."""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(MAGNETON_STATE_URL, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                data = await resp.json()
+                return web.json_response(data)
+    except Exception:
+        return web.json_response({"error": "magneton offline"}, status=502)
+
+
+BATTLE_SLOT_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Battle Slot {slot}</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
+font-family:'Outfit',system-ui,sans-serif;color:#eaeaea;
+display:flex;flex-direction:column;align-items:center;justify-content:center}}
+.sonar{{width:120px;height:120px;position:relative;margin-bottom:24px}}
+.sonar-circle{{position:absolute;top:50%;left:50%;
+transform:translate(-50%,-50%);border:1.5px solid #08d9d6;
+border-radius:50%;opacity:0;animation:sonar-ping 4s infinite linear}}
+.sonar-circle:nth-child(2){{animation-delay:1s}}
+.sonar-circle:nth-child(3){{animation-delay:2s}}
+.sonar-circle:nth-child(4){{animation-delay:3s}}
+@keyframes sonar-ping{{0%{{width:0;height:0;opacity:1}}100%{{width:100%;height:100%;opacity:0}}}}
+.sonar-scanner{{position:absolute;top:0;left:0;width:100%;height:100%;
+background:conic-gradient(from 0deg,transparent 0deg,#08d9d6 360deg);
+opacity:0.1;border-radius:50%;animation:spin 4s linear infinite}}
+@keyframes spin{{to{{transform:rotate(360deg)}}}}
+.scanning-text{{font-size:13px;font-weight:800;letter-spacing:3px;text-transform:uppercase;
+color:#08d9d6;text-shadow:0 0 12px rgba(8,217,214,0.4);animation:pulse 2s ease-in-out infinite}}
+.scanning-sub{{margin-top:8px;font-size:10px;letter-spacing:2px;text-transform:uppercase;
+color:rgba(8,217,214,0.4)}}
+@keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.5}}}}
+</style></head><body>
+<div class="sonar">
+  <div class="sonar-scanner"></div>
+  <div class="sonar-circle"></div>
+  <div class="sonar-circle"></div>
+  <div class="sonar-circle"></div>
+  <div class="sonar-circle"></div>
+</div>
+<div class="scanning-text">SCANNING...</div>
+<div class="scanning-sub">SLOT {slot} &mdash; AWAITING BATTLE</div>
+<script>
+(function(){{
+  var SLOT={slot};
+  var STATE_URL='/magneton-state';
+  var POLL_MS=4000;
+  var activeBid=null;
+  function slotOf(b,i){{return b.slot!=null?parseInt(b.slot):(i+1);}}
+  function poll(){{
+    fetch(STATE_URL+'?t='+Date.now())
+      .then(function(r){{return r.json();}})
+      .then(function(d){{
+        var battles=d.battles||[];
+        var battle=null;
+        for(var i=0;i<battles.length;i++){{
+          if(slotOf(battles[i],i)===SLOT){{battle=battles[i];break;}}
+        }}
+        if(battle&&battle.id){{
+          if(battle.id!==activeBid){{
+            activeBid=battle.id;
+            window.location.replace('https://play.pokemonshowdown.com/'+battle.id+'?r='+Date.now());
+          }}
+        }}
+      }})
+      .catch(function(){{}});
+  }}
+  poll();
+  setInterval(poll,POLL_MS);
+}})();
+</script>
+</body></html>"""
+
+
+BATTLE_REDIRECT_HTML = BATTLE_SLOT_HTML  # deprecated alias
+
+
+async def handle_slot_state(request: web.Request) -> web.Response:
+    """Return JSON state for a specific battle slot."""
+    slot_str = request.match_info.get("slot", "1")
+    try:
+        slot_num = int(slot_str)
+    except (TypeError, ValueError):
+        return web.json_response({"error": "invalid slot"}, status=400)
+
+    if slot_num < 1 or slot_num > 9:
+        return web.json_response({"error": "invalid slot"}, status=400)
+
+    state = build_state_payload()
+    battles = state.get("battles") or []
+    slot_map = _build_slot_map(battles)
+    battle = slot_map.get(slot_num)
+
+    if battle:
+        battle_id = battle.get("id")
+        url = _build_direct_battle_url(battle_id) if battle_id else None
+        return web.json_response({
+            "slot": slot_num,
+            "battle_id": battle_id,
+            "url": url,
+        })
+
+    return web.json_response({
+        "slot": slot_num,
+        "battle_id": None,
+        "url": None,
+    })
+
+
+async def handle_battle_slot(request: web.Request) -> web.Response:
+    """Battle slot OBS browser source."""
+    slot_str = request.match_info.get("slot", "1")
+    try:
+        slot_num = int(slot_str)
+    except (TypeError, ValueError):
+        return web.Response(text="Invalid slot", status=400)
+
+    if slot_num < 1 or slot_num > 9:
+        return web.Response(text="Invalid slot", status=400)
+
+    return web.Response(
+        text=BATTLE_SLOT_HTML.format(slot=slot_num),
+        content_type="text/html",
+    )
+
+
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/ws", handle_ws)
@@ -983,6 +1175,16 @@ def create_app() -> web.Application:
     app.router.add_get("/obs-debug", handle_debug_state)  # Alias for debug_state
     app.router.add_get("/active_battles.json", handle_battles_file)
     register_dashboard_routes(app)
+    app.router.add_get("/fouler-stats", handle_fouler_stats)
+    app.router.add_get("/emerald-brain", handle_emerald_brain)
+    app.router.add_get("/emerald-brain-state", handle_emerald_brain_state)
+    app.router.add_post("/emerald-update", handle_emerald_update)
+    app.router.add_get("/firered-brain", handle_firered_brain)
+    app.router.add_get("/firered-brain-state", handle_firered_brain_state)
+    app.router.add_post("/firered-update", handle_firered_update)
+    app.router.add_get("/magneton-state", handle_magneton_state)
+    app.router.add_get("/slot/{slot}/state", handle_slot_state)
+    app.router.add_get("/slot/{slot}", handle_battle_slot)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
     return app
