@@ -5590,6 +5590,19 @@ def select_move_from_eval_scores(
                 getattr(getattr(getattr(battle, "user", None), "last_selected_move", None), "move", "") or ""
             ).lower()
             advantage_score, ahead = _estimate_board_advantage(battle, ability_state)
+            # Scale tie_ratio by playstyle: fat/stall teams should switch more
+            # freely, so the anti-switch tiebreaker is weakened for them.
+            _spm = 1.0
+            if playstyle is not None:
+                try:
+                    _cfg = PlaystyleConfig.get_config(playstyle)
+                    _spm = _cfg.get("switch_penalty_multiplier", 1.0)
+                except Exception:
+                    pass
+            if _spm < 1.0:
+                # FAT (0.6) or STALL (0.5) — reduce tie_ratio proportionally
+                # so switches win tiebreaks more often
+                tie_ratio *= _spm  # e.g. 0.96 * 0.6 = 0.576
             if ahead:
                 tie_ratio = min(tie_ratio, 0.88 if advantage_score < 1.35 else 0.84)
             if turn_number > 1 and last_selected_raw.startswith("switch "):

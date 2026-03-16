@@ -76,14 +76,23 @@ def generate_research_task() -> dict:
             "meta_top_10": [p["name"] for p in top_meta],
         }
 
-    # Step 4: Build the task
+    # Step 4: Build the task — include competitive matchup analysis
     brief = get_improvement_brief()
+
+    # Add competitive analysis (opponent threats, problem matchups)
+    competitive_brief = ""
+    try:
+        from .matchup_analyzer import get_competitive_brief
+        competitive_brief = get_competitive_brief()
+    except Exception as e:
+        logger.debug(f"Competitive analysis failed: {e}")
 
     task = {
         "status": "ready",
         "generated_at": datetime.now().isoformat(),
         "target": target,
         "improvement_brief": brief,
+        "competitive_analysis": competitive_brief,
         "smogon_context": smogon_context,
         "recent_research": [
             {"topic": r.get("topic"), "type": r.get("type"), "when": r.get("timestamp")}

@@ -983,16 +983,15 @@ async def async_pick_move(battle):
         trace_reason = trace_reason or "fallback"
 
     # === STRATEGIC LAYER INTEGRATION ===
-    # Log archetype detection (full move selection integration in next phase)
+    # Archetype detection + gameplan generation + move enhancement
     try:
         strategic_layer = StrategicDecisionLayer()
         battle_tag = battle_copy.battle_tag
-        
+
         # Convert Pokemon objects to dicts for archetype analyzer
         def pokemon_to_dict(pokemon):
             if pokemon is None:
                 return None
-            # Extract move names - ensure all are strings
             move_names = []
             if pokemon.moves:
                 for move in pokemon.moves:
@@ -1003,49 +1002,95 @@ async def async_pick_move(battle):
                             move_names.append(str(move.name).strip() if move.name else "")
                         else:
                             move_str = str(move).strip() if move else ""
-                            # Try to extract move name from __repr__ or similar
                             if move_str.startswith("<") and ">" in move_str:
-                                # Likely a Move object repr, skip
                                 continue
                             move_names.append(move_str)
                     except Exception as e:
                         logger.debug(f"Failed to extract move: {e}")
                         continue
-            
+
             return {
                 "name": pokemon.name,
-                "species": pokemon.name,  # Pokemon.name is already normalized species name
+                "species": pokemon.name,
                 "types": list(pokemon.types) if pokemon.types else [],
                 "hp": pokemon.hp,
                 "max_hp": pokemon.max_hp,
-                "moves": [m for m in move_names if m],  # Filter out empty strings
+                "moves": [m for m in move_names if m],
                 "ability": pokemon.ability or "unknown",
                 "item": pokemon.item or "unknown",
             }
-        
+
         team_data = []
         if battle_copy.user.active:
             team_data.append(pokemon_to_dict(battle_copy.user.active))
         for p in battle_copy.user.reserve:
             if p is not None:
                 team_data.append(pokemon_to_dict(p))
-        
+
         # Initialize strategic layer for this battle
         archetype, gameplan = strategic_layer.initialize_for_battle(battle_tag, team_data)
-        
-        # Log archetype for analysis
+
         logger.info(f"[STRATEGIC] Archetype={archetype.archetype}, Confidence={archetype.confidence:.2f}")
         logger.info(f"[STRATEGIC] Win Condition: {archetype.primary_win_condition}")
-        
+
+        # === STRATEGIC MOVE ENHANCEMENT (the missing wire) ===
+        # Get all available moves from the battle state
+        available_moves = []
+        if battle_copy.user.active and battle_copy.user.active.moves:
+            for m in battle_copy.user.active.moves:
+                mname = m.name if hasattr(m, 'name') else str(m)
+                if mname:
+                    available_moves.append(normalize_name(mname))
+        # Add switch options
+        for i, p in enumerate(battle_copy.user.reserve):
+            if p is not None and p.hp > 0 and not p.fainted:
+                available_moves.append(f"switch {p.name}")
+
+        if available_moves and best_move:
+            filtered_moves, strategic_scores = strategic_layer.enhance_move_selection(
+                available_moves,
+                battle_copy,
+                battle_tag,
+                last_decision=None,
+                turns_in_current=0,
+            )
+
+            # Apply strategic reranking: if the strategic layer strongly
+            # disagrees with the engine's choice, consider the strategic pick.
+            # Only override when strategic confidence is high and engine didn't
+            # find a clearly dominant move (avoids overriding obvious KO moves).
+            if strategic_scores and best_move:
+                best_move_norm = normalize_name(best_move) if not best_move.startswith("switch ") else best_move
+                engine_strategic_score = strategic_scores.get(best_move_norm, 0.5)
+
+                # Find the strategically best move
+                strategic_best = max(strategic_scores.items(), key=lambda x: x[1]) if strategic_scores else (best_move, 0.5)
+
+                # Only override if strategic score is significantly higher AND
+                # the engine's pick isn't already the strategic best
+                if (strategic_best[0] != best_move_norm
+                        and strategic_best[1] > engine_strategic_score + 0.25
+                        and strategic_best[0] in filtered_moves):
+                    logger.info(
+                        f"[STRATEGIC] Overriding engine choice '{best_move}' "
+                        f"(strategic={engine_strategic_score:.2f}) with '{strategic_best[0]}' "
+                        f"(strategic={strategic_best[1]:.2f})"
+                    )
+                    best_move = strategic_best[0]
+                    trace_reason = f"strategic_override ({trace_reason})"
+
         if trace is not None:
             trace["strategic"] = {
                 "archetype": archetype.archetype,
                 "confidence": archetype.confidence,
                 "win_condition": archetype.primary_win_condition,
                 "engine_choice": best_move,
+                "strategic_scores_top3": sorted(
+                    strategic_scores.items(), key=lambda x: x[1], reverse=True
+                )[:3] if strategic_scores else [],
             }
     except Exception as e:
-        logger.warning(f"Strategic layer initialization failed: {e}")
+        logger.warning(f"Strategic layer failed: {e}")
         if trace is not None:
             trace["strategic"] = {
                 "status": "error",
