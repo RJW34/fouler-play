@@ -52,16 +52,22 @@ echo   Account: %PS_USERNAME%
 echo   Format : %PS_FORMAT%
 echo =============================================
 echo.
-set /p "BATTLE_COUNT=How many battles? (0 = infinite): "
-if not defined BATTLE_COUNT set "BATTLE_COUNT=0"
-if "!BATTLE_COUNT!"=="0" (
-    set "PS_RUN_COUNT=999999"
-    echo [START] Running in infinite mode (999999 battles)
+if defined PS_RUN_COUNT (
+    echo [START] Using preset PS_RUN_COUNT=!PS_RUN_COUNT!
 ) else (
-    set "PS_RUN_COUNT=!BATTLE_COUNT!"
-    echo [START] Running !BATTLE_COUNT! battle(s)
+    set /p "BATTLE_COUNT=How many battles? (0 = infinite): "
+    if not defined BATTLE_COUNT set "BATTLE_COUNT=0"
+    if "!BATTLE_COUNT!"=="0" (
+        set "PS_RUN_COUNT=999999"
+        echo [START] Running in infinite mode (999999 battles)
+    ) else (
+        set "PS_RUN_COUNT=!BATTLE_COUNT!"
+        echo [START] Running !BATTLE_COUNT! battle(s)
+    )
 )
-set /p "CONCURRENT_BATTLES=Concurrent battles? (default 1): "
+if not defined CONCURRENT_BATTLES (
+    set /p "CONCURRENT_BATTLES=Concurrent battles? (default 1): "
+)
 if not defined CONCURRENT_BATTLES set "CONCURRENT_BATTLES=1"
 if "!CONCURRENT_BATTLES!"=="" set "CONCURRENT_BATTLES=1"
 echo [START] Concurrent battles: !CONCURRENT_BATTLES!

@@ -13,6 +13,8 @@ set "BATCH_SIZE=%BATCH_SIZE%"
 if not defined BATCH_SIZE set "BATCH_SIZE=10"
 set "AUTO_PULL=%AUTO_PULL%"
 if not defined AUTO_PULL set "AUTO_PULL=0"
+set "PS_RUN_COUNT=%BATCH_SIZE%"
+set "CONCURRENT_BATTLES=3"
 
 echo ==========================================
 echo  Fouler-Play Player Loop starting
