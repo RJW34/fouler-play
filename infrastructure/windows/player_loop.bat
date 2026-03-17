@@ -10,7 +10,7 @@ setlocal EnableExtensions DisableDelayedExpansion
 set "REPO_DIR=%~dp0..\.."
 set "BRANCH=master"
 set "BATCH_SIZE=%BATCH_SIZE%"
-if not defined BATCH_SIZE set "BATCH_SIZE=10"
+if not defined BATCH_SIZE set "BATCH_SIZE=30"
 set "AUTO_PULL=%AUTO_PULL%"
 if not defined AUTO_PULL set "AUTO_PULL=0"
 set "PS_RUN_COUNT=%BATCH_SIZE%"
