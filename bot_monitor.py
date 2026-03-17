@@ -9,12 +9,30 @@ Supports concurrent battles - tracks multiple active battles simultaneously.
 
 import sys
 import os
+import subprocess
+from pathlib import Path
 
 # Force UTF-8 for console output on Windows (avoid cp1252 emoji crashes)
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+
+# Ensure dependencies are installed before importing
+try:
+    import poke_engine
+except ModuleNotFoundError:
+    print("[MONITOR] Installing missing dependencies from requirements.txt...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+        cwd=Path(__file__).parent,
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        print(f"[MONITOR] Dependency install failed:\n{result.stderr}")
+        sys.exit(1)
+    print("[MONITOR] Dependencies installed successfully")
 
 import asyncio
 import re

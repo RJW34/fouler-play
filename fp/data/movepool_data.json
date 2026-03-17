@@ -2,24 +2,24 @@
   "caterpie": {
     "pokemon_name": "caterpie",
     "physical_moves": [
+      "acrobatics",
       "tackle",
-      "scaleshot",
-      "phantomforce",
       "earthquake",
-      "acrobatics"
+      "phantomforce",
+      "scaleshot"
     ],
     "special_moves": [],
     "status_moves": [
-      "destinybond",
-      "somerandomunknownmove",
-      "meditate",
-      "dragondance",
-      "healingwish",
-      "sleeptalk",
-      "stringshot",
-      "protect",
+      "agility",
       "swordsdance",
-      "agility"
+      "somerandomunknownmove",
+      "healingwish",
+      "dragondance",
+      "protect",
+      "meditate",
+      "stringshot",
+      "sleeptalk",
+      "destinybond"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -37,14 +37,14 @@
   "gyarados": {
     "pokemon_name": "gyarados",
     "physical_moves": [
-      "earthquake",
-      "struggle",
       "outrage",
-      "waterfall"
+      "earthquake",
+      "waterfall",
+      "struggle"
     ],
     "special_moves": [
-      "hydropump",
-      "thunderbolt"
+      "thunderbolt",
+      "hydropump"
     ],
     "status_moves": [
       "dragondance"
@@ -55,21 +55,21 @@
   "tornadustherian": {
     "pokemon_name": "tornadustherian",
     "physical_moves": [
-      "struggle",
       "uturn",
-      "knockoff"
+      "knockoff",
+      "struggle"
     ],
     "special_moves": [
-      "psychic",
       "hurricane",
       "airslash",
-      "heatwave",
       "bleakwindstorm",
-      "grassknot"
+      "grassknot",
+      "heatwave",
+      "psychic"
     ],
     "status_moves": [
-      "nastyplot",
-      "taunt"
+      "taunt",
+      "nastyplot"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -87,31 +87,31 @@
   "clefable": {
     "pokemon_name": "clefable",
     "physical_moves": [
-      "knockoff",
-      "tackle"
+      "tackle",
+      "knockoff"
     ],
     "special_moves": [
-      "icebeam",
-      "drainingkiss",
-      "fireblast",
       "meteorbeam",
       "psyshock",
-      "psychic",
-      "alluringvoice",
+      "fireblast",
+      "drainingkiss",
+      "icebeam",
       "moonblast",
-      "flamethrower"
+      "flamethrower",
+      "alluringvoice",
+      "psychic"
     ],
     "status_moves": [
-      "sunnyday",
-      "wish",
-      "encore",
-      "stealthrock",
       "trick",
       "moonlight",
-      "thunderwave",
+      "encore",
+      "stealthrock",
       "substitute",
+      "protect",
       "calmmind",
-      "protect"
+      "thunderwave",
+      "sunnyday",
+      "wish"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -122,8 +122,8 @@
       "poltergeist"
     ],
     "special_moves": [
-      "shadowball",
       "hypervoice",
+      "shadowball",
       "flamethrower"
     ],
     "status_moves": [
@@ -136,8 +136,8 @@
     "pokemon_name": "zoroark",
     "physical_moves": [],
     "special_moves": [
-      "darkpulse",
-      "sludgebomb"
+      "sludgebomb",
+      "darkpulse"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -146,25 +146,25 @@
   "blaziken": {
     "pokemon_name": "blaziken",
     "physical_moves": [
-      "knockoff",
       "blazekick",
-      "flareblitz",
+      "knockoff",
       "earthquake",
-      "closecombat"
+      "closecombat",
+      "flareblitz"
     ],
     "special_moves": [
+      "overheat",
       "focusblast",
-      "flamethrower",
-      "overheat"
+      "flamethrower"
     ],
     "status_moves": [
+      "swordsdance",
+      "bulkup",
+      "protect",
       "focusenergy",
-      "rest",
       "sleeptalk",
       "detect",
-      "protect",
-      "swordsdance",
-      "bulkup"
+      "rest"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -173,8 +173,8 @@
     "pokemon_name": "cinccino",
     "physical_moves": [
       "bulletseed",
-      "tailslap",
-      "tripleaxel"
+      "tripleaxel",
+      "tailslap"
     ],
     "special_moves": [],
     "status_moves": [
@@ -190,11 +190,11 @@
       "knockoff"
     ],
     "special_moves": [
-      "hydropump",
-      "icebeam",
       "hurricane",
-      "weatherball",
-      "surf"
+      "surf",
+      "icebeam",
+      "hydropump",
+      "weatherball"
     ],
     "status_moves": [
       "tailwind"
@@ -206,12 +206,12 @@
     "pokemon_name": "serperior",
     "physical_moves": [],
     "special_moves": [
-      "leafstorm",
-      "dragonpulse"
+      "dragonpulse",
+      "leafstorm"
     ],
     "status_moves": [
-      "leechseed",
-      "glare"
+      "glare",
+      "leechseed"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -222,14 +222,14 @@
       "uturn"
     ],
     "special_moves": [
+      "overheat",
       "airslash",
-      "flamethrower",
-      "overheat"
+      "flamethrower"
     ],
     "status_moves": [
-      "substitute",
-      "roar",
       "willowisp",
+      "roar",
+      "substitute",
       "roost"
     ],
     "times_seen": 0,
@@ -238,21 +238,21 @@
   "landorustherian": {
     "pokemon_name": "landorustherian",
     "physical_moves": [
+      "smackdown",
+      "earthquake",
       "rockslide",
       "uturn",
-      "smackdown",
-      "stoneedge",
-      "earthquake"
+      "stoneedge"
     ],
     "special_moves": [
       "terablast",
       "earthpower"
     ],
     "status_moves": [
-      "stealthrock",
-      "calmmind",
       "swordsdance",
       "bulkup",
+      "stealthrock",
+      "calmmind",
       "taunt"
     ],
     "times_seen": 0,
@@ -261,18 +261,18 @@
   "dragonite": {
     "pokemon_name": "dragonite",
     "physical_moves": [
-      "firepunch",
       "aquajet",
       "ironhead",
+      "lowkick",
+      "thunderpunch",
+      "icespinner",
+      "earthquake",
+      "dragonclaw",
+      "outrage",
+      "dragontail",
       "extremespeed",
       "scaleshot",
-      "thunderpunch",
-      "lowkick",
-      "dragonclaw",
-      "earthquake",
-      "icespinner",
-      "outrage",
-      "dragontail"
+      "firepunch"
     ],
     "special_moves": [
       "dracometeor",
@@ -280,8 +280,8 @@
     ],
     "status_moves": [
       "dragondance",
-      "roost",
-      "encore"
+      "encore",
+      "roost"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -293,16 +293,16 @@
       "knockoff"
     ],
     "special_moves": [
-      "psychic",
-      "psychoboost",
+      "psychicnoise",
       "futuresight",
-      "psychicnoise"
+      "psychoboost",
+      "psychic"
     ],
     "status_moves": [
-      "stealthrock",
-      "reflect",
-      "spikes",
       "lightscreen",
+      "reflect",
+      "stealthrock",
+      "spikes",
       "taunt"
     ],
     "times_seen": 0,
@@ -312,18 +312,18 @@
     "pokemon_name": "ironmoth",
     "physical_moves": [],
     "special_moves": [
-      "sludgewave",
       "bugbuzz",
-      "discharge",
-      "psychic",
-      "fierydance",
+      "dazzlinggleam",
       "energyball",
+      "sludgewave",
       "heatwave",
-      "dazzlinggleam"
+      "discharge",
+      "fierydance",
+      "psychic"
     ],
     "status_moves": [
-      "whirlwind",
-      "substitute"
+      "substitute",
+      "whirlwind"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -331,14 +331,14 @@
   "greattusk": {
     "pokemon_name": "greattusk",
     "physical_moves": [
-      "temperflare",
-      "headlongrush",
       "rapidspin",
+      "knockoff",
       "headsmash",
       "firefang",
-      "knockoff",
-      "earthquake",
       "icespinner",
+      "headlongrush",
+      "temperflare",
+      "earthquake",
       "closecombat"
     ],
     "special_moves": [
@@ -355,24 +355,24 @@
   "ogerponwellspring": {
     "pokemon_name": "ogerponwellspring",
     "physical_moves": [
-      "stompingtantrum",
-      "playrough",
-      "uturn",
+      "trailblaze",
+      "powerwhip",
       "knockoff",
       "hornleech",
-      "powerwhip",
-      "woodhammer",
+      "playrough",
       "ivycudgel",
-      "trailblaze"
+      "woodhammer",
+      "stompingtantrum",
+      "uturn"
     ],
     "special_moves": [],
     "status_moves": [
       "leechseed",
-      "taunt",
-      "spikes",
-      "synthesis",
       "swordsdance",
-      "spikyshield"
+      "spikyshield",
+      "synthesis",
+      "spikes",
+      "taunt"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -381,22 +381,22 @@
     "pokemon_name": "gholdengo",
     "physical_moves": [],
     "special_moves": [
-      "icywind",
-      "thunder",
       "psyshock",
+      "shadowball",
+      "icywind",
+      "dazzlinggleam",
+      "thunder",
       "makeitrain",
       "hex",
-      "focusblast",
       "thunderbolt",
-      "shadowball",
-      "dazzlinggleam"
+      "focusblast"
     ],
     "status_moves": [
+      "lightscreen",
       "recover",
-      "trick",
       "nastyplot",
-      "thunderwave",
-      "lightscreen"
+      "trick",
+      "thunderwave"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -406,14 +406,14 @@
     "physical_moves": [],
     "special_moves": [
       "malignantchain",
-      "shadowball",
-      "hex"
+      "hex",
+      "shadowball"
     ],
     "status_moves": [
       "partingshot",
-      "nastyplot",
       "curse",
-      "recover"
+      "recover",
+      "nastyplot"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -424,22 +424,22 @@
       "nuzzle"
     ],
     "special_moves": [
-      "expandingforce",
-      "drainingkiss",
-      "mysticalfire",
       "psyshock",
-      "psychic",
+      "drainingkiss",
       "psychicnoise",
-      "dazzlinggleam"
+      "dazzlinggleam",
+      "mysticalfire",
+      "expandingforce",
+      "psychic"
     ],
     "status_moves": [
-      "painsplit",
+      "lightscreen",
       "toxic",
       "healingwish",
-      "thunderwave",
-      "lightscreen",
-      "trickroom",
       "calmmind",
+      "thunderwave",
+      "trickroom",
+      "painsplit",
       "spikes"
     ],
     "times_seen": 0,
@@ -450,11 +450,11 @@
     "physical_moves": [],
     "special_moves": [
       "zapcannon",
+      "terablast",
       "icebeam",
       "ancientpower",
-      "thunderbolt",
-      "terablast",
-      "blizzard"
+      "blizzard",
+      "thunderbolt"
     ],
     "status_moves": [
       "gravity"
@@ -465,11 +465,11 @@
   "zapdosgalar": {
     "pokemon_name": "zapdosgalar",
     "physical_moves": [
-      "thunderouskick",
-      "uturn",
       "knockoff",
       "drillpeck",
-      "closecombat"
+      "thunderouskick",
+      "closecombat",
+      "uturn"
     ],
     "special_moves": [],
     "status_moves": [
@@ -481,21 +481,21 @@
   "tinglu": {
     "pokemon_name": "tinglu",
     "physical_moves": [
-      "heavyslam",
       "payback",
-      "stoneedge",
+      "heavyslam",
+      "earthquake",
       "throatchop",
-      "earthquake"
+      "stoneedge"
     ],
     "special_moves": [
       "ruination"
     ],
     "status_moves": [
-      "rest",
       "stealthrock",
       "sleeptalk",
-      "spikes",
       "whirlwind",
+      "rest",
+      "spikes",
       "taunt"
     ],
     "times_seen": 0,
@@ -505,18 +505,18 @@
     "pokemon_name": "rotomwash",
     "physical_moves": [],
     "special_moves": [
-      "discharge",
       "voltswitch",
+      "discharge",
       "thunderbolt",
       "hydropump"
     ],
     "status_moves": [
-      "painsplit",
-      "trick",
-      "thunderwave",
-      "reflect",
       "lightscreen",
-      "willowisp"
+      "trick",
+      "reflect",
+      "willowisp",
+      "thunderwave",
+      "painsplit"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -526,25 +526,25 @@
     "physical_moves": [
       "knockoff",
       "leafblade",
-      "throatchop",
       "spiritbreak",
-      "closecombat"
+      "closecombat",
+      "throatchop"
     ],
     "special_moves": [
-      "psychic",
-      "thunderbolt",
-      "focusblast",
+      "shadowball",
       "moonblast",
       "energyball",
-      "shadowball",
-      "aurasphere"
+      "thunderbolt",
+      "aurasphere",
+      "focusblast",
+      "psychic"
     ],
     "status_moves": [
-      "destinybond",
+      "swordsdance",
       "encore",
       "calmmind",
-      "electricterrain",
-      "swordsdance"
+      "destinybond",
+      "electricterrain"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -553,11 +553,11 @@
     "pokemon_name": "latios",
     "physical_moves": [],
     "special_moves": [
-      "dracometeor",
-      "lusterpurge",
-      "psychicnoise",
       "terablast",
-      "aurasphere"
+      "psychicnoise",
+      "lusterpurge",
+      "aurasphere",
+      "dracometeor"
     ],
     "status_moves": [
       "calmmind",
@@ -570,11 +570,11 @@
     "pokemon_name": "hydreigon",
     "physical_moves": [],
     "special_moves": [
-      "earthpower",
-      "dracometeor",
+      "flamethrower",
       "darkpulse",
       "heatwave",
-      "flamethrower"
+      "earthpower",
+      "dracometeor"
     ],
     "status_moves": [
       "substitute",
@@ -586,25 +586,25 @@
   "gliscor": {
     "pokemon_name": "gliscor",
     "physical_moves": [
-      "facade",
-      "uturn",
-      "knockoff",
-      "crabhammer",
       "icefang",
+      "facade",
+      "knockoff",
       "poisonjab",
+      "crabhammer",
+      "acrobatics",
       "earthquake",
-      "acrobatics"
+      "uturn"
     ],
     "special_moves": [],
     "status_moves": [
-      "toxic",
-      "stealthrock",
-      "substitute",
-      "spikes",
       "toxicspikes",
-      "protect",
+      "agility",
       "swordsdance",
-      "agility"
+      "toxic",
+      "substitute",
+      "stealthrock",
+      "protect",
+      "spikes"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -613,20 +613,20 @@
     "pokemon_name": "weezinggalar",
     "physical_moves": [],
     "special_moves": [
-      "sludgewave",
+      "acidspray",
       "fireblast",
-      "sludgebomb",
-      "strangesteam",
       "flamethrower",
-      "acidspray"
+      "sludgewave",
+      "strangesteam",
+      "sludgebomb"
     ],
     "status_moves": [
-      "defog",
-      "painsplit",
-      "toxic",
       "toxicspikes",
+      "toxic",
       "protect",
-      "willowisp"
+      "willowisp",
+      "painsplit",
+      "defog"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -636,9 +636,9 @@
     "physical_moves": [],
     "special_moves": [
       "torchsong",
+      "hex",
       "shadowball",
-      "alluringvoice",
-      "hex"
+      "alluringvoice"
     ],
     "status_moves": [
       "willowisp",
@@ -651,18 +651,18 @@
     "pokemon_name": "scizor",
     "physical_moves": [
       "dualwingbeat",
-      "bugbite",
-      "uturn",
-      "bulletpunch",
       "knockoff",
-      "closecombat"
+      "bugbite",
+      "closecombat",
+      "bulletpunch",
+      "uturn"
     ],
     "special_moves": [
       "terablast"
     ],
     "status_moves": [
-      "defog",
-      "swordsdance"
+      "swordsdance",
+      "defog"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -670,18 +670,18 @@
   "alomomola": {
     "pokemon_name": "alomomola",
     "physical_moves": [
-      "flipturn",
       "aquajet",
-      "bodyslam"
+      "bodyslam",
+      "flipturn"
     ],
     "special_moves": [
-      "scald",
-      "mirrorcoat"
+      "mirrorcoat",
+      "scald"
     ],
     "status_moves": [
+      "wish",
       "lightscreen",
       "protect",
-      "wish",
       "tickle"
     ],
     "times_seen": 0,
@@ -690,8 +690,8 @@
   "overqwil": {
     "pokemon_name": "overqwil",
     "physical_moves": [
-      "barbbarrage",
       "crunch",
+      "barbbarrage",
       "liquidation"
     ],
     "special_moves": [],
@@ -705,20 +705,20 @@
     "pokemon_name": "ninetales",
     "physical_moves": [],
     "special_moves": [
-      "solarbeam",
       "fireblast",
+      "energyball",
+      "solarbeam",
+      "flamethrower",
       "darkpulse",
       "overheat",
-      "weatherball",
-      "energyball",
       "inferno",
-      "flamethrower"
+      "weatherball"
     ],
     "status_moves": [
-      "encore",
-      "healingwish",
       "nastyplot",
+      "healingwish",
       "roar",
+      "encore",
       "willowisp"
     ],
     "times_seen": 0,
@@ -730,12 +730,12 @@
       "poisonjab"
     ],
     "special_moves": [
-      "solarbeam",
-      "sludgebomb",
-      "weatherball",
       "gigadrain",
+      "energyball",
+      "solarbeam",
       "frenzyplant",
-      "energyball"
+      "weatherball",
+      "sludgebomb"
     ],
     "status_moves": [
       "growth",
@@ -747,13 +747,13 @@
   "kingambit": {
     "pokemon_name": "kingambit",
     "physical_moves": [
-      "suckerpunch",
-      "kowtowcleave",
       "ironhead",
-      "shadowclaw",
-      "throatchop",
-      "poisonjab",
       "lowkick",
+      "kowtowcleave",
+      "poisonjab",
+      "shadowclaw",
+      "suckerpunch",
+      "throatchop",
       "brickbreak"
     ],
     "special_moves": [
@@ -769,19 +769,19 @@
     "pokemon_name": "slowkinggalar",
     "physical_moves": [],
     "special_moves": [
-      "icebeam",
-      "sludgebomb",
       "psyshock",
-      "psychic",
-      "futuresight",
       "eeriespell",
+      "icebeam",
       "psychicnoise",
-      "flamethrower"
+      "futuresight",
+      "flamethrower",
+      "sludgebomb",
+      "psychic"
     ],
     "status_moves": [
       "thunderwave",
-      "chillyreception",
-      "toxic"
+      "toxic",
+      "chillyreception"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -790,12 +790,12 @@
     "pokemon_name": "ragingbolt",
     "physical_moves": [],
     "special_moves": [
-      "dragonpulse",
-      "discharge",
-      "dracometeor",
-      "voltswitch",
+      "thunderclap",
       "thunderbolt",
-      "thunderclap"
+      "voltswitch",
+      "dracometeor",
+      "discharge",
+      "dragonpulse"
     ],
     "status_moves": [
       "calmmind"
@@ -809,16 +809,16 @@
       "mortalspin"
     ],
     "special_moves": [
-      "sludgebomb",
-      "earthpower",
       "powergem",
       "meteorbeam",
-      "dazzlinggleam"
+      "dazzlinggleam",
+      "earthpower",
+      "sludgebomb"
     ],
     "status_moves": [
+      "memento",
       "stealthrock",
       "spikes",
-      "memento",
       "spikyshield"
     ],
     "times_seen": 0,
@@ -828,20 +828,20 @@
     "pokemon_name": "darkrai",
     "physical_moves": [],
     "special_moves": [
-      "icebeam",
-      "sludgebomb",
-      "thunder",
       "psyshock",
+      "icebeam",
+      "thunder",
       "darkpulse",
-      "psychic",
-      "focusblast"
+      "sludgebomb",
+      "focusblast",
+      "psychic"
     ],
     "status_moves": [
-      "trick",
       "nastyplot",
-      "thunderwave",
+      "trick",
       "substitute",
-      "willowisp"
+      "willowisp",
+      "thunderwave"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -850,11 +850,11 @@
     "pokemon_name": "polteageist",
     "physical_moves": [],
     "special_moves": [
-      "psychic",
-      "gigadrain",
-      "terablast",
       "storedpower",
-      "shadowball"
+      "shadowball",
+      "terablast",
+      "gigadrain",
+      "psychic"
     ],
     "status_moves": [
       "shellsmash"
@@ -866,12 +866,12 @@
     "pokemon_name": "ironcrown",
     "physical_moves": [],
     "special_moves": [
-      "steelbeam",
       "psyshock",
-      "psychic",
-      "voltswitch",
+      "tachyoncutter",
       "futuresight",
-      "tachyoncutter"
+      "steelbeam",
+      "voltswitch",
+      "psychic"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -880,20 +880,20 @@
   "garganacl": {
     "pokemon_name": "garganacl",
     "physical_moves": [
-      "saltcure",
-      "firepunch",
-      "bodyslam",
       "bodypress",
-      "doubleedge"
+      "saltcure",
+      "bodyslam",
+      "doubleedge",
+      "firepunch"
     ],
     "special_moves": [],
     "status_moves": [
-      "recover",
-      "stealthrock",
       "irondefense",
+      "recover",
       "protect",
-      "block",
-      "curse"
+      "stealthrock",
+      "curse",
+      "block"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -901,26 +901,26 @@
   "dragapult": {
     "pokemon_name": "dragapult",
     "physical_moves": [
-      "suckerpunch",
       "dragondarts",
       "uturn",
-      "phantomforce"
+      "phantomforce",
+      "suckerpunch"
     ],
     "special_moves": [
-      "hydropump",
-      "fireblast",
-      "flamethrower",
-      "dracometeor",
-      "infestation",
-      "thunderbolt",
-      "hex",
-      "nightshade",
       "terablast",
-      "shadowball"
+      "fireblast",
+      "shadowball",
+      "infestation",
+      "flamethrower",
+      "hex",
+      "thunderbolt",
+      "hydropump",
+      "nightshade",
+      "dracometeor"
     ],
     "status_moves": [
-      "willowisp",
       "dragondance",
+      "willowisp",
       "curse",
       "confuseray"
     ],
@@ -931,8 +931,8 @@
     "pokemon_name": "ironhands",
     "physical_moves": [
       "supercellslam",
-      "drainpunch",
       "thunderpunch",
+      "drainpunch",
       "fakeout",
       "icepunch"
     ],
@@ -962,9 +962,9 @@
     "pokemon_name": "bellibolt",
     "physical_moves": [],
     "special_moves": [
-      "chillingwater",
       "paraboliccharge",
-      "acidspray"
+      "acidspray",
+      "chillingwater"
     ],
     "status_moves": [
       "slackoff"
@@ -988,19 +988,19 @@
   "meowscarada": {
     "pokemon_name": "meowscarada",
     "physical_moves": [
-      "playrough",
-      "tripleaxel",
-      "uturn",
-      "knockoff",
-      "thunderpunch",
-      "foulplay",
       "flowertrick",
-      "acrobatics"
+      "foulplay",
+      "knockoff",
+      "playrough",
+      "thunderpunch",
+      "acrobatics",
+      "uturn",
+      "tripleaxel"
     ],
     "special_moves": [],
     "status_moves": [
-      "trick",
-      "toxicspikes"
+      "toxicspikes",
+      "trick"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1009,9 +1009,9 @@
     "pokemon_name": "raikou",
     "physical_moves": [],
     "special_moves": [
-      "scald",
       "voltswitch",
-      "thunderbolt"
+      "thunderbolt",
+      "scald"
     ],
     "status_moves": [
       "trick"
@@ -1023,9 +1023,9 @@
     "pokemon_name": "chandelure",
     "physical_moves": [],
     "special_moves": [
+      "heatwave",
       "shadowball",
-      "flamethrower",
-      "heatwave"
+      "flamethrower"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -1035,19 +1035,19 @@
     "pokemon_name": "rillaboom",
     "physical_moves": [
       "grassyglide",
-      "uturn",
-      "knockoff",
-      "drainpunch",
       "drumbeating",
+      "knockoff",
+      "lowkick",
       "fakeout",
       "earthquake",
       "woodhammer",
-      "lowkick"
+      "drainpunch",
+      "uturn"
     ],
     "special_moves": [],
     "status_moves": [
-      "swordsdance",
       "leechseed",
+      "swordsdance",
       "taunt"
     ],
     "times_seen": 0,
@@ -1056,14 +1056,14 @@
   "smeargle": {
     "pokemon_name": "smeargle",
     "physical_moves": [
-      "rockblast",
-      "surgingstrikes"
+      "surgingstrikes",
+      "rockblast"
     ],
     "special_moves": [],
     "status_moves": [
-      "stickyweb",
+      "shellsmash",
       "courtchange",
-      "shellsmash"
+      "stickyweb"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1076,8 +1076,8 @@
       "shadowball"
     ],
     "status_moves": [
-      "calmmind",
-      "strengthsap"
+      "strengthsap",
+      "calmmind"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -1085,9 +1085,9 @@
   "flygon": {
     "pokemon_name": "flygon",
     "physical_moves": [
+      "outrage",
       "uturn",
-      "firstimpression",
-      "outrage"
+      "firstimpression"
     ],
     "special_moves": [],
     "status_moves": [],
@@ -1097,21 +1097,21 @@
   "dondozo": {
     "pokemon_name": "dondozo",
     "physical_moves": [
-      "waterfall",
-      "liquidation",
-      "earthquake",
-      "wavecrash",
-      "avalanche",
       "bodypress",
+      "waterfall",
+      "crunch",
+      "liquidation",
+      "wavecrash",
+      "earthquake",
       "outrage",
-      "crunch"
+      "avalanche"
     ],
     "special_moves": [],
     "status_moves": [
       "sleeptalk",
       "curse",
-      "rest",
-      "protect"
+      "protect",
+      "rest"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1122,14 +1122,14 @@
       "superpower"
     ],
     "special_moves": [
-      "mysticalfire",
       "moonblast",
-      "terablast",
-      "earthpower"
+      "mysticalfire",
+      "earthpower",
+      "terablast"
     ],
     "status_moves": [
-      "substitute",
-      "healingwish"
+      "healingwish",
+      "substitute"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1137,9 +1137,9 @@
   "ogerpon": {
     "pokemon_name": "ogerpon",
     "physical_moves": [
+      "rocktomb",
       "uturn",
-      "knockoff",
-      "rocktomb"
+      "knockoff"
     ],
     "special_moves": [],
     "status_moves": [
@@ -1151,22 +1151,22 @@
   "primarina": {
     "pokemon_name": "primarina",
     "physical_moves": [
-      "flipturn",
-      "tripleaxel"
+      "tripleaxel",
+      "flipturn"
     ],
     "special_moves": [
-      "drainingkiss",
-      "psychic",
-      "alluringvoice",
+      "surf",
       "whirlpool",
+      "drainingkiss",
       "hypervoice",
-      "moonblast",
       "psychicnoise",
-      "surf"
+      "moonblast",
+      "alluringvoice",
+      "psychic"
     ],
     "status_moves": [
-      "substitute",
-      "calmmind"
+      "calmmind",
+      "substitute"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1175,16 +1175,16 @@
     "pokemon_name": "salazzle",
     "physical_moves": [],
     "special_moves": [
-      "sludgewave",
+      "venoshock",
       "flamethrower",
+      "sludgewave",
       "overheat",
-      "heatwave",
-      "venoshock"
+      "heatwave"
     ],
     "status_moves": [
+      "encore",
       "toxic",
-      "nastyplot",
-      "encore"
+      "nastyplot"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -1193,16 +1193,16 @@
     "pokemon_name": "moltresgalar",
     "physical_moves": [],
     "special_moves": [
+      "fierywrath",
       "airslash",
       "snarl",
-      "terablast",
-      "fierywrath"
+      "terablast"
     ],
     "status_moves": [
       "agility",
       "sunnyday",
-      "nastyplot",
-      "taunt"
+      "taunt",
+      "nastyplot"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -1210,17 +1210,17 @@
   "lilliganthisui": {
     "pokemon_name": "lilliganthisui",
     "physical_moves": [
-      "solarblade",
-      "tripleaxel",
       "bulletseed",
       "icespinner",
-      "closecombat"
+      "solarblade",
+      "closecombat",
+      "tripleaxel"
     ],
     "special_moves": [],
     "status_moves": [
-      "defog",
       "victorydance",
-      "leechseed"
+      "leechseed",
+      "defog"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1229,11 +1229,11 @@
     "pokemon_name": "typhlosionhisui",
     "physical_moves": [],
     "special_moves": [
+      "eruption",
       "shadowball",
       "infernalparade",
-      "focusblast",
-      "eruption",
-      "flamethrower"
+      "flamethrower",
+      "focusblast"
     ],
     "status_moves": [
       "willowisp",
@@ -1274,9 +1274,9 @@
     ],
     "special_moves": [],
     "status_moves": [
+      "roost",
       "whirlwind",
-      "defog",
-      "roost"
+      "defog"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1284,16 +1284,16 @@
   "samurotthisui": {
     "pokemon_name": "samurotthisui",
     "physical_moves": [
-      "sacredsword",
-      "suckerpunch",
-      "xscissor",
       "nightslash",
-      "knockoff",
-      "razorshell",
       "aquajet",
-      "aquacutter",
+      "xscissor",
+      "knockoff",
+      "flipturn",
+      "sacredsword",
+      "razorshell",
       "ceaselessedge",
-      "flipturn"
+      "aquacutter",
+      "suckerpunch"
     ],
     "special_moves": [],
     "status_moves": [
@@ -1305,19 +1305,19 @@
   "zamazenta": {
     "pokemon_name": "zamazenta",
     "physical_moves": [
-      "playrough",
-      "ironhead",
       "icefang",
       "bodypress",
+      "playrough",
+      "ironhead",
       "crunch",
       "closecombat"
     ],
     "special_moves": [],
     "status_moves": [
-      "substitute",
+      "irondefense",
       "roar",
-      "rest",
-      "irondefense"
+      "substitute",
+      "rest"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1342,17 +1342,17 @@
       "heavyslam"
     ],
     "special_moves": [
-      "dragonpulse",
-      "fireblast",
-      "earthpower",
       "lavaplume",
+      "fireblast",
       "flamethrower",
-      "magmastorm"
+      "earthpower",
+      "magmastorm",
+      "dragonpulse"
     ],
     "status_moves": [
-      "stealthrock",
-      "substitute",
       "protect",
+      "substitute",
+      "stealthrock",
       "willowisp",
       "taunt"
     ],
@@ -1363,20 +1363,20 @@
     "pokemon_name": "garchomp",
     "physical_moves": [
       "ironhead",
-      "brickbreak",
-      "scaleshot",
-      "dragonclaw",
       "earthquake",
+      "dragonclaw",
       "outrage",
-      "dragontail"
+      "dragontail",
+      "brickbreak",
+      "scaleshot"
     ],
     "special_moves": [
       "fireblast"
     ],
     "status_moves": [
+      "swordsdance",
       "substitute",
-      "stealthrock",
-      "swordsdance"
+      "stealthrock"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1385,17 +1385,17 @@
     "pokemon_name": "ceruledge",
     "physical_moves": [
       "shadowsneak",
+      "poltergeist",
       "bitterblade",
       "shadowclaw",
-      "throatchop",
-      "poltergeist",
-      "closecombat"
+      "closecombat",
+      "throatchop"
     ],
     "special_moves": [],
     "status_moves": [
-      "destinybond",
       "swordsdance",
-      "bulkup"
+      "bulkup",
+      "destinybond"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1403,9 +1403,9 @@
   "ogerponwellspringtera": {
     "pokemon_name": "ogerponwellspringtera",
     "physical_moves": [
-      "hornleech",
       "ivycudgel",
-      "knockoff"
+      "knockoff",
+      "hornleech"
     ],
     "special_moves": [],
     "status_moves": [
@@ -1420,16 +1420,16 @@
       "rapidspin"
     ],
     "special_moves": [
-      "solarbeam",
-      "burningjealousy",
-      "earthpower",
+      "eruption",
       "lavaplume",
-      "eruption"
+      "burningjealousy",
+      "solarbeam",
+      "earthpower"
     ],
     "status_moves": [
       "willowisp",
-      "stealthrock",
-      "shellsmash"
+      "shellsmash",
+      "stealthrock"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1437,24 +1437,24 @@
   "corviknight": {
     "pokemon_name": "corviknight",
     "physical_moves": [
-      "bravebird",
-      "thief",
-      "uturn",
-      "ironhead",
-      "bodyslam",
-      "struggle",
       "bodypress",
+      "powertrip",
+      "ironhead",
+      "thief",
       "drillpeck",
-      "powertrip"
+      "struggle",
+      "bravebird",
+      "uturn",
+      "bodyslam"
     ],
     "special_moves": [],
     "status_moves": [
-      "defog",
-      "roost",
+      "agility",
       "irondefense",
-      "protect",
       "bulkup",
-      "agility"
+      "protect",
+      "roost",
+      "defog"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1465,12 +1465,12 @@
       "flipturn"
     ],
     "special_moves": [
-      "dragonpulse",
-      "dracometeor",
-      "scald",
-      "weatherball",
       "terablast",
+      "scald",
       "flamethrower",
+      "weatherball",
+      "dracometeor",
+      "dragonpulse",
       "hydrosteam"
     ],
     "status_moves": [],
@@ -1480,18 +1480,18 @@
   "metagross": {
     "pokemon_name": "metagross",
     "physical_moves": [
-      "heavyslam",
       "hammerarm",
-      "knockoff",
-      "bulletpunch",
       "psychicfangs",
+      "knockoff",
+      "heavyslam",
       "meteormash",
-      "earthquake"
+      "earthquake",
+      "bulletpunch"
     ],
     "special_moves": [],
     "status_moves": [
-      "stealthrock",
-      "agility"
+      "agility",
+      "stealthrock"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1499,8 +1499,8 @@
   "mimikyu": {
     "pokemon_name": "mimikyu",
     "physical_moves": [
-      "shadowclaw",
       "shadowsneak",
+      "shadowclaw",
       "drainpunch"
     ],
     "special_moves": [],
@@ -1530,11 +1530,11 @@
     "physical_moves": [],
     "special_moves": [],
     "status_moves": [
+      "lightscreen",
+      "reflect",
       "switcheroo",
       "thunderwave",
-      "reflect",
-      "spikes",
-      "lightscreen"
+      "spikes"
     ],
     "times_seen": 0,
     "threat_category": "status_only"
@@ -1545,8 +1545,8 @@
     "special_moves": [
       "psyshock",
       "energyball",
-      "psychic",
-      "focusblast"
+      "focusblast",
+      "psychic"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -1555,9 +1555,9 @@
   "scrafty": {
     "pokemon_name": "scrafty",
     "physical_moves": [
+      "drainpunch",
       "poisonjab",
-      "knockoff",
-      "drainpunch"
+      "knockoff"
     ],
     "special_moves": [],
     "status_moves": [
@@ -1576,9 +1576,9 @@
       "shellsidearm"
     ],
     "status_moves": [
+      "sunnyday",
       "haze",
-      "trickroom",
-      "sunnyday"
+      "trickroom"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1587,9 +1587,9 @@
     "pokemon_name": "toxtricitylowkey",
     "physical_moves": [],
     "special_moves": [
-      "boomburst",
+      "psychicnoise",
       "thunderbolt",
-      "psychicnoise"
+      "boomburst"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -1601,14 +1601,14 @@
       "uturn"
     ],
     "special_moves": [
-      "thunder",
-      "discharge",
-      "voltswitch",
       "hurricane",
+      "terablast",
+      "thunder",
+      "heatwave",
       "thunderbolt",
       "weatherball",
-      "terablast",
-      "heatwave"
+      "voltswitch",
+      "discharge"
     ],
     "status_moves": [
       "thunderwave",
@@ -1620,13 +1620,13 @@
   "irontreads": {
     "pokemon_name": "irontreads",
     "physical_moves": [
-      "rapidspin",
-      "supercellslam",
-      "knockoff",
-      "ironhead",
       "megahorn",
-      "earthquake",
-      "icespinner"
+      "rapidspin",
+      "knockoff",
+      "supercellslam",
+      "ironhead",
+      "icespinner",
+      "earthquake"
     ],
     "special_moves": [
       "steelbeam",
@@ -1641,24 +1641,24 @@
   "kyurem": {
     "pokemon_name": "kyurem",
     "physical_moves": [
-      "dragonclaw",
       "iciclespear",
+      "dragonclaw",
       "scaleshot"
     ],
     "special_moves": [
-      "icebeam",
-      "earthpower",
-      "dracometeor",
       "terablast",
-      "freezedry",
+      "shadowball",
+      "icebeam",
       "blizzard",
-      "shadowball"
+      "freezedry",
+      "earthpower",
+      "dracometeor"
     ],
     "status_moves": [
-      "substitute",
       "dragondance",
       "protect",
-      "roar"
+      "roar",
+      "substitute"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1666,9 +1666,9 @@
   "clodsire": {
     "pokemon_name": "clodsire",
     "physical_moves": [
-      "struggle",
       "earthquake",
-      "gunkshot"
+      "gunkshot",
+      "struggle"
     ],
     "special_moves": [
       "ancientpower"
@@ -1676,10 +1676,10 @@
     "status_moves": [
       "recover",
       "toxic",
+      "protect",
       "stealthrock",
       "stockpile",
-      "spikes",
-      "protect"
+      "spikes"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1694,11 +1694,11 @@
       "flamethrower"
     ],
     "status_moves": [
-      "stealthrock",
       "trick",
       "softboiled",
-      "thunderwave",
+      "stealthrock",
       "calmmind",
+      "thunderwave",
       "healbell"
     ],
     "times_seen": 0,
@@ -1707,12 +1707,12 @@
   "weavile": {
     "pokemon_name": "weavile",
     "physical_moves": [
-      "tripleaxel",
       "knockoff",
+      "lowkick",
+      "poisonjab",
       "iceshard",
       "fakeout",
-      "poisonjab",
-      "lowkick"
+      "tripleaxel"
     ],
     "special_moves": [],
     "status_moves": [
@@ -1725,14 +1725,14 @@
     "pokemon_name": "ninetalesalola",
     "physical_moves": [],
     "special_moves": [
-      "freezedry",
-      "blizzard",
       "extrasensory",
-      "moonblast"
+      "moonblast",
+      "blizzard",
+      "freezedry"
     ],
     "status_moves": [
-      "auroraveil",
-      "encore"
+      "encore",
+      "auroraveil"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -1741,10 +1741,10 @@
     "pokemon_name": "kommoo",
     "physical_moves": [],
     "special_moves": [
-      "boomburst",
-      "flamethrower",
+      "vacuumwave",
       "clangingscales",
-      "vacuumwave"
+      "flamethrower",
+      "boomburst"
     ],
     "status_moves": [
       "clangoroussoul"
@@ -1755,10 +1755,10 @@
   "electivire": {
     "pokemon_name": "electivire",
     "physical_moves": [
-      "thunderpunch",
-      "icepunch",
+      "supercellslam",
       "earthquake",
-      "supercellslam"
+      "thunderpunch",
+      "icepunch"
     ],
     "special_moves": [],
     "status_moves": [
@@ -1770,20 +1770,20 @@
   "tyranitar": {
     "pokemon_name": "tyranitar",
     "physical_moves": [
+      "knockoff",
       "rockblast",
       "ironhead",
-      "knockoff",
-      "stoneedge",
+      "crunch",
       "earthquake",
       "icepunch",
-      "crunch"
+      "stoneedge"
     ],
     "special_moves": [
       "icebeam"
     ],
     "status_moves": [
-      "thunderwave",
       "dragondance",
+      "thunderwave",
       "protect",
       "stealthrock"
     ],
@@ -1820,12 +1820,12 @@
     ],
     "special_moves": [
       "triattack",
-      "icebeam",
-      "shadowball"
+      "shadowball",
+      "icebeam"
     ],
     "status_moves": [
-      "protect",
-      "recover"
+      "recover",
+      "protect"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1840,8 +1840,8 @@
       "whirlpool"
     ],
     "status_moves": [
-      "protect",
       "toxicspikes",
+      "protect",
       "shellsmash"
     ],
     "times_seen": 0,
@@ -1850,22 +1850,22 @@
   "toxapex": {
     "pokemon_name": "toxapex",
     "physical_moves": [
-      "gunkshot",
       "icespinner",
+      "gunkshot",
       "liquidation"
     ],
     "special_moves": [
       "infestation",
+      "surf",
       "chillingwater",
-      "icebeam",
-      "surf"
+      "icebeam"
     ],
     "status_moves": [
-      "haze",
+      "toxicspikes",
+      "banefulbunker",
       "recover",
       "toxic",
-      "banefulbunker",
-      "toxicspikes",
+      "haze",
       "protect"
     ],
     "times_seen": 0,
@@ -1878,8 +1878,8 @@
     ],
     "special_moves": [],
     "status_moves": [
-      "partingshot",
       "lightscreen",
+      "partingshot",
       "reflect"
     ],
     "times_seen": 0,
@@ -1888,16 +1888,16 @@
   "grafaiai": {
     "pokemon_name": "grafaiai",
     "physical_moves": [
-      "poisonjab",
-      "acrobatics",
       "lowkick",
-      "knockoff"
+      "poisonjab",
+      "knockoff",
+      "acrobatics"
     ],
     "special_moves": [],
     "status_moves": [
       "swordsdance",
-      "swagger",
-      "encore"
+      "encore",
+      "swagger"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1905,10 +1905,10 @@
   "araquanid": {
     "pokemon_name": "araquanid",
     "physical_moves": [
-      "leechlife",
       "trailblaze",
-      "liquidation",
+      "leechlife",
       "lunge",
+      "liquidation",
       "endeavor"
     ],
     "special_moves": [
@@ -1916,8 +1916,8 @@
     ],
     "status_moves": [
       "endure",
-      "stickyweb",
-      "reflect"
+      "reflect",
+      "stickyweb"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -1929,8 +1929,8 @@
     ],
     "special_moves": [],
     "status_moves": [
-      "stealthrock",
-      "roar"
+      "roar",
+      "stealthrock"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1938,17 +1938,17 @@
   "mausholdfour": {
     "pokemon_name": "mausholdfour",
     "physical_moves": [
-      "populationbomb",
       "bulletseed",
+      "populationbomb",
       "uturn",
       "bite"
     ],
     "special_moves": [],
     "status_moves": [
+      "encore",
       "thunderwave",
       "substitute",
-      "tidyup",
-      "encore"
+      "tidyup"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1956,20 +1956,20 @@
   "cinderace": {
     "pokemon_name": "cinderace",
     "physical_moves": [
+      "trailblaze",
+      "highjumpkick",
+      "ironhead",
+      "acrobatics",
       "suckerpunch",
       "uturn",
-      "ironhead",
-      "pyroball",
-      "highjumpkick",
-      "acrobatics",
-      "trailblaze"
+      "pyroball"
     ],
     "special_moves": [],
     "status_moves": [
-      "substitute",
+      "willowisp",
       "swordsdance",
-      "courtchange",
-      "willowisp"
+      "substitute",
+      "courtchange"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1977,14 +1977,14 @@
   "mamoswine": {
     "pokemon_name": "mamoswine",
     "physical_moves": [
+      "knockoff",
       "earthquake",
-      "avalanche",
-      "knockoff"
+      "avalanche"
     ],
     "special_moves": [],
     "status_moves": [
-      "stealthrock",
-      "roar"
+      "roar",
+      "stealthrock"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -1998,10 +1998,10 @@
       "shadowball"
     ],
     "status_moves": [
+      "lightscreen",
       "encore",
       "reflect",
       "calmmind",
-      "lightscreen",
       "taunt"
     ],
     "times_seen": 0,
@@ -2010,12 +2010,12 @@
   "slitherwing": {
     "pokemon_name": "slitherwing",
     "physical_moves": [
+      "earthquake",
       "temperflare",
+      "closecombat",
       "firstimpression",
       "uturn",
-      "flareblitz",
-      "earthquake",
-      "closecombat"
+      "flareblitz"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2028,10 +2028,10 @@
   "trevenant": {
     "pokemon_name": "trevenant",
     "physical_moves": [
-      "woodhammer",
+      "knockoff",
       "shadowclaw",
-      "rockslide",
-      "knockoff"
+      "woodhammer",
+      "rockslide"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2045,8 +2045,8 @@
   "crabominable": {
     "pokemon_name": "crabominable",
     "physical_moves": [
-      "thunderpunch",
-      "drainpunch"
+      "drainpunch",
+      "thunderpunch"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2084,10 +2084,10 @@
       "storedpower"
     ],
     "status_moves": [
-      "substitute",
-      "stunspore",
       "protect",
-      "synthesis"
+      "substitute",
+      "synthesis",
+      "stunspore"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -2095,9 +2095,9 @@
   "okidogi": {
     "pokemon_name": "okidogi",
     "physical_moves": [
+      "highhorsepower",
       "throatchop",
-      "knockoff",
-      "highhorsepower"
+      "knockoff"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2124,8 +2124,8 @@
     "pokemon_name": "kleavor",
     "physical_moves": [
       "nightslash",
-      "xscissor",
       "uturn",
+      "xscissor",
       "stoneaxe"
     ],
     "special_moves": [],
@@ -2139,9 +2139,9 @@
     "pokemon_name": "jolteon",
     "physical_moves": [],
     "special_moves": [
-      "alluringvoice",
-      "shadowball",
       "voltswitch",
+      "shadowball",
+      "alluringvoice",
       "thunderbolt"
     ],
     "status_moves": [
@@ -2233,8 +2233,8 @@
     "pokemon_name": "braviaryhisui",
     "physical_moves": [],
     "special_moves": [
-      "heatwave",
       "dazzlinggleam",
+      "heatwave",
       "esperwing"
     ],
     "status_moves": [],
@@ -2244,11 +2244,11 @@
   "hawlucha": {
     "pokemon_name": "hawlucha",
     "physical_moves": [
-      "bravebird",
-      "flyingpress",
-      "firepunch",
       "acrobatics",
-      "closecombat"
+      "bravebird",
+      "closecombat",
+      "flyingpress",
+      "firepunch"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2279,10 +2279,10 @@
       "psychic"
     ],
     "status_moves": [
+      "protect",
       "substitute",
       "stealthrock",
-      "trick",
-      "protect"
+      "trick"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -2292,8 +2292,8 @@
     "physical_moves": [
       "tropkick",
       "rapidspin",
-      "facade",
-      "tripleaxel"
+      "tripleaxel",
+      "facade"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2305,11 +2305,11 @@
   "lokix": {
     "pokemon_name": "lokix",
     "physical_moves": [
-      "suckerpunch",
+      "knockoff",
       "leechlife",
+      "suckerpunch",
       "firstimpression",
-      "uturn",
-      "knockoff"
+      "uturn"
     ],
     "special_moves": [],
     "status_moves": [],
@@ -2323,16 +2323,16 @@
       "bodypress"
     ],
     "special_moves": [
-      "scald",
-      "psychic",
-      "futuresight",
       "storedpower",
+      "futuresight",
+      "scald",
       "blizzard",
-      "flamethrower"
+      "flamethrower",
+      "psychic"
     ],
     "status_moves": [
-      "thunderwave",
       "calmmind",
+      "thunderwave",
       "irondefense"
     ],
     "times_seen": 0,
@@ -2345,9 +2345,9 @@
     ],
     "special_moves": [],
     "status_moves": [
+      "toxicspikes",
       "stealthrock",
-      "spikes",
-      "toxicspikes"
+      "spikes"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -2355,8 +2355,8 @@
   "snorlax": {
     "pokemon_name": "snorlax",
     "physical_moves": [
-      "bodyslam",
       "earthquake",
+      "bodyslam",
       "crunch",
       "heatcrash"
     ],
@@ -2371,8 +2371,8 @@
     "pokemon_name": "comfey",
     "physical_moves": [],
     "special_moves": [
-      "drainingkiss",
-      "terablast"
+      "terablast",
+      "drainingkiss"
     ],
     "status_moves": [
       "calmmind"
@@ -2386,14 +2386,14 @@
       "iciclecrash"
     ],
     "special_moves": [
-      "icebeam",
-      "shadowball"
+      "shadowball",
+      "icebeam"
     ],
     "status_moves": [
-      "destinybond",
       "thunderwave",
+      "taunt",
       "spikes",
-      "taunt"
+      "destinybond"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -2403,15 +2403,15 @@
     "physical_moves": [
       "ironhead",
       "flipturn",
-      "iciclecrash",
-      "icespinner"
+      "icespinner",
+      "iciclecrash"
     ],
     "special_moves": [],
     "status_moves": [
+      "snowscape",
       "substitute",
       "bellydrum",
-      "auroraveil",
-      "snowscape"
+      "auroraveil"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -2420,9 +2420,9 @@
     "pokemon_name": "frosmoth",
     "physical_moves": [],
     "special_moves": [
+      "gigadrain",
       "bugbuzz",
-      "icebeam",
-      "gigadrain"
+      "icebeam"
     ],
     "status_moves": [
       "quiverdance"
@@ -2446,12 +2446,12 @@
     "pokemon_name": "exeggutoralola",
     "physical_moves": [],
     "special_moves": [
-      "dragonpulse",
-      "gigadrain"
+      "gigadrain",
+      "dragonpulse"
     ],
     "status_moves": [
-      "calmmind",
-      "leechseed"
+      "leechseed",
+      "calmmind"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -2476,9 +2476,9 @@
       "moonblast"
     ],
     "status_moves": [
-      "stickyweb",
       "reflect",
-      "stunspore"
+      "stunspore",
+      "stickyweb"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -2487,14 +2487,14 @@
     "pokemon_name": "latias",
     "physical_moves": [],
     "special_moves": [
-      "thunderbolt",
       "mistball",
-      "aurasphere",
-      "storedpower"
+      "storedpower",
+      "thunderbolt",
+      "aurasphere"
     ],
     "status_moves": [
-      "calmmind",
-      "agility"
+      "agility",
+      "calmmind"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -2533,11 +2533,11 @@
   "mienshao": {
     "pokemon_name": "mienshao",
     "physical_moves": [
-      "uturn",
       "knockoff",
-      "fakeout",
       "highjumpkick",
-      "closecombat"
+      "fakeout",
+      "closecombat",
+      "uturn"
     ],
     "special_moves": [],
     "status_moves": [],
@@ -2547,10 +2547,10 @@
   "zangoose": {
     "pokemon_name": "zangoose",
     "physical_moves": [
-      "facade",
       "seedbomb",
-      "quickattack",
-      "brickbreak"
+      "brickbreak",
+      "facade",
+      "quickattack"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2591,13 +2591,13 @@
       "moonblast"
     ],
     "status_moves": [
-      "switcheroo",
-      "cottonguard",
       "leechseed",
       "tailwind",
       "substitute",
-      "trickroom",
       "protect",
+      "switcheroo",
+      "trickroom",
+      "cottonguard",
       "taunt"
     ],
     "times_seen": 0,
@@ -2609,9 +2609,9 @@
       "bodypress"
     ],
     "special_moves": [
+      "steameruption",
       "firespin",
-      "flamethrower",
-      "steameruption"
+      "flamethrower"
     ],
     "status_moves": [
       "taunt"
@@ -2623,9 +2623,9 @@
     "pokemon_name": "dudunsparce",
     "physical_moves": [],
     "special_moves": [
-      "icebeam",
+      "ancientpower",
       "thunderbolt",
-      "ancientpower"
+      "icebeam"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -2634,8 +2634,8 @@
   "hariyama": {
     "pokemon_name": "hariyama",
     "physical_moves": [
-      "knockoff",
-      "drainpunch"
+      "drainpunch",
+      "knockoff"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2648,8 +2648,8 @@
     "pokemon_name": "abomasnow",
     "physical_moves": [],
     "special_moves": [
-      "blizzard",
-      "gigadrain"
+      "gigadrain",
+      "blizzard"
     ],
     "status_moves": [
       "auroraveil"
@@ -2674,13 +2674,13 @@
     "pokemon_name": "rotomheat",
     "physical_moves": [],
     "special_moves": [
+      "overheat",
       "voltswitch",
-      "hex",
-      "overheat"
+      "hex"
     ],
     "status_moves": [
-      "thunderwave",
-      "willowisp"
+      "willowisp",
+      "thunderwave"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -2689,8 +2689,8 @@
     "pokemon_name": "spiritomb",
     "physical_moves": [],
     "special_moves": [
-      "darkpulse",
-      "burningjealousy"
+      "burningjealousy",
+      "darkpulse"
     ],
     "status_moves": [
       "calmmind"
@@ -2728,14 +2728,14 @@
     "pokemon_name": "incineroar",
     "physical_moves": [
       "uturn",
-      "knockoff",
+      "fakeout",
       "flareblitz",
-      "fakeout"
+      "knockoff"
     ],
     "special_moves": [],
     "status_moves": [
-      "partingshot",
       "willowisp",
+      "partingshot",
       "taunt"
     ],
     "times_seen": 0,
@@ -2770,12 +2770,12 @@
   "ursaluna": {
     "pokemon_name": "ursaluna",
     "physical_moves": [
-      "headlongrush",
-      "playrough",
-      "firepunch",
       "facade",
+      "playrough",
+      "headlongrush",
       "smackdown",
-      "avalanche"
+      "avalanche",
+      "firepunch"
     ],
     "special_moves": [],
     "status_moves": [
@@ -2793,10 +2793,10 @@
     ],
     "special_moves": [],
     "status_moves": [
+      "encore",
       "thunderwave",
-      "stealthrock",
       "protect",
-      "encore"
+      "stealthrock"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -2807,8 +2807,8 @@
     "special_moves": [],
     "status_moves": [
       "thunderwave",
-      "haze",
       "tailwind",
+      "haze",
       "perishsong"
     ],
     "times_seen": 0,
@@ -2818,8 +2818,8 @@
     "pokemon_name": "gastrodon",
     "physical_moves": [],
     "special_moves": [
-      "icebeam",
-      "earthpower"
+      "earthpower",
+      "icebeam"
     ],
     "status_moves": [
       "recover"
@@ -2843,8 +2843,8 @@
   "jirachi": {
     "pokemon_name": "jirachi",
     "physical_moves": [
-      "uturn",
-      "ironhead"
+      "ironhead",
+      "uturn"
     ],
     "special_moves": [
       "thunder"
@@ -2858,8 +2858,8 @@
   "tauros": {
     "pokemon_name": "tauros",
     "physical_moves": [
-      "bodyslam",
       "ironhead",
+      "bodyslam",
       "trailblaze"
     ],
     "special_moves": [],
@@ -2870,28 +2870,28 @@
   "mew": {
     "pokemon_name": "mew",
     "physical_moves": [
-      "uturn",
-      "knockoff",
       "icefang",
       "bodypress",
+      "knockoff",
       "crunch",
-      "closecombat"
+      "closecombat",
+      "uturn"
     ],
     "special_moves": [
-      "chargebeam",
-      "flamethrower",
       "gigadrain",
-      "whirlpool"
+      "chargebeam",
+      "whirlpool",
+      "flamethrower"
     ],
     "status_moves": [
-      "stealthrock",
-      "softboiled",
-      "transform",
-      "calmmind",
-      "spikes",
       "toxicspikes",
+      "transform",
+      "softboiled",
+      "stealthrock",
+      "calmmind",
       "whirlwind",
-      "imprison"
+      "imprison",
+      "spikes"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -2911,15 +2911,15 @@
   "tropius": {
     "pokemon_name": "tropius",
     "physical_moves": [
-      "leafblade",
-      "dragontail"
+      "dragontail",
+      "leafblade"
     ],
     "special_moves": [],
     "status_moves": [
-      "substitute",
       "dragondance",
+      "protect",
       "leechseed",
-      "protect"
+      "substitute"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -2938,9 +2938,9 @@
     "pokemon_name": "manaphy",
     "physical_moves": [],
     "special_moves": [
+      "surf",
       "energyball",
-      "blizzard",
-      "surf"
+      "blizzard"
     ],
     "status_moves": [
       "tailglow"
@@ -2961,13 +2961,13 @@
   "sceptile": {
     "pokemon_name": "sceptile",
     "physical_moves": [
-      "thunderpunch",
-      "drainpunch"
+      "drainpunch",
+      "thunderpunch"
     ],
     "special_moves": [],
     "status_moves": [
-      "substitute",
-      "leechseed"
+      "leechseed",
+      "substitute"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -2988,9 +2988,9 @@
     "pokemon_name": "polteageistantique",
     "physical_moves": [],
     "special_moves": [
-      "shadowball",
       "gigadrain",
-      "storedpower"
+      "storedpower",
+      "shadowball"
     ],
     "status_moves": [
       "shellsmash"
@@ -3001,10 +3001,10 @@
   "haxorus": {
     "pokemon_name": "haxorus",
     "physical_moves": [
-      "poisonjab",
       "ironhead",
-      "dragonclaw",
+      "poisonjab",
       "earthquake",
+      "dragonclaw",
       "brickbreak"
     ],
     "special_moves": [
@@ -3019,11 +3019,11 @@
   "salamence": {
     "pokemon_name": "salamence",
     "physical_moves": [
-      "rockslide",
-      "dragonclaw",
-      "earthquake",
-      "outrage",
       "crunch",
+      "outrage",
+      "earthquake",
+      "dragonclaw",
+      "rockslide",
       "brickbreak"
     ],
     "special_moves": [],
@@ -3048,8 +3048,8 @@
     "pokemon_name": "heracross",
     "physical_moves": [
       "throatchop",
-      "knockoff",
       "facade",
+      "knockoff",
       "closecombat"
     ],
     "special_moves": [],
@@ -3072,8 +3072,8 @@
   "dragalge": {
     "pokemon_name": "dragalge",
     "physical_moves": [
-      "waterfall",
-      "dragontail"
+      "dragontail",
+      "waterfall"
     ],
     "special_moves": [],
     "status_moves": [
@@ -3087,8 +3087,8 @@
     "physical_moves": [],
     "special_moves": [
       "flashcannon",
-      "icywind",
-      "surf"
+      "surf",
+      "icywind"
     ],
     "status_moves": [
       "stealthrock"
@@ -3100,12 +3100,12 @@
     "pokemon_name": "cresselia",
     "physical_moves": [],
     "special_moves": [
-      "psychic",
-      "shadowball"
+      "shadowball",
+      "psychic"
     ],
     "status_moves": [
-      "confuseray",
-      "calmmind"
+      "calmmind",
+      "confuseray"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -3127,8 +3127,8 @@
     ],
     "special_moves": [],
     "status_moves": [
-      "stockpile",
-      "strengthsap"
+      "strengthsap",
+      "stockpile"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -3136,9 +3136,9 @@
   "breloom": {
     "pokemon_name": "breloom",
     "physical_moves": [
-      "bulldoze",
       "bulletseed",
       "machpunch",
+      "bulldoze",
       "aerialace"
     ],
     "special_moves": [],
@@ -3159,15 +3159,15 @@
   "talonflame": {
     "pokemon_name": "talonflame",
     "physical_moves": [
-      "bravebird",
       "dualwingbeat",
-      "uturn"
+      "uturn",
+      "bravebird"
     ],
     "special_moves": [
-      "flamethrower",
-      "fireblast",
+      "overheat",
       "hurricane",
-      "overheat"
+      "fireblast",
+      "flamethrower"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -3181,8 +3181,8 @@
     ],
     "special_moves": [],
     "status_moves": [
-      "stealthrock",
-      "irondefense"
+      "irondefense",
+      "stealthrock"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -3191,12 +3191,12 @@
     "pokemon_name": "goodra",
     "physical_moves": [],
     "special_moves": [
-      "sludgebomb",
-      "thunder"
+      "thunder",
+      "sludgebomb"
     ],
     "status_moves": [
-      "rest",
-      "raindance"
+      "raindance",
+      "rest"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -3209,10 +3209,10 @@
     ],
     "special_moves": [],
     "status_moves": [
-      "toxic",
-      "stockpile",
+      "stealthrock",
       "protect",
-      "stealthrock"
+      "toxic",
+      "stockpile"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -3221,8 +3221,8 @@
     "pokemon_name": "porygonz",
     "physical_moves": [],
     "special_moves": [
-      "icebeam",
-      "thunderbolt"
+      "thunderbolt",
+      "icebeam"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -3232,8 +3232,8 @@
     "pokemon_name": "charizard",
     "physical_moves": [],
     "special_moves": [
-      "flamethrower",
-      "overheat"
+      "overheat",
+      "flamethrower"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -3244,13 +3244,13 @@
     "physical_moves": [],
     "special_moves": [
       "gigadrain",
+      "earthpower",
       "hydropump",
-      "ficklebeam",
-      "earthpower"
+      "ficklebeam"
     ],
     "status_moves": [
-      "recover",
       "protect",
+      "recover",
       "nastyplot"
     ],
     "times_seen": 0,
@@ -3270,9 +3270,9 @@
   "crawdaunt": {
     "pokemon_name": "crawdaunt",
     "physical_moves": [
-      "crabhammer",
       "aquajet",
-      "knockoff"
+      "knockoff",
+      "crabhammer"
     ],
     "special_moves": [],
     "status_moves": [],
@@ -3286,10 +3286,10 @@
       "knockoff"
     ],
     "special_moves": [
+      "flashcannon",
       "dracometeor",
-      "icebeam",
       "fireblast",
-      "flashcannon"
+      "icebeam"
     ],
     "status_moves": [
       "curse"
@@ -3315,18 +3315,18 @@
     "pokemon_name": "gengar",
     "physical_moves": [],
     "special_moves": [
-      "sludgewave",
       "shadowball",
-      "sludgebomb",
-      "focusblast",
       "gigadrain",
+      "dazzlinggleam",
+      "sludgewave",
       "hex",
-      "dazzlinggleam"
+      "sludgebomb",
+      "focusblast"
     ],
     "status_moves": [
-      "destinybond",
       "willowisp",
-      "thunderwave"
+      "thunderwave",
+      "destinybond"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -3348,10 +3348,10 @@
     "pokemon_name": "regidrago",
     "physical_moves": [],
     "special_moves": [
-      "dragonpulse",
-      "dragonenergy",
       "dracometeor",
-      "earthpower"
+      "dragonpulse",
+      "earthpower",
+      "dragonenergy"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -3360,9 +3360,9 @@
   "toxicroak": {
     "pokemon_name": "toxicroak",
     "physical_moves": [
+      "drainpunch",
       "earthquake",
-      "knockoff",
-      "drainpunch"
+      "knockoff"
     ],
     "special_moves": [],
     "status_moves": [
@@ -3400,8 +3400,8 @@
     ],
     "special_moves": [],
     "status_moves": [
-      "spikes",
-      "irondefense"
+      "irondefense",
+      "spikes"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -3410,8 +3410,8 @@
     "pokemon_name": "kingdra",
     "physical_moves": [],
     "special_moves": [
-      "dragonpulse",
-      "weatherball"
+      "weatherball",
+      "dragonpulse"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -3422,9 +3422,9 @@
     "physical_moves": [],
     "special_moves": [
       "darkpulse",
-      "icebeam",
+      "surf",
       "hydropump",
-      "surf"
+      "icebeam"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -3434,8 +3434,8 @@
     "pokemon_name": "cramorant",
     "physical_moves": [],
     "special_moves": [
-      "whirlpool",
-      "surf"
+      "surf",
+      "whirlpool"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -3454,8 +3454,8 @@
   "brambleghast": {
     "pokemon_name": "brambleghast",
     "physical_moves": [
-      "powerwhip",
-      "poltergeist"
+      "poltergeist",
+      "powerwhip"
     ],
     "special_moves": [],
     "status_moves": [],
@@ -3479,8 +3479,8 @@
       "triattack"
     ],
     "status_moves": [
-      "reflect",
-      "magnetrise"
+      "magnetrise",
+      "reflect"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -3497,9 +3497,9 @@
       "terablast"
     ],
     "status_moves": [
+      "swordsdance",
       "substitute",
-      "stealthrock",
-      "swordsdance"
+      "stealthrock"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -3508,10 +3508,10 @@
     "pokemon_name": "indeedee",
     "physical_moves": [],
     "special_moves": [
-      "energyball",
-      "expandingforce",
+      "hypervoice",
       "dazzlinggleam",
-      "hypervoice"
+      "energyball",
+      "expandingforce"
     ],
     "status_moves": [
       "healingwish",
@@ -3524,9 +3524,9 @@
     "pokemon_name": "armarouge",
     "physical_moves": [],
     "special_moves": [
-      "expandingforce",
       "meteorbeam",
-      "armorcannon"
+      "armorcannon",
+      "expandingforce"
     ],
     "status_moves": [
       "endure"
@@ -3538,10 +3538,10 @@
     "pokemon_name": "ironjugulis",
     "physical_moves": [],
     "special_moves": [
-      "darkpulse",
-      "flamethrower",
       "meteorbeam",
-      "hurricane"
+      "darkpulse",
+      "hurricane",
+      "flamethrower"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -3566,8 +3566,8 @@
       "surf"
     ],
     "status_moves": [
-      "substitute",
-      "calmmind"
+      "calmmind",
+      "substitute"
     ],
     "times_seen": 0,
     "threat_category": "special_only"
@@ -3613,9 +3613,9 @@
   "hoopaunbound": {
     "pokemon_name": "hoopaunbound",
     "physical_moves": [
+      "drainpunch",
       "icepunch",
-      "knockoff",
-      "drainpunch"
+      "knockoff"
     ],
     "special_moves": [
       "thunderbolt"
@@ -3634,8 +3634,8 @@
     ],
     "special_moves": [],
     "status_moves": [
-      "bulkup",
-      "wish"
+      "wish",
+      "bulkup"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"
@@ -3691,8 +3691,8 @@
     "pokemon_name": "rotommow",
     "physical_moves": [],
     "special_moves": [
-      "leafstorm",
-      "voltswitch"
+      "voltswitch",
+      "leafstorm"
     ],
     "status_moves": [
       "painsplit"
@@ -3746,8 +3746,8 @@
   "avalugghisui": {
     "pokemon_name": "avalugghisui",
     "physical_moves": [
-      "rockblast",
-      "bodypress"
+      "bodypress",
+      "rockblast"
     ],
     "special_moves": [],
     "status_moves": [],
@@ -3768,9 +3768,9 @@
     "pokemon_name": "raichualola",
     "physical_moves": [],
     "special_moves": [
-      "expandingforce",
+      "surf",
       "thunderbolt",
-      "surf"
+      "expandingforce"
     ],
     "status_moves": [
       "nastyplot"
@@ -3819,9 +3819,9 @@
     "pokemon_name": "toxtricity",
     "physical_moves": [],
     "special_moves": [
-      "sludgewave",
       "boomburst",
-      "overdrive"
+      "overdrive",
+      "sludgewave"
     ],
     "status_moves": [
       "shiftgear"
@@ -3867,8 +3867,8 @@
   "conkeldurr": {
     "pokemon_name": "conkeldurr",
     "physical_moves": [
-      "machpunch",
-      "drainpunch"
+      "drainpunch",
+      "machpunch"
     ],
     "special_moves": [],
     "status_moves": [
@@ -3880,8 +3880,8 @@
   "flamigo": {
     "pokemon_name": "flamigo",
     "physical_moves": [
-      "bravebird",
       "uturn",
+      "bravebird",
       "closecombat"
     ],
     "special_moves": [],
@@ -3904,8 +3904,8 @@
     "physical_moves": [],
     "special_moves": [
       "voltswitch",
-      "thunderbolt",
-      "grassknot"
+      "grassknot",
+      "thunderbolt"
     ],
     "status_moves": [
       "thunderwave",
@@ -3928,8 +3928,8 @@
   "entei": {
     "pokemon_name": "entei",
     "physical_moves": [
-      "sacredfire",
-      "extremespeed"
+      "extremespeed",
+      "sacredfire"
     ],
     "special_moves": [],
     "status_moves": [],
@@ -3975,13 +3975,13 @@
       "struggle"
     ],
     "special_moves": [
-      "focusblast",
       "meteorbeam",
-      "storedpower"
+      "storedpower",
+      "focusblast"
     ],
     "status_moves": [
-      "cosmicpower",
-      "recover"
+      "recover",
+      "cosmicpower"
     ],
     "times_seen": 0,
     "threat_category": "mixed"
@@ -4003,9 +4003,9 @@
     "physical_moves": [],
     "special_moves": [],
     "status_moves": [
+      "sunnyday",
       "lightscreen",
-      "reflect",
-      "sunnyday"
+      "reflect"
     ],
     "times_seen": 0,
     "threat_category": "status_only"
@@ -4050,8 +4050,8 @@
     "pokemon_name": "raichu",
     "physical_moves": [],
     "special_moves": [
-      "thunderbolt",
-      "surf"
+      "surf",
+      "thunderbolt"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -4111,9 +4111,9 @@
     "pokemon_name": "lapras",
     "physical_moves": [],
     "special_moves": [
-      "freezedry",
       "alluringvoice",
-      "brine"
+      "brine",
+      "freezedry"
     ],
     "status_moves": [],
     "times_seen": 0,
@@ -4123,8 +4123,8 @@
     "pokemon_name": "rotomfrost",
     "physical_moves": [],
     "special_moves": [
-      "blizzard",
-      "nightshade"
+      "nightshade",
+      "blizzard"
     ],
     "status_moves": [
       "willowisp"
@@ -4159,9 +4159,9 @@
     ],
     "special_moves": [],
     "status_moves": [
-      "spikes",
+      "synthesis",
       "leechseed",
-      "synthesis"
+      "spikes"
     ],
     "times_seen": 0,
     "threat_category": "physical_only"

@@ -632,16 +632,20 @@ def _score_switch(battle: Battle, target_name: str) -> float:
             type_effectiveness_modifier(t, our_types) for t in opp_types
         )
         if worst_stab_vs_us >= 2.0:
-            # We're weak to their STAB — boost switching
-            score += 0.25
+            # We're weak to their STAB — significantly boost switching to preserve HP
+            # Against threats like Great Tusk, staying in weak matchups causes avoidable faints
+            score += 0.50  # INCREASED from 0.25 to force early switches vs setup threats
         
         # Check if target resists better than we do
         worst_stab_vs_target = max(
             type_effectiveness_modifier(t, target_types) for t in opp_types
         )
         if worst_stab_vs_us > worst_stab_vs_target:
-            # Target takes less from their STAB — reward switch
-            score += 0.15
+            # Target takes less from their STAB — reward switch MORE heavily if we're weak
+            if worst_stab_vs_us >= 2.0:
+                score += 0.25  # INCREASED from 0.15 when we're in bad matchup
+            else:
+                score += 0.15
 
     # PRIMARY: Check opponent's revealed moves for actual damage to this target
     opp_moves = getattr(opp, "moves", []) or []

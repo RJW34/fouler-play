@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -45,6 +46,34 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     STATE_FILE.write_text(json.dumps(state, indent=2))
+
+
+def _timeout_handler(signum, frame):
+    raise TimeoutError("Analysis took too long")
+
+
+def _try_competitive_analysis(timeout_secs: int = 20) -> dict:
+    """Try to run competitive analysis with timeout. Return empty dict on timeout."""
+    try:
+        # Set signal alarm
+        signal.signal(signal.SIGALRM, _timeout_handler)
+        signal.alarm(timeout_secs)
+        
+        from infrastructure.autoresearch.matchup_analyzer import analyze_opponent_threats, analyze_team_matchups
+        
+        threats = analyze_opponent_threats()
+        matchups = analyze_team_matchups()
+        
+        signal.alarm(0)  # Cancel alarm
+        
+        return {
+            "threats": threats.get("top_threats", [])[:3],
+            "matchups": matchups.get("problem_matchups", [])[:3],
+        }
+    except (TimeoutError, ImportError, Exception) as e:
+        signal.alarm(0)  # Cancel alarm if still pending
+        print(f"[WARN] Competitive analysis skipped ({type(e).__name__})", file=sys.stderr)
+        return {}
 
 
 def build_report(stats: dict, last_total: int) -> str | None:
@@ -102,26 +131,22 @@ def build_report(stats: dict, last_total: int) -> str | None:
         icon = "🟢" if t_wr >= 55 else "🟡" if t_wr >= 45 else "🔴"
         lines.append(f"{icon} {team}: {tw}W-{tl}L ({t_wr:.0f}%)")
 
-    # Add competitive analysis if available
-    try:
-        from infrastructure.autoresearch.matchup_analyzer import analyze_opponent_threats, analyze_team_matchups
-        threats = analyze_opponent_threats()
-        top_threats = threats.get("top_threats", [])[:3]
+    # Add competitive analysis if available (with timeout)
+    analysis = _try_competitive_analysis(timeout_secs=20)
+    if analysis:
+        top_threats = analysis.get("threats", [])
         if top_threats:
             lines.append(f"")
             lines.append(f"**Top threats we lose to:**")
             for t in top_threats:
                 lines.append(f"- {t['pokemon']}: in {t['losses_against']} losses ({t['loss_rate_pct']}%)")
 
-        matchups = analyze_team_matchups()
-        problems = matchups.get("problem_matchups", [])[:3]
+        problems = analysis.get("matchups", [])
         if problems:
             lines.append(f"")
             lines.append(f"**Problem matchups:**")
             for p in problems:
                 lines.append(f"- {p['team']} vs {p['opponent_pokemon']}: {p['wins']}W-{p['losses']}L ({p['win_rate_pct']}%)")
-    except Exception:
-        pass
 
     return "\n".join(lines)
 
