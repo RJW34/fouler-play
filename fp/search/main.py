@@ -278,6 +278,49 @@ def _load_matchup_weights() -> dict:
 _load_matchup_weights()
 
 
+def _infer_team_file(battle) -> str:
+    """Infer which team file we're using from the battle's own Pokemon.
+
+    The Battle object doesn't carry team_file, so we match our team members
+    against the known teams in matchup_weights.json bad_matchups keys.
+    Uses a simple overlap heuristic: the team with the most matching members wins.
+    """
+    bad = _MATCHUP_WEIGHTS.get("bad_matchups", {})
+    if not bad:
+        return ""
+
+    # Collect normalized names of all our Pokemon (active + reserve)
+    our_names = set()
+    if battle.user.active and hasattr(battle.user.active, "name"):
+        our_names.add(normalize_name(battle.user.active.name))
+    for pkmn in battle.user.reserve:
+        if hasattr(pkmn, "name"):
+            our_names.add(normalize_name(pkmn.name))
+
+    if not our_names:
+        return ""
+
+    # Known team compositions (team_file -> set of normalized member names)
+    _TEAM_MEMBERS = {
+        "fat-team-1-stall": {"gliscor", "gholdengo", "zamazenta", "blissey", "skarmory", "pecharunt"},
+        "fat-team-2-pivot": {"gliscor", "ogerpon", "walkingwake", "blissey", "corviknight", "pecharunt"},
+        "fat-team-3-dondozo": {"corviknight", "tinglu", "kyurem", "dondozo", "slowkinggalar", "cinderace"},
+    }
+
+    best_team = ""
+    best_overlap = 0
+    for team_name, members in _TEAM_MEMBERS.items():
+        overlap = len(our_names & members)
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best_team = team_name
+
+    # Require at least 2 matches to avoid false positives
+    if best_overlap >= 2:
+        return best_team
+    return ""
+
+
 PIVOT_MOVES_NORM = {normalize_name(m) for m in PIVOT_MOVES}
 RECOVERY_MOVES_NORM = {normalize_name(m) for m in RECOVERY_MOVES}
 SETUP_MOVES_NORM = {normalize_name(m) for m in SETUP_MOVES}
@@ -3844,7 +3887,7 @@ def apply_switch_penalties(
         # against the active opponent.
         if _MATCHUP_WEIGHTS and opponent is not None:
             opp_name_norm = normalize_name(getattr(opponent, "name", "") or "")
-            team_file = getattr(battle, "team_file", "") or ""
+            team_file = _infer_team_file(battle)
             target_name_norm = normalize_name(target_pkmn.name)
 
             bad = _MATCHUP_WEIGHTS.get("bad_matchups", {})
@@ -3859,16 +3902,28 @@ def apply_switch_penalties(
 
                 # If this switch target is the suggested counter, boost it
                 if suggested and normalize_name(suggested) == target_name_norm:
-                    boost_val = 1.10 + min(loss_rate * 0.15, 0.15)
-                    multiplier *= boost_val
+                    multiplier *= 1.4
                     reasons.append(f"suggested counter vs {opp_name_norm} (matchup weights)")
 
             # Check if the switch target is a known casualty vs the opponent
+            # Penalty scales with loss rate severity:
+            #   >= 80% loss rate: 0.5x (hard avoid)
+            #   60-80% loss rate: 0.7x (moderate avoid)
+            #   < 60% loss rate: 0.85x (mild signal)
             problem_mons = _MATCHUP_WEIGHTS.get("problem_pokemon", {})
             target_problems = problem_mons.get(target_name_norm, [])
             if opp_name_norm in target_problems:
-                multiplier *= 0.85
-                reasons.append(f"often dies to {opp_name_norm} (matchup weights)")
+                # Look up the loss rate for this specific opponent from bad_matchups
+                casualty_penalty = 0.85  # default mild
+                for _team_key, _team_bad in bad.items():
+                    if opp_name_norm in _team_bad:
+                        _lr = _team_bad[opp_name_norm].get("loss_rate", 0)
+                        if _lr >= 0.8:
+                            casualty_penalty = min(casualty_penalty, 0.5)
+                        elif _lr >= 0.6:
+                            casualty_penalty = min(casualty_penalty, 0.7)
+                multiplier *= casualty_penalty
+                reasons.append(f"often dies to {opp_name_norm} x{casualty_penalty} (matchup weights)")
 
         # === PLAYSTYLE ADJUSTMENT ===
         # For penalties (multiplier < 1.0), apply playstyle modulation
