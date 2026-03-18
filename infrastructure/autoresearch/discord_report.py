@@ -29,7 +29,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 BATTLE_STATS = PROJECT_ROOT / "battle_stats.json"
 STATE_FILE = PROJECT_ROOT / ".discord_report_state.json"
 CHANNEL_ID = "1466691161363054840"
-MIN_NEW_BATTLES = 10
+MIN_NEW_BATTLES = 30  # Report only after a full batch (10 per team × 3 teams)
 
 
 def load_stats() -> dict:
