@@ -17,6 +17,7 @@ import json
 import logging
 import os
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DECISION_TRACES_DIR = PROJECT_ROOT / "logs" / "decision_traces"
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
+MATCHUP_WEIGHTS_FILE = PROJECT_ROOT / "fp" / "matchup_weights.json"
 
 
 def _load_battle_results() -> dict[str, dict]:
@@ -253,6 +255,78 @@ def analyze_team_matchups() -> dict[str, Any]:
     }
 
 
+def update_matchup_weights() -> dict:
+    """Analyze battle data and write/update fp/matchup_weights.json.
+
+    This is the key feedback loop: analysis results get written to a file
+    that the decision engine reads at startup to adjust switch evaluations.
+
+    Returns the weights dict that was written.
+    """
+    results = _load_battle_results()
+    matchups = analyze_team_matchups()
+    casualties = analyze_our_casualties()
+
+    # Build the bad_matchups structure:
+    # team -> opponent_pokemon -> {loss_rate, sample_size, suggested_lead}
+    bad_matchups: dict[str, dict] = {}
+
+    for problem in matchups.get("problem_matchups", []):
+        team = problem["team"]
+        opp_mon = problem["opponent_pokemon"]
+        total = problem["sample_size"]
+        loss_rate = round(1.0 - problem["win_rate_pct"] / 100.0, 3)
+
+        if team not in bad_matchups:
+            bad_matchups[team] = {}
+
+        # Determine suggested lead: find which of our Pokemon fared best
+        # against this opponent by checking casualty data
+        suggested_lead = _find_best_counter(team, opp_mon, results)
+
+        bad_matchups[team][opp_mon] = {
+            "loss_rate": loss_rate,
+            "sample_size": total,
+            "suggested_lead": suggested_lead,
+        }
+
+    # Build good_leads structure from casualty analysis:
+    # our_pokemon -> list of opponents they struggle against
+    problem_pokemon: dict[str, list[str]] = {}
+    for casualty in casualties.get("casualties", []):
+        our_mon = casualty["our_pokemon"]
+        killers = [k["opponent"] for k in casualty.get("killed_by", []) if k["count"] >= 2]
+        if killers:
+            problem_pokemon[our_mon] = killers
+
+    weights = {
+        "bad_matchups": bad_matchups,
+        "problem_pokemon": problem_pokemon,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Write the file
+    try:
+        MATCHUP_WEIGHTS_FILE.write_text(json.dumps(weights, indent=2))
+        logger.info("Updated matchup weights: %d teams with bad matchups", len(bad_matchups))
+    except Exception as e:
+        logger.error("Failed to write matchup weights: %s", e)
+
+    return weights
+
+
+def _find_best_counter(team: str, opponent_mon: str, results: dict) -> str | None:
+    """Find the best Pokemon on our team to lead against a specific opponent.
+
+    Looks at battles where we WON against teams containing this opponent
+    and finds which of our Pokemon was active when we had momentum.
+    Returns None if no clear counter is found.
+    """
+    # For now, return None — this can be enriched as more trace data accumulates.
+    # The structure is in place for the decision engine to use.
+    return None
+
+
 def get_competitive_brief() -> str:
     """Generate a competitive-focused improvement brief.
 
@@ -295,4 +369,10 @@ def get_competitive_brief() -> str:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     print(get_competitive_brief())
+    print()
+    weights = update_matchup_weights()
+    n_bad = sum(len(v) for v in weights.get("bad_matchups", {}).values())
+    print(f"Matchup weights updated: {n_bad} bad matchups tracked")
+    print(f"Written to: {MATCHUP_WEIGHTS_FILE}")

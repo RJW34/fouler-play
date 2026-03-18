@@ -1,0 +1,92 @@
+{
+  "bad_matchups": {
+    "fat-team-2-pivot": {
+      "dondozo": {
+        "loss_rate": 1.0,
+        "sample_size": 3,
+        "suggested_lead": null
+      },
+      "gholdengo": {
+        "loss_rate": 1.0,
+        "sample_size": 3,
+        "suggested_lead": null
+      },
+      "greattusk": {
+        "loss_rate": 1.0,
+        "sample_size": 3,
+        "suggested_lead": null
+      },
+      "ragingbolt": {
+        "loss_rate": 0.667,
+        "sample_size": 3,
+        "suggested_lead": null
+      },
+      "ironvaliant": {
+        "loss_rate": 0.667,
+        "sample_size": 3,
+        "suggested_lead": null
+      },
+      "samurotthisui": {
+        "loss_rate": 0.667,
+        "sample_size": 3,
+        "suggested_lead": null
+      }
+    },
+    "fat-team-1-stall": {
+      "corviknight": {
+        "loss_rate": 0.75,
+        "sample_size": 4,
+        "suggested_lead": null
+      },
+      "greattusk": {
+        "loss_rate": 0.714,
+        "sample_size": 7,
+        "suggested_lead": null
+      },
+      "tornadustherian": {
+        "loss_rate": 0.667,
+        "sample_size": 3,
+        "suggested_lead": null
+      },
+      "slowkinggalar": {
+        "loss_rate": 0.667,
+        "sample_size": 3,
+        "suggested_lead": null
+      },
+      "ogerponwellspring": {
+        "loss_rate": 0.667,
+        "sample_size": 3,
+        "suggested_lead": null
+      },
+      "rillaboom": {
+        "loss_rate": 0.667,
+        "sample_size": 3,
+        "suggested_lead": null
+      }
+    },
+    "fat-team-3-dondozo": {
+      "gholdengo": {
+        "loss_rate": 0.667,
+        "sample_size": 3,
+        "suggested_lead": null
+      }
+    }
+  },
+  "problem_pokemon": {
+    "pecharunt": [
+      "gholdengo",
+      "ironvaliant"
+    ],
+    "gliscor": [
+      "greattusk",
+      "dondozo"
+    ],
+    "blissey": [
+      "kyurem"
+    ],
+    "skarmory": [
+      "greattusk"
+    ]
+  },
+  "updated_at": "2026-03-18T05:09:44.194192+00:00"
+}
