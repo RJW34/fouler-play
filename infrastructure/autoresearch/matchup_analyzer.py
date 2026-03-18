@@ -315,15 +315,205 @@ def update_matchup_weights() -> dict:
     return weights
 
 
+def _get_team_members(team: str) -> list[str]:
+    """Return normalized Pokemon names for a team file.
+
+    Reads from teams/gen9/ou/<team> (file or directory) and extracts species names.
+    """
+    team_path = PROJECT_ROOT / "teams" / "gen9" / "ou" / team
+    if not team_path.exists():
+        return []
+
+    # Collect all team file contents
+    contents = []
+    if team_path.is_file():
+        try:
+            contents.append(team_path.read_text())
+        except Exception:
+            return []
+    elif team_path.is_dir():
+        for f in team_path.iterdir():
+            if f.is_file() and not f.name.startswith("."):
+                try:
+                    contents.append(f.read_text())
+                except Exception:
+                    continue
+
+    members = []
+    for content in contents:
+        for block in content.split("\n\n"):
+            block = block.strip()
+            if not block:
+                continue
+            first_line = block.split("\n")[0].strip()
+            # Format: "Species @ Item" or "Species (Nickname) @ Item"
+            name_part = first_line.split("@")[0].strip()
+            # Strip gender marker like "(F)" or "(M)"
+            if "(" in name_part and ")" in name_part:
+                paren_content = name_part[name_part.index("(")+1:name_part.index(")")]
+                if paren_content in ("F", "M"):
+                    name_part = name_part[:name_part.index("(")].strip()
+                else:
+                    # Nickname format: "Nickname (Species)" -- use species
+                    name_part = paren_content.strip()
+            members.append(_normalize_name(name_part))
+    return members
+
+
+def _normalize_name(name: str) -> str:
+    """Normalize a Pokemon name to match the format used in battle data."""
+    return (
+        name.replace(" ", "")
+        .replace("-", "")
+        .replace(".", "")
+        .replace("'", "")
+        .replace("%", "")
+        .replace("*", "")
+        .replace(":", "")
+        .replace("(", "")
+        .replace(")", "")
+        .strip()
+        .lower()
+    )
+
+
 def _find_best_counter(team: str, opponent_mon: str, results: dict) -> str | None:
     """Find the best Pokemon on our team to lead against a specific opponent.
 
-    Looks at battles where we WON against teams containing this opponent
-    and finds which of our Pokemon was active when we had momentum.
-    Returns None if no clear counter is found.
+    Uses three signals (in priority order):
+    1. Battle data: which of our Pokemon was active in WINS against this opponent
+    2. Type advantage: which team member has the best type matchup vs the threat
+    3. Survivability: which team member lasted longest against the threat in losses
+
+    Returns the normalized name of the best counter, or None if insufficient data.
     """
-    # For now, return None — this can be enriched as more trace data accumulates.
-    # The structure is in place for the decision engine to use.
+    team_members = _get_team_members(team)
+    if not team_members:
+        return None
+
+    opp_norm = _normalize_name(opponent_mon)
+
+    # ---- Signal 1: Who was active when we WON against this opponent? ----
+    win_active_counts: Counter = Counter()
+    loss_survive_turns: dict[str, list[int]] = defaultdict(list)
+
+    for tag, data in results.items():
+        if data.get("team_file") != team:
+            continue
+
+        traces = _load_traces_for_battle(tag)
+        if not traces:
+            continue
+
+        # Check if opponent team contained the problem Pokemon
+        opp_team = set()
+        for trace in traces:
+            snap = trace.get("snapshot", {})
+            opp_active = snap.get("opponent", {}).get("active", {})
+            if opp_active and opp_active.get("name"):
+                opp_team.add(_normalize_name(opp_active["name"]))
+            for r in snap.get("opponent", {}).get("reserve", []):
+                if r.get("name"):
+                    opp_team.add(_normalize_name(r["name"]))
+
+        if opp_norm not in opp_team:
+            continue
+
+        is_win = data.get("result") == "win"
+
+        # Track which of our Pokemon were active when the opponent threat was out
+        for trace in traces:
+            snap = trace.get("snapshot", {})
+            opp_active = snap.get("opponent", {}).get("active", {})
+            our_active = snap.get("user", {}).get("active", {})
+
+            opp_active_norm = _normalize_name(opp_active.get("name", "")) if opp_active else ""
+            our_active_norm = _normalize_name(our_active.get("name", "")) if our_active else ""
+
+            if opp_active_norm == opp_norm and our_active_norm in team_members:
+                if is_win:
+                    win_active_counts[our_active_norm] += 1
+
+        # For losses, track how many turns each of our Pokemon survived
+        if not is_win:
+            mon_first_seen: dict[str, int] = {}
+            mon_last_seen: dict[str, int] = {}
+            for trace in traces:
+                turn = trace.get("turn", 0)
+                snap = trace.get("snapshot", {})
+                our_active = snap.get("user", {}).get("active", {})
+                our_name = _normalize_name(our_active.get("name", "")) if our_active else ""
+                if our_name in team_members:
+                    if our_name not in mon_first_seen:
+                        mon_first_seen[our_name] = turn
+                    mon_last_seen[our_name] = turn
+            for mon, first in mon_first_seen.items():
+                last = mon_last_seen.get(mon, first)
+                loss_survive_turns[mon].append(last - first + 1)
+
+    # If we have win data, use the Pokemon most often active vs the threat in wins
+    if win_active_counts:
+        best_in_wins = win_active_counts.most_common(1)[0][0]
+        logger.info(
+            "Best counter for %s vs %s (from wins): %s (active %d times)",
+            team, opponent_mon, best_in_wins, win_active_counts[best_in_wins],
+        )
+        return best_in_wins
+
+    # ---- Signal 2: Type advantage from the type database ----
+    try:
+        from fp.type_database import get_pokemon_types, get_type_effectiveness
+    except ImportError:
+        get_pokemon_types = None
+        get_type_effectiveness = None
+
+    if get_pokemon_types and get_type_effectiveness:
+        opp_types = get_pokemon_types(opponent_mon)
+        if opp_types:
+            type_scores: dict[str, float] = {}
+            for member in team_members:
+                member_types = get_pokemon_types(member)
+                if not member_types:
+                    continue
+
+                # Offensive score: how well can we hit the opponent?
+                best_offensive = max(
+                    get_type_effectiveness(t, opp_types) for t in member_types
+                )
+                # Defensive score: how well do we resist the opponent?
+                worst_defensive = max(
+                    get_type_effectiveness(t, member_types) for t in opp_types
+                )
+                # Invert defensive (lower incoming damage = better)
+                def_score = 1.0 / max(worst_defensive, 0.25)
+
+                type_scores[member] = best_offensive * 0.6 + def_score * 0.4
+
+            if type_scores:
+                best_type = max(type_scores, key=type_scores.get)
+                best_score = type_scores[best_type]
+                # Only suggest if there's a meaningful type advantage
+                if best_score > 1.2:
+                    logger.info(
+                        "Best counter for %s vs %s (from types): %s (score %.2f)",
+                        team, opponent_mon, best_type, best_score,
+                    )
+                    return best_type
+
+    # ---- Signal 3: Survivability in losses ----
+    if loss_survive_turns:
+        avg_survive = {
+            mon: sum(turns) / len(turns)
+            for mon, turns in loss_survive_turns.items()
+        }
+        best_survivor = max(avg_survive, key=avg_survive.get)
+        if avg_survive[best_survivor] >= 3:  # Survived at least 3 turns on average
+            logger.info(
+                "Best counter for %s vs %s (from survivability): %s (avg %.1f turns)",
+                team, opponent_mon, best_survivor, avg_survive[best_survivor],
+            )
+            return best_survivor
+
     return None
 
 
