@@ -238,6 +238,46 @@ from fp.opponent_model import OPPONENT_MODEL
 from sweep_fix import smart_sweep_prevention
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# MATCHUP WEIGHTS: learned adjustments from autoresearch analysis
+# =============================================================================
+_MATCHUP_WEIGHTS: dict = {}
+_MATCHUP_WEIGHTS_LOADED = False
+
+
+def _load_matchup_weights() -> dict:
+    """Load matchup weights from fp/matchup_weights.json.
+
+    Called once at startup and cached. The file is updated after each batch
+    by the matchup analyzer, and picked up on the next batch automatically.
+    """
+    global _MATCHUP_WEIGHTS, _MATCHUP_WEIGHTS_LOADED
+    if _MATCHUP_WEIGHTS_LOADED:
+        return _MATCHUP_WEIGHTS
+    weights_path = Path(__file__).resolve().parent.parent / "matchup_weights.json"
+    try:
+        if weights_path.exists():
+            import json as _json
+            _MATCHUP_WEIGHTS = _json.loads(weights_path.read_text())
+            bad = _MATCHUP_WEIGHTS.get("bad_matchups", {})
+            total = sum(len(v) for v in bad.values())
+            if total > 0:
+                logger.info(
+                    "Loaded matchup weights: %d bad matchups across %d teams (updated %s)",
+                    total, len(bad), _MATCHUP_WEIGHTS.get("updated_at", "unknown"),
+                )
+    except Exception as e:
+        logger.warning("Failed to load matchup weights: %s", e)
+        _MATCHUP_WEIGHTS = {}
+    _MATCHUP_WEIGHTS_LOADED = True
+    return _MATCHUP_WEIGHTS
+
+
+# Load at import time (lightweight — just reads a small JSON file)
+_load_matchup_weights()
+
+
 PIVOT_MOVES_NORM = {normalize_name(m) for m in PIVOT_MOVES}
 RECOVERY_MOVES_NORM = {normalize_name(m) for m in RECOVERY_MOVES}
 SETUP_MOVES_NORM = {normalize_name(m) for m in SETUP_MOVES}
@@ -275,6 +315,10 @@ def _maybe_hot_reload():
             globals()['evaluate_position'] = fp.search.eval.evaluate_position
             globals()['_eval_opponent_best_damage'] = fp.search.eval._opponent_best_damage
             globals()['detect_forced_line'] = fp.search.forced_lines.detect_forced_line
+            # Re-read matchup weights (may have been updated by autoresearch)
+            global _MATCHUP_WEIGHTS_LOADED
+            _MATCHUP_WEIGHTS_LOADED = False
+            _load_matchup_weights()
             signal.unlink()
             logger.info("HOT RELOAD: eval.py + forced_lines.py reloaded successfully")
         except Exception as e:
@@ -3792,6 +3836,39 @@ def apply_switch_penalties(
             if is_status_backfire and has_status_move and target_status is None:
                 multiplier *= BOOST_SWITCH_COUNTERS  # Use existing counter boost constant
                 reasons.append("Guts/Marvel Scale vs status move")
+
+        # === MATCHUP WEIGHTS: learned adjustments from autoresearch ===
+        # If the opponent has a Pokemon that is a known problem matchup for
+        # our team, boost switches to Pokemon that perform better against it.
+        # Also penalize switching TO a Pokemon that is a known casualty
+        # against the active opponent.
+        if _MATCHUP_WEIGHTS and opponent is not None:
+            opp_name_norm = normalize_name(getattr(opponent, "name", "") or "")
+            team_file = getattr(battle, "team_file", "") or ""
+            target_name_norm = normalize_name(target_pkmn.name)
+
+            bad = _MATCHUP_WEIGHTS.get("bad_matchups", {})
+            team_bad = bad.get(team_file, {})
+
+            # If the opponent has a Pokemon that we have a bad record against,
+            # check if the switch target is a suggested lead for that matchup
+            if opp_name_norm in team_bad:
+                matchup_data = team_bad[opp_name_norm]
+                loss_rate = matchup_data.get("loss_rate", 0)
+                suggested = matchup_data.get("suggested_lead")
+
+                # If this switch target is the suggested counter, boost it
+                if suggested and normalize_name(suggested) == target_name_norm:
+                    boost_val = 1.10 + min(loss_rate * 0.15, 0.15)
+                    multiplier *= boost_val
+                    reasons.append(f"suggested counter vs {opp_name_norm} (matchup weights)")
+
+            # Check if the switch target is a known casualty vs the opponent
+            problem_mons = _MATCHUP_WEIGHTS.get("problem_pokemon", {})
+            target_problems = problem_mons.get(target_name_norm, [])
+            if opp_name_norm in target_problems:
+                multiplier *= 0.85
+                reasons.append(f"often dies to {opp_name_norm} (matchup weights)")
 
         # === PLAYSTYLE ADJUSTMENT ===
         # For penalties (multiplier < 1.0), apply playstyle modulation
