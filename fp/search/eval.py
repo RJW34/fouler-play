@@ -1577,7 +1577,8 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                     else:
                         sw_score *= 0.5
 
-                # Sacking prevention: boost switches when we're getting KOd for nothing
+                # Sacking prevention: AGGRESSIVE switches when we're getting KOd
+                # If opponent can KO us and we can't pressure them back, switch HARD
                 if opp_can_ko and not opp_is_boosting:
                     our_best_dmg_ratio = 0.0
                     for move_name, move_data in moves:
@@ -1585,8 +1586,17 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                             dmg = _estimate_damage_ratio(our, opp, move_name)
                             our_best_dmg_ratio = max(our_best_dmg_ratio, dmg)
                     opp_hp_ratio = opp.hp / max(opp.max_hp, 1) if opp else 1.0
+                    
+                    # CRITICAL: If opponent can KO AND we do minimal damage, FORCE switch
                     if our_best_dmg_ratio < 0.20 * opp_hp_ratio:
-                        sw_score *= 1.5
+                        # Scale boost by how much HP we have (lower HP = more desperate)
+                        our_hp_ratio = our.hp / max(our.max_hp, 1) if our else 1.0
+                        if our_hp_ratio < 0.4:  # Below 40% HP
+                            sw_score *= 3.0  # TRIPLED boost (was 1.5)
+                        elif our_hp_ratio < 0.6:  # Below 60% HP
+                            sw_score *= 2.0  # DOUBLED boost
+                        else:
+                            sw_score *= 1.5  # Standard boost
 
                 scores[switch_name] = sw_score
     else:
