@@ -776,17 +776,10 @@ async def handle_battles(request: web.Request) -> web.Response:
 
 
 async def handle_status(request: web.Request) -> web.Response:
-    status = _apply_ladder_status(state_store.read_status())
-    battles_data = state_store.read_active_battles()
-    battles = battles_data.get("battles", [])
-    status["active_battles"] = [b.get("id") for b in battles]
-    # Build battle_info from actual battles (more reliable than stale status file)
-    if battles:
-        status["battle_info"] = ", ".join(f"vs {b.get('opponent', 'Unknown')}" for b in battles)
-    # Add daily totals
-    daily = state_store.read_daily_stats()
-    status["today_wins"] = daily.get("wins", 0)
-    status["today_losses"] = daily.get("losses", 0)
+    payload = build_state_payload()
+    status = dict(payload.get("status", {}))
+    battles = payload.get("battles", [])
+    status["active_battles"] = [b.get("id") for b in battles if isinstance(b, dict)]
     return web.json_response(status)
 
 

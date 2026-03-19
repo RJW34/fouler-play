@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Test that /state endpoint status field reflects active battle state.
+Test that /state and /status reflect live active battle state.
 
 Regression test for: Status field stuck on "Searching" during active battles.
 """
 
+import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -12,11 +14,12 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
 state_store = __import__("streaming.state_store", fromlist=["state_store"])
+serve_obs_page = __import__("streaming.serve_obs_page", fromlist=["serve_obs_page"])
 
 
 def test_status_reflects_active_battles():
     """Status should be 'Active' when battles exist, 'Searching' when empty."""
-    
+
     # Mock active battle data
     active_battle = {
         "battles": [
@@ -36,41 +39,33 @@ def test_status_reflects_active_battles():
     
     # Write test battle data
     state_store.write_active_battles(active_battle)
-    
-    # Simulate server logic (from serve_obs_page.py build_state_payload)
-    status = state_store.read_status()
-    battles_data = state_store.read_active_battles()
-    battles = battles_data.get("battles", [])
-    
-    # Apply status update logic
-    if battles:
-        status["status"] = "Active"
-        status["battle_info"] = ", ".join(
-            f"vs {b.get('opponent', 'Unknown')}" for b in battles
-        )
-    else:
-        if status.get("status") in ("Active", "Battling"):
-            status["status"] = "Searching"
-            status["battle_info"] = "Searching..."
-    
+
+    payload = serve_obs_page.build_state_payload()
+    status = dict(payload["status"])
+
     assert status["status"] == "Active", f"Expected 'Active', got {status['status']}"
     assert "TestOpponent" in status["battle_info"], f"Expected opponent in battle_info, got {status['battle_info']}"
-    
+    status_response = asyncio.run(serve_obs_page.handle_status(None))
+    status_payload = json.loads(status_response.text)
+    assert status_payload["status"] == "Active", f"Expected /status to be 'Active', got {status_payload['status']}"
+    assert "TestOpponent" in status_payload["battle_info"], (
+        f"Expected /status battle_info to include opponent, got {status_payload['battle_info']}"
+    )
+
     # Test empty battles
     state_store.write_active_battles({"battles": [], "count": 0})
-    battles_data = state_store.read_active_battles()
-    battles = battles_data.get("battles", [])
-    
-    if battles:
-        status["status"] = "Active"
-    else:
-        if status.get("status") in ("Active", "Battling"):
-            status["status"] = "Searching"
-            status["battle_info"] = "Searching..."
-    
+    status = dict(serve_obs_page.build_state_payload()["status"])
     assert status["status"] == "Searching", f"Expected 'Searching', got {status['status']}"
     assert status["battle_info"] == "Searching...", f"Expected 'Searching...', got {status['battle_info']}"
-    
+    status_response = asyncio.run(serve_obs_page.handle_status(None))
+    status_payload = json.loads(status_response.text)
+    assert status_payload["status"] == "Searching", (
+        f"Expected /status to be 'Searching', got {status_payload['status']}"
+    )
+    assert status_payload["battle_info"] == "Searching...", (
+        f"Expected /status battle_info to be 'Searching...', got {status_payload['battle_info']}"
+    )
+
     print("All status field tests passed")
 
 
