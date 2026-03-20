@@ -50,6 +50,10 @@ daily_stats.json
 aiohttp_replay_check.json
 replay_check.json
 stream_status.json
+.discord_report_state.json
+battle_stats.json
+data/autoresearch/research_log.jsonl
+replay_analysis/team_report.json
 diagnostics/health_report.json
 teams/.team_iterator_index
 .bot.pid
