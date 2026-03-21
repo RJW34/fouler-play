@@ -19,12 +19,14 @@ import asyncio
 import contextlib
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
 import re
 import atexit
 from datetime import datetime
+from urllib.parse import urlsplit, urlunsplit
 from aiohttp import web
 import aiohttp
 from pathlib import Path
@@ -45,6 +47,71 @@ from streaming.hybrid_dashboard import register_dashboard_routes
 if load_dotenv:
     load_dotenv()
 
+
+def _normalize_obs_browser_base_url(raw_url: str) -> str:
+    candidate = raw_url.strip()
+    if not candidate:
+        raise ValueError("OBS browser base URL cannot be empty")
+    if "://" not in candidate:
+        candidate = f"http://{candidate}"
+    parsed = urlsplit(candidate)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError(f"Invalid OBS browser base URL: {raw_url}")
+    return urlunsplit((parsed.scheme, parsed.netloc.rstrip("/"), "", "", ""))
+
+
+def _detect_lan_ip() -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            host = sock.getsockname()[0]
+        if host and not host.startswith("127."):
+            return host
+    except OSError:
+        pass
+    return "localhost"
+
+
+def _resolve_obs_browser_base_url(env: dict[str, str] | None = None, *, default_port: int | None = None) -> str:
+    env_map = os.environ if env is None else env
+    port = PORT if default_port is None else default_port
+
+    explicit_base = (env_map.get("OBS_BROWSER_BASE_URL") or "").strip()
+    if explicit_base:
+        return _normalize_obs_browser_base_url(explicit_base)
+
+    legacy_idle_url = (env_map.get("OBS_IDLE_URL") or "").strip()
+    if legacy_idle_url:
+        return _normalize_obs_browser_base_url(legacy_idle_url)
+
+    return _normalize_obs_browser_base_url(f"http://{_detect_lan_ip()}:{port}")
+
+
+def _build_obs_browser_url(path: str) -> str:
+    return f"{OBS_BROWSER_BASE_URL}/{path.lstrip('/')}"
+
+
+def _resolve_obs_idle_url(env: dict[str, str] | None = None) -> str:
+    env_map = os.environ if env is None else env
+    explicit_base = (env_map.get("OBS_BROWSER_BASE_URL") or "").strip()
+    legacy_idle_url = (env_map.get("OBS_IDLE_URL") or "").strip()
+    if legacy_idle_url and not explicit_base:
+        return legacy_idle_url
+    return f"{_resolve_obs_browser_base_url(env_map)}/idle"
+
+
+def _obs_browser_url_warning() -> str | None:
+    obs_host = OBS_WS_HOST.strip().lower()
+    browser_host = (urlsplit(OBS_BROWSER_BASE_URL).hostname or "").lower()
+    if obs_host not in {"", "localhost", "127.0.0.1", "::1"} and browser_host in {"localhost", "127.0.0.1", "::1"}:
+        return (
+            f"[CONFIG] WARNING: OBS browser base URL {OBS_BROWSER_BASE_URL} resolves to localhost "
+            f"but OBS WebSocket host is remote ({OBS_WS_HOST}). "
+            "Remote OBS browser sources will not reach localhost; set OBS_BROWSER_BASE_URL to a host reachable from OBS."
+        )
+    return None
+
+
 PORT = int(os.getenv("OBS_SERVER_PORT", "8777"))
 STREAMING_DIR = Path(__file__).parent
 OBS_WS_HOST = os.getenv("OBS_WS_HOST", "localhost")
@@ -55,9 +122,11 @@ OBS_BATTLE_SOURCES = [
     for name in os.getenv("OBS_BATTLE_SOURCES", "").split(",")
     if name.strip()
 ]
-OBS_IDLE_URL = os.getenv("OBS_IDLE_URL", f"http://localhost:{PORT}/idle")
+OBS_BROWSER_BASE_URL = _resolve_obs_browser_base_url(default_port=PORT)
+OBS_IDLE_URL = _resolve_obs_idle_url()
 OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in ("0", "false", "no", "off")
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
+
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
 SHOWDOWN_USER_ID = os.getenv("SHOWDOWN_USER_ID", "").strip()
@@ -94,6 +163,7 @@ _elo_retry_task = None
 _replay_cache: dict[str, dict[str, float | bool]] = {}
 
 PID_FILE = ROOT_DIR / ".pids" / "obs_server.pid"
+BATTLE_STATS_PATH = ROOT_DIR / "battle_stats.json"
 
 
 def _write_pid_file() -> None:
@@ -116,6 +186,29 @@ def _cleanup_pid_file() -> None:
             PID_FILE.unlink()
     except Exception:
         pass
+
+
+def _read_battle_totals() -> dict[str, int | float]:
+    try:
+        raw = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+        battles = raw.get("battles", []) if isinstance(raw, dict) else []
+        wins = sum(1 for battle in battles if battle.get("result") == "win")
+        losses = sum(1 for battle in battles if battle.get("result") == "loss")
+        total = wins + losses
+        win_rate = round((wins / total) * 100, 1) if total else 0.0
+        return {
+            "total_wins": wins,
+            "total_losses": losses,
+            "total_battles": total,
+            "total_win_rate": win_rate,
+        }
+    except Exception:
+        return {
+            "total_wins": 0,
+            "total_losses": 0,
+            "total_battles": 0,
+            "total_win_rate": 0.0,
+        }
 
 
 def _pid_exists(pid: int) -> bool:
@@ -158,8 +251,10 @@ except Exception as e:
 def build_state_payload() -> dict:
     status = _apply_ladder_status(state_store.read_status())
     daily = state_store.read_daily_stats()
+    totals = _read_battle_totals()
     status["today_wins"] = daily.get("wins", 0)
     status["today_losses"] = daily.get("losses", 0)
+    status.update(totals)
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
     
@@ -771,6 +866,42 @@ async def handle_debug(request: web.Request) -> web.FileResponse:
     return web.FileResponse(str(STREAMING_DIR / "obs_debug.html"))
 
 
+def _serve_browser_page(filename: str) -> web.FileResponse:
+    return web.FileResponse(str(STREAMING_DIR / filename))
+
+
+async def handle_mission_control(request: web.Request) -> web.FileResponse:
+    return _serve_browser_page("mission_control.html")
+
+
+async def handle_focus_pokemon(request: web.Request) -> web.FileResponse:
+    return _serve_browser_page("focus_pokemon.html")
+
+
+async def handle_focus_fouler(request: web.Request) -> web.FileResponse:
+    return _serve_browser_page("focus_fouler.html")
+
+
+async def handle_focus_dev(request: web.Request) -> web.FileResponse:
+    return _serve_browser_page("focus_dev.html")
+
+
+async def handle_battle_arena(request: web.Request) -> web.FileResponse:
+    return _serve_browser_page("battle_arena.html")
+
+
+async def handle_starting_soon(request: web.Request) -> web.FileResponse:
+    return _serve_browser_page("starting_soon.html")
+
+
+async def handle_brb(request: web.Request) -> web.FileResponse:
+    return _serve_browser_page("brb.html")
+
+
+async def handle_debug_quad(request: web.Request) -> web.FileResponse:
+    return _serve_browser_page("debug_quad.html")
+
+
 async def handle_battles(request: web.Request) -> web.Response:
     return web.json_response(state_store.read_active_battles())
 
@@ -789,9 +920,167 @@ async def handle_state(request: web.Request) -> web.Response:
 
 DEKU_STATE_URL = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
 MAGNETON_STATE_URL = os.getenv("MAGNETON_STATE_URL", "http://192.168.1.181:8777/state")
+POKEMON_RUNTIME_HOST = os.getenv("POKEMON_RUNTIME_HOST", "192.168.1.40")
+EMERALD_BRAIN_PORT = int(os.getenv("EMERALD_BRAIN_PORT", "8788"))
+FIRERED_BRAIN_PORT = int(os.getenv("FIRERED_BRAIN_PORT", "8787"))
+EMERALD_BRAIN_SERVICE = os.getenv("EMERALD_BRAIN_SERVICE", "pokecompletionist-emerald")
+FIRERED_BRAIN_SERVICE = os.getenv("FIRERED_BRAIN_SERVICE", "pokecompletionist-firered")
+POKEMON_PANEL_REFRESH_SEC = max(2, int(os.getenv("POKEMON_PANEL_REFRESH_SEC", "5")))
+POKEMON_PANEL_TIMEOUT_SEC = max(1.0, float(os.getenv("POKEMON_PANEL_TIMEOUT_SEC", "2.5")))
+POKEMON_PANEL_SSH_TARGET = os.getenv("POKEMON_PANEL_SSH_TARGET", "ryan@192.168.1.40").strip()
+POKEMON_PANEL_SSH_TIMEOUT_SEC = max(1, int(os.getenv("POKEMON_PANEL_SSH_TIMEOUT_SEC", "3")))
 
-_emerald_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Emerald ROM", "status_text": "INITIALIZING"}
-_firered_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Fire Red ROM", "status_text": "INITIALIZING"}
+def _default_brain_panel_state(game_name: str) -> dict:
+    return {
+        "status": "initializing",
+        "objective": None,
+        "last_action": None,
+        "location": None,
+        "title": "INITIALIZING",
+        "subtitle": f"Awaiting connection to {game_name} ROM",
+        "status_text": "INITIALIZING",
+    }
+
+
+def _scene_label(scene: str | None) -> str:
+    if not scene:
+        return "UNKNOWN"
+    return str(scene).replace("_", " ").upper()
+
+
+def _format_brain_location(state: dict) -> str:
+    map_group = state.get("map_group")
+    map_num = state.get("map_num")
+    pos_x = state.get("pos_x")
+    pos_y = state.get("pos_y")
+    if map_group is None or map_num is None:
+        return "Location unavailable"
+    if pos_x is None or pos_y is None:
+        return f"Map ({map_group},{map_num})"
+    return f"Map ({map_group},{map_num}) @ ({pos_x},{pos_y})"
+
+
+def _trim_journal_line(line: str) -> str:
+    cleaned = re.sub(r"^.*\] [^:]+: ", "", line or "").strip()
+    return cleaned or (line or "").strip()
+
+
+def _probe_bridge_state(host: str, port: int) -> dict | None:
+    command = {"action": "state"}
+    try:
+        with socket.create_connection((host, port), timeout=POKEMON_PANEL_TIMEOUT_SEC) as sock:
+            sock.settimeout(POKEMON_PANEL_TIMEOUT_SEC)
+            sock.sendall((json.dumps(command) + "\n").encode("utf-8"))
+            data = b""
+            while b"\n" not in data:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+        if not data:
+            return None
+        line = data.split(b"\n", 1)[0].decode("utf-8", errors="replace").strip()
+        payload = json.loads(line)
+        return payload if isinstance(payload, dict) else None
+    except Exception:
+        return None
+
+
+def _fetch_latest_brain_action(service_name: str) -> str | None:
+    if not POKEMON_PANEL_SSH_TARGET:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                "ssh",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                f"ConnectTimeout={POKEMON_PANEL_SSH_TIMEOUT_SEC}",
+                POKEMON_PANEL_SSH_TARGET,
+                "journalctl",
+                "--user",
+                "-u",
+                service_name,
+                "--no-pager",
+                "-n",
+                "1",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=POKEMON_PANEL_SSH_TIMEOUT_SEC + 2,
+            check=False,
+        )
+        if result.returncode != 0:
+            return None
+        lines = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+        if not lines:
+            return None
+        return _trim_journal_line(lines[-1])
+    except Exception:
+        return None
+
+
+def _build_runtime_brain_panel_state(game_name: str, service_name: str, port: int) -> dict | None:
+    state = _probe_bridge_state(POKEMON_RUNTIME_HOST, port)
+    if not state:
+        return None
+
+    scene = _scene_label(state.get("scene"))
+    player_name = (state.get("player_name") or "").strip() or "UNKNOWN"
+    error = (state.get("error") or "").strip()
+    frame = state.get("frame")
+    status_text = "ATTN" if error or state.get("scene") in {"title_screen", "unknown"} else "LIVE"
+    subtitle_parts = [player_name]
+    if frame is not None:
+        subtitle_parts.append(f"frame {frame}")
+    if error:
+        subtitle_parts.append(error.replace("_", " "))
+
+    return {
+        "status": "live",
+        "objective": f"Scene: {scene}" if not error else f"Bridge error: {error.replace('_', ' ')}",
+        "last_action": _fetch_latest_brain_action(service_name) or "Bridge connected",
+        "location": _format_brain_location(state),
+        "title": scene,
+        "subtitle": " | ".join(subtitle_parts),
+        "status_text": status_text,
+        "updated": time.time(),
+    }
+
+
+_emerald_brain_state: dict = _default_brain_panel_state("Emerald")
+_firered_brain_state: dict = _default_brain_panel_state("Fire Red")
+
+
+async def refresh_pokemon_brain_panels() -> None:
+    global _emerald_brain_state, _firered_brain_state
+
+    emerald_state, firered_state = await asyncio.gather(
+        asyncio.to_thread(
+            _build_runtime_brain_panel_state,
+            "Emerald",
+            EMERALD_BRAIN_SERVICE,
+            EMERALD_BRAIN_PORT,
+        ),
+        asyncio.to_thread(
+            _build_runtime_brain_panel_state,
+            "Fire Red",
+            FIRERED_BRAIN_SERVICE,
+            FIRERED_BRAIN_PORT,
+        ),
+    )
+
+    if emerald_state:
+        _emerald_brain_state = emerald_state
+    if firered_state:
+        _firered_brain_state = firered_state
+
+
+async def poll_pokemon_brain_panels(app: web.Application) -> None:
+    while True:
+        await refresh_pokemon_brain_panels()
+        await asyncio.sleep(POKEMON_PANEL_REFRESH_SEC)
 
 async def handle_deku_state(request: web.Request) -> web.Response:
     """Proxy DEKU's state endpoint to avoid CORS issues in OBS browser."""
@@ -927,6 +1216,7 @@ async def poll_files(app: web.Application) -> None:
 
 async def start_background_tasks(app: web.Application) -> None:
     app["poller"] = asyncio.create_task(poll_files(app))
+    app["pokemon_panel_poller"] = asyncio.create_task(poll_pokemon_brain_panels(app))
     # Initialize ELO cache and broadcast once ready
     async def init_and_broadcast_elo():
         await _init_elo_cache()
@@ -942,6 +1232,11 @@ async def cleanup_background_tasks(app: web.Application) -> None:
         poller.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await poller
+    pokemon_panel_poller = app.get("pokemon_panel_poller")
+    if pokemon_panel_poller:
+        pokemon_panel_poller.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await pokemon_panel_poller
     obs_init = app.get("obs_init")
     if obs_init:
         obs_init.cancel()
@@ -1156,10 +1451,23 @@ def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/ws", handle_ws)
     app.router.add_post("/event", handle_event)
+    app.router.add_static("/static", path=str(STREAMING_DIR / "static"))
     app.router.add_get("/obs", handle_obs)
     app.router.add_get("/overlay", handle_overlay)
     app.router.add_get("/idle", handle_idle)
     app.router.add_get("/debug", handle_debug)
+    app.router.add_get("/mission-control", handle_mission_control)
+    app.router.add_get("/focus/pokemon", handle_focus_pokemon)
+    app.router.add_get("/pokemon-focus", handle_focus_pokemon)
+    app.router.add_get("/focus/fouler", handle_focus_fouler)
+    app.router.add_get("/fouler-play-focus", handle_focus_fouler)
+    app.router.add_get("/focus/dev", handle_focus_dev)
+    app.router.add_get("/dev-focus", handle_focus_dev)
+    app.router.add_get("/battle-arena", handle_battle_arena)
+    app.router.add_get("/starting-soon", handle_starting_soon)
+    app.router.add_get("/brb", handle_brb)
+    app.router.add_get("/debug/quad", handle_debug_quad)
+    app.router.add_get("/quad-debug", handle_debug_quad)
     app.router.add_get("/battles", handle_battles)
     app.router.add_get("/status", handle_status)
     app.router.add_get("/state", handle_state)
@@ -1188,10 +1496,15 @@ if __name__ == "__main__":
     atexit.register(_cleanup_pid_file)
     print(f"[SERVER] Fouler Play OBS Server starting on port {PORT}")
     print(f"[SERVER] Serving files from: {STREAMING_DIR}")
+    warning = _obs_browser_url_warning()
+    if warning:
+        print(warning)
     print()
     print("  OBS Browser Source URLs:")
-    print(f"    Battle Display (legacy iframes): http://localhost:{PORT}/obs")
-    print(f"    Stats Overlay:  http://localhost:{PORT}/overlay")
+    print(f"    Browser Base:   {OBS_BROWSER_BASE_URL}")
+    print(f"    Battle Display (legacy iframes): {_build_obs_browser_url('obs')}")
+    print(f"    Stats Overlay:  {_build_obs_browser_url('overlay')}")
+    print(f"    Idle Page:      {OBS_IDLE_URL}")
     if OBS_BATTLE_SOURCES:
         print()
         print("  OBS Direct Sources (recommended):")

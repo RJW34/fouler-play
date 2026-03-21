@@ -397,7 +397,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "is_local_file": false,
-                "url": "http://localhost:8777/idle",
+                "url": "http://192.168.1.181:8777/idle",
                 "width": 853,
                 "height": 1440,
                 "fps": 60,
@@ -438,7 +438,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "is_local_file": false,
-                "url": "http://localhost:8777/idle",
+                "url": "http://192.168.1.181:8777/idle",
                 "width": 853,
                 "height": 1440,
                 "fps": 60,
@@ -479,7 +479,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "is_local_file": false,
-                "url": "http://localhost:8777/idle",
+                "url": "http://192.168.1.181:8777/idle",
                 "width": 854,
                 "height": 1440,
                 "fps": 60,
@@ -1173,7 +1173,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "is_local_file": false,
-                "url": "http://localhost:8777/dashboard/hybrid",
+                "url": "http://192.168.1.181:8777/dashboard/hybrid",
                 "width": 1280,
                 "height": 720,
                 "fps": 30,
@@ -1273,7 +1273,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "undo_uuid": "b78d26ef-4ae2-45d3-8060-dd809489ee7b",
-                "url": "http://localhost:8777/overlay/hybrid",
+                "url": "http://192.168.1.181:8777/overlay/hybrid",
                 "width": 2560,
                 "height": 1440,
                 "fps": 30,

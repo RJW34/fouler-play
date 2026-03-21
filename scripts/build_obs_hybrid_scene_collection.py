@@ -17,7 +17,19 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socket
+from collections.abc import Mapping
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
+
+try:
+    from dotenv import load_dotenv
+except ImportError:  # pragma: no cover - optional dependency fallback
+    load_dotenv = None
+
+
+if load_dotenv:
+    load_dotenv()
 
 
 DEFAULT_INPUT = Path(os.path.expandvars(r"%APPDATA%\obs-studio\basic\scenes\fouler_play_scenes.json"))
@@ -29,7 +41,56 @@ def _load_collection(path: Path) -> dict:
         return json.load(f)
 
 
-def _update_browser_source(source: dict, port: int) -> None:
+def _normalize_base_url(raw_url: str) -> str:
+    candidate = raw_url.strip()
+    if not candidate:
+        raise ValueError("OBS browser base URL cannot be empty")
+    if "://" not in candidate:
+        candidate = f"http://{candidate}"
+    parsed = urlsplit(candidate)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError(f"Invalid OBS browser base URL: {raw_url}")
+    return urlunsplit((parsed.scheme, parsed.netloc.rstrip("/"), "", "", ""))
+
+
+def _detect_lan_ip() -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            host = sock.getsockname()[0]
+        if host and not host.startswith("127."):
+            return host
+    except OSError:
+        pass
+    return "localhost"
+
+
+def _resolve_base_url(
+    port: int,
+    explicit_base_url: str | None = None,
+    env: Mapping[str, str] | None = None,
+) -> str:
+    env_map = os.environ if env is None else env
+
+    if explicit_base_url:
+        return _normalize_base_url(explicit_base_url)
+
+    env_base_url = (env_map.get("OBS_BROWSER_BASE_URL") or "").strip()
+    if env_base_url:
+        return _normalize_base_url(env_base_url)
+
+    legacy_idle_url = (env_map.get("OBS_IDLE_URL") or "").strip()
+    if legacy_idle_url:
+        return _normalize_base_url(legacy_idle_url)
+
+    return _normalize_base_url(f"http://{_detect_lan_ip()}:{port}")
+
+
+def _build_browser_url(base_url: str, path: str) -> str:
+    return f"{base_url}/{path.lstrip('/')}"
+
+
+def _update_browser_source(source: dict, base_url: str) -> None:
     name = str(source.get("name", ""))
     settings = source.setdefault("settings", {})
 
@@ -37,31 +98,31 @@ def _update_browser_source(source: dict, port: int) -> None:
         return
 
     if name.startswith("Battle Slot "):
-        settings["url"] = f"http://localhost:{port}/idle"
+        settings["url"] = _build_browser_url(base_url, "idle")
         settings["reroute_audio"] = False
         return
 
     if name == "Stats Overlay":
-        settings["url"] = f"http://localhost:{port}/overlay/hybrid"
+        settings["url"] = _build_browser_url(base_url, "overlay/hybrid")
         settings["width"] = 2560
         settings["height"] = 1440
         settings["fps"] = 30
         return
 
     if name == "Debug Overlay":
-        settings["url"] = f"http://localhost:{port}/dashboard/hybrid"
+        settings["url"] = _build_browser_url(base_url, "dashboard/hybrid")
         settings["width"] = 1280
         settings["height"] = 720
         settings["fps"] = 30
         return
 
 
-def build_collection(data: dict, collection_name: str, port: int) -> dict:
+def build_collection(data: dict, collection_name: str, base_url: str) -> dict:
     out = dict(data)
     out["name"] = collection_name
 
     for source in out.get("sources", []):
-        _update_browser_source(source, port)
+        _update_browser_source(source, base_url)
         if source.get("id") == "scene":
             items = source.get("settings", {}).get("items", [])
             for item in items:
@@ -90,6 +151,11 @@ def main() -> int:
     )
     parser.add_argument("--port", type=int, default=int(os.getenv("OBS_SERVER_PORT", "8777")))
     parser.add_argument(
+        "--base-url",
+        default="",
+        help="OBS-reachable base URL for browser sources (defaults to OBS_BROWSER_BASE_URL, then OBS_IDLE_URL, then detected LAN IP:port)",
+    )
+    parser.add_argument(
         "--repo-copy",
         type=Path,
         default=Path("streaming") / "fouler_play_hybrid_scenes.json",
@@ -100,8 +166,9 @@ def main() -> int:
     if not args.input.exists():
         raise FileNotFoundError(f"Input scene collection not found: {args.input}")
 
+    base_url = _resolve_base_url(args.port, args.base_url or None)
     data = _load_collection(args.input)
-    out = build_collection(data, args.name, args.port)
+    out = build_collection(data, args.name, base_url)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8-sig", newline="\n") as f:
@@ -118,7 +185,7 @@ def main() -> int:
     if args.repo_copy:
         print(f"Wrote repository copy: {args.repo_copy}")
     print(f"Collection name: {out.get('name')}")
-    print(f"Server port: {args.port}")
+    print(f"Browser base URL: {base_url}")
     return 0
 
 
