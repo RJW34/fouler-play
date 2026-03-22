@@ -27,10 +27,10 @@ echo [%date% %time%] --- Cycle start ---
 
 cd /d "%REPO_DIR%"
 if /I "%AUTO_PULL%"=="1" (
-    echo [%date% %time%] Pulling latest from %BRANCH%...
-    git pull origin %BRANCH%
+    echo [%date% %time%] Running deploy update...
+    call "%REPO_DIR%\infrastructure\windows\deploy_update.bat"
     if errorlevel 1 (
-        echo [%date% %time%] WARNING: git pull failed. Continuing with local code.
+        echo [%date% %time%] WARNING: deploy update failed. Continuing with local code.
     )
 )
 
@@ -40,6 +40,10 @@ if errorlevel 1 (
     echo [%date% %time%] WARNING: Bot exited with error. Retrying in 15 seconds...
     timeout /t 15 /nobreak >nul
 )
+
+REM Run ELO watchdog after batch
+echo [%date% %time%] Running ELO watchdog...
+py -3 "%REPO_DIR%\infrastructure\elo_watchdog.py"
 
 echo [%date% %time%] --- Cycle complete ---
 goto loop_start
