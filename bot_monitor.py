@@ -202,7 +202,7 @@ class BotMonitor:
         self.battle_message_map = {}  # Track most recent battle for each message stream
         self.finished_battles = OrderedDict()  # battle_id -> (opponent, result) awaiting replay
         self.analyzer = None  # ReplayAnalyzer remains disabled during upgrade
-        self.turn_reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "ALL CHUNG"))
+        self.turn_reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "npctypebeat"))
         self.posted_replays = set()  # Track posted replays with bounded retention
         self._posted_replay_order = deque()
         self.num_workers = 0

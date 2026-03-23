@@ -4,72 +4,79 @@
 
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
 **Branch:** `master` is the live deployment/base branch and now contains the latest Codex-readiness/doc cleanup merged on 2026-03-09 (`a8b2d31`). Treat older branch-specific notes as historical unless a newer branch is explicitly called out here.
-**Bot Account:** Use live `.env` / process truth, not hard-coded names. As of 2026-03-10, BAKUGO/MAGNETON is running `PS_USERNAME=npctypebeat`.
-**Updated:** 2026-03-10
+**Bot Account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=npctypebeat`. Windows machine hostname may vary (MAGNETON, MIRAIDON, etc.) — use OS detection.
+**Updated:** 2026-03-23
 
 ---
 
 ## Standing Rules (check every session — fix drift immediately)
 
-1. **Do not hard-code stale concurrency targets.** Live launcher truth wins. As of 2026-03-10, BAKUGO/MAGNETON is running `--max-concurrent-battles 1` with `--search-parallelism 1` via `infrastructure/windows/player_loop.bat` -> `start_one_touch.bat`. If concurrency changes later, update launcher/docs together.
-2. **Analysis posts to Fouler Play routine/research channels.** Use the configured channel ids (`FOULER_ROUTINE_CHANNEL=1466691161363054840`, `FOULER_RESEARCH_CHANNEL=1466869808200028264`) rather than stale channel-name prose.
-3. **Analysis source: external reasoning agent, not local lightweight LLM.** Batch analysis should use a strong external reasoning model via OpenClaw/OpenAI-compatible tooling; stale Ollama/qwen local-analysis assumptions are drift unless explicitly re-approved.
-4. **One fouler-play runtime on BAKUGO.** Verify by the actual running `run.py` command line, not by old account-name grep patterns. As of 2026-03-10 the live process is `python run.py ... --ps-username "npctypebeat" ... --max-concurrent-battles "1"` launched from `player_loop.bat`.
-5. **One source of truth.** This file plus current launcher/process evidence. If docs disagree with the running launcher or command line, fix the docs immediately.
+1. **DECISION ENGINE WORK ONLY.** Do not write infrastructure, reporting, Discord formatting, build manifests, or pipeline orchestration code. All of that is built (see "What's Already Built" below). Every commit must improve `fp/search/` or fix a documented bug in the decision engine. If you are about to create a new file outside `fp/search/` or `tests/`, STOP and reconsider.
+2. **Do not hard-code stale concurrency targets.** Live launcher truth wins. Use `--max-concurrent-battles 1` with `--search-parallelism 1` via `infrastructure/windows/player_loop.bat` -> `start_one_touch.bat`.
+3. **One source of truth.** This file plus current launcher/process evidence. If docs disagree with the running launcher or command line, fix the docs immediately.
+4. **Bot account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=npctypebeat`.
 
 ---
 
 ## Current Status
 
-The bot has been overhauled from MCTS to a 1-ply eval engine with forced line detection (completed 2026-02-09). The new decision pipeline is: forced_lines -> eval -> penalty pipeline. Check `battle_stats.json` for current game count and ELO. The bot needs to reach 1700+ for matchup data to be meaningful.
+**2026-03-23 AUDIT — META-WORK SPIRAL IDENTIFIED AND CORRECTED**
 
-**2026-03-09 repo hygiene note:** the docs/coding-agent cleanup has already been merged to `master` (`a8b2d31`). Agents can treat `master` as the current repo guidance baseline again. The working tree may still show unrelated churn in `fp/data/movepool_data.json`; treat that file as non-blocking for doc-only tasks unless you are intentionally refreshing movepool data.
+The project stalled for 13 days (March 10 - March 23). During this period:
+- **Zero decision-engine commits.** Last engine change was `0534563` on March 10.
+- **10 meta/infrastructure commits** built 2,787 lines of reporting/pipeline/manifest code.
+- **The bot stopped playing.** No `battle_stats.json` exists. No Python processes running. No scheduled task.
+- **Autoresearch ran on empty** producing `batch-empty` reports with 0 battles and no issues.
+- **All Phase 2-3 TASKBOARD items remain untouched.** Known bugs from Feb 14 are still open.
 
-**2026-03-02 changes:**
-- Merged foulest-play branch (106 commits) into master, deleted old branch
-- **Round system implemented:** All battle outcomes (win/loss/disconnect) now count toward PS_RUN_COUNT quota. When all workers finish, a ROUND COMPLETE summary prints per-team W/L/DC stats. The bot stops for human evaluation -- no auto-start of next round.
-- **Disconnect resilience:** Dead battles are forcibly terminated after BATTLE_DISCONNECT_STRIKES (default 5 = 10 min) consecutive message timeouts, preventing infinite stale loops.
-- Runtime artifacts (.bot.pid, battle_stats.json, etc.) cleaned out of git tracking
+The autoresearch/pipeline/Discord/manifest infrastructure is DONE. It does not need more work. What needs work is the decision engine in `fp/search/`.
+
+Decision pipeline: forced_lines -> eval -> penalty pipeline (9 layers). Bot needs to reach 1700+ ELO for matchup data to be meaningful. Currently ~1200 with 53% WR.
 
 ---
 
 ## NEXT ACTION (read this first)
 
-**🔎 CURRENT TRUTH (updated 2026-03-09):** the repo is not in a "battles halted pending strategic overhaul" state anymore.
+**STOP BUILDING INFRASTRUCTURE. START FIXING THE BOT.**
 
-**Proof of drift that mattered:**
-- `master` already absorbed the recent repo-guidance cleanup (`a8b2d31 merge: codex-readiness cleanup and repetition detection into master`)
-- `battle_stats.json` contains fresh ladder results through `2026-03-09T12:56:55.902086+00:00`
-- Body Press proof work landed in `f4ab71e test: fix Body Press regression proof`
+The following systems are complete and must NOT receive further development unless broken:
+- `replay_analysis/autoresearch.py` (585 lines) — done
+- `infrastructure/build_manifest.py` (340 lines) — done
+- `infrastructure/discord_reporting.py` (762 lines) — done
+- `infrastructure/event_queue_lib.py` (273 lines) — done
+- `pipeline.py` (746 lines) — done
+- `infrastructure/autoresearch_post_commit.py` (81 lines) — done
 
-**What agents should optimize for now:**
-1. Treat `master` as the active truth branch unless this file explicitly says otherwise
-2. Use fresh `battle_stats.json` / replay evidence to diagnose the current ELO problem instead of assuming the bot is intentionally halted
-3. Keep improvements bounded and evidence-backed: one decision-quality fix, one report-quality fix, or one runtime-truth correction per cycle
-4. Preserve the faithful fat/stall mission; do not substitute ladder cheese for useful overnight team-testing data
+**What agents must do (in this order):**
+1. Fix open decision-engine bugs (#3, #5, #7 below) — these are concrete, documented, game-losing problems
+2. Implement Phase 2-3 items from the DEKU Action Items section — PP tracking, switch prediction, recovery timing, hazard awareness
+3. Run `python -m pytest tests/ -v` after every change
+4. Do NOT create new infrastructure files, reporting pipelines, or meta-tooling
 
-**Current DEKU focus:**
-1. Investigate the next highest-value decision drift still wasting games at live ladder conditions
-2. Keep report/taskboard/runtime truth aligned when fixes land
-3. Run the relevant validation for any code change and cite proof in the project channel
+**Operational prerequisite:** The bot must be running and producing `battle_stats.json` for any analysis to matter. If the bot is not running, fix that FIRST, then return to decision-engine work.
 
-**2026-03-10 runtime truth:** fresh 2026-03-09 logs showed replay persistence was broken even when Showdown replay upload succeeded: `_save_replay_json_locally()` in `fp/run_battle.py` raised `NameError: Path is not defined`, so local replay JSONs could fail to save immediately after battle end. Fixed by restoring `from pathlib import Path` in `fp/run_battle.py`. Validation: AST parse + direct module import both passed on Windows after the fix.
-
-**Current BAKUGO focus:**
-1. Keep the bot producing fresh battle data
-2. Push battle stats/replays and verify the loop is yielding useful outcomes, not just process uptime
-3. Escalate only if autonomous recovery fails or useful output stalls abnormally
+**Open critical bugs (fix these before Phase 2-3 work):**
+1. **Bug #3:** Ghost moves into Dark-immune opponents (Hex into Ting-Lu for 8 turns)
+2. **Bug #7:** Infinite switch loops (11 turns of Corviknight/Blissey oscillation)
+3. **Bug #5:** Recover loop detection (Recover vs Drain Punch losing cycle)
 
 ---
 
-## What's Already Built (DO NOT REBUILD)
+## What's Already Built (DO NOT REBUILD OR POLISH)
 
-These systems are **complete and working**. Do not recreate them from scratch:
+These systems are **complete and working**. Do not recreate, extend, refactor, or polish them:
 - `streaming/` — OBS integration. `serve_obs_page.py` is the main server (port 8777). Low priority.
-- `replay_analysis/` — `team_performance.py`, `analyzer.py`, `turn_review.py`, replay JSONs. This is the player-facing output.
-- `infrastructure/linux/` — developer loop, analyze_performance.sh, systemd service.
-- `infrastructure/windows/` — player_loop.bat, deploy_update.bat, install_task.bat.
-- `infrastructure/elo_watchdog.py` — auto-revert on ELO drop.
+- `replay_analysis/autoresearch.py` — Automated loss pattern detection (585 lines). DONE.
+- `replay_analysis/team_performance.py` — Player-facing report generator. DONE.
+- `replay_analysis/` — `analyzer.py`, `turn_review.py`, `batch_analyzer.py`, replay JSONs. DONE.
+- `infrastructure/build_manifest.py` — Build-to-battle tracking (340 lines). DONE.
+- `infrastructure/discord_reporting.py` — Discord report formatting (762 lines). DONE.
+- `infrastructure/event_queue_lib.py` — Discord event queue (273 lines). DONE.
+- `infrastructure/autoresearch_post_commit.py` — Post-commit manifest hook. DONE.
+- `pipeline.py` — Analysis orchestrator (746 lines). DONE.
+- `infrastructure/linux/` — developer loop, analyze_performance.sh, systemd service. DONE.
+- `infrastructure/windows/` — player_loop.bat, deploy_update.bat, install_task.bat. DONE.
+- `infrastructure/elo_watchdog.py` — auto-revert on ELO drop. DONE.
 - `fp/playstyle_config.py` — FAT/STALL playstyle tuning with switch/pivot/recovery/chip multipliers.
 - `fp/search/endgame.py` — endgame solver for 1v1/2v1 scenarios.
 - `fp/team_analysis.py` — win condition identification.
@@ -156,10 +163,10 @@ These systems are **complete and working**. Do not recreate them from scratch:
 - [x] **Calm Mind + fixed damage** — Blissey used Calm Mind to boost SpA when its only damaging move was Seismic Toss (fixed 100 damage, ignores SpA). Fixed: `detect_odd_move()` now flags setup moves when no non-fixed-damage attack uses the boosted stat.
 
 **Documented for later:**
-- [ ] **#3: Ghost-immune-to-Dark not recognized before committing** — Gholdengo spent 8 turns using Hex (Ghost) into Ting-Lu (Dark type, immune to Ghost). The type immunity wasn't caught until the move was already selected. Root cause unclear — may be in eval scoring or move data. Needs investigation of how type matchups are evaluated in `fp/search/eval.py` when the bot's moves are Ghost-type vs Dark-type opponents.
-- [ ] **#5: Recover loop detection** — Blissey entered a 4-turn Recover loop vs Drain Punch Conkeldurr. The opponent was healing more than Blissey could stall out. Needs cross-turn state tracking to detect when we're in a losing Recover loop (opponent gains net HP per cycle). Architectural challenge: current system is 1-ply and doesn't track multi-turn patterns.
+- [x] **#3: Resisted move spam (mislabeled as "Ghost-immune-to-Dark")** — Gholdengo used Hex into Ting-Lu (Dark/Ground) for 8 turns. Investigation found Ghost vs Dark is 0.5x (resisted), not immune — the type system was correct. Root cause was the bot repeating a resisted move without switching. Fixed 2026-03-23: `apply_repetition_penalty` now detects when a repeated move has ≤0.5x effectiveness and boosts switch options by 1.6x (stagnation switch boost). Test: `test_resisted_move_spam_boosts_switches`.
+- [x] **#5: Recover loop detection** — Blissey entered a 4-turn Recover loop vs Drain Punch Conkeldurr. Fixed 2026-03-23: `apply_repetition_penalty` now detects when recovery moves are repeated 3+ times and boosts switch options by 1.6x, pushing the bot to switch to a Pokemon that can actually progress. Test: `test_recovery_loop_boosts_switches`.
 - [x] **#6: Body Press vs Waterfall type matchup** — Fixed and regression-proofed. `f4ab71e test: fix Body Press regression proof` documents the proof path so future agents should not keep treating this as an open mystery.
-- [ ] **#7: Infinite switch loop detection** — Corviknight and Blissey alternated switches for 11 turns vs Tera Normal Dragonite without ever using Toxic. Needs cross-turn state tracking to detect when we're in a non-progressing switch loop. Similar architectural challenge to #5 — needs multi-turn awareness.
+- [x] **#7: Infinite switch loop detection** — Corviknight and Blissey alternated switches for 11 turns vs Tera Normal Dragonite without ever using Toxic. Fixed 2026-03-23: `apply_repetition_penalty` now detects switch oscillation (3+ switches with 2+ distinct targets) and boosts attack moves by 1.5x, forcing the bot to attack instead of cycling. Test: `test_switch_oscillation_boosts_attacks`.
 
 ---
 

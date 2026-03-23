@@ -1,238 +1,27 @@
 {
-  "generated_at": "2026-03-10T22:01:18.386401",
+  "generated_at": "2026-03-23T07:32:39.033762",
   "batch": {
-    "id": "batch-30-2556350814-7qjtc",
-    "start_battle_id": "battle-gen9ou-2556243795",
-    "end_battle_id": "battle-gen9ou-2556350814-7qjtc6m8quhxmroq63owrxn6vwyno7spw",
-    "start_timestamp": "2026-03-10T22:27:58.331602+00:00",
-    "end_timestamp": "2026-03-11T01:49:53.460687+00:00",
-    "size": 30
+    "id": "batch-empty",
+    "start_battle_id": null,
+    "end_battle_id": null,
+    "start_timestamp": null,
+    "end_timestamp": null,
+    "size": 0
   },
-  "window_size": 30,
-  "wins": 16,
-  "losses": 14,
-  "win_rate": 0.5333333333333333,
+  "window_size": 0,
+  "wins": 0,
+  "losses": 0,
+  "win_rate": 0.0,
   "window_summary": {
-    "wins": 16,
-    "losses": 14,
-    "total": 30,
-    "win_rate": 0.5333333333333333,
-    "record": "16-14 (53% WR)",
-    "top_teams": [
-      {
-        "team": "fat-team-1-stall",
-        "count": 30
-      }
-    ]
+    "wins": 0,
+    "losses": 0,
+    "total": 0,
+    "win_rate": 0.0,
+    "record": "0-0 (0% WR)",
+    "top_teams": []
   },
-  "top_issue": {
-    "key": "decision_instability",
-    "title": "Decision traces show unstable fallback behavior",
-    "summary": "Losses contain repeated fallback/timeout/error decisions or obvious repeated action loops.",
-    "recommendation": "Prioritize stability fixes around slow or failing decision branches before chasing niche matchup ideas.",
-    "proof": [
-      "battle-gen9ou-2556306233-35y5563vd4fd76kkfwtfn2he056pmw4pw: repeated same action patterns: shadowball",
-      "battle-gen9ou-2556313427: repeated same action patterns: switch blissey, shadowball, switch gholdengo",
-      "battle-gen9ou-2556322302: repeated same action patterns: spikes, hex",
-      "battle-gen9ou-2556328339-0t4o8aadhy2cowhxumxv947ke66f4ohpw: repeated same action patterns: shadowball, switch gliscor, knockoff",
-      "battle-gen9ou-2556331152: repeated same action patterns: spikes, roost, switch blissey"
-    ]
-  },
-  "issues": [
-    {
-      "key": "decision_instability",
-      "title": "Decision traces show unstable fallback behavior",
-      "score": 7.5,
-      "evidence_count": 5,
-      "summary": "Losses contain repeated fallback/timeout/error decisions or obvious repeated action loops.",
-      "recommendation": "Prioritize stability fixes around slow or failing decision branches before chasing niche matchup ideas.",
-      "proof": [
-        "battle-gen9ou-2556306233-35y5563vd4fd76kkfwtfn2he056pmw4pw: repeated same action patterns: shadowball",
-        "battle-gen9ou-2556313427: repeated same action patterns: switch blissey, shadowball, switch gholdengo",
-        "battle-gen9ou-2556322302: repeated same action patterns: spikes, hex",
-        "battle-gen9ou-2556328339-0t4o8aadhy2cowhxumxv947ke66f4ohpw: repeated same action patterns: shadowball, switch gliscor, knockoff",
-        "battle-gen9ou-2556331152: repeated same action patterns: spikes, roost, switch blissey"
-      ]
-    },
-    {
-      "key": "hazard_pressure",
-      "title": "Hazard pressure is being lost",
-      "score": 6.5,
-      "evidence_count": 5,
-      "summary": "Losses repeatedly come from games where Fouler Play never establishes its own chip engine or gives up the hazards race.",
-      "recommendation": "Raise hazard-setting urgency earlier in neutral matchups, especially on stall/fat lines that need passive damage to convert.",
-      "proof": [
-        "battle-gen9ou-2556250515-x97cancysr3e2uym8a2vobl6kb5sg2apw: bot never established Stealth Rock or equivalent chip pressure",
-        "battle-gen9ou-2556282442-72pt099569ofnsikrwuuu4d8v8hbstepw: bot never established Stealth Rock or equivalent chip pressure",
-        "battle-gen9ou-2556306233-35y5563vd4fd76kkfwtfn2he056pmw4pw: bot never established Stealth Rock or equivalent chip pressure",
-        "battle-gen9ou-2556328339-0t4o8aadhy2cowhxumxv947ke66f4ohpw: bot never established Stealth Rock or equivalent chip pressure",
-        "battle-gen9ou-2556339427: opponent won the hazard race while bot never established its own chip engine"
-      ]
-    },
-    {
-      "key": "endgame_conversion",
-      "title": "Long games are not being converted cleanly",
-      "score": 6.5,
-      "evidence_count": 5,
-      "summary": "The bot reaches playable long games and still loses after turn 35, pointing to endgame planning weakness rather than raw matchup hopelessness.",
-      "recommendation": "Add stronger endgame-preservation heuristics: protect wincon HP, value recovery higher, and avoid unnecessary trades once ahead on resources.",
-      "proof": [
-        "battle-gen9ou-2556257844: loss lasted 42 turns, suggesting endgame conversion or long-game planning failure",
-        "battle-gen9ou-2556262640: loss lasted 177 turns, suggesting endgame conversion or long-game planning failure",
-        "battle-gen9ou-2556291157: loss lasted 42 turns, suggesting endgame conversion or long-game planning failure",
-        "battle-gen9ou-2556313427: loss lasted 54 turns, suggesting endgame conversion or long-game planning failure",
-        "battle-gen9ou-2556331152: loss lasted 54 turns, suggesting endgame conversion or long-game planning failure"
-      ]
-    }
-  ],
-  "top_loss_teams": [
-    {
-      "team": "fat-team-1-stall",
-      "losses": 14
-    }
-  ],
-  "top_opponent_pokemon": [
-    {
-      "pokemon": "Gholdengo",
-      "count": 4
-    },
-    {
-      "pokemon": "Pecharunt",
-      "count": 4
-    },
-    {
-      "pokemon": "Gliscor",
-      "count": 3
-    },
-    {
-      "pokemon": "Zamazenta-*",
-      "count": 3
-    },
-    {
-      "pokemon": "Blissey",
-      "count": 3
-    }
-  ],
-  "regression": {
-    "status": "improving",
-    "previous_batch_id": "batch-30-2556241098",
-    "win_rate_delta": 0.1333333333333333,
-    "record_delta": {
-      "wins": 4,
-      "losses": -4
-    },
-    "issue_compare": {
-      "top_shift": {
-        "key": "decision_instability",
-        "title": "Decision traces show unstable fallback behavior",
-        "current_count": 5,
-        "previous_count": 0,
-        "delta": 5,
-        "direction": "worse"
-      },
-      "shifts": [
-        {
-          "key": "decision_instability",
-          "title": "Decision traces show unstable fallback behavior",
-          "current_count": 5,
-          "previous_count": 0,
-          "delta": 5,
-          "direction": "worse"
-        },
-        {
-          "key": "endgame_conversion",
-          "title": "Long games are not being converted cleanly",
-          "current_count": 5,
-          "previous_count": 3,
-          "delta": 2,
-          "direction": "worse"
-        },
-        {
-          "key": "early_bleeding",
-          "title": "Opening turns are bleeding too much material",
-          "current_count": 0,
-          "previous_count": 2,
-          "delta": -2,
-          "direction": "better"
-        },
-        {
-          "key": "hazard_pressure",
-          "title": "Hazard pressure is being lost",
-          "current_count": 5,
-          "previous_count": 5,
-          "delta": 0,
-          "direction": "flat"
-        }
-      ]
-    },
-    "opponent_shifts": [
-      {
-        "pokemon": "Skarmory",
-        "current_count": 0,
-        "previous_count": 7,
-        "delta": -7
-      },
-      {
-        "pokemon": "Blissey",
-        "current_count": 3,
-        "previous_count": 8,
-        "delta": -5
-      },
-      {
-        "pokemon": "Gliscor",
-        "current_count": 3,
-        "previous_count": 8,
-        "delta": -5
-      },
-      {
-        "pokemon": "Pecharunt",
-        "current_count": 4,
-        "previous_count": 0,
-        "delta": 4
-      },
-      {
-        "pokemon": "Zamazenta-*",
-        "current_count": 3,
-        "previous_count": 7,
-        "delta": -4
-      }
-    ],
-    "summary_line": "current batch 16-14 (53% WR) vs previous 12-18 (40% WR); WR delta +13%; lead issue shift: Decision traces show unstable fallback behavior up (0→5)"
-  },
-  "previous_batch": {
-    "batch": {
-      "id": "batch-30-2556241098",
-      "start_battle_id": "battle-gen9ou-2555107042",
-      "end_battle_id": "battle-gen9ou-2556241098",
-      "start_timestamp": "2026-03-09T12:23:55.833274+00:00",
-      "end_timestamp": "2026-03-10T22:22:24.192826+00:00",
-      "size": 30
-    },
-    "window_summary": {
-      "wins": 12,
-      "losses": 18,
-      "total": 30,
-      "win_rate": 0.4,
-      "record": "12-18 (40% WR)",
-      "top_teams": [
-        {
-          "team": "fat-team-1-stall",
-          "count": 30
-        }
-      ]
-    },
-    "top_issue": {
-      "key": "hazard_pressure",
-      "title": "Hazard pressure is being lost",
-      "summary": "Losses repeatedly come from games where Fouler Play never establishes its own chip engine or gives up the hazards race.",
-      "recommendation": "Raise hazard-setting urgency earlier in neutral matchups, especially on stall/fat lines that need passive damage to convert.",
-      "proof": [
-        "battle-gen9ou-2555107042: bot never established Stealth Rock or equivalent chip pressure",
-        "battle-gen9ou-2555110960: bot never established Stealth Rock or equivalent chip pressure",
-        "battle-gen9ou-2555114566: bot never established Stealth Rock or equivalent chip pressure",
-        "battle-gen9ou-2555116943: bot never established Stealth Rock or equivalent chip pressure",
-        "battle-gen9ou-2555119060-ff7tjy2hhn4vbrm397r2ja81js7odb4pw: bot never established Stealth Rock or equivalent chip pressure"
-      ]
-    }
-  }
+  "top_issue": null,
+  "issues": [],
+  "top_loss_teams": [],
+  "top_opponent_pokemon": []
 }

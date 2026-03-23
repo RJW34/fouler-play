@@ -6,6 +6,8 @@
     "PIPELINE.md",
     "docs/**/*.md",
     "fp/search/main.py",
+    "fp/search/eval.py",
+    "fp/search/forced_lines.py",
     "fp/search/standard_battles.py",
     "fp/search/endgame.py",
     "fp/search/move_validators.py",

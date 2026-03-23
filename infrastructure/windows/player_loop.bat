@@ -41,6 +41,21 @@ if errorlevel 1 (
     timeout /t 15 /nobreak >nul
 )
 
+REM Push battle data so other machines can analyze it
+echo [%date% %time%] Pushing battle data...
+cd /d "%REPO_DIR%"
+if exist battle_stats.json (
+    git add battle_stats.json
+    git diff --cached --quiet battle_stats.json 2>nul
+    if errorlevel 1 (
+        git commit -m "data: push battle_stats.json after batch"
+        git push origin %BRANCH%
+        echo [%date% %time%] Battle data pushed.
+    ) else (
+        echo [%date% %time%] No new battle data to push.
+    )
+)
+
 REM Run ELO watchdog after batch
 echo [%date% %time%] Running ELO watchdog...
 py -3 "%REPO_DIR%\infrastructure\elo_watchdog.py"
