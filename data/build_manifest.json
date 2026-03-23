@@ -7,9 +7,28 @@
       "timestamp": "2026-03-22T10:00:00+00:00",
       "source": "initial-seed",
       "progress_at_deploy": 118,
+      "progress_end": 2484,
+      "timestamp_end": "2026-03-23T12:25:10+00:00",
+      "files_changed": null,
+      "reverted": false
+    },
+    {
+      "sha": "f672022",
+      "subject": "Fix 13-day stall: stagnation detection, data pipeline, account drift",
+      "timestamp": "2026-03-23T13:00:00+00:00",
+      "source": "manual-audit",
+      "progress_at_deploy": 2484,
       "progress_end": null,
       "timestamp_end": null,
-      "files_changed": null,
+      "files_changed": [
+        "fp/search/main.py",
+        ".gitignore",
+        "infrastructure/windows/player_loop.bat",
+        "replay_analysis/team_performance.py",
+        "replay_analysis/analyzer.py",
+        "replay_analysis/autoresearch.py",
+        "tests/test_repetition_penalty.py"
+      ],
       "reverted": false
     }
   ],
@@ -18,6 +37,6 @@
     "repo": "RJW34/fouler-play",
     "branch": "master",
     "created": "2026-03-22T10:00:00+00:00",
-    "last_updated": "2026-03-22T10:00:00+00:00"
+    "last_updated": "2026-03-23T13:00:00+00:00"
   }
 }

@@ -328,15 +328,20 @@ async def battle_worker(
         if drain_event.is_set():
             logger.info(f"Worker {worker_id}: Drain mode active, stopping before new battle")
             break
-        # Check per-worker quota first (if set)
+        # Check per-worker quota (authoritative when set — each worker
+        # plays exactly its share, no global race condition).
         if per_worker_quota > 0 and worker_battles >= per_worker_quota:
             logger.info(f"Worker {worker_id}: Per-worker quota reached ({worker_battles}/{per_worker_quota}), stopping")
             break
-        # Check global run_count (safety net)
-        battles_run = await stats.get_battles_run()
-        if battles_run >= FoulPlayConfig.run_count:
-            logger.info(f"Worker {worker_id}: Run count reached, stopping")
-            break
+        # Global run_count fallback only when per-worker quotas are NOT set
+        # (single-worker mode or unlimited).  When quotas are active, the
+        # global check races between workers and causes uneven allocation
+        # (e.g. 10/9/11 instead of 10/10/10).
+        if per_worker_quota <= 0:
+            battles_run = await stats.get_battles_run()
+            if battles_run >= FoulPlayConfig.run_count:
+                logger.info(f"Worker {worker_id}: Run count reached, stopping")
+                break
 
         try:
             search_slot_acquired = False
