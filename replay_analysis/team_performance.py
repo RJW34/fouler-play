@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import sys
 from collections import defaultdict
@@ -38,8 +39,9 @@ LOSSES_DIR = REPLAY_ANALYSIS_DIR / "losses"
 REPORT_OUTPUT_PATH = REPLAY_ANALYSIS_DIR / "team_report.json"
 
 # The bot's username on Showdown (used when parsing replay logs to determine
-# which side is "ours").
-BOT_USERNAME = "ALL CHUNG"
+# which side is "ours").  Read from .env so reports work with whichever
+# account is currently live.
+BOT_USERNAME = os.getenv("PS_USERNAME", "npctypebeat")
 
 
 # ---------------------------------------------------------------------------

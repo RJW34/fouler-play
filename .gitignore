@@ -50,7 +50,6 @@ data/matchup_cache/
 # Runtime data
 active_battles.json
 daily_stats.json
-battle_stats.json
 aiohttp_replay_check.json
 replay_check.json
 stream_status.json
@@ -72,6 +71,9 @@ tmp_*.txt
 
 # Auto-stream backups (dead code)
 streaming/auto_stream.py.backup*
+
+# Claude Code session data
+.claude/
 
 # Console output fragments
 Bot

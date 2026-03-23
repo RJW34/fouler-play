@@ -129,3 +129,106 @@ class TestRepetitionPenalty:
         policy = {"recover": 100.0}
         result = apply_repetition_penalty(policy, battle)
         assert result == policy
+
+
+class TestStagnationSwitchBoost:
+    """Tests for the stagnation switch boost that addresses bugs #3, #5, #7."""
+
+    def _make_battle(self, history, opp_types=None):
+        """Create a battle mock with action history and opponent types."""
+        battle = _make_battle_with_history(history)
+        if opp_types is not None:
+            battle.opponent.active.types = opp_types
+            battle.opponent.active.terastallized = False
+            battle.opponent.active.tera_type = None
+        else:
+            battle.opponent = None
+        return battle
+
+    def test_resisted_move_spam_boosts_switches(self):
+        """Bug #3: Repeated resisted move (Ghost into Dark) boosts switch options."""
+        battle = self._make_battle(
+            ["hex", "hex", "hex", "spikes", "hex", "hex"],
+            opp_types=["dark", "ground"],
+        )
+        policy = {
+            "hex": 60.0,
+            "spikes": 40.0,
+            "switch skarmory": 50.0,
+            "switch blissey": 45.0,
+        }
+        trace = []
+        result = apply_repetition_penalty(policy, battle, trace_events=trace)
+        # hex should be penalized by repetition AND switches should be boosted
+        assert result["hex"] < 60.0
+        assert result["switch skarmory"] > 50.0
+        assert result["switch blissey"] > 45.0
+        assert any(e["source"] == "stagnation_switch_boost" for e in trace)
+
+    def test_recovery_loop_boosts_switches(self):
+        """Bug #5: Repeated Recover boosts switch options."""
+        battle = self._make_battle(
+            ["recover", "recover", "recover", "seismictoss", "recover"],
+            opp_types=["fighting"],
+        )
+        policy = {
+            "recover": 80.0,
+            "seismictoss": 50.0,
+            "switch gliscor": 55.0,
+            "switch skarmory": 48.0,
+        }
+        trace = []
+        result = apply_repetition_penalty(policy, battle, trace_events=trace)
+        assert result["recover"] < 80.0  # repetition penalty
+        assert result["switch gliscor"] > 55.0  # stagnation boost
+        assert result["switch skarmory"] > 48.0
+        assert any(e["source"] == "stagnation_switch_boost" for e in trace)
+
+    def test_switch_oscillation_boosts_attacks(self):
+        """Bug #7: Switch oscillation boosts attack options."""
+        battle = self._make_battle(
+            ["switch blissey", "switch corviknight", "switch blissey",
+             "switch corviknight", "switch blissey"],
+            opp_types=["dragon", "normal"],
+        )
+        policy = {
+            "toxic": 40.0,
+            "recover": 35.0,
+            "switch blissey": 80.0,
+            "switch corviknight": 75.0,
+        }
+        trace = []
+        result = apply_repetition_penalty(policy, battle, trace_events=trace)
+        assert result["toxic"] > 40.0  # stagnation attack boost
+        assert result["recover"] > 35.0
+        assert any(e["source"] == "stagnation_attack_boost" for e in trace)
+
+    def test_no_boost_when_varied_play(self):
+        """No stagnation boost when play is varied."""
+        battle = self._make_battle(
+            ["shadowball", "recover", "toxic", "switch skarmory", "spikes"],
+            opp_types=["water"],
+        )
+        policy = {
+            "shadowball": 90.0,
+            "switch skarmory": 70.0,
+        }
+        result = apply_repetition_penalty(policy, battle)
+        assert result["shadowball"] == 90.0
+        assert result["switch skarmory"] == 70.0
+
+    def test_neutral_move_spam_does_not_boost_switches(self):
+        """Repeated neutral (1.0x) move doesn't trigger stagnation boost."""
+        battle = self._make_battle(
+            ["shadowball", "shadowball", "shadowball", "shadowball"],
+            opp_types=["water"],  # Ghost is neutral vs Water
+        )
+        policy = {
+            "shadowball": 90.0,
+            "switch skarmory": 70.0,
+        }
+        trace = []
+        result = apply_repetition_penalty(policy, battle, trace_events=trace)
+        # Repetition penalty still fires, but no switch boost
+        assert result["shadowball"] < 90.0
+        assert not any(e["source"] == "stagnation_switch_boost" for e in trace)

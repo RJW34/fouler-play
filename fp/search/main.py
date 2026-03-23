@@ -1670,6 +1670,110 @@ def apply_repetition_penalty(
                         new_weight,
                     )
 
+    # ── Stagnation switch boost ──────────────────────────────────────────
+    # When the bot is stuck repeating the same action, simply penalizing
+    # that action isn't enough — switches may still score lower.  This
+    # section detects three concrete stagnation patterns and actively
+    # boosts the alternative category (switches when attacks stagnate,
+    # attacks when switches oscillate).
+    #
+    # Addresses bugs #3 (resisted move spam), #5 (Recover loops),
+    # #7 (switch oscillation without attacking).
+    stagnation_boost_switches = False
+    stagnation_boost_attacks = False
+
+    if len(recent) >= 3:
+        from fp.playstyle_config import RECOVERY_MOVES
+        from fp.helpers import type_effectiveness_modifier as _tem
+
+        non_switch_recent = [a for a in recent if not a.lower().startswith("switch ")]
+        switch_recent = [a for a in recent if a.lower().startswith("switch ")]
+        attack_counts = Counter(non_switch_recent)
+
+        # Pattern 1: Repeated resisted attack — same damaging move 3+ times
+        # AND that move is resisted (≤0.5x) or very weak against the opponent.
+        opp = getattr(battle, "opponent", None)
+        opp_active = getattr(opp, "active", None) if opp else None
+        if opp_active is not None:
+            from fp.search.eval import _get_effective_types
+            opp_types = _get_effective_types(opp_active)
+            if opp_types:
+                for action, cnt in attack_counts.items():
+                    if cnt < 3:
+                        continue
+                    action_norm = action.lower().strip()
+                    if action_norm.startswith("switch "):
+                        continue
+                    move_data = all_move_json.get(action_norm, {})
+                    move_type = move_data.get(constants.TYPE)
+                    move_cat = move_data.get(constants.CATEGORY, "")
+                    if move_type and move_cat in ("physical", "special"):
+                        eff = _tem(move_type, opp_types)
+                        if eff <= 0.5:
+                            stagnation_boost_switches = True
+                            logger.info(
+                                "STAGNATION: %s repeated %d times at %.1fx effectiveness "
+                                "— boosting switches",
+                                action_norm, cnt, eff,
+                            )
+
+        # Pattern 2: Recovery loop — same recovery move 3+ times in
+        # the recent window.  The bot is stuck healing without progress.
+        for action, cnt in attack_counts.items():
+            if cnt >= 3 and action.lower().strip() in RECOVERY_MOVES:
+                stagnation_boost_switches = True
+                logger.info(
+                    "STAGNATION: recovery move %s repeated %d times — boosting switches",
+                    action, cnt,
+                )
+
+        # Pattern 3: Switch oscillation — 3+ switches in 6 actions with
+        # at least 2 distinct targets.  The bot is cycling between Pokemon
+        # instead of committing to an attack.
+        if len(switch_recent) >= 3:
+            distinct_targets = set(s.lower().strip() for s in switch_recent)
+            if len(distinct_targets) >= 2:
+                stagnation_boost_attacks = True
+                logger.info(
+                    "STAGNATION: switch oscillation (%d switches, %d targets) "
+                    "— boosting attacks",
+                    len(switch_recent), len(distinct_targets),
+                )
+
+    # Apply the boosts.
+    STAGNATION_SWITCH_BOOST = 1.6
+    STAGNATION_ATTACK_BOOST = 1.5
+
+    if stagnation_boost_switches:
+        for move in list(adjusted):
+            if move.lower().startswith("switch ") and adjusted[move] > 0:
+                old_w = adjusted[move]
+                adjusted[move] = old_w * STAGNATION_SWITCH_BOOST
+                if trace_events is not None:
+                    trace_events.append({
+                        "type": "boost",
+                        "source": "stagnation_switch_boost",
+                        "move": move,
+                        "reason": "active_pokemon_stagnating",
+                        "before": old_w,
+                        "after": adjusted[move],
+                    })
+
+    if stagnation_boost_attacks:
+        for move in list(adjusted):
+            if not move.lower().startswith("switch ") and adjusted[move] > 0:
+                old_w = adjusted[move]
+                adjusted[move] = old_w * STAGNATION_ATTACK_BOOST
+                if trace_events is not None:
+                    trace_events.append({
+                        "type": "boost",
+                        "source": "stagnation_attack_boost",
+                        "move": move,
+                        "reason": "switch_oscillation_detected",
+                        "before": old_w,
+                        "after": adjusted[move],
+                    })
+
     return adjusted
 
 
