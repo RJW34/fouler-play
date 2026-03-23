@@ -158,7 +158,7 @@ class BattleStats:
         except Exception as e:
             logger.warning("Failed to save battle_stats.json: %s", e)
 
-    def _record_battle(self, team_file_name, result, battle_tag=None):
+    def _record_battle(self, team_file_name, result, battle_tag=None, rating=None):
         from datetime import datetime, timezone
         entry = {
             "battle_id": battle_tag or "unknown",
@@ -166,33 +166,34 @@ class BattleStats:
             "team_file": team_file_name or "unknown",
             "result": result,
             "replay_id": battle_tag or "",
+            "rating": rating,
         }
         self._battles.append(entry)
         if len(self._battles) > BATTLE_STATS_MAX_ENTRIES:
             del self._battles[:-BATTLE_STATS_MAX_ENTRIES]
         self._save_battles()
 
-    async def record_win(self, team_file_name, battle_tag=None):
+    async def record_win(self, team_file_name, battle_tag=None, rating=None):
         async with self._lock:
             self.wins += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "win", battle_tag)
+            self._record_battle(team_file_name, "win", battle_tag, rating=rating)
             logger.info("Won with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
-    async def record_loss(self, team_file_name, battle_tag=None):
+    async def record_loss(self, team_file_name, battle_tag=None, rating=None):
         async with self._lock:
             self.losses += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "loss", battle_tag)
+            self._record_battle(team_file_name, "loss", battle_tag, rating=rating)
             logger.info("Lost with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
-    async def record_disconnect(self, team_file_name, battle_tag=None):
+    async def record_disconnect(self, team_file_name, battle_tag=None, rating=None):
         async with self._lock:
             self.disconnects += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "disconnect", battle_tag)
+            self._record_battle(team_file_name, "disconnect", battle_tag, rating=rating)
             logger.info("Disconnect with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}\tDC: {}".format(self.wins, self.losses, self.disconnects))
 
@@ -451,9 +452,17 @@ async def battle_worker(
                 break
 
             # Record result — ALL outcomes count toward quota
+            # Fetch post-battle ELO so we can track rating over time
+            _post_elo = None
+            try:
+                from fp.run_battle import _fetch_elo
+                _post_elo, _ = await _fetch_elo(FoulPlayConfig.username)
+            except Exception:
+                pass
+
             lost_battle = False
             if winner == FoulPlayConfig.username:
-                await stats.record_win(team_file_name, battle_tag)
+                await stats.record_win(team_file_name, battle_tag, rating=_post_elo)
                 worker_battles += 1
             elif winner is None:
                 logger.info(
@@ -461,10 +470,10 @@ async def battle_worker(
                     worker_id,
                     battle_tag,
                 )
-                await stats.record_disconnect(team_file_name, battle_tag)
+                await stats.record_disconnect(team_file_name, battle_tag, rating=_post_elo)
                 worker_battles += 1
             else:
-                await stats.record_loss(team_file_name, battle_tag)
+                await stats.record_loss(team_file_name, battle_tag, rating=_post_elo)
                 worker_battles += 1
                 lost_battle = True
 

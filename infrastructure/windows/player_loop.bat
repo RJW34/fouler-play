@@ -56,6 +56,25 @@ if exist battle_stats.json (
     )
 )
 
+REM Run autoresearch to analyze the latest batch
+echo [%date% %time%] Running autoresearch...
+py -3 "%REPO_DIR%\replay_analysis\autoresearch.py" -n 30 --no-discord 2>nul
+if errorlevel 1 (
+    echo [%date% %time%] WARNING: Autoresearch failed. Continuing.
+)
+
+REM Run the improvement agent — reads autoresearch, writes one fix, tests, pushes
+echo [%date% %time%] Running improvement agent...
+py -3 "%REPO_DIR%\infrastructure\improve_agent.py"
+if errorlevel 1 (
+    echo [%date% %time%] WARNING: Improvement agent failed or skipped. Continuing.
+)
+
+REM Pull any changes from the improvement agent before next cycle
+echo [%date% %time%] Pulling latest code...
+cd /d "%REPO_DIR%"
+git pull origin %BRANCH% 2>nul
+
 REM Run ELO watchdog after batch
 echo [%date% %time%] Running ELO watchdog...
 py -3 "%REPO_DIR%\infrastructure\elo_watchdog.py"
