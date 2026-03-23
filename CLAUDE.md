@@ -130,6 +130,30 @@ fouler-play/
 └── tests/                    # Test suite
 ```
 
+## Pokemon Data Grounding (MANDATORY)
+
+**Never use LLM knowledge for Pokemon facts.** Type matchups, abilities, move effects, stats, and common sets MUST come from the project's data files. Use the `PokedexOracle`:
+
+```python
+from data.pokedex_oracle import oracle
+oracle.pokemon("gholdengo")                    # types, stats, abilities from pokedex.json
+oracle.move("shadowball")                      # type, power, category from moves.json
+oracle.effectiveness("ghost", ["dark"])         # 0.5 — from the actual type chart
+oracle.common_sets("gholdengo")                # top moves/items from Smogon stats
+oracle.matchup_summary("gholdengo", "gen9/ou/fat-team-1-stall")  # vs our team
+oracle.validate_ability_claim("gholdengo", "Good as Gold")        # True
+oracle.validate_type_claim("ghost", ["dark"], 0.0)                # (False, 0.5)
+```
+
+**Data files (authoritative, never override with LLM knowledge):**
+- `data/pokedex.json` — Pokemon types, stats, abilities
+- `data/moves.json` — move type, power, category, effects
+- `fp/helpers.py` — type effectiveness chart (DAMAGE_MULTIPICATION_ARRAY)
+- `data/smogon_stats_cache/gen9ou-0.json` — Smogon usage: common moves, items, tera types
+- `teams/gen9/ou/` — our actual team files with Pokemon, moves, items, EVs
+
+**Autoresearch reports include grounding blocks** — when opponent Pokemon are flagged, the report embeds their full profile (types, abilities, common moves, matchups against our teams) from the oracle. Agents reading the report should use this grounded data, not generate their own Pokemon knowledge.
+
 ## Key Design Principles
 
 1. **Faithful play** — the bot must play each team according to its archetype, not just "to win"
@@ -140,6 +164,7 @@ fouler-play/
 6. **Tests must pass** — `python -m pytest tests/ -v` before every push
 7. **Never modify protected files** — see `infrastructure/guardrails.json`
 8. **Report quality matters** — every improvement should eventually make the morning report more useful
+9. **Ground all Pokemon facts** — use `PokedexOracle` or data files, never LLM knowledge (see above)
 
 ## On Every Fresh Session
 
