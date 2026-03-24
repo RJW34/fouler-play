@@ -349,9 +349,11 @@ async def battle_worker(
             resume_ready = False
             start_search = False
 
-            # Determine if a resume battle is available for this worker
+            # Determine if a resume battle is available for this worker.
+            # Skip resumes when per-worker quotas are active — resumed
+            # battles would push the worker over its 10-game quota.
             if FoulPlayConfig.bot_mode == BotModes.search_ladder:
-                resume_ready = await has_resume_battle(worker_id)
+                resume_ready = await has_resume_battle(worker_id) if per_worker_quota <= 0 else False
                 while (
                     get_active_battle_count() >= FoulPlayConfig.max_concurrent_battles
                     and not resume_ready
