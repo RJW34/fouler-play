@@ -463,7 +463,6 @@ async def battle_worker(
             lost_battle = False
             if winner == FoulPlayConfig.username:
                 await stats.record_win(team_file_name, battle_tag, rating=_post_elo)
-                worker_battles += 1
             elif winner is None:
                 logger.info(
                     "Worker %s: battle ended without winner (disconnect/timeout, tag=%s)",
@@ -471,14 +470,16 @@ async def battle_worker(
                     battle_tag,
                 )
                 await stats.record_disconnect(team_file_name, battle_tag, rating=_post_elo)
-                worker_battles += 1
             else:
                 await stats.record_loss(team_file_name, battle_tag, rating=_post_elo)
-                worker_battles += 1
                 lost_battle = True
 
+            # Increment UNCONDITIONALLY after any battle outcome.
+            # Previously this was inside each branch and could be skipped
+            # if record_win/loss raised, preventing quotas from ever firing.
+            worker_battles += 1
             if per_worker_quota > 0:
-                logger.info(f"Worker {worker_id}: battle {worker_battles}/{per_worker_quota} complete")
+                logger.warning(f"Worker {worker_id}: battle {worker_battles}/{per_worker_quota} complete")
 
             check_dictionaries_are_unmodified(original_pokedex, original_move_json)
 
