@@ -1454,8 +1454,16 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
             # Recovery is already boosted by the threatened check above
             if norm in _RECOVERY_NORM:
                 continue
-            # Hazards, status, setup — all wasted turns when you're about to die
-            scores[move_name] *= 0.15
+            # Hazards, status, setup — all wasted turns when you're about to die.
+            # Exception: early-game hazard setup on bulky Pokemon (HP > 60%).
+            # Fat/stall teams need rocks up even if the setter takes a hit —
+            # the chip damage pays for itself over the game.  The setter can
+            # recover or pivot out next turn.
+            _turn = getattr(battle, "turn", 99)
+            if norm in _HAZARD_NORM and _turn <= 5 and our_hp_ratio > 0.60:
+                scores[move_name] *= 0.55  # reduced penalty, not eliminated
+            else:
+                scores[move_name] *= 0.15
         logger.info(
             f"Threatened passive penalty: {getattr(our, 'name', '?')} "
             f"2HKO'd (opp best dmg={opp_best_dmg:.1%}), penalizing passive moves"
