@@ -786,20 +786,17 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
                 continue
             
-            if desired_id:
-                if OBS_FORCE_REFRESH:
-                    # Force a clean load between battles to avoid stale CEF state.
-                    print(f"[OBS-UPDATE] Slot {idx}: Force refresh to idle page")
-                    await _obs_client.set_browser_source_url(source_name, _cache_bust(OBS_IDLE_URL))
-                    if OBS_REFRESH_PAUSE_MS > 0:
-                        await asyncio.sleep(OBS_REFRESH_PAUSE_MS / 1000)
-                url = _build_direct_battle_url(desired_id)
-                print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id}")
+            # Always point OBS at the local slot wrapper page.
+            # The wrapper handles battle/idle transitions via iframe,
+            # so we never need to change the OBS source URL after initial setup.
+            # This prevents CEF corruption from rapid URL changes.
+            slot_url = f"http://localhost:{PORT}/slot/{idx}"
+            current_url = _last_obs_urls.get(idx, "")
+            if slot_url not in current_url:
+                print(f"[OBS-UPDATE] Slot {idx}: Pinning to wrapper {slot_url}")
+                ok = await _obs_client.set_browser_source_url(source_name, slot_url)
             else:
-                url = OBS_IDLE_URL
-                print(f"[OBS-UPDATE] Slot {idx}: Setting to idle page")
-            
-            ok = await _obs_client.set_browser_source_url(source_name, url)
+                ok = True  # Already pinned, no URL change needed
             _last_obs_urls[idx] = url
             _last_obs_updates[idx] = time.time()
             _last_obs_status[idx] = "ok" if ok else "fail"
@@ -1114,8 +1111,13 @@ BATTLE_SLOT_HTML = """<!DOCTYPE html>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
-font-family:'Outfit',system-ui,sans-serif;color:#eaeaea;
-display:flex;flex-direction:column;align-items:center;justify-content:center}}
+font-family:'Outfit',system-ui,sans-serif;color:#eaeaea}}
+#scanning{{position:absolute;top:0;left:0;width:100%;height:100%;
+display:flex;flex-direction:column;align-items:center;justify-content:center;
+z-index:2;transition:opacity 0.3s}}
+#battle-frame{{position:absolute;top:0;left:0;width:100%;height:100%;
+border:none;z-index:1}}
+.hidden{{opacity:0;pointer-events:none}}
 .sonar{{width:120px;height:120px;position:relative;margin-bottom:24px}}
 .sonar-circle{{position:absolute;top:50%;left:50%;
 transform:translate(-50%,-50%);border:1.5px solid #08d9d6;
@@ -1134,22 +1136,42 @@ color:#08d9d6;text-shadow:0 0 12px rgba(8,217,214,0.4);animation:pulse 2s ease-i
 color:rgba(8,217,214,0.4)}}
 @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.5}}}}
 </style></head><body>
-<div class="sonar">
-  <div class="sonar-scanner"></div>
-  <div class="sonar-circle"></div>
-  <div class="sonar-circle"></div>
-  <div class="sonar-circle"></div>
-  <div class="sonar-circle"></div>
+<div id="scanning">
+  <div class="sonar">
+    <div class="sonar-scanner"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+  </div>
+  <div class="scanning-text">SCANNING...</div>
+  <div class="scanning-sub">SLOT {slot} &mdash; AWAITING BATTLE</div>
 </div>
-<div class="scanning-text">SCANNING...</div>
-<div class="scanning-sub">SLOT {slot} &mdash; AWAITING BATTLE</div>
+<iframe id="battle-frame" class="hidden"></iframe>
 <script>
 (function(){{
   var SLOT={slot};
   var STATE_URL='/magneton-state';
-  var POLL_MS=4000;
+  var POLL_MS=3000;
   var activeBid=null;
+  var scanning=document.getElementById('scanning');
+  var frame=document.getElementById('battle-frame');
+
   function slotOf(b,i){{return b.slot!=null?parseInt(b.slot):(i+1);}}
+
+  function showBattle(bid){{
+    var url='https://play.pokemonshowdown.com/'+bid+'?r='+Date.now();
+    frame.src=url;
+    frame.classList.remove('hidden');
+    scanning.classList.add('hidden');
+  }}
+
+  function showScanning(){{
+    frame.classList.add('hidden');
+    frame.src='about:blank';
+    scanning.classList.remove('hidden');
+  }}
+
   function poll(){{
     fetch(STATE_URL+'?t='+Date.now())
       .then(function(r){{return r.json();}})
@@ -1162,7 +1184,12 @@ color:rgba(8,217,214,0.4)}}
         if(battle&&battle.id){{
           if(battle.id!==activeBid){{
             activeBid=battle.id;
-            window.location.replace('https://play.pokemonshowdown.com/'+battle.id+'?r='+Date.now());
+            showBattle(battle.id);
+          }}
+        }} else {{
+          if(activeBid!==null){{
+            activeBid=null;
+            showScanning();
           }}
         }}
       }})
