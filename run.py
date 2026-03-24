@@ -451,35 +451,31 @@ async def battle_worker(
                 logger.info(f"Worker {worker_id}: Drain mode active, exiting")
                 break
 
-            # Record result — ALL outcomes count toward quota
-            # Fetch post-battle ELO so we can track rating over time
-            _post_elo = None
-            try:
-                from fp.run_battle import _fetch_elo
-                _post_elo, _ = await _fetch_elo(FoulPlayConfig.username)
-            except Exception:
-                pass
-
-            lost_battle = False
-            if winner == FoulPlayConfig.username:
-                await stats.record_win(team_file_name, battle_tag, rating=_post_elo)
-            elif winner is None:
-                logger.info(
-                    "Worker %s: battle ended without winner (disconnect/timeout, tag=%s)",
-                    worker_id,
-                    battle_tag,
-                )
-                await stats.record_disconnect(team_file_name, battle_tag, rating=_post_elo)
-            else:
-                await stats.record_loss(team_file_name, battle_tag, rating=_post_elo)
-                lost_battle = True
-
-            # Increment UNCONDITIONALLY after any battle outcome.
-            # Previously this was inside each branch and could be skipped
-            # if record_win/loss raised, preventing quotas from ever firing.
+            # Record result — ALL outcomes count toward quota.
+            # CRITICAL: worker_battles MUST increment even if recording fails,
+            # otherwise the per-worker quota never fires and the bot runs forever.
             worker_battles += 1
+            lost_battle = False
+            try:
+                _post_elo = None
+                try:
+                    from fp.run_battle import _fetch_elo
+                    _post_elo, _ = await _fetch_elo(FoulPlayConfig.username)
+                except Exception:
+                    pass
+
+                if winner == FoulPlayConfig.username:
+                    await stats.record_win(team_file_name, battle_tag, rating=_post_elo)
+                elif winner is None:
+                    await stats.record_disconnect(team_file_name, battle_tag, rating=_post_elo)
+                else:
+                    await stats.record_loss(team_file_name, battle_tag, rating=_post_elo)
+                    lost_battle = True
+            except Exception as rec_err:
+                logger.error(f"Worker {worker_id}: Failed to record battle result: {rec_err}")
+
             if per_worker_quota > 0:
-                logger.warning(f"Worker {worker_id}: battle {worker_battles}/{per_worker_quota} complete")
+                print(f"[QUOTA] Worker {worker_id}: battle {worker_battles}/{per_worker_quota}", flush=True)
 
             check_dictionaries_are_unmodified(original_pokedex, original_move_json)
 
