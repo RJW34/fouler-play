@@ -787,6 +787,11 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 continue
             
             if desired_id:
+                # Two-step load: blank first to force CEF to fully unload
+                # the old page, preventing corrupted renders (green glitch).
+                if previous_id is not None and previous_id != desired_id:
+                    await _obs_client.set_browser_source_url(source_name, "about:blank")
+                    await asyncio.sleep(0.5)
                 url = _build_direct_battle_url(desired_id)
                 print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id}")
             else:
