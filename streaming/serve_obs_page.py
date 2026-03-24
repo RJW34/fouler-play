@@ -59,6 +59,7 @@ OBS_IDLE_URL = os.getenv("OBS_IDLE_URL", f"http://localhost:{PORT}/idle")
 OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in ("0", "false", "no", "off")
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
+OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
 SHOWDOWN_USER_ID = os.getenv("SHOWDOWN_USER_ID", "").strip()
 SHOWDOWN_ACCOUNTS = [
@@ -767,7 +768,20 @@ async def maybe_update_obs_sources(payload: dict) -> None:
             previous_id = _last_obs_ids.get(idx)
             
             print(f"[OBS-UPDATE] Slot {idx} ({source_name}): previous={previous_id}, desired={desired_id}")
-            
+
+            # Force stale battles to idle — if the same battle has been
+            # displayed for too long, the Showdown page is likely showing
+            # an empty post-game lobby.  Reset to the "SCANNING..." idle page.
+            if previous_id and previous_id == desired_id and OBS_STALE_BATTLE_SEC > 0:
+                last_update = _last_obs_updates.get(idx, 0)
+                age = time.time() - last_update if last_update else 0
+                if age > OBS_STALE_BATTLE_SEC:
+                    print(f"[OBS-UPDATE] Slot {idx}: Battle stale ({age:.0f}s > {OBS_STALE_BATTLE_SEC}s), forcing idle")
+                    await _obs_client.set_browser_source_url(source_name, _cache_bust(OBS_IDLE_URL))
+                    _last_obs_ids[idx] = None
+                    _last_obs_updates[idx] = time.time()
+                    continue
+
             if previous_id == desired_id:
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
                 continue
