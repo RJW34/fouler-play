@@ -35,6 +35,8 @@ if /I "%AUTO_PULL%"=="1" (
 )
 
 set "PS_RUN_COUNT=%BATCH_SIZE%"
+set "CONCURRENT_BATTLES=3"
+echo [%date% %time%] Launching: PS_RUN_COUNT=%PS_RUN_COUNT%, CONCURRENT_BATTLES=%CONCURRENT_BATTLES%
 call "%REPO_DIR%\start_one_touch.bat"
 if errorlevel 1 (
     echo [%date% %time%] WARNING: Bot exited with error. Retrying in 15 seconds...
