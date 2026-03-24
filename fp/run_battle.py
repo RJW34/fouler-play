@@ -262,7 +262,7 @@ def _rollover_worker_handler(worker_id: int, battle_tag: str, opponent_name: str
 
 # Battle chat defaults
 OPENING_CHAT_MESSAGE = "hf"
-POST_BATTLE_MESSAGES = ["gg", "ttv/thepeakmos"]
+POST_BATTLE_MESSAGES = ["gg", "twitch.tv/mfabso"]
 
 # Resume queue for in-progress battles (populated on startup from active_battles.json)
 _resume_lock = asyncio.Lock()
