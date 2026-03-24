@@ -786,17 +786,14 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
                 continue
             
-            # Always point OBS at the local slot wrapper page.
-            # The wrapper handles battle/idle transitions via iframe,
-            # so we never need to change the OBS source URL after initial setup.
-            # This prevents CEF corruption from rapid URL changes.
-            slot_url = f"http://localhost:{PORT}/slot/{idx}"
-            current_url = _last_obs_urls.get(idx, "")
-            if slot_url not in current_url:
-                print(f"[OBS-UPDATE] Slot {idx}: Pinning to wrapper {slot_url}")
-                ok = await _obs_client.set_browser_source_url(source_name, slot_url)
+            if desired_id:
+                url = _build_direct_battle_url(desired_id)
+                print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id}")
             else:
-                ok = True  # Already pinned, no URL change needed
+                url = OBS_IDLE_URL
+                print(f"[OBS-UPDATE] Slot {idx}: Setting to idle page")
+
+            ok = await _obs_client.set_browser_source_url(source_name, url)
             _last_obs_urls[idx] = url
             _last_obs_updates[idx] = time.time()
             _last_obs_status[idx] = "ok" if ok else "fail"
