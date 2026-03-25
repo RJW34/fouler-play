@@ -5,7 +5,7 @@
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
 **Branch:** `master` is the live deployment/base branch and now contains the latest Codex-readiness/doc cleanup merged on 2026-03-09 (`a8b2d31`). Treat older branch-specific notes as historical unless a newer branch is explicitly called out here.
 **Bot Account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=npctypebeat`. Windows machine hostname may vary (MAGNETON, MIRAIDON, etc.) — use OS detection.
-**Updated:** 2026-03-23
+**Updated:** 2026-03-25
 
 ---
 
@@ -20,18 +20,15 @@
 
 ## Current Status
 
-**2026-03-23 AUDIT — META-WORK SPIRAL IDENTIFIED AND CORRECTED**
+**2026-03-25 — Bot running, all critical bugs fixed, focus on Phase 2-3**
 
-The project stalled for 13 days (March 10 - March 23). During this period:
-- **Zero decision-engine commits.** Last engine change was `0534563` on March 10.
-- **10 meta/infrastructure commits** built 2,787 lines of reporting/pipeline/manifest code.
-- **The bot stopped playing.** No `battle_stats.json` exists. No Python processes running. No scheduled task.
-- **Autoresearch ran on empty** producing `batch-empty` reports with 0 battles and no issues.
-- **All Phase 2-3 TASKBOARD items remain untouched.** Known bugs from Feb 14 are still open.
+- **Bot is live** on `npctypebeat`, playing gen9ou with 3 concurrent battles across all 3 teams.
+- **3413 battles played.** 1735W-1671L (50.9% WR overall, ~48% last 100).
+- **All 3 critical bugs fixed** (#3 resisted move spam, #5 recovery loops, #7 switch oscillation) — see Decision Engine Bugs section below.
+- **Recent engine commits** (March 23-25): stagnation switch boost for resisted moves, recovery loop detection, switch oscillation detection, out-healing pattern detection, passive penalty tuning, hazard suppression at critical HP, type-disadvantage switch penalties.
+- **Infrastructure is DONE.** No further infra/reporting/pipeline work needed.
 
-The autoresearch/pipeline/Discord/manifest infrastructure is DONE. It does not need more work. What needs work is the decision engine in `fp/search/`.
-
-Decision pipeline: forced_lines -> eval -> penalty pipeline (9 layers). Bot needs to reach 1700+ ELO for matchup data to be meaningful. Currently ~1200 with 53% WR.
+Decision pipeline: forced_lines -> eval -> penalty pipeline (9 layers). Bot needs to reach 1700+ ELO for matchup data to be meaningful. WR is flat at ~50% — next gains come from Phase 2-3 decision improvements.
 
 ---
 
@@ -48,17 +45,13 @@ The following systems are complete and must NOT receive further development unle
 - `infrastructure/autoresearch_post_commit.py` (81 lines) — done
 
 **What agents must do (in this order):**
-1. Fix open decision-engine bugs (#3, #5, #7 below) — these are concrete, documented, game-losing problems
-2. Implement Phase 2-3 items from the DEKU Action Items section — PP tracking, switch prediction, recovery timing, hazard awareness
-3. Run `python -m pytest tests/ -v` after every change
-4. Do NOT create new infrastructure files, reporting pipelines, or meta-tooling
+1. Implement Phase 2-3 items — PP tracking, switch prediction, recovery timing, hazard awareness, Bayesian set updating
+2. Run `python -m pytest tests/ -v` after every change
+3. Do NOT create new infrastructure files, reporting pipelines, or meta-tooling
 
 **Operational prerequisite:** The bot must be running and producing `battle_stats.json` for any analysis to matter. If the bot is not running, fix that FIRST, then return to decision-engine work.
 
-**Open critical bugs (fix these before Phase 2-3 work):**
-1. **Bug #3:** Ghost moves into Dark-immune opponents (Hex into Ting-Lu for 8 turns)
-2. **Bug #7:** Infinite switch loops (11 turns of Corviknight/Blissey oscillation)
-3. **Bug #5:** Recover loop detection (Recover vs Drain Punch losing cycle)
+**All critical bugs are fixed.** See Decision Engine Bugs section below for details.
 
 ---
 

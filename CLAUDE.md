@@ -98,6 +98,8 @@ fouler-play/
 ├── .env.example              # Template for .env (tracked)
 ├── CLAUDE.md                 # THIS FILE — read on every session
 ├── TASKBOARD.md              # Cross-machine coordination — read and update
+├── start_one_touch.bat       # Battle launcher (non-interactive when PS_RUN_COUNT set)
+├── pipeline.py               # Analysis orchestrator (BUILT, do not modify)
 ├── constants.py              # Shim -> re-exports from constants_pkg/
 ├── constants_pkg/            # Penalty/boost values, ability sets, move flags
 ├── fp/
@@ -112,7 +114,9 @@ fouler-play/
 │   │   ├── speed_order.py    # Speed comparison utilities
 │   │   ├── endgame.py        # Endgame solver for 1v1/2v1 scenarios
 │   │   ├── standard_battles.py  # Battle sampling + weighted selection
-│   │   └── move_validators.py   # Move validation
+│   │   ├── move_validators.py   # Move validation
+│   │   ├── opponent_predict.py  # Opponent set/move prediction
+│   │   └── helpers.py           # Search helper utilities
 │   ├── team_analysis.py      # Win condition identification
 │   ├── opponent_model.py     # Opponent tendency tracking
 │   ├── playstyle_config.py   # Per-team playstyle tuning (FAT/STALL configs)
@@ -120,8 +124,9 @@ fouler-play/
 ├── infrastructure/
 │   ├── guardrails.json       # File permissions + safety thresholds
 │   ├── elo_watchdog.py       # Auto-revert bad deploys
-│   ├── linux/                # DEKU's scripts + service files
-│   └── windows/              # BAKUGO's scripts + task installer
+│   ├── improve_agent.py      # Automated coding agent (reads autoresearch, writes fixes)
+│   ├── linux/                # Linux scripts + service files
+│   └── windows/              # Windows scripts + task installer
 ├── streaming/                # OBS/Twitch integration (BUILT, low priority)
 ├── replay_analysis/          # Team performance analysis (BUILT — primary player-facing output)
 │   └── team_performance.py   # Main report generator — this is what the player reads
