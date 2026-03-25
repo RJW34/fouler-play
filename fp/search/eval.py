@@ -1231,6 +1231,13 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                 # Free turns are great for hazards
                 score *= 1.5
 
+            # Faithful stall play: walls at critical HP must recover, not
+            # set hazards.  A dead Blissey provides zero value; a living
+            # one with recovery can stall indefinitely.  Suppress hazard
+            # moves when HP is dangerously low so recovery always wins.
+            if our_hp_ratio <= 0.30:
+                score *= 0.10
+
             scores[move_name] = max(score, 0.01)
 
         elif norm in STATUS_MOVES_OFFENSIVE:
