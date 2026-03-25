@@ -61,7 +61,7 @@ OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
 OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
 GHOST_BATTLE_MAX_AGE_SEC = int(os.getenv("GHOST_BATTLE_MAX_AGE_SEC", "1800"))  # 30min: hard ghost removal (stall games can run 20+ min)
-GHOST_CHECK_INTERVAL_SEC = int(os.getenv("GHOST_CHECK_INTERVAL_SEC", "30"))
+GHOST_CHECK_INTERVAL_SEC = int(os.getenv("GHOST_CHECK_INTERVAL_SEC", "0"))  # Disabled: bot owns active_battles.json lifecycle
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
 SHOWDOWN_USER_ID = os.getenv("SHOWDOWN_USER_ID", "").strip()
 SHOWDOWN_ACCOUNTS = [
@@ -284,9 +284,16 @@ async def handle_event(request: web.Request) -> web.Response:
 
 
 async def _merge_deku_battles(payload: dict) -> dict:
-    """Merge DEKU's active battles into the payload for OBS updates."""
+    """Merge DEKU's active battles into the payload for OBS updates.
+
+    Only attempts the fetch when DEKU_STATE_URL is explicitly set in the
+    environment.  Without it, the 3-second timeout fires every sync cycle
+    and blocks source updates, causing visible flicker in OBS.
+    """
+    deku_url = os.getenv("DEKU_STATE_URL", "")
+    if not deku_url:
+        return payload
     try:
-        deku_url = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
         async with aiohttp.ClientSession() as sess:
             async with sess.get(deku_url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
                 if resp.status == 200:
@@ -339,12 +346,10 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
 
 
 def _build_direct_battle_url(bid: str) -> str:
-    # Use direct URL without ~~showdown to avoid "visit showdown directly" frame check.
-    # OBS browser sources load as top-level pages so X-Frame-Options doesn't apply.
-    # Keep spectator hash intact - it's required for spectator access.
-    # Without the hash, PS redirects to homepage instead of showing the battle.
-    ts = int(time.time())
-    return f"https://play.pokemonshowdown.com/{bid}?r={ts}"
+    # OBS browser sources should be logged into the spectator account
+    # (SPECTATOR_USERNAME in .env) so they can view any battle, with or
+    # without a spectator hash.  The bot invites the spectator to each battle.
+    return f"https://play.pokemonshowdown.com/{bid}"
 
 
 def _build_slot_map(battles: list[dict]) -> dict[int, dict]:
