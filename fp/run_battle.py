@@ -158,6 +158,7 @@ STALE_STRIKES = int(os.getenv("BATTLE_STALE_STRIKES", "2"))
 # (= 5 * 120s = 10 minutes of silence).
 DISCONNECT_STRIKES = int(os.getenv("BATTLE_DISCONNECT_STRIKES", "5"))
 STALE_DISPLAY_GRACE_SEC = int(os.getenv("BATTLE_STALE_DISPLAY_GRACE_SEC", "900"))
+GHOST_BATTLE_MAX_AGE_SEC = int(os.getenv("GHOST_BATTLE_MAX_AGE_SEC", "1800"))  # 30min: hard ghost removal (stall games can run 20+ min)
 # Throttle active_battles.json writes to avoid excessive disk churn.
 ACTIVE_BATTLES_WRITE_INTERVAL_SEC = float(os.getenv("ACTIVE_BATTLES_WRITE_INTERVAL_SEC", "1.0"))
 # How often (seconds) the battle loop refreshes active_battles.json heartbeat.
@@ -806,6 +807,21 @@ async def update_active_battles_file():
             ]
             for bid in stale_tags:
                 _log_battle_removal(bid, f"stale_grace_expired ({STALE_DISPLAY_GRACE_SEC}s)")
+                _active_battles.pop(bid, None)
+
+        # Hard age-based ghost cleanup: remove ANY battle older than max age,
+        # regardless of status. Catches entries that slip through normal
+        # finalization (hung websocket, missed |win| message, etc.).
+        # Marking as concluded prevents the heartbeat from re-registering.
+        if GHOST_BATTLE_MAX_AGE_SEC > 0:
+            now_gc = time.time()
+            ghost_tags = [
+                bid for bid, info in _active_battles.items()
+                if isinstance(info.get("started"), datetime)
+                and (now_gc - info["started"].timestamp()) > GHOST_BATTLE_MAX_AGE_SEC
+            ]
+            for bid in ghost_tags:
+                _log_battle_removal(bid, f"ghost_max_age ({GHOST_BATTLE_MAX_AGE_SEC}s)")
                 _active_battles.pop(bid, None)
 
         battles = []
