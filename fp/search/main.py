@@ -1740,6 +1740,37 @@ def apply_repetition_penalty(
                     len(switch_recent), len(distinct_targets),
                 )
 
+        # Pattern 4: Opponent out-heals our repeated attack — same
+        # damaging move used 3+ times while the opponent has a known
+        # recovery move (Roost, Recover, etc.).  Our damage can never
+        # outpace their healing, so we must switch or use a status move
+        # (Toxic) to break the loop.
+        if opp_active is not None:
+            opp_moves = set()
+            for m in (getattr(opp_active, "moves", None) or []):
+                mname = getattr(m, "name", m) if not isinstance(m, str) else m
+                opp_moves.add(normalize_name(str(mname)))
+            opp_has_recovery = bool(
+                opp_moves & {normalize_name(r) for r in RECOVERY_MOVES}
+            )
+            if opp_has_recovery:
+                for action, cnt in attack_counts.items():
+                    if cnt < 3:
+                        continue
+                    action_norm = action.lower().strip()
+                    if action_norm.startswith("switch "):
+                        continue
+                    move_data = all_move_json.get(action_norm, {})
+                    move_cat = move_data.get(constants.CATEGORY, "")
+                    if move_cat in ("physical", "special"):
+                        stagnation_boost_switches = True
+                        logger.info(
+                            "STAGNATION: %s repeated %d times vs opponent "
+                            "with recovery — cannot outpace healing, "
+                            "boosting switches",
+                            action_norm, cnt,
+                        )
+
     # Apply the boosts.
     STAGNATION_SWITCH_BOOST = 1.6
     STAGNATION_ATTACK_BOOST = 1.5
