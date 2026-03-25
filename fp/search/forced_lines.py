@@ -406,17 +406,21 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
     opp_spa_boost = opp_boosts.get(constants.SPECIAL_ATTACK, 0)
     total_offensive_boosts = max(opp_atk_boost, opp_spa_boost)
 
-    if total_offensive_boosts >= 2:
+    if total_offensive_boosts >= 1:
         for move_name in our_moves:
             norm = normalize_name(move_name)
             if norm in PHAZE_MOVES_SET:
+                # Higher confidence at +2+, moderate at +1.
+                # Even +1 Dragon Dance/Swords Dance demands an immediate
+                # phaze — giving a free second boost is often game-losing.
+                conf = 0.80 if total_offensive_boosts >= 2 else 0.72
                 logger.info(
                     f"FORCED LINE: phaze with {move_name} "
                     f"(opponent at +{total_offensive_boosts})"
                 )
                 return ForcedLine(
                     move=move_name,
-                    confidence=0.80,
+                    confidence=conf,
                     reason=f"Phaze: opponent boosted to +{total_offensive_boosts}, using {move_name}",
                     line_type="phaze",
                 )
