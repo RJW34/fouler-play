@@ -2105,6 +2105,15 @@ async def _finalize_battle_runtime(
     *,
     send_end_event: bool,
 ) -> None:
+    # Save replay before leaving so the OBS ghost cleanup can detect
+    # finished battles via the replay API.  Without this, replays are
+    # never uploaded and the ghost check always returns 404.
+    try:
+        await ps_websocket_client.send_message(battle_tag, ["/savereplay"])
+        await asyncio.sleep(0.5)  # brief pause for PS to process
+    except Exception:
+        pass
+
     try:
         await ps_websocket_client.leave_battle(battle_tag)
     except Exception:
