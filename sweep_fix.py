@@ -432,11 +432,16 @@ def smart_sweep_prevention(
 
     if move_name in SETUP_MOVES or (is_status_move and not is_reset_move and not is_parting_shot):
         passive_penalty = PENALTY_PASSIVE_VS_BOOSTED
-        if boost_level == 2:
+        if boost_level <= 1:
+            # At +1, use a moderate penalty (0.45 = 55% reduction).
+            # The full 0.25 (75%) was too harsh — stall teams legitimately
+            # need Spikes/Toxic even against a +1 threat, especially when
+            # they have no phazer. Data showed pivot team cratered to 31%
+            # WR with the stronger penalty. 0.45 balances "discourage
+            # passive play vs boosted" with "stall still needs its tools."
+            passive_penalty = max(passive_penalty, 0.45)
+        elif boost_level == 2:
             passive_penalty = max(passive_penalty, 0.32)
-        # At +1, use the full PENALTY_PASSIVE_VS_BOOSTED (0.25) — do NOT
-        # weaken to 0.45.  Even a single Dragon Dance/Swords Dance demands
-        # an aggressive response; giving a free second boost is game-losing.
 
         # Exception: If we have Unaware on the team, setting up isn't as bad
         if has_unaware_on_team(battle):
