@@ -60,6 +60,8 @@ OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in (
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
 OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
+GHOST_BATTLE_MAX_AGE_SEC = int(os.getenv("GHOST_BATTLE_MAX_AGE_SEC", "1800"))  # 30min: hard ghost removal (stall games can run 20+ min)
+GHOST_CHECK_INTERVAL_SEC = int(os.getenv("GHOST_CHECK_INTERVAL_SEC", "30"))
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
 SHOWDOWN_USER_ID = os.getenv("SHOWDOWN_USER_ID", "").strip()
 SHOWDOWN_ACCOUNTS = [
@@ -647,6 +649,45 @@ async def _filter_finished_battles(battles: list[dict]) -> list[dict]:
     return filtered
 
 
+async def _cleanup_ghost_battles() -> None:
+    """Remove finished/stale battles from active_battles.json.
+
+    Uses two strategies:
+    1. Replay existence check: if a replay exists on Showdown, the battle is over.
+    2. Hard age cutoff: any battle older than GHOST_BATTLE_MAX_AGE_SEC is removed.
+
+    Writes cleaned data back to active_battles.json so OBS transitions to idle.
+    """
+    battles_data = state_store.read_active_battles()
+    battles = battles_data.get("battles", [])
+    if not battles:
+        return
+
+    # Strategy 1: replay-based check (filters out battles with existing replays)
+    filtered = await _filter_finished_battles(battles)
+
+    # Strategy 2: hard age cutoff
+    now = time.time()
+    age_filtered = []
+    for battle in filtered:
+        started = _parse_started_iso(battle.get("started"))
+        if started:
+            age = now - started.timestamp()
+            if age > GHOST_BATTLE_MAX_AGE_SEC:
+                print(f"[GHOST-CLEANUP] Battle {battle.get('id')} exceeded max age ({age:.0f}s > {GHOST_BATTLE_MAX_AGE_SEC}s)")
+                continue
+        age_filtered.append(battle)
+
+    if len(age_filtered) < len(battles):
+        filtered_ids = {b.get("id") for b in age_filtered}
+        removed_ids = [b.get("id") for b in battles if b.get("id") not in filtered_ids]
+        print(f"[GHOST-CLEANUP] Removing {len(removed_ids)} ghost battle(s): {removed_ids}")
+        battles_data["battles"] = age_filtered
+        battles_data["count"] = len(age_filtered)
+        battles_data["updated"] = datetime.now().isoformat()
+        state_store.write_active_battles(battles_data)
+
+
 async def maybe_refresh_elo_from_event(event_type: str, payload: dict) -> None:
     global _last_elo_event_ts
     trigger = False
@@ -786,16 +827,20 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
                 continue
             
+            # Two-step CEF transition for ALL URL changes:
+            # current → about:blank → 500ms pause → new URL
+            # Forces CEF to fully unload the old page, preventing green
+            # glitch bars on any transition (battle→idle, idle→battle, battle→battle).
+            current_url = _last_obs_urls.get(idx)
+            if current_url and current_url != "about:blank":
+                await _obs_client.set_browser_source_url(source_name, "about:blank")
+                await asyncio.sleep(0.5)
+
             if desired_id:
-                # Two-step load: blank first to force CEF to fully unload
-                # the old page, preventing corrupted renders (green glitch).
-                if previous_id is not None and previous_id != desired_id:
-                    await _obs_client.set_browser_source_url(source_name, "about:blank")
-                    await asyncio.sleep(0.5)
                 url = _build_direct_battle_url(desired_id)
                 print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id}")
             else:
-                url = OBS_IDLE_URL
+                url = _cache_bust(OBS_IDLE_URL)
                 print(f"[OBS-UPDATE] Slot {idx}: Setting to idle page")
 
             ok = await _obs_client.set_browser_source_url(source_name, url)
@@ -933,6 +978,7 @@ async def poll_files(app: web.Application) -> None:
     last_battles_mtime = None
     last_obs_sync = 0.0
     last_elo_poll = 0.0
+    last_ghost_check = 0.0
 
     while True:
         await asyncio.sleep(2)
@@ -984,6 +1030,17 @@ async def poll_files(app: web.Application) -> None:
                         await broadcast("STATE_UPDATE", build_state_payload())
                 except Exception:
                     pass
+
+        # Periodic ghost battle cleanup: verify battles are still alive
+        # using replay existence check and hard age cutoff.
+        if GHOST_CHECK_INTERVAL_SEC > 0:
+            now = time.time()
+            if (now - last_ghost_check) >= GHOST_CHECK_INTERVAL_SEC:
+                last_ghost_check = now
+                try:
+                    await _cleanup_ghost_battles()
+                except Exception as e:
+                    print(f"[GHOST-CLEANUP] Error: {e}")
 
 
 async def start_background_tasks(app: web.Application) -> None:
