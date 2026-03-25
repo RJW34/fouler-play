@@ -365,18 +365,18 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
         opp_best_dmg = max(opp_best_dmg, d)
 
     # If no revealed moves, estimate from STAB type matchup.
-    # When opponent STAB is super-effective (2x+), assume they can KO.
-    # In gen9ou, STAB SE moves from competent attackers almost always
-    # OHKO frailer Pokemon (e.g., Great Tusk Headlong Rush vs Cinderace).
-    # Don't wait to confirm — switch immediately on type disadvantage.
+    # Use a conservative base (0.3) — at full HP, this won't trigger
+    # a forced switch for 2x weakness (0.3*1.5*2.0=0.9 < 1.0), which
+    # is correct: stall teams often want to scout with U-turn or set
+    # hazards on turn 1 rather than panic-switching.  The forced switch
+    # WILL trigger at lower HP where the risk is real.
+    # A previous version set opp_best_dmg = our_hp_ratio for 2x+ SE,
+    # but this caused massive over-switching (57% → 43% WR drop).
     if not opp_moves and opp_types:
         our_types = _get_effective_types(our)
         for t in opp_types:
             eff = type_effectiveness_modifier(t, our_types)
-            if eff >= 2.0:
-                opp_best_dmg = max(opp_best_dmg, our_hp_ratio)
-            else:
-                opp_best_dmg = max(opp_best_dmg, 0.3 * 1.5 * eff)
+            opp_best_dmg = max(opp_best_dmg, 0.3 * 1.5 * eff)
 
     if opp_best_dmg >= our_hp_ratio:
         # Opponent can KO us. Can we KO them first?
