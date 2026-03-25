@@ -364,12 +364,19 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
         d = _estimate_damage(opp, our, move_name)
         opp_best_dmg = max(opp_best_dmg, d)
 
-    # If no revealed moves, estimate conservatively
+    # If no revealed moves, estimate from STAB type matchup.
+    # When opponent STAB is super-effective (2x+), assume they can KO.
+    # In gen9ou, STAB SE moves from competent attackers almost always
+    # OHKO frailer Pokemon (e.g., Great Tusk Headlong Rush vs Cinderace).
+    # Don't wait to confirm — switch immediately on type disadvantage.
     if not opp_moves and opp_types:
         our_types = _get_effective_types(our)
         for t in opp_types:
             eff = type_effectiveness_modifier(t, our_types)
-            opp_best_dmg = max(opp_best_dmg, 0.3 * 1.5 * eff)
+            if eff >= 2.0:
+                opp_best_dmg = max(opp_best_dmg, our_hp_ratio)
+            else:
+                opp_best_dmg = max(opp_best_dmg, 0.3 * 1.5 * eff)
 
     if opp_best_dmg >= our_hp_ratio:
         # Opponent can KO us. Can we KO them first?
