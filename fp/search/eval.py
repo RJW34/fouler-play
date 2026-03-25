@@ -675,11 +675,13 @@ def _score_switch(battle: Battle, target_name: str) -> float:
         target_hp_ratio = target.hp / max(target.max_hp, 1)
 
         if opp_best_dmg >= target_hp_ratio:
-            # Opponent can KO this target — terrible switch
-            score -= 0.5
+            # Opponent can KO this target — terrible switch.
+            # Scale penalty harder for overkill (e.g., 4x weakness OHKOs).
+            overkill = opp_best_dmg / max(target_hp_ratio, 0.01)
+            score -= 0.5 + min(overkill * 0.3, 0.8)
         elif opp_best_dmg >= target_hp_ratio * 0.5:
             # Opponent can 2HKO — risky switch
-            score -= 0.2
+            score -= 0.35
         elif opp_best_dmg < 0.15:
             # Opponent barely scratches this target — great switch
             score += 0.4
@@ -725,12 +727,18 @@ def _score_switch(battle: Battle, target_name: str) -> float:
             worst_stab_eff = max(
                 type_effectiveness_modifier(t, target_types) for t in opp_types
             )
-            if worst_stab_eff <= 0.5:
+            if worst_stab_eff <= 0.25:
+                score += 0.5  # quad resist
+            elif worst_stab_eff <= 0.5:
                 score += 0.4  # double resist
             elif worst_stab_eff <= 1.0:
                 score += 0.2  # resist or neutral
+            elif worst_stab_eff >= 4.0:
+                score -= 1.2  # 4x weak to STAB — near-guaranteed OHKO
+            elif worst_stab_eff >= 2.0:
+                score -= 0.7  # 2x weak to STAB — likely 2HKO or OHKO
             else:
-                score -= 0.3  # weak to their STAB
+                score -= 0.15  # slightly weak
 
     # === THREAT CATEGORY: route to correct wall ===
     # When the movepool tracker knows the opponent's threat type,
