@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-23T07:32:39.033762",
+  "generated_at": "2026-03-24T19:15:55.931373",
   "batch": {
     "id": "batch-empty",
     "start_battle_id": null,
@@ -23,5 +23,9 @@
   "top_issue": null,
   "issues": [],
   "top_loss_teams": [],
-  "top_opponent_pokemon": []
+  "top_opponent_pokemon": [],
+  "grounded_context": {
+    "source": "data/pokedex_oracle.py — all facts from pokedex.json, moves.json, smogon_stats_cache",
+    "our_teams": {}
+  }
 }
