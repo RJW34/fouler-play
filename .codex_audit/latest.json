@@ -1,0 +1,8 @@
+{
+  "ts": "2026-04-17T20:25:00-04:00",
+  "commit": "3148328",
+  "verdict": "APPROVED",
+  "files": [".gitignore", "scripts/export_citadel_status.ps1", "workflow.yaml"],
+  "summary": "Prior Codex audit APPROVED_WITH_NOTES. Fixed: stripped absolute local_path from workflow.yaml source_of_truth (left remote only). No hardcoded credentials. Manifest now portable across machines.",
+  "notes": "Claude self-signed post-fix. Remaining notes from Codex are non-blocking: gitignore could add battle_stats.json/stability_report.json (deferred); state/citadel_status.json runtime output size acceptable for private repo."
+}
