@@ -78,5 +78,6 @@ streaming/auto_stream.py.backup*
 # Console output fragments
 Bot
 Overlay
+state/citadel_status.json
 Press
 Server
