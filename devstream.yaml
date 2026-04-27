@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "devstream-project/v1",
+  "projectId": "fouler-play",
+  "displayName": "fouler-play",
+  "root": "/home/ryan/projects/fouler-play",
+  "role": "bounded-cycle-runner",
+  "machine": "ubunztu",
+  "mission": "Run bounded or persistent Pokemon Showdown battle cycles, collect replay/decision proof, and expose live battle/reporting surfaces for the devstream.",
+  "runner": {
+    "safeToAutostart": false,
+    "start": ["python3", "run.py", "--run-count", "25", "--max-concurrent-battles", "2"],
+    "stop": ["bash", "scripts/safe_restart_monitor.sh"],
+    "status": ["python3", "scripts/devstream_health.py"]
+  },
+  "health": {
+    "command": ["python3", "scripts/devstream_health.py"],
+    "timeoutSeconds": 10
+  },
+  "truth": {
+    "files": [
+      {"label": "health probe", "path": "scripts/devstream_health.py", "required": true},
+      {"label": "stream status", "path": "stream_status.json", "required": false, "staleAfterSeconds": 21600},
+      {"label": "daily stats", "path": "daily_stats.json", "required": false, "staleAfterSeconds": 21600},
+      {"label": "active battles", "path": "active_battles.json", "required": false, "staleAfterSeconds": 1800},
+      {"label": "battle stats", "path": "battle_stats.json", "required": false},
+      {"label": "autoresearch json", "path": "replay_analysis/autoresearch_latest.json", "required": false, "staleAfterSeconds": 86400},
+      {"label": "autoresearch report", "path": "replay_analysis/reports/autoresearch_latest.md", "required": false, "staleAfterSeconds": 86400}
+    ]
+  },
+  "obs": {
+    "collection": "CrossProjectDevstream",
+    "profile": "CrossProjectDevstream",
+    "primaryScene": "fouler-play - Hybrid Main",
+    "scenes": ["fouler-play - Hybrid Main", "fouler-play - Dashboard Focus"],
+    "surfaces": [
+      {"name": "slot 1", "url": "http://127.0.0.1:8777/slot/1", "required": true},
+      {"name": "slot 2", "url": "http://127.0.0.1:8777/slot/2", "required": false},
+      {"name": "slot 3", "url": "http://127.0.0.1:8777/slot/3", "required": false},
+      {"name": "hybrid overlay", "url": "http://127.0.0.1:8777/overlay/hybrid", "required": true},
+      {"name": "hybrid dashboard", "url": "http://127.0.0.1:8777/dashboard/hybrid", "required": true},
+      {"name": "health", "url": "http://127.0.0.1:8777/health", "required": true}
+    ]
+  },
+  "focus": {
+    "priority": 90,
+    "idleRotationSeconds": 900,
+    "reasons": ["bounded battle cycles", "live browser surfaces", "report generation proof"]
+  },
+  "workPackets": {
+    "defaultBranch": "main",
+    "allowedPaths": [
+      "devstream/",
+      "docs/",
+      "fp/",
+      "infrastructure/",
+      "replay_analysis/",
+      "scripts/",
+      "streaming/",
+      "tests/",
+      "run.py"
+    ],
+    "validation": [
+      "python3 -m py_compile scripts/devstream_health.py streaming/serve_obs_page.py",
+      "python3 scripts/devstream_health.py",
+      "python3 -m pytest tests/test_hybrid_dashboard.py tests/test_state_endpoint_status.py"
+    ]
+  }
+}
