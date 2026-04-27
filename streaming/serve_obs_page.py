@@ -819,6 +819,27 @@ async def handle_battles(request: web.Request) -> web.Response:
     return web.json_response(state_store.read_active_battles())
 
 
+async def handle_health(request: web.Request) -> web.Response:
+    script = ROOT_DIR / "scripts" / "devstream_health.py"
+    if script.exists():
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                [sys.executable, str(script), "--skip-http"],
+                cwd=str(ROOT_DIR),
+                capture_output=True,
+                text=True,
+                timeout=8,
+                check=False,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return web.json_response(json.loads(result.stdout))
+            return web.json_response({"status": "degraded", "service": "stream-server", "error": result.stderr.strip()}, status=503)
+        except Exception as exc:
+            return web.json_response({"status": "degraded", "service": "stream-server", "error": str(exc)}, status=503)
+    return web.json_response({"status": "ok", "service": "stream-server"})
+
+
 async def handle_status(request: web.Request) -> web.Response:
     status = _apply_ladder_status(state_store.read_status())
     battles_data = state_store.read_active_battles()
@@ -1236,6 +1257,7 @@ def create_app() -> web.Application:
     app.router.add_get("/idle", handle_idle)
     app.router.add_get("/debug", handle_debug)
     app.router.add_get("/battles", handle_battles)
+    app.router.add_get("/health", handle_health)
     app.router.add_get("/status", handle_status)
     app.router.add_get("/state", handle_state)
     app.router.add_get("/deku-state", handle_deku_state)
