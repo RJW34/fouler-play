@@ -5,7 +5,7 @@
   "root": "/home/ryan/projects/fouler-play",
   "role": "bounded-cycle-runner",
   "machine": "ubunztu",
-  "mission": "Run bounded or persistent Pokemon Showdown battle cycles, collect replay/decision proof, and expose live battle/reporting surfaces for the devstream.",
+  "mission": "Train and evaluate a high-level Gen 9 OU bot through live bounded battle cycles, replay/decision proof, DEKU-guided analysis, and iteration toward 1800+ ELO play.",
   "runner": {
     "safeToAutostart": false,
     "start": ["python3", "run.py", "--run-count", "25", "--max-concurrent-battles", "2"],
@@ -44,7 +44,7 @@
   "focus": {
     "priority": 90,
     "idleRotationSeconds": 900,
-    "reasons": ["bounded battle cycles", "live browser surfaces", "report generation proof"]
+    "reasons": ["1800 ELO target", "bounded battle cycles", "live browser surfaces", "DEKU analysis loop", "report generation proof"]
   },
   "workPackets": {
     "defaultBranch": "main",
