@@ -87,6 +87,26 @@ if errorlevel 1 (
     echo [%date% %time%] WARNING: Failed to log deploy event.
 )
 
+REM Step 5: Update build manifest (project-agnostic build tracking)
+echo [%date% %time%] Updating build manifest...
+py -3 -c "
+import sys, json, os
+sys.path.insert(0, r'%REPO_DIR%')
+try:
+    from infrastructure.build_manifest import get_manifest
+    m = get_manifest()
+    battle_count = 0
+    bs_path = r'%BATTLE_STATS%'
+    if os.path.exists(bs_path):
+        with open(bs_path) as f:
+            d = json.load(f)
+        battle_count = len(d.get('battles', d) if isinstance(d, dict) else d)
+    entry = m.record_deploy(progress_count=battle_count, source='deploy_update.bat')
+    print(f'Build manifest: {entry[\"sha\"]} at progress={entry[\"progress_at_deploy\"]}')
+except Exception as e:
+    print(f'WARNING: build manifest update failed: {e}', file=sys.stderr)
+"
+
 echo [%date% %time%] ---- Deploy complete: %POST_DEPLOY_COMMIT:~0,8% ----
 
 endlocal

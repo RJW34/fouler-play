@@ -59,6 +59,9 @@ OBS_IDLE_URL = os.getenv("OBS_IDLE_URL", f"http://localhost:{PORT}/idle")
 OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in ("0", "false", "no", "off")
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
+OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
+GHOST_BATTLE_MAX_AGE_SEC = int(os.getenv("GHOST_BATTLE_MAX_AGE_SEC", "1800"))  # 30min: hard ghost removal (stall games can run 20+ min)
+GHOST_CHECK_INTERVAL_SEC = int(os.getenv("GHOST_CHECK_INTERVAL_SEC", "0"))  # Disabled: bot owns active_battles.json lifecycle
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
 SHOWDOWN_USER_ID = os.getenv("SHOWDOWN_USER_ID", "").strip()
 SHOWDOWN_ACCOUNTS = [
@@ -70,8 +73,8 @@ ELO_EVENT_RETRY_SEC = int(os.getenv("SHOWDOWN_ELO_EVENT_RETRY_SEC", "8"))
 ELO_POLL_INTERVAL_SEC = int(os.getenv("SHOWDOWN_ELO_POLL_SEC", "60"))
 PARENT_PID = int(os.getenv("FP_PARENT_PID", "0") or 0)
 PARENT_CHECK_SEC = int(os.getenv("FP_PARENT_CHECK_SEC", "5") or 5)
-REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "60"))
-REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
+REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "30"))
+REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "60"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
@@ -250,9 +253,16 @@ async def handle_event(request: web.Request) -> web.Response:
 
 
 async def _merge_deku_battles(payload: dict) -> dict:
-    """Merge DEKU's active battles into the payload for OBS updates."""
+    """Merge DEKU's active battles into the payload for OBS updates.
+
+    Only attempts the fetch when DEKU_STATE_URL is explicitly set in the
+    environment.  Without it, the 3-second timeout fires every sync cycle
+    and blocks source updates, causing visible flicker in OBS.
+    """
+    deku_url = os.getenv("DEKU_STATE_URL", "")
+    if not deku_url:
+        return payload
     try:
-        deku_url = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
         async with aiohttp.ClientSession() as sess:
             async with sess.get(deku_url, timeout=aiohttp.ClientTimeout(total=3)) as resp:
                 if resp.status == 200:
@@ -294,12 +304,10 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
 
 
 def _build_direct_battle_url(bid: str) -> str:
-    # Use direct URL without ~~showdown to avoid "visit showdown directly" frame check.
-    # OBS browser sources load as top-level pages so X-Frame-Options doesn't apply.
-    # Keep spectator hash intact - it's required for spectator access.
-    # Without the hash, PS redirects to homepage instead of showing the battle.
-    ts = int(time.time())
-    return f"https://play.pokemonshowdown.com/{bid}?r={ts}"
+    # OBS browser sources should be logged into the spectator account
+    # (SPECTATOR_USERNAME in .env) so they can view any battle, with or
+    # without a spectator hash.  The bot invites the spectator to each battle.
+    return f"https://play.pokemonshowdown.com/{bid}"
 
 
 def _build_slot_map(battles: list[dict]) -> dict[int, dict]:
@@ -604,6 +612,45 @@ async def _filter_finished_battles(battles: list[dict]) -> list[dict]:
     return filtered
 
 
+async def _cleanup_ghost_battles() -> None:
+    """Remove finished/stale battles from active_battles.json.
+
+    Uses two strategies:
+    1. Replay existence check: if a replay exists on Showdown, the battle is over.
+    2. Hard age cutoff: any battle older than GHOST_BATTLE_MAX_AGE_SEC is removed.
+
+    Writes cleaned data back to active_battles.json so OBS transitions to idle.
+    """
+    battles_data = state_store.read_active_battles()
+    battles = battles_data.get("battles", [])
+    if not battles:
+        return
+
+    # Strategy 1: replay-based check (filters out battles with existing replays)
+    filtered = await _filter_finished_battles(battles)
+
+    # Strategy 2: hard age cutoff
+    now = time.time()
+    age_filtered = []
+    for battle in filtered:
+        started = _parse_started_iso(battle.get("started"))
+        if started:
+            age = now - started.timestamp()
+            if age > GHOST_BATTLE_MAX_AGE_SEC:
+                print(f"[GHOST-CLEANUP] Battle {battle.get('id')} exceeded max age ({age:.0f}s > {GHOST_BATTLE_MAX_AGE_SEC}s)")
+                continue
+        age_filtered.append(battle)
+
+    if len(age_filtered) < len(battles):
+        filtered_ids = {b.get("id") for b in age_filtered}
+        removed_ids = [b.get("id") for b in battles if b.get("id") not in filtered_ids]
+        print(f"[GHOST-CLEANUP] Removing {len(removed_ids)} ghost battle(s): {removed_ids}")
+        battles_data["battles"] = age_filtered
+        battles_data["count"] = len(age_filtered)
+        battles_data["updated"] = datetime.now().isoformat()
+        state_store.write_active_battles(battles_data)
+
+
 async def maybe_refresh_elo_from_event(event_type: str, payload: dict) -> None:
     global _last_elo_event_ts
     trigger = False
@@ -725,24 +772,40 @@ async def maybe_update_obs_sources(payload: dict) -> None:
             previous_id = _last_obs_ids.get(idx)
             
             print(f"[OBS-UPDATE] Slot {idx} ({source_name}): previous={previous_id}, desired={desired_id}")
-            
+
+            # Force stale battles to idle — if the same battle has been
+            # displayed for too long, the Showdown page is likely showing
+            # an empty post-game lobby.  Reset to the "SCANNING..." idle page.
+            if previous_id and previous_id == desired_id and OBS_STALE_BATTLE_SEC > 0:
+                last_update = _last_obs_updates.get(idx, 0)
+                age = time.time() - last_update if last_update else 0
+                if age > OBS_STALE_BATTLE_SEC:
+                    print(f"[OBS-UPDATE] Slot {idx}: Battle stale ({age:.0f}s > {OBS_STALE_BATTLE_SEC}s), forcing idle")
+                    await _obs_client.set_browser_source_url(source_name, _cache_bust(OBS_IDLE_URL))
+                    _last_obs_ids[idx] = None
+                    _last_obs_updates[idx] = time.time()
+                    continue
+
             if previous_id == desired_id:
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
                 continue
             
+            # Two-step CEF transition for ALL URL changes:
+            # current → about:blank → 500ms pause → new URL
+            # Forces CEF to fully unload the old page, preventing green
+            # glitch bars on any transition (battle→idle, idle→battle, battle→battle).
+            current_url = _last_obs_urls.get(idx)
+            if current_url and current_url != "about:blank":
+                await _obs_client.set_browser_source_url(source_name, "about:blank")
+                await asyncio.sleep(0.5)
+
             if desired_id:
-                if OBS_FORCE_REFRESH:
-                    # Force a clean load between battles to avoid stale CEF state.
-                    print(f"[OBS-UPDATE] Slot {idx}: Force refresh to idle page")
-                    await _obs_client.set_browser_source_url(source_name, _cache_bust(OBS_IDLE_URL))
-                    if OBS_REFRESH_PAUSE_MS > 0:
-                        await asyncio.sleep(OBS_REFRESH_PAUSE_MS / 1000)
                 url = _build_direct_battle_url(desired_id)
                 print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id}")
             else:
-                url = OBS_IDLE_URL
+                url = _cache_bust(OBS_IDLE_URL)
                 print(f"[OBS-UPDATE] Slot {idx}: Setting to idle page")
-            
+
             ok = await _obs_client.set_browser_source_url(source_name, url)
             _last_obs_urls[idx] = url
             _last_obs_updates[idx] = time.time()
@@ -899,6 +962,7 @@ async def poll_files(app: web.Application) -> None:
     last_battles_mtime = None
     last_obs_sync = 0.0
     last_elo_poll = 0.0
+    last_ghost_check = 0.0
 
     while True:
         await asyncio.sleep(2)
@@ -950,6 +1014,17 @@ async def poll_files(app: web.Application) -> None:
                         await broadcast("STATE_UPDATE", build_state_payload())
                 except Exception:
                     pass
+
+        # Periodic ghost battle cleanup: verify battles are still alive
+        # using replay existence check and hard age cutoff.
+        if GHOST_CHECK_INTERVAL_SEC > 0:
+            now = time.time()
+            if (now - last_ghost_check) >= GHOST_CHECK_INTERVAL_SEC:
+                last_ghost_check = now
+                try:
+                    await _cleanup_ghost_battles()
+                except Exception as e:
+                    print(f"[GHOST-CLEANUP] Error: {e}")
 
 
 async def start_background_tasks(app: web.Application) -> None:
@@ -1069,8 +1144,13 @@ BATTLE_SLOT_HTML = """<!DOCTYPE html>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
-font-family:'Outfit',system-ui,sans-serif;color:#eaeaea;
-display:flex;flex-direction:column;align-items:center;justify-content:center}}
+font-family:'Outfit',system-ui,sans-serif;color:#eaeaea}}
+#scanning{{position:absolute;top:0;left:0;width:100%;height:100%;
+display:flex;flex-direction:column;align-items:center;justify-content:center;
+z-index:2;transition:opacity 0.3s}}
+#battle-frame{{position:absolute;top:0;left:0;width:100%;height:100%;
+border:none;z-index:1}}
+.hidden{{opacity:0;pointer-events:none}}
 .sonar{{width:120px;height:120px;position:relative;margin-bottom:24px}}
 .sonar-circle{{position:absolute;top:50%;left:50%;
 transform:translate(-50%,-50%);border:1.5px solid #08d9d6;
@@ -1089,22 +1169,42 @@ color:#08d9d6;text-shadow:0 0 12px rgba(8,217,214,0.4);animation:pulse 2s ease-i
 color:rgba(8,217,214,0.4)}}
 @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.5}}}}
 </style></head><body>
-<div class="sonar">
-  <div class="sonar-scanner"></div>
-  <div class="sonar-circle"></div>
-  <div class="sonar-circle"></div>
-  <div class="sonar-circle"></div>
-  <div class="sonar-circle"></div>
+<div id="scanning">
+  <div class="sonar">
+    <div class="sonar-scanner"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+    <div class="sonar-circle"></div>
+  </div>
+  <div class="scanning-text">SCANNING...</div>
+  <div class="scanning-sub">SLOT {slot} &mdash; AWAITING BATTLE</div>
 </div>
-<div class="scanning-text">SCANNING...</div>
-<div class="scanning-sub">SLOT {slot} &mdash; AWAITING BATTLE</div>
+<iframe id="battle-frame" class="hidden"></iframe>
 <script>
 (function(){{
   var SLOT={slot};
   var STATE_URL='/magneton-state';
-  var POLL_MS=4000;
+  var POLL_MS=3000;
   var activeBid=null;
+  var scanning=document.getElementById('scanning');
+  var frame=document.getElementById('battle-frame');
+
   function slotOf(b,i){{return b.slot!=null?parseInt(b.slot):(i+1);}}
+
+  function showBattle(bid){{
+    var url='https://play.pokemonshowdown.com/'+bid+'?r='+Date.now();
+    frame.src=url;
+    frame.classList.remove('hidden');
+    scanning.classList.add('hidden');
+  }}
+
+  function showScanning(){{
+    frame.classList.add('hidden');
+    frame.src='about:blank';
+    scanning.classList.remove('hidden');
+  }}
+
   function poll(){{
     fetch(STATE_URL+'?t='+Date.now())
       .then(function(r){{return r.json();}})
@@ -1117,7 +1217,12 @@ color:rgba(8,217,214,0.4)}}
         if(battle&&battle.id){{
           if(battle.id!==activeBid){{
             activeBid=battle.id;
-            window.location.replace('https://play.pokemonshowdown.com/'+battle.id+'?r='+Date.now());
+            showBattle(battle.id);
+          }}
+        }} else {{
+          if(activeBid!==null){{
+            activeBid=null;
+            showScanning();
           }}
         }}
       }})

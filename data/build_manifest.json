@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "builds": [
+    {
+      "sha": "9281cc7f",
+      "subject": "Fix 4 decision engine bugs, add Thunder Wave speed-control awareness",
+      "timestamp": "2026-03-22T10:00:00+00:00",
+      "source": "initial-seed",
+      "progress_at_deploy": 2302,
+      "progress_end": null,
+      "timestamp_end": null,
+      "files_changed": null,
+      "reverted": false
+    }
+  ],
+  "reverts": [],
+  "metadata": {
+    "repo": "RJW34/fouler-play",
+    "branch": "master",
+    "created": "2026-03-22T10:00:00+00:00",
+    "last_updated": "2026-03-23T03:30:07.136038+00:00"
+  }
+}

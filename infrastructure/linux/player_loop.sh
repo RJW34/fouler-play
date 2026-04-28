@@ -53,9 +53,9 @@ source venv/bin/activate
 while true; do
     log "--- Starting batch of ${BATCH_SIZE} games ---"
     
-    # Pull latest code first
-    log "Pulling latest from $BRANCH..."
-    git pull origin "$BRANCH" 2>&1 | tee -a "$LOG_FILE" || true
+    # Pull latest code via deploy wrapper (tracks build manifest)
+    log "Running deploy update..."
+    bash "${REPO_DIR}/infrastructure/linux/deploy_update.sh" 2>&1 | tee -a "$LOG_FILE" || true
     
     # Play games
     log "Playing ${BATCH_SIZE} games..."

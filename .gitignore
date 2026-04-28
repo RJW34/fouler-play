@@ -50,12 +50,13 @@ data/matchup_cache/
 # Runtime data
 active_battles.json
 daily_stats.json
-battle_stats.json
 aiohttp_replay_check.json
 replay_check.json
 stream_status.json
 events_queue.json
+events_queue_test.json
 .last_startup.json
+.last_analysis_posted
 diagnostics/health_report.json
 teams/.team_iterator_index
 .bot.pid
@@ -63,6 +64,9 @@ twitch_key.txt
 
 # Generated reports
 replay_analysis/reports/
+replay_analysis/batches/
+replay_analysis/*_gameplan.json
+replay_analysis/*_test_results.json
 
 # Temp directory
 tmp/
@@ -73,8 +77,12 @@ tmp_*.txt
 # Auto-stream backups (dead code)
 streaming/auto_stream.py.backup*
 
+# Claude Code session data
+.claude/
+
 # Console output fragments
 Bot
 Overlay
+state/citadel_status.json
 Press
 Server

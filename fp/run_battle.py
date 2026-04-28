@@ -158,6 +158,7 @@ STALE_STRIKES = int(os.getenv("BATTLE_STALE_STRIKES", "2"))
 # (= 5 * 120s = 10 minutes of silence).
 DISCONNECT_STRIKES = int(os.getenv("BATTLE_DISCONNECT_STRIKES", "5"))
 STALE_DISPLAY_GRACE_SEC = int(os.getenv("BATTLE_STALE_DISPLAY_GRACE_SEC", "900"))
+GHOST_BATTLE_MAX_AGE_SEC = int(os.getenv("GHOST_BATTLE_MAX_AGE_SEC", "1800"))  # 30min: hard ghost removal (stall games can run 20+ min)
 # Throttle active_battles.json writes to avoid excessive disk churn.
 ACTIVE_BATTLES_WRITE_INTERVAL_SEC = float(os.getenv("ACTIVE_BATTLES_WRITE_INTERVAL_SEC", "1.0"))
 # How often (seconds) the battle loop refreshes active_battles.json heartbeat.
@@ -262,7 +263,7 @@ def _rollover_worker_handler(worker_id: int, battle_tag: str, opponent_name: str
 
 # Battle chat defaults
 OPENING_CHAT_MESSAGE = "hf"
-POST_BATTLE_MESSAGES = ["gg", "ttv/thepeakmos"]
+POST_BATTLE_MESSAGES = ["gg", "twitch.tv/mfabso"]
 
 # Resume queue for in-progress battles (populated on startup from active_battles.json)
 _resume_lock = asyncio.Lock()
@@ -806,6 +807,21 @@ async def update_active_battles_file():
             ]
             for bid in stale_tags:
                 _log_battle_removal(bid, f"stale_grace_expired ({STALE_DISPLAY_GRACE_SEC}s)")
+                _active_battles.pop(bid, None)
+
+        # Hard age-based ghost cleanup: remove ANY battle older than max age,
+        # regardless of status. Catches entries that slip through normal
+        # finalization (hung websocket, missed |win| message, etc.).
+        # Marking as concluded prevents the heartbeat from re-registering.
+        if GHOST_BATTLE_MAX_AGE_SEC > 0:
+            now_gc = time.time()
+            ghost_tags = [
+                bid for bid, info in _active_battles.items()
+                if isinstance(info.get("started"), datetime)
+                and (now_gc - info["started"].timestamp()) > GHOST_BATTLE_MAX_AGE_SEC
+            ]
+            for bid in ghost_tags:
+                _log_battle_removal(bid, f"ghost_max_age ({GHOST_BATTLE_MAX_AGE_SEC}s)")
                 _active_battles.pop(bid, None)
 
         battles = []
@@ -2089,6 +2105,15 @@ async def _finalize_battle_runtime(
     *,
     send_end_event: bool,
 ) -> None:
+    # Save replay before leaving so the OBS ghost cleanup can detect
+    # finished battles via the replay API.  Without this, replays are
+    # never uploaded and the ghost check always returns 404.
+    try:
+        await ps_websocket_client.send_message(battle_tag, ["/savereplay"])
+        await asyncio.sleep(0.5)  # brief pause for PS to process
+    except Exception:
+        pass
+
     try:
         await ps_websocket_client.leave_battle(battle_tag)
     except Exception:
