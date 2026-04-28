@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fouler-play.local/schemas/elo-proof.schema.json",
+  "title": "fouler-play 1800+ ELO Proof",
+  "type": "object",
+  "required": ["schemaVersion", "format", "account", "target", "session", "games", "summary"],
+  "properties": {
+    "schemaVersion": {"const": "fouler-play-elo-proof/v1"},
+    "format": {"const": "gen9ou"},
+    "account": {
+      "type": "object",
+      "required": ["showdownUserId"],
+      "properties": {
+        "showdownUserId": {"type": "string"},
+        "ratingSource": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "target": {
+      "type": "object",
+      "required": ["ratingFloor", "minimumCompletedGames", "noCherryPicking"],
+      "properties": {
+        "ratingFloor": {"type": "integer", "minimum": 1000},
+        "minimumCompletedGames": {"type": "integer", "minimum": 1},
+        "opponentBand": {"type": "string"},
+        "noCherryPicking": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "session": {
+      "type": "object",
+      "required": ["startedAt", "endedAt", "runCountTarget"],
+      "properties": {
+        "startedAt": {"type": ["string", "null"]},
+        "endedAt": {"type": ["string", "null"]},
+        "runCountTarget": {"type": "integer"},
+        "maxConcurrentBattles": {"type": "integer"}
+      },
+      "additionalProperties": true
+    },
+    "games": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["battleId", "result", "replayUrl"],
+        "properties": {
+          "battleId": {"type": "string"},
+          "result": {"enum": ["win", "loss", "draw", "forfeit", "unknown"]},
+          "replayUrl": {"type": "string"},
+          "opponent": {"type": "string"},
+          "opponentRating": {"type": ["integer", "null"]},
+          "ratingBefore": {"type": ["integer", "null"]},
+          "ratingAfter": {"type": ["integer", "null"]},
+          "failureClasses": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": true
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["completedGames", "wins", "losses", "peakRating", "finalRating", "passesTarget"],
+      "properties": {
+        "completedGames": {"type": "integer"},
+        "wins": {"type": "integer"},
+        "losses": {"type": "integer"},
+        "peakRating": {"type": ["integer", "null"]},
+        "finalRating": {"type": ["integer", "null"]},
+        "passesTarget": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
