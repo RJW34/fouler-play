@@ -76,37 +76,6 @@ REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
 
-# Discord operational feed
-_DEKU_BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN", "")
-_DEKU_CHANNEL_ID = os.getenv("DISCORD_DEKU_CHANNEL_ID", "1466642788472066296")
-_deku_last_post_ts = 0.0
-
-
-async def _post_to_deku_discord(message: str) -> None:
-    """Best-effort post to #deku-workspace operational feed."""
-    global _deku_last_post_ts
-    if not _DEKU_BOT_TOKEN or not _DEKU_CHANNEL_ID:
-        return
-    now = time.time()
-    if now - _deku_last_post_ts < 5.0:  # Rate limit
-        return
-    _deku_last_post_ts = now
-    url = f"https://discord.com/api/v10/channels/{_DEKU_CHANNEL_ID}/messages"
-    headers = {
-        "Authorization": f"Bot {_DEKU_BOT_TOKEN}",
-        "Content-Type": "application/json",
-        "User-Agent": "DiscordBot (https://deku.dev, 1.0)",
-    }
-    try:
-        async with aiohttp.ClientSession() as sess:
-            async with sess.post(url, json={"content": message[:2000]}, headers=headers,
-                                 timeout=aiohttp.ClientTimeout(total=5)) as resp:
-                if resp.status in (200, 201):
-                    print(f"[DEKU] Posted to Discord: {message[:60]}...")
-    except Exception as e:
-        print(f"[DEKU] Discord post failed: {e}")
-
-
 ws_clients: set[web.WebSocketResponse] = set()
 _obs_client = None
 _obs_update_lock = asyncio.Lock()
@@ -318,17 +287,6 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
                 await maybe_update_obs_sources(state)
             else:
                 print(f"[EVENT] FAIL: No OBS client available for {event_type} update")
-
-        # Post notable events to #deku-workspace
-        if event_type == "RTMP_CONNECT":
-            await _post_to_deku_discord("\U0001f4f9 **Stream**: RTMP client connected")
-        elif event_type == "RTMP_DISCONNECT":
-            await _post_to_deku_discord("\U0001f4f9 **Stream**: RTMP client disconnected")
-        elif event_type == "OBS_CRASH":
-            await _post_to_deku_discord("\U0001f6a8 **OBS**: Crashed / disconnected!")
-        elif event_type == "OBS_RECONNECT":
-            await _post_to_deku_discord("\u2705 **OBS**: Reconnected")
-
     except Exception as e:
         print(f"[EVENT] FAIL: Error processing event {event_type}: {e}")
         import traceback
@@ -1037,16 +995,6 @@ async def cleanup_background_tasks(app: web.Application) -> None:
 
 # ── Grid Panel Handlers ──
 
-async def handle_stream_identity(request: web.Request) -> web.FileResponse:
-    """Serve the Stream Identity center panel HTML."""
-    return web.FileResponse(str(STREAMING_DIR / "stream_identity.html"))
-
-
-async def handle_stream_identity_compact(request: web.Request) -> web.FileResponse:
-    """Serve the compact Stream Identity panel for 640x120 layout."""
-    return web.FileResponse(str(STREAMING_DIR / "stream_identity_compact.html"))
-
-
 async def handle_fouler_stats(request: web.Request) -> web.FileResponse:
     """Serve the Fouler Stats panel HTML."""
     return web.FileResponse(str(STREAMING_DIR / "fouler_stats.html"))
@@ -1083,7 +1031,7 @@ async def handle_firered_brain(request: web.Request) -> web.FileResponse:
 
 
 async def handle_firered_brain_state(request: web.Request) -> web.Response:
-    """Return current Fire Red brain state as JSON."""
+    """Return current firered brain state as JSON."""
     return web.json_response(_firered_brain_state)
 
 
@@ -1096,7 +1044,7 @@ async def handle_firered_update(request: web.Request) -> web.Response:
             for key in ("status", "objective", "last_action", "location", "title", "subtitle", "status_text", "progress"):
                 if key in data:
                     _firered_brain_state[key] = data[key]
-            _firered_brain_state["updated"] = time.time()
+            _firered_brain_state["updated"] = __import__('time').time()
         return web.json_response({"ok": True, "state": _firered_brain_state})
     except Exception as e:
         return web.json_response({"ok": False, "error": str(e)}, status=400)
@@ -1251,13 +1199,13 @@ async def handle_battle_slot(request: web.Request) -> web.Response:
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/ws", handle_ws)
+    app.router.add_get("/health", handle_health)
     app.router.add_post("/event", handle_event)
     app.router.add_get("/obs", handle_obs)
     app.router.add_get("/overlay", handle_overlay)
     app.router.add_get("/idle", handle_idle)
     app.router.add_get("/debug", handle_debug)
     app.router.add_get("/battles", handle_battles)
-    app.router.add_get("/health", handle_health)
     app.router.add_get("/status", handle_status)
     app.router.add_get("/state", handle_state)
     app.router.add_get("/deku-state", handle_deku_state)
@@ -1265,8 +1213,6 @@ def create_app() -> web.Application:
     app.router.add_get("/obs-debug", handle_debug_state)  # Alias for debug_state
     app.router.add_get("/active_battles.json", handle_battles_file)
     register_dashboard_routes(app)
-    app.router.add_get("/stream-identity", handle_stream_identity)
-    app.router.add_get("/stream-identity-compact", handle_stream_identity_compact)
     app.router.add_get("/fouler-stats", handle_fouler_stats)
     app.router.add_get("/emerald-brain", handle_emerald_brain)
     app.router.add_get("/emerald-brain-state", handle_emerald_brain_state)
