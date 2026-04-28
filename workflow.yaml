@@ -16,7 +16,7 @@ telemetry:
     - battle_batch_stats
     - stability_report
   status_path: state/citadel_status.json
-  refresh_command: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export_citadel_status.ps1
+  refresh_command: python3 scripts/export_citadel_status.py
   refresh_cadence_seconds: 300
 related_projects:
   - foul-play

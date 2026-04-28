@@ -8,8 +8,8 @@
   "mission": "Train and evaluate a high-level Gen 9 OU bot through live bounded battle cycles, replay/decision proof, DEKU-guided analysis, and iteration toward 1800+ ELO play.",
   "runner": {
     "safeToAutostart": false,
-    "start": [".venv/bin/python", "run.py", "--run-count", "25", "--max-concurrent-battles", "2"],
-    "stop": ["bash", "scripts/safe_restart_monitor.sh"],
+    "start": [".venv/bin/python", "scripts/devstream_session.py", "start", "--run-count", "25", "--max-concurrent-battles", "2", "--execute"],
+    "stop": [".venv/bin/python", "scripts/devstream_session.py", "stop", "--execute"],
     "status": [".venv/bin/python", "scripts/devstream_health.py"]
   },
   "health": {
