@@ -4,12 +4,12 @@
   "packets": [
     {
       "id": "fouler-perf-001",
-      "title": "Define 1800 ELO proof contract",
-      "status": "ready",
-      "objective": "Create a machine-readable proof format for rating movement, opponent bands, batch W/L, replay ids, and representative failure classes.",
+      "title": "Generate live 1800 ELO proof files",
+      "status": "planned",
+      "objective": "Write a batch-end proof file for rating movement, opponent bands, batch W/L, replay ids, and representative failure classes using the committed ELO proof schema.",
       "allowedPaths": ["devstream/", "replay_analysis/", "scripts/", "tests/"],
       "validation": ["python3 -m py_compile scripts/devstream_health.py", "python3 -m pytest tests/test_autoresearch.py tests/test_state_endpoint_status.py"],
-      "doneProof": ["devstream/truth/elo-proof.schema.json"]
+      "doneProof": ["devstream/truth/latest-elo-proof.json"]
     },
     {
       "id": "fouler-perf-002",
@@ -18,13 +18,13 @@
       "objective": "Convert autoresearch and replay-analysis outputs into constrained DEKU work packets with evidence, allowed files, validation, and expected battle-batch proof.",
       "allowedPaths": ["devstream/", "replay_analysis/", "scripts/", "tests/"],
       "validation": ["python3 -m pytest tests/test_autoresearch.py"],
-      "doneProof": ["devstream/work_packets/generated/README.md"]
+      "doneProof": ["devstream/work_packets/generated/*.json"]
     },
     {
       "id": "fouler-perf-003",
-      "title": "Canonical bounded devstream runner",
+      "title": "Reviewed bounded devstream execute path",
       "status": "planned",
-      "objective": "Add safe start/stop wrappers that run bounded battle batches, start the OBS HTTP server, drain active battles, and write runtime/completion truth.",
+      "objective": "Promote the dry-run session planner into a reviewed execute path that runs bounded battle batches, starts the OBS HTTP server, drains active battles, and writes runtime/completion truth.",
       "allowedPaths": ["devstream/", "scripts/", "streaming/", "tests/"],
       "validation": ["python3 -m py_compile scripts/devstream_health.py streaming/serve_obs_page.py", "python3 -m pytest tests/test_hybrid_dashboard.py tests/test_state_endpoint_status.py"],
       "doneProof": ["devstream/truth/completion.json"]

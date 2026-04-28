@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "fouler-play-elo-proof/v1",
+  "format": "gen9ou",
+  "account": {
+    "showdownUserId": "configured-at-runtime",
+    "ratingSource": "pokemonshowdown-user-api"
+  },
+  "target": {
+    "ratingFloor": 1800,
+    "minimumCompletedGames": 30,
+    "opponentBand": "prefer 1700+ when opponent rating is known",
+    "noCherryPicking": true
+  },
+  "session": {
+    "startedAt": null,
+    "endedAt": null,
+    "runCountTarget": 30,
+    "maxConcurrentBattles": 2
+  },
+  "games": [],
+  "summary": {
+    "completedGames": 0,
+    "wins": 0,
+    "losses": 0,
+    "peakRating": null,
+    "finalRating": null,
+    "passesTarget": false
+  }
+}

@@ -32,8 +32,24 @@ The next OBS pass should improve scene composition around these endpoints, but t
 - `replay_analysis/autoresearch_latest.json`
 - `replay_analysis/reports/autoresearch_latest.md`
 - `stability_report.json`
+- `devstream/truth/elo-proof.schema.json`
+- `devstream/truth/elo-proof.example.json`
 
 `stream_status.json` and report files may be stale while the project is idle. The health probe reports that as `idle` or `degraded`; it does not start battles to refresh them.
+
+## Bounded Session Commands
+
+These commands are intentionally safe by default. They describe or verify a devstream run without queuing battles or stopping services unless a reviewed execute path is added later.
+
+```bash
+cd /home/ryan/projects/fouler-play
+python3 scripts/devstream_session.py doctor
+python3 scripts/devstream_session.py start --run-count 25 --max-concurrent-battles 2
+python3 scripts/devstream_session.py stop
+python3 scripts/devstream_packetize.py
+```
+
+`scripts/devstream_session.py start` and `stop` currently emit dry-run plans. Their `--execute` path is deliberately blocked until the wrapper can drain active battles, write completion truth, and prove rating/battle outcomes.
 
 ## Improvement Loop
 
@@ -61,8 +77,8 @@ When the OBS server is running, `/health` returns the same structured payload vi
 
 ## Next Work Packets
 
-1. Define the 1800+ ELO measurement contract and rating-window proof files.
-2. Add a canonical `scripts/devstream_start.sh` wrapper for bounded cycles that starts the OBS server and writes runtime truth.
-3. Add drain-first `scripts/devstream_stop.sh` semantics around active battles.
+1. Generate live ELO proof files that conform to `devstream/truth/elo-proof.schema.json`.
+2. Add the reviewed execute path for bounded sessions after drain-first stop semantics are in place.
+3. Wire `scripts/devstream_packetize.py --write` into a human-reviewed DEKU packet flow.
 4. Write `devstream/truth/completion.json` at bounded cycle end with battle counts, replay ids, report paths, rating deltas, and validation status.
 5. Retire or clearly label legacy 6-slot text-source docs so the browser-source architecture is obvious.
