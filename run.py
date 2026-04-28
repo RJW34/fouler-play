@@ -158,7 +158,7 @@ class BattleStats:
         except Exception as e:
             logger.warning("Failed to save battle_stats.json: %s", e)
 
-    def _record_battle(self, team_file_name, result, battle_tag=None):
+    def _record_battle(self, team_file_name, result, battle_tag=None, rating=None):
         from datetime import datetime, timezone
         entry = {
             "battle_id": battle_tag or "unknown",
@@ -166,33 +166,34 @@ class BattleStats:
             "team_file": team_file_name or "unknown",
             "result": result,
             "replay_id": battle_tag or "",
+            "rating": rating,
         }
         self._battles.append(entry)
         if len(self._battles) > BATTLE_STATS_MAX_ENTRIES:
             del self._battles[:-BATTLE_STATS_MAX_ENTRIES]
         self._save_battles()
 
-    async def record_win(self, team_file_name, battle_tag=None):
+    async def record_win(self, team_file_name, battle_tag=None, rating=None):
         async with self._lock:
             self.wins += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "win", battle_tag)
+            self._record_battle(team_file_name, "win", battle_tag, rating=rating)
             logger.info("Won with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
-    async def record_loss(self, team_file_name, battle_tag=None):
+    async def record_loss(self, team_file_name, battle_tag=None, rating=None):
         async with self._lock:
             self.losses += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "loss", battle_tag)
+            self._record_battle(team_file_name, "loss", battle_tag, rating=rating)
             logger.info("Lost with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
-    async def record_disconnect(self, team_file_name, battle_tag=None):
+    async def record_disconnect(self, team_file_name, battle_tag=None, rating=None):
         async with self._lock:
             self.disconnects += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "disconnect", battle_tag)
+            self._record_battle(team_file_name, "disconnect", battle_tag, rating=rating)
             logger.info("Disconnect with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}\tDC: {}".format(self.wins, self.losses, self.disconnects))
 
@@ -328,24 +329,31 @@ async def battle_worker(
         if drain_event.is_set():
             logger.info(f"Worker {worker_id}: Drain mode active, stopping before new battle")
             break
-        # Check per-worker quota first (if set)
+        # Check per-worker quota (authoritative when set — each worker
+        # plays exactly its share, no global race condition).
         if per_worker_quota > 0 and worker_battles >= per_worker_quota:
             logger.info(f"Worker {worker_id}: Per-worker quota reached ({worker_battles}/{per_worker_quota}), stopping")
             break
-        # Check global run_count (safety net)
-        battles_run = await stats.get_battles_run()
-        if battles_run >= FoulPlayConfig.run_count:
-            logger.info(f"Worker {worker_id}: Run count reached, stopping")
-            break
+        # Global run_count fallback only when per-worker quotas are NOT set
+        # (single-worker mode or unlimited).  When quotas are active, the
+        # global check races between workers and causes uneven allocation
+        # (e.g. 10/9/11 instead of 10/10/10).
+        if per_worker_quota <= 0:
+            battles_run = await stats.get_battles_run()
+            if battles_run >= FoulPlayConfig.run_count:
+                logger.info(f"Worker {worker_id}: Run count reached, stopping")
+                break
 
         try:
             search_slot_acquired = False
             resume_ready = False
             start_search = False
 
-            # Determine if a resume battle is available for this worker
+            # Determine if a resume battle is available for this worker.
+            # Skip resumes when per-worker quotas are active — resumed
+            # battles would push the worker over its 10-game quota.
             if FoulPlayConfig.bot_mode == BotModes.search_ladder:
-                resume_ready = await has_resume_battle(worker_id)
+                resume_ready = await has_resume_battle(worker_id) if per_worker_quota <= 0 else False
                 while (
                     get_active_battle_count() >= FoulPlayConfig.max_concurrent_battles
                     and not resume_ready
@@ -445,26 +453,31 @@ async def battle_worker(
                 logger.info(f"Worker {worker_id}: Drain mode active, exiting")
                 break
 
-            # Record result — ALL outcomes count toward quota
+            # Record result — ALL outcomes count toward quota.
+            # CRITICAL: worker_battles MUST increment even if recording fails,
+            # otherwise the per-worker quota never fires and the bot runs forever.
+            worker_battles += 1
             lost_battle = False
-            if winner == FoulPlayConfig.username:
-                await stats.record_win(team_file_name, battle_tag)
-                worker_battles += 1
-            elif winner is None:
-                logger.info(
-                    "Worker %s: battle ended without winner (disconnect/timeout, tag=%s)",
-                    worker_id,
-                    battle_tag,
-                )
-                await stats.record_disconnect(team_file_name, battle_tag)
-                worker_battles += 1
-            else:
-                await stats.record_loss(team_file_name, battle_tag)
-                worker_battles += 1
-                lost_battle = True
+            try:
+                _post_elo = None
+                try:
+                    from fp.run_battle import _fetch_elo
+                    _post_elo, _ = await _fetch_elo(FoulPlayConfig.username)
+                except Exception:
+                    pass
+
+                if winner == FoulPlayConfig.username:
+                    await stats.record_win(team_file_name, battle_tag, rating=_post_elo)
+                elif winner is None:
+                    await stats.record_disconnect(team_file_name, battle_tag, rating=_post_elo)
+                else:
+                    await stats.record_loss(team_file_name, battle_tag, rating=_post_elo)
+                    lost_battle = True
+            except Exception as rec_err:
+                logger.error(f"Worker {worker_id}: Failed to record battle result: {rec_err}")
 
             if per_worker_quota > 0:
-                logger.info(f"Worker {worker_id}: battle {worker_battles}/{per_worker_quota} complete")
+                print(f"[QUOTA] Worker {worker_id}: battle {worker_battles}/{per_worker_quota}", flush=True)
 
             check_dictionaries_are_unmodified(original_pokedex, original_move_json)
 

@@ -1,0 +1,28 @@
+project_id: fouler-play
+name: Fouler Play
+family: Pokemon / Automation
+status: active
+owner: mtoli
+kind: competitive-bot
+source_of_truth:
+  remote: https://github.com/RJW34/fouler-play.git
+commands:
+  run: python run.py
+  dev: python pipeline.py analyze -n 30
+  test: python -m pytest tests -q
+telemetry:
+  emits:
+    - battle_stream_status
+    - battle_batch_stats
+    - stability_report
+  status_path: state/citadel_status.json
+  refresh_command: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/export_citadel_status.ps1
+  refresh_cadence_seconds: 300
+related_projects:
+  - foul-play
+  - the-abso-citadel
+  - PokeCompletionist
+workflow:
+  lane: Pokemon / Automation
+  objective: Keep overnight battle-loop outcomes, stream posture, and stability diagnostics visible as one operator surface instead of scattered runtime files.
+  next_step: Separate fresh runtime state from historical batch evidence so the Citadel can tell whether the bot is actively running, merely stale, or structurally unhealthy.

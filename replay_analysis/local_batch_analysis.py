@@ -20,7 +20,7 @@ REPORTS_DIR = REPLAY_DIR / "reports"
 
 def analyze_local_replays(max_count: int = 20):
     """Analyze local replay JSONs."""
-    reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "ALL CHUNG"))
+    reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "npctypebeat"))
     replay_files = sorted(REPLAY_DIR.glob("gen9ou-*.json"))[-max_count:]
     
     print(f"Found {len(replay_files)} replay files to analyze")
@@ -47,7 +47,7 @@ def analyze_local_replays(max_count: int = 20):
             result = "unknown"
             if "log" in replay_data:
                 log = replay_data["log"]
-                bot_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+                bot_username = os.getenv("PS_USERNAME", "npctypebeat")
                 if f"{bot_username} won the battle!" in log or f"|win|{bot_username}" in log:
                     result = "win"
                     stats["wins"] += 1
@@ -83,7 +83,7 @@ def build_prompt(reviews: List[str], stats: Dict) -> str:
     """Build analysis prompt for Ollama."""
     winrate = stats["wins"] / stats["total"] if stats["total"] > 0 else 0
     
-    bot_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+    bot_username = os.getenv("PS_USERNAME", "npctypebeat")
     prompt = f"""You are analyzing Pokemon Showdown Gen 9 OU battle replays for a competitive bot named {bot_username}.
 
 BATCH STATISTICS:

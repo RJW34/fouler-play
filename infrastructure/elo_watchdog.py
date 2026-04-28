@@ -152,7 +152,7 @@ def git_revert(commit_hash: str) -> bool:
 
 
 def log_revert_event(deploy_entry: dict, elo_at_deploy: float, current_elo: float):
-    """Write a revert event to deploy_log.json."""
+    """Write a revert event to deploy_log.json and build manifest."""
     deploy_log = load_json(DEPLOY_LOG_PATH)
     if deploy_log is None:
         deploy_log = []
@@ -175,6 +175,19 @@ def log_revert_event(deploy_entry: dict, elo_at_deploy: float, current_elo: floa
         print(f"Revert event logged to {DEPLOY_LOG_PATH}")
     except OSError as e:
         print(f"WARNING: Could not write revert event: {e}", file=sys.stderr)
+
+    # Update build manifest
+    try:
+        from infrastructure.build_manifest import get_manifest
+        m = get_manifest(REPO_DIR)
+        elo_drop = round(elo_at_deploy - current_elo, 1) if elo_at_deploy and current_elo else None
+        m.record_revert(
+            reverted_sha=deploy_entry.get("post_commit", "unknown"),
+            reason=f"ELO drop: {elo_drop} (threshold: {get_elo_threshold()})",
+        )
+        print("Build manifest updated with revert.")
+    except Exception as e:
+        print(f"WARNING: Could not update build manifest: {e}", file=sys.stderr)
 
 
 def check_and_revert() -> bool:

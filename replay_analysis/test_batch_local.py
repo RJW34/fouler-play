@@ -47,7 +47,7 @@ def analyze_local_replays(num_replays: int = 5):
     print(f"Loaded {len(replays)} replays\n")
     
     # Create analyzer components
-    reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "ALL CHUNG"))
+    reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "npctypebeat"))
     analyzer = BatchAnalyzer()
     
     # Extract turn reviews
@@ -69,7 +69,7 @@ def analyze_local_replays(num_replays: int = 5):
             result = "unknown"
             if "winner" in replay_data:
                 winner = replay_data["winner"]
-                bot_username = os.getenv("PS_USERNAME", "ALL CHUNG")
+                bot_username = os.getenv("PS_USERNAME", "npctypebeat")
                 if bot_username.lower() in winner.lower():
                     result = "win"
                     stats["wins"] += 1

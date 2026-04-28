@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from dataclasses import asdict, dataclass
@@ -25,7 +26,7 @@ from data import pokedex
 from fp.helpers import type_effectiveness_modifier
 
 
-DEFAULT_BOT_USERNAME = "ALL CHUNG"
+DEFAULT_BOT_USERNAME = os.getenv("PS_USERNAME", "npctypebeat")
 SETUP_MOVES = {
     "calmmind",
     "curse",

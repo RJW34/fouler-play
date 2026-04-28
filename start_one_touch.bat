@@ -38,7 +38,7 @@ if not defined BOT_LOG_LEVEL set "BOT_LOG_LEVEL=INFO"
 if not defined SAVE_REPLAY set "SAVE_REPLAY=always"
 if not defined MAX_MCTS_BATTLES set "MAX_MCTS_BATTLES=1"
 if not defined OBS_SERVER_PORT set "OBS_SERVER_PORT=8777"
-if not defined AUTO_START_OBS_SERVER set "AUTO_START_OBS_SERVER=1"
+if not defined AUTO_START_OBS_SERVER set "AUTO_START_OBS_SERVER=0"
 
 if not defined TEAM_NAMES if not defined TEAM_LIST if not defined TEAM_NAME set "TEAM_NAME=gen9/ou/fat-team-1-stall"
 

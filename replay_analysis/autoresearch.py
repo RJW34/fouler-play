@@ -13,6 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from data.pokedex_oracle import oracle as _oracle
 from infrastructure.discord_reporting import build_contract_payload
 from infrastructure.event_queue_lib import queue_event
 
@@ -26,7 +27,7 @@ BATCH_HISTORY_DIR = REPLAY_DIR / "batches"
 
 ROUTINE_CHANNEL = os.getenv("FOULER_ROUTINE_CHANNEL", "1466691161363054840")
 RESEARCH_CHANNEL = os.getenv("FOULER_RESEARCH_CHANNEL", "1466869808200028264")
-BOT_USERNAME = os.getenv("PS_USERNAME", "ALL CHUNG")
+BOT_USERNAME = os.getenv("PS_USERNAME", "npctypebeat")
 
 
 @dataclass
@@ -50,6 +51,23 @@ class AutoResearcher:
         self.batch_history_dir = self.replay_dir / "batches"
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         self.batch_history_dir.mkdir(parents=True, exist_ok=True)
+
+    def _detect_team_paths(self, window: list[dict[str, Any]]) -> list[str]:
+        """Extract unique team file paths from the battle window."""
+        seen: set[str] = set()
+        paths: list[str] = []
+        for battle in window:
+            tf = battle.get("team_file", "")
+            if tf and tf not in seen:
+                seen.add(tf)
+                # Try common path patterns
+                for prefix in ["gen9/ou/", ""]:
+                    candidate = prefix + tf
+                    full = self.project_root / "teams" / candidate
+                    if full.exists():
+                        paths.append(candidate)
+                        break
+        return paths
 
     def load_battles(self) -> list[dict[str, Any]]:
         if not self.battle_stats_path.exists():
@@ -393,6 +411,51 @@ class AutoResearcher:
         batch_identity = self._build_batch_identity(window)
         window_summary = self._summarize_window(window)
 
+        # ── Grounding: enrich opponent Pokemon with oracle data ──────
+        # This prevents downstream hallucination by embedding actual
+        # pokedex/moves/smogon data alongside every flagged opponent.
+        grounded_opponents = []
+        team_paths = self._detect_team_paths(window)
+        for opp_entry in top_opponents:
+            opp_name = opp_entry["pokemon"]
+            grounded_entry = {
+                **opp_entry,
+                "grounding": _oracle.grounding_block(opp_name),
+                "matchups": {},
+            }
+            for team_path in team_paths:
+                mu = _oracle.matchup_summary(opp_name, team_path)
+                if "error" not in mu:
+                    team_label = Path(team_path).name
+                    grounded_entry["matchups"][team_label] = {
+                        "walls": mu["our_walls"],
+                        "checks": mu["our_checks"],
+                        "threatened": mu["our_threatened"],
+                    }
+            grounded_opponents.append(grounded_entry)
+
+        # Ground our own teams too
+        grounded_teams = {}
+        for team_path in team_paths:
+            team_label = Path(team_path).name
+            try:
+                profile = _oracle.team_profile(team_path)
+                grounded_teams[team_label] = [
+                    {
+                        "name": m.get("name", "?"),
+                        "types": m.get("types", []),
+                        "ability": m.get("ability", ""),
+                        "item": m.get("item", ""),
+                        "moves": [
+                            mv["name"] if isinstance(mv, dict) else mv
+                            for mv in m.get("moves", [])
+                        ],
+                    }
+                    for m in profile
+                ]
+            except Exception:
+                pass
+
         result = {
             "generated_at": datetime.now().isoformat(),
             "batch": batch_identity,
@@ -421,7 +484,11 @@ class AutoResearcher:
                 for issue in issues
             ],
             "top_loss_teams": top_teams,
-            "top_opponent_pokemon": top_opponents,
+            "top_opponent_pokemon": grounded_opponents,
+            "grounded_context": {
+                "source": "data/pokedex_oracle.py — all facts from pokedex.json, moves.json, smogon_stats_cache",
+                "our_teams": grounded_teams,
+            },
         }
         return result
 

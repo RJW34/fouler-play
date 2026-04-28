@@ -364,7 +364,14 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
         d = _estimate_damage(opp, our, move_name)
         opp_best_dmg = max(opp_best_dmg, d)
 
-    # If no revealed moves, estimate conservatively
+    # If no revealed moves, estimate from STAB type matchup.
+    # Use a conservative base (0.3) — at full HP, this won't trigger
+    # a forced switch for 2x weakness (0.3*1.5*2.0=0.9 < 1.0), which
+    # is correct: stall teams often want to scout with U-turn or set
+    # hazards on turn 1 rather than panic-switching.  The forced switch
+    # WILL trigger at lower HP where the risk is real.
+    # A previous version set opp_best_dmg = our_hp_ratio for 2x+ SE,
+    # but this caused massive over-switching (57% → 43% WR drop).
     if not opp_moves and opp_types:
         our_types = _get_effective_types(our)
         for t in opp_types:
@@ -406,17 +413,21 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
     opp_spa_boost = opp_boosts.get(constants.SPECIAL_ATTACK, 0)
     total_offensive_boosts = max(opp_atk_boost, opp_spa_boost)
 
-    if total_offensive_boosts >= 2:
+    if total_offensive_boosts >= 1:
         for move_name in our_moves:
             norm = normalize_name(move_name)
             if norm in PHAZE_MOVES_SET:
+                # Higher confidence at +2+, moderate at +1.
+                # Even +1 Dragon Dance/Swords Dance demands an immediate
+                # phaze — giving a free second boost is often game-losing.
+                conf = 0.80 if total_offensive_boosts >= 2 else 0.72
                 logger.info(
                     f"FORCED LINE: phaze with {move_name} "
                     f"(opponent at +{total_offensive_boosts})"
                 )
                 return ForcedLine(
                     move=move_name,
-                    confidence=0.80,
+                    confidence=conf,
                     reason=f"Phaze: opponent boosted to +{total_offensive_boosts}, using {move_name}",
                     line_type="phaze",
                 )

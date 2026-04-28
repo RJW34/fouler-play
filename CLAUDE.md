@@ -2,7 +2,7 @@
 
 ## Mission
 
-Build an **overnight team-testing service** for a competitive Pokemon player. The player loads fat/stall teams, the bot plays them on ladder while they sleep, and in the morning they get a report: which matchups were hard, which Pokemon underperformed, which replays to study. The live bot account on this machine is the `.env`-configured `PS_USERNAME` (currently **"npctypebeat"** on BAKUGO/MAGNETON), playing **gen9ou**.
+Build an **overnight team-testing service** for a competitive Pokemon player. The player loads fat/stall teams, the bot plays them on ladder while they sleep, and in the morning they get a report: which matchups were hard, which Pokemon underperformed, which replays to study. The live bot account on this machine is the `.env`-configured `PS_USERNAME` (currently **"npctypebeat"**), playing **gen9ou**. The Windows bot machine hostname may be MAGNETON, MIRAIDON, or similar — use OS detection, not hostname.
 
 **Why 1700 ELO matters:** At 1200 (where we are now), opponents play poorly and the data is meaningless for team evaluation. The bot must reach **1700+** so that matchup data reflects how the team performs against competent opponents. 1700 is not the goal — it's the minimum quality threshold for useful test data.
 
@@ -17,11 +17,12 @@ Build an **overnight team-testing service** for a competitive Pokemon player. Th
 
 ## You Own Your Machine
 
-This project runs on **two machines**. When you start a session, determine which machine you are on and act accordingly.
+This project runs on **multiple machines**. When you start a session, determine which machine you are on and act accordingly.
 
 ### How to identify your machine
-- Run `uname -s` or check `$OSTYPE`. Linux = **DEKU**. Windows / `MSYS` / `MINGW` = **BAKUGO**.
-- Or check the hostname: `hostname`.
+- Run `uname -s` or check `$OSTYPE`. Linux = **DEKU**. Windows / `MSYS` / `MINGW` = Windows bot machine.
+- Or check the hostname: `hostname`. Known hostnames: MIRAIDON, MAGNETON (Windows), DEKU (Linux).
+- The Windows machine hostname may change. Use OS detection, not hostname matching.
 
 ---
 
@@ -97,6 +98,8 @@ fouler-play/
 ├── .env.example              # Template for .env (tracked)
 ├── CLAUDE.md                 # THIS FILE — read on every session
 ├── TASKBOARD.md              # Cross-machine coordination — read and update
+├── start_one_touch.bat       # Battle launcher (non-interactive when PS_RUN_COUNT set)
+├── pipeline.py               # Analysis orchestrator (BUILT, do not modify)
 ├── constants.py              # Shim -> re-exports from constants_pkg/
 ├── constants_pkg/            # Penalty/boost values, ability sets, move flags
 ├── fp/
@@ -111,7 +114,9 @@ fouler-play/
 │   │   ├── speed_order.py    # Speed comparison utilities
 │   │   ├── endgame.py        # Endgame solver for 1v1/2v1 scenarios
 │   │   ├── standard_battles.py  # Battle sampling + weighted selection
-│   │   └── move_validators.py   # Move validation
+│   │   ├── move_validators.py   # Move validation
+│   │   ├── opponent_predict.py  # Opponent set/move prediction
+│   │   └── helpers.py           # Search helper utilities
 │   ├── team_analysis.py      # Win condition identification
 │   ├── opponent_model.py     # Opponent tendency tracking
 │   ├── playstyle_config.py   # Per-team playstyle tuning (FAT/STALL configs)
@@ -119,8 +124,9 @@ fouler-play/
 ├── infrastructure/
 │   ├── guardrails.json       # File permissions + safety thresholds
 │   ├── elo_watchdog.py       # Auto-revert bad deploys
-│   ├── linux/                # DEKU's scripts + service files
-│   └── windows/              # BAKUGO's scripts + task installer
+│   ├── improve_agent.py      # Automated coding agent (reads autoresearch, writes fixes)
+│   ├── linux/                # Linux scripts + service files
+│   └── windows/              # Windows scripts + task installer
 ├── streaming/                # OBS/Twitch integration (BUILT, low priority)
 ├── replay_analysis/          # Team performance analysis (BUILT — primary player-facing output)
 │   └── team_performance.py   # Main report generator — this is what the player reads
@@ -128,6 +134,30 @@ fouler-play/
 ├── teams/                    # Team files (NEVER MODIFY)
 └── tests/                    # Test suite
 ```
+
+## Pokemon Data Grounding (MANDATORY)
+
+**Never use LLM knowledge for Pokemon facts.** Type matchups, abilities, move effects, stats, and common sets MUST come from the project's data files. Use the `PokedexOracle`:
+
+```python
+from data.pokedex_oracle import oracle
+oracle.pokemon("gholdengo")                    # types, stats, abilities from pokedex.json
+oracle.move("shadowball")                      # type, power, category from moves.json
+oracle.effectiveness("ghost", ["dark"])         # 0.5 — from the actual type chart
+oracle.common_sets("gholdengo")                # top moves/items from Smogon stats
+oracle.matchup_summary("gholdengo", "gen9/ou/fat-team-1-stall")  # vs our team
+oracle.validate_ability_claim("gholdengo", "Good as Gold")        # True
+oracle.validate_type_claim("ghost", ["dark"], 0.0)                # (False, 0.5)
+```
+
+**Data files (authoritative, never override with LLM knowledge):**
+- `data/pokedex.json` — Pokemon types, stats, abilities
+- `data/moves.json` — move type, power, category, effects
+- `fp/helpers.py` — type effectiveness chart (DAMAGE_MULTIPICATION_ARRAY)
+- `data/smogon_stats_cache/gen9ou-0.json` — Smogon usage: common moves, items, tera types
+- `teams/gen9/ou/` — our actual team files with Pokemon, moves, items, EVs
+
+**Autoresearch reports include grounding blocks** — when opponent Pokemon are flagged, the report embeds their full profile (types, abilities, common moves, matchups against our teams) from the oracle. Agents reading the report should use this grounded data, not generate their own Pokemon knowledge.
 
 ## Key Design Principles
 
@@ -139,6 +169,7 @@ fouler-play/
 6. **Tests must pass** — `python -m pytest tests/ -v` before every push
 7. **Never modify protected files** — see `infrastructure/guardrails.json`
 8. **Report quality matters** — every improvement should eventually make the morning report more useful
+9. **Ground all Pokemon facts** — use `PokedexOracle` or data files, never LLM knowledge (see above)
 
 ## On Every Fresh Session
 

@@ -23,5 +23,9 @@
   "top_issue": null,
   "issues": [],
   "top_loss_teams": [],
-  "top_opponent_pokemon": []
+  "top_opponent_pokemon": [],
+  "grounded_context": {
+    "source": "data/pokedex_oracle.py \u2014 all facts from pokedex.json, moves.json, smogon_stats_cache",
+    "our_teams": {}
+  }
 }

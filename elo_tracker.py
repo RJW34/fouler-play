@@ -17,7 +17,7 @@ import requests
 # Use path relative to this file
 PROJECT_ROOT = Path(__file__).parent
 STATS_FILE = PROJECT_ROOT / "battle_stats.json"
-USERNAME = "ALL CHUNG"
+USERNAME = os.getenv("PS_USERNAME", "npctypebeat")
 TARGET_ELO = 1700
 LOG_FILES = [
     "monitor.log",
