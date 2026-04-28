@@ -14,6 +14,7 @@ from fp.gameplan_generator import GameplanGenerator, Gameplan, generate_gameplan
 from fp.strategic_filter import StrategicFilter, CommitmentHeuristic
 from fp.multi_turn_planner import MultiTurnPlanner, GamePhase
 from fp.helpers import normalize_name
+from fp.theknower_competitive import build_competitive_meta_context
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,11 @@ class StrategicDecisionLayer:
             cached = _battle_cache[battle_tag]
             return cached["archetype"], cached["gameplan"]
         
+        knower_context = build_competitive_meta_context(
+            species=[pokemon.get("species", "") for pokemon in team_data],
+        )
+        logger.info("[STRATEGIC] Competitive oracle context loaded for %s\n%s", battle_tag, knower_context)
+
         # Analyze archetype
         archetype = self.analyzer.classify_team(team_data)
         logger.info(
@@ -70,7 +76,8 @@ class StrategicDecisionLayer:
         _battle_cache[battle_tag] = {
             "archetype": archetype,
             "gameplan": gameplan,
-            "team_data": team_data
+            "team_data": team_data,
+            "knower_context": knower_context,
         }
         # Memory leak guard: evict oldest entries if cache exceeds cap
         while len(_battle_cache) > _BATTLE_CACHE_MAX:

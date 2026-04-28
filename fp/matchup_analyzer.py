@@ -18,6 +18,7 @@ from fp.team_analysis import analyze_team, TeamAnalysis
 from fp.helpers import normalize_name
 from constants_pkg.strategy import SETUP_MOVES, PRIORITY_MOVES
 from fp.playstyle_config import HAZARD_MOVES, PIVOT_MOVES, RECOVERY_MOVES
+from fp.theknower_competitive import build_competitive_meta_context, build_pokedex_oracle_context
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,18 @@ def _build_analysis_prompt(our_team: TeamAnalysis, our_team_data: List[Dict],
     if opp_team.wincons:
         opp_context.append(f"Win conditions: {', '.join(opp_team.wincons)}")
     
+    competitive_oracle = build_competitive_meta_context(
+        species=[pkmn.get("species", "") for pkmn in [*our_team_data, *opp_team_data]],
+    )
+    pokedex_oracle = build_pokedex_oracle_context(our_team_data, opp_team_data)
+
     prompt = f"""You are a competitive Pokemon battler analyzing a Gen 9 OU matchup.
+
+**KNOWER COMPETITIVE ORACLE:**
+{competitive_oracle}
+
+**POKEDEX ORACLE:**
+{pokedex_oracle}
 
 **OUR TEAM ({our_team.playstyle.name}):**
 {chr(10).join(our_summary)}

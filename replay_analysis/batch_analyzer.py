@@ -17,6 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.turn_review import TurnReviewer
+from fp.theknower_competitive import build_competitive_meta_context
 
 # Analysis source contract:
 # - Use a strong external reasoning agent via OpenClaw for Pokemon-competent analysis.
@@ -233,6 +234,7 @@ class BatchAnalyzer:
 
     def build_analysis_prompt(self, reviews: List[str], stats: Dict) -> str:
         """Build a structured prompt for external reasoning analysis with domain grounding."""
+        competitive_context = build_competitive_meta_context()
         prompt = """You are analyzing Pokemon Showdown Gen9 OU battle replays for a competitive bot named BugInTheCode.
 
 === DOMAIN KNOWLEDGE & CONSTRAINTS ===
@@ -264,6 +266,9 @@ PREVIOUS BATCH FINDINGS:
 - Move selection: Good coverage, but underutilizing recovery moves on stall
 - Hazard management: Critical weakness—Stealth Rock setup timing often poor
 - Team matchups: All three teams have viable matchup spreads; issue is execution, not composition
+
+CURRENT THEKNOWER COMPETITIVE SNAPSHOT:
+{competitive_context}
 
 === BATCH ANALYSIS ===
 BATCH STATISTICS:
@@ -300,7 +305,8 @@ Format response as structured improvement report with battle citations.
             losses=stats["losses"],
             winrate=stats["wins"] / stats["total"] if stats["total"] > 0 else 0,
             team_breakdown=self._format_team_breakdown(stats["teams"]),
-            reviews="\n".join(reviews[:15])  # Limit to avoid token overflow
+            reviews="\n".join(reviews[:15]),  # Limit to avoid token overflow
+            competitive_context=competitive_context,
         )
         
         return prompt
