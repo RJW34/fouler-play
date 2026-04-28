@@ -213,7 +213,7 @@ class _FoulPlayConfig:
             help="The PokemonShowdown websocket URI, e.g. wss://sim3.psim.us/showdown/websocket",
         )
         parser.add_argument("--ps-username", required=True)
-        parser.add_argument("--ps-password", default=None)
+        parser.add_argument("--ps-password", default=os.getenv("PS_PASSWORD"))
         parser.add_argument("--ps-avatar", default=None)
         parser.add_argument(
             "--bot-mode", required=True, choices=[e.name for e in BotModes]
