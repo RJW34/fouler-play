@@ -54,7 +54,9 @@ aiohttp_replay_check.json
 replay_check.json
 stream_status.json
 events_queue.json
+events_queue_test.json
 .last_startup.json
+.last_analysis_posted
 diagnostics/health_report.json
 teams/.team_iterator_index
 .bot.pid
@@ -62,6 +64,9 @@ twitch_key.txt
 
 # Generated reports
 replay_analysis/reports/
+replay_analysis/batches/
+replay_analysis/*_gameplan.json
+replay_analysis/*_test_results.json
 
 # Temp directory
 tmp/
