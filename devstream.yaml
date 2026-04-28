@@ -8,12 +8,12 @@
   "mission": "Train and evaluate a high-level Gen 9 OU bot through live bounded battle cycles, replay/decision proof, DEKU-guided analysis, and iteration toward 1800+ ELO play.",
   "runner": {
     "safeToAutostart": false,
-    "start": ["python3", "run.py", "--run-count", "25", "--max-concurrent-battles", "2"],
+    "start": [".venv/bin/python", "run.py", "--run-count", "25", "--max-concurrent-battles", "2"],
     "stop": ["bash", "scripts/safe_restart_monitor.sh"],
-    "status": ["python3", "scripts/devstream_health.py"]
+    "status": [".venv/bin/python", "scripts/devstream_health.py"]
   },
   "health": {
-    "command": ["python3", "scripts/devstream_health.py"],
+    "command": [".venv/bin/python", "scripts/devstream_health.py"],
     "timeoutSeconds": 10
   },
   "truth": {
@@ -64,11 +64,11 @@
       "run.py"
     ],
     "validation": [
-      "python3 -m py_compile scripts/devstream_session.py scripts/devstream_packetize.py",
-      "python3 -m py_compile scripts/devstream_health.py streaming/serve_obs_page.py",
-      "python3 scripts/devstream_health.py",
-      "python3 scripts/devstream_session.py doctor",
-      "python3 -m pytest tests/test_hybrid_dashboard.py tests/test_state_endpoint_status.py"
+      ".venv/bin/python -m py_compile scripts/devstream_session.py scripts/devstream_packetize.py",
+      ".venv/bin/python -m py_compile scripts/devstream_health.py streaming/serve_obs_page.py",
+      ".venv/bin/python scripts/devstream_health.py",
+      ".venv/bin/python scripts/devstream_session.py doctor",
+      ".venv/bin/python -m pytest tests/test_hybrid_dashboard.py tests/test_state_endpoint_status.py"
     ]
   }
 }

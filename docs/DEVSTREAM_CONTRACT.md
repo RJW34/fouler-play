@@ -7,6 +7,7 @@ Live battles are not just content. They are the training and evaluation loop: co
 ## Runtime Boundaries
 
 - Runs on `ubunztu` only.
+- Uses the repo-local `.venv` on ubunztu so `poke-engine` and the Showdown runtime dependencies are present without modifying system Python.
 - Does not autostart from the contract exporter.
 - The canonical OBS server is `streaming/serve_obs_page.py` on `127.0.0.1:8777`.
 - The health probe is read-only by default and does not start games, restart services, or mutate battle state.
@@ -43,10 +44,10 @@ These commands are intentionally safe by default. They describe or verify a devs
 
 ```bash
 cd /home/ryan/projects/fouler-play
-python3 scripts/devstream_session.py doctor
-python3 scripts/devstream_session.py start --run-count 25 --max-concurrent-battles 2
-python3 scripts/devstream_session.py stop
-python3 scripts/devstream_packetize.py
+.venv/bin/python scripts/devstream_session.py doctor
+.venv/bin/python scripts/devstream_session.py start --run-count 25 --max-concurrent-battles 2
+.venv/bin/python scripts/devstream_session.py stop
+.venv/bin/python scripts/devstream_packetize.py
 ```
 
 `scripts/devstream_session.py start` and `stop` currently emit dry-run plans. Their `--execute` path is deliberately blocked until the wrapper can drain active battles, write completion truth, and prove rating/battle outcomes.
@@ -70,7 +71,7 @@ Run:
 
 ```bash
 cd /home/ryan/projects/fouler-play
-python3 scripts/devstream_health.py
+.venv/bin/python scripts/devstream_health.py
 ```
 
 When the OBS server is running, `/health` returns the same structured payload via `streaming/serve_obs_page.py`.
