@@ -1,4 +1,5 @@
 import importlib
+import json
 
 from infrastructure.discord_reporting import (
     build_contract_message,
@@ -8,6 +9,40 @@ from infrastructure.discord_reporting import (
     summarize_recent_results,
     top_recurring_issue,
 )
+
+
+def test_event_poster_loads_env_chain_for_webhooks(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+
+    env_file = tmp_path / ".env"
+    env_file.write_text("DISCORD_BATTLES_WEBHOOK_URL=https://discord.com/api/webhooks/example/token\n", encoding="utf-8")
+    monkeypatch.setattr(event_poster, "ENV_FILES", (env_file,))
+    monkeypatch.delenv("DISCORD_BATTLES_WEBHOOK_URL", raising=False)
+    monkeypatch.delenv("DISCORD_WEBHOOK_URL", raising=False)
+
+    loaded = event_poster.load_env_chain()
+    url, source = event_poster.resolve_webhook_url("battles")
+
+    assert loaded == [str(env_file)]
+    assert source == "DISCORD_BATTLES_WEBHOOK_URL"
+    assert url.endswith("/token")
+
+
+def test_event_poster_doctor_reports_redacted_transport(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text("[]", encoding="utf-8")
+    monkeypatch.setenv("EVENT_QUEUE_FILE", str(queue_file))
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/example/token")
+
+    payload = event_poster.build_doctor_payload()
+
+    assert payload["ready"] is True
+    assert payload["config"]["aliases"]["project"]["redactedUrl"].endswith("/api/webhooks/REDACTED")
+    json.dumps(payload)
 
 
 def test_contract_message_shape():
