@@ -29,6 +29,7 @@
       {"label": "bounded session planner", "path": "scripts/devstream_session.py", "required": true},
       {"label": "showdown login check", "path": "scripts/showdown_login_check.py", "required": true},
       {"label": "report packetizer", "path": "scripts/devstream_packetize.py", "required": true},
+      {"label": "cycle report writer", "path": "scripts/devstream_cycle_report.py", "required": true},
       {"label": "elo proof schema", "path": "devstream/truth/elo-proof.schema.json", "required": true},
       {"label": "elo proof example", "path": "devstream/truth/elo-proof.example.json", "required": true}
     ]
@@ -70,6 +71,7 @@
     "commands": [
       {"name": "devstream-doctor", "command": [".venv/bin/python", "scripts/devstream_session.py", "doctor"], "timeoutSeconds": 30},
       {"name": "showdown-login-only", "command": [".venv/bin/python", "scripts/showdown_login_check.py", "--execute"], "timeoutSeconds": 45},
+      {"name": "cycle-report", "command": [".venv/bin/python", "scripts/devstream_cycle_report.py", "--write"], "timeoutSeconds": 20},
       {"name": "packetizer-dry-run", "command": [".venv/bin/python", "scripts/devstream_packetize.py"], "timeoutSeconds": 30}
     ]
   },
@@ -87,10 +89,11 @@
       "run.py"
     ],
     "validation": [
-      ".venv/bin/python -m py_compile scripts/devstream_session.py scripts/devstream_packetize.py scripts/showdown_login_check.py",
+      ".venv/bin/python -m py_compile scripts/devstream_session.py scripts/devstream_packetize.py scripts/showdown_login_check.py scripts/devstream_cycle_report.py",
       ".venv/bin/python -m py_compile scripts/devstream_health.py streaming/serve_obs_page.py",
       ".venv/bin/python scripts/devstream_health.py",
       ".venv/bin/python scripts/devstream_session.py doctor",
+      ".venv/bin/python scripts/devstream_cycle_report.py --write",
       ".venv/bin/python scripts/showdown_login_check.py",
       ".venv/bin/python -m pytest tests/test_hybrid_dashboard.py tests/test_state_endpoint_status.py"
     ]
