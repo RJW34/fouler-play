@@ -21,7 +21,7 @@ print(f'Total battles recorded: {len(data[\"battles\"])}')
 
 echo ""
 echo "🔌 Testing MAGNETON connectivity..."
-ssh Ryan@192.168.1.181 "ollama --version" || {
+ssh "${MAGNETON_HOST:-Ryanj@jigglypuff.tail4859dd.ts.net}" "ollama --version" || {
     echo "❌ MAGNETON connection failed"
     exit 1
 }
@@ -29,7 +29,7 @@ ssh Ryan@192.168.1.181 "ollama --version" || {
 echo ""
 echo "🤖 Testing Ollama API..."
 echo '{"model":"qwen2.5-coder:7b","prompt":"Hello","stream":false}' | \
-    ssh Ryan@192.168.1.181 "curl -s -X POST http://localhost:11434/api/generate -H 'Content-Type: application/json' -d @-" | \
+    ssh "${MAGNETON_HOST:-Ryanj@jigglypuff.tail4859dd.ts.net}" "curl -s -X POST http://localhost:11434/api/generate -H 'Content-Type: application/json' -d @-" | \
     grep -q "response" && echo "✅ Ollama API responding" || {
     echo "❌ Ollama API test failed"
     exit 1

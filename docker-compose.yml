@@ -16,7 +16,7 @@
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONPATH=/app
-      - OBS_WS_HOST=192.168.1.40
+      - OBS_WS_HOST=ubunztu.tail4859dd.ts.net
 
   event-poster:
     image: fouler-play-event-poster:latest
