@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from devstream_runtime_checks import recent_showdown_credential_failure
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RUN_COUNT = 25
 DEFAULT_MAX_CONCURRENT = 2
@@ -123,6 +125,11 @@ def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str
     if spectator:
         command.extend(["--spectator-username", spectator])
     return command
+
+
+def showdown_password_required(env: dict[str, str]) -> bool:
+    mode = env_value(env, "PS_BOT_MODE", default="search_ladder")
+    return mode == "search_ladder"
 
 
 def obs_server_command() -> list[str]:
@@ -255,6 +262,20 @@ def build_doctor() -> dict[str, Any]:
     checks.append({"name": "elo_proof_example", "ok": example.exists(), "path": str(example)})
     env_present = bool(env.get("PS_USERNAME") or env.get("SHOWDOWN_USER_ID"))
     checks.append({"name": "showdown_identity_env", "ok": env_present, "note": "PS_USERNAME or SHOWDOWN_USER_ID must be available at runtime"})
+    password_present = bool(env.get("PS_PASSWORD"))
+    password_required = showdown_password_required(env)
+    checks.append({
+        "name": "showdown_password_env",
+        "ok": password_present or not password_required,
+        "required": password_required,
+        "note": "PS_PASSWORD is required for registered Showdown ladder sessions; the value is never emitted.",
+    })
+    credential_failure = recent_showdown_credential_failure(ROOT)
+    checks.append({
+        "name": "showdown_recent_credential_failure",
+        "ok": not credential_failure.get("found"),
+        "details": credential_failure,
+    })
     env_modes = secure_env_files(execute=False)
     checks.append({"name": "env_file_permissions", "ok": all(item.get("ok") for item in env_modes), "details": env_modes})
     checks.append({
@@ -306,6 +327,16 @@ def cmd_start(args: argparse.Namespace) -> int:
         payload["error"] = "PS_USERNAME or SHOWDOWN_USER_ID is required"
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
+    if showdown_password_required(env) and not env_value(env, "PS_PASSWORD"):
+        payload["error"] = "PS_PASSWORD is required for registered Showdown ladder sessions"
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    credential_failure = recent_showdown_credential_failure(ROOT)
+    if credential_failure.get("found"):
+        payload["error"] = "recent Showdown credential failure is unresolved"
+        payload["credentialFailure"] = credential_failure
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 3
     env.setdefault("LOSS_TRIGGERED_DRAIN", "1")
     env.setdefault("BATTLE_STATS_MAX_ENTRIES", "5000")
     env["FP_PARENT_PID"] = str(os.getpid())
