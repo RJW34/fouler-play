@@ -19,6 +19,7 @@
   "truth": {
     "files": [
       {"label": "health probe", "path": "scripts/devstream_health.py", "required": true},
+      {"label": "human mission", "path": "docs/PROJECT_MISSION.md", "required": true},
       {"label": "stream status", "path": "stream_status.json", "required": false, "staleAfterSeconds": 21600},
       {"label": "daily stats", "path": "daily_stats.json", "required": false, "staleAfterSeconds": 21600},
       {"label": "active battles", "path": "active_battles.json", "required": false, "staleAfterSeconds": 1800},
@@ -26,6 +27,7 @@
       {"label": "autoresearch json", "path": "replay_analysis/autoresearch_latest.json", "required": false, "staleAfterSeconds": 86400},
       {"label": "autoresearch report", "path": "replay_analysis/reports/autoresearch_latest.md", "required": false, "staleAfterSeconds": 86400},
       {"label": "bounded session planner", "path": "scripts/devstream_session.py", "required": true},
+      {"label": "showdown login check", "path": "scripts/showdown_login_check.py", "required": true},
       {"label": "report packetizer", "path": "scripts/devstream_packetize.py", "required": true},
       {"label": "elo proof schema", "path": "devstream/truth/elo-proof.schema.json", "required": true},
       {"label": "elo proof example", "path": "devstream/truth/elo-proof.example.json", "required": true}
@@ -50,8 +52,15 @@
     "idleRotationSeconds": 900,
     "reasons": ["1800 ELO target", "bounded battle cycles", "live browser surfaces", "DEKU analysis loop", "report generation proof"]
   },
+  "certification": {
+    "commands": [
+      {"name": "devstream-doctor", "command": [".venv/bin/python", "scripts/devstream_session.py", "doctor"], "timeoutSeconds": 30},
+      {"name": "showdown-login-only", "command": [".venv/bin/python", "scripts/showdown_login_check.py", "--execute"], "timeoutSeconds": 45},
+      {"name": "packetizer-dry-run", "command": [".venv/bin/python", "scripts/devstream_packetize.py"], "timeoutSeconds": 30}
+    ]
+  },
   "workPackets": {
-    "defaultBranch": "main",
+    "defaultBranch": "master",
     "allowedPaths": [
       "devstream/",
       "docs/",
@@ -64,10 +73,11 @@
       "run.py"
     ],
     "validation": [
-      ".venv/bin/python -m py_compile scripts/devstream_session.py scripts/devstream_packetize.py",
+      ".venv/bin/python -m py_compile scripts/devstream_session.py scripts/devstream_packetize.py scripts/showdown_login_check.py",
       ".venv/bin/python -m py_compile scripts/devstream_health.py streaming/serve_obs_page.py",
       ".venv/bin/python scripts/devstream_health.py",
       ".venv/bin/python scripts/devstream_session.py doctor",
+      ".venv/bin/python scripts/showdown_login_check.py",
       ".venv/bin/python -m pytest tests/test_hybrid_dashboard.py tests/test_state_endpoint_status.py"
     ]
   }
