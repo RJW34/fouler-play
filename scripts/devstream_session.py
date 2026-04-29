@@ -258,8 +258,10 @@ def build_doctor() -> dict[str, Any]:
         checks.append({"name": "health_probe", "ok": bool(health and health.get("healthy")), "details": health})
     schema = ROOT / "devstream" / "truth" / "elo-proof.schema.json"
     example = ROOT / "devstream" / "truth" / "elo-proof.example.json"
+    login_check = ROOT / "scripts" / "showdown_login_check.py"
     checks.append({"name": "elo_proof_schema", "ok": schema.exists(), "path": str(schema)})
     checks.append({"name": "elo_proof_example", "ok": example.exists(), "path": str(example)})
+    checks.append({"name": "showdown_login_check_tool", "ok": login_check.exists(), "path": str(login_check)})
     env_present = bool(env.get("PS_USERNAME") or env.get("SHOWDOWN_USER_ID"))
     checks.append({"name": "showdown_identity_env", "ok": env_present, "note": "PS_USERNAME or SHOWDOWN_USER_ID must be available at runtime"})
     password_present = bool(env.get("PS_PASSWORD"))

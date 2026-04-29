@@ -45,6 +45,8 @@ These commands are intentionally safe by default. They describe or verify a devs
 ```bash
 cd /home/ryan/projects/fouler-play
 .venv/bin/python scripts/devstream_session.py doctor
+.venv/bin/python scripts/showdown_login_check.py
+.venv/bin/python scripts/showdown_login_check.py --execute
 .venv/bin/python scripts/devstream_session.py start --run-count 25 --max-concurrent-battles 2
 .venv/bin/python scripts/devstream_session.py start --run-count 25 --max-concurrent-battles 2 --execute
 .venv/bin/python scripts/devstream_session.py stop
@@ -53,6 +55,8 @@ cd /home/ryan/projects/fouler-play
 ```
 
 `scripts/devstream_session.py start --execute` is the reviewed devstream runner. It loads `.env`/`.env.deku`, tightens those files to mode `600` on Linux, starts the OBS HTTP surface, then starts a bounded `run.py` batch with the required Showdown arguments.
+
+`scripts/showdown_login_check.py --execute` is the credential proof gate. It logs into Pokemon Showdown, does not queue a battle, does not chat, and never prints the password. A bounded ladder cycle should not start until this probe passes.
 
 `scripts/devstream_session.py stop --execute` is drain-first. It writes the drain request, waits for `active_battles.json` to clear, and then terminates the devstream-owned PIDs. Use `--force` only when forfeiting active battles is acceptable.
 
@@ -87,3 +91,4 @@ When the OBS server is running, `/health` returns the same structured payload vi
 3. Wire `scripts/devstream_packetize.py --write` into a human-reviewed DEKU packet flow.
 4. Write `devstream/truth/completion.json` at bounded cycle end with battle counts, replay ids, report paths, rating deltas, and validation status.
 5. Retire or clearly label legacy 6-slot text-source docs so the browser-source architecture is obvious.
+6. Promote `showdown_login_check.py --execute` into the standard DEKU certification step before any ladder batch.
