@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +21,7 @@ RUNTIME_LOGS = (
     "logs/devstream_battle_session.log",
     "logs/init.log",
 )
+SUCCESS_PROOF = "devstream/truth/showdown-login-proof.json"
 
 
 def iso_from_epoch(value: float | None) -> str | None:
@@ -46,6 +48,40 @@ def _redact_line(line: str) -> str:
     return line.strip()[:240]
 
 
+def _parse_iso(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip().replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def latest_successful_login_proof(root: Path = ROOT) -> dict[str, Any]:
+    path = root / SUCCESS_PROOF
+    if not path.exists():
+        return {"found": False, "path": SUCCESS_PROOF}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"found": False, "path": SUCCESS_PROOF, "error": str(exc)}
+    if not isinstance(payload, dict):
+        return {"found": False, "path": SUCCESS_PROOF, "error": "proof is not a JSON object"}
+    checked_at = _parse_iso(payload.get("checkedAt"))
+    ok = bool(payload.get("ok") and payload.get("loginOk") and not payload.get("secretValuesPrinted"))
+    return {
+        "found": ok,
+        "path": SUCCESS_PROOF,
+        "checkedAt": checked_at.isoformat() if checked_at else None,
+        "mtime": iso_from_epoch(path.stat().st_mtime),
+        "ok": ok,
+    }
+
+
 def recent_showdown_credential_failure(
     root: Path = ROOT,
     *,
@@ -54,6 +90,8 @@ def recent_showdown_credential_failure(
     """Return a small, secret-free summary of recent Showdown login failures."""
     now = time.time()
     scanned: list[dict[str, Any]] = []
+    success_proof = latest_successful_login_proof(root)
+    success_checked_at = _parse_iso(success_proof.get("checkedAt"))
     for rel in RUNTIME_LOGS:
         path = root / rel
         if not path.exists():
@@ -77,6 +115,18 @@ def recent_showdown_credential_failure(
                 continue
             matching_lines = [line for line in tail.splitlines() if marker in line.lower()]
             line = matching_lines[-1] if matching_lines else ""
+            if success_checked_at and success_checked_at.timestamp() >= mtime:
+                return {
+                    "found": False,
+                    "clearedBy": success_proof,
+                    "staleFailure": {
+                        "code": code,
+                        "path": rel,
+                        "mtime": iso_from_epoch(mtime),
+                        "ageSeconds": round(age, 3),
+                    },
+                    "scanned": scanned,
+                }
             return {
                 "found": True,
                 "code": code,
@@ -84,6 +134,7 @@ def recent_showdown_credential_failure(
                 "mtime": iso_from_epoch(mtime),
                 "ageSeconds": round(age, 3),
                 "summary": _redact_line(line),
+                "latestSuccessfulProof": success_proof,
                 "scanned": scanned,
             }
-    return {"found": False, "scanned": scanned}
+    return {"found": False, "latestSuccessfulProof": success_proof, "scanned": scanned}
