@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 DEFAULT_WS = "wss://sim3.psim.us/showdown/websocket"
 LOGIN_URL = "https://play.pokemonshowdown.com/api/login"
+PROOF_FILE = ROOT / "devstream" / "truth" / "showdown-login-proof.json"
 
 
 def iso_now() -> str:
@@ -114,13 +115,32 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     payload["ok"] = bool(result.get("ok"))
     if not payload["ok"]:
         payload["blockers"] = [str(result.get("reason") or "login probe failed")]
+    if args.write:
+        write_proof(payload)
     return payload
+
+
+def write_proof(payload: dict[str, Any]) -> None:
+    proof = {
+        "schemaVersion": "fouler-play-showdown-login-proof/v1",
+        "checkedAt": payload.get("checkedAt"),
+        "execute": bool(payload.get("execute")),
+        "ok": bool(payload.get("ok")),
+        "usernamePresent": bool(payload.get("usernamePresent")),
+        "passwordPresent": bool(payload.get("passwordPresent")),
+        "loginOk": bool((payload.get("login") or {}).get("ok")),
+        "blockers": payload.get("blockers") or [],
+        "secretValuesPrinted": False,
+    }
+    PROOF_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PROOF_FILE.write_text(json.dumps(proof, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Perform a login-only Pokemon Showdown credential proof without queuing a battle.")
     parser.add_argument("--execute", action="store_true", help="perform the network login proof")
     parser.add_argument("--timeout-seconds", type=int, default=20)
+    parser.add_argument("--write", action="store_true", help=f"write a secret-free proof to {PROOF_FILE.relative_to(ROOT)}")
     args = parser.parse_args()
     payload = build_payload(args)
     print(json.dumps(payload, indent=2, sort_keys=True))
