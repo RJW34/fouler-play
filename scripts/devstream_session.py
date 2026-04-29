@@ -22,6 +22,27 @@ DRAIN_FILE = PID_DIR / "drain.request"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 
 
+def runtime_python() -> str:
+    """Prefer the repo-local virtualenv expected by the devstream contract."""
+    if os.name == "nt":
+        candidate = ROOT / ".venv" / "Scripts" / "python.exe"
+    else:
+        candidate = ROOT / ".venv" / "bin" / "python"
+    return str(candidate) if candidate.exists() else sys.executable
+
+
+def prepare_runtime_env(env: dict[str, str]) -> dict[str, str]:
+    if os.name == "nt":
+        bin_dir = ROOT / ".venv" / "Scripts"
+    else:
+        bin_dir = ROOT / ".venv" / "bin"
+    if bin_dir.exists():
+        env = dict(env)
+        env.setdefault("VIRTUAL_ENV", str(ROOT / ".venv"))
+        env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+    return env
+
+
 def iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -68,7 +89,7 @@ def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str
     env = env or load_env_files()
     username = env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID")
     command = [
-        sys.executable,
+        runtime_python(),
         "run.py",
         "--websocket-uri",
         env_value(env, "PS_WEBSOCKET_URI", default="wss://sim3.psim.us/showdown/websocket"),
@@ -105,7 +126,7 @@ def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str
 
 
 def obs_server_command() -> list[str]:
-    return [sys.executable, "streaming/serve_obs_page.py"]
+    return [runtime_python(), "streaming/serve_obs_page.py"]
 
 
 def read_active_battles() -> int:
@@ -221,8 +242,8 @@ def wait_for_drain(max_wait_seconds: int) -> dict[str, Any]:
 
 
 def build_doctor() -> dict[str, Any]:
-    env = load_env_files()
-    health, error = run_json([sys.executable, "scripts/devstream_health.py"])
+    env = prepare_runtime_env(load_env_files())
+    health, error = run_json([runtime_python(), "scripts/devstream_health.py"])
     checks = []
     if error:
         checks.append({"name": "health_probe", "ok": False, "error": error})
@@ -259,7 +280,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def cmd_start(args: argparse.Namespace) -> int:
-    env = load_env_files()
+    env = prepare_runtime_env(load_env_files())
     commands = {
         "obsHttp": obs_server_command(),
         "battleSession": shell_command_for_session(args.run_count, args.max_concurrent_battles, env),
@@ -293,7 +314,7 @@ def cmd_start(args: argparse.Namespace) -> int:
         "battleSession": start_process(commands["battleSession"], BATTLE_PID_FILE, env),
     }
     time.sleep(2)
-    health, error = run_json([sys.executable, "scripts/devstream_health.py"])
+    health, error = run_json([runtime_python(), "scripts/devstream_health.py"])
     payload["postHealth"] = health if health is not None else {"error": error}
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
@@ -323,7 +344,7 @@ def cmd_stop(args: argparse.Namespace) -> int:
         }
     else:
         payload["error"] = "active battles did not drain before timeout"
-    health, error = run_json([sys.executable, "scripts/devstream_health.py"])
+    health, error = run_json([runtime_python(), "scripts/devstream_health.py"])
     payload["postHealth"] = health if health is not None else {"error": error}
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0 if "error" not in payload else 1
