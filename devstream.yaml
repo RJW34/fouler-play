@@ -52,6 +52,20 @@
     "idleRotationSeconds": 900,
     "reasons": ["1800 ELO target", "bounded battle cycles", "live browser surfaces", "DEKU analysis loop", "report generation proof"]
   },
+  "autonomy": {
+    "canForeground": true,
+    "canAutostartRehearsal": true,
+    "canAutostartLive": true,
+    "canRunInBackground": false,
+    "resourceClass": "heavy",
+    "minFocusMinutes": 20,
+    "maxFocusMinutes": 45,
+    "warmupSeconds": 30,
+    "allowDegradedStart": true,
+    "discordInfluence": "queued-safe-handoff",
+    "rotateOn": ["batch-complete", "login-failed", "health-blocked", "report-written", "operator-suggestion"],
+    "notes": "Autopilot should treat fouler-play as a bounded battle batch, then report and hand off instead of leaving it open-ended."
+  },
   "certification": {
     "commands": [
       {"name": "devstream-doctor", "command": [".venv/bin/python", "scripts/devstream_session.py", "doctor"], "timeoutSeconds": 30},
