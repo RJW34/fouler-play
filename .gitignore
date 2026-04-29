@@ -85,5 +85,7 @@ streaming/auto_stream.py.backup*
 Bot
 Overlay
 state/citadel_status.json
+devstream/truth/cycle-report.json
+devstream/truth/cycle-report.md
 Press
 Server
