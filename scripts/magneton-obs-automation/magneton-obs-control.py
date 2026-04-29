@@ -12,15 +12,16 @@ Usage:
 """
 
 import argparse
+import os
 import time
 import sys
 from obswebsocket import obsws, requests as obs_requests
 from obswebsocket.exceptions import ConnectionFailure
 
 # Configuration
-OBS_HOST = "192.168.1.181"
-OBS_PORT = 4455
-OBS_PASSWORD = "4Dswd1gtixEnGuK1"
+OBS_HOST = os.getenv("OBS_HOST", "ubunztu.tail4859dd.ts.net")
+OBS_PORT = int(os.getenv("OBS_PORT", "4455"))
+OBS_PASSWORD = os.getenv("OBS_PASSWORD") or os.getenv("OBS_WEBSOCKET_PASSWORD", "")
 
 class OBSController:
     def __init__(self, host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD):

@@ -880,8 +880,8 @@ async def handle_state(request: web.Request) -> web.Response:
     return web.json_response(build_state_payload())
 
 
-DEKU_STATE_URL = os.getenv("DEKU_STATE_URL", "http://192.168.1.40:8777/state")
-MAGNETON_STATE_URL = os.getenv("MAGNETON_STATE_URL", "http://192.168.1.181:8777/state")
+DEKU_STATE_URL = os.getenv("DEKU_STATE_URL", "http://127.0.0.1:8777/state")
+MAGNETON_STATE_URL = os.getenv("MAGNETON_STATE_URL", "http://jigglypuff.tail4859dd.ts.net:8777/state")
 
 async def handle_deku_state(request: web.Request) -> web.Response:
     """Proxy DEKU's state endpoint to avoid CORS issues in OBS browser."""

@@ -13,7 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.turn_review import TurnReviewer
 
-MAGNETON_HOST = "Ryan@192.168.1.181"
+MAGNETON_HOST = os.getenv("MAGNETON_HOST", "Ryanj@jigglypuff.tail4859dd.ts.net")
 OLLAMA_MODEL = "qwen2.5-coder:7b"
 REPLAY_DIR = Path(__file__).parent
 REPORTS_DIR = REPLAY_DIR / "reports"
