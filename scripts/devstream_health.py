@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from devstream_runtime_checks import recent_showdown_credential_failure
+
 ROOT = Path(__file__).resolve().parents[1]
 HTTP_PORT = 8777
 OBS_WS_PORT = 4455
@@ -49,7 +51,7 @@ def iso_from_epoch(value: float | None) -> str | None:
 
 def run_command(command: list[str], *, timeout: int = 4) -> subprocess.CompletedProcess[str] | None:
     try:
-        return subprocess.run(command, capture_output=True, text=True, timeout=timeout, check=False)
+        return subprocess.run(command, cwd=str(ROOT), capture_output=True, text=True, timeout=timeout, check=False)
     except Exception:
         return None
 
@@ -159,10 +161,13 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     stale_truth = [item for item in truth if item["exists"] and item["stale"]]
     missing_required = [item for item in truth if not item["optional"] and not item["exists"]]
     battle_count = active_battle_count(truth)
+    credential_failure = recent_showdown_credential_failure(ROOT)
 
     blockers: list[str] = []
     if not active_services and not http_open and battle_count == 0:
         blockers.append("fouler-play runner and OBS HTTP server are idle")
+    if credential_failure.get("found"):
+        blockers.append(f"recent Showdown credential failure: {credential_failure.get('code')}")
     if http_open and check_http:
         failed = [path for path, result in endpoints.items() if not result.get("ok")]
         blockers.extend(f"OBS endpoint failed: {path}" for path in failed)
@@ -172,7 +177,12 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         blockers.extend(f"stale truth file: {item['relativePath']}" for item in stale_truth)
 
     running = bool(active_services or http_open or battle_count > 0)
-    healthy = running and not missing_required and (not check_http or not http_open or all(result.get("ok") for result in endpoints.values()))
+    healthy = (
+        running
+        and not credential_failure.get("found")
+        and not missing_required
+        and (not check_http or not http_open or all(result.get("ok") for result in endpoints.values()))
+    )
     if healthy and stale_truth:
         healthy = False
     if healthy:
@@ -198,6 +208,9 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "endpoints": endpoints,
         "activeBattleCount": battle_count,
         "truth": truth,
+        "credentials": {
+            "recentShowdownFailure": credential_failure,
+        },
         "git": git_status(),
     }
 
