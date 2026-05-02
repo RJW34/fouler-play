@@ -6,6 +6,8 @@ Build an **overnight team-testing service** for a competitive Pokemon player. Th
 
 **Why 1700 ELO matters:** At 1200 (where we are now), opponents play poorly and the data is meaningless for team evaluation. The bot must reach **1700+** so that matchup data reflects how the team performs against competent opponents. 1700 is not the goal — it's the minimum quality threshold for useful test data.
 
+**Current devstream deployment:** DEKU runs on ubunztu as the control plane. The live Windows bot runtime is JIGGLYPUFF at `D:\Projects\fouler-play`, controlled through Tailscale SSH by `scripts/jigglypuff_devstream_control.py` and the remote PowerShell worker `scripts/fouler_jigglypuff_runtime.ps1`.
+
 **What the player actually consumes:**
 - Per-team win rates and trends across overnight sessions
 - Worst matchups: "You lose 70% of games when the opponent has Gholdengo"
@@ -21,7 +23,7 @@ This project runs on **multiple machines**. When you start a session, determine 
 
 ### How to identify your machine
 - Run `uname -s` or check `$OSTYPE`. Linux = **DEKU**. Windows / `MSYS` / `MINGW` = Windows bot machine.
-- Or check the hostname: `hostname`. Known hostnames: MIRAIDON, MAGNETON (Windows), DEKU (Linux).
+- Or check the hostname: `hostname`. Known live devstream hosts: ubunztu/DEKU (Linux control plane), JIGGLYPUFF (Windows bot/runtime worker), MIRAIDON (human workstation).
 - The Windows machine hostname may change. Use OS detection, not hostname matching.
 
 ---
@@ -53,19 +55,26 @@ When you have multiple independent tasks, spawn sub-agents to work in parallel:
 
 Use your current coding-agent runtime for headless sub-agents. The exact harness can change (Codex, Claude Code, etc.), but the repo workflow should not: read intent docs first, make one focused improvement, run validations, and push only clean, scoped changes.
 
-### Coordinating with BAKUGO
-- Push code to `master`. BAKUGO pulls automatically in their player loop.
-- If BAKUGO needs to do something specific, write instructions in `TASKBOARD.md` under "BAKUGO Action Items" and push.
-- Read `battle_stats.json` (pushed by BAKUGO) for performance data.
+### Coordinating with JIGGLYPUFF
+- Push code to `master`; the devstream control path deploys and starts JIGGLYPUFF through Tailscale SSH.
+- If JIGGLYPUFF needs something specific, write instructions in `TASKBOARD.md` under "JIGGLYPUFF Action Items" and push.
+- Read `battle_stats.json` and remote runtime truth for performance data.
 
 ---
 
-## BAKUGO (Windows) — Brawn
+## JIGGLYPUFF (Windows) — Brawn
 
 **You own:** Bot operation, battle data collection, environment, poke-engine builds, ELO monitoring. Streaming is secondary.
 
-### Your loop: `infrastructure/windows/player_loop.bat`
-Runs continuously. Optionally pulls latest code -> runs `start_one_touch.bat` for a configured batch -> loops again. The current Windows runtime is intentionally **single-worker by default** unless explicitly overridden via environment or launcher args. Install as a persistent scheduled task:
+### Your loop: DEKU-controlled bounded sessions
+DEKU starts and stops bounded sessions through:
+```
+python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py status
+python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py start --run-count 10 --max-concurrent-battles 1 --execute
+python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py stop --execute
+```
+
+The direct Windows fallback is `infrastructure/windows/player_loop.bat` or `start_one_touch.bat`. The current Windows runtime is intentionally **single-worker by default** unless explicitly overridden via environment or launcher args. Install as a persistent scheduled task only if DEKU's remote runner is not being used:
 ```
 Run as Administrator: infrastructure\windows\install_task.bat
 schtasks /run /tn "FoulerPlayOneTouch"
@@ -83,7 +92,7 @@ schtasks /run /tn "FoulerPlayOneTouch"
 
 ### Coordinating with DEKU
 - Push battle data (stats, replays) to `master`. DEKU pulls in their developer loop.
-- Check `TASKBOARD.md` for any "BAKUGO Action Items" that DEKU has written.
+- Check `TASKBOARD.md` for any "JIGGLYPUFF Action Items" that DEKU has written.
 - If you find a bug in the bot's decision-making, note it in TASKBOARD.md under "Bug Reports" and push.
 
 ---
@@ -175,7 +184,7 @@ oracle.validate_type_claim("ghost", ["dark"], 0.0)                # (False, 0.5)
 
 1. Read this file (CLAUDE.md)
 2. Read TASKBOARD.md for current status and action items
-3. Determine which machine you're on (DEKU or BAKUGO)
+3. Determine which machine you're on (DEKU or JIGGLYPUFF)
 4. Check `git log --oneline -5` and `git status` for recent changes
 5. Act on your highest-priority responsibility
 6. Update TASKBOARD.md with what you did
