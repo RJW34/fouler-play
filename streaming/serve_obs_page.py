@@ -37,9 +37,13 @@ except ImportError:  # pragma: no cover - optional dependency fallback
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
+SCRIPTS_DIR = ROOT_DIR / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 
 from streaming import state_store
 from streaming.hybrid_dashboard import register_dashboard_routes
+from devstream_runtime_checks import recent_showdown_credential_failure
 
 # Load .env if present so OBS WebSocket settings are available
 if load_dotenv:
@@ -167,9 +171,19 @@ def build_state_payload() -> dict:
     status["today_losses"] = daily.get("losses", 0)
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
+    credential_failure = recent_showdown_credential_failure(ROOT_DIR)
     
     # Update status field based on active battles
-    if battles:
+    if credential_failure.get("found"):
+        summary = credential_failure.get("summary") or "Showdown login failed; credential was rejected."
+        status["status"] = "Credential blocked"
+        status["battle_info"] = summary
+        status["streaming"] = False
+        status["runtime_blocked"] = True
+        status["blocker_code"] = credential_failure.get("code")
+        status["blocker_summary"] = summary
+        status["next_fix"] = "Refresh Showdown credentials and rerun the login proof."
+    elif battles:
         status["status"] = "Active"
         opponent = battles[0].get("opponent", "Opponent") if battles else "Opponent"
         status["battle_info"] = f"vs {opponent}"
@@ -190,6 +204,7 @@ def build_state_payload() -> dict:
         "max_slots": battles_data.get("max_slots"),
         "updated": battles_data.get("updated"),
         "accounts_elo": accounts_elo,  # Also keep at top-level for /state endpoint compat
+        "runtime_blocked": bool(status.get("runtime_blocked")),
     }
 
 

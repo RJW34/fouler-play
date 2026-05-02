@@ -15,6 +15,11 @@ from typing import Any
 from devstream_runtime_checks import recent_showdown_credential_failure
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from streaming import state_store
+
 DEFAULT_RUN_COUNT = 25
 DEFAULT_MAX_CONCURRENT = 2
 PID_DIR = ROOT / ".pids"
@@ -208,6 +213,14 @@ def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> di
     return {"pidFile": str(pid_file), "pid": proc.pid, "log": str(log_path), "command": command}
 
 
+def obs_http_env(env: dict[str, str]) -> dict[str, str]:
+    obs_env = dict(env)
+    # The devstream start command exits after spawning child processes; the
+    # OBS HTTP surface is intentionally stopped later via its PID file.
+    obs_env["FP_PARENT_PID"] = "0"
+    return obs_env
+
+
 def terminate_pid_file(path: Path, *, force: bool = False) -> dict[str, Any]:
     alive, pid = pid_alive(path)
     item: dict[str, Any] = {"pidFile": str(path), "pid": pid, "wasRunning": alive}
@@ -335,20 +348,52 @@ def cmd_start(args: argparse.Namespace) -> int:
         return 2
     credential_failure = recent_showdown_credential_failure(ROOT)
     if credential_failure.get("found"):
-        payload["error"] = "recent Showdown credential failure is unresolved"
         payload["credentialFailure"] = credential_failure
+        payload["blockedTruth"] = state_store.write_runtime_blocked_status(
+            code=str(credential_failure.get("code") or "showdown_credential_blocked"),
+            summary=str(
+                credential_failure.get("summary")
+                or "Showdown login failed; credential was rejected."
+            ),
+        )
+        env["FP_PARENT_PID"] = str(os.getpid())
+        payload["started"] = {
+            "obsHttp": start_process(commands["obsHttp"], OBS_PID_FILE, obs_http_env(env)),
+            "battleSession": {
+                "skipped": True,
+                "reason": "recent Showdown credential failure is unresolved",
+            },
+        }
+        time.sleep(1)
+        health, error = run_json([runtime_python(), "scripts/devstream_health.py"])
+        payload["postHealth"] = health if health is not None else {"error": error}
         print(json.dumps(payload, indent=2, sort_keys=True))
-        return 3
+        return 0
     env.setdefault("LOSS_TRIGGERED_DRAIN", "1")
     env.setdefault("BATTLE_STATS_MAX_ENTRIES", "5000")
     env["FP_PARENT_PID"] = str(os.getpid())
     payload["started"] = {
-        "obsHttp": start_process(commands["obsHttp"], OBS_PID_FILE, env),
+        "obsHttp": start_process(commands["obsHttp"], OBS_PID_FILE, obs_http_env(env)),
         "battleSession": start_process(commands["battleSession"], BATTLE_PID_FILE, env),
     }
     time.sleep(2)
     health, error = run_json([runtime_python(), "scripts/devstream_health.py"])
     payload["postHealth"] = health if health is not None else {"error": error}
+    credential_failure = (
+        (health or {})
+        .get("credentials", {})
+        .get("recentShowdownFailure", {})
+        if isinstance(health, dict)
+        else {}
+    )
+    if isinstance(credential_failure, dict) and credential_failure.get("found"):
+        payload["blockedTruth"] = state_store.write_runtime_blocked_status(
+            code=str(credential_failure.get("code") or "showdown_credential_blocked"),
+            summary=str(
+                credential_failure.get("summary")
+                or "Showdown login failed; credential was rejected."
+            ),
+        )
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0
 
