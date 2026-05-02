@@ -1,31 +1,431 @@
 {
-  "generated_at": "2026-04-18T04:07:43.725534",
+  "generated_at": "2026-04-30T18:13:39.307525",
   "batch": {
-    "id": "batch-empty",
-    "start_battle_id": null,
-    "end_battle_id": null,
-    "start_timestamp": null,
-    "end_timestamp": null,
-    "size": 0
+    "id": "batch-30-2567105051-2xhip",
+    "start_battle_id": "battle-gen9ou-2567021219",
+    "end_battle_id": "battle-gen9ou-2567105051-2xhipyi4xjxm03hp3o90p8nojcsf9ecpw",
+    "start_timestamp": "2026-03-25T13:00:58.196482+00:00",
+    "end_timestamp": "2026-03-25T14:45:21.245944+00:00",
+    "size": 30
   },
-  "window_size": 0,
-  "wins": 0,
-  "losses": 0,
-  "win_rate": 0.0,
+  "window_size": 30,
+  "wins": 18,
+  "losses": 12,
+  "win_rate": 0.6,
   "window_summary": {
-    "wins": 0,
-    "losses": 0,
-    "total": 0,
-    "win_rate": 0.0,
-    "record": "0-0 (0% WR)",
-    "top_teams": []
+    "wins": 18,
+    "losses": 12,
+    "total": 30,
+    "win_rate": 0.6,
+    "record": "18-12 (60% WR)",
+    "top_teams": [
+      {
+        "team": "fat-team-3-dondozo",
+        "count": 11
+      },
+      {
+        "team": "fat-team-2-pivot",
+        "count": 10
+      },
+      {
+        "team": "fat-team-1-stall",
+        "count": 9
+      }
+    ]
   },
-  "top_issue": null,
-  "issues": [],
-  "top_loss_teams": [],
+  "top_issue": {
+    "key": "hazard_pressure",
+    "title": "Hazard pressure is being lost",
+    "summary": "Losses repeatedly come from games where Fouler Play never establishes its own chip engine or gives up the hazards race.",
+    "recommendation": "Raise hazard-setting urgency earlier in neutral matchups, especially on stall/fat lines that need passive damage to convert.",
+    "proof": [
+      "battle-gen9ou-2567035606-2vnuf3ntqmohk0ktx3dyoigxmal81s2pw: bot never established Stealth Rock or equivalent chip pressure",
+      "battle-gen9ou-2567034724-4612tib0t7hpf7f23iaqest7upr7v1wpw: bot never established Stealth Rock or equivalent chip pressure",
+      "battle-gen9ou-2567047453: bot never established Stealth Rock or equivalent chip pressure",
+      "battle-gen9ou-2567053902: bot never established Stealth Rock or equivalent chip pressure",
+      "battle-gen9ou-2567055030: bot never established Stealth Rock or equivalent chip pressure"
+    ]
+  },
+  "issues": [
+    {
+      "key": "hazard_pressure",
+      "title": "Hazard pressure is being lost",
+      "score": 12.5,
+      "evidence_count": 5,
+      "summary": "Losses repeatedly come from games where Fouler Play never establishes its own chip engine or gives up the hazards race.",
+      "recommendation": "Raise hazard-setting urgency earlier in neutral matchups, especially on stall/fat lines that need passive damage to convert.",
+      "proof": [
+        "battle-gen9ou-2567035606-2vnuf3ntqmohk0ktx3dyoigxmal81s2pw: bot never established Stealth Rock or equivalent chip pressure",
+        "battle-gen9ou-2567034724-4612tib0t7hpf7f23iaqest7upr7v1wpw: bot never established Stealth Rock or equivalent chip pressure",
+        "battle-gen9ou-2567047453: bot never established Stealth Rock or equivalent chip pressure",
+        "battle-gen9ou-2567053902: bot never established Stealth Rock or equivalent chip pressure",
+        "battle-gen9ou-2567055030: bot never established Stealth Rock or equivalent chip pressure"
+      ]
+    }
+  ],
+  "top_loss_teams": [
+    {
+      "team": "fat-team-1-stall",
+      "losses": 5
+    },
+    {
+      "team": "fat-team-2-pivot",
+      "losses": 4
+    },
+    {
+      "team": "fat-team-3-dondozo",
+      "losses": 3
+    }
+  ],
   "top_opponent_pokemon": [],
   "grounded_context": {
-    "source": "data/pokedex_oracle.py \u2014 all facts from pokedex.json, moves.json, smogon_stats_cache",
-    "our_teams": {}
+    "source": "data/pokedex_oracle.py — all facts from pokedex.json, moves.json, smogon_stats_cache",
+    "our_teams": {
+      "fat-team-3-dondozo": [
+        {
+          "name": "Corviknight",
+          "types": [
+            "flying",
+            "steel"
+          ],
+          "ability": "Pressure",
+          "item": "Rocky Helmet",
+          "moves": [
+            "Defog",
+            "Brave Bird",
+            "Roost",
+            "U-turn"
+          ]
+        },
+        {
+          "name": "Ting-Lu",
+          "types": [
+            "dark",
+            "ground"
+          ],
+          "ability": "Vessel of Ruin",
+          "item": "Leftovers",
+          "moves": [
+            "Earthquake",
+            "Payback",
+            "Rest",
+            "Sleep Talk"
+          ]
+        },
+        {
+          "name": "Kyurem",
+          "types": [
+            "dragon",
+            "ice"
+          ],
+          "ability": "Pressure",
+          "item": "Leftovers",
+          "moves": [
+            "Substitute",
+            "Earth Power",
+            "Freeze-Dry",
+            "Protect"
+          ]
+        },
+        {
+          "name": "Dondozo",
+          "types": [
+            "water"
+          ],
+          "ability": "Unaware",
+          "item": "Leftovers",
+          "moves": [
+            "Curse",
+            "Waterfall",
+            "Body Press",
+            "Rest"
+          ]
+        },
+        {
+          "name": "Slowking-Galar",
+          "types": [
+            "poison",
+            "psychic"
+          ],
+          "ability": "Regenerator",
+          "item": "Shuca Berry",
+          "moves": [
+            "Future Sight",
+            "Sludge Bomb",
+            "Ice Beam",
+            "Chilly Reception"
+          ]
+        },
+        {
+          "name": "Cinderace",
+          "types": [
+            "fire"
+          ],
+          "ability": "Blaze",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Pyro Ball",
+            "Will-O-Wisp",
+            "U-turn",
+            "Court Change"
+          ]
+        }
+      ],
+      "fat-team-1-stall": [
+        {
+          "name": "Gliscor",
+          "types": [
+            "ground",
+            "flying"
+          ],
+          "ability": "Poison Heal",
+          "item": "Toxic Orb",
+          "moves": [
+            "Swords Dance",
+            "Earthquake",
+            "Knock Off",
+            "Protect"
+          ]
+        },
+        {
+          "name": "Gholdengo",
+          "types": [
+            "steel",
+            "ghost"
+          ],
+          "ability": "Good as Gold",
+          "item": "Ability Shield",
+          "moves": [
+            "Nasty Plot",
+            "Thunder Wave",
+            "Hex",
+            "Recover"
+          ]
+        },
+        {
+          "name": "Zamazenta",
+          "types": [
+            "fighting"
+          ],
+          "ability": "Dauntless Shield",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Close Combat",
+            "Crunch",
+            "Ice Fang",
+            "Heavy Slam"
+          ]
+        },
+        {
+          "name": "Blissey",
+          "types": [
+            "normal"
+          ],
+          "ability": "Natural Cure",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Soft-Boiled",
+            "Calm Mind",
+            "Shadow Ball",
+            "Stealth Rock"
+          ]
+        },
+        {
+          "name": "Skarmory",
+          "types": [
+            "steel",
+            "flying"
+          ],
+          "ability": "Sturdy",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Body Press",
+            "Whirlwind",
+            "Roost",
+            "Spikes"
+          ]
+        },
+        {
+          "name": "Pecharunt",
+          "types": [
+            "poison",
+            "ghost"
+          ],
+          "ability": "Poison Puppeteer",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Shadow Ball",
+            "Toxic",
+            "Parting Shot",
+            "Recover"
+          ]
+        }
+      ],
+      "fat-team-2-pivot": [
+        {
+          "name": "Gliscor",
+          "types": [
+            "ground",
+            "flying"
+          ],
+          "ability": "Poison Heal",
+          "item": "Toxic Orb",
+          "moves": [
+            "Spikes",
+            "Earthquake",
+            "Toxic",
+            "Protect"
+          ]
+        },
+        {
+          "name": "Ogerpon",
+          "types": [
+            "grass"
+          ],
+          "ability": "Defiant",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Ivy Cudgel",
+            "Knock Off",
+            "U-turn",
+            "Encore"
+          ]
+        },
+        {
+          "name": "Walking Wake",
+          "types": [
+            "water",
+            "dragon"
+          ],
+          "ability": "Protosynthesis",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Surf",
+            "Draco Meteor",
+            "Knock Off",
+            "Substitute"
+          ]
+        },
+        {
+          "name": "Blissey",
+          "types": [
+            "normal"
+          ],
+          "ability": "Natural Cure",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Soft-Boiled",
+            "Calm Mind",
+            "Seismic Toss",
+            "Stealth Rock"
+          ]
+        },
+        {
+          "name": "Corviknight",
+          "types": [
+            "flying",
+            "steel"
+          ],
+          "ability": "Pressure",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Body Press",
+            "Thief",
+            "U-turn",
+            "Roost"
+          ]
+        },
+        {
+          "name": "Pecharunt",
+          "types": [
+            "poison",
+            "ghost"
+          ],
+          "ability": "Poison Puppeteer",
+          "item": "Heavy-Duty Boots",
+          "moves": [
+            "Malignant Chain",
+            "Foul Play",
+            "Parting Shot",
+            "Recover"
+          ]
+        }
+      ]
+    }
+  },
+  "regression": {
+    "status": "improving",
+    "previous_batch_id": "batch-30-2567027052",
+    "win_rate_delta": 0.1333333333333333,
+    "record_delta": {
+      "wins": 4,
+      "losses": -4
+    },
+    "issue_compare": {
+      "top_shift": {
+        "key": "hazard_pressure",
+        "title": "Hazard pressure is being lost",
+        "current_count": 5,
+        "previous_count": 5,
+        "delta": 0,
+        "direction": "flat"
+      },
+      "shifts": [
+        {
+          "key": "hazard_pressure",
+          "title": "Hazard pressure is being lost",
+          "current_count": 5,
+          "previous_count": 5,
+          "delta": 0,
+          "direction": "flat"
+        }
+      ]
+    },
+    "opponent_shifts": [],
+    "summary_line": "current batch 18-12 (60% WR) vs previous 14-16 (47% WR); WR delta +13%; lead issue shift: Hazard pressure is being lost flat (5→5)"
+  },
+  "previous_batch": {
+    "batch": {
+      "id": "batch-30-2567027052",
+      "start_battle_id": "battle-gen9ou-2566969485",
+      "end_battle_id": "battle-gen9ou-2567027052",
+      "start_timestamp": "2026-03-25T11:09:06.165333+00:00",
+      "end_timestamp": "2026-03-25T12:59:34.901697+00:00",
+      "size": 30
+    },
+    "window_summary": {
+      "wins": 14,
+      "losses": 16,
+      "total": 30,
+      "win_rate": 0.4666666666666667,
+      "record": "14-16 (47% WR)",
+      "top_teams": [
+        {
+          "team": "fat-team-1-stall",
+          "count": 10
+        },
+        {
+          "team": "fat-team-3-dondozo",
+          "count": 10
+        },
+        {
+          "team": "fat-team-2-pivot",
+          "count": 10
+        }
+      ]
+    },
+    "top_issue": {
+      "key": "hazard_pressure",
+      "title": "Hazard pressure is being lost",
+      "summary": "Losses repeatedly come from games where Fouler Play never establishes its own chip engine or gives up the hazards race.",
+      "recommendation": "Raise hazard-setting urgency earlier in neutral matchups, especially on stall/fat lines that need passive damage to convert.",
+      "proof": [
+        "battle-gen9ou-2566969485: bot never established Stealth Rock or equivalent chip pressure",
+        "battle-gen9ou-2566965797: bot never established Stealth Rock or equivalent chip pressure",
+        "battle-gen9ou-2566976198: bot never established Stealth Rock or equivalent chip pressure",
+        "battle-gen9ou-2566975104: bot never established Stealth Rock or equivalent chip pressure",
+        "battle-gen9ou-2566981621-2whqmyt49ihlxeg23k297f8m188dh0lpw: bot never established Stealth Rock or equivalent chip pressure"
+      ]
+    }
   }
 }
