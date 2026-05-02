@@ -1,0 +1,44 @@
+{
+  "acceptance_checks": [
+    "python3 -m pytest tests/test_autoresearch.py tests/test_state_endpoint_status.py",
+    "python3 scripts/devstream_session.py doctor"
+  ],
+  "allowed_paths": [
+    "fp/",
+    "replay_analysis/",
+    "tests/",
+    "devstream/"
+  ],
+  "createdAt": "2026-04-30T22:13:45.569409+00:00",
+  "done_when": [
+    "A bounded batch can produce updated replay/report proof",
+    "The related failure class is reduced or explicitly marked unresolved"
+  ],
+  "evidence": [],
+  "forbidden_paths": [
+    ".env",
+    "config/secrets*"
+  ],
+  "id": "fouler-auto-001-hazard-pressure-is-being-lost",
+  "objective": "Losses repeatedly come from games where Fouler Play never establishes its own chip engine or gives up the hazards race.",
+  "owner": "DEKU",
+  "project_id": "fouler-play",
+  "proposed_change": [
+    "Inspect replay/decision evidence",
+    "Patch the narrowest evaluation, prediction, or reporting logic that explains the failure"
+  ],
+  "requires_human_approval": true,
+  "risk": "medium",
+  "runtime_dependencies": [
+    "Pokemon Showdown credentials",
+    "bounded session truth files",
+    "autoresearch report"
+  ],
+  "schemaVersion": "devstream-work-packet/v1",
+  "source_report": "replay_analysis/autoresearch_latest.json",
+  "status": "draft",
+  "stream_role": "visual-content",
+  "target_repo": "/home/ryan/projects/fouler-play",
+  "task_type": "visual-content",
+  "title": "Hazard pressure is being lost"
+}
