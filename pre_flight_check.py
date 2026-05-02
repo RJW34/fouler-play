@@ -20,6 +20,14 @@ import sys
 from pathlib import Path
 from typing import List, Tuple, Optional
 
+for stream in (sys.stdout, sys.stderr):
+    reconfigure = getattr(stream, "reconfigure", None)
+    if callable(reconfigure):
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 # Colors for output
 class Colors:
     GREEN = '\033[92m'

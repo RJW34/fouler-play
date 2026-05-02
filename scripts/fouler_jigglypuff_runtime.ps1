@@ -1,0 +1,442 @@
+param(
+    [ValidateSet("status", "bootstrap", "start", "stop", "login-proof")]
+    [string]$Command = "status",
+    [int]$RunCount = 10,
+    [int]$MaxConcurrentBattles = 1,
+    [switch]$ObsOnly,
+    [switch]$Execute
+)
+
+$ErrorActionPreference = "Stop"
+$RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$TruthDir = Join-Path $RepoRoot "devstream\truth"
+$LogDir = Join-Path $RepoRoot "logs"
+$PidDir = Join-Path $RepoRoot ".pids"
+$RemoteTruthPath = Join-Path $TruthDir "jigglypuff-runtime.json"
+
+function Get-IsoNow {
+    return [DateTimeOffset]::UtcNow.ToString("o")
+}
+
+function Write-JsonFile {
+    param([string]$Path, [object]$Payload)
+    $dir = Split-Path -Parent $Path
+    if ($dir -and -not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
+    $Payload | ConvertTo-Json -Depth 8 | Set-Content -Path $Path -Encoding UTF8
+}
+
+function Read-JsonFile {
+    param([string]$Path)
+    if (-not (Test-Path $Path)) {
+        return $null
+    }
+    try {
+        return Get-Content -Path $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {
+        return $null
+    }
+}
+
+function Invoke-Checked {
+    param(
+        [string]$FilePath,
+        [string[]]$ArgumentList,
+        [int]$TimeoutSeconds = 120
+    )
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = ($ArgumentList | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join " "
+    $psi.WorkingDirectory = $RepoRoot
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    $finished = $proc.WaitForExit($TimeoutSeconds * 1000)
+    if (-not $finished) {
+        try { $proc.Kill($true) } catch {}
+        return @{
+            ok = $false
+            timedOut = $true
+            returnCode = $null
+            stdout = ""
+            stderr = "timeout after $TimeoutSeconds seconds"
+        }
+    }
+    return @{
+        ok = ($proc.ExitCode -eq 0)
+        timedOut = $false
+        returnCode = $proc.ExitCode
+        stdout = $proc.StandardOutput.ReadToEnd().Trim()
+        stderr = $proc.StandardError.ReadToEnd().Trim()
+    }
+}
+
+function ConvertTo-CommandLineArgument {
+    param([string]$Value)
+    if ($null -eq $Value) {
+        return '""'
+    }
+    if ($Value -match '^[A-Za-z0-9_\-./:=\\]+$') {
+        return $Value
+    }
+    return '"' + ($Value -replace '"', '\"') + '"'
+}
+
+function Get-PythonPath {
+    $venvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+    if (Test-Path $venvPython) {
+        return $venvPython
+    }
+    return "python"
+}
+
+function Get-GitInfo {
+    if (-not (Test-Path (Join-Path $RepoRoot ".git"))) {
+        return @{ present = $false }
+    }
+    $head = Invoke-Checked -FilePath "git" -ArgumentList @("rev-parse", "--short", "HEAD") -TimeoutSeconds 10
+    $branch = Invoke-Checked -FilePath "git" -ArgumentList @("branch", "--show-current") -TimeoutSeconds 10
+    $status = Invoke-Checked -FilePath "git" -ArgumentList @("status", "--short") -TimeoutSeconds 10
+    return @{
+        present = $true
+        head = $head.stdout
+        branch = $branch.stdout
+        dirty = -not [string]::IsNullOrWhiteSpace($status.stdout)
+        statusShort = $status.stdout
+    }
+}
+
+function Get-ProcessInfo {
+    $escapedRepo = [regex]::Escape($RepoRoot)
+    $items = Get-CimInstance Win32_Process | Where-Object {
+        $_.CommandLine -and
+        $_.CommandLine -match $escapedRepo -and
+        (
+            $_.CommandLine -match "run\.py" -or
+            $_.CommandLine -match "start_one_touch\.bat" -or
+            $_.CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or
+            $_.CommandLine -match "streaming\.serve_obs_page"
+        )
+    } | ForEach-Object {
+        @{
+            pid = $_.ProcessId
+            name = $_.Name
+            commandLine = $_.CommandLine
+            creationDate = $_.CreationDate
+        }
+    }
+    return @($items)
+}
+
+function Stop-FoulerProcesses {
+    $stopped = @()
+    foreach ($proc in Get-ProcessInfo) {
+        try {
+            Stop-Process -Id ([int]$proc.pid) -Force -ErrorAction Stop
+            $stopped += @{ pid = $proc.pid; name = $proc.name; ok = $true }
+        } catch {
+            $stopped += @{ pid = $proc.pid; name = $proc.name; ok = $false; error = $_.Exception.Message }
+        }
+    }
+    return $stopped
+}
+
+function Test-LocalPort {
+    param([int]$Port)
+    try {
+        $client = New-Object Net.Sockets.TcpClient
+        $iar = $client.BeginConnect("127.0.0.1", $Port, $null, $null)
+        $success = $iar.AsyncWaitHandle.WaitOne(1000, $false)
+        if ($success) {
+            $client.EndConnect($iar)
+        }
+        $client.Close()
+        return [bool]$success
+    } catch {
+        return $false
+    }
+}
+
+function Get-Endpoint {
+    param([string]$Path)
+    $url = "http://127.0.0.1:8777$Path"
+    try {
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 3
+        return @{ url = $url; ok = $true; statusCode = [int]$response.StatusCode }
+    } catch {
+        return @{ url = $url; ok = $false; error = $_.Exception.Message }
+    }
+}
+
+function Get-TruthStatus {
+    $paths = @(
+        "active_battles.json",
+        "stream_status.json",
+        "daily_stats.json",
+        "battle_stats.json",
+        "devstream\truth\showdown-login-proof.json"
+    )
+    $items = @()
+    foreach ($rel in $paths) {
+        $path = Join-Path $RepoRoot $rel
+        $exists = Test-Path $path
+        $summary = $null
+        if ($exists -and $path.EndsWith(".json")) {
+            $parsed = Read-JsonFile -Path $path
+            if ($null -ne $parsed) {
+                if ($rel -eq "active_battles.json") {
+                    $summary = @{
+                        battleCount = @($parsed.battles).Count
+                        updated = $parsed.updated
+                    }
+                } elseif ($rel -eq "stream_status.json") {
+                    $summary = @{
+                        status = $parsed.status
+                        runtimeBlocked = [bool]$parsed.runtime_blocked
+                        blockerCode = $parsed.blocker_code
+                        blockerSummary = $parsed.blocker_summary
+                        updated = $parsed.updated
+                    }
+                } elseif ($rel -eq "devstream\truth\showdown-login-proof.json") {
+                    $summary = @{
+                        ok = [bool]$parsed.ok
+                        checkedAt = $parsed.checkedAt
+                        loginOk = [bool]$parsed.loginOk
+                    }
+                }
+            }
+        }
+        $mtime = $null
+        if ($exists) {
+            $mtime = (Get-Item $path).LastWriteTimeUtc.ToString("o")
+        }
+        $items += @{
+            relativePath = $rel
+            exists = $exists
+            mtime = $mtime
+            summary = $summary
+        }
+    }
+    return $items
+}
+
+function Get-TaskInfo {
+    try {
+        return @(Get-ScheduledTask | Where-Object {
+            $_.TaskName -match "Fouler|Foul|FoulerPlay"
+        } | ForEach-Object {
+            @{ taskName = $_.TaskName; taskPath = $_.TaskPath; state = $_.State.ToString() }
+        })
+    } catch {
+        return @()
+    }
+}
+
+function Start-ObsServer {
+    if (Test-LocalPort -Port 8777) {
+        return @{ ok = $true; alreadyRunning = $true; port = 8777 }
+    }
+    $python = Get-PythonPath
+    if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
+    $stdout = Join-Path $LogDir "jigglypuff-obs-server.log"
+    $stderr = Join-Path $LogDir "jigglypuff-obs-server.err.log"
+    $env:PYTHONUTF8 = "1"
+    $env:PYTHONIOENCODING = "utf-8"
+    $proc = Start-Process -FilePath $python `
+        -ArgumentList @("streaming\serve_obs_page.py") `
+        -WorkingDirectory $RepoRoot `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $stdout `
+        -RedirectStandardError $stderr `
+        -PassThru
+    Start-Sleep -Seconds 3
+    return @{
+        ok = (Test-LocalPort -Port 8777)
+        pid = $proc.Id
+        port = 8777
+        stdout = $stdout
+        stderr = $stderr
+    }
+}
+
+function Start-BattleSession {
+    param([int]$RunCount, [int]$MaxConcurrentBattles)
+    if (-not (Test-Path (Join-Path $RepoRoot ".env"))) {
+        return @{ ok = $false; error = ".env is missing; refusing to queue Showdown battles" }
+    }
+    if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
+    $stdout = Join-Path $LogDir "jigglypuff-battle-session.log"
+    $stderr = Join-Path $LogDir "jigglypuff-battle-session.err.log"
+    $command = "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set PS_RUN_COUNT=$RunCount&& set CONCURRENT_BATTLES=$MaxConcurrentBattles&& call start_one_touch.bat"
+    $proc = Start-Process -FilePath "cmd.exe" `
+        -ArgumentList @("/d", "/c", $command) `
+        -WorkingDirectory $RepoRoot `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $stdout `
+        -RedirectStandardError $stderr `
+        -PassThru
+    if (-not (Test-Path $PidDir)) { New-Item -ItemType Directory -Path $PidDir -Force | Out-Null }
+    Write-JsonFile -Path (Join-Path $PidDir "jigglypuff-battle-session.json") -Payload @{
+        pid = $proc.Id
+        runCount = $RunCount
+        maxConcurrentBattles = $MaxConcurrentBattles
+        startedAt = Get-IsoNow
+        stdout = $stdout
+        stderr = $stderr
+    }
+    return @{ ok = $true; pid = $proc.Id; stdout = $stdout; stderr = $stderr }
+}
+
+function Install-Runtime {
+    $steps = @()
+    $venvPython = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+    if (-not (Test-Path $venvPython)) {
+        $steps += @{ name = "create-venv"; result = Invoke-Checked -FilePath "python" -ArgumentList @("-m", "venv", ".venv") -TimeoutSeconds 180 }
+    }
+    $python = Get-PythonPath
+    $steps += @{ name = "pip-upgrade"; result = Invoke-Checked -FilePath $python -ArgumentList @("-m", "pip", "install", "--upgrade", "pip") -TimeoutSeconds 240 }
+    $steps += @{ name = "pip-requirements"; result = Invoke-Checked -FilePath $python -ArgumentList @("-m", "pip", "install", "-r", "requirements.txt") -TimeoutSeconds 900 }
+    return @{ ok = -not (@($steps | Where-Object { -not $_.result.ok }).Count); steps = $steps }
+}
+
+function Invoke-LoginProof {
+    $python = Get-PythonPath
+    $result = Invoke-Checked -FilePath $python -ArgumentList @("scripts\showdown_login_check.py", "--execute", "--write", "--timeout-seconds", "25") -TimeoutSeconds 45
+    $parsed = $null
+    if ($result.stdout) {
+        try { $parsed = $result.stdout | ConvertFrom-Json } catch {}
+    }
+    return @{ ok = [bool]$result.ok; result = $result; payload = $parsed }
+}
+
+function Get-Status {
+    $repoExists = Test-Path $RepoRoot
+    $envPresent = Test-Path (Join-Path $RepoRoot ".env")
+    $venvPresent = Test-Path (Join-Path $RepoRoot ".venv\Scripts\python.exe")
+    $scriptsPresent = @{
+        devstreamHealth = Test-Path (Join-Path $RepoRoot "scripts\devstream_health.py")
+        showdownLoginCheck = Test-Path (Join-Path $RepoRoot "scripts\showdown_login_check.py")
+        startOneTouch = Test-Path (Join-Path $RepoRoot "start_one_touch.bat")
+        obsServer = Test-Path (Join-Path $RepoRoot "streaming\serve_obs_page.py")
+    }
+    $processes = Get-ProcessInfo
+    $obsOpen = Test-LocalPort -Port 8777
+    $truth = Get-TruthStatus
+    $blockers = @()
+    $warnings = @()
+    if (-not $repoExists) { $blockers += "repo root is missing: $RepoRoot" }
+    if (-not $envPresent) { $blockers += ".env is missing on JIGGLYPUFF" }
+    if (-not $scriptsPresent.devstreamHealth) { $blockers += "scripts/devstream_health.py is missing; checkout is stale" }
+    if (-not $scriptsPresent.startOneTouch) { $blockers += "start_one_touch.bat is missing" }
+    if (-not $scriptsPresent.obsServer) { $blockers += "streaming/serve_obs_page.py is missing" }
+    if (-not $venvPresent) { $warnings += ".venv is missing; using global python until bootstrap completes" }
+    $streamStatus = ($truth | Where-Object { $_.relativePath -eq "stream_status.json" } | Select-Object -First 1).summary
+    if ($streamStatus -and $streamStatus.runtimeBlocked) {
+        $warnings += "stream_status.json still records runtime_blocked: $($streamStatus.blockerCode)"
+    }
+    $running = ($processes.Count -gt 0) -or $obsOpen
+    $deployReady = $repoExists -and $envPresent -and $scriptsPresent.devstreamHealth -and $scriptsPresent.startOneTouch -and $scriptsPresent.obsServer
+    $healthy = $deployReady -and ($blockers.Count -eq 0)
+    $status = "idle"
+    if ($blockers.Count -gt 0) {
+        $status = "blocked"
+    } elseif ($running) {
+        $status = "running"
+    } elseif ($deployReady) {
+        $status = "ready-idle"
+    }
+    $payload = @{
+        schemaVersion = "fouler-play-jigglypuff-runtime/v1"
+        checkedAt = Get-IsoNow
+        machine = "JIGGLYPUFF"
+        repoRoot = $RepoRoot
+        repoExists = $repoExists
+        ok = $healthy
+        healthy = $healthy
+        running = $running
+        status = $status
+        deployReady = $deployReady
+        blockers = @($blockers)
+        warnings = @($warnings)
+        git = Get-GitInfo
+        envPresent = $envPresent
+        venvPresent = $venvPresent
+        python = @{ path = (Get-PythonPath) }
+        scriptsPresent = $scriptsPresent
+        processes = @($processes)
+        processCount = $processes.Count
+        scheduledTasks = Get-TaskInfo
+        ports = @{ obsHttp = @{ host = "127.0.0.1"; port = 8777; open = $obsOpen } }
+        endpoints = @{
+            health = Get-Endpoint -Path "/health"
+            state = Get-Endpoint -Path "/state"
+            slot1 = Get-Endpoint -Path "/slot/1"
+            dashboard = Get-Endpoint -Path "/dashboard/hybrid"
+        }
+        truth = @($truth)
+    }
+    Write-JsonFile -Path $RemoteTruthPath -Payload $payload
+    return $payload
+}
+
+$actions = @()
+if ($Command -eq "bootstrap") {
+    if (-not $Execute) {
+        $payload = @{
+            schemaVersion = "fouler-play-jigglypuff-action/v1"
+            checkedAt = Get-IsoNow
+            action = "bootstrap"
+            execute = $false
+            planned = $true
+            message = "Pass -Execute to create .venv and install requirements."
+            postStatus = Get-Status
+        }
+        $payload | ConvertTo-Json -Depth 10
+        exit 0
+    }
+    $actions += @{ name = "bootstrap"; result = Install-Runtime }
+} elseif ($Command -eq "stop") {
+    if ($Execute) {
+        $actions += @{ name = "stop-processes"; result = Stop-FoulerProcesses }
+    } else {
+        $actions += @{ name = "stop-processes"; planned = $true }
+    }
+} elseif ($Command -eq "start") {
+    if ($Execute) {
+        $actions += @{ name = "stop-stale-processes"; result = Stop-FoulerProcesses }
+        $actions += @{ name = "start-obs-server"; result = Start-ObsServer }
+        if (-not $ObsOnly) {
+            $actions += @{ name = "start-battle-session"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles }
+        }
+    } else {
+        $actions += @{ name = "start-obs-server"; planned = $true }
+        if (-not $ObsOnly) {
+            $actions += @{ name = "start-battle-session"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles }
+        }
+    }
+} elseif ($Command -eq "login-proof") {
+    if ($Execute) {
+        $actions += @{ name = "showdown-login-proof"; result = Invoke-LoginProof }
+    } else {
+        $actions += @{ name = "showdown-login-proof"; planned = $true }
+    }
+}
+
+$final = @{
+    schemaVersion = "fouler-play-jigglypuff-control/v1"
+    checkedAt = Get-IsoNow
+    action = $Command
+    execute = [bool]$Execute
+    obsOnly = [bool]$ObsOnly
+    actions = @($actions)
+    postStatus = Get-Status
+}
+
+if ($Command -eq "status") {
+    $final = Get-Status
+}
+
+$final | ConvertTo-Json -Depth 12
