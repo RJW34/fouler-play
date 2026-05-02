@@ -334,7 +334,8 @@ function Get-Status {
         startOneTouch = Test-Path (Join-Path $RepoRoot "start_one_touch.bat")
         obsServer = Test-Path (Join-Path $RepoRoot "streaming\serve_obs_page.py")
     }
-    $processes = Get-ProcessInfo
+    $processes = @(Get-ProcessInfo)
+    $processCount = @($processes).Count
     $obsOpen = Test-LocalPort -Port 8777
     $truth = Get-TruthStatus
     $blockers = @()
@@ -349,7 +350,7 @@ function Get-Status {
     if ($streamStatus -and $streamStatus.runtimeBlocked) {
         $warnings += "stream_status.json still records runtime_blocked: $($streamStatus.blockerCode)"
     }
-    $running = ($processes.Count -gt 0) -or $obsOpen
+    $running = ($processCount -gt 0) -or $obsOpen
     $deployReady = $repoExists -and $envPresent -and $scriptsPresent.devstreamHealth -and $scriptsPresent.startOneTouch -and $scriptsPresent.obsServer
     $healthy = $deployReady -and ($blockers.Count -eq 0)
     $status = "idle"
@@ -379,8 +380,8 @@ function Get-Status {
         python = @{ path = (Get-PythonPath) }
         scriptsPresent = $scriptsPresent
         processes = @($processes)
-        processCount = $processes.Count
-        scheduledTasks = Get-TaskInfo
+        processCount = $processCount
+        scheduledTasks = @(Get-TaskInfo)
         ports = @{ obsHttp = @{ host = "127.0.0.1"; port = 8777; open = $obsOpen } }
         endpoints = @{
             health = Get-Endpoint -Path "/health"
