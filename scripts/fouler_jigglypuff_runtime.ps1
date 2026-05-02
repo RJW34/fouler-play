@@ -160,6 +160,31 @@ function Test-LocalPort {
     }
 }
 
+function Start-DetachedCommand {
+    param(
+        [string]$CommandLine,
+        [string]$WorkingDirectory
+    )
+    try {
+        $result = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+            CommandLine = $CommandLine
+            CurrentDirectory = $WorkingDirectory
+        }
+        return @{
+            ok = ([int]$result.ReturnValue -eq 0)
+            returnValue = [int]$result.ReturnValue
+            pid = [int]$result.ProcessId
+            commandLine = $CommandLine
+        }
+    } catch {
+        return @{
+            ok = $false
+            error = $_.Exception.Message
+            commandLine = $CommandLine
+        }
+    }
+}
+
 function Get-Endpoint {
     param([string]$Path)
     $url = "http://127.0.0.1:8777$Path"
@@ -243,19 +268,13 @@ function Start-ObsServer {
     if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
     $stdout = Join-Path $LogDir "jigglypuff-obs-server.log"
     $stderr = Join-Path $LogDir "jigglypuff-obs-server.err.log"
-    $env:PYTHONUTF8 = "1"
-    $env:PYTHONIOENCODING = "utf-8"
-    $proc = Start-Process -FilePath $python `
-        -ArgumentList @("streaming\serve_obs_page.py") `
-        -WorkingDirectory $RepoRoot `
-        -WindowStyle Hidden `
-        -RedirectStandardOutput $stdout `
-        -RedirectStandardError $stderr `
-        -PassThru
+    $commandLine = 'cmd.exe /d /c ""{0}" "streaming\serve_obs_page.py" 1>>"{1}" 2>>"{2}""' -f $python, $stdout, $stderr
+    $launch = Start-DetachedCommand -CommandLine $commandLine -WorkingDirectory $RepoRoot
     Start-Sleep -Seconds 3
     return @{
-        ok = (Test-LocalPort -Port 8777)
-        pid = $proc.Id
+        ok = ((Test-LocalPort -Port 8777) -and [bool]$launch.ok)
+        pid = $launch.pid
+        launch = $launch
         port = 8777
         stdout = $stdout
         stderr = $stderr
@@ -270,24 +289,19 @@ function Start-BattleSession {
     if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
     $stdout = Join-Path $LogDir "jigglypuff-battle-session.log"
     $stderr = Join-Path $LogDir "jigglypuff-battle-session.err.log"
-    $command = "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set PS_RUN_COUNT=$RunCount&& set CONCURRENT_BATTLES=$MaxConcurrentBattles&& call start_one_touch.bat"
-    $proc = Start-Process -FilePath "cmd.exe" `
-        -ArgumentList @("/d", "/c", $command) `
-        -WorkingDirectory $RepoRoot `
-        -WindowStyle Hidden `
-        -RedirectStandardOutput $stdout `
-        -RedirectStandardError $stderr `
-        -PassThru
+    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set PS_RUN_COUNT={0}&& set CONCURRENT_BATTLES={1}&& call start_one_touch.bat 1>>"{2}" 2>>"{3}""' -f $RunCount, $MaxConcurrentBattles, $stdout, $stderr
+    $launch = Start-DetachedCommand -CommandLine $commandLine -WorkingDirectory $RepoRoot
     if (-not (Test-Path $PidDir)) { New-Item -ItemType Directory -Path $PidDir -Force | Out-Null }
     Write-JsonFile -Path (Join-Path $PidDir "jigglypuff-battle-session.json") -Payload @{
-        pid = $proc.Id
+        pid = $launch.pid
         runCount = $RunCount
         maxConcurrentBattles = $MaxConcurrentBattles
         startedAt = Get-IsoNow
         stdout = $stdout
         stderr = $stderr
+        launch = $launch
     }
-    return @{ ok = $true; pid = $proc.Id; stdout = $stdout; stderr = $stderr }
+    return @{ ok = [bool]$launch.ok; pid = $launch.pid; launch = $launch; stdout = $stdout; stderr = $stderr }
 }
 
 function Install-Runtime {
