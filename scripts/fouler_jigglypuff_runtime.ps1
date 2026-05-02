@@ -298,7 +298,19 @@ function Install-Runtime {
     }
     $python = Get-PythonPath
     $steps += @{ name = "pip-upgrade"; result = Invoke-Checked -FilePath $python -ArgumentList @("-m", "pip", "install", "--upgrade", "pip") -TimeoutSeconds 240 }
-    $steps += @{ name = "pip-requirements"; result = Invoke-Checked -FilePath $python -ArgumentList @("-m", "pip", "install", "-r", "requirements.txt") -TimeoutSeconds 900 }
+    $baseDeps = @(
+        "aiohttp==3.10.11",
+        "requests==2.32.4",
+        "websockets==14.1",
+        "python-dotenv==1.0.1",
+        "python-dateutil==2.8.0",
+        "psutil==6.1.1"
+    )
+    $steps += @{ name = "pip-base-dependencies"; result = Invoke-Checked -FilePath $python -ArgumentList (@("-m", "pip", "install") + $baseDeps) -TimeoutSeconds 300 }
+    # Windows builds of poke-engine can hang when pip applies the Linux-oriented
+    # config-settings line from requirements.txt. Install the pinned package
+    # directly so the local MSVC/Rust toolchain can produce the wheel normally.
+    $steps += @{ name = "pip-poke-engine"; result = Invoke-Checked -FilePath $python -ArgumentList @("-m", "pip", "install", "poke-engine==0.0.46") -TimeoutSeconds 600 }
     return @{ ok = -not (@($steps | Where-Object { -not $_.result.ok }).Count); steps = $steps }
 }
 
