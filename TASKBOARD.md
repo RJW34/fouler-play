@@ -5,14 +5,14 @@
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
 **Branch:** `master` is the live deployment/base branch and now contains the latest Codex-readiness/doc cleanup merged on 2026-03-09 (`a8b2d31`). Treat older branch-specific notes as historical unless a newer branch is explicitly called out here.
 **Bot Account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=npctypebeat`. Windows machine hostname may vary (MAGNETON, MIRAIDON, etc.) — use OS detection.
-**Updated:** 2026-03-25
+**Updated:** 2026-05-02
 
 ---
 
 ## Standing Rules (check every session — fix drift immediately)
 
 1. **DECISION ENGINE WORK ONLY.** Do not write infrastructure, reporting, Discord formatting, build manifests, or pipeline orchestration code. All of that is built (see "What's Already Built" below). Every commit must improve `fp/search/` or fix a documented bug in the decision engine. If you are about to create a new file outside `fp/search/` or `tests/`, STOP and reconsider.
-2. **Do not hard-code stale concurrency targets.** Live launcher truth wins. Use `--max-concurrent-battles 1` with `--search-parallelism 1` via `infrastructure/windows/player_loop.bat` -> `start_one_touch.bat`.
+2. **Do not hard-code stale concurrency targets.** Live launcher truth wins. The current devstream runner is DEKU on ubunztu controlling JIGGLYPUFF over Tailscale SSH, using `scripts/jigglypuff_devstream_control.py` -> `scripts/fouler_jigglypuff_runtime.ps1` -> `start_one_touch.bat`.
 3. **One source of truth.** This file plus current launcher/process evidence. If docs disagree with the running launcher or command line, fix the docs immediately.
 4. **Bot account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=npctypebeat`.
 
@@ -85,8 +85,8 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 - Test suite maintenance
 - Upstream merge management
 
-### BAKUGO (Windows) owns:
-- Bot operation (`infrastructure/windows/player_loop.bat`)
+### JIGGLYPUFF (Windows) owns:
+- Bot operation for devstream runtime (`D:\Projects\fouler-play`, controlled by DEKU over Tailscale SSH)
 - Battle data collection + push (`battle_stats.json`, replays)
 - poke-engine builds (Rust toolchain)
 - ELO monitoring + watchdog
@@ -125,10 +125,10 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 
 ---
 
-## BAKUGO Action Items
+## JIGGLYPUFF Action Items
 
 ### Keep the Bot Running
-1. Ensure `player_loop.bat` is running (directly or via scheduled task)
+1. Ensure DEKU can run `python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py status` from ubunztu.
 2. After each batch, verify `battle_stats.json` has new entries and push
 3. If the bot disconnects or crashes, check logs and restart
 
@@ -138,6 +138,7 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 - [x] Replays saved to replay_analysis/
 - [x] Player loop runs unattended / looping on Windows
 - [x] Push battle_stats.json after each batch
+- [ ] JIGGLYPUFF deployment is current, `.env` is present, `.venv` is bootstrapped, and DEKU's Tailscale control wrapper reports ready.
 
 ---
 
@@ -167,7 +168,7 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 
 - Push code/data to the branch that matches current repo reality. As of `a8b2d31`, `master` is again the deployment/base branch and the repo-guidance baseline.
 - Update this TASKBOARD.md when completing items (check the box: `[x]`)
-- DEKU pushes code changes, BAKUGO pushes battle data
+- DEKU pushes code changes, JIGGLYPUFF pushes battle data
 - Check `battle_stats.json` for performance tracking
 - If you need the other machine to act, write it under their Action Items section and push
 
