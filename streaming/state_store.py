@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -22,6 +22,7 @@ ACTIVE_BATTLES_PATH = ROOT_DIR / "active_battles.json"
 STREAM_STATUS_PATH = ROOT_DIR / "stream_status.json"
 DAILY_STATS_PATH = ROOT_DIR / "daily_stats.json"
 NEXT_FIX_PATH = ROOT_DIR / "next_fix.txt"
+STABILITY_REPORT_PATH = ROOT_DIR / "stability_report.json"
 
 DEFAULT_NEXT_FIX = "Pending replay review"
 
@@ -134,6 +135,56 @@ def write_status(status: dict[str, Any]) -> None:
     data.update(status)
     data["updated"] = datetime.now().isoformat()
     _atomic_write_json(STREAM_STATUS_PATH, data)
+
+
+def write_runtime_blocked_status(*, code: str, summary: str) -> dict[str, Any]:
+    """Publish a fresh, viewer-safe blocked state for OBS and HERMES."""
+    now = datetime.now(timezone.utc).isoformat()
+    blocker_summary = (summary or "Runtime blocked.").strip()
+    blocker_code = (code or "runtime_blocked").strip()
+    active_payload = {
+        "battles": [],
+        "count": 0,
+        "updated": now,
+        "runtime_blocked": True,
+        "blocker_code": blocker_code,
+        "blocker_summary": blocker_summary,
+    }
+    status_payload = {
+        "status": "Credential blocked" if "credential" in blocker_code else "Runtime blocked",
+        "battle_info": blocker_summary,
+        "streaming": False,
+        "stream_pid": None,
+        "runtime_blocked": True,
+        "blocker_code": blocker_code,
+        "blocker_summary": blocker_summary,
+        "next_fix": "Refresh Showdown credentials and rerun the login proof." if "credential" in blocker_code else DEFAULT_NEXT_FIX,
+    }
+    write_active_battles(active_payload)
+    write_status(status_payload)
+    daily = update_daily_stats(0, 0)
+    stability_payload = {
+        "generated_at": now,
+        "runtime_blocked": True,
+        "blocker_code": blocker_code,
+        "blocker_summary": blocker_summary,
+        "stability": {
+            "health": "blocked",
+            "summary": blocker_summary,
+            "next_fix": status_payload["next_fix"],
+        },
+        "details": {
+            "active_battles": 0,
+            "reason": "No stability sample is meaningful while the runtime is blocked before battle launch.",
+        },
+    }
+    _atomic_write_json(STABILITY_REPORT_PATH, stability_payload)
+    return {
+        "activeBattles": active_payload,
+        "status": read_status(),
+        "dailyStats": daily,
+        "stabilityReport": stability_payload,
+    }
 
 
 # Daily stats tracking
