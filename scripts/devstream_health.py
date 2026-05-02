@@ -130,8 +130,23 @@ def summarize_truth(rel: str, parsed: Any) -> dict[str, Any] | None:
     if rel == "daily_stats.json":
         return {"wins": parsed.get("wins"), "losses": parsed.get("losses")}
     if rel == "stream_status.json":
-        return {"status": parsed.get("status"), "elo": parsed.get("elo"), "updated": parsed.get("updated") or parsed.get("updated_at")}
+        return {
+            "status": parsed.get("status"),
+            "elo": parsed.get("elo"),
+            "updated": parsed.get("updated") or parsed.get("updated_at"),
+            "runtimeBlocked": bool(parsed.get("runtime_blocked")),
+            "blockerCode": parsed.get("blocker_code"),
+            "blockerSummary": parsed.get("blocker_summary"),
+            "nextFix": parsed.get("next_fix"),
+        }
     return None
+
+
+def stream_status_summary(truth: list[dict[str, Any]]) -> dict[str, Any]:
+    for item in truth:
+        if item["relativePath"] == "stream_status.json" and isinstance(item.get("summary"), dict):
+            return item["summary"]
+    return {}
 
 
 def active_battle_count(truth: list[dict[str, Any]]) -> int:
@@ -161,11 +176,19 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     stale_truth = [item for item in truth if item["exists"] and item["stale"]]
     missing_required = [item for item in truth if not item["optional"] and not item["exists"]]
     battle_count = active_battle_count(truth)
+    stream_summary = stream_status_summary(truth)
+    runtime_blocked = bool(stream_summary.get("runtimeBlocked"))
     credential_failure = recent_showdown_credential_failure(ROOT)
 
     blockers: list[str] = []
+    warnings: list[str] = []
     if not active_services and not http_open and battle_count == 0:
         blockers.append("fouler-play runner and OBS HTTP server are idle")
+    if runtime_blocked:
+        summary = stream_summary.get("blockerSummary") or stream_summary.get("status") or "runtime blocked"
+        code = stream_summary.get("blockerCode")
+        suffix = f" ({code})" if code else ""
+        blockers.append(f"{summary}{suffix}")
     if credential_failure.get("found"):
         blockers.append(f"recent Showdown credential failure: {credential_failure.get('code')}")
     if http_open and check_http:
@@ -174,7 +197,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     if missing_required:
         blockers.extend(f"missing truth file: {item['relativePath']}" for item in missing_required)
     if stale_truth:
-        blockers.extend(f"stale truth file: {item['relativePath']}" for item in stale_truth)
+        warnings.extend(f"stale truth file: {item['relativePath']}" for item in stale_truth)
 
     running = bool(active_services or http_open or battle_count > 0)
     healthy = (
@@ -187,6 +210,8 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         healthy = False
     if healthy:
         status = "running"
+    elif runtime_blocked:
+        status = "blocked"
     elif running:
         status = "degraded"
     else:
@@ -200,6 +225,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "running": running,
         "status": status,
         "blockers": blockers,
+        "warnings": warnings,
         "services": services,
         "ports": {
             "obsHttp": {"port": HTTP_PORT, "open": http_open},
