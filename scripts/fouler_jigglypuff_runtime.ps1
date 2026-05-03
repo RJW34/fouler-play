@@ -109,14 +109,36 @@ function Get-GitInfo {
     }
 }
 
+function Redact-CommandLine {
+    param([string]$CommandLine)
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) {
+        return $CommandLine
+    }
+    $redacted = $CommandLine -replace '(--ps-password\s+)"[^"]*"', '$1"[redacted]"'
+    $redacted = $redacted -replace '(--ps-password\s+)[^\s"]+', '$1[redacted]'
+    $redacted = $redacted -replace '(PS_PASSWORD=)[^&\s"]+', '$1[redacted]'
+    return $redacted
+}
+
 function Get-ProcessInfo {
     $escapedRepo = [regex]::Escape($RepoRoot)
     $items = Get-CimInstance Win32_Process | Where-Object {
         $_.CommandLine -and
-        $_.CommandLine -match $escapedRepo -and
         (
-            $_.CommandLine -match "run\.py" -or
-            $_.CommandLine -match "start_one_touch\.bat" -or
+            (
+                $_.CommandLine -match $escapedRepo -and
+                (
+                    $_.CommandLine -match "run\.py" -or
+                    $_.CommandLine -match "start_one_touch\.bat" -or
+                    $_.CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or
+                    $_.CommandLine -match "streaming\.serve_obs_page"
+                )
+            ) -or
+            (
+                $_.CommandLine -match "run\.py" -and
+                $_.CommandLine -match "search_ladder" -and
+                $_.CommandLine -match "--ps-username"
+            ) -or
             $_.CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or
             $_.CommandLine -match "streaming\.serve_obs_page"
         )
@@ -124,7 +146,7 @@ function Get-ProcessInfo {
         @{
             pid = $_.ProcessId
             name = $_.Name
-            commandLine = $_.CommandLine
+            commandLine = Redact-CommandLine -CommandLine $_.CommandLine
             creationDate = $_.CreationDate
         }
     }
@@ -289,7 +311,7 @@ function Start-BattleSession {
     if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
     $stdout = Join-Path $LogDir "jigglypuff-battle-session.log"
     $stderr = Join-Path $LogDir "jigglypuff-battle-session.err.log"
-    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set PS_RUN_COUNT={0}&& set CONCURRENT_BATTLES={1}&& call start_one_touch.bat 1>>"{2}" 2>>"{3}""' -f $RunCount, $MaxConcurrentBattles, $stdout, $stderr
+    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set BOT_LOG_TO_FILE=1&& set AUTO_START_OBS_SERVER=0&& set LOSS_TRIGGERED_DRAIN=0&& set PS_RUN_COUNT={0}&& set CONCURRENT_BATTLES={1}&& call start_one_touch.bat 1>>"{2}" 2>>"{3}""' -f $RunCount, $MaxConcurrentBattles, $stdout, $stderr
     $launch = Start-DetachedCommand -CommandLine $commandLine -WorkingDirectory $RepoRoot
     if (-not (Test-Path $PidDir)) { New-Item -ItemType Directory -Path $PidDir -Force | Out-Null }
     Write-JsonFile -Path (Join-Path $PidDir "jigglypuff-battle-session.json") -Payload @{

@@ -9,14 +9,18 @@ cd /d "%REPO_DIR%" || (
 
 set "PYTHONUTF8=1"
 if not defined PYTHONIOENCODING set "PYTHONIOENCODING=utf-8"
+set "PY_EXE=python"
+if exist ".venv\Scripts\python.exe" set "PY_EXE=.venv\Scripts\python.exe"
 
 echo [CLEANUP] Stopping stale bot python workers...
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$targets = Get-CimInstance Win32_Process | Where-Object { " ^
   "  $_.CommandLine -and " ^
-  "  $_.CommandLine -match 'fouler-play' -and " ^
   "  $_.Name -match '^(py|python).*\.exe$' -and " ^
-  "  ($_.CommandLine -match 'run\.py' -or $_.CommandLine -match 'bot_monitor\.py')" ^
+  "  (" ^
+  "    ($_.CommandLine -match 'fouler-play' -and ($_.CommandLine -match 'run\.py' -or $_.CommandLine -match 'bot_monitor\.py')) -or" ^
+  "    ($_.CommandLine -match 'run\.py' -and $_.CommandLine -match 'search_ladder' -and $_.CommandLine -match '--ps-username')" ^
+  "  )" ^
   "}; " ^
   "if ($targets) { foreach ($p in $targets) { try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop; Write-Output ('[CLEANUP] Killed PID ' + $p.ProcessId) } catch {} } } else { Write-Output '[CLEANUP] No stale bot python workers found.' }"
 
@@ -96,6 +100,7 @@ if "!CONCURRENT_BATTLES!"=="1" (
 ) else (
     echo [START] Mode   : !CONCURRENT_BATTLES! concurrent battle workers
 )
+echo [START] Python : %PY_EXE%
 if defined SPECTATOR_USERNAME (
     if defined SPECTATOR_FLAG (
         echo [SPECTATOR] Inviting spectator account: %SPECTATOR_USERNAME%
@@ -111,10 +116,9 @@ if defined TEAM_LIST goto run_with_team_list
 goto run_with_team_name
 
 :run_with_team_names
-call python run.py ^
+call "%PY_EXE%" run.py ^
   --websocket-uri "%PS_WEBSOCKET_URI%" ^
   --ps-username "%PS_USERNAME%" ^
-  --ps-password "%PS_PASSWORD%" ^
   --bot-mode search_ladder ^
   --pokemon-format "%PS_FORMAT%" ^
   --search-time-ms "%PS_SEARCH_TIME_MS%" ^
@@ -130,10 +134,9 @@ call python run.py ^
 goto done
 
 :run_with_team_list
-call python run.py ^
+call "%PY_EXE%" run.py ^
   --websocket-uri "%PS_WEBSOCKET_URI%" ^
   --ps-username "%PS_USERNAME%" ^
-  --ps-password "%PS_PASSWORD%" ^
   --bot-mode search_ladder ^
   --pokemon-format "%PS_FORMAT%" ^
   --search-time-ms "%PS_SEARCH_TIME_MS%" ^
@@ -149,10 +152,9 @@ call python run.py ^
 goto done
 
 :run_with_team_name
-call python run.py ^
+call "%PY_EXE%" run.py ^
   --websocket-uri "%PS_WEBSOCKET_URI%" ^
   --ps-username "%PS_USERNAME%" ^
-  --ps-password "%PS_PASSWORD%" ^
   --bot-mode search_ladder ^
   --pokemon-format "%PS_FORMAT%" ^
   --search-time-ms "%PS_SEARCH_TIME_MS%" ^
@@ -170,7 +172,7 @@ goto done
 
 :load_env
 for /f "usebackq eol=# tokens=1* delims==" %%A in (%~1) do (
-    if not "%%~A"=="" set "%%~A=%%~B"
+    if not "%%~A"=="" if not defined %%~A set "%%~A=%%~B"
 )
 exit /b 0
 

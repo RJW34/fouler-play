@@ -13,6 +13,30 @@ LOCK_DIR = os.path.dirname(os.path.abspath(__file__))
 PID_FILE = os.path.join(LOCK_DIR, ".bot.pid")
 
 
+def _protected_process_ids() -> set[int]:
+    """Return PIDs that belong to this launch chain and must not be reaped."""
+    protected = {os.getpid()}
+    try:
+        current = psutil.Process(os.getpid())
+        protected.update(parent.pid for parent in current.parents())
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        pass
+    return protected
+
+
+def _is_stale_bot_process(proc, our_dir: str, protected_pids: set[int]) -> bool:
+    """Check whether a process is a stale fouler bot from this repo."""
+    if proc.pid in protected_pids:
+        return False
+    cmdline = " ".join(proc.info.get("cmdline") or []).lower()
+    if "run.py" not in cmdline or "search_ladder" not in cmdline:
+        return False
+    cwd = proc.info.get("cwd", "")
+    if not cwd:
+        return False
+    return os.path.abspath(cwd) == our_dir
+
+
 def is_bot_process(pid: int) -> bool:
     """Check if a PID is actually a fouler-play bot process."""
     try:
@@ -26,18 +50,18 @@ def is_bot_process(pid: int) -> bool:
 def kill_stale_processes():
     """Find and kill any stale bot processes from THIS directory only."""
     our_dir = os.path.abspath(LOCK_DIR)
+    protected_pids = _protected_process_ids()
     killed = 0
     for proc in psutil.process_iter(["pid", "cmdline", "cwd"]):
         try:
-            cmdline = " ".join(proc.info["cmdline"] or []).lower()
-            if "run.py" in cmdline and "search_ladder" in cmdline:
-                cwd = proc.info.get("cwd", "")
-                # Only kill processes running from OUR exact directory
-                # Never kill processes from other fouler-play installs (e.g. BAKUGO's)
-                if cwd and os.path.abspath(cwd) == our_dir:
-                    if proc.pid != os.getpid():
-                        proc.kill()
-                        killed += 1
+            # Only kill processes running from OUR exact directory. Never kill
+            # processes from other fouler-play installs, and never kill this
+            # launch chain. Windows venvs can expose a launcher parent plus the
+            # actual interpreter child, so protecting ancestors prevents the
+            # singleton cleanup from terminating its own startup.
+            if _is_stale_bot_process(proc, our_dir, protected_pids):
+                proc.kill()
+                killed += 1
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
     return killed
