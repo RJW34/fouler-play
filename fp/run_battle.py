@@ -127,6 +127,7 @@ from fp.opponent_model import OPPONENT_MODEL
 from fp.hybrid_policy import run_hybrid_rerank
 from fp.helpers import type_effectiveness_modifier
 from fp.battle_decision import StrategicDecisionLayer, clear_battle_strategy
+from fp.devstream_chat import POST_BATTLE_MESSAGES, post_battle_messages
 
 from fp.websocket_client import PSWebsocketClient
 from streaming.state_store import write_active_battles, read_active_battles, write_status, update_daily_stats
@@ -135,7 +136,11 @@ from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_
 from fp.gameplan_integration import generate_and_store_gameplan, get_gameplan, clear_gameplan
 from constants_pkg.strategy import SETUP_MOVES
 from infrastructure.event_queue_lib import queue_event
-from infrastructure.discord_reporting import build_contract_payload
+from infrastructure.discord_reporting import (
+    build_contract_payload,
+    format_elo_delta,
+    public_replay_id_candidate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +268,6 @@ def _rollover_worker_handler(worker_id: int, battle_tag: str, opponent_name: str
 
 # Battle chat defaults
 OPENING_CHAT_MESSAGE = "hf"
-POST_BATTLE_MESSAGES = ["gg", "twitch.tv/mfabso"]
 
 # Resume queue for in-progress battles (populated on startup from active_battles.json)
 _resume_lock = asyncio.Lock()
@@ -458,7 +462,7 @@ async def _post_battle_to_discord(
     our_player_name: str | None = None,
     elo_before: float | None = None,
     turn_count: int | None = None,
-) -> None:
+) -> float | None:
     """Post battle result to Discord webhook using the Lucario reporting format.
     
     Format:
@@ -476,11 +480,6 @@ async def _post_battle_to_discord(
         elo_before: ELO before battle (for delta display)
         turn_count: Number of turns the battle lasted
     """
-    webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
-    if not webhook_url:
-        logger.debug("DISCORD_BATTLES_WEBHOOK_URL not configured, skipping Discord post")
-        return
-
     # Determine if we won
     showdown_accounts = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
     showdown_accounts = [_normalize_username(acc) for acc in showdown_accounts if acc.strip()]
@@ -507,15 +506,15 @@ async def _post_battle_to_discord(
 
     # ELO delta
     if elo_after is not None and elo_before is not None:
-        elo_str = f"({elo_before:.0f} → {elo_after:.0f} ELO)"
+        elo_str = format_elo_delta(elo_before, elo_after, result_word.lower())
     elif elo_after is not None:
-        elo_str = f"(ELO: {elo_after:.0f})"
+        elo_str = f"ELO now {elo_after:.0f}"
     else:
         elo_str = ""
 
     line1 = f"{emoji} **{result_word}** vs {opponent_name}"
     if elo_str:
-        line1 += f" {elo_str}"
+        line1 += f" ({elo_str})"
 
     # --- Line 2: Team + turns ---
     team_display = ""
@@ -529,16 +528,12 @@ async def _post_battle_to_discord(
 
     # --- Line 3: Replay link ---
     replay_line = ""
-    if replay_url:
-        replay_id = _normalize_replay_id(replay_url.split("/")[-1])
-        normalized_url = f"https://replay.pokemonshowdown.com/{replay_id}"
-        replay_line = f"🔗 <{normalized_url}>"
-    else:
-        replay_id = _normalize_replay_id(battle_tag)
-        if replay_id:
-            constructed_url = f"https://replay.pokemonshowdown.com/{replay_id}"
-            if await _replay_exists(replay_id):
-                replay_line = f"🔗 <{constructed_url}>"
+    replay_ref = replay_url or battle_tag
+    replay_id = public_replay_id_candidate(replay_ref)
+    if replay_id and await _replay_exists(replay_id):
+        replay_line = f"🔗 <https://replay.pokemonshowdown.com/{replay_id}>"
+    elif replay_url:
+        replay_line = "🔗 Replay pending public upload"
 
     # Assemble message
     lines = [line1]
@@ -547,6 +542,11 @@ async def _post_battle_to_discord(
     if replay_line:
         lines.append(replay_line)
     message = "\n".join(lines)
+
+    webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
+    if not webhook_url:
+        logger.debug("DISCORD_BATTLES_WEBHOOK_URL not configured, skipping Discord post")
+        return elo_after
 
     # Send to Discord via the battles webhook only.
     # Battle results are also queued elsewhere in the monitor/event system;
@@ -564,6 +564,7 @@ async def _post_battle_to_discord(
         logger.warning("Discord webhook post timed out")
     except Exception as e:
         logger.warning(f"Failed to post to Discord webhook: {e}")
+    return elo_after
 
 async def prime_resume_battles() -> int:
     """Load in-progress battles from active_battles.json so workers can resume them."""
@@ -2204,7 +2205,10 @@ async def pokemon_battle(
 
     # Cache pre-battle ELO for delta display in Discord reports
     try:
-        _pre_battle_username = FoulPlayConfig.username
+        _pre_battle_username = (
+            getattr(getattr(battle, "user", None), "account_name", None)
+            or FoulPlayConfig.username
+        )
         _pre_elo, _ = await _fetch_elo(_pre_battle_username)
         if _pre_elo is not None:
             _elo_before_cache[battle_tag] = _pre_elo
@@ -2388,7 +2392,7 @@ async def pokemon_battle(
                     else None
                 )
                 logger.info("Battle finished: %s Winner: %s", battle_tag, winner)
-                await _send_battle_chat(ps_websocket_client, battle_tag, POST_BATTLE_MESSAGES)
+                await _send_battle_chat(ps_websocket_client, battle_tag, post_battle_messages())
 
                 # Save replay and capture URL if configured
                 replay_url = None
@@ -2444,12 +2448,16 @@ async def pokemon_battle(
 
                 # Retrieve pre-battle ELO for delta display
                 _elo_before_val = _elo_before_cache.pop(battle_tag, None)
+                _discord_replay_url = None
+                _discord_replay_id = public_replay_id_candidate(replay_url or battle_tag)
+                if _discord_replay_id and await _replay_exists(_discord_replay_id):
+                    _discord_replay_url = f"https://replay.pokemonshowdown.com/{_discord_replay_id}"
 
-                await _post_battle_to_discord(
+                elo_after = await _post_battle_to_discord(
                     battle_tag=battle_tag,
                     winner=winner,
                     opponent_name=opponent_name,
-                    replay_url=replay_url,
+                    replay_url=_discord_replay_url or replay_url,
                     team_name=team_name,
                     our_player_name=our_player_name,
                     turn_count=battle_turn_count,
@@ -2589,7 +2597,7 @@ async def pokemon_battle(
                             f"battle result {_result_str} vs {opponent_name}",
                             f"Battle {battle_tag} ended {_result_str} against {opponent_name}.",
                             "Operator-facing battle posts should immediately show whether the bot is climbing through repeatable play, variance, or an operational failure.",
-                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={replay_url or ''}",
+                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={_discord_replay_url or ''}",
                             "Append replay or ladder delta if more context lands after posting.",
                             source="fp.run_battle",
                             battle_id=battle_tag,
@@ -2597,7 +2605,7 @@ async def pokemon_battle(
                             team_file=_team_name_ev or "unknown",
                             opponent=opponent_name,
                             turns=_turn_count_ev,
-                            replay_url=replay_url,
+                            replay_url=_discord_replay_url,
                             elo_before=_elo_before_val,
                             elo_after=elo_after if 'elo_after' in locals() else None,
                             recent_record=_recent_summary,
