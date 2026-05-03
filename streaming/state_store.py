@@ -39,6 +39,13 @@ DEFAULT_STATUS = {
 }
 
 
+def _status_with_cleared_blocker(status: dict[str, Any]) -> dict[str, Any]:
+    cleared = dict(status)
+    for key in ("runtime_blocked", "blocker_code", "blocker_summary"):
+        cleared.pop(key, None)
+    return cleared
+
+
 def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -176,6 +183,59 @@ def write_runtime_blocked_status(*, code: str, summary: str) -> dict[str, Any]:
         "details": {
             "active_battles": 0,
             "reason": "No stability sample is meaningful while the runtime is blocked before battle launch.",
+        },
+    }
+    _atomic_write_json(STABILITY_REPORT_PATH, stability_payload)
+    return {
+        "activeBattles": active_payload,
+        "status": read_status(),
+        "dailyStats": daily,
+        "stabilityReport": stability_payload,
+    }
+
+
+def write_runtime_ready_status(*, summary: str, mode: str = "ready") -> dict[str, Any]:
+    """Publish fresh, secret-free runtime truth after a safe readiness proof."""
+    now = datetime.now(timezone.utc).isoformat()
+    clean_summary = (summary or "Runtime ready.").strip()
+    clean_mode = (mode or "ready").strip()
+    status_label = "Offline rehearsal ready" if clean_mode == "offline_rehearsal" else "Ready"
+    active_payload = {
+        "battles": [],
+        "count": 0,
+        "updated": now,
+        "runtime_mode": clean_mode,
+        "runtime_blocked": False,
+    }
+    daily = update_daily_stats(0, 0)
+    existing_status = _status_with_cleared_blocker(read_status())
+    status_payload = {
+        **existing_status,
+        "wins": daily.get("wins", 0),
+        "losses": daily.get("losses", 0),
+        "today_wins": daily.get("wins", 0),
+        "today_losses": daily.get("losses", 0),
+        "status": status_label,
+        "battle_info": clean_summary,
+        "streaming": False,
+        "stream_pid": None,
+        "runtime_mode": clean_mode,
+        "next_fix": "Start a bounded devstream batch." if clean_mode != "offline_rehearsal" else "Offline rehearsal is available; live ladder still needs a successful executed login proof.",
+    }
+    write_active_battles(active_payload)
+    write_status(status_payload)
+    stability_payload = {
+        "generated_at": now,
+        "runtime_blocked": False,
+        "runtime_mode": clean_mode,
+        "stability": {
+            "health": "ready" if clean_mode != "offline_rehearsal" else "offline_rehearsal",
+            "summary": clean_summary,
+            "next_fix": status_payload["next_fix"],
+        },
+        "details": {
+            "active_battles": 0,
+            "reason": "Fresh readiness truth was published without launching a battle.",
         },
     }
     _atomic_write_json(STABILITY_REPORT_PATH, stability_payload)

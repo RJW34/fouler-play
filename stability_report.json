@@ -1,112 +1,14 @@
 {
-  "generated_at": "2026-03-13T01:00:12.512687+00:00",
+  "generated_at": "2026-05-03T00:15:39.360802+00:00",
+  "runtime_blocked": false,
+  "runtime_mode": "login_proven",
   "stability": {
-    "battles_last_100": 100,
-    "wins": 49,
-    "total_losses": 51,
-    "timeout_losses": 13,
-    "skill_losses": 38,
-    "unknown_losses": 0,
-    "timeout_loss_rate": 25.5,
-    "memory_trend": "stable",
-    "avg_memory_mb": 0,
-    "max_memory_mb": 0,
-    "avg_cpu_percent": 0,
-    "avg_gap_seconds": 1008.7,
-    "max_gap_seconds": 51137.96542,
-    "timeout_gaps_count": 47,
-    "service_restarts_24h": 0,
-    "health": "\ud83d\udd34 CRITICAL - \ud83d\udd34 CRITICAL timeout rate"
+    "health": "ready",
+    "summary": "Showdown login proof succeeded; ready for a bounded devstream batch.",
+    "next_fix": "Start a bounded devstream batch."
   },
   "details": {
-    "recent_timeout_losses": [
-      {
-        "battle_id": "battle-gen9ou-2544638500",
-        "timestamp": "2026-02-22T03:56:12.144159+00:00",
-        "reason": "nonetype_error"
-      },
-      {
-        "battle_id": "battle-gen9ou-2544638519",
-        "timestamp": "2026-02-22T03:57:58.342645+00:00",
-        "reason": "nonetype_error"
-      },
-      {
-        "battle_id": "battle-gen9ou-2544640696-fsq1oix57tdp6k6jqa6bu1y0db9di96pw",
-        "timestamp": "2026-02-22T04:02:09.341271+00:00",
-        "reason": "nonetype_error"
-      },
-      {
-        "battle_id": "battle-gen9ou-2544641492",
-        "timestamp": "2026-02-22T04:04:19.387149+00:00",
-        "reason": "nonetype_error"
-      },
-      {
-        "battle_id": "battle-gen9ou-2544644109",
-        "timestamp": "2026-02-22T04:08:57.629866+00:00",
-        "reason": "nonetype_error"
-      }
-    ],
-    "large_gaps": [
-      {
-        "before_battle": "battle-gen9ou-2543946673-3r829i46t8byo908oi9sxyqw2x97qs1pw",
-        "after_battle": "battle-gen9ou-2543948096",
-        "gap_seconds": 332.780665,
-        "gap_minutes": 5.5
-      },
-      {
-        "before_battle": "battle-gen9ou-2543950615-90m8a1egebx4ql0330vmamyxmgy63mipw",
-        "after_battle": "battle-gen9ou-2543951993",
-        "gap_seconds": 306.913907,
-        "gap_minutes": 5.1
-      },
-      {
-        "before_battle": "battle-gen9ou-2543954391",
-        "after_battle": "battle-gen9ou-2543955875-970ipq91t6dshja8dw4vknythg41ai9pw",
-        "gap_seconds": 576.832609,
-        "gap_minutes": 9.6
-      },
-      {
-        "before_battle": "battle-gen9ou-2543962126",
-        "after_battle": "battle-gen9ou-2543963064",
-        "gap_seconds": 308.678807,
-        "gap_minutes": 5.1
-      },
-      {
-        "before_battle": "battle-gen9ou-2543963064",
-        "after_battle": "battle-gen9ou-2543965372",
-        "gap_seconds": 455.683352,
-        "gap_minutes": 7.6
-      },
-      {
-        "before_battle": "battle-gen9ou-2543965372",
-        "after_battle": "battle-gen9ou-2543968792-vkq1yy16t3snu2ngw86xh3eci51pjqepw",
-        "gap_seconds": 387.863999,
-        "gap_minutes": 6.5
-      },
-      {
-        "before_battle": "battle-gen9ou-2543968792-vkq1yy16t3snu2ngw86xh3eci51pjqepw",
-        "after_battle": "battle-gen9ou-2543971702",
-        "gap_seconds": 334.615251,
-        "gap_minutes": 5.6
-      },
-      {
-        "before_battle": "battle-gen9ou-2543985141",
-        "after_battle": "battle-gen9ou-2543986610",
-        "gap_seconds": 412.640512,
-        "gap_minutes": 6.9
-      },
-      {
-        "before_battle": "battle-gen9ou-2543986610",
-        "after_battle": "battle-gen9ou-2543989711",
-        "gap_seconds": 515.415842,
-        "gap_minutes": 8.6
-      },
-      {
-        "before_battle": "battle-gen9ou-2543995942",
-        "after_battle": "battle-gen9ou-2543997364",
-        "gap_seconds": 911.68507,
-        "gap_minutes": 15.2
-      }
-    ]
+    "active_battles": 0,
+    "reason": "Fresh readiness truth was published without launching a battle."
   }
 }

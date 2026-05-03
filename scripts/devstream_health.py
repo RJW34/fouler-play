@@ -149,6 +149,11 @@ def stream_status_summary(truth: list[dict[str, Any]]) -> dict[str, Any]:
     return {}
 
 
+def latest_successful_login(summary: dict[str, Any]) -> bool:
+    proof = summary.get("latestSuccessfulProof") if isinstance(summary, dict) else {}
+    return bool(isinstance(proof, dict) and proof.get("found") and proof.get("ok"))
+
+
 def active_battle_count(truth: list[dict[str, Any]]) -> int:
     for item in truth:
         if item["relativePath"] == "active_battles.json" and isinstance(item.get("summary"), dict):
@@ -200,8 +205,20 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         warnings.extend(f"stale truth file: {item['relativePath']}" for item in stale_truth)
 
     running = bool(active_services or http_open or battle_count > 0)
+    ready_for_live_focus = (
+        running
+        and not runtime_blocked
+        and not blockers
+        and not stale_truth
+        and (
+            latest_successful_login(credential_failure)
+            or stream_summary.get("status") == "Ready"
+            or battle_count > 0
+        )
+    )
     healthy = (
         running
+        and not runtime_blocked
         and not credential_failure.get("found")
         and not missing_required
         and (not check_http or not http_open or all(result.get("ok") for result in endpoints.values()))
@@ -209,7 +226,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     if healthy and stale_truth:
         healthy = False
     if healthy:
-        status = "running"
+        status = "ready" if ready_for_live_focus and battle_count == 0 else "running"
     elif runtime_blocked:
         status = "blocked"
     elif running:
@@ -223,6 +240,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "checkedAt": iso_now(),
         "healthy": healthy,
         "running": running,
+        "readyForLiveFocus": ready_for_live_focus,
         "status": status,
         "blockers": blockers,
         "warnings": warnings,
