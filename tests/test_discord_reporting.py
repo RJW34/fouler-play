@@ -4,8 +4,11 @@ import json
 from infrastructure.discord_reporting import (
     build_contract_message,
     build_contract_payload,
+    canonical_replay_url,
+    format_elo_delta,
     format_payload_or_message,
     is_contract_message,
+    public_replay_id_candidate,
     summarize_recent_results,
     top_recurring_issue,
 )
@@ -147,7 +150,66 @@ def test_payload_formatter_builds_operator_facing_battle_report():
     assert "GOATZILASPAMMER closed the endgame before the bot stabilized the board." in formatted
     assert "next battle focus: Review the replay before the next queue and tag whether this was policy, matchup, or ops." in formatted
     assert "- replay `gen9ou-2555107042`: https://replay.pokemonshowdown.com/gen9ou-2555107042" in formatted
-    assert "- ELO `1223 → 1203 (-20)`" in formatted
+    assert "- ELO `lost 20 (1223 → 1203, -20)`" in formatted
+
+
+def test_payload_formatter_does_not_render_contradictory_elo_delta():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs MatronJames",
+        "Battle battle-gen9ou-2555107042 ended loss against MatronJames.",
+        "Operator-facing battle posts must not imply a loss improved ladder rating.",
+        "battle_id=battle-gen9ou-2555107042; result=loss",
+        "verify the account/rating source before claiming a ladder delta",
+        source="unit-test",
+        battle_id="battle-gen9ou-2555107042",
+        result="loss",
+        opponent="MatronJames",
+        elo_before=1117,
+        elo_after=1136,
+    )
+    formatted = format_payload_or_message(payload)
+
+    assert "- ELO `check needed (cached 1117, fetched 1136, +19 contradicts loss)`" in formatted
+    assert "1117 → 1136 ELO" not in formatted
+
+
+def test_elo_delta_labels_match_result_direction():
+    assert format_elo_delta(1136, 1117, "loss") == "ELO lost 19 (1136 → 1117, -19)"
+    assert format_elo_delta(1117, 1136, "win") == "ELO gained 19 (1117 → 1136, +19)"
+    assert "contradicts win" in format_elo_delta(1136, 1117, "win")
+    assert "contradicts loss" in format_elo_delta(1117, 1136, "loss")
+
+
+def test_replay_url_canonicalization_rejects_private_unresolved_links():
+    assert (
+        canonical_replay_url("https://replay.pokemonshowdown.com/battle-gen9ou-111.json")
+        == "https://replay.pokemonshowdown.com/gen9ou-111"
+    )
+    assert (
+        canonical_replay_url("https://replay.pokemonshowdown.com/gen9ou-111")
+        == "https://replay.pokemonshowdown.com/gen9ou-111"
+    )
+    assert canonical_replay_url("https://replay.pokemonshowdown.com/battle-gen9ou-111-privatehash") == ""
+    assert public_replay_id_candidate("battle-gen9ou-111-privatehash") == "gen9ou-111"
+
+
+def test_payload_formatter_marks_private_replay_as_pending_not_public_link():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs PrivateReplay",
+        "Battle battle-gen9ou-111-privatehash ended loss against PrivateReplay.",
+        "Private room ids should not be shown as confident public replay URLs.",
+        "replay=https://replay.pokemonshowdown.com/battle-gen9ou-111-privatehash",
+        "wait for public upload or use local replay JSON",
+        result="loss",
+        battle_id="battle-gen9ou-111-privatehash",
+        replay_url="https://replay.pokemonshowdown.com/battle-gen9ou-111-privatehash",
+    )
+    formatted = format_payload_or_message(payload)
+
+    assert "- replay pending public upload `gen9ou-111`" in formatted
+    assert "https://replay.pokemonshowdown.com/gen9ou-111" not in formatted
 
 
 def test_payload_formatter_flags_operational_losses():
@@ -199,9 +261,9 @@ def test_payload_formatter_summarizes_batch_payload_without_blob_dump():
     assert "top loss pattern: losses were split across opponents (1 unique)" in formatted
     assert "last 10: 6-4 (60% WR)" in formatted
     assert "improving" in formatted
-    assert "replays 2/3; loss reviews queued 1; reviewed 1" in formatted
-    assert "- replay `111`: https://replay.pokemonshowdown.com/battle-gen9ou-111" in formatted
-    assert "- replay `222`: https://replay.pokemonshowdown.com/battle-gen9ou-222" in formatted
+    assert "public replays 2/3; loss reviews queued 1; reviewed 1" in formatted
+    assert "- replay `gen9ou-111`: https://replay.pokemonshowdown.com/gen9ou-111" in formatted
+    assert "- replay `gen9ou-222`: https://replay.pokemonshowdown.com/gen9ou-222" in formatted
     assert "vs A https://replay.pokemonshowdown.com/battle-gen9ou-111" not in formatted
 
 

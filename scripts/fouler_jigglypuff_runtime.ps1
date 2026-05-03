@@ -311,7 +311,7 @@ function Start-BattleSession {
     if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
     $stdout = Join-Path $LogDir "jigglypuff-battle-session.log"
     $stderr = Join-Path $LogDir "jigglypuff-battle-session.err.log"
-    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set BOT_LOG_TO_FILE=1&& set AUTO_START_OBS_SERVER=0&& set LOSS_TRIGGERED_DRAIN=0&& set PS_RUN_COUNT={0}&& set CONCURRENT_BATTLES={1}&& call start_one_touch.bat 1>>"{2}" 2>>"{3}""' -f $RunCount, $MaxConcurrentBattles, $stdout, $stderr
+    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set BOT_LOG_TO_FILE=1&& set AUTO_START_OBS_SERVER=0&& set LOSS_TRIGGERED_DRAIN=0&& set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json&& set PS_RUN_COUNT={0}&& set CONCURRENT_BATTLES={1}&& call start_one_touch.bat 1>>"{2}" 2>>"{3}""' -f $RunCount, $MaxConcurrentBattles, $stdout, $stderr
     $launch = Start-DetachedCommand -CommandLine $commandLine -WorkingDirectory $RepoRoot
     if (-not (Test-Path $PidDir)) { New-Item -ItemType Directory -Path $PidDir -Force | Out-Null }
     Write-JsonFile -Path (Join-Path $PidDir "jigglypuff-battle-session.json") -Payload @{

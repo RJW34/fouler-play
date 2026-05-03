@@ -25,7 +25,7 @@ _REQUIRED_LABELS = (
     "Proof:",
     "Remaining:",
 )
-_PS_REPLAY_RE = re.compile(r"https?://replay\.pokemonshowdown\.com/[^\s;,)]+")
+_PS_REPLAY_RE = re.compile(r"https?://replay\.pokemonshowdown\.com/[^\s;,)<>]+")
 _BATTLE_ID_RE = re.compile(r"\bbattle-[A-Za-z0-9-]+\b")
 _TEAM_FILE_RE = re.compile(r"\b([A-Za-z0-9_-]+\.txt)\b")
 _REPORT_FILE_RE = re.compile(r"\b(batch_[A-Za-z0-9._-]+\.md)\b")
@@ -72,26 +72,80 @@ def _short_team_name(team: object) -> str:
     return text.replace("-", " ")
 
 
-def _format_delta(before: object, after: object, label: str = "ELO") -> str:
+def format_elo_delta(before: object, after: object, result: object = "", label: str = "ELO") -> str:
     try:
         before_num = int(round(float(before)))
         after_num = int(round(float(after)))
     except Exception:
         return ""
     delta = after_num - before_num
+    result_norm = _normalize_result(result)
     sign = "+" if delta > 0 else ""
-    return f"{label} {before_num} → {after_num} ({sign}{delta})"
+
+    if (result_norm == "loss" and delta > 0) or (result_norm == "win" and delta < 0):
+        return f"{label} check needed (cached {before_num}, fetched {after_num}, {sign}{delta} contradicts {result_norm})"
+
+    if delta > 0:
+        return f"{label} gained {delta} ({before_num} → {after_num}, +{delta})"
+    if delta < 0:
+        return f"{label} lost {abs(delta)} ({before_num} → {after_num}, {delta})"
+    return f"{label} unchanged ({before_num} → {after_num}, +0)"
+
+
+def _replay_id_from_reference(value: object, *, public_only: bool) -> str:
+    text = _clean_line(value)
+    if not text:
+        return ""
+    match = _PS_REPLAY_RE.search(text)
+    if match:
+        text = match.group(0)
+    if text.startswith("http://") or text.startswith("https://"):
+        if not text.startswith("https://replay.pokemonshowdown.com/") and not text.startswith("http://replay.pokemonshowdown.com/"):
+            return ""
+        text = text.rstrip("/").rsplit("/", 1)[-1]
+    text = text.split("?", 1)[0].split("#", 1)[0].removesuffix(".json").strip()
+    if text.startswith("battle-"):
+        text = text.replace("battle-", "", 1)
+    parts = [part for part in text.split("-") if part]
+    if len(parts) < 2:
+        return ""
+    if public_only and len(parts) > 2:
+        return ""
+    return f"{parts[0]}-{parts[1]}"
+
+
+def public_replay_id_candidate(value: object) -> str:
+    """Return the public Showdown replay id that should be verified before linking."""
+    return _replay_id_from_reference(value, public_only=False)
+
+
+def canonical_replay_url(value: object) -> str:
+    """Return a canonical public Showdown replay URL, or empty for private/unresolved refs."""
+    replay_id = _replay_id_from_reference(value, public_only=True)
+    return f"https://replay.pokemonshowdown.com/{replay_id}" if replay_id else ""
+
+
+def _replay_pending_bit(value: object) -> str:
+    replay_id = public_replay_id_candidate(value)
+    return f"replay pending public upload {replay_id}" if replay_id else ""
 
 
 def _extract_replay_bits(text: str) -> list[str]:
     bits: list[str] = []
     seen: set[str] = set()
     for url in _PS_REPLAY_RE.findall(text):
-        replay_id = url.rstrip("/").rsplit("/", 1)[-1].removesuffix(".json")
+        canonical = canonical_replay_url(url)
+        if not canonical:
+            bit = _replay_pending_bit(url)
+            if bit and bit not in seen:
+                bits.append(bit)
+                seen.add(bit)
+            continue
+        replay_id = canonical.rstrip("/").rsplit("/", 1)[-1]
         label = replay_id.replace("battle-gen9ou-", "").replace("battle-", "")
         if len(label) > 8 and label.isdigit():
             label = label[-8:]
-        bit = f"replay {label}: {url.removesuffix('.json')}"
+        bit = f"replay {label}: {canonical}"
         if bit not in seen:
             bits.append(bit)
             seen.add(bit)
@@ -177,6 +231,7 @@ def _stylize_proof_item(item: str) -> str:
         (r"^artifact (.+)$", lambda m: f"artifact `{m.group(1)}`"),
         (r"^battle (.+)$", lambda m: f"battle `{m.group(1)}`"),
         (r"^replay ([^:]+):\s+(.+)$", lambda m: f"replay `{m.group(1)}`: {m.group(2)}"),
+        (r"^replay pending public upload (.+)$", lambda m: f"replay pending public upload `{m.group(1)}`"),
         (r"^(\d+) replay link\(s\)$", lambda m: f"`{m.group(1)}` replay link(s)"),
         (r"^batch (.+)$", lambda m: f"batch `{m.group(1)}`"),
         (r"^loss reviews queued=(.+)$", lambda m: f"loss reviews queued=`{m.group(1)}`"),
@@ -278,10 +333,19 @@ def _top_loss_pattern(batch_results: list) -> str:
 
 def _batch_coverage_line(batch_results: list, analysis_count: object) -> str:
     total = len(batch_results)
-    replay_count = sum(1 for item in batch_results if _replay_from_batch_item(item))
+    public_replay_count = sum(1 for item in batch_results if canonical_replay_url(_replay_from_batch_item(item)))
+    unresolved_count = sum(
+        1
+        for item in batch_results
+        if _replay_from_batch_item(item) and not canonical_replay_url(_replay_from_batch_item(item))
+    )
     pending = _safe_int(analysis_count) or 0
-    reviewed = max(0, min(replay_count, replay_count - pending))
-    return f"replays {replay_count}/{total}; loss reviews queued {pending}; reviewed {reviewed}"
+    reviewed = max(0, min(public_replay_count, public_replay_count - pending))
+    parts = [f"public replays {public_replay_count}/{total}"]
+    if unresolved_count:
+        parts.append(f"unresolved replay refs {unresolved_count}")
+    parts.extend([f"loss reviews queued {pending}", f"reviewed {reviewed}"])
+    return "; ".join(parts)
 
 
 def _derive_loss_cause(data: dict) -> str:
@@ -348,6 +412,8 @@ def _proof_from_payload(data: dict) -> str:
     replay_url = _clean_line(data.get("replay_url") or data.get("replay") or "")
     for bit in _extract_replay_bits(replay_url):
         add(bit)
+    if replay_url and not _extract_replay_bits(replay_url):
+        add(_replay_pending_bit(replay_url))
 
     status_line = _status_line(data)
     if status_line:
@@ -369,7 +435,7 @@ def _proof_from_payload(data: dict) -> str:
     if isinstance(batch_results, list) and batch_results:
         wins, losses, total = _record_from_batch_results(batch_results)
         add(f"batch {wins}-{losses}")
-        replay_count = sum(1 for item in batch_results if _replay_from_batch_item(item))
+        replay_count = sum(1 for item in batch_results if canonical_replay_url(_replay_from_batch_item(item)))
         if replay_count:
             add(f"{replay_count} replay link(s)")
         add(f"coverage {_batch_coverage_line(batch_results, data.get('analysis_count'))}")
@@ -389,7 +455,7 @@ def _proof_from_payload(data: dict) -> str:
 
     elo_before = data.get("elo_before")
     elo_after = data.get("elo_after")
-    elo_delta = _format_delta(elo_before, elo_after)
+    elo_delta = format_elo_delta(elo_before, elo_after, data.get("result", ""))
     if elo_delta:
         add(elo_delta)
 

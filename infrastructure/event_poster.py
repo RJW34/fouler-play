@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -131,7 +132,7 @@ def discord_config_status() -> dict[str, Any]:
         "loadedEnvFiles": loaded,
         "aliases": aliases,
         "anyWebhookConfigured": any(item["configured"] for item in aliases.values()),
-        "openclawAvailable": subprocess.run(["which", "openclaw"], capture_output=True, text=True).returncode == 0,
+        "openclawAvailable": shutil.which("openclaw") is not None,
     }
 
 
