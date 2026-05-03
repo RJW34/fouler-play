@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import sys
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ REMOTE_SCRIPT = os.environ.get(
     "FOULER_JIGGLYPUFF_SCRIPT",
     r"D:\Projects\fouler-play\scripts\fouler_jigglypuff_runtime.ps1",
 )
+OBS_HTTP = os.environ.get("FOULER_JIGGLYPUFF_OBS_HTTP", "http://jigglypuff.tail4859dd.ts.net:8777").rstrip("/")
 
 
 def iso_now() -> str:
@@ -135,8 +137,45 @@ def mirror_status(payload: dict[str, Any] | None, *, action: str, raw: dict[str,
         mirrored["mirroredAt"] = iso_now()
         mirrored["remote"] = REMOTE
         mirrored["action"] = action
+    mirrored["liveStateMirror"] = mirror_live_state()
     write_json(TRUTH_DIR / "jigglypuff-runtime.json", mirrored)
     return mirrored
+
+
+def fetch_live_state(timeout: float = 4.0) -> dict[str, Any] | None:
+    try:
+        with urllib.request.urlopen(f"{OBS_HTTP}/state", timeout=timeout) as response:
+            parsed = json.loads(response.read().decode("utf-8"))
+            return parsed if isinstance(parsed, dict) else None
+    except Exception:
+        return None
+
+
+def mirror_live_state() -> dict[str, Any]:
+    state = fetch_live_state()
+    if not isinstance(state, dict):
+        return {
+            "ok": False,
+            "url": f"{OBS_HTTP}/state",
+            "activeBattlesMirrored": False,
+        }
+    battles = state.get("battles")
+    if not isinstance(battles, list):
+        battles = []
+    payload = {
+        "battles": battles,
+        "count": int(state.get("count") or len(battles)),
+        "max_slots": int(state.get("max_slots") or max(len(battles), 3)),
+        "updated": state.get("updated") or iso_now(),
+    }
+    write_json(ROOT / "active_battles.json", payload)
+    return {
+        "ok": True,
+        "url": f"{OBS_HTTP}/state",
+        "activeBattlesMirrored": True,
+        "battleCount": payload["count"],
+        "updated": payload["updated"],
+    }
 
 
 def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
