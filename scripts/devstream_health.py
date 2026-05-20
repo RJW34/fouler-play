@@ -5,6 +5,7 @@ import argparse
 import json
 import socket
 import subprocess
+import re
 import time
 import urllib.error
 import urllib.request
@@ -36,7 +37,7 @@ TRUTH_FILES = [
     {"label": "stability report", "path": "stability_report.json", "optional": True, "staleAfterSeconds": 86400},
 ]
 
-ENDPOINTS = ["/state", "/status", "/battles", "/overlay/hybrid", "/dashboard/hybrid", "/slot/1"]
+ENDPOINTS = ["/state", "/status", "/battles", "/overlay/hybrid", "/dashboard/hybrid", "/slot/1", "/slot/1/state"]
 
 
 def iso_now() -> str:
@@ -142,6 +143,74 @@ def summarize_truth(rel: str, parsed: Any) -> dict[str, Any] | None:
     return None
 
 
+def active_battle_entries() -> list[dict[str, Any]]:
+    path = ROOT / "active_battles.json"
+    if not path.exists():
+        return []
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return []
+    battles = parsed.get("battles") if isinstance(parsed, dict) else []
+    return [battle for battle in battles if isinstance(battle, dict)] if isinstance(battles, list) else []
+
+
+def showdown_battle_url(battle_id: str) -> str:
+    return f"https://play.pokemonshowdown.com/{battle_id}"
+
+
+def extract_title(html: str) -> str:
+    match = re.search(r"<title>(.*?)</title>", html or "", re.IGNORECASE | re.DOTALL)
+    if not match:
+        return ""
+    return re.sub(r"\s+", " ", match.group(1)).strip()
+
+
+def fetch_showdown_battle_title(battle_id: str, *, timeout: float = 4.0) -> dict[str, Any]:
+    url = showdown_battle_url(battle_id)
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": "FoulerPlayHealth/1.0"})
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read(32768).decode("utf-8", errors="replace")
+            title = extract_title(body)
+            return {
+                "url": url,
+                "ok": response.status == 200 and " vs. " in title and title.endswith(" - Showdown!"),
+                "statusCode": response.status,
+                "title": title,
+            }
+    except Exception as exc:
+        return {"url": url, "ok": False, "statusCode": None, "error": str(exc), "title": ""}
+
+
+def slot_readiness(endpoints: dict[str, Any], *, check_battle_pages: bool = True) -> dict[str, Any]:
+    battles = active_battle_entries()
+    checks: list[dict[str, Any]] = []
+    for index, battle in enumerate(battles, start=1):
+        battle_id = str(battle.get("id") or "")
+        if not battle_id:
+            continue
+        try:
+            slot = int(battle.get("slot") or index)
+        except (TypeError, ValueError):
+            slot = index
+        endpoint = endpoints.get(f"/slot/{slot}/state") or {}
+        endpoint_json = endpoint.get("json") if isinstance(endpoint.get("json"), dict) else {}
+        local_ok = bool(endpoint.get("ok")) and endpoint_json.get("battle_id") == battle_id
+        showdown = fetch_showdown_battle_title(battle_id) if check_battle_pages else {"checked": False, "ok": True}
+        showdown["checked"] = bool(check_battle_pages)
+        checks.append({
+            "slot": slot,
+            "battleId": battle_id,
+            "opponent": battle.get("opponent"),
+            "localStateOk": local_ok,
+            "localState": endpoint_json,
+            "showdownPage": showdown,
+            "ready": local_ok,
+        })
+    return {"ready": all(item["ready"] for item in checks), "checks": checks}
+
+
 def stream_status_summary(truth: list[dict[str, Any]]) -> dict[str, Any]:
     for item in truth:
         if item["relativePath"] == "stream_status.json" and isinstance(item.get("summary"), dict):
@@ -177,6 +246,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     missing_required = [item for item in truth if not item["optional"] and not item["exists"]]
     battle_count = active_battle_count(truth)
     stream_summary = stream_status_summary(truth)
+    slots = slot_readiness(endpoints, check_battle_pages=True) if check_http and http_open else {"ready": True, "checks": []}
     runtime_blocked = bool(stream_summary.get("runtimeBlocked"))
     credential_failure = recent_showdown_credential_failure(ROOT)
 
@@ -196,18 +266,24 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         blockers.extend(f"OBS endpoint failed: {path}" for path in failed)
     if missing_required:
         blockers.extend(f"missing truth file: {item['relativePath']}" for item in missing_required)
+    if not slots["ready"]:
+        for item in slots["checks"]:
+            if not item["ready"]:
+                title = (item.get("showdownPage") or {}).get("title") or (item.get("showdownPage") or {}).get("error") or "unknown"
+                blockers.append(f"slot {item['slot']} is not battle-ready for {item['battleId']}: {title}")
     if stale_truth:
         warnings.extend(f"stale truth file: {item['relativePath']}" for item in stale_truth)
 
     running = bool(active_services or http_open or battle_count > 0)
-    healthy = (
+    runtime_ready = (
         running
         and not credential_failure.get("found")
         and not missing_required
+        and slots["ready"]
         and (not check_http or not http_open or all(result.get("ok") for result in endpoints.values()))
     )
-    if healthy and stale_truth:
-        healthy = False
+    analytics_fresh = not stale_truth
+    healthy = runtime_ready
     if healthy:
         status = "running"
     elif runtime_blocked:
@@ -223,6 +299,12 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "checkedAt": iso_now(),
         "healthy": healthy,
         "running": running,
+        "readiness": {
+            "runtimeReady": runtime_ready,
+            "streamReady": slots["ready"],
+            "analyticsFresh": analytics_fresh,
+        },
+        "slotReadiness": slots,
         "status": status,
         "blockers": blockers,
         "warnings": warnings,

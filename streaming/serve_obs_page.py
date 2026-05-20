@@ -61,9 +61,12 @@ OBS_BATTLE_SOURCES = [
 ]
 OBS_IDLE_URL = os.getenv("OBS_IDLE_URL", f"http://localhost:{PORT}/idle")
 OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in ("0", "false", "no", "off")
+OBS_BATTLE_SOURCE_MODE = os.getenv("OBS_BATTLE_SOURCE_MODE", "slot").strip().lower()
+OBS_SLOT_BASE_URL = os.getenv("OBS_SLOT_BASE_URL", f"http://localhost:{PORT}").rstrip("/")
+OBS_SLOT_REFRESH_MS = int(os.getenv("OBS_SLOT_REFRESH_MS", "45000"))
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
-OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
+OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # direct mode only: force idle if same battle
 GHOST_BATTLE_MAX_AGE_SEC = int(os.getenv("GHOST_BATTLE_MAX_AGE_SEC", "1800"))  # 30min: hard ghost removal (stall games can run 20+ min)
 GHOST_CHECK_INTERVAL_SEC = int(os.getenv("GHOST_CHECK_INTERVAL_SEC", "0"))  # Disabled: bot owns active_battles.json lifecycle
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
@@ -323,6 +326,20 @@ def _build_direct_battle_url(bid: str) -> str:
     # (SPECTATOR_USERNAME in .env) so they can view any battle, with or
     # without a spectator hash.  The bot invites the spectator to each battle.
     return f"https://play.pokemonshowdown.com/{bid}"
+
+
+def _build_slot_source_url(slot: int) -> str:
+    return f"{OBS_SLOT_BASE_URL}/slot/{slot}"
+
+
+def _build_obs_source_url(slot: int, desired_id: str | None) -> str:
+    if OBS_BATTLE_SOURCE_MODE in ("direct", "showdown"):
+        return _build_direct_battle_url(desired_id) if desired_id else _cache_bust(OBS_IDLE_URL)
+    return _cache_bust(_build_slot_source_url(slot))
+
+
+def _same_url_ignoring_cache(left: str | None, right: str | None) -> bool:
+    return bool(left and right and left.split("?r=", 1)[0] == right.split("?r=", 1)[0])
 
 
 def _build_slot_map(battles: list[dict]) -> dict[int, dict]:
@@ -785,13 +802,20 @@ async def maybe_update_obs_sources(payload: dict) -> None:
             battle = slot_map.get(idx)
             desired_id = battle.get("id") if battle else None
             previous_id = _last_obs_ids.get(idx)
+            desired_url = _build_obs_source_url(idx, desired_id)
+            previous_url = _last_obs_urls.get(idx)
             
             print(f"[OBS-UPDATE] Slot {idx} ({source_name}): previous={previous_id}, desired={desired_id}")
 
             # Force stale battles to idle — if the same battle has been
             # displayed for too long, the Showdown page is likely showing
             # an empty post-game lobby.  Reset to the "SCANNING..." idle page.
-            if previous_id and previous_id == desired_id and OBS_STALE_BATTLE_SEC > 0:
+            if (
+                OBS_BATTLE_SOURCE_MODE in ("direct", "showdown")
+                and previous_id
+                and previous_id == desired_id
+                and OBS_STALE_BATTLE_SEC > 0
+            ):
                 last_update = _last_obs_updates.get(idx, 0)
                 age = time.time() - last_update if last_update else 0
                 if age > OBS_STALE_BATTLE_SEC:
@@ -801,7 +825,7 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                     _last_obs_updates[idx] = time.time()
                     continue
 
-            if previous_id == desired_id:
+            if previous_id == desired_id and _same_url_ignoring_cache(previous_url, desired_url):
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
                 continue
             
@@ -815,11 +839,10 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 await asyncio.sleep(0.5)
 
             if desired_id:
-                url = _build_direct_battle_url(desired_id)
-                print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id}")
+                print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id} via {OBS_BATTLE_SOURCE_MODE} source")
             else:
-                url = _cache_bust(OBS_IDLE_URL)
-                print(f"[OBS-UPDATE] Slot {idx}: Setting to idle page")
+                print(f"[OBS-UPDATE] Slot {idx}: Setting to idle via {OBS_BATTLE_SOURCE_MODE} source")
+            url = desired_url
 
             ok = await _obs_client.set_browser_source_url(source_name, url)
             _last_obs_urls[idx] = url
@@ -861,11 +884,11 @@ async def handle_health(request: web.Request) -> web.Response:
         try:
             result = await asyncio.to_thread(
                 subprocess.run,
-                [sys.executable, str(script), "--skip-http"],
+                [sys.executable, str(script)],
                 cwd=str(ROOT_DIR),
                 capture_output=True,
                 text=True,
-                timeout=8,
+                timeout=12,
                 check=False,
             )
             if result.returncode == 0 and result.stdout.strip():
@@ -952,6 +975,8 @@ def build_debug_payload() -> dict:
             "connected": obs_connected,
             "host": OBS_WS_HOST,
             "port": OBS_WS_PORT,
+            "source_mode": OBS_BATTLE_SOURCE_MODE,
+            "slot_base_url": OBS_SLOT_BASE_URL,
             "sources": list(_obs_sources),
             "last_ids": dict(_last_obs_ids),
             "last_urls": dict(_last_obs_urls),
@@ -1202,19 +1227,26 @@ color:rgba(8,217,214,0.4)}}
   var STATE_URL='/magneton-state';
   var POLL_MS=3000;
   var activeBid=null;
+  var lastBattleLoad=0;
+  var ACTIVE_REFRESH_MS={slot_refresh_ms};
   var scanning=document.getElementById('scanning');
   var frame=document.getElementById('battle-frame');
 
   function slotOf(b,i){{return b.slot!=null?parseInt(b.slot):(i+1);}}
 
-  function showBattle(bid){{
+  function showBattle(bid, force){{
+    var now=Date.now();
+    if(!force && bid===activeBid && ACTIVE_REFRESH_MS>0 && (now-lastBattleLoad)<ACTIVE_REFRESH_MS){{return;}}
     var url='https://play.pokemonshowdown.com/'+bid+'?r='+Date.now();
+    activeBid=bid;
+    lastBattleLoad=now;
     frame.src=url;
     frame.classList.remove('hidden');
     scanning.classList.add('hidden');
   }}
 
   function showScanning(){{
+    lastBattleLoad=0;
     frame.classList.add('hidden');
     frame.src='about:blank';
     scanning.classList.remove('hidden');
@@ -1230,9 +1262,10 @@ color:rgba(8,217,214,0.4)}}
           if(slotOf(battles[i],i)===SLOT){{battle=battles[i];break;}}
         }}
         if(battle&&battle.id){{
-          if(battle.id!==activeBid){{
-            activeBid=battle.id;
-            showBattle(battle.id);
+          if(battle.id!==activeBid || !frame.src || frame.src==='about:blank'){{
+            showBattle(battle.id, true);
+          }} else {{
+            showBattle(battle.id, false);
           }}
         }} else {{
           if(activeBid!==null){{
@@ -1311,7 +1344,7 @@ async def handle_battle_slot(request: web.Request) -> web.Response:
         return web.Response(text="Invalid slot", status=400)
 
     return web.Response(
-        text=BATTLE_SLOT_HTML.format(slot=slot_num),
+        text=BATTLE_SLOT_HTML.format(slot=slot_num, slot_refresh_ms=OBS_SLOT_REFRESH_MS),
         content_type="text/html",
     )
 
