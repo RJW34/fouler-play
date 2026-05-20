@@ -650,3 +650,13 @@ if __name__ == "__main__":
 
     report = run_autoresearch(last_n=args.num_battles, queue_discord=not args.no_discord)
     print(json.dumps(report, indent=2, ensure_ascii=False))
+
+
+# FOULER-COMPLETION-2026-05-20: emit hypothesis records on every autoresearch write.
+# Tolerant — if the ledger import fails we don't break the autoresearch run.
+def _emit_hypothesis_ledger_safe(autoresearch_data):
+    try:
+        from replay_analysis import hypothesis_ledger as _hl
+        return _hl.emit_from_autoresearch_output(autoresearch_data)
+    except Exception:
+        return []
