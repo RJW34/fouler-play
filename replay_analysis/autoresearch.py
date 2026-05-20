@@ -568,6 +568,11 @@ class AutoResearcher:
         historical_md = self.batch_history_dir / f"{batch_id}.md"
         historical_json.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         historical_md.write_text(self.render_markdown(report), encoding="utf-8")
+        # FOULER-HYPOTHESIS-CALL-SITE-2026-05-20: emit hypothesis records (no-op if module missing)
+        try:
+            _emit_hypothesis_ledger_safe(report)
+        except Exception:
+            pass
         return json_path, md_path
 
     def queue_discord_reports(self, report: dict[str, Any], *, json_path: Path, md_path: Path) -> None:
