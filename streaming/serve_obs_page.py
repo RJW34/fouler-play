@@ -906,7 +906,11 @@ async def handle_status(request: web.Request) -> web.Response:
     status["active_battles"] = [b.get("id") for b in battles]
     # Build battle_info from actual battles (more reliable than stale status file)
     if battles:
+        status["status"] = "Active"
         status["battle_info"] = ", ".join(f"vs {b.get('opponent', 'Unknown')}" for b in battles)
+    elif status.get("status") in ("Active", "Battling"):
+        status["status"] = "Searching"
+        status["battle_info"] = "Searching..."
     # Add daily totals
     daily = state_store.read_daily_stats()
     status["today_wins"] = daily.get("wins", 0)
