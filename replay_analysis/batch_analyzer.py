@@ -6,6 +6,7 @@ Current default: Claude via OpenClaw for Pokemon-competent batch analysis.
 """
 
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -17,6 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.turn_review import TurnReviewer
+from replay_analysis.loss_learning import aggregate_loss_lessons, build_loss_artifact
 from fp.theknower_competitive import build_competitive_meta_context
 
 # Analysis source contract:
@@ -34,7 +36,8 @@ class BatchAnalyzer:
     """Analyzes batches of battles and generates improvement reports."""
 
     def __init__(self):
-        self.reviewer = TurnReviewer(bot_username="BugInTheCode")
+        self.bot_username = os.getenv("PS_USERNAME", "npctypebeat")
+        self.reviewer = TurnReviewer(bot_username=self.bot_username)
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
     def get_battle_stats(self) -> List[Dict]:
@@ -232,10 +235,11 @@ class BatchAnalyzer:
             print(f"⚠ ALL {fail_count} replays failed to fetch. Try increasing min_age_hours or wait longer.")
         return reviews, stats
 
-    def build_analysis_prompt(self, reviews: List[str], stats: Dict) -> str:
+    def build_analysis_prompt(self, reviews: List[str], stats: Dict, mechanics_summary: str = "") -> str:
         """Build a structured prompt for external reasoning analysis with domain grounding."""
         competitive_context = build_competitive_meta_context()
-        prompt = """You are analyzing Pokemon Showdown Gen9 OU battle replays for a competitive bot named BugInTheCode.
+        mechanics_summary = mechanics_summary or "No local mechanics-backed loss summary was available for this batch."
+        prompt = """You are analyzing Pokemon Showdown Gen9 OU battle replays for a competitive bot named {bot_username}.
 
 === DOMAIN KNOWLEDGE & CONSTRAINTS ===
 DO NOT hallucinate Pokemon knowledge. Ground analysis in these facts:
@@ -248,7 +252,7 @@ GEN9 OU META FUNDAMENTALS:
 - Recovery moves on stall are MANDATORY: Roost, Recover, Moonlight, Synthesis
 - Type immunities grant free switches: Ghost immunity to Normal/Fighting, Water immunity via Storm Drain/Dry Skin
 
-BugInTheCode'S TEAMS & STRATEGIES:
+{bot_username}'S TEAMS & STRATEGIES:
 1. STALL (fat-team-*): Walls + recovery + Stealth Rock setter. Win condition: chip damage via status/hazards.
    - Role: Support hazard control, wall key threats, maintain defenses
    - KNOWN ISSUE: 76% of losses had NO Stealth Rock. This is critical—force rock early.
@@ -270,6 +274,9 @@ PREVIOUS BATCH FINDINGS:
 CURRENT THEKNOWER COMPETITIVE SNAPSHOT:
 {competitive_context}
 
+MECHANICS-BACKED LOSS LEARNING SUMMARY:
+{mechanics_summary}
+
 === BATCH ANALYSIS ===
 BATCH STATISTICS:
 - Total battles: {total}
@@ -290,6 +297,7 @@ DO NOT:
 - Suggest Pokemon that don't exist or aren't viable in Gen9 OU
 - Make claims about moves/abilities without grounding in the meta knowledge above
 - Hallucinate metagame shifts—only reference what's in the reviews
+- Override the mechanics-backed loss summary; unknown/rejected claims must stay unknown/rejected
 
 DO:
 1. RECURRING MISTAKES: What errors repeat? (Stealth Rock delays, bad switches, missed recoveries?)
@@ -307,9 +315,72 @@ Format response as structured improvement report with battle citations.
             team_breakdown=self._format_team_breakdown(stats["teams"]),
             reviews="\n".join(reviews[:15]),  # Limit to avoid token overflow
             competitive_context=competitive_context,
+            mechanics_summary=mechanics_summary,
+            bot_username=self.bot_username,
         )
         
         return prompt
+
+    def collect_loss_learning_artifacts(self, last_n: int) -> List[Dict]:
+        """Build deterministic loss artifacts from local replay JSONs only."""
+        artifacts: List[Dict] = []
+        battles = self.get_battle_stats()
+        recent = battles[-last_n:] if len(battles) > last_n else battles
+        for battle in recent:
+            if battle.get("result") != "loss":
+                continue
+            replay_id = battle.get("replay_id", "")
+            if not replay_id:
+                continue
+            clean_id = replay_id.replace("battle-", "", 1) if replay_id.startswith("battle-") else replay_id
+            local_file = REPLAY_ANALYSIS_DIR / f"{clean_id}.json"
+            if not local_file.exists():
+                continue
+            try:
+                with local_file.open("r", encoding="utf-8") as handle:
+                    replay_data = json.load(handle)
+                artifacts.append(
+                    build_loss_artifact(
+                        replay_data,
+                        bot_username=self.bot_username,
+                        team_file=battle.get("team_file"),
+                    )
+                )
+            except Exception as exc:
+                print(f"Skipping mechanics-backed loss artifact for {replay_id}: {exc}")
+        return artifacts
+
+    def build_loss_learning_section(self, last_n: int) -> str:
+        """Return a report-ready deterministic loss-learning summary."""
+        artifacts = self.collect_loss_learning_artifacts(last_n)
+        if not artifacts:
+            return (
+                "No local loss replay artifacts were available. Detailed mechanics-backed "
+                "learning is blocked until replay JSON/logs are saved locally."
+            )
+        summary = aggregate_loss_lessons(artifacts, min_repeats=2)
+        lines = [
+            f"Local loss artifacts reviewed: {len(artifacts)}",
+            f"Escalation threshold: {summary['min_repeats']} repeated source-backed losses",
+        ]
+        if summary["proven_lessons"]:
+            lines.append("Proven lessons:")
+            for lesson in summary["proven_lessons"][:5]:
+                lines.append(f"- {lesson['lesson_id']} ({lesson['evidence_count']} evidence items)")
+                lines.append(f"  Adjustment: {lesson['guidance']['supported_adjustment']}")
+        else:
+            lines.append("Proven lessons: none yet")
+
+        if summary["hypotheses"]:
+            lines.append("Hypotheses:")
+            for lesson in summary["hypotheses"][:5]:
+                lines.append(f"- {lesson['lesson_id']} ({lesson['evidence_count']} evidence item)")
+
+        must_not = summary["must_not_conclude"]
+        lines.append(f"Unknown claims held back: {len(must_not['unknown_claims'])}")
+        lines.append(f"Rejected claims: {len(must_not['rejected_claims'])}")
+        lines.append(must_not["overfit_guardrail"])
+        return "\n".join(lines)
 
     def _format_team_breakdown(self, teams: Dict) -> str:
         """Format team performance breakdown."""
@@ -385,9 +456,10 @@ Format response as structured improvement report with battle citations.
         
         print(f"Collected {len(reviews)} battle reviews.")
         print(f"Stats: {stats['wins']}-{stats['losses']} ({stats['wins']/(stats['wins']+stats['losses'])*100:.1f}% WR)")
+        loss_learning_section = self.build_loss_learning_section(last_n)
         
         # Build prompt
-        prompt = self.build_analysis_prompt(reviews, stats)
+        prompt = self.build_analysis_prompt(reviews, stats, loss_learning_section)
         
         # Query external reasoning agent
         analysis = self.query_reasoning_agent(prompt)
@@ -410,6 +482,10 @@ Format response as structured improvement report with battle citations.
 
 {self._format_team_breakdown(stats['teams'])}
 
+## Mechanics-Backed Loss Learning
+
+{loss_learning_section}
+
 ## AI Analysis
 
 {analysis}
@@ -419,7 +495,7 @@ Format response as structured improvement report with battle citations.
 *Analysis powered by {ANALYSIS_MODEL} via OpenClaw ({ANALYSIS_PROVIDER})*
 """
         
-        report_file.write_text(report_content)
+        report_file.write_text(report_content, encoding="utf-8")
         print(f"Report saved to: {report_file}")
         return report_file
     
@@ -432,12 +508,20 @@ Format response as structured improvement report with battle citations.
         """
         battles = self.get_battle_stats()
         recent = battles[-last_n:] if len(battles) > last_n else battles
+        loss_learning_section = self.build_loss_learning_section(last_n)
         
         # Build stats-focused prompt
-        prompt = f"""You are analyzing Pokemon Showdown competitive bot performance data for BugInTheCode.
+        prompt = f"""You are analyzing Pokemon Showdown competitive bot performance data for {self.bot_username}.
 
 NOTE: Detailed replay data is unavailable (Pokemon Showdown purged replays). 
-Provide analysis based on AGGREGATE STATISTICS and TEAM PERFORMANCE patterns.
+Aggregate statistics are not mechanics proof. Do not produce confident Pokemon
+mechanics, matchup, move, item, ability, speed, or damage recommendations unless
+they appear in the mechanics-backed loss summary below. If the summary says no
+local artifacts are available, limit output to data-collection needs and clearly
+label win-rate observations as hypotheses.
+
+MECHANICS-BACKED LOSS LEARNING SUMMARY:
+{loss_learning_section}
 
 BATCH STATISTICS ({last_n} battles):
 - Total: {stats['total']}
@@ -460,10 +544,10 @@ Without access to turn-by-turn replay data, focus on aggregate patterns:
 4. **TEAM COMPOSITION HYPOTHESIS**: Based on team names and win rates, what might be working/failing?
 5. **NEXT STEPS**: What should we prioritize?
    - More data collection?
-   - Team rotation changes?
+   - Team rotation changes only as a hypothesis, not a learned mechanics fact?
    - Saving replay JSONs locally for future detailed analysis?
 
-Be specific and actionable. Acknowledge the limitation of not having replay data.
+Be specific about evidence gaps. Do not write unsupported mechanics claims as fact.
 """
         
         print("Querying reasoning agent for stats-only analysis...")
@@ -486,11 +570,15 @@ Be specific and actionable. Acknowledge the limitation of not having replay data
 
 ⚠️ **NOTE:** This analysis is based on aggregate statistics only.  
 Replay data unavailable (Pokemon Showdown purged replays after ~1 week).  
-**RECOMMENDATION:** Modify bot to save replay JSONs locally after each battle.
+**RECOMMENDATION:** Save replay JSONs locally after each battle before changing team/search policy from this report.
 
 ## Team Performance
 
 {self._format_team_breakdown(stats['teams'])}
+
+## Mechanics-Backed Loss Learning
+
+{loss_learning_section}
 
 ## Battle History
 
@@ -506,7 +594,7 @@ Replay data unavailable (Pokemon Showdown purged replays after ~1 week).
 *For detailed turn-by-turn analysis, implement local replay JSON storage.*
 """
         
-        report_file.write_text(report_content)
+        report_file.write_text(report_content, encoding="utf-8")
         print(f"✓ Stats-only report saved to: {report_file}")
         return report_file
     
