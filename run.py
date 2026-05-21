@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 import json
 import logging
 import traceback
@@ -329,7 +329,7 @@ async def battle_worker(
         if drain_event.is_set():
             logger.info(f"Worker {worker_id}: Drain mode active, stopping before new battle")
             break
-        # Check per-worker quota (authoritative when set — each worker
+        # Check per-worker quota (authoritative when set â€” each worker
         # plays exactly its share, no global race condition).
         if per_worker_quota > 0 and worker_battles >= per_worker_quota:
             logger.info(f"Worker {worker_id}: Per-worker quota reached ({worker_battles}/{per_worker_quota}), stopping")
@@ -350,7 +350,7 @@ async def battle_worker(
             start_search = False
 
             # Determine if a resume battle is available for this worker.
-            # Skip resumes when per-worker quotas are active — resumed
+            # Skip resumes when per-worker quotas are active â€” resumed
             # battles would push the worker over its 10-game quota.
             if FoulPlayConfig.bot_mode == BotModes.search_ladder:
                 resume_ready = await has_resume_battle(worker_id) if per_worker_quota <= 0 else False
@@ -453,7 +453,7 @@ async def battle_worker(
                 logger.info(f"Worker {worker_id}: Drain mode active, exiting")
                 break
 
-            # Record result — ALL outcomes count toward quota.
+            # Record result â€” ALL outcomes count toward quota.
             # CRITICAL: worker_battles MUST increment even if recording fails,
             # otherwise the per-worker quota never fires and the bot runs forever.
             worker_battles += 1
@@ -775,7 +775,7 @@ async def run_foul_play():
         for i, team in enumerate(FoulPlayConfig.team_names):
             logger.info(f"  Worker {i} -> {team}")
 
-    # Create and run workers — assign fixed teams when team_names are available
+    # Create and run workers â€” assign fixed teams when team_names are available
     team_names_list = FoulPlayConfig.team_names or []
 
     # Compute per-worker quotas for even distribution
@@ -801,7 +801,16 @@ async def run_foul_play():
                 use_search_manager,
                 shutdown_event,
                 drain_event,
-                assigned_team=team_names_list[i % len(team_names_list)] if team_names_list else None,
+                # FOULER-TEAM-ROTATION-FIX-2026-05-21: per-worker fixed
+                # team assignment defeats rotation when num_workers == 1.
+                # With one worker and multiple team_names, fall through to
+                # `team_iterator` (TeamListIterator) so the single worker
+                # cycles through ALL teams instead of locking to team[0].
+                # (This was the bug that kept the bot on fat-team-1-stall
+                # for 17.5 days starting 2026-05-03.)
+                assigned_team=(team_names_list[i % len(team_names_list)]
+                               if (team_names_list and num_workers > 1)
+                               else None),
                 per_worker_quota=per_worker_quotas[i],
                 cached_team_dict=_search_manager_team_dict,
             )
