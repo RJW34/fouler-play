@@ -558,6 +558,17 @@ class AutoResearcher:
         return "\n".join(lines).strip() + "\n"
 
     def save_report(self, report: dict[str, Any]) -> tuple[Path, Path]:
+        # FOULER-COMPETITIVE-CONCEPTS-WIRE-2026-05-21: augment recommendations with strategic-concept
+        # citations from data/competitive_pokemon_art (paraphrased catalog
+        # grounded in "The Art Of Competitive Pokemon"). Tolerant — if the
+        # hook is unavailable for any reason, the report is unchanged.
+        try:
+            from replay_analysis.autoresearch_concept_hook import attach_concept_citations_all, attach_concept_citations
+            attach_concept_citations_all(report.get("issues", []) or [])
+            if isinstance(report.get("top_issue"), dict):
+                attach_concept_citations(report["top_issue"])
+        except Exception:
+            pass
         json_path = self.replay_dir / "autoresearch_latest.json"
         md_path = self.reports_dir / "autoresearch_latest.md"
         json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
