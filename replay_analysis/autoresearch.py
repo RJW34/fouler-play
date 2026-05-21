@@ -558,6 +558,17 @@ class AutoResearcher:
         return "\n".join(lines).strip() + "\n"
 
     def save_report(self, report: dict[str, Any]) -> tuple[Path, Path]:
+        # FOULER-COMPETITIVE-CONCEPTS-WIRE-2026-05-21: augment recommendations with strategic-concept
+        # citations from data/competitive_pokemon_art (paraphrased catalog
+        # grounded in "The Art Of Competitive Pokemon"). Tolerant — if the
+        # hook is unavailable for any reason, the report is unchanged.
+        try:
+            from replay_analysis.autoresearch_concept_hook import attach_concept_citations_all, attach_concept_citations
+            attach_concept_citations_all(report.get("issues", []) or [])
+            if isinstance(report.get("top_issue"), dict):
+                attach_concept_citations(report["top_issue"])
+        except Exception:
+            pass
         json_path = self.replay_dir / "autoresearch_latest.json"
         md_path = self.reports_dir / "autoresearch_latest.md"
         json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -568,6 +579,11 @@ class AutoResearcher:
         historical_md = self.batch_history_dir / f"{batch_id}.md"
         historical_json.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         historical_md.write_text(self.render_markdown(report), encoding="utf-8")
+        # FOULER-HYPOTHESIS-CALL-SITE-2026-05-20: emit hypothesis records (no-op if module missing)
+        try:
+            _emit_hypothesis_ledger_safe(report)
+        except Exception:
+            pass
         return json_path, md_path
 
     def queue_discord_reports(self, report: dict[str, Any], *, json_path: Path, md_path: Path) -> None:
@@ -650,3 +666,13 @@ if __name__ == "__main__":
 
     report = run_autoresearch(last_n=args.num_battles, queue_discord=not args.no_discord)
     print(json.dumps(report, indent=2, ensure_ascii=False))
+
+
+# FOULER-COMPLETION-2026-05-20: emit hypothesis records on every autoresearch write.
+# Tolerant — if the ledger import fails we don't break the autoresearch run.
+def _emit_hypothesis_ledger_safe(autoresearch_data):
+    try:
+        from replay_analysis import hypothesis_ledger as _hl
+        return _hl.emit_from_autoresearch_output(autoresearch_data)
+    except Exception:
+        return []

@@ -1,0 +1,233 @@
+{
+  "schemaVersion": "competitive-pokemon-concepts/v1",
+  "source": {
+    "title": "The Art Of Competitive Pokemon",
+    "author": "Jamvad",
+    "foreword": "Gr8astard",
+    "year": 2020,
+    "pages": 119,
+    "license_note": "External proprietary work. fouler-play stores DERIVATIVE catalog (paraphrased summaries + page citations) only; no verbatim text included. Catalog use is internal analysis/grounding for bot decisions.",
+    "ingested_at_utc": "2026-05-21T00:55:00Z"
+  },
+  "concepts": [
+    {
+      "key": "the_fundamentals",
+      "title": "Fundamentals",
+      "level": "beginner",
+      "chapter": 2,
+      "source_pages": [18, 19, 20, 21, 22, 23, 24, 25, 26],
+      "concept_summary": "Mastery of the basics — type matchups, switching, hazards, status — is non-negotiable. Skipping fundamentals guarantees failure at higher tiers regardless of natural talent.",
+      "fouler_application": "Baseline check: the bot's decision engine must always honor type immunities/resistances and basic move utility. If a loss replay shows a fundamental violation (e.g., attacking into immune type), that's a fundamentals failure, not an advanced strategy failure.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "team_preview",
+      "title": "Team Preview",
+      "level": "beginner",
+      "chapter": 2,
+      "source_pages": [27, 28, 29, 30],
+      "concept_summary": "Before turn 1 you see both teams. This is the true start of the battle — use it to identify threats, win conditions, and likely game shape.",
+      "fouler_application": "fouler-play has team_preview hooks but doesn't currently produce a per-battle 'pre-battle threat analysis' artifact. Detection target: did the bot's first 3 turns reflect a team-preview-derived plan, or was it reactive?",
+      "related_issue_keys": []
+    },
+    {
+      "key": "leads_strategy",
+      "title": "Leads",
+      "level": "beginner",
+      "chapter": 2,
+      "source_pages": [31],
+      "concept_summary": "The Pokemon you send out first sets the game's tone. Strong leads either set hazards, threaten an immediate KO, or pivot safely.",
+      "fouler_application": "Detection target: if the bot leads with a Pokemon that's bad into the opp lead AND has no immediate switch plan, flag as poor lead choice. Currently fouler-play has no explicit lead-quality scorer.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "the_dance",
+      "title": "The Dance (offensive/defensive tempo)",
+      "level": "beginner",
+      "chapter": 2,
+      "source_pages": [32, 33, 34, 35, 36, 37, 38],
+      "concept_summary": "Battle alternates between offensive and defensive tempos. Offense = attack/status/hazards; defense = positioning to take minimum damage. Misreading which tempo the turn is in leads to overextension or stalling out.",
+      "fouler_application": "Detection target: turns where the bot played offensively (clicked an attack) but had no immediate threat AND opp had faster killing threat — should have switched (defensive tempo). Currently the playstyle bias does this implicitly; could be made explicit.",
+      "related_issue_keys": ["hazard_pressure"]
+    },
+    {
+      "key": "the_three_pillars",
+      "title": "The Three Pillars: Knowledge, Awareness, Skill",
+      "level": "beginner",
+      "chapter": 3,
+      "source_pages": [39, 40, 41, 42, 43, 44, 45, 46],
+      "concept_summary": "Player performance reduces to three pillars: knowledge (what is true about the game), awareness (what is true about THIS battle), and skill (what action to take given the prior two). Players who are good but inconsistent usually have weak awareness, not weak knowledge.",
+      "fouler_application": "Fouler's decision engine has strong knowledge (oracle-grounded data) but weak awareness (no explicit battle-state model beyond hazard/HP/status). Future work: extend the decision trace to record awareness signals — 'opp has revealed only 2 mons; faster than us; in setup window'.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "metagame_awareness",
+      "title": "Metagame Awareness",
+      "level": "beginner",
+      "chapter": 3,
+      "source_pages": [47, 48],
+      "concept_summary": "Each metagame has implicit rules (which sets are common, which counters are standard). A player with mastery in one meta can fail in another without metagame-specific knowledge.",
+      "fouler_application": "Smogon stats grounding (planned Tier-1 grounding) directly addresses this. The bot should consult monthly Smogon usage stats for gen9ou and weight decisions toward meta-standard responses. Currently absent.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "expectations",
+      "title": "Managing Expectations",
+      "level": "beginner",
+      "chapter": 3,
+      "source_pages": [49, 50, 51],
+      "concept_summary": "Progress in competitive Pokemon is non-linear. A player improving from 1200 to 1700 will plateau, regress, and surge. Expecting linear gains causes burnout and bad decisions in slumps.",
+      "fouler_application": "The ELO watchdog's revert threshold (>50 drop) should be CONTEXTUAL not absolute — a 50-point drop during normal volatility is different from a 50-point drop right after a deploy. Currently the watchdog uses an absolute threshold.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "the_game_plan",
+      "title": "The Game Plan",
+      "level": "intermediate",
+      "chapter": 4,
+      "source_pages": [53, 54, 55],
+      "concept_summary": "Before turn 1, decide HOW you intend to win this specific battle. Without a plan, every move is reactive; the opponent dictates pace.",
+      "fouler_application": "Detection target: log a 'declared game plan' per battle (e.g., 'win con: Dragapult sweep once hazards land'). If 80% of bot's turns don't advance the plan, flag as plan-drift. Currently no per-battle plan artifact exists.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "purpose_per_action",
+      "title": "Purpose (every action serves the plan)",
+      "level": "intermediate",
+      "chapter": 4,
+      "source_pages": [55],
+      "concept_summary": "Every move and switch should be justifiable by the game plan. 'Filler turns' (clicking the safest move with no contribution to the win condition) waste tempo.",
+      "fouler_application": "The decision_traces could log 'purpose_code' per move (kill-attempt / switch-pivot / hazard-set / chip / stall). Currently we log move choice + weight only. Adding purpose code would let autoresearch detect 'purposeless turn' patterns.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "automatic_information",
+      "title": "Automatic Information",
+      "level": "intermediate",
+      "chapter": 5,
+      "source_pages": [79, 80, 81, 82, 83],
+      "concept_summary": "Strong players process common situations without conscious effort, freeing working memory for unusual ones. Achieved by repeated exposure to standard sets, EV spreads, common damage rolls.",
+      "fouler_application": "The bot's 'common move sets' cache (data/pkmn_sets.py) is the analogue. Should be auto-updated from Smogon stats so it reflects current month's automated sets. Currently the cache is manually curated.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "double_switching",
+      "title": "Double Switching (offensive switching)",
+      "level": "intermediate",
+      "chapter": 5,
+      "source_pages": [84, 85, 86],
+      "concept_summary": "Switching a Pokemon in JUST to switch it out next turn — used offensively to pivot into a favorable matchup while the opponent is forced into a predicted action.",
+      "fouler_application": "Currently fouler-play's switch logic is mostly defensive (switch to avoid damage). The decision engine could be extended to weight double-switch lines when opponent's likely action is predictable AND the second switch gives a kill.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "categorizing_team_preview",
+      "title": "Categorizing battles in team preview (Set Up and Sweep / Bluff / etc)",
+      "level": "advanced",
+      "chapter": 6,
+      "source_pages": [91, 92, 93, 94, 95],
+      "concept_summary": "Advanced team-preview practice: classify every battle into a small set of archetypes (Set Up and Sweep, Bluff/Stall, Hazard Stack, Volt-Turn). Each archetype has a canonical first-3-turns flow.",
+      "fouler_application": "Could add a team_preview_categorizer.py that assigns one of 4-6 archetype labels at battle start. The decision engine then biases toward archetype-canonical moves. Currently no archetype classification.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "gathering_information",
+      "title": "Gathering Information",
+      "level": "advanced",
+      "chapter": 6,
+      "source_pages": [96, 97],
+      "concept_summary": "Proactively force the opponent to reveal information (their item, their hidden EV spread, their set). Worth a small tempo cost early because compounded info advantage carries late.",
+      "fouler_application": "Detection target: by turn 5, what % of opponent's set has been revealed? Bots with low info-extraction lose more late-game because they're guessing. Could add an 'info_revealed_score' to decision traces.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "positioning",
+      "title": "Positioning (limiting opponent options)",
+      "level": "advanced",
+      "chapter": 6,
+      "source_pages": [98, 99],
+      "concept_summary": "An 'if/then' tactic: take an action that forces the opponent's hand. If I do X, my opponent MUST do Y. Forces predictability, which is the foundation of foresight.",
+      "fouler_application": "The hazard_pressure detector is one form of positioning (forcing opp into switch loop). Could generalize to a 'forcing-move detector' — moves with high probability of forcing a specific opp response.",
+      "related_issue_keys": ["hazard_pressure"]
+    },
+    {
+      "key": "the_value_dynamic",
+      "title": "The Value Dynamic",
+      "level": "advanced",
+      "chapter": 6,
+      "source_pages": [89, 90],
+      "concept_summary": "Every action exchanges value (HP, status, position, info). A 'good' move trades less than it gains. Sun Tzu's foraging metaphor: enemy provisions are worth 20x your own.",
+      "fouler_application": "Detection target: per-turn 'value delta' — did the bot's turn gain more value than it lost? Could be computed post-hoc from replay (HP exchanged, status applied, info revealed). Would let autoresearch flag 'consistent value-negative turns'.",
+      "related_issue_keys": ["early_material"]
+    },
+    {
+      "key": "deception",
+      "title": "Deception (withholding/falsifying information)",
+      "level": "advanced",
+      "chapter": 7,
+      "source_pages": [100, 101, 102],
+      "concept_summary": "Get the opponent to act on false information. Withhold the true set, pretend a Pokemon is choice-locked when it isn't, lead with an unexpected mon to mask your real win con.",
+      "fouler_application": "Bots are predictable by nature (they make data-optimal moves). Adding an 'unpredictability budget' — N times per battle, take the second-best move to mask the optimal pattern — could reduce opp's ability to read the bot.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "risk_vs_reward",
+      "title": "Risk vs Reward (per-turn assessment)",
+      "level": "advanced",
+      "chapter": 7,
+      "source_pages": [103, 104, 105, 106, 107, 108, 109],
+      "concept_summary": "Every turn has a risk (what you lose if it goes wrong) and a reward (what you gain if it goes right). Players who don't explicitly assess R/R bleed value over time.",
+      "fouler_application": "Decision_trace could log r/r per move: expected_loss_HP, expected_gain_HP, probability_of_gain. Today the weight is a single scalar. Decomposing it would expose 'high-variance bot' patterns.",
+      "related_issue_keys": ["decision_trace_fallback"]
+    },
+    {
+      "key": "strike",
+      "title": "Strike (commit to winning when the iron is hot)",
+      "level": "advanced",
+      "chapter": 7,
+      "source_pages": [110],
+      "concept_summary": "When you have the winning position, COMMIT. Don't keep playing safe — the window to close is finite and shrinks every turn.",
+      "fouler_application": "Detection target: turns where bot was ahead by 2+ mons or controlled hazards+chip but failed to click the kill move (took a 'safer' switch instead) and subsequently lost. Pattern is detectable from replays. Currently no detector.",
+      "related_issue_keys": ["endgame_conversion"]
+    },
+    {
+      "key": "choke",
+      "title": "Choke (defeating yourself when ahead)",
+      "level": "advanced",
+      "chapter": 7,
+      "source_pages": [111, 112],
+      "concept_summary": "Stems from not striking. You had the battle won but gave the opponent a chance back by playing too cautiously or sacrificing your key piece unnecessarily.",
+      "fouler_application": "DIRECTLY detectable from replay data: max ELO-equivalent winrate during the battle minus final winrate. If the gap is large AND the bot's late-game moves were demonstrably worse than the early-game moves, flag as choke. Could be a top-tier failure class.",
+      "related_issue_keys": ["endgame_conversion"]
+    },
+    {
+      "key": "patience",
+      "title": "Patience (knowing when to wait)",
+      "level": "mastery",
+      "chapter": 8,
+      "source_pages": [114, 115],
+      "concept_summary": "The opposite skill to strike. Sometimes the right move is to do nothing flashy — protect, recover, scout — and let the opponent overextend. Mastery is knowing which turn is which.",
+      "fouler_application": "Pairs with the_dance: when in defensive tempo, stalling moves (Recover, Substitute, Protect) accrue value. Detection: turns where bot used 'aggressive' moves while clearly behind on resources — should have stalled to scout.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "foresight",
+      "title": "Foresight (extreme awareness; seeing the end before it begins)",
+      "level": "mastery",
+      "chapter": 8,
+      "source_pages": [116, 117],
+      "concept_summary": "Top players visualize multiple turns ahead — not just the next turn. Each current action is weighed against its consequence 3-5 turns out, not just immediate result.",
+      "fouler_application": "Fouler is currently 1-ply (1 turn of search). Multi-ply search exists in poke-engine via MCTS but isn't always used. Detection: identify losses where a 3-ply-aware decision would have been clearly better than the 1-ply decision taken. Worth surfacing as a class for future work.",
+      "related_issue_keys": []
+    },
+    {
+      "key": "never_rest_on_laurels",
+      "title": "Never Rest on Your Laurels (continuous practice)",
+      "level": "mastery",
+      "chapter": 8,
+      "source_pages": [118],
+      "concept_summary": "Maintenance is a skill. Without continuous play, even mastered concepts decay. Pokemon metagames also shift monthly — yesterday's correct plan is today's mistake.",
+      "fouler_application": "Operational: the cached Smogon stats / sets should auto-refresh monthly (invariant). The bot's decision tests should run weekly to catch regressions from poke-engine updates. Currently neither is scheduled."
+    }
+  ]
+}

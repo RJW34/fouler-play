@@ -104,12 +104,26 @@ fi
 while $RUNNING; do
     log "--- Starting new analysis cycle ---"
 
-    # Step 1: Pull latest from git
-    log "Pulling latest from origin/$BRANCH..."
-    if git -C "$REPO_DIR" pull origin "$BRANCH" --quiet 2>&1 | tee -a "$LOG_FILE"; then
-        log "Git pull successful"
+    # Step 1: Sync to remote — split data-sync from code-sync.
+    # FOULER-DEVLOOP-DATA-CODE-SPLIT-2026-05-20:
+    #   DATA: force-checkout battle data files from origin (JIGGLYPUFF is
+    #         the source of truth for battle_stats/replays).
+    #   CODE: fast-forward merge only. Never `reset --hard` — that destroyed
+    #         a 12-day-old hazard-pressure deliverable on 2026-05-20.
+    log "Syncing to origin/$BRANCH (data fast-path + code ff-merge)..."
+    if git -C "$REPO_DIR" fetch origin "$BRANCH" --quiet 2>&1 | tee -a "$LOG_FILE"; then
+        for data_file in battle_stats.json active_battles.json stream_status.json; do
+            if git -C "$REPO_DIR" cat-file -e "origin/$BRANCH:$data_file" 2>/dev/null; then
+                git -C "$REPO_DIR" checkout "origin/$BRANCH" -- "$data_file" 2>>"$LOG_FILE" || true
+            fi
+        done
+        if git -C "$REPO_DIR" merge --ff-only "origin/$BRANCH" --quiet 2>&1 | tee -a "$LOG_FILE"; then
+            log "Sync OK ($(git -C "$REPO_DIR" rev-parse --short HEAD))"
+        else
+            log_warn "branch diverged from origin/$BRANCH; data synced, code unchanged. Rebase manually if needed."
+        fi
     else
-        log_error "Git pull failed. Will retry next cycle."
+        log_error "Git fetch failed. Will retry next cycle."
         sleep "$SLEEP_INTERVAL"
         continue
     fi

@@ -201,3 +201,68 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# FOULER-ACTION-ORIENTED-2026-05-20: action-oriented summary helper.
+# Reads the latest hypothesis ledger to surface what's open, what shipped
+# since last post, and what the measured ELO delta was. Falls back to
+# stats-only if the ledger isn't populated.
+def build_action_oriented_summary(report_data: dict, hypothesis_dir: str = None) -> str:
+    """Compose a Discord-friendly action summary.
+
+    Format:
+        Latest batch: {n} battles, WR {pct}%, ELO {current} ({+/-delta} since last).
+        Shipped: {hypothesis title} ({status}) — measured delta {x} ELO.
+        Open hypotheses: {top issue title} (recommendation: {short})
+        Watch: {one concrete next move}
+    """
+    import json, os
+    from pathlib import Path as _P
+    hd = hypothesis_dir or os.path.expanduser("~/.hermes/operator/fouler-hypotheses")
+    hpath = _P(hd)
+    open_hypos = []
+    shipped_hypos = []
+    if hpath.exists():
+        for f in sorted(hpath.glob("*.json"), reverse=True)[:20]:
+            try:
+                h = json.loads(f.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            if h.get("status") == "open":
+                open_hypos.append(h)
+            elif h.get("status") in ("deployed", "measured", "kept"):
+                shipped_hypos.append(h)
+    lines = []
+    teams = report_data.get("teams") or []
+    overall_wr = report_data.get("win_rate") or report_data.get("overall_win_rate")
+    overall_n = report_data.get("battle_count") or report_data.get("total_battles")
+    elo = report_data.get("current_elo") or report_data.get("elo")
+    elo_delta = report_data.get("elo_delta") or report_data.get("rating_delta")
+    bits = []
+    if overall_n is not None:
+        bits.append(f"{overall_n} battles")
+    if overall_wr is not None:
+        bits.append(f"WR {overall_wr:.0%}" if isinstance(overall_wr, float) and overall_wr < 1.0 else f"WR {overall_wr}%")
+    if elo is not None:
+        e = f"ELO {elo}"
+        if elo_delta is not None:
+            e += f" ({'+' if elo_delta > 0 else ''}{elo_delta})"
+        bits.append(e)
+    if bits:
+        lines.append("**Latest batch:** " + ", ".join(bits))
+    if shipped_hypos:
+        for h in shipped_hypos[:2]:
+            m = h.get("measurement") or {}
+            d = m.get("deltaELO")
+            d_str = f" — delta {'+' if d and d > 0 else ''}{d} ELO" if d is not None else ""
+            lines.append(f"**Shipped:** {h.get('title')} ({h.get('status')}){d_str}")
+    if open_hypos:
+        top = open_hypos[0]
+        rec = (top.get("recommendation") or "").strip()
+        if len(rec) > 120:
+            rec = rec[:117].rstrip() + "..."
+        lines.append(f"**Open:** {top.get('title')} — {rec}")
+    if not shipped_hypos and not open_hypos:
+        lines.append("_No hypotheses tracked yet (ledger empty)._ ")
+    lines.append("**Next:** see `~/.hermes/operator/fouler-hypotheses/` for the full ledger.")
+    return "\n".join(lines)

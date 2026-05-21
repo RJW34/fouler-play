@@ -5765,6 +5765,33 @@ def apply_team_strategy_bias(
     # When the opponent is already boosted, avoid late-stage style multipliers
     # re-inflating passive lines that earlier threat layers suppressed.
     suppress_passive_style_boosts = opp_offensive_boost >= 1
+    battle_turn = getattr(battle, "turn", 999)
+    if not isinstance(battle_turn, int):
+        battle_turn = 999
+    hazard_setters_norm = {
+        normalize_name(setter)
+        for setter in (getattr(team_plan, "hazard_setters", set()) or set())
+        if setter
+    }
+    active_has_progressable_hazard = False
+    for active_move in getattr(battle.user.active, "moves", []) or []:
+        move_norm = normalize_name(str(getattr(active_move, "name", active_move)))
+        if move_norm in hazard_moves_norm and _hazard_move_can_progress(move_norm, battle):
+            active_has_progressable_hazard = True
+            break
+    opponent_remaining = 0
+    for pokemon in [getattr(battle.opponent, "active", None)] + list(getattr(battle.opponent, "reserve", []) or []):
+        if pokemon is not None and getattr(pokemon, "hp", 0) > 0:
+            opponent_remaining += 1
+    should_route_to_hazard_setter = (
+        playstyle in (Playstyle.FAT, Playstyle.STALL, Playstyle.BALANCE, Playstyle.BULKY_OFFENSE)
+        and not hazards_on_opp
+        and bool(hazard_setters_norm)
+        and not active_has_progressable_hazard
+        and not suppress_passive_style_boosts
+        and battle_turn <= 10
+        and opponent_remaining >= 3
+    )
 
     adjusted = {}
     for move, weight in policy.items():
@@ -5774,6 +5801,7 @@ def apply_team_strategy_bias(
 
         new_weight = weight
         is_switch = move.startswith("switch ")
+        switch_target_name = normalize_name(move[len("switch "):]) if is_switch else ""
         base_move = move.split()[-1] if is_switch else move
         move_name = normalize_name(base_move)
 
@@ -5798,6 +5826,11 @@ def apply_team_strategy_bias(
                     new_weight *= hazard_mult * chip_mult
                 if switch_tendency > 0.5:
                     new_weight *= 1.0 + min((switch_tendency - 0.5) * 0.3, 0.2)
+        if is_switch and should_route_to_hazard_setter and switch_target_name in hazard_setters_norm:
+            if playstyle in (Playstyle.FAT, Playstyle.STALL):
+                new_weight *= 2.0 if battle_turn <= 5 else 1.65
+            else:
+                new_weight *= 1.35 if battle_turn <= 5 else 1.2
         if move_name in screen_moves_norm:
             if playstyle == Playstyle.HYPER_OFFENSE:
                 new_weight *= 1.3
@@ -5878,7 +5911,7 @@ def apply_team_strategy_bias(
 
         # Matchup-aware switching (even when not forced)
         if is_switch and opponent is not None:
-            target_name = normalize_name(move.split("switch ")[-1])
+            target_name = switch_target_name
             target = None
             for p in battle.user.reserve:
                 if p.name == target_name:
