@@ -91,3 +91,7 @@ devstream/truth/showdown-login-proof.json
 devstream/truth/jigglypuff-runtime.json
 Press
 Server
+
+# HERMES/DEKU generated analysis runtime state
+infrastructure/linux/.last_analysis_count
+replay_analysis/team_report.json
