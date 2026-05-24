@@ -493,6 +493,40 @@ async def _post_battle_to_discord(
     ps_username = our_player_name or FoulPlayConfig.username
     elo_after, gxe = await _fetch_elo(ps_username)
 
+    # FOULER-ELO-PROPAGATION-RETRY-2026-05-20: PS profile API has a cache lag; if we got the
+    # same value as elo_before, retry with backoff to give the rating
+    # update time to propagate. If all retries return the same value,
+    # set elo_after = None so the formatter shows no ELO info rather
+    # than fabricating a +0 delta for a real win/loss.
+    if (
+        elo_after is not None
+        and elo_before is not None
+        and abs(float(elo_after) - float(elo_before)) < 0.01
+    ):
+        for _retry_delay in (5, 10, 15):
+            try:
+                await asyncio.sleep(_retry_delay)
+            except Exception:
+                pass
+            _retry_elo, _retry_gxe = await _fetch_elo(ps_username)
+            if (
+                _retry_elo is not None
+                and abs(float(_retry_elo) - float(elo_before)) >= 0.01
+            ):
+                elo_after = _retry_elo
+                if _retry_gxe is not None:
+                    gxe = _retry_gxe
+                break
+        else:
+            # All retries returned the same value as elo_before.
+            # Honest-fail: report no ELO info instead of fake "+0".
+            logger.info(
+                "ELO update did not propagate within 30s for %s; "
+                "marking elo_after=None (was %s, before=%s).",
+                ps_username, elo_after, elo_before,
+            )
+            elo_after = None
+
     # --- Line 1: Result header ---
     if is_tie:
         result_word = "TIE"
