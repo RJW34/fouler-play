@@ -21,7 +21,7 @@ if str(ROOT) not in sys.path:
 from streaming import state_store
 
 DEFAULT_RUN_COUNT = 25
-DEFAULT_MAX_CONCURRENT = 2
+DEFAULT_MAX_CONCURRENT = 3
 PID_DIR = ROOT / ".pids"
 OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
@@ -221,6 +221,15 @@ def obs_http_env(env: dict[str, str]) -> dict[str, str]:
     return obs_env
 
 
+def detached_child_env(env: dict[str, str]) -> dict[str, str]:
+    child_env = dict(env)
+    # The bounded devstream launcher is a one-shot supervisor that records PID
+    # files and exits. Runtime children must survive that exit so OBS can keep
+    # showing active battles during unattended rehearsal/live-build audits.
+    child_env["FP_PARENT_PID"] = "0"
+    return child_env
+
+
 def terminate_pid_file(path: Path, *, force: bool = False) -> dict[str, Any]:
     alive, pid = pid_alive(path)
     item: dict[str, Any] = {"pidFile": str(path), "pid": pid, "wasRunning": alive}
@@ -356,7 +365,7 @@ def cmd_start(args: argparse.Namespace) -> int:
                 or "Showdown login failed; credential was rejected."
             ),
         )
-        env["FP_PARENT_PID"] = str(os.getpid())
+        env["FP_PARENT_PID"] = "0"
         payload["started"] = {
             "obsHttp": start_process(commands["obsHttp"], OBS_PID_FILE, obs_http_env(env)),
             "battleSession": {
@@ -371,10 +380,10 @@ def cmd_start(args: argparse.Namespace) -> int:
         return 0
     env.setdefault("LOSS_TRIGGERED_DRAIN", "1")
     env.setdefault("BATTLE_STATS_MAX_ENTRIES", "5000")
-    env["FP_PARENT_PID"] = str(os.getpid())
+    env["FP_PARENT_PID"] = "0"
     payload["started"] = {
         "obsHttp": start_process(commands["obsHttp"], OBS_PID_FILE, obs_http_env(env)),
-        "battleSession": start_process(commands["battleSession"], BATTLE_PID_FILE, env),
+        "battleSession": start_process(commands["battleSession"], BATTLE_PID_FILE, detached_child_env(env)),
     }
     time.sleep(2)
     health, error = run_json([runtime_python(), "scripts/devstream_health.py"])

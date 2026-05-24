@@ -8,7 +8,7 @@
   "mission": "Train and evaluate a high-level Gen 9 OU bot through JIGGLYPUFF-hosted bounded battle cycles, replay/decision proof, DEKU-guided analysis, and iteration toward 1800+ ELO play.",
   "runner": {
     "safeToAutostart": false,
-    "start": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "start", "--run-count", "10", "--max-concurrent-battles", "1", "--execute"],
+    "start": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "start", "--run-count", "10", "--max-concurrent-battles", "3", "--execute"],
     "stop": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "stop", "--execute"],
     "status": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "status"]
   },
@@ -29,6 +29,7 @@
       {"label": "bounded session planner", "path": "scripts/devstream_session.py", "required": true},
       {"label": "showdown login check", "path": "scripts/showdown_login_check.py", "required": true},
       {"label": "report packetizer", "path": "scripts/devstream_packetize.py", "required": true},
+      {"label": "post-packet evaluator", "path": "scripts/devstream_post_packet_eval.py", "required": true},
       {"label": "cycle report writer", "path": "scripts/devstream_cycle_report.py", "required": true},
       {"label": "jigglypuff hub control", "path": "scripts/jigglypuff_devstream_control.py", "required": true},
       {"label": "jigglypuff runtime control", "path": "scripts/fouler_jigglypuff_runtime.ps1", "required": true},
@@ -92,7 +93,7 @@
       "run.py"
     ],
     "validation": [
-      ".venv/bin/python -m py_compile scripts/devstream_session.py scripts/devstream_packetize.py scripts/showdown_login_check.py scripts/devstream_cycle_report.py",
+      ".venv/bin/python -m py_compile scripts/devstream_session.py scripts/devstream_packetize.py scripts/devstream_post_packet_eval.py scripts/showdown_login_check.py scripts/devstream_cycle_report.py",
       ".venv/bin/python -m py_compile scripts/jigglypuff_devstream_control.py",
       ".venv/bin/python -m py_compile scripts/devstream_health.py streaming/serve_obs_page.py",
       ".venv/bin/python scripts/jigglypuff_devstream_control.py status",

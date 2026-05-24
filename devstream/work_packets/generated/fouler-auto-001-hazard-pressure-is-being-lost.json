@@ -1,0 +1,92 @@
+{
+  "acceptance_checks": [
+    "python3 -m pytest tests/test_autoresearch.py tests/test_eval.py tests/test_state_endpoint_status.py -q",
+    "python3 scripts/devstream_session.py doctor"
+  ],
+  "allowed_paths": [
+    "fp/search/",
+    "fp/helpers.py",
+    "fp/battle.py",
+    "replay_analysis/",
+    "tests/test_autoresearch.py",
+    "tests/test_eval.py",
+    "tests/test_state_endpoint_status.py",
+    "devstream/work_packets/"
+  ],
+  "authority": {
+    "runtime_mutation_allowed_by_packet": false,
+    "source_of_truth": "HERMES",
+    "worker_role": "JIGGLYPUFF may run bounded battles only after HERMES focus/preflight approval"
+  },
+  "createdAt": "2026-05-07T07:39:32.411789+00:00",
+  "done_when": [
+    "Offline acceptance checks pass after the patch",
+    "A bounded post-packet battle proof is produced only through the HERMES approval gate",
+    "The related failure class is reduced or explicitly marked unresolved with fresh replay evidence"
+  ],
+  "evidence": [
+    "battle-gen9ou-2602394852: bot never established Stealth Rock or equivalent chip pressure"
+  ],
+  "finding_key": "hazard_pressure",
+  "forbidden_paths": [
+    ".env",
+    "config/secrets*"
+  ],
+  "id": "fouler-auto-001-hazard-pressure-is-being-lost",
+  "implementation": {
+    "offlineAcceptance": {
+      "checkedAtUtc": "2026-05-08T02:44:00Z",
+      "commands": [
+        "python3 -m pytest tests/test_autoresearch.py tests/test_eval.py tests/test_state_endpoint_status.py tests/test_devstream_post_packet_eval.py -q",
+        "python3 scripts/devstream_session.py doctor"
+      ],
+      "result": "passed"
+    },
+    "summary": "Hazard-pressure policy patch is implemented in the search layer: early safe hazard forced lines now preempt generic 2HKO stay-in logic, and fat/stall team bias can route to an available hazard setter when the active Pokemon cannot progress hazards safely.",
+    "touchedPaths": [
+      "fp/search/forced_lines.py",
+      "fp/search/main.py",
+      "replay_analysis/autoresearch.py",
+      "tests/test_autoresearch.py",
+      "tests/test_eval.py",
+      "tests/test_threat_bias.py"
+    ]
+  },
+  "implementedAt": "2026-05-08T02:44:00Z",
+  "objective": "Losses repeatedly come from games where Fouler Play never establishes its own chip engine or gives up the hazards race.",
+  "owner": "HERMES",
+  "post_patch_eval_plan": {
+    "expected_runtime_proof": [
+      "devstream/truth/latest-elo-proof.json includes a battle after this packet's createdAt timestamp",
+      "replay_analysis/autoresearch_latest.json consumes that new battle",
+      "the 'hazard_pressure' failure class is reduced or explicitly marked unresolved with fresh evidence"
+    ],
+    "offline_checks": [
+      "python3 -m pytest tests/test_autoresearch.py tests/test_eval.py tests/test_state_endpoint_status.py -q",
+      "python3 scripts/devstream_session.py doctor"
+    ],
+    "runtime_gate": "After patch acceptance, HERMES must refresh fouler proof and approve exactly one bounded JIGGLYPUFF battle proof only when focus/preflight allows it."
+  },
+  "project_id": "fouler-play",
+  "proposed_change": [
+    "Inspect replay/decision evidence named in evidence[]",
+    "Raise hazard-setting urgency earlier in neutral matchups, especially on stall/fat lines that need passive damage to convert."
+  ],
+  "recommendation": "Raise hazard-setting urgency earlier in neutral matchups, especially on stall/fat lines that need passive damage to convert.",
+  "requires_human_approval": true,
+  "requires_human_approval_for_runtime": true,
+  "risk": "medium",
+  "runtime_dependencies": [
+    "Pokemon Showdown credentials",
+    "bounded session truth files",
+    "autoresearch report"
+  ],
+  "runtime_mutation_allowed": false,
+  "schemaVersion": "devstream-work-packet/v1",
+  "source_report": "replay_analysis/autoresearch_latest.json",
+  "status": "implemented",
+  "stream_role": "code-eval-work-packet",
+  "target_repo": "/home/ryan/projects/fouler-play",
+  "task_type": "battle-policy-improvement",
+  "title": "Hazard pressure is being lost"
+}

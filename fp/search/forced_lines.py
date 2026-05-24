@@ -8,10 +8,11 @@ Lines detected (in priority order):
 1. We outspeed + can OHKO → take the KO (confidence 0.95)
 2. Opponent OHKOs us + we can't KO back → must switch to resist (confidence 0.85)
 3. Opponent at +2 and we have phaze → use it (confidence 0.80)
-4. We 2HKO and they can't 2HKO us → stay in (confidence 0.75)
-5. Safe hazard opportunity → set rocks/spikes (confidence 0.75)
-6. Toxic stall win condition → recover (confidence 0.75)
-7. Predicted switch → punish with hazards/status (confidence 0.70)
+4. Early safe hazard pressure → set rocks/spikes before generic 2HKO pressure (confidence 0.78)
+5. We 2HKO and they can't 2HKO us → stay in (confidence 0.75)
+6. Safe hazard opportunity → set rocks/spikes (confidence 0.75)
+7. Toxic stall win condition → recover (confidence 0.75)
+8. Predicted switch → punish with hazards/status (confidence 0.70)
 """
 
 import logging
@@ -432,7 +433,45 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
                     line_type="phaze",
                 )
 
-    # === LINE 4: We 2HKO and they can't 2HKO us → stay in ===
+    opp_alive_reserves = _count_alive_reserve(battle.opponent)
+
+    # === LINE 4: Early safe hazard pressure ===
+    # Replay research showed Fouler Play losing games by never establishing its
+    # chip engine. When we are not meaningfully threatened and the opponent has
+    # enough team left for hazards to matter, establish rocks/spikes before the
+    # generic "we can 2HKO, stay in" line preempts the hazard race.
+    turn = int(getattr(battle, "turn", 1) or 1)
+    if turn <= 5 and opp_best_dmg * 2 < our_hp_ratio and our_hp_ratio >= 0.55 and opp_alive_reserves >= 2:
+        opp_sc = battle.opponent.side_conditions
+        if opp_sc.get(constants.STEALTH_ROCK, 0) == 0:
+            sr_move = _has_usable_move_in_set(our, {"stealthrock"})
+            if sr_move:
+                logger.info(
+                    f"FORCED LINE: early safe hazard pressure with {sr_move} "
+                    f"(turn {turn}, opp best dmg {opp_best_dmg:.2f} vs our HP {our_hp_ratio:.2f})"
+                )
+                return ForcedLine(
+                    move=sr_move,
+                    confidence=0.78,
+                    reason=f"Early hazard pressure: safe turn {turn}, setting {sr_move} before generic 2HKO pressure",
+                    line_type="safe_hazard",
+                )
+        spikes_layers = opp_sc.get(constants.SPIKES, 0)
+        if spikes_layers < 3:
+            spikes_move = _has_usable_move_in_set(our, {"spikes"})
+            if spikes_move:
+                logger.info(
+                    f"FORCED LINE: early safe hazard pressure with {spikes_move} "
+                    f"(turn {turn}, rocks up, spikes at {spikes_layers})"
+                )
+                return ForcedLine(
+                    move=spikes_move,
+                    confidence=0.78,
+                    reason=f"Early hazard pressure: safe turn {turn}, setting {spikes_move} (layer {spikes_layers + 1})",
+                    line_type="safe_hazard",
+                )
+
+    # === LINE 5: We 2HKO and they can't 2HKO us → stay in ===
     if guaranteed_move_first:
         our_best_dmg = 0.0
         our_best_move = None
@@ -457,9 +496,8 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
                     line_type="stay_in",
                 )
 
-    # === LINE 5: Safe hazard opportunity ===
+    # === LINE 6: Safe hazard opportunity ===
     # Not threatened + rocks not up + we have stealthrock → set hazards
-    opp_alive_reserves = _count_alive_reserve(battle.opponent)
     if opp_best_dmg * 2 < our_hp_ratio and opp_alive_reserves >= 2:
         opp_sc = battle.opponent.side_conditions
         # Try Stealth Rock first
@@ -492,7 +530,7 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
                     line_type="safe_hazard",
                 )
 
-    # === LINE 6: Toxic stall win condition ===
+    # === LINE 7: Toxic stall win condition ===
     # Opponent is Toxic'd, can't 2HKO us, we have recovery, HP < 85%
     opp_status = getattr(opp, "status", None)
     if opp_status == "tox" and opp_best_dmg * 2 < our_hp_ratio and our_hp_ratio < 0.85:
@@ -509,7 +547,7 @@ def detect_forced_line(battle: Battle) -> Optional[ForcedLine]:
                 line_type="toxic_stall",
             )
 
-    # === LINE 7: Predicted switch — punish with hazards/status ===
+    # === LINE 8: Predicted switch — punish with hazards/status ===
     # Opponent in terrible matchup (their best < 12%, our best > 40%)
     # and they have reserves → they're switching, use the free turn
     our_best_dmg_for_switch = 0.0

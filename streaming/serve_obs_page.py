@@ -1199,7 +1199,7 @@ color:rgba(8,217,214,0.4)}}
 <script>
 (function(){{
   var SLOT={slot};
-  var STATE_URL='/magneton-state';
+  var STATE_URL='/slot/'+SLOT+'/state';
   var POLL_MS=3000;
   var activeBid=null;
   var scanning=document.getElementById('scanning');
@@ -1207,11 +1207,12 @@ color:rgba(8,217,214,0.4)}}
 
   function slotOf(b,i){{return b.slot!=null?parseInt(b.slot):(i+1);}}
 
-  function showBattle(bid){{
-    var url='https://play.pokemonshowdown.com/'+bid+'?r='+Date.now();
-    frame.src=url;
-    frame.classList.remove('hidden');
-    scanning.classList.add('hidden');
+  function showBattle(bid, battleUrl){{
+    var url=(battleUrl||('https://play.pokemonshowdown.com/'+bid))+'?r='+Date.now();
+    // Pokemon Showdown intentionally refuses battle display inside an iframe.
+    // OBS browser sources should leave this local polling page and load the
+    // battle URL as the top-level page.
+    window.location.replace(url);
   }}
 
   function showScanning(){{
@@ -1224,15 +1225,12 @@ color:rgba(8,217,214,0.4)}}
     fetch(STATE_URL+'?t='+Date.now())
       .then(function(r){{return r.json();}})
       .then(function(d){{
-        var battles=d.battles||[];
-        var battle=null;
-        for(var i=0;i<battles.length;i++){{
-          if(slotOf(battles[i],i)===SLOT){{battle=battles[i];break;}}
-        }}
-        if(battle&&battle.id){{
-          if(battle.id!==activeBid){{
-            activeBid=battle.id;
-            showBattle(battle.id);
+        var battleId=d.battle_id||null;
+        var battleUrl=d.url||null;
+        if(battleId){{
+          if(battleId!==activeBid){{
+            activeBid=battleId;
+            showBattle(battleId,battleUrl);
           }}
         }} else {{
           if(activeBid!==null){{
@@ -1295,7 +1293,7 @@ async def handle_battle_slot(request: web.Request) -> web.Response:
     """Battle slot OBS browser source.
 
     Always serves the self-managing BATTLE_SLOT_HTML page: shows SCANNING
-    animation by default, polls /magneton-state every 4s, and redirects to PS
+    animation by default, polls /slot/N/state, and redirects to PS
     via window.location.replace() when a battle is active for this slot.
 
     obs-battle-sync pins all slots to /slot/N every 5 min so OBS returns to

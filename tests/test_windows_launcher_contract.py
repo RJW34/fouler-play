@@ -32,3 +32,10 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert '$_.CommandLine -match $escapedRepo -and' in text
     assert "function Redact-CommandLine" in text
     assert "Redact-CommandLine -CommandLine $_.CommandLine" in text
+    assert "function Get-LogicalProcessSummary" in text
+    assert "leafCount" in text
+    assert "multiple Fouler OBS HTTP servers are running" in text
+    assert 'if ($Path -eq "/health")' in text
+    assert '$rel -eq "battle_stats.json"' in text
+    assert "battleCount = $battles.Count" in text
+    assert "lastBattle = $lastBattle" in text

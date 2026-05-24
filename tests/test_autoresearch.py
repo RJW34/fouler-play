@@ -134,6 +134,47 @@ def test_autoresearch_detects_long_game_conversion_issue(tmp_path: Path):
     assert "endgame_conversion" in issue_keys
 
 
+def test_autoresearch_prefers_fresher_devstream_elo_proof(tmp_path: Path):
+    project = tmp_path
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-old",
+                    "timestamp": "2026-03-25T14:45:21+00:00",
+                    "team_file": "fat-team-1-stall",
+                    "result": "win",
+                    "replay_id": "battle-gen9ou-old",
+                }
+            ]
+        },
+    )
+    write_json(
+        project / "devstream" / "truth" / "latest-elo-proof.json",
+        {
+            "games": [
+                {
+                    "battleId": "battle-gen9ou-2602394852",
+                    "timestamp": "2026-05-05T17:37:27+00:00",
+                    "teamFile": "fat-team-1-stall",
+                    "result": "loss",
+                    "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2602394852",
+                    "ratingAfter": 1038,
+                }
+            ]
+        },
+    )
+
+    researcher = AutoResearcher(project_root=project)
+    report = researcher.analyze(last_n=30)
+
+    assert report["battle_source"] == "devstream/truth/latest-elo-proof.json"
+    assert report["batch"]["end_battle_id"] == "battle-gen9ou-2602394852"
+    assert report["window_size"] == 1
+    assert report["losses"] == 1
+
+
 def test_pipeline_autoresearch_accepts_no_discord_flag():
     repo = Path(__file__).resolve().parent.parent
     result = subprocess.run(

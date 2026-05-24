@@ -154,7 +154,7 @@ body{
 // Get slot number from URL path: /slot/1, /slot/2, /slot/3
 const pathParts = window.location.pathname.split('/');
 const SLOT_NUM = parseInt(pathParts[pathParts.length - 1]) || 1;
-const STATE_URL = '/magneton-state';
+const STATE_URL = '/slot/' + SLOT_NUM + '/state';
 const REFRESH_MS = 5000;
 
 const badgeColors = {1:'slot1', 2:'slot2', 3:'slot3'};
@@ -193,10 +193,9 @@ async function fetchState() {
     if (!resp.ok) return;
     const data = await resp.json();
     if (data.error) return;
-    const battles = data.battles || [];
-    const slotMap = {};
-    battles.forEach((b, i) => { slotMap[b.slot || (i+1)] = b; });
-    const battle = slotMap[SLOT_NUM] || null;
+    const battle = data.battle_id
+      ? {id: data.battle_id, url: data.url, opponent: data.opponent}
+      : null;
     updateSlot(battle);
   } catch(e) {}
 }
