@@ -18,6 +18,11 @@ node_modules/
 *.out
 logs/
 
+# Devstream local artifacts
+artifacts/
+output/
+replay_analysis/gen*.json
+
 # PID files
 .pids/
 

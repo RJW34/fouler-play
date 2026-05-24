@@ -2,7 +2,7 @@ param(
     [ValidateSet("status", "bootstrap", "start", "stop", "login-proof")]
     [string]$Command = "status",
     [int]$RunCount = 10,
-    [int]$MaxConcurrentBattles = 1,
+    [int]$MaxConcurrentBattles = 3,
     [switch]$ObsOnly,
     [switch]$Execute
 )
@@ -120,6 +120,23 @@ function Redact-CommandLine {
     return $redacted
 }
 
+function Get-ProcessRole {
+    param([string]$CommandLine)
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) {
+        return "unknown"
+    }
+    if ($CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or $CommandLine -match "streaming\.serve_obs_page") {
+        return "obsServer"
+    }
+    if ($CommandLine -match "run\.py" -and $CommandLine -match "search_ladder") {
+        return "battleSession"
+    }
+    if ($CommandLine -match "start_one_touch\.bat") {
+        return "battleLauncher"
+    }
+    return "foulerProcess"
+}
+
 function Get-ProcessInfo {
     $escapedRepo = [regex]::Escape($RepoRoot)
     $items = Get-CimInstance Win32_Process | Where-Object {
@@ -143,14 +160,46 @@ function Get-ProcessInfo {
             $_.CommandLine -match "streaming\.serve_obs_page"
         )
     } | ForEach-Object {
+        $redactedCommandLine = Redact-CommandLine -CommandLine $_.CommandLine
         @{
             pid = $_.ProcessId
+            parentPid = $_.ParentProcessId
             name = $_.Name
-            commandLine = Redact-CommandLine -CommandLine $_.CommandLine
+            role = Get-ProcessRole -CommandLine $redactedCommandLine
+            commandLine = $redactedCommandLine
             creationDate = $_.CreationDate
         }
     }
     return @($items)
+}
+
+function Get-LeafProcessesForRole {
+    param(
+        [array]$Processes,
+        [string]$Role
+    )
+    $candidates = @($Processes | Where-Object {
+        $_.role -eq $Role -and $_.name -match "^(py|python).*\.exe$"
+    })
+    $parentIds = @($candidates | ForEach-Object { [int]$_.parentPid })
+    return @($candidates | Where-Object { $parentIds -notcontains [int]$_.pid })
+}
+
+function Get-LogicalProcessSummary {
+    param([array]$Processes)
+    $obsLeafs = @(Get-LeafProcessesForRole -Processes $Processes -Role "obsServer")
+    $battleLeafs = @(Get-LeafProcessesForRole -Processes $Processes -Role "battleSession")
+    return @{
+        obsServer = @{
+            leafCount = @($obsLeafs).Count
+            pids = @($obsLeafs | ForEach-Object { $_.pid })
+        }
+        battleSession = @{
+            leafCount = @($battleLeafs).Count
+            pids = @($battleLeafs | ForEach-Object { $_.pid })
+        }
+        rawProcessCount = @($Processes).Count
+    }
 }
 
 function Stop-FoulerProcesses {
@@ -210,8 +259,12 @@ function Start-DetachedCommand {
 function Get-Endpoint {
     param([string]$Path)
     $url = "http://127.0.0.1:8777$Path"
+    $timeout = 3
+    if ($Path -eq "/health") {
+        $timeout = 10
+    }
     try {
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 3
+        $response = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec $timeout
         return @{ url = $url; ok = $true; statusCode = [int]$response.StatusCode }
     } catch {
         return @{ url = $url; ok = $false; error = $_.Exception.Message }
@@ -246,6 +299,30 @@ function Get-TruthStatus {
                         blockerCode = $parsed.blocker_code
                         blockerSummary = $parsed.blocker_summary
                         updated = $parsed.updated
+                    }
+                } elseif ($rel -eq "daily_stats.json") {
+                    $summary = @{
+                        date = $parsed.date
+                        wins = $parsed.wins
+                        losses = $parsed.losses
+                    }
+                } elseif ($rel -eq "battle_stats.json") {
+                    $battles = @($parsed.battles)
+                    $lastBattle = $null
+                    if ($battles.Count -gt 0) {
+                        $last = $battles | Select-Object -Last 1
+                        $lastBattle = @{
+                            battleId = $last.battle_id
+                            timestamp = $last.timestamp
+                            result = $last.result
+                            replayId = $last.replay_id
+                            rating = $last.rating
+                            teamFile = $last.team_file
+                        }
+                    }
+                    $summary = @{
+                        battleCount = $battles.Count
+                        lastBattle = $lastBattle
                     }
                 } elseif ($rel -eq "devstream\truth\showdown-login-proof.json") {
                     $summary = @{
@@ -371,6 +448,7 @@ function Get-Status {
         obsServer = Test-Path (Join-Path $RepoRoot "streaming\serve_obs_page.py")
     }
     $processes = @(Get-ProcessInfo)
+    $logicalProcesses = Get-LogicalProcessSummary -Processes $processes
     $processCount = @($processes).Count
     $obsOpen = Test-LocalPort -Port 8777
     $truth = Get-TruthStatus
@@ -382,6 +460,15 @@ function Get-Status {
     if (-not $scriptsPresent.startOneTouch) { $blockers += "start_one_touch.bat is missing" }
     if (-not $scriptsPresent.obsServer) { $blockers += "streaming/serve_obs_page.py is missing" }
     if (-not $venvPresent) { $warnings += ".venv is missing; using global python until bootstrap completes" }
+    if ([int]$logicalProcesses.obsServer.leafCount -gt 1) {
+        $blockers += "multiple Fouler OBS HTTP servers are running: $($logicalProcesses.obsServer.pids -join ', ')"
+    }
+    if ([int]$logicalProcesses.battleSession.leafCount -gt 1) {
+        $blockers += "multiple Fouler battle sessions are running: $($logicalProcesses.battleSession.pids -join ', ')"
+    }
+    if ($obsOpen -and [int]$logicalProcesses.obsServer.leafCount -eq 0) {
+        $warnings += "OBS HTTP port is open but no canonical Fouler OBS server process was identified"
+    }
     $streamStatus = ($truth | Where-Object { $_.relativePath -eq "stream_status.json" } | Select-Object -First 1).summary
     if ($streamStatus -and $streamStatus.runtimeBlocked) {
         $warnings += "stream_status.json still records runtime_blocked: $($streamStatus.blockerCode)"
@@ -417,6 +504,7 @@ function Get-Status {
         scriptsPresent = $scriptsPresent
         processes = @($processes)
         processCount = $processCount
+        logicalProcesses = $logicalProcesses
         scheduledTasks = @(Get-TaskInfo)
         ports = @{ obsHttp = @{ host = "127.0.0.1"; port = 8777; open = $obsOpen } }
         endpoints = @{

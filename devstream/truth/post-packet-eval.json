@@ -1,0 +1,60 @@
+{
+  "acceptance": {
+    "exists": false,
+    "latestBattleAfterAcceptance": null
+  },
+  "actionablePostPacketEval": false,
+  "blockers": [
+    "devstream/truth/latest-elo-proof.json is missing or unreadable"
+  ],
+  "checkedAtUtc": "2026-05-08T02:44:18.521449+00:00",
+  "failureClass": {
+    "evidence": [],
+    "key": "hazard_pressure",
+    "matchingIssueCount": 0,
+    "shift": {
+      "current_count": 0,
+      "delta": -1,
+      "direction": "better",
+      "key": "hazard_pressure",
+      "previous_count": 1,
+      "title": "Hazard pressure is being lost"
+    },
+    "status": "reduced"
+  },
+  "latestBattle": {
+    "at": null,
+    "finalRating": null,
+    "id": null,
+    "learningVerified": false,
+    "performanceImprovementVerified": false,
+    "performanceTrendStatus": "unknown",
+    "ratingDelta": null,
+    "winRate": null
+  },
+  "networkSendAllowed": false,
+  "nextActions": [
+    "Inspect packet, latest ELO proof, and autoresearch timestamps before requesting another runtime proof."
+  ],
+  "ok": true,
+  "packet": {
+    "createdAt": "2026-05-07T07:39:32.411789+00:00",
+    "exists": true,
+    "findingKey": "hazard_pressure",
+    "id": "fouler-auto-001-hazard-pressure-is-being-lost",
+    "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\devstream\\work_packets\\generated\\fouler-auto-001-hazard-pressure-is-being-lost.json",
+    "status": "implemented",
+    "title": "Hazard pressure is being lost"
+  },
+  "proofWindow": {
+    "autoresearchCoversLatestBattle": false,
+    "autoresearchGeneratedAfterLatestBattle": null,
+    "autoresearchGeneratedAt": "2026-05-07T22:43:51.123194",
+    "latestBattleAfterAcceptance": null,
+    "latestBattleAfterPacket": null
+  },
+  "runtimeMutationTouched": false,
+  "schemaVersion": "fouler-play-post-packet-eval/v1",
+  "status": "elo-proof-missing",
+  "warnings": []
+}

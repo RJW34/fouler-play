@@ -45,10 +45,12 @@ class AutoResearcher:
     def __init__(self, *, project_root: Path | None = None):
         self.project_root = project_root or PROJECT_ROOT
         self.battle_stats_path = self.project_root / "battle_stats.json"
+        self.elo_proof_path = self.project_root / "devstream" / "truth" / "latest-elo-proof.json"
         self.replay_dir = self.project_root / "replay_analysis"
         self.trace_dir = self.project_root / "logs" / "decision_traces"
         self.reports_dir = self.replay_dir / "reports"
         self.batch_history_dir = self.replay_dir / "batches"
+        self.last_battle_source = "battle_stats.json"
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         self.batch_history_dir.mkdir(parents=True, exist_ok=True)
 
@@ -69,13 +71,65 @@ class AutoResearcher:
                         break
         return paths
 
-    def load_battles(self) -> list[dict[str, Any]]:
+    def _latest_timestamp(self, battles: list[dict[str, Any]]) -> str:
+        timestamps = [str(battle.get("timestamp") or "") for battle in battles]
+        return max(timestamps) if timestamps else ""
+
+    def _normalize_elo_proof_battle(self, game: dict[str, Any]) -> dict[str, Any]:
+        battle_id = str(game.get("battleId") or game.get("battle_id") or "")
+        replay_url = str(game.get("replayUrl") or game.get("replay_url") or "")
+        replay_id = battle_id
+        if not replay_id and replay_url:
+            replay_id = replay_url.rstrip("/").split("/")[-1]
+        return {
+            "battle_id": battle_id or replay_id,
+            "timestamp": game.get("timestamp"),
+            "team_file": game.get("teamFile") or game.get("team_file"),
+            "result": game.get("result"),
+            "replay_id": replay_id,
+            "replay_url": replay_url,
+            "rating": game.get("ratingAfter") or game.get("rating"),
+            "ratingBefore": game.get("ratingBefore"),
+            "opponent": game.get("opponent", ""),
+            "opponentRating": game.get("opponentRating"),
+            "source": "devstream/truth/latest-elo-proof.json",
+        }
+
+    def load_elo_proof_battles(self) -> list[dict[str, Any]]:
+        if not self.elo_proof_path.exists():
+            return []
+        try:
+            data = json.loads(self.elo_proof_path.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+        games = data.get("games", [])
+        if not isinstance(games, list):
+            return []
+        battles = [
+            self._normalize_elo_proof_battle(game)
+            for game in games
+            if isinstance(game, dict)
+        ]
+        battles = [battle for battle in battles if battle.get("battle_id") or battle.get("timestamp")]
+        battles.sort(key=lambda b: b.get("timestamp", ""))
+        return battles
+
+    def load_battle_stats_battles(self) -> list[dict[str, Any]]:
         if not self.battle_stats_path.exists():
             return []
         data = json.loads(self.battle_stats_path.read_text(encoding="utf-8"))
         battles = data.get("battles", [])
         battles.sort(key=lambda b: b.get("timestamp", ""))
         return battles
+
+    def load_battles(self) -> list[dict[str, Any]]:
+        local_battles = self.load_battle_stats_battles()
+        proof_battles = self.load_elo_proof_battles()
+        if proof_battles and self._latest_timestamp(proof_battles) > self._latest_timestamp(local_battles):
+            self.last_battle_source = "devstream/truth/latest-elo-proof.json"
+            return proof_battles
+        self.last_battle_source = "battle_stats.json"
+        return local_battles
 
     def recent_window(self, battles: list[dict[str, Any]], last_n: int = 30) -> list[dict[str, Any]]:
         return battles[-last_n:] if len(battles) > last_n else battles
@@ -458,6 +512,7 @@ class AutoResearcher:
 
         result = {
             "generated_at": datetime.now().isoformat(),
+            "battle_source": self.last_battle_source,
             "batch": batch_identity,
             "window_size": len(window),
             "wins": len(wins),

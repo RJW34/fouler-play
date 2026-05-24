@@ -36,7 +36,17 @@ TRUTH_FILES = [
     {"label": "stability report", "path": "stability_report.json", "optional": True, "staleAfterSeconds": 86400},
 ]
 
-ENDPOINTS = ["/state", "/status", "/battles", "/overlay/hybrid", "/dashboard/hybrid", "/slot/1"]
+ENDPOINTS = [
+    "/state",
+    "/status",
+    "/battles",
+    "/overlay/hybrid",
+    "/dashboard/hybrid",
+    "/slot/1",
+    "/slot/1/state",
+    "/slot/2/state",
+    "/slot/3/state",
+]
 
 
 def iso_now() -> str:

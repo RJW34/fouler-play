@@ -1,14 +1,112 @@
 {
-  "generated_at": "2026-05-03T00:15:39.360802+00:00",
-  "runtime_blocked": false,
-  "runtime_mode": "login_proven",
+  "generated_at": "2026-05-20T12:27:07.650727+00:00",
   "stability": {
-    "health": "ready",
-    "summary": "Showdown login proof succeeded; ready for a bounded devstream batch.",
-    "next_fix": "Start a bounded devstream batch."
+    "battles_last_100": 100,
+    "wins": 48,
+    "total_losses": 52,
+    "timeout_losses": 6,
+    "skill_losses": 46,
+    "unknown_losses": 0,
+    "timeout_loss_rate": 11.5,
+    "memory_trend": "stable",
+    "avg_memory_mb": 208.4,
+    "max_memory_mb": 208.4,
+    "avg_cpu_percent": 0.0,
+    "avg_gap_seconds": 48996.8,
+    "max_gap_seconds": 4829744.822212,
+    "timeout_gaps_count": 29,
+    "service_restarts_24h": -1,
+    "health": "\u26a0\ufe0f WARNING - \u26a0\ufe0f WARNING timeout rate"
   },
   "details": {
-    "active_battles": 0,
-    "reason": "Fresh readiness truth was published without launching a battle."
+    "recent_timeout_losses": [
+      {
+        "battle_id": "battle-gen9ou-2566927813",
+        "timestamp": "2026-03-25T09:47:16.549245+00:00",
+        "reason": "large_gap_before_10min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2566994352",
+        "timestamp": "2026-03-25T12:04:38.201046+00:00",
+        "reason": "large_gap_before_12min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2567018161",
+        "timestamp": "2026-03-25T12:35:37.971957+00:00",
+        "reason": "large_gap_after_10min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2567021190-vf3mf3o9n0nbfh00wb7ll0uq8yn8fikpw",
+        "timestamp": "2026-03-25T12:58:02.794741+00:00",
+        "reason": "large_gap_before_12min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2613956411",
+        "timestamp": "2026-05-20T12:21:06.068156+00:00",
+        "reason": "large_gap_before_80495min"
+      }
+    ],
+    "large_gaps": [
+      {
+        "before_battle": "battle-gen9ou-2566910250-a132xjh1livx6k04rvmflkgqd0njd4ypw",
+        "after_battle": "battle-gen9ou-2566919106",
+        "gap_seconds": 355.713583,
+        "gap_minutes": 5.9
+      },
+      {
+        "before_battle": "battle-gen9ou-2566918494",
+        "after_battle": "battle-gen9ou-2566921548-ijcmtp5i9ysjw93o7uy7q3vqla1iyg2pw",
+        "gap_seconds": 415.800835,
+        "gap_minutes": 6.9
+      },
+      {
+        "before_battle": "battle-gen9ou-2566921548-ijcmtp5i9ysjw93o7uy7q3vqla1iyg2pw",
+        "after_battle": "battle-gen9ou-2566921672-g8viyuubfq1tbvni9x8vanc9ubjfnsypw",
+        "gap_seconds": 432.611665,
+        "gap_minutes": 7.2
+      },
+      {
+        "before_battle": "battle-gen9ou-2566920892",
+        "after_battle": "battle-gen9ou-2566924691",
+        "gap_seconds": 512.926331,
+        "gap_minutes": 8.5
+      },
+      {
+        "before_battle": "battle-gen9ou-2566924691",
+        "after_battle": "battle-gen9ou-2566927813",
+        "gap_seconds": 629.460812,
+        "gap_minutes": 10.5
+      },
+      {
+        "before_battle": "battle-gen9ou-2566938501",
+        "after_battle": "battle-gen9ou-2566939615",
+        "gap_seconds": 468.42532,
+        "gap_minutes": 7.8
+      },
+      {
+        "before_battle": "battle-gen9ou-2566939213",
+        "after_battle": "battle-gen9ou-2566943787",
+        "gap_seconds": 325.704603,
+        "gap_minutes": 5.4
+      },
+      {
+        "before_battle": "battle-gen9ou-2566946231-juv86pxfxuj7jv1rssoxtfkyshtan2rpw",
+        "after_battle": "battle-gen9ou-2566946738",
+        "gap_seconds": 354.244679,
+        "gap_minutes": 5.9
+      },
+      {
+        "before_battle": "battle-gen9ou-2566952322",
+        "after_battle": "battle-gen9ou-2566954383",
+        "gap_seconds": 421.08828,
+        "gap_minutes": 7.0
+      },
+      {
+        "before_battle": "battle-gen9ou-2566954952",
+        "after_battle": "battle-gen9ou-2566958193-pmn6g464x8jqjgxgnjyc14l83xgqwfcpw",
+        "gap_seconds": 316.032714,
+        "gap_minutes": 5.3
+      }
+    ]
   }
 }
