@@ -85,20 +85,58 @@ def latest_battle_from_elo(elo_proof: dict[str, Any]) -> dict[str, Any]:
     battle_id = summary.get("latestBattleId")
     battle_at = summary.get("latestBattleAt")
     games = elo_proof.get("games") if isinstance(elo_proof.get("games"), list) else []
-    if (not battle_id or not battle_at) and games:
-        latest = games[-1] if isinstance(games[-1], dict) else {}
+    game_rows = [game for game in games if isinstance(game, dict)]
+    latest = latest_game_row(game_rows, battle_id, battle_at)
+    if (not battle_id or not battle_at) and latest:
         battle_id = battle_id or latest.get("battleId") or latest.get("battle_id")
         battle_at = battle_at or latest.get("timestamp")
+    rating_delta = battle_rating_delta(latest)
     return {
         "id": battle_id,
         "at": battle_at,
         "learningVerified": summary.get("latestBattleLearningVerified") is True,
-        "performanceImprovementVerified": summary.get("performanceImprovementVerified") is True,
+        "performanceImprovementVerified": latest.get("performanceImprovementVerified") is True if latest else False,
         "performanceTrendStatus": summary.get("performanceTrendStatus") or "unknown",
-        "ratingDelta": summary.get("ratingDelta"),
+        "ratingDelta": rating_delta,
+        "ratingDeltaSource": "latest-game-before-after" if rating_delta is not None else "missing-per-battle-rating-proof",
         "winRate": summary.get("winRate"),
-        "finalRating": summary.get("finalRating"),
+        "finalRating": latest.get("ratingAfter") if latest else summary.get("finalRating"),
     }
+
+
+def latest_game_row(
+    games: list[dict[str, Any]],
+    battle_id: Any,
+    battle_at: Any,
+) -> dict[str, Any]:
+    if not games:
+        return {}
+    target_id = str(battle_id or "").strip()
+    if target_id:
+        for game in games:
+            if target_id in {str(game.get("battleId") or "").strip(), str(game.get("battle_id") or "").strip()}:
+                return game
+    target_at = str(battle_at or "").strip()
+    if target_at:
+        for game in games:
+            if str(game.get("timestamp") or "").strip() == target_at:
+                return game
+    return max(games, key=lambda game: str(game.get("timestamp") or ""))
+
+
+def battle_rating_delta(game: dict[str, Any]) -> float | None:
+    before = safe_float(game.get("ratingBefore"))
+    after = safe_float(game.get("ratingAfter") if "ratingAfter" in game else game.get("rating"))
+    if before is None or after is None:
+        return None
+    return after - before
+
+
+def safe_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def autoresearch_generated_at(autoresearch: dict[str, Any]) -> Any:

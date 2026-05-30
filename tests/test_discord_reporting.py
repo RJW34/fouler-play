@@ -860,6 +860,72 @@ def test_elo_delta_labels_match_result_direction():
     assert "contradicts loss" in format_elo_delta(1117, 1136, "loss")
 
 
+def test_elo_delta_rejects_implausible_single_battle_delta():
+    assert (
+        format_elo_delta(1218, 1086, "loss")
+        == "ELO check needed (cached 1218, fetched 1086, -132 exceeds plausible single-battle range)"
+    )
+
+
+def test_run_battle_parses_room_local_rating_update():
+    from fp.run_battle import _parse_battle_local_rating_update
+
+    before, after = _parse_battle_local_rating_update(
+        "|win|npctypebeat\n"
+        "|raw|npctypebeat's rating: 1218 &rarr; <strong>1201</strong><br />(-17 for losing)\n"
+        "|raw|other player's rating: 1101 &rarr; <strong>1118</strong><br />",
+        "npctypebeat",
+    )
+
+    assert before == 1218
+    assert after == 1201
+
+
+def test_run_battle_ignores_other_account_rating_update():
+    from fp.run_battle import _parse_battle_local_rating_update
+
+    assert _parse_battle_local_rating_update(
+        "|raw|other player's rating: 1101 &rarr; <strong>1118</strong><br />",
+        "npctypebeat",
+    ) == (None, None)
+
+
+def test_run_battle_parses_public_replay_footer_rating_update():
+    from fp.run_battle import _parse_battle_local_rating_update
+
+    before, after = _parse_battle_local_rating_update(
+        "kxz0000 forfeited.\n\n"
+        "npctypebeat won the battle!\n"
+        "npctypebeat's rating: 1122 → 1144\n"
+        "(+22 for winning)\n"
+        "kxz0000's rating: 1085 → 1065\n"
+        "(-20 for losing)",
+        "npctypebeat",
+    )
+
+    assert before == 1122
+    assert after == 1144
+
+
+def test_run_battle_parses_replay_json_rating_log_text():
+    from fp.run_battle import (
+        _parse_battle_local_rating_update,
+        _rating_update_text_from_replay_json,
+    )
+
+    replay_text = _rating_update_text_from_replay_json(
+        {
+            "log": (
+                "|win|npctypebeat\n"
+                "|raw|<div><strong>npctypebeat</strong>'s rating: "
+                "1122 &rarr; <strong>1144</strong><br />(+22 for winning)</div>"
+            )
+        }
+    )
+
+    assert _parse_battle_local_rating_update(replay_text, "npctypebeat") == (1122, 1144)
+
+
 def test_replay_url_canonicalization_rejects_private_unresolved_links():
     assert (
         canonical_replay_url("https://replay.pokemonshowdown.com/battle-gen9ou-111.json")
