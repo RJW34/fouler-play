@@ -143,6 +143,50 @@ def test_waits_for_autoresearch_when_post_packet_battle_is_not_consumed():
     assert report["proofWindow"]["autoresearchCoversLatestBattle"] is False
 
 
+def test_latest_battle_uses_per_battle_rating_delta_not_summary_aggregate():
+    proof = elo_proof(
+        latest_at="2026-05-08T00:00:00+00:00",
+        latest_id="battle-gen9ou-long",
+        improving=True,
+    )
+    proof["summary"]["ratingDelta"] = -132
+    proof["summary"]["performanceImprovementVerified"] = True
+    proof["games"] = [
+        {
+            "battleId": "battle-gen9ou-other",
+            "timestamp": "2026-05-08T00:00:01+00:00",
+            "ratingBefore": 1201,
+            "ratingAfter": 1218,
+        },
+        {
+            "battleId": "battle-gen9ou-long",
+            "timestamp": "2026-05-08T00:00:00+00:00",
+            "ratingBefore": 1218,
+            "ratingAfter": 1201,
+        },
+    ]
+
+    latest = evaluator.latest_battle_from_elo(proof)
+
+    assert latest["id"] == "battle-gen9ou-long"
+    assert latest["ratingDelta"] == -17
+    assert latest["ratingDeltaSource"] == "latest-game-before-after"
+    assert latest["performanceImprovementVerified"] is False
+
+
+def test_latest_battle_omits_rating_delta_without_per_battle_before_after():
+    proof = elo_proof(
+        latest_at="2026-05-08T00:00:00+00:00",
+        latest_id="battle-gen9ou-long",
+    )
+    proof["summary"]["ratingDelta"] = -132
+
+    latest = evaluator.latest_battle_from_elo(proof)
+
+    assert latest["ratingDelta"] is None
+    assert latest["ratingDeltaSource"] == "missing-per-battle-rating-proof"
+
+
 def test_packet_evidence_integrity_blocks_post_packet_success():
     bad_packet = packet(status="implemented")
     bad_packet["evidence_integrity"] = {

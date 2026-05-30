@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections import Counter
 from pathlib import Path
@@ -115,9 +116,16 @@ def format_elo_delta(before: object, after: object, result: object = "", label: 
     delta = after_num - before_num
     result_norm = _normalize_result(result)
     sign = "+" if delta > 0 else ""
+    max_single_battle_delta = int(os.getenv("FOULER_MAX_SINGLE_BATTLE_ELO_DELTA", "64"))
 
     if (result_norm == "loss" and delta > 0) or (result_norm == "win" and delta < 0):
         return f"{label} check needed (cached {before_num}, fetched {after_num}, {sign}{delta} contradicts {result_norm})"
+
+    if abs(delta) > max_single_battle_delta:
+        return (
+            f"{label} check needed (cached {before_num}, fetched {after_num}, "
+            f"{sign}{delta} exceeds plausible single-battle range)"
+        )
 
     if delta > 0:
         return f"{label} gained {delta} ({before_num} → {after_num}, +{delta})"
