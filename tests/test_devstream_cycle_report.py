@@ -28,7 +28,13 @@ def test_cycle_report_completion_payload_marks_fresh_learning_proof():
             "size": 30,
         },
         "win_rate": 0.53,
-        "regression": {"status": "flat"},
+        "regression": {"status": "improving", "rating_delta": 18},
+        "evidence_integrity": {
+            "loss_count": 3,
+            "losses_with_replay_json": 1,
+            "losses_with_decision_trace": 3,
+            "claims_without_evidence": [],
+        },
     }
 
     completion = devstream_cycle_report.build_completion_payload(cycle, autoresearch)
@@ -38,7 +44,8 @@ def test_cycle_report_completion_payload_marks_fresh_learning_proof():
     assert completion["status"] == "cycle-proof-current"
     assert completion["latestBattleId"] == "battle-gen9ou-1"
     assert completion["latestBattleLearningVerified"] is True
-    assert completion["performanceTrendStatus"] == "flat"
+    assert completion["performanceTrendStatus"] == "improving"
+    assert completion["performanceImprovementVerified"] is True
     assert completion["blockers"] == []
 
 
@@ -171,7 +178,22 @@ def test_cycle_report_allows_completed_cycle_with_classified_local_discord_proof
     reports_dir = autoresearch_dir / "reports"
     reports_dir.mkdir(parents=True)
     (autoresearch_dir / "autoresearch_latest.json").write_text(
-        '{"batch":{"end_battle_id":"battle-gen9ou-123","end_timestamp":"2026-05-25T12:00:00+00:00","size":1}}',
+        json.dumps(
+            {
+                "batch": {
+                    "end_battle_id": "battle-gen9ou-123",
+                    "end_timestamp": "2026-05-25T12:00:00+00:00",
+                    "size": 1,
+                },
+                "regression": {"status": "improving", "rating_delta": 12},
+                "evidence_integrity": {
+                    "loss_count": 1,
+                    "losses_with_replay_json": 0,
+                    "losses_with_decision_trace": 1,
+                    "claims_without_evidence": [],
+                },
+            }
+        ),
         encoding="utf-8",
     )
     (reports_dir / "autoresearch_latest.md").write_text("# report\n", encoding="utf-8")
@@ -226,7 +248,18 @@ def test_cycle_report_completion_payload_blocks_with_active_battles():
         },
     }
 
-    completion = devstream_cycle_report.build_completion_payload(cycle, {})
+    completion = devstream_cycle_report.build_completion_payload(
+        cycle,
+        {
+            "regression": {"status": "improving", "rating_delta": 5},
+            "evidence_integrity": {
+                "loss_count": 0,
+                "losses_with_replay_json": 0,
+                "losses_with_decision_trace": 0,
+                "claims_without_evidence": [],
+            },
+        },
+    )
 
     assert completion["status"] == "cycle-proof-blocked"
     assert completion["latestBattleLearningVerified"] is False

@@ -80,8 +80,29 @@ body {
 .ps-room-light,
 .ps-room-opaque {
   top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   margin-top: 0 !important;
   padding-top: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: visible !important;
+}
+
+.battle {
+  margin: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  min-width: 1280px !important;
+  min-height: 720px !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: none !important;
+  transform-origin: top left !important;
 }
 
 /* Hide any promotional banners */

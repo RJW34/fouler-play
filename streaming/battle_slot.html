@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Battle Slot</title>
+<title>Showdown Battle Feed</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -127,8 +127,8 @@ body{
     <div class="sonar-circle"></div>
     <div class="sonar-circle"></div>
   </div>
-  <div class="searching-text">SCANNING...</div>
-  <div class="searching-sub" id="searchingSub">Slot <span id="slotLabel">?</span> &mdash; Waiting for battle</div>
+  <div class="searching-text">MATCHMAKING</div>
+  <div class="searching-sub" id="searchingSub">RANKED BATTLE FEED <span id="slotLabel">?</span></div>
   <div class="slot-number" id="bigSlotNum"></div>
 </div>
 
@@ -138,7 +138,7 @@ body{
 <!-- UI overlay -->
 <div class="ui-layer">
   <div class="slot-header">
-    <div class="badge" id="slotBadge">SLOT ?</div>
+    <div class="badge" id="slotBadge">BATTLE</div>
     <div class="badge live" id="liveBadge" style="display:none">LIVE</div>
   </div>
   <div class="battle-card" id="battleCard">
@@ -163,7 +163,7 @@ const badgeLabels = {1:'BATTLE 01', 2:'BATTLE 02', 3:'BATTLE 03'};
 // Init labels
 document.getElementById('slotLabel').textContent = SLOT_NUM;
 document.getElementById('bigSlotNum').textContent = SLOT_NUM;
-document.getElementById('slotBadge').textContent = badgeLabels[SLOT_NUM] || ('SLOT ' + SLOT_NUM);
+document.getElementById('slotBadge').textContent = badgeLabels[SLOT_NUM] || ('BATTLE ' + SLOT_NUM);
 document.getElementById('slotBadge').classList.add(badgeColors[SLOT_NUM] || 'slot1');
 
 let currentBattleId = null;

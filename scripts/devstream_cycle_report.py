@@ -465,6 +465,12 @@ def completed_cycle_evidence_available(
     report_exists: bool,
     autoresearch: Any | None = None,
 ) -> bool:
+    autoresearch_payload = autoresearch if isinstance(autoresearch, dict) else {}
+    regression = (
+        autoresearch_payload.get("regression")
+        if isinstance(autoresearch_payload.get("regression"), dict)
+        else {}
+    )
     return (
         _safe_count(active.get("battleCount")) == 0
         and bool(unconsumed.get("latestAnalyzedBattleId"))
@@ -472,6 +478,8 @@ def completed_cycle_evidence_available(
         and _safe_count(unconsumed.get("unconsumedCount")) == 0
         and report_exists
         and not autoresearch_has_unsupported_claims(autoresearch)
+        and autoresearch_evidence_integrity(autoresearch).get("present") is True
+        and positive_improvement_signal(autoresearch_payload, regression).get("ok") is True
     )
 
 
@@ -487,6 +495,32 @@ def autoresearch_evidence_integrity(payload: Any) -> dict[str, Any]:
         "claimsWithoutEvidenceCount": len(unsupported),
         "claimsWithoutEvidence": unsupported[:10],
         "blocksCompletionProof": bool(unsupported),
+    }
+
+
+def positive_improvement_signal(autoresearch: dict[str, Any], regression: dict[str, Any]) -> dict[str, Any]:
+    trend = str(regression.get("status") or autoresearch.get("performance_trend_status") or "").strip().lower()
+    rating_delta = regression.get("rating_delta") or regression.get("ratingDelta")
+    try:
+        numeric_rating_delta = float(rating_delta)
+    except (TypeError, ValueError):
+        numeric_rating_delta = None
+    win_rate_delta = regression.get("win_rate_delta") or regression.get("winRateDelta")
+    try:
+        numeric_win_rate_delta = float(win_rate_delta)
+    except (TypeError, ValueError):
+        numeric_win_rate_delta = None
+    ok = (
+        trend in {"improving", "better", "reduced"}
+        or (numeric_rating_delta is not None and numeric_rating_delta > 0)
+        or (numeric_win_rate_delta is not None and numeric_win_rate_delta > 0)
+    )
+    return {
+        "ok": ok,
+        "status": "positive" if ok else "missing-or-nonpositive",
+        "trend": trend or "unknown",
+        "ratingDelta": rating_delta,
+        "winRateDelta": win_rate_delta,
     }
 
 
@@ -527,13 +561,20 @@ def build_completion_payload(cycle: dict[str, Any], autoresearch: Any) -> dict[s
     blockers = list(cycle.get("blockers") or [])
     warnings = list(cycle.get("warnings") or [])
     integrity = autoresearch_evidence_integrity(autoresearch)
+    improvement = positive_improvement_signal(autoresearch, regression)
     if active_battles:
         active_msg = "active battles are still present; completion proof is not final"
         if active_msg not in blockers:
             blockers.append(active_msg)
+    if not integrity["present"]:
+        blockers.append("autoresearch evidence_integrity is missing; replay/loss-analysis proof is required")
     if integrity["blocksCompletionProof"]:
         blockers.append(
             f"autoresearch has {integrity['claimsWithoutEvidenceCount']} unsupported mechanics/strategy claim(s); completion proof is not final"
+        )
+    if not improvement["ok"]:
+        blockers.append(
+            "performance improvement signal is missing or nonpositive; HERMES must not accept this cycle as progress"
         )
     if (
         pending_delivery
@@ -556,8 +597,10 @@ def build_completion_payload(cycle: dict[str, Any], autoresearch: Any) -> dict[s
         "battleCount": batch.get("size") or autoresearch.get("window_size"),
         "latestBattleLearningVerified": bool(autoresearch and report_exists and not blockers),
         "evidenceIntegrity": integrity,
-        "performanceImprovementVerified": trend == "improving",
-        "performanceTrendStatus": trend,
+        "performanceImprovementVerified": bool(improvement["ok"]),
+        "performanceTrendStatus": improvement["trend"],
+        "improvementSignalStatus": improvement["status"],
+        "improvementSignal": improvement,
         "winRate": autoresearch.get("win_rate"),
         "finalRating": (cycle.get("streamStatus") or {}).get("elo"),
         "ratingDelta": regression.get("rating_delta") or regression.get("ratingDelta"),
@@ -598,15 +641,16 @@ def build_proof_status_payload(cycle: dict[str, Any], completion: dict[str, Any]
     active_count = _safe_count(active.get("battleCount"))
     pending = _safe_count(queue.get("pending"))
     completion_ready = completion.get("status") == "cycle-proof-current"
+    improvement_ready = bool(completion.get("performanceImprovementVerified"))
     local_discord_proof = bool(cycle.get("discordBacklogClassifiedForLocalHandoff"))
 
     if active_count:
         status = "active-telemetry-not-final-proof"
     elif pending and not local_discord_proof:
         status = "discord-backlog-blocked"
-    elif pending and local_discord_proof and completion_ready:
+    elif pending and local_discord_proof and completion_ready and improvement_ready:
         status = "local-discord-proof-classified"
-    elif completion_ready:
+    elif completion_ready and improvement_ready:
         status = "proof-ready"
     else:
         status = "blocked"
@@ -634,7 +678,9 @@ def build_proof_status_payload(cycle: dict[str, Any], completion: dict[str, Any]
             "latestBattleId": completion.get("latestBattleId"),
             "latestBattleAt": completion.get("latestBattleAt"),
             "latestBattleLearningVerified": bool(completion.get("latestBattleLearningVerified")),
+            "performanceImprovementVerified": bool(completion.get("performanceImprovementVerified")),
             "performanceTrendStatus": completion.get("performanceTrendStatus"),
+            "improvementSignalStatus": completion.get("improvementSignalStatus"),
             "isCurrent": completion_ready,
         },
         "discordBacklog": {

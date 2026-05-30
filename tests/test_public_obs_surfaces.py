@@ -23,6 +23,12 @@ PUBLIC_DEVSTREAM_CONTRACT = ROOT_DIR / "devstream.yaml"
 
 FORBIDDEN_PUBLIC_STRINGS = (
     "Debug Overlay",
+    "Starting Soon",
+    "Be Right Back",
+    "BRB Text",
+    "Ending Text",
+    "Window Capture",
+    "capture_audio",
     "/dashboard/hybrid",
     "/overlay/hybrid",
     "WORKER 01",
@@ -36,7 +42,7 @@ def test_public_scene_collection_excludes_operator_dashboard() -> None:
     collection = json.loads(PUBLIC_SCENE_COLLECTION.read_text(encoding="utf-8"))
     serialized = json.dumps(collection, sort_keys=True)
 
-    for forbidden in FORBIDDEN_PUBLIC_STRINGS[:3]:
+    for forbidden in FORBIDDEN_PUBLIC_STRINGS[:9]:
         assert forbidden not in serialized
 
 
@@ -89,6 +95,19 @@ def test_public_battle_slot_is_viewport_responsive_for_obs_browser_sources() -> 
     assert "width:640px;height:540px" not in html.replace(" ", "")
     assert "width:100vw;height:100vh" in served_html.replace(" ", "")
     assert "width:640px;height:540px" not in served_html.replace(" ", "")
+    assert "Waiting for battle" not in html
+    assert "SLOT ?" not in html
+    assert "<title>Battle Slot" not in served_html
+
+
+def test_showdown_browser_css_keeps_battle_panel_uncropped() -> None:
+    css = PUBLIC_BATTLE_INJECT_CSS.read_text(encoding="utf-8")
+
+    assert "overflow: visible !important" in css
+    assert "min-width: 1280px !important" in css
+    assert "min-height: 720px !important" in css
+    assert "max-width: none !important" in css
+    assert "transform-origin: top left !important" in css
 
 
 @pytest.mark.asyncio
@@ -139,6 +158,14 @@ async def test_public_slot_source_loads_battle_surface_when_active(monkeypatch) 
 def test_hybrid_scene_builder_prunes_operator_dashboard_sources() -> None:
     collection = {
         "name": "source",
+        "current_scene": "Starting Soon",
+        "current_program_scene": "Starting Soon",
+        "scene_order": [
+            {"name": "Triple Battles"},
+            {"name": "Starting Soon"},
+            {"name": "Be Right Back"},
+            {"name": "Ending"},
+        ],
         "sources": [
             {
                 "name": "Battle Scene",
@@ -146,6 +173,7 @@ def test_hybrid_scene_builder_prunes_operator_dashboard_sources() -> None:
                 "settings": {
                     "items": [
                         {"name": "Debug Overlay", "visible": True},
+                        {"name": "Window Capture", "visible": True},
                         {"name": "Stats Overlay", "visible": True},
                         {
                             "name": "Battle Slot 1",
@@ -161,6 +189,16 @@ def test_hybrid_scene_builder_prunes_operator_dashboard_sources() -> None:
                 "name": "Debug Overlay",
                 "id": "browser_source",
                 "settings": {"url": "http://localhost:8777/dashboard/hybrid"},
+            },
+            {
+                "name": "Starting Soon",
+                "id": "scene",
+                "settings": {"items": [{"name": "Starting Soon Text", "visible": True}]},
+            },
+            {
+                "name": "Window Capture",
+                "id": "window_capture",
+                "settings": {"capture_audio": True, "window": "YouTube - Google Chrome"},
             },
             {
                 "name": "Stats Overlay",
@@ -191,12 +229,21 @@ def test_hybrid_scene_builder_prunes_operator_dashboard_sources() -> None:
     serialized = json.dumps(out, sort_keys=True)
 
     assert "Debug Overlay" not in source_names
+    assert "Starting Soon" not in source_names
+    assert "Window Capture" not in source_names
+    assert out["scene_order"] == [{"name": "Triple Battles"}]
+    assert out["current_scene"] == "Triple Battles"
+    assert out["current_program_scene"] == "Triple Battles"
     assert all(item["name"] != "Debug Overlay" for item in scene_items)
+    assert all(item["name"] != "Window Capture" for item in scene_items)
     assert "/dashboard/hybrid" not in serialized
     assert "/overlay/hybrid" not in serialized
-    assert out["sources"][1]["settings"]["url"] == "http://localhost:8777/overlay?mode=bottom&hide_recent=1"
-    assert out["sources"][2]["settings"]["url"] == "http://localhost:8777/slot/1?slot_idle=public"
-    for source in out["sources"][2:5]:
+    assert "capture_audio" not in serialized
+    stats_source = next(source for source in out["sources"] if source["name"] == "Stats Overlay")
+    assert stats_source["settings"]["url"] == "http://localhost:8777/overlay?mode=bottom&hide_recent=1"
+    slot_sources = [source for source in out["sources"] if source["name"].startswith("Battle Slot")]
+    assert slot_sources[0]["settings"]["url"] == "http://localhost:8777/slot/1?slot_idle=public"
+    for source in slot_sources:
         settings = source["settings"]
         assert settings["width"] == BATTLE_SLOT_WIDTH
         assert settings["height"] == BATTLE_SLOT_HEIGHT
