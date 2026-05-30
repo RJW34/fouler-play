@@ -421,6 +421,8 @@ def test_completed_cycle_proof_allows_handoff_while_runtime_start_is_gated(tmp_p
             "completedCycleProof": {
                 "isCurrent": True,
                 "latestBattleId": "battle-gen9ou-123",
+                "performanceImprovementVerified": True,
+                "performanceTrendStatus": "improving",
             },
         },
     )
@@ -433,6 +435,62 @@ def test_completed_cycle_proof_allows_handoff_while_runtime_start_is_gated(tmp_p
     assert payload["completedCycleProof"]["readyForProofHandoff"] is True
     assert payload["proofBlockers"] == []
     assert payload["blockers"] == ["fouler-play battle runner is idle; OBS HTTP alone is not active battle proof"]
+
+
+def test_completed_cycle_proof_without_improvement_signal_is_not_handoff_ready(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
+    monkeypatch.setattr(devstream_health, "fetch_endpoint", lambda path: {"url": path, "ok": True, "statusCode": 200, "json": {}})
+    monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: [])
+
+    _write_json(tmp_path / "active_battles.json", {"battles": [], "count": 0, "max_slots": 3})
+    _write_json(tmp_path / "stream_status.json", {"status": "Searching", "runtime_blocked": False})
+    _write_json(
+        tmp_path / "devstream" / "truth" / "proof-status.json",
+        {
+            "generatedAt": devstream_health.iso_now(),
+            "status": "proof-ready",
+            "readyForProofHandoff": True,
+            "secretValuesPrinted": False,
+            "blockers": [],
+            "activeBattleTelemetry": {"battleCount": 0},
+            "completedCycleProof": {
+                "isCurrent": True,
+                "latestBattleId": "battle-gen9ou-123",
+                "performanceTrendStatus": "flat",
+            },
+        },
+    )
+
+    payload = devstream_health.build_payload(check_http=True)
+
+    assert payload["completedCycleProof"]["readyForProofHandoff"] is False
+    assert payload["completedCycleProof"]["improvementSignalOk"] is False
+    assert payload["readiness"]["proofHandoffReady"] is False
+
+
+def test_devstream_health_requires_three_public_battle_surfaces(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": port == devstream_health.HTTP_PORT)
+    monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
+    monkeypatch.setattr(devstream_health, "fetch_endpoint", lambda path: {"url": path, "ok": True, "statusCode": 200, "json": {}})
+    monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: _runner(age=30))
+
+    _write_json(tmp_path / "active_battles.json", {"battles": [], "count": 0, "max_slots": 2})
+    _write_json(tmp_path / "stream_status.json", {"status": "Searching", "runtime_blocked": False})
+
+    payload = devstream_health.build_payload(check_http=True)
+
+    assert payload["battleSurfaceReadiness"]["expected"] == 3
+    assert payload["battleSurfaceReadiness"]["declaredMaxSlots"] == 2
+    assert payload["readiness"]["streamReady"] is False
+    assert payload["readiness"]["runtimeReady"] is False
+    assert any("expects 3 concurrent battle surfaces" in blocker for blocker in payload["blockers"])
 
 
 def test_discord_queue_health_exposes_pending_and_failures(tmp_path, monkeypatch):

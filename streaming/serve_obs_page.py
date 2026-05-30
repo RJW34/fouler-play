@@ -1570,7 +1570,7 @@ async def handle_magneton_state(request: web.Request) -> web.Response:
 
 BATTLE_SLOT_HTML = """<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Battle Slot {slot}</title>
+<head><meta charset="UTF-8"><title>Showdown Battle Feed {slot}</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}

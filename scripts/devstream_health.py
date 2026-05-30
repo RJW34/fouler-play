@@ -24,6 +24,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 HTTP_PORT = 8777
 OBS_WS_PORT = 4455
+EXPECTED_DEVSTREAM_BATTLE_SURFACES = 3
 IDLE_RUNNER_STALE_SECONDS = int(os.getenv("FP_IDLE_RUNNER_STALE_SECONDS", "180"))
 PROOF_STATUS_MAX_AGE_SECONDS = int(os.getenv("FP_PROOF_STATUS_MAX_AGE_SECONDS", "1800"))
 TERMINAL_BATTLE_RESULTS = {"win", "loss", "tie", "draw", "forfeit", "timeout", "ended", "error"}
@@ -65,6 +66,8 @@ ENDPOINTS = [
     "/overlay/hybrid",
     "/dashboard/hybrid",
     "/slot/1",
+    "/slot/2",
+    "/slot/3",
     "/slot/1/state",
     "/slot/2/state",
     "/slot/3/state",
@@ -307,7 +310,16 @@ def summarize_truth(rel: str, parsed: Any) -> dict[str, Any] | None:
         return None
     if rel == "active_battles.json":
         battles = parsed.get("battles") if isinstance(parsed.get("battles"), list) else []
-        return {"battleCount": len(battles), "updated": parsed.get("updated") or parsed.get("updated_at")}
+        max_slots = parsed.get("max_slots") or parsed.get("maxSlots")
+        try:
+            max_slots = int(max_slots)
+        except (TypeError, ValueError):
+            max_slots = max(len(battles), EXPECTED_DEVSTREAM_BATTLE_SURFACES)
+        return {
+            "battleCount": len(battles),
+            "maxSlots": max_slots,
+            "updated": parsed.get("updated") or parsed.get("updated_at"),
+        }
     if rel == "daily_stats.json":
         return {"wins": parsed.get("wins"), "losses": parsed.get("losses")}
     if rel == "stream_status.json":
@@ -444,11 +456,52 @@ def active_battle_count(truth: list[dict[str, Any]]) -> int:
     return 0
 
 
+def active_battle_max_slots(truth: list[dict[str, Any]]) -> int:
+    for item in truth:
+        if item["relativePath"] == "active_battles.json" and isinstance(item.get("summary"), dict):
+            value = item["summary"].get("maxSlots")
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return EXPECTED_DEVSTREAM_BATTLE_SURFACES
+    return EXPECTED_DEVSTREAM_BATTLE_SURFACES
+
+
 def active_battle_truth_status(truth: list[dict[str, Any]]) -> dict[str, Any]:
     for item in truth:
         if item["relativePath"] == "active_battles.json":
             return item
     return {}
+
+
+def battle_surface_readiness(
+    truth: list[dict[str, Any]],
+    endpoints: dict[str, Any],
+    *,
+    check_http: bool,
+    http_open: bool,
+) -> dict[str, Any]:
+    expected = EXPECTED_DEVSTREAM_BATTLE_SURFACES
+    declared_max_slots = active_battle_max_slots(truth)
+    slot_checks: list[dict[str, Any]] = []
+    for slot in range(1, expected + 1):
+        page = endpoints.get(f"/slot/{slot}") or {}
+        state = endpoints.get(f"/slot/{slot}/state") or {}
+        page_ok = True if not check_http or not http_open else bool(page.get("ok"))
+        state_ok = True if not check_http or not http_open else bool(state.get("ok"))
+        slot_checks.append({
+            "slot": slot,
+            "pageOk": page_ok,
+            "stateOk": state_ok,
+            "ready": page_ok and state_ok,
+        })
+    return {
+        "expected": expected,
+        "declaredMaxSlots": declared_max_slots,
+        "maxSlotsOk": declared_max_slots >= expected,
+        "checks": slot_checks,
+        "ready": declared_max_slots >= expected and all(item["ready"] for item in slot_checks),
+    }
 
 
 def stream_truth_status(truth: list[dict[str, Any]]) -> dict[str, Any]:
@@ -474,6 +527,12 @@ def completed_cycle_proof_status() -> dict[str, Any]:
     completed = parsed.get("completedCycleProof") if isinstance(parsed, dict) and isinstance(parsed.get("completedCycleProof"), dict) else {}
     blockers = parsed.get("blockers") if isinstance(parsed, dict) and isinstance(parsed.get("blockers"), list) else []
     status = str(parsed.get("status") or "") if isinstance(parsed, dict) else ""
+    trend = str(completed.get("performanceTrendStatus") or "").strip().lower()
+    improvement_signal_ok = (
+        completed.get("performanceImprovementVerified") is True
+        or completed.get("improvementSignalStatus") == "positive"
+        or trend in {"improving", "better", "reduced"}
+    )
     ready = bool(
         isinstance(parsed, dict)
         and parsed.get("readyForProofHandoff") is True
@@ -481,6 +540,7 @@ def completed_cycle_proof_status() -> dict[str, Any]:
         and parsed.get("secretValuesPrinted") is not True
         and int(active.get("battleCount") or 0) == 0
         and completed.get("isCurrent") is True
+        and improvement_signal_ok
         and not blockers
         and age is not None
         and age <= PROOF_STATUS_MAX_AGE_SECONDS
@@ -495,6 +555,9 @@ def completed_cycle_proof_status() -> dict[str, Any]:
         "latestBattleId": completed.get("latestBattleId"),
         "completedCycleCurrent": bool(completed.get("isCurrent")),
         "activeBattleCount": int(active.get("battleCount") or 0),
+        "performanceImprovementVerified": bool(completed.get("performanceImprovementVerified")),
+        "performanceTrendStatus": completed.get("performanceTrendStatus"),
+        "improvementSignalOk": improvement_signal_ok,
         "secretValuesPrinted": bool(parsed.get("secretValuesPrinted")) if isinstance(parsed, dict) else False,
         "blockers": [str(item) for item in blockers],
     }
@@ -677,6 +740,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     stream_truth = stream_truth_status(truth)
     stream_summary = stream_status_summary(truth)
     slots = slot_readiness(endpoints, check_battle_pages=True) if check_http and http_open else {"ready": True, "checks": []}
+    battle_surfaces = battle_surface_readiness(truth, endpoints, check_http=check_http, http_open=http_open)
     runtime_blocked = bool(stream_summary.get("runtimeBlocked"))
     credential_failure = recent_showdown_credential_failure(ROOT)
     processes = runtime_processes()
@@ -766,6 +830,22 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     if http_open and check_http:
         failed = [path for path, result in endpoints.items() if not result.get("ok")]
         blockers.extend(f"OBS endpoint failed: {path}" for path in failed)
+    if not battle_surfaces["ready"]:
+        if not battle_surfaces["maxSlotsOk"]:
+            blockers.append(
+                "devstream mode expects 3 concurrent battle surfaces; active_battles.json reports "
+                f"max_slots={battle_surfaces['declaredMaxSlots']}"
+            )
+        failed_slots = [
+            item for item in battle_surfaces["checks"]
+            if not item["ready"]
+        ]
+        if failed_slots:
+            failed_labels = ", ".join(
+                f"slot {item['slot']} page={item['pageOk']} state={item['stateOk']}"
+                for item in failed_slots
+            )
+            blockers.append(f"devstream public battle slot surface check failed: {failed_labels}")
     if missing_required:
         blockers.extend(f"missing truth file: {item['relativePath']}" for item in missing_required)
     if not slots["ready"]:
@@ -785,6 +865,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         and not runtime_blocked
         and not credential_failure.get("found")
         and not missing_required
+        and battle_surfaces["ready"]
         and slots["ready"]
         and (not check_http or not http_open or all(result.get("ok") for result in endpoints.values()))
     )
@@ -825,11 +906,12 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "readyForLiveFocus": ready_for_live_focus,
         "readiness": {
             "runtimeReady": runtime_ready,
-            "streamReady": slots["ready"] and (obs_surface_ready or not check_http),
+            "streamReady": slots["ready"] and battle_surfaces["ready"] and (obs_surface_ready or not check_http),
             "analyticsFresh": analytics_fresh,
             "discordReportingReady": discord_reporting_ready,
             "proofHandoffReady": proof_handoff_ready,
         },
+        "battleSurfaceReadiness": battle_surfaces,
         "slotReadiness": slots,
         "devstreamReporting": reporting_action,
         "completedCycleProof": completed_proof,

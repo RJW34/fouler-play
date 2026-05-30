@@ -22,7 +22,17 @@ from pathlib import Path
 
 DEFAULT_INPUT = Path(os.path.expandvars(r"%APPDATA%\obs-studio\basic\scenes\fouler_play_scenes.json"))
 DEFAULT_OUTPUT = Path(os.path.expandvars(r"%APPDATA%\obs-studio\basic\scenes\fouler_play_hybrid_scenes.json"))
-PUBLIC_FORBIDDEN_SOURCE_NAMES = {"Debug Overlay"}
+PUBLIC_FORBIDDEN_SCENE_NAMES = {"Starting Soon", "Be Right Back", "Ending", "Vertical Scene"}
+PUBLIC_FORBIDDEN_SOURCE_NAMES = {
+    "Debug Overlay",
+    "Window Capture",
+    "Starting Soon BG",
+    "Starting Soon Text",
+    "BRB BG",
+    "BRB Text",
+    "Ending BG",
+    "Ending Text",
+}
 BATTLE_SLOT_WIDTH = 1280
 BATTLE_SLOT_HEIGHT = 720
 BATTLE_SLOT_POSITIONS = {
@@ -102,6 +112,28 @@ def _load_collection(path: Path) -> dict:
         return json.load(f)
 
 
+def _source_name(source: dict) -> str:
+    return str(source.get("name", "")).strip()
+
+
+def _is_forbidden_scene_source(source: dict) -> bool:
+    return source.get("id") == "scene" and _source_name(source) in PUBLIC_FORBIDDEN_SCENE_NAMES
+
+
+def _is_forbidden_source(source: dict) -> bool:
+    name = _source_name(source)
+    return (
+        name in PUBLIC_FORBIDDEN_SOURCE_NAMES
+        or _is_forbidden_scene_source(source)
+        or source.get("id") == "window_capture"
+    )
+
+
+def _is_forbidden_scene_item(item: dict) -> bool:
+    name = str(item.get("name", "")).strip()
+    return name in PUBLIC_FORBIDDEN_SOURCE_NAMES or name in PUBLIC_FORBIDDEN_SCENE_NAMES
+
+
 def _update_browser_source(source: dict, port: int) -> None:
     name = str(source.get("name", ""))
     settings = source.setdefault("settings", {})
@@ -154,9 +186,18 @@ def _update_scene_item(item: dict) -> None:
 def build_collection(data: dict, collection_name: str, port: int) -> dict:
     out = dict(data)
     out["name"] = collection_name
+    out["scene_order"] = [
+        item for item in out.get("scene_order", [])
+        if str(item.get("name", "")).strip() not in PUBLIC_FORBIDDEN_SCENE_NAMES
+    ]
+    scene_names = [str(item.get("name", "")).strip() for item in out["scene_order"] if item.get("name")]
+    if out.get("current_scene") in PUBLIC_FORBIDDEN_SCENE_NAMES and scene_names:
+        out["current_scene"] = scene_names[0]
+    if out.get("current_program_scene") in PUBLIC_FORBIDDEN_SCENE_NAMES and scene_names:
+        out["current_program_scene"] = scene_names[0]
     out["sources"] = [
         source for source in out.get("sources", [])
-        if str(source.get("name", "")).strip() not in PUBLIC_FORBIDDEN_SOURCE_NAMES
+        if not _is_forbidden_source(source)
     ]
 
     for source in out.get("sources", []):
@@ -165,21 +206,11 @@ def build_collection(data: dict, collection_name: str, port: int) -> dict:
             items = source.get("settings", {}).get("items", [])
             source.get("settings", {})["items"] = [
                 item for item in items
-                if str(item.get("name", "")).strip() not in PUBLIC_FORBIDDEN_SOURCE_NAMES
+                if not _is_forbidden_scene_item(item)
             ]
             items = source.get("settings", {}).get("items", [])
             for item in items:
                 _update_scene_item(item)
-                if str(item.get("name", "")).strip().lower() == "window capture":
-                    # The inherited capture is machine-specific and often points to
-                    # a stale window title, which renders as a black full-screen
-                    # layer. Disable it in the hybrid collection.
-                    item["visible"] = False
-        elif (
-            source.get("id") == "window_capture"
-            and str(source.get("name", "")).strip().lower() == "window capture"
-        ):
-            source["enabled"] = False
 
     return out
 
