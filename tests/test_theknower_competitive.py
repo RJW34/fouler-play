@@ -36,3 +36,5 @@ def test_build_pokedex_oracle_context_augments_team_species_notes():
     assert "Pokedex Oracle Augmentation:" in context
     assert "Great Tusk" in context
     assert "Kingambit" in context
+    assert "Canonical Pokedex Oracle facts:" in context
+    assert "source=data/pokedex.json + data/moves.json" in context

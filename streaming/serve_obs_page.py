@@ -45,15 +45,76 @@ from streaming import state_store
 from streaming.hybrid_dashboard import register_dashboard_routes
 from devstream_runtime_checks import recent_showdown_credential_failure
 
-# Load .env if present so OBS WebSocket settings are available
+HERMES_OBS_ENV_KEYS = {
+    "OBS_WS_PASSWORD",
+    "OBS_WEBSOCKET_PASSWORD",
+    "HERMES_OBS_WEBSOCKET_PASSWORD",
+    "OBS_WS_HOST",
+    "OBS_WEBSOCKET_HOST",
+    "HERMES_OBS_WEBSOCKET_HOST",
+    "OBS_WS_PORT",
+    "OBS_WEBSOCKET_PORT",
+    "HERMES_OBS_WEBSOCKET_PORT",
+}
+
+
+def _valid_env_value(value: str | None) -> bool:
+    if value is None:
+        return False
+    text = value.strip().strip('"').strip("'")
+    if not text or text.lower() in {"missing", "present", "[redacted]"}:
+        return False
+    return not (text.startswith("<") and text.endswith(">"))
+
+
+def _load_hermes_obs_env() -> None:
+    secret_root = os.getenv("APPDATA")
+    if not secret_root:
+        return
+    secret_file = Path(secret_root) / "hermes-devstream" / "secrets.env"
+    try:
+        lines = secret_file.read_text(encoding="utf-8-sig", errors="replace").splitlines()
+    except OSError:
+        return
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if key not in HERMES_OBS_ENV_KEYS:
+            continue
+        value = value.strip().strip('"').strip("'")
+        if _valid_env_value(value):
+            os.environ[key] = value
+
+
+# Load .env first, then the HERMES secret/config file so persistent OBS
+# WebSocket settings win over stale repo-local defaults without printing values.
 if load_dotenv:
     load_dotenv()
+_load_hermes_obs_env()
 
 PORT = int(os.getenv("OBS_SERVER_PORT", "8777"))
 STREAMING_DIR = Path(__file__).parent
-OBS_WS_HOST = os.getenv("OBS_WS_HOST", "localhost")
-OBS_WS_PORT = int(os.getenv("OBS_WS_PORT", "4455"))
-OBS_WS_PASSWORD = os.getenv("OBS_WS_PASSWORD", "")
+OBS_WS_HOST = (
+    os.getenv("OBS_WS_HOST")
+    or os.getenv("OBS_WEBSOCKET_HOST")
+    or os.getenv("HERMES_OBS_WEBSOCKET_HOST")
+    or "localhost"
+)
+OBS_WS_PORT = int(
+    os.getenv("OBS_WS_PORT")
+    or os.getenv("OBS_WEBSOCKET_PORT")
+    or os.getenv("HERMES_OBS_WEBSOCKET_PORT")
+    or "4455"
+)
+OBS_WS_PASSWORD = (
+    os.getenv("OBS_WS_PASSWORD")
+    or os.getenv("OBS_WEBSOCKET_PASSWORD")
+    or os.getenv("HERMES_OBS_WEBSOCKET_PASSWORD")
+    or ""
+)
 OBS_BATTLE_SOURCES = [
     name.strip()
     for name in os.getenv("OBS_BATTLE_SOURCES", "").split(",")
@@ -64,6 +125,13 @@ OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in (
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
 OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
+HEALTH_PROBE_TIMEOUT_SEC = float(os.getenv("FOULER_HEALTH_PROBE_TIMEOUT_SEC", "20") or "20")
+DEEP_HEALTH_DEFAULT = os.getenv("FOULER_OBS_DEEP_HEALTH_DEFAULT", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
 GHOST_BATTLE_MAX_AGE_SEC = int(os.getenv("GHOST_BATTLE_MAX_AGE_SEC", "1800"))  # 30min: hard ghost removal (stall games can run 20+ min)
 GHOST_CHECK_INTERVAL_SEC = int(os.getenv("GHOST_CHECK_INTERVAL_SEC", "0"))  # Disabled: bot owns active_battles.json lifecycle
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
@@ -103,6 +171,18 @@ _emerald_brain_state: dict = {"status": "initializing", "objective": None, "last
 _firered_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Fire Red ROM", "status_text": "INITIALIZING"}
 
 PID_FILE = ROOT_DIR / ".pids" / "obs_server.pid"
+PROCESS_SCAN_TIMEOUT_SEC = float(os.getenv("FOULER_OBS_PROCESS_SCAN_TIMEOUT_SEC", "4") or "4")
+OBS_SERVER_SCRIPT_NAME = "serve_obs_page.py"
+OBS_SERVER_SCRIPT_TOKEN = "streaming/serve_obs_page.py"
+
+
+def _read_pid_file() -> dict:
+    try:
+        if not PID_FILE.exists():
+            return {}
+        return json.loads(PID_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 def _write_pid_file() -> None:
@@ -151,6 +231,196 @@ def _pid_exists(pid: int) -> bool:
             except Exception:
                 return False
         return False
+
+
+def _safe_int(value, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalized_path_text(value: object) -> str:
+    return str(value or "").replace("\\", "/").lower()
+
+
+def _same_repo_obs_command(command_line: object) -> bool:
+    normalized = _normalized_path_text(command_line)
+    repo = _normalized_path_text(ROOT_DIR)
+    if OBS_SERVER_SCRIPT_NAME not in normalized:
+        return False
+    if _is_obs_server_launcher_wrapper(normalized):
+        return False
+    return repo in normalized
+
+
+def _is_obs_server_launcher_wrapper(normalized_command: str) -> bool:
+    return (
+        "cmd.exe" in normalized_command
+        and "/d /c" in normalized_command
+        and OBS_SERVER_SCRIPT_NAME in normalized_command
+        and (">>" in normalized_command or "1>>" in normalized_command or "2>>" in normalized_command)
+    )
+
+
+def _collect_process_rows() -> list[dict]:
+    """Return a small process table used to guard against duplicate OBS servers."""
+    try:
+        if sys.platform == "win32":
+            result = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    (
+                        "Get-CimInstance Win32_Process | "
+                        "Select-Object ProcessId,ParentProcessId,CommandLine | "
+                        "ConvertTo-Json -Compress"
+                    ),
+                ],
+                capture_output=True,
+                text=True,
+                timeout=PROCESS_SCAN_TIMEOUT_SEC,
+                check=False,
+            )
+            if result.returncode != 0 or not result.stdout.strip():
+                return []
+            parsed = json.loads(result.stdout)
+            if isinstance(parsed, dict):
+                parsed = [parsed]
+            return [
+                {
+                    "pid": _safe_int(row.get("ProcessId")),
+                    "ppid": _safe_int(row.get("ParentProcessId")),
+                    "command": row.get("CommandLine") or "",
+                }
+                for row in parsed
+                if isinstance(row, dict)
+            ]
+
+        result = subprocess.run(
+            ["ps", "-eo", "pid=,ppid=,args="],
+            capture_output=True,
+            text=True,
+            timeout=PROCESS_SCAN_TIMEOUT_SEC,
+            check=False,
+        )
+        if result.returncode != 0:
+            return []
+        rows: list[dict] = []
+        for line in result.stdout.splitlines():
+            parts = line.strip().split(None, 2)
+            if len(parts) < 3:
+                continue
+            rows.append({
+                "pid": _safe_int(parts[0]),
+                "ppid": _safe_int(parts[1]),
+                "command": parts[2],
+            })
+        return rows
+    except Exception:
+        return []
+
+
+def _current_process_family(rows: list[dict]) -> set[int]:
+    current = os.getpid()
+    family = {current}
+    parent = os.getppid()
+    if parent > 0:
+        family.add(parent)
+    if PARENT_PID > 0:
+        family.add(PARENT_PID)
+
+    parent_by_pid = {
+        _safe_int(row.get("pid")): _safe_int(row.get("ppid"))
+        for row in rows
+        if _safe_int(row.get("pid")) > 0
+    }
+    probe = current
+    for _ in range(20):
+        probe = parent_by_pid.get(probe, 0)
+        if probe <= 0 or probe in family:
+            break
+        family.add(probe)
+    return family
+
+
+def _find_duplicate_obs_servers(rows: list[dict] | None = None) -> list[dict]:
+    rows = rows if rows is not None else _collect_process_rows()
+    current_family = _current_process_family(rows)
+    duplicates: list[dict] = []
+    for row in rows:
+        pid = _safe_int(row.get("pid"))
+        command = row.get("command") or ""
+        if pid <= 0 or pid in current_family:
+            continue
+        if _same_repo_obs_command(command):
+            duplicates.append({
+                "pid": pid,
+                "ppid": _safe_int(row.get("ppid")),
+                "command": str(command)[:500],
+            })
+    return duplicates
+
+
+def _command_for_pid(rows: list[dict], pid: int) -> str:
+    for row in rows:
+        if _safe_int(row.get("pid")) == pid:
+            return str(row.get("command") or "")
+    return ""
+
+
+def _build_singleton_status(rows: list[dict] | None = None) -> dict:
+    pid_data = _read_pid_file()
+    pid = _safe_int(pid_data.get("pid"))
+    duplicates = _find_duplicate_obs_servers(rows)
+    return {
+        "pid": os.getpid(),
+        "pidFile": str(PID_FILE),
+        "pidFilePid": pid or None,
+        "pidFileAlive": _pid_exists(pid) if pid else False,
+        "duplicateCount": len(duplicates),
+        "duplicates": duplicates,
+    }
+
+
+def _acquire_singleton_or_exit() -> None:
+    """Prevent watchdog/scheduler drift from creating multiple OBS surface servers."""
+    if os.getenv("FOULER_OBS_SERVER_ALLOW_DUPLICATE", "").strip().lower() in ("1", "true", "yes"):
+        _write_pid_file()
+        return
+
+    pid_data = _read_pid_file()
+    existing_pid = _safe_int(pid_data.get("pid"))
+    rows = _collect_process_rows()
+    if existing_pid and existing_pid != os.getpid():
+        if _pid_exists(existing_pid):
+            command = _command_for_pid(rows, existing_pid)
+            if not _same_repo_obs_command(command):
+                print(
+                    f"[SERVER] Removing stale Fouler OBS pid file; pid {existing_pid} is alive but is not this repo's OBS server.",
+                    file=sys.stderr,
+                )
+                _cleanup_pid_file()
+            else:
+                print(
+                    f"[SERVER] Existing Fouler OBS server pid {existing_pid} is alive; refusing duplicate start.",
+                    file=sys.stderr,
+                )
+                sys.exit(78)
+        else:
+            _cleanup_pid_file()
+
+    duplicates = _find_duplicate_obs_servers(rows)
+    if duplicates:
+        print(
+            "[SERVER] Existing Fouler OBS server process found; refusing duplicate start: "
+            + json.dumps({"duplicates": duplicates[:5]}, sort_keys=True),
+            file=sys.stderr,
+        )
+        sys.exit(78)
+
+    _write_pid_file()
 
 try:
     from streaming.obs_websocket import ObsWebsocketClient
@@ -325,6 +595,13 @@ def _build_direct_battle_url(bid: str) -> str:
     return f"https://play.pokemonshowdown.com/{bid}"
 
 
+def _build_public_slot_source_url(slot: int, battle_id: str | None = None) -> str:
+    url = f"http://localhost:{PORT}/slot/{slot}?slot_idle=public"
+    if battle_id:
+        url += f"&battle_id={battle_id}"
+    return url
+
+
 def _build_slot_map(battles: list[dict]) -> dict[int, dict]:
     slot_map: dict[int, dict] = {}
     for idx, battle in enumerate(battles):
@@ -334,6 +611,14 @@ def _build_slot_map(battles: list[dict]) -> dict[int, dict]:
             slot = idx + 1
         slot_map[slot] = battle
     return slot_map
+
+
+def _battle_for_slot(slot_num: int) -> dict | None:
+    state = build_state_payload()
+    battles = state.get("battles") or []
+    if not isinstance(battles, list):
+        return None
+    return _build_slot_map(battles).get(slot_num)
 
 
 def _sort_slot_names(names: list[str]) -> list[str]:
@@ -785,6 +1070,7 @@ async def maybe_update_obs_sources(payload: dict) -> None:
             battle = slot_map.get(idx)
             desired_id = battle.get("id") if battle else None
             previous_id = _last_obs_ids.get(idx)
+            url = _build_public_slot_source_url(idx, desired_id)
             
             print(f"[OBS-UPDATE] Slot {idx} ({source_name}): previous={previous_id}, desired={desired_id}")
 
@@ -796,12 +1082,13 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 age = time.time() - last_update if last_update else 0
                 if age > OBS_STALE_BATTLE_SEC:
                     print(f"[OBS-UPDATE] Slot {idx}: Battle stale ({age:.0f}s > {OBS_STALE_BATTLE_SEC}s), forcing idle")
-                    await _obs_client.set_browser_source_url(source_name, _cache_bust(OBS_IDLE_URL))
+                    await _obs_client.set_browser_source_url(source_name, url)
                     _last_obs_ids[idx] = None
+                    _last_obs_urls[idx] = url
                     _last_obs_updates[idx] = time.time()
                     continue
 
-            if previous_id == desired_id:
+            if previous_id == desired_id and _last_obs_urls.get(idx) == url:
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
                 continue
             
@@ -815,11 +1102,9 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 await asyncio.sleep(0.5)
 
             if desired_id:
-                url = _build_direct_battle_url(desired_id)
-                print(f"[OBS-UPDATE] Slot {idx}: Setting to battle {desired_id}")
+                print(f"[OBS-UPDATE] Slot {idx}: Loading public slot battle surface for battle {desired_id}")
             else:
-                url = _cache_bust(OBS_IDLE_URL)
-                print(f"[OBS-UPDATE] Slot {idx}: Setting to idle page")
+                print(f"[OBS-UPDATE] Slot {idx}: Keeping public slot ready surface")
 
             ok = await _obs_client.set_browser_source_url(source_name, url)
             _last_obs_urls[idx] = url
@@ -855,7 +1140,93 @@ async def handle_battles(request: web.Request) -> web.Response:
     return web.json_response(state_store.read_active_battles())
 
 
-async def handle_health(request: web.Request) -> web.Response:
+def _public_surface_health_payload(singleton_status: dict, probe_failure: dict | None = None) -> tuple[dict, int]:
+    """Return OBS HTTP liveness when the deeper devstream probe is unavailable."""
+    try:
+        state = build_state_payload()
+    except Exception as exc:
+        return (
+            {
+                "schemaVersion": "fouler-obs-health/v1",
+                "projectId": "fouler-play",
+                "status": "degraded",
+                "healthy": False,
+                "running": False,
+                "readyForLiveFocus": False,
+                "readiness": {
+                    "streamReady": False,
+                    "runtimeReady": False,
+                    "proofHandoffReady": False,
+                },
+                "blockers": [f"OBS public surface state is unreadable: {type(exc).__name__}"],
+                "devstreamHealthProbe": probe_failure or {"ok": False, "method": "fallback"},
+                "obsServerSingleton": singleton_status,
+            },
+            503,
+        )
+
+    battles = state.get("battles") if isinstance(state.get("battles"), list) else []
+    status = state.get("status") if isinstance(state.get("status"), dict) else {}
+    runtime_blocked = bool(state.get("runtime_blocked") or status.get("runtime_blocked"))
+    blockers: list[str] = []
+    if runtime_blocked:
+        summary = status.get("blocker_summary") or status.get("status") or "runtime blocked"
+        code = status.get("blocker_code")
+        suffix = f" ({code})" if code else ""
+        blockers.append(f"{summary}{suffix}")
+
+    active_battle_count = len(battles)
+    stream_ready = not blockers
+    payload = {
+        "schemaVersion": "fouler-obs-health/v1",
+        "projectId": "fouler-play",
+        "status": "running" if active_battle_count else ("ready" if stream_ready else "blocked"),
+        "healthy": stream_ready,
+        "running": True,
+        "readyForLiveFocus": bool(stream_ready and active_battle_count),
+        "readiness": {
+            "streamReady": stream_ready,
+            "runtimeReady": bool(stream_ready and active_battle_count),
+            "proofHandoffReady": False,
+        },
+        "activeBattleCount": active_battle_count,
+        "proofBlockers": [
+            "devstream health probe unavailable; HTTP surface liveness cannot certify completed proof handoff"
+        ],
+        "blockers": blockers,
+        "warnings": ["devstream health probe failed; using OBS public surface liveness fallback"],
+        "devstreamHealthProbe": probe_failure or {"ok": False, "method": "fallback"},
+        "obsServerSingleton": singleton_status,
+    }
+    return payload, 503 if blockers else 200
+
+
+def _build_devstream_health_payload() -> dict:
+    from devstream_health import build_payload
+
+    return build_payload(check_http=False)
+
+
+def _probe_failure_payload(*, method: str, error: str = "", return_code: int | None = None) -> dict:
+    payload = {
+        "ok": False,
+        "method": method,
+        "error": str(error or "").strip()[:1000],
+    }
+    if return_code is not None:
+        payload["returnCode"] = return_code
+    return payload
+
+
+async def _load_devstream_health_payload(singleton_status: dict) -> tuple[dict, int]:
+    try:
+        payload = await asyncio.to_thread(_build_devstream_health_payload)
+        payload["obsServerSingleton"] = singleton_status
+        payload["devstreamHealthProbe"] = {"ok": True, "method": "in-process"}
+        return payload, 200
+    except Exception as exc:
+        direct_failure = _probe_failure_payload(method="in-process", error=f"{type(exc).__name__}: {exc}")
+
     script = ROOT_DIR / "scripts" / "devstream_health.py"
     if script.exists():
         try:
@@ -865,15 +1236,56 @@ async def handle_health(request: web.Request) -> web.Response:
                 cwd=str(ROOT_DIR),
                 capture_output=True,
                 text=True,
-                timeout=8,
+                timeout=HEALTH_PROBE_TIMEOUT_SEC,
                 check=False,
             )
             if result.returncode == 0 and result.stdout.strip():
-                return web.json_response(json.loads(result.stdout))
-            return web.json_response({"status": "degraded", "service": "stream-server", "error": result.stderr.strip()}, status=503)
+                payload = json.loads(result.stdout)
+                payload["obsServerSingleton"] = singleton_status
+                payload["devstreamHealthProbe"] = {"ok": True, "method": "subprocess"}
+                return payload, 200
+            failure = _probe_failure_payload(
+                method="subprocess",
+                return_code=result.returncode,
+                error=result.stderr or direct_failure["error"],
+            )
+            return _public_surface_health_payload(singleton_status, failure)
         except Exception as exc:
-            return web.json_response({"status": "degraded", "service": "stream-server", "error": str(exc)}, status=503)
-    return web.json_response({"status": "ok", "service": "stream-server"})
+            failure = _probe_failure_payload(method="subprocess", error=f"{type(exc).__name__}: {exc}")
+            return _public_surface_health_payload(singleton_status, failure)
+
+    return _public_surface_health_payload(singleton_status, direct_failure)
+
+
+async def handle_health(request: web.Request) -> web.Response:
+    singleton_status = _build_singleton_status()
+    deep_requested = DEEP_HEALTH_DEFAULT or request.query.get("deep", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if deep_requested:
+        payload, status_code = await _load_devstream_health_payload(singleton_status)
+    else:
+        payload, status_code = _public_surface_health_payload(
+            singleton_status,
+            {
+                "ok": None,
+                "method": "skipped",
+                "reason": "deep devstream proof health is available at /health?deep=1",
+            },
+        )
+    if singleton_status.get("duplicateCount"):
+        payload["status"] = "degraded"
+        payload["healthy"] = False
+        payload["readyForLiveFocus"] = False
+        payload["error"] = "duplicate OBS surface server processes detected"
+        blockers = payload.setdefault("blockers", [])
+        if isinstance(blockers, list):
+            blockers.append("duplicate OBS surface server processes detected")
+        return web.json_response(payload, status=503)
+    return web.json_response(payload, status=status_code)
 
 
 async def handle_status(request: web.Request) -> web.Response:
@@ -883,7 +1295,11 @@ async def handle_status(request: web.Request) -> web.Response:
     status["active_battles"] = [b.get("id") for b in battles]
     # Build battle_info from actual battles (more reliable than stale status file)
     if battles:
+        status["status"] = "Active"
         status["battle_info"] = ", ".join(f"vs {b.get('opponent', 'Unknown')}" for b in battles)
+    else:
+        status["status"] = "Searching"
+        status["battle_info"] = "Searching..."
     # Add daily totals
     daily = state_store.read_daily_stats()
     status["today_wins"] = daily.get("wins", 0)
@@ -1192,8 +1608,8 @@ color:rgba(8,217,214,0.4)}}
     <div class="sonar-circle"></div>
     <div class="sonar-circle"></div>
   </div>
-  <div class="scanning-text">SCANNING...</div>
-  <div class="scanning-sub">SLOT {slot} &mdash; AWAITING BATTLE</div>
+  <div class="scanning-text">MATCHMAKING</div>
+  <div class="scanning-sub">RANKED BATTLE FEED {slot}</div>
 </div>
 <iframe id="battle-frame" class="hidden"></iframe>
 <script>
@@ -1268,10 +1684,7 @@ async def handle_slot_state(request: web.Request) -> web.Response:
     if slot_num < 1 or slot_num > 9:
         return web.json_response({"error": "invalid slot"}, status=400)
 
-    state = build_state_payload()
-    battles = state.get("battles") or []
-    slot_map = _build_slot_map(battles)
-    battle = slot_map.get(slot_num)
+    battle = _battle_for_slot(slot_num)
 
     if battle:
         battle_id = battle.get("id")
@@ -1347,7 +1760,7 @@ def create_app() -> web.Application:
 
 
 if __name__ == "__main__":
-    _write_pid_file()
+    _acquire_singleton_or_exit()
     atexit.register(_cleanup_pid_file)
     print(f"[SERVER] Fouler Play OBS Server starting on port {PORT}")
     print(f"[SERVER] Serving files from: {STREAMING_DIR}")

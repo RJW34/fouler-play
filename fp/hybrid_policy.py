@@ -71,6 +71,10 @@ def _build_metadata(
         "override": False,
         "candidates": decisions,
         "candidate_count": len(decisions),
+        "llm_authority": "advisory_rerank_only",
+        "truth_source": "engine_candidate_list",
+        "mechanics_claims_allowed": False,
+        "promotion_rule": "selected_decision_must_equal_one_supplied_candidate",
     }
     payload.update(extra)
     return payload
@@ -182,6 +186,46 @@ def build_rerank_candidates(
         {"index": idx, "decision": decision, "engine_score": round(score, 6)}
         for idx, (decision, score) in enumerate(selected, start=1)
     ]
+
+
+def _showdown_legal_decision_sets(trace: dict[str, Any] | None) -> tuple[set[str], set[str]] | None:
+    if not trace:
+        return None
+    legal_options = trace.get("legalOptions") if isinstance(trace.get("legalOptions"), dict) else {}
+    request = trace.get("showdownRequest") if isinstance(trace.get("showdownRequest"), dict) else {}
+    request_hash = str(legal_options.get("requestHash") or request.get("requestHash") or "").strip()
+    candidate_bounded = legal_options.get("candidateSetBounded") is True or request.get("candidateSetBounded") is True
+    if not request_hash or not candidate_bounded:
+        return None
+    legal_moves_raw = legal_options.get("legalMoves") if isinstance(legal_options.get("legalMoves"), list) else request.get("legalMoves")
+    legal_switches_raw = legal_options.get("legalSwitches") if isinstance(legal_options.get("legalSwitches"), list) else request.get("legalSwitches")
+    legal_moves: set[str] = set()
+    if isinstance(legal_moves_raw, list):
+        for move in legal_moves_raw:
+            if not isinstance(move, dict):
+                continue
+            move_id = str(move.get("id") or move.get("move") or "").strip()
+            if move_id:
+                legal_moves.add(normalize_name(move_id))
+    legal_switches: set[str] = set()
+    if isinstance(legal_switches_raw, list):
+        for switch in legal_switches_raw:
+            if not isinstance(switch, dict):
+                continue
+            details = str(switch.get("details") or switch.get("name") or "").split(",", 1)[0].strip()
+            if details:
+                legal_switches.add(normalize_name(details))
+    return legal_moves, legal_switches
+
+
+def _decision_allowed_by_showdown_request(decision: str, legal_sets: tuple[set[str], set[str]] | None) -> bool:
+    if legal_sets is None:
+        return False
+    legal_moves, legal_switches = legal_sets
+    if decision.startswith(constants.SWITCH_STRING):
+        return normalize_name(decision.replace(constants.SWITCH_STRING, "")) in legal_switches
+    base_decision = decision.split("-", 1)[0]
+    return normalize_name(base_decision) in legal_moves
 
 
 def _compact_battle_context(battle) -> dict[str, Any]:
@@ -334,6 +378,19 @@ async def run_hybrid_rerank(
             ),
         )
 
+    legal_sets = _showdown_legal_decision_sets(trace)
+    if legal_sets is None:
+        return HybridRerankResult(
+            decision=None,
+            metadata=_build_metadata(
+                status="blocked",
+                reason="missing_showdown_request_legal_options",
+                engine_choice=engine_choice,
+                candidates=candidates,
+                truth_source="showdown_request_legal_options",
+            ),
+        )
+
     context_payload = {
         "battle": _compact_battle_context(battle),
         "engine_choice": engine_choice,
@@ -469,6 +526,20 @@ async def run_hybrid_rerank(
         )
 
     selected = candidates[choice_index - 1]["decision"]
+    if not _decision_allowed_by_showdown_request(selected, legal_sets):
+        return HybridRerankResult(
+            decision=None,
+            metadata=_build_metadata(
+                status="blocked",
+                reason="candidate_not_in_showdown_request",
+                engine_choice=engine_choice,
+                candidates=candidates,
+                model=model,
+                selected_index=choice_index,
+                selected_decision=selected,
+                truth_source="showdown_request_legal_options",
+            ),
+        )
     selected_norm = normalize_name(selected.replace(constants.SWITCH_STRING, ""))
     if selected.startswith("switch ") and not selected_norm:
         return HybridRerankResult(

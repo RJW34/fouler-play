@@ -40,6 +40,8 @@ MAX_CANDIDATES = 8
 
 ALLOWED_DECISION_MODES = {
     "eval",
+    "eval_fallback",
+    "mcts",
     "endgame",
     "forced_line",
     "fallback",
@@ -161,8 +163,13 @@ def _sanitize_hybrid_status(value: Any) -> str:
     return "unavailable"
 
 
-def _candidate_list_from_eval_scores(payload: dict[str, Any]) -> list[str]:
-    scores = payload.get("eval_scores_raw")
+def _candidate_list_from_scores(payload: dict[str, Any], *keys: str) -> list[str]:
+    scores = None
+    for key in keys:
+        candidate = payload.get(key)
+        if isinstance(candidate, dict):
+            scores = candidate
+            break
     if not isinstance(scores, dict):
         return []
     scored: list[tuple[str, float]] = []
@@ -174,6 +181,10 @@ def _candidate_list_from_eval_scores(payload: dict[str, Any]) -> list[str]:
     scored.sort(key=lambda item: item[1], reverse=True)
     ordered = [choice for choice, _ in scored[:MAX_CANDIDATES]]
     return ordered
+
+
+def _candidate_list_from_eval_scores(payload: dict[str, Any]) -> list[str]:
+    return _candidate_list_from_scores(payload, "eval_scores_raw", "mcts_policy_raw")
 
 
 def _candidate_list_from_hybrid(hybrid: dict[str, Any]) -> list[str]:

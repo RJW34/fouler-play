@@ -11,8 +11,10 @@ Run as: python3 /home/ryan/projects/fouler-play/infrastructure/event_poster.py
 import json
 import logging
 import os
+import re
 import signal
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -31,8 +33,10 @@ from infrastructure.event_queue_lib import (
     expire_old_events,
     cleanup_queue,
     queue_stats,
+    queue_health_summary,
 )
 from infrastructure.gen9_validation import Gen9Validator
+from infrastructure.discord_reporting import redacted_report_summary, structured_report_fields
 
 # Configuration
 POLL_INTERVAL = float(os.getenv("EVENT_POSTER_POLL_SEC", "2"))
@@ -41,6 +45,47 @@ CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
 PID_DIR = PROJECT_ROOT / ".pids"
 BOT_MAIN_PID_FILE = PID_DIR / "bot_main.pid"
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
+TRUTH_DIR = PROJECT_ROOT / "devstream" / "truth"
+DISCORD_REPORTING_PROOF = TRUTH_DIR / "discord-reporting.json"
+DISCORD_DELIVERY_PROOF = TRUTH_DIR / "discord-delivery.json"
+DISCORD_DOCTOR_PROOF = TRUTH_DIR / "discord-reporting-doctor.json"
+BATTLE_ID_RE = re.compile(r"\b(?:battle-)?gen9ou-[A-Za-z0-9-]+\b|battle `([^`]+)`")
+GEN9_VALIDATED_EVENT_TYPE_MARKERS = (
+    "analysis",
+    "report",
+    "autoresearch",
+    "deep_dive",
+    "summary",
+    "battle_result",
+    "battle-summary",
+    "proof",
+    "post_packet",
+)
+GEN9_VALIDATED_STRUCTURED_FIELDS = (
+    "analysis",
+    "proof",
+    "current_battle_state",
+    "next_hermes_action",
+    "decisive_reason",
+    "battle_id",
+    "winner",
+    "loser",
+)
+GEN9_VALIDATED_CONTENT_MARKERS = (
+    "[proof]",
+    "why it matters",
+    "next hermes action",
+    "showdown",
+    "gen 9",
+    "gen9",
+    "pokemon",
+    "matchup",
+    "ability",
+    "item",
+    "move",
+    "tera",
+    "hazard",
+)
 
 # Logging
 LOG_FILE = Path(os.getenv(
@@ -110,6 +155,201 @@ def _redact_url(value: str) -> str:
         prefix = value.split("/api/webhooks/", 1)[0]
         return f"{prefix}/api/webhooks/REDACTED"
     return "<configured>"
+
+
+def _iso_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _cycle_id() -> str:
+    return os.getenv("DEVSTREAM_CYCLE_ID") or os.getenv("FOULER_PLAY_CYCLE_ID") or f"discord-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
+
+
+def _relative(path: Path) -> str:
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _extract_battle_ids_from_text(text: str, limit: int = 20) -> list[str]:
+    ids: list[str] = []
+    seen: set[str] = set()
+    for match in BATTLE_ID_RE.finditer(text or ""):
+        raw = match.group(1) or match.group(0)
+        if raw and raw.isdigit():
+            raw = f"gen9ou-{raw}"
+        if raw.startswith("battle-"):
+            raw = raw.replace("battle-", "", 1)
+        if raw not in seen:
+            ids.append(raw)
+            seen.add(raw)
+        if len(ids) >= limit:
+            break
+    return ids
+
+
+def _read_queue_events() -> list[dict[str, Any]]:
+    try:
+        from infrastructure.event_queue_lib import read_queue
+
+        events = read_queue()
+        return [event for event in events if isinstance(event, dict)]
+    except Exception as exc:
+        logger.debug("Failed to read queue for proof: %s", exc)
+        return []
+
+
+def _queue_summary(events: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    events = events if events is not None else _read_queue_events()
+    stats = queue_stats()
+    health = queue_health_summary(events)
+    return {
+        **stats,
+        "pendingEventTypes": health["pendingEventTypes"],
+        "pendingAgeBuckets": health["pendingAgeBuckets"],
+        "pendingPlaceholderFieldCounts": health["pendingPlaceholderFieldCounts"],
+        "pendingBattleResultStructuredFields": health["pendingBattleResultStructuredFields"],
+        "pendingBattleResults": health["pendingBattleResults"],
+        "stalePendingBacklog": health["stalePendingBacklog"],
+        "stalePendingBattleResults": health["stalePendingBattleResults"],
+        "freshPendingBacklog": health["freshPendingBacklog"],
+        "freshPendingBattleResults": health["freshPendingBattleResults"],
+        "staleAfterSeconds": health["staleAfterSeconds"],
+        "failedEventTypes": health["failedEventTypes"],
+        "expiredEventTypes": health["expiredEventTypes"],
+        "statusCounts": health["statusCounts"],
+        "pendingBacklog": health["pendingBacklog"],
+        "oldestPendingAgeSeconds": health["oldestPendingAgeSeconds"],
+        "oldestPendingEventId": health["oldestPendingEventId"],
+        "deliveryFailures": health["deliveryFailures"],
+        "retryingDeliveries": health["retryingDeliveries"],
+        "expiredDeliveries": health["expiredDeliveries"],
+        "dnsFailures": health["dnsFailures"],
+        "webhookFailures": health["webhookFailures"],
+        "failureTypes": health["failureTypes"],
+        "healthStatus": health["status"],
+        "ready": health["ready"],
+        "health": health,
+    }
+
+
+def _proof_report_paths() -> dict[str, str]:
+    return {
+        "discordReporting": _relative(DISCORD_REPORTING_PROOF),
+        "discordDelivery": _relative(DISCORD_DELIVERY_PROOF),
+        "discordDoctor": _relative(DISCORD_DOCTOR_PROOF),
+        "discordBacklogArchive": _relative(TRUTH_DIR / "discord-backlog-archive.json"),
+        "eventPosterLog": _relative(LOG_FILE),
+        "queueFile": _relative(Path(os.getenv("EVENT_QUEUE_FILE", str(PROJECT_ROOT / "events_queue.json")))),
+    }
+
+
+def _transport_summary(destination_alias: str) -> dict[str, Any]:
+    load_env_chain()
+    webhook_url, webhook_source = resolve_webhook_url(destination_alias)
+    return {
+        "type": "webhook" if webhook_url else "openclaw" if shutil.which("openclaw") else "unconfigured",
+        "configured": bool(webhook_url or shutil.which("openclaw")),
+        "source": webhook_source if webhook_url else None,
+        "redactedUrl": _redact_url(webhook_url) if webhook_url else "",
+    }
+
+
+def write_delivery_proof(
+    *,
+    status: str,
+    event: dict[str, Any] | None = None,
+    destination_alias: str | None = None,
+    dry_run: bool = False,
+    blockers: list[str] | None = None,
+    http_status: int | None = None,
+    retry_after: str | None = None,
+    error_code: str | None = None,
+) -> dict[str, Any]:
+    event = event if isinstance(event, dict) else {}
+    destination_alias = destination_alias or str(event.get("channel") or "unknown")
+    battle_ids = _extract_battle_ids_from_text(str(event.get("content") or ""))
+    report_summary = redacted_report_summary(str(event.get("content") or "")) if event else {}
+    structured_fields = _event_structured_fields(event)
+    payload = {
+        "schemaVersion": "fouler-play-discord-delivery/v1",
+        "attemptedAtUtc": _iso_now(),
+        "cycleId": _cycle_id(),
+        "status": status,
+        "dryRun": dry_run,
+        "eventId": event.get("id"),
+        "eventType": event.get("event_type"),
+        "destinationAlias": destination_alias,
+        "battleIds": battle_ids,
+        "battle_id": structured_fields.get("battle_id"),
+        "winner": structured_fields.get("winner"),
+        "loser": structured_fields.get("loser"),
+        "turns": structured_fields.get("turns"),
+        "proof": structured_fields.get("proof"),
+        "analysis": structured_fields.get("analysis"),
+        "httpStatus": http_status,
+        "retryAfter": retry_after,
+        "errorCode": error_code,
+        "blockers": blockers or [],
+        "queue": _queue_summary(),
+        "reportSummary": report_summary,
+        "reportPaths": _proof_report_paths(),
+        "secretValuesPrinted": False,
+    }
+    TRUTH_DIR.mkdir(parents=True, exist_ok=True)
+    DISCORD_DELIVERY_PROOF.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    write_reporting_proof(status=status, event=event, delivery_payload=payload, blockers=blockers or [])
+    return payload
+
+
+def write_reporting_proof(
+    *,
+    status: str,
+    event: dict[str, Any] | None = None,
+    delivery_payload: dict[str, Any] | None = None,
+    blockers: list[str] | None = None,
+) -> dict[str, Any]:
+    event = event if isinstance(event, dict) else {}
+    destination_alias = str(event.get("channel") or (delivery_payload or {}).get("destinationAlias") or "unknown")
+    structured_fields = _event_structured_fields(event)
+    payload = {
+        "schemaVersion": "fouler-play-discord-reporting/v1",
+        "generatedAtUtc": _iso_now(),
+        "cycleId": (delivery_payload or {}).get("cycleId") or _cycle_id(),
+        "status": status,
+        "destinationAlias": destination_alias,
+        "transport": _transport_summary(destination_alias),
+        "queue": _queue_summary(),
+        "battleIds": (delivery_payload or {}).get("battleIds") or _extract_battle_ids_from_text(str(event.get("content") or "")),
+        "battle_id": (delivery_payload or {}).get("battle_id") or structured_fields.get("battle_id"),
+        "winner": (delivery_payload or {}).get("winner") or structured_fields.get("winner"),
+        "loser": (delivery_payload or {}).get("loser") or structured_fields.get("loser"),
+        "turns": (delivery_payload or {}).get("turns") or structured_fields.get("turns"),
+        "proof": (delivery_payload or {}).get("proof") or structured_fields.get("proof"),
+        "analysis": (delivery_payload or {}).get("analysis") or structured_fields.get("analysis"),
+        "reportSummary": (delivery_payload or {}).get("reportSummary")
+        or (redacted_report_summary(str(event.get("content") or "")) if event else {}),
+        "blockers": blockers or [],
+        "reportPaths": _proof_report_paths(),
+        "secretValuesPrinted": False,
+    }
+    TRUTH_DIR.mkdir(parents=True, exist_ok=True)
+    DISCORD_REPORTING_PROOF.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return payload
+
+
+def _event_structured_fields(event: dict[str, Any]) -> dict[str, Any]:
+    content = str(event.get("content") or "")
+    extracted = structured_report_fields(content, event_type=str(event.get("event_type") or "")) if content else {}
+    return {
+        "battle_id": event.get("battle_id") or extracted.get("battle_id"),
+        "winner": event.get("winner") or extracted.get("winner"),
+        "loser": event.get("loser") or extracted.get("loser"),
+        "turns": event.get("turns") if event.get("turns") is not None else extracted.get("turns"),
+        "proof": event.get("proof") or extracted.get("proof"),
+        "analysis": event.get("analysis") or extracted.get("analysis"),
+    }
 
 
 def resolve_webhook_url(channel: str) -> tuple[str, str]:
@@ -203,35 +443,65 @@ def check_precondition(event: dict) -> bool:
 
 # ── Discord Posting ─────────────────────────────────────────────────
 
+def _stringify_for_validation(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, sort_keys=True)
+    except TypeError:
+        return str(value)
+
+
+def event_requires_gen9_validation(event: dict) -> bool:
+    """Return True when an event carries Pokemon strategy/proof text."""
+    event_type = str(event.get("event_type") or "").lower()
+    if any(marker in event_type for marker in GEN9_VALIDATED_EVENT_TYPE_MARKERS):
+        return True
+
+    if any(event.get(field) not in (None, "", [], {}) for field in GEN9_VALIDATED_STRUCTURED_FIELDS):
+        return True
+
+    content = str(event.get("content") or "").lower()
+    return any(marker in content for marker in GEN9_VALIDATED_CONTENT_MARKERS)
+
+
+def _event_validation_text(event: dict) -> str:
+    parts = [_stringify_for_validation(event.get("content"))]
+    for field in GEN9_VALIDATED_STRUCTURED_FIELDS:
+        if event.get(field) not in (None, "", [], {}):
+            parts.append(_stringify_for_validation(event.get(field)))
+    return "\n".join(part for part in parts if part)
+
+
 def validate_event_content(event: dict) -> Tuple[bool, str]:
     """
     Validate event content for hallucinations/inaccuracies.
     Returns: (is_valid, error_reason)
     """
-    event_type = event.get("event_type", "")
-    content = event.get("content", "")
-    
-    # Only validate analysis reports (not other event types)
-    if "analysis" not in event_type.lower() and "report" not in event_type.lower():
+    if not event_requires_gen9_validation(event):
         return True, ""
-    
+
+    content = _event_validation_text(event)
+
     # Validate Gen 9 mechanics
     validator = Gen9Validator()
     is_valid, errors, warnings = validator.validate_analysis(content)
     
     if not is_valid:
         error_msg = "; ".join(errors)
-        logger.error(f"Validation FAILED for {event['id']}: {error_msg}")
+        logger.error("Validation FAILED for %s: %s", event.get("id", "unknown"), error_msg)
         return False, error_msg
     
     if warnings:
         for warning in warnings:
-            logger.warning(f"Validation warning for {event['id']}: {warning}")
+            logger.warning("Validation warning for %s: %s", event.get("id", "unknown"), warning)
     
     return True, ""
 
 
-def post_to_discord(event: dict) -> bool:
+def post_to_discord(event: dict) -> dict[str, Any]:
     """Post event to Discord via webhook (or OpenClaw CLI fallback)."""
     channel = event["channel"]
     content = event["content"]
@@ -241,7 +511,13 @@ def post_to_discord(event: dict) -> bool:
     is_valid, error_reason = validate_event_content(event)
     if not is_valid:
         logger.error(f"Blocking post: {event['id']} - {error_reason}")
-        return False
+        return {
+            "ok": False,
+            "status": "failed",
+            "destinationAlias": channel,
+            "blockers": [f"content validation failed: {error_reason}"],
+            "errorCode": "validation_failed",
+        }
 
     load_env_chain()
     webhook_url, webhook_source = resolve_webhook_url(channel)
@@ -251,6 +527,23 @@ def post_to_discord(event: dict) -> bool:
         return _post_via_webhook(event, webhook_url, content, suppress)
     else:
         return _post_via_cli(event, channel, content)
+
+
+def _is_dns_exception(exc: BaseException) -> bool:
+    reason = getattr(exc, "reason", exc)
+    if isinstance(reason, socket.gaierror):
+        return True
+    text = str(reason or exc).lower()
+    return any(
+        marker in text
+        for marker in (
+            "gaierror",
+            "getaddrinfo",
+            "name or service not known",
+            "temporary failure in name resolution",
+            "nodename nor servname",
+        )
+    )
 
 
 def _post_via_webhook(event, webhook_url, content, suppress=False):
@@ -276,23 +569,85 @@ def _post_via_webhook(event, webhook_url, content, suppress=False):
             status = resp.status
             if status in (200, 204):
                 logger.info(f"Posted successfully: {event['event_type']} id={event['id']} (HTTP {status})")
-                return True
+                return {
+                    "ok": True,
+                    "status": "posted",
+                    "destinationAlias": event.get("channel"),
+                    "httpStatus": status,
+                    "blockers": [],
+                }
             else:
                 body = resp.read().decode("utf-8", errors="replace")[:200]
                 logger.error(f"Webhook returned HTTP {status}: {body}")
-                return False
+                return {
+                    "ok": False,
+                    "status": "failed",
+                    "destinationAlias": event.get("channel"),
+                    "httpStatus": status,
+                    "blockers": [f"webhook returned HTTP {status}"],
+                    "errorCode": "webhook_http_error",
+                }
 
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")[:200] if e.fp else ""
         if e.code == 429:
             retry_after = e.headers.get("Retry-After") or e.headers.get("retry-after") or "unknown"
             logger.error(f"Webhook rate limited; retry-after={retry_after}: {body}")
+            return {
+                "ok": False,
+                "status": "rate-limited",
+                "destinationAlias": event.get("channel"),
+                "httpStatus": e.code,
+                "retryAfter": retry_after,
+                "blockers": [f"Discord webhook rate limited; retry-after={retry_after}"],
+                "errorCode": "rate_limited",
+            }
         else:
             logger.error(f"Webhook HTTP error {e.code}: {body}")
-        return False
+        return {
+            "ok": False,
+            "status": "failed",
+            "destinationAlias": event.get("channel"),
+            "httpStatus": e.code,
+            "blockers": [f"webhook HTTP error {e.code}"],
+            "errorCode": "webhook_http_error",
+        }
+    except urllib.error.URLError as e:
+        if _is_dns_exception(e):
+            logger.error("Webhook DNS failure: %s", e)
+            return {
+                "ok": False,
+                "status": "failed",
+                "destinationAlias": event.get("channel"),
+                "blockers": ["webhook DNS resolution failed"],
+                "errorCode": "dns_failure",
+            }
+        logger.error(f"Webhook URL error: {e}")
+        return {
+            "ok": False,
+            "status": "failed",
+            "destinationAlias": event.get("channel"),
+            "blockers": [f"webhook network error: {type(e.reason).__name__ if getattr(e, 'reason', None) else type(e).__name__}"],
+            "errorCode": "webhook_network_error",
+        }
     except Exception as e:
+        if _is_dns_exception(e):
+            logger.error("Webhook DNS failure: %s", e)
+            return {
+                "ok": False,
+                "status": "failed",
+                "destinationAlias": event.get("channel"),
+                "blockers": ["webhook DNS resolution failed"],
+                "errorCode": "dns_failure",
+            }
         logger.error(f"Webhook error: {e}")
-        return False
+        return {
+            "ok": False,
+            "status": "failed",
+            "destinationAlias": event.get("channel"),
+            "blockers": [f"webhook error: {type(e).__name__}"],
+            "errorCode": "webhook_error",
+        }
 
 
 def _post_via_cli(event, channel, content):
@@ -308,25 +663,73 @@ def _post_via_cli(event, channel, content):
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
             logger.info(f"Posted successfully: {event['event_type']} id={event['id']}")
-            return True
+            return {
+                "ok": True,
+                "status": "posted",
+                "destinationAlias": channel,
+                "blockers": [],
+            }
         else:
             error = result.stderr.strip() or result.stdout.strip()
             logger.error(f"Post failed (rc={result.returncode}): {error[:200]}")
-            return False
+            return {
+                "ok": False,
+                "status": "failed",
+                "destinationAlias": channel,
+                "blockers": [f"OpenClaw post failed with rc={result.returncode}"],
+                "errorCode": "openclaw_failed",
+            }
     except subprocess.TimeoutExpired:
         logger.error(f"Post timed out: {event['event_type']} id={event['id']}")
-        return False
+        return {
+            "ok": False,
+            "status": "failed",
+            "destinationAlias": channel,
+            "blockers": ["OpenClaw post timed out"],
+            "errorCode": "openclaw_timeout",
+        }
     except Exception as e:
         logger.error(f"Post error: {e}")
-        return False
+        return {
+            "ok": False,
+            "status": "failed",
+            "destinationAlias": channel,
+            "blockers": [f"OpenClaw post error: {type(e).__name__}"],
+            "errorCode": "openclaw_error",
+        }
 
 
 # ── Main Loop ───────────────────────────────────────────────────────
 
-def process_one_event() -> bool:
+def process_one_event(dry_run: bool = False) -> bool:
     """Process the oldest pending event. Returns True if an event was processed."""
+    if not dry_run:
+        expired = expire_old_events(EXPIRY_SEC)
+        if expired:
+            logger.warning("Archived and expired %s stale Discord event(s); live transport withheld", expired)
+            write_delivery_proof(
+                status="blocked",
+                event=None,
+                destination_alias="unknown",
+                dry_run=False,
+                blockers=[
+                    f"archived {expired} stale Discord event(s) before transport",
+                    "live Discord transport is withheld until the next fresh queue pass",
+                ],
+                error_code="stale_backlog_archived",
+            )
+            return False
+
     pending = get_pending_events()
     if not pending:
+        write_delivery_proof(
+            status="idle",
+            event=None,
+            destination_alias="unknown",
+            dry_run=dry_run,
+            blockers=["no pending Discord events"],
+            error_code="no_pending_events",
+        )
         return False
 
     # Process oldest first (FIFO)
@@ -334,18 +737,48 @@ def process_one_event() -> bool:
     event_id = event["id"]
     event_type = event["event_type"]
 
+    if dry_run:
+        is_valid, error_reason = validate_event_content(event)
+        validation_blockers = [] if is_valid else [f"content validation failed: {error_reason}"]
+        write_delivery_proof(
+            status="dry-run" if is_valid else "blocked",
+            event=event,
+            destination_alias=str(event.get("channel") or "unknown"),
+            dry_run=True,
+            blockers=validation_blockers,
+            error_code=None if is_valid else "validation_failed",
+        )
+        logger.info("Dry-run proof written for %s id=%s", event_type, event_id)
+        return True
+
     # Check precondition
     if not check_precondition(event):
         logger.debug(f"Precondition not met for {event_type} id={event_id}, skipping")
+        write_delivery_proof(
+            status="blocked",
+            event=event,
+            destination_alias=str(event.get("channel") or "unknown"),
+            blockers=[f"precondition not met: {event.get('precondition_check') or 'always_true'}"],
+            error_code="precondition_not_met",
+        )
         return False
 
     # Post to Discord
-    success = post_to_discord(event)
+    result = post_to_discord(event)
+    write_delivery_proof(
+        status=str(result.get("status") or "failed"),
+        event=event,
+        destination_alias=str(result.get("destinationAlias") or event.get("channel") or "unknown"),
+        blockers=[str(item) for item in result.get("blockers") or []],
+        http_status=result.get("httpStatus"),
+        retry_after=result.get("retryAfter"),
+        error_code=result.get("errorCode"),
+    )
 
-    if success:
+    if result.get("ok"):
         mark_posted(event_id)
     else:
-        mark_failed(event_id, "post_failed")
+        mark_failed(event_id, str(result.get("errorCode") or result.get("status") or "post_failed"))
 
     return True
 
@@ -362,11 +795,6 @@ def main_loop():
         try:
             # Process one event at a time
             processed = process_one_event()
-
-            # Expire old events
-            expired = expire_old_events(EXPIRY_SEC)
-            if expired:
-                logger.info(f"Expired {expired} stale events")
 
             # Periodic cleanup
             now = time.time()
@@ -400,15 +828,20 @@ def main_loop():
 
 def build_doctor_payload() -> dict[str, Any]:
     config = discord_config_status()
-    stats = queue_stats()
+    stats = _queue_summary()
+    transport_ready = bool(config["anyWebhookConfigured"] or config["openclawAvailable"])
     return {
         "schemaVersion": "fouler-play-discord-poster-doctor/v1",
-        "checkedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "ready": bool(config["anyWebhookConfigured"] or config["openclawAvailable"]),
+        "checkedAt": _iso_now(),
+        "cycleId": _cycle_id(),
+        "ready": transport_ready and bool(stats.get("ready")),
+        "transportReady": transport_ready,
         "config": config,
         "queue": stats,
-        "queueFile": str(Path(os.getenv("EVENT_QUEUE_FILE", str(PROJECT_ROOT / "events_queue.json")))),
-        "logFile": str(LOG_FILE),
+        "reportPaths": _proof_report_paths(),
+        "queueFile": _relative(Path(os.getenv("EVENT_QUEUE_FILE", str(PROJECT_ROOT / "events_queue.json")))),
+        "logFile": _relative(LOG_FILE),
+        "secretValuesPrinted": False,
         "note": "Read-only doctor; it does not post to Discord.",
     }
 
@@ -417,13 +850,27 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Post queued fouler-play Discord events")
     parser.add_argument("--doctor", action="store_true", help="print read-only Discord queue/poster readiness")
     parser.add_argument("--once", action="store_true", help="process at most one event and exit")
+    parser.add_argument("--dry-run", action="store_true", help="write redacted Discord proof for the oldest pending event without posting")
     parser.add_argument("--require-ready", action="store_true", help="with --doctor, exit non-zero if no transport is configured")
     args = parser.parse_args()
     if args.doctor:
         payload = build_doctor_payload()
+        TRUTH_DIR.mkdir(parents=True, exist_ok=True)
+        DISCORD_DOCTOR_PROOF.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        doctor_blockers: list[str] = []
+        if not payload.get("transportReady"):
+            doctor_blockers.append("no Discord webhook or OpenClaw transport configured")
+        if not (payload.get("queue") or {}).get("ready", True):
+            doctor_blockers.extend(str(item) for item in ((payload.get("queue") or {}).get("health") or {}).get("blockers") or [])
+        write_reporting_proof(
+            status="ready" if payload["ready"] else "blocked",
+            blockers=doctor_blockers,
+        )
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 1 if args.require_ready and not payload["ready"] else 0
     load_env_chain()
+    if args.dry_run:
+        return 0 if process_one_event(dry_run=True) else 1
     if args.once:
         return 0 if process_one_event() else 1
     main_loop()

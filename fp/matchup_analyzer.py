@@ -1,8 +1,9 @@
 """
 Matchup Analyzer - Pre-battle strategy generator for Fouler Play.
 
-Uses local qwen2.5-coder:3b via Ollama to generate strategic gameplans
-based on team matchup analysis.
+Generates conservative, deterministic gameplans by default. The historical
+local qwen/Ollama path is opt-in only and must pass Gen 9 oracle validation
+before a gameplan can be cached or exposed to battle code.
 """
 
 import json
@@ -19,6 +20,7 @@ from fp.helpers import normalize_name
 from constants_pkg.strategy import SETUP_MOVES, PRIORITY_MOVES
 from fp.playstyle_config import HAZARD_MOVES, PIVOT_MOVES, RECOVERY_MOVES
 from fp.theknower_competitive import build_competitive_meta_context, build_pokedex_oracle_context
+from infrastructure.gen9_validation import Gen9Validator
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,7 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 # Ollama API endpoint
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 OLLAMA_MODEL = "qwen2.5-coder:3b"
+ENABLE_LLM_GAMEPLAN = os.getenv("MATCHUP_ANALYZER_ENABLE_LLM", "").lower() in {"1", "true", "yes", "on"}
 
 # Timeout for LLM requests (seconds)
 OLLAMA_TIMEOUT = int(os.getenv("MATCHUP_ANALYZER_TIMEOUT", "30"))
@@ -244,9 +247,34 @@ def _parse_gameplan_json(response: str) -> Optional[Gameplan]:
         return None
 
 
+def _gameplan_validation_text(gameplan: Gameplan) -> str:
+    """Flatten a gameplan for Gen 9 oracle validation."""
+    parts = [
+        gameplan.opponent_win_condition,
+        *gameplan.opponent_weaknesses,
+        gameplan.our_strategy,
+        *gameplan.key_pivot_triggers,
+        gameplan.win_condition,
+        gameplan.lead_preference or "",
+        gameplan.backup_plan or "",
+    ]
+    return "\n".join(str(part) for part in parts if part)
+
+
+def _validate_gameplan(gameplan: Gameplan) -> list[str]:
+    """Return blockers for gameplans containing unsupported Pokemon claims."""
+    validator = Gen9Validator()
+    is_valid, errors, warnings = validator.validate_analysis(_gameplan_validation_text(gameplan))
+    if not is_valid:
+        return errors
+    # Warnings are not fatal for human-readable Discord text, but gameplans can
+    # influence battle behavior later. Keep them out of the active cache.
+    return warnings
+
+
 def _create_fallback_gameplan(our_team: TeamAnalysis, opp_team: TeamAnalysis) -> Gameplan:
     """Create a basic fallback gameplan if LLM fails."""
-    logger.warning("Using fallback gameplan (LLM unavailable)")
+    logger.warning("Using deterministic fallback gameplan")
     
     # Identify opponent threats
     opp_threats = list(opp_team.wincons) if opp_team.wincons else ["Unknown threats"]
@@ -256,12 +284,18 @@ def _create_fallback_gameplan(our_team: TeamAnalysis, opp_team: TeamAnalysis) ->
     
     return Gameplan(
         opponent_win_condition=f"{opp_team.playstyle.name} strategy with {', '.join(opp_threats[:2])}",
-        opponent_weaknesses=["Lack of hazard removal", "Specific type weaknesses"],
-        our_strategy=f"Execute {our_team.playstyle.name} gameplan, control hazards, preserve {our_wincon}",
-        key_pivot_triggers=["Pivot on predicted setup moves", "Preserve momentum with U-turn/Volt Switch"],
-        win_condition=f"Set up {our_wincon} after weakening checks",
+        opponent_weaknesses=[
+            "Require replay/protocol proof before making matchup-specific claims",
+            "Use only current Showdown request and battle-state truth for tactical pivots",
+        ],
+        our_strategy=f"Execute the {our_team.playstyle.name} team plan while preserving {our_wincon} until battle evidence proves a different line.",
+        key_pivot_triggers=[
+            "Only pivot when the current Showdown request exposes the legal switch candidate",
+            "Avoid model-only assumptions about opponent moves, abilities, or damage ranges",
+        ],
+        win_condition=f"Advance the deterministic engine plan around {our_wincon}; do not override the engine from this fallback text.",
         lead_preference=None,
-        backup_plan="Play conservatively, maintain chip damage, avoid overextending"
+        backup_plan="Collect replay/protocol evidence and keep unsupported strategy claims out of active policy."
     )
 
 
@@ -295,18 +329,22 @@ def analyze_matchup(our_team_data: List[Dict], opponent_team_data: List[Dict],
     
     logger.info(f"Analyzing matchup: {our_team.playstyle.name} vs {opp_team.playstyle.name}")
     
-    # Build prompt and call LLM
-    prompt = _build_analysis_prompt(our_team, our_team_data, opp_team, opponent_team_data)
-    response = _call_ollama(prompt)
-    
-    if response:
-        gameplan = _parse_gameplan_json(response)
-        if gameplan:
-            logger.info(f"Generated gameplan: {gameplan.win_condition}")
-            # Save to cache
-            if use_cache:
-                _save_gameplan_cache(our_hash, opp_hash, gameplan)
-            return gameplan
+    if ENABLE_LLM_GAMEPLAN:
+        prompt = _build_analysis_prompt(our_team, our_team_data, opp_team, opponent_team_data)
+        response = _call_ollama(prompt)
+
+        if response:
+            gameplan = _parse_gameplan_json(response)
+            if gameplan:
+                blockers = _validate_gameplan(gameplan)
+                if not blockers:
+                    logger.info(f"Generated validated gameplan: {gameplan.win_condition}")
+                    if use_cache:
+                        _save_gameplan_cache(our_hash, opp_hash, gameplan)
+                    return gameplan
+                logger.warning("Rejected LLM gameplan with Gen 9 validation blocker(s): %s", "; ".join(blockers))
+    else:
+        logger.info("MATCHUP_ANALYZER_ENABLE_LLM is not enabled; skipping local LLM gameplan generation")
     
     # Fallback if LLM fails
     gameplan = _create_fallback_gameplan(our_team, opp_team)

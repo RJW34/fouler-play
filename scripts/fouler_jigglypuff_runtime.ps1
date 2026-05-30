@@ -1,7 +1,7 @@
 param(
     [ValidateSet("status", "bootstrap", "start", "stop", "login-proof")]
     [string]$Command = "status",
-    [int]$RunCount = 10,
+    [int]$RunCount = 1000000,
     [int]$MaxConcurrentBattles = 3,
     [switch]$ObsOnly,
     [switch]$Execute

@@ -8,8 +8,33 @@
 .ps-overlay[aria-label*="privacy"],
 div[class*="ccpa"],
 div[class*="cookie-banner"],
-div[class*="privacy-banner"] {
+div[class*="privacy-banner"],
+#onetrust-banner-sdk,
+#onetrust-consent-sdk,
+#ot-sdk-btn-floating,
+.fc-ccpa-root,
+.fc-dialog-container,
+.fc-dialog,
+.fc-dns-dialog,
+.fc-dns-link,
+.fc-button-background,
+div[id*="onetrust" i],
+div[class*="onetrust" i],
+div[class*="ccpa"],
+div[class*="fc-ccpa"],
+div[id*="cookie" i],
+div[class*="cookie" i],
+div[id*="privacy" i],
+div[class*="privacy" i],
+button[aria-label*="Do Not Sell"],
+button[aria-label*="do not sell"] {
   display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
 /* Hide Showdown header/navigation bar */

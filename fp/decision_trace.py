@@ -2,9 +2,74 @@ import json
 import logging
 import os
 import time
+import hashlib
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+def _live_request_evidence(battle):
+    request = getattr(battle, "request_json", None)
+    if not isinstance(request, dict):
+        return None
+
+    active_requests = request.get("active")
+    if not isinstance(active_requests, list):
+        active_requests = []
+    side = request.get("side") if isinstance(request.get("side"), dict) else {}
+    side_pokemon = side.get("pokemon") if isinstance(side.get("pokemon"), list) else []
+    force_switch = request.get("forceSwitch") if "forceSwitch" in request else getattr(battle, "force_switch", False)
+    trapped = bool(
+        any(isinstance(active, dict) and active.get("trapped") for active in active_requests)
+        or getattr(getattr(battle, "user", None), "trapped", False)
+    )
+
+    legal_moves = []
+    for active_slot, active in enumerate(active_requests):
+        if not isinstance(active, dict):
+            continue
+        moves = active.get("moves") if isinstance(active.get("moves"), list) else []
+        for move in moves:
+            if not isinstance(move, dict) or move.get("disabled") is True:
+                continue
+            move_id = move.get("id") or move.get("move")
+            if not move_id:
+                continue
+            legal_moves.append({
+                "activeSlot": active_slot,
+                "id": str(move_id),
+                "target": move.get("target"),
+            })
+
+    legal_switches = []
+    if force_switch or not trapped:
+        for slot, mon in enumerate(side_pokemon):
+            if not isinstance(mon, dict) or mon.get("active") is True:
+                continue
+            condition = str(mon.get("condition") or "")
+            if condition.startswith("0 fnt"):
+                continue
+            legal_switches.append({
+                "slot": slot,
+                "details": mon.get("details"),
+                "condition": condition,
+            })
+
+    redacted = {
+        "rqid": request.get("rqid") or getattr(battle, "rqid", None),
+        "wait": bool(request.get("wait") or getattr(battle, "wait", False)),
+        "forceSwitch": force_switch,
+        "trapped": trapped,
+        "legalMoves": legal_moves,
+        "legalSwitches": legal_switches,
+    }
+    request_hash = hashlib.sha256(
+        json.dumps(redacted, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    redacted["requestHash"] = request_hash
+    redacted["legalOptionsSource"] = "showdown-request"
+    redacted["candidateSetBounded"] = bool(legal_moves or legal_switches)
+    return redacted
 
 
 def _make_json_safe(value):
@@ -34,6 +99,19 @@ def build_trace_base(battle, reason: str | None = None):
         except Exception as e:
             logger.debug(f"Decision trace snapshot failed: {e}")
             trace["snapshot"] = {"error": "snapshot_failed"}
+    request_evidence = _live_request_evidence(battle)
+    if request_evidence:
+        trace["showdownRequest"] = request_evidence
+        trace["legalOptions"] = {
+            "source": "showdown-request",
+            "requestHash": request_evidence["requestHash"],
+            "rqid": request_evidence.get("rqid"),
+            "legalMoves": request_evidence.get("legalMoves", []),
+            "legalSwitches": request_evidence.get("legalSwitches", []),
+            "forceSwitch": request_evidence.get("forceSwitch"),
+            "trapped": request_evidence.get("trapped"),
+            "candidateSetBounded": request_evidence.get("candidateSetBounded"),
+        }
     return trace
 
 

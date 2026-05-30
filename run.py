@@ -42,8 +42,40 @@ logger = logging.getLogger(__name__)
 DRAIN_FILE = Path(__file__).resolve().parent / ".pids" / "drain.request"
 PARENT_PID = int(os.getenv("FP_PARENT_PID", "0") or 0)
 PARENT_CHECK_SEC = int(os.getenv("FP_PARENT_CHECK_SEC", "5") or 5)
-LOSS_DRAIN_ENV = os.getenv("LOSS_TRIGGERED_DRAIN", "1").strip().lower()
-LOSS_DRAIN_ENABLED = LOSS_DRAIN_ENV not in ("0", "false", "no", "off")
+def _strip_env_inline_comment(value: str) -> str:
+    in_single = False
+    in_double = False
+    escaped = False
+    for index, char in enumerate(value):
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char == "'" and not in_double:
+            in_single = not in_single
+            continue
+        if char == '"' and not in_single:
+            in_double = not in_double
+            continue
+        if char == "#" and not in_single and not in_double and (index == 0 or value[index - 1].isspace()):
+            return value[:index].rstrip()
+    return value.strip()
+
+
+def _env_bool(name: str, *, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = _strip_env_inline_comment(raw).strip().strip('"').strip("'").lower()
+    if not value:
+        return default
+    return value not in ("0", "false", "no", "off")
+
+
+LOSS_DRAIN_ENV = _strip_env_inline_comment(os.getenv("LOSS_TRIGGERED_DRAIN", "1")).strip().lower()
+LOSS_DRAIN_ENABLED = _env_bool("LOSS_TRIGGERED_DRAIN", default=True)
 
 
 REQUIRED_CONSTANTS = {
@@ -452,6 +484,13 @@ async def battle_worker(
             if battle_tag is None and drain_event.is_set():
                 logger.info(f"Worker {worker_id}: Drain mode active, exiting")
                 break
+            if battle_tag is None:
+                logger.info(
+                    "Worker %s: no battle was claimed before search timeout; "
+                    "retrying without recording a battle result.",
+                    worker_id,
+                )
+                continue
 
             # Record result â€” ALL outcomes count toward quota.
             # CRITICAL: worker_battles MUST increment even if recording fails,
@@ -596,13 +635,17 @@ async def run_foul_play():
     # Start the message dispatcher
     ps_websocket_client.start_dispatcher()
 
-    # Clear stale active_battles.json from previous runs so OBS doesn't show dead battles.
-    try:
-        from streaming.state_store import write_active_battles
-        write_active_battles({"battles": [], "count": 0, "max_slots": FoulPlayConfig.max_concurrent_battles, "updated": ""})
-        logger.info("Cleared active_battles.json for fresh start")
-    except Exception as e:
-        logger.warning(f"Failed to clear active_battles.json: {e}")
+    from fp.run_battle import RESUME_ACTIVE_BATTLES
+    if not RESUME_ACTIVE_BATTLES:
+        # Clear stale active_battles.json from previous runs so OBS doesn't show dead battles.
+        try:
+            from streaming.state_store import write_active_battles
+            write_active_battles({"battles": [], "count": 0, "max_slots": FoulPlayConfig.max_concurrent_battles, "updated": ""})
+            logger.info("Cleared active_battles.json for fresh start")
+        except Exception as e:
+            logger.warning(f"Failed to clear active_battles.json: {e}")
+    else:
+        logger.info("Preserving active_battles.json until resume priming completes")
 
     # Cancel any stale ladder search left running from a previous session.
     # Without this, PS keeps matching us into new games before workers start.
@@ -615,7 +658,6 @@ async def run_foul_play():
     # Handle stale battles from previous session.
     # If RESUME_ACTIVE_BATTLES is on, let the resume system reclaim them.
     # Otherwise, forfeit them to avoid workers claiming them with wrong team_dict.
-    from fp.run_battle import RESUME_ACTIVE_BATTLES
     await asyncio.sleep(3)  # Let dispatcher receive updatesearch with existing games
 
     # Prime any in-progress battles so workers can resume instead of re-searching.

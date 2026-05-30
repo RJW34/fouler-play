@@ -1,6 +1,10 @@
 import json
+import hashlib
+import os
+import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from replay_analysis.autoresearch import AutoResearcher
@@ -101,6 +105,122 @@ def test_autoresearch_detects_hazard_pressure_and_trace_instability(tmp_path: Pa
     assert "Next action" in markdown
 
 
+def test_autoresearch_decision_trace_proves_request_legal_options(tmp_path: Path):
+    project = tmp_path
+    trace_dir = project / "logs" / "decision_traces"
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-legalproof",
+                    "timestamp": "2026-03-10T11:00:00+00:00",
+                    "team_file": "fat-team-1-stall",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-legalproof",
+                }
+            ]
+        },
+    )
+
+    trace_payload = {
+        "battle_tag": "battle-gen9ou-legalproof",
+        "turn": 7,
+        "reason": "timeout",
+        "choice": "recover",
+        "legalOptions": {
+            "source": "showdown-request",
+            "requestHash": "a" * 64,
+            "candidateSetBounded": True,
+            "legalMoves": [{"activeSlot": 0, "id": "recover", "target": "self"}],
+            "legalSwitches": [],
+        },
+    }
+    write_json(trace_dir / "battle-gen9ou-legalproof_turn7_1.json", trace_payload)
+    write_json(trace_dir / "battle-gen9ou-legalproof_turn8_2.json", trace_payload)
+    write_json(trace_dir / "battle-gen9ou-legalproof_turn9_3.json", trace_payload)
+
+    report = AutoResearcher(project_root=project).analyze(last_n=5)
+
+    integrity = report["evidence_integrity"]
+    assert integrity["losses_with_decision_trace"] == 1
+    assert integrity["losses_with_request_legal_options"] == 1
+    assert integrity["claims_without_evidence"] == []
+    decision = next(issue for issue in report["issues"] if issue["key"] == "decision_instability")
+    proof = "\n".join(decision["proof"])
+    assert "requestHash=" in proof
+    assert "legalMoves=1" in proof
+    assert "traceSha256=" in proof
+    assert datetime.fromisoformat(report["generated_at"]).tzinfo is not None
+    trace_match = re.search(r"trace=(\S+)\s+traceSha256=([a-f0-9]{64})", proof)
+    assert trace_match
+    trace_path = project / trace_match.group(1)
+    assert "replay_analysis/evidence_traces" in trace_match.group(1)
+    assert trace_path.exists()
+    assert hashlib.sha256(trace_path.read_bytes()).hexdigest() == trace_match.group(2)
+
+
+def test_autoresearch_does_not_count_wait_or_empty_force_switch_as_legal_options(tmp_path: Path):
+    project = tmp_path
+    trace_dir = project / "logs" / "decision_traces"
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-wait",
+                    "timestamp": "2026-03-10T11:10:00+00:00",
+                    "team_file": "fat-team-1-stall",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-wait",
+                },
+                {
+                    "battle_id": "battle-gen9ou-empty-force-switch",
+                    "timestamp": "2026-03-10T11:20:00+00:00",
+                    "team_file": "fat-team-1-stall",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-empty-force-switch",
+                },
+            ]
+        },
+    )
+    wait_trace = {
+        "battle_tag": "battle-gen9ou-wait",
+        "turn": 2,
+        "reason": "wait",
+        "choice": "wait",
+        "legalOptions": {
+            "source": "showdown-request",
+            "requestHash": "b" * 64,
+            "candidateSetBounded": True,
+            "legalMoves": [],
+            "legalSwitches": [],
+            "wait": True,
+        },
+    }
+    force_switch_trace = {
+        "battle_tag": "battle-gen9ou-empty-force-switch",
+        "turn": 3,
+        "reason": "force switch",
+        "choice": "switch",
+        "legalOptions": {
+            "source": "showdown-request",
+            "requestHash": "c" * 64,
+            "candidateSetBounded": True,
+            "legalMoves": [],
+            "legalSwitches": [],
+            "forceSwitch": True,
+        },
+    }
+    write_json(trace_dir / "battle-gen9ou-wait_turn2_1.json", wait_trace)
+    write_json(trace_dir / "battle-gen9ou-empty-force-switch_turn3_1.json", force_switch_trace)
+
+    report = AutoResearcher(project_root=project).analyze(last_n=5)
+
+    assert report["evidence_integrity"]["losses_with_decision_trace"] == 2
+    assert report["evidence_integrity"]["losses_with_request_legal_options"] == 0
+
+
 def test_autoresearch_detects_long_game_conversion_issue(tmp_path: Path):
     project = tmp_path
     replay_dir = project / "replay_analysis"
@@ -132,6 +252,34 @@ def test_autoresearch_detects_long_game_conversion_issue(tmp_path: Path):
 
     issue_keys = [issue["key"] for issue in report["issues"]]
     assert "endgame_conversion" in issue_keys
+
+
+def test_autoresearch_blocks_hazard_claims_without_replay_or_trace_evidence(tmp_path: Path):
+    project = tmp_path
+    battles = {
+        "battles": [
+            {
+                "battle_id": "battle-gen9ou-missing-proof",
+                "timestamp": "2026-03-10T12:10:00+00:00",
+                "team_file": "fat-team-1-stall",
+                "result": "loss",
+                "replay_id": "battle-gen9ou-missing-proof",
+            }
+        ]
+    }
+    write_json(project / "battle_stats.json", battles)
+
+    researcher = AutoResearcher(project_root=project)
+    report = researcher.analyze(last_n=5)
+
+    issue_keys = [issue["key"] for issue in report["issues"]]
+    assert "hazard_pressure" not in issue_keys
+    integrity = report["evidence_integrity"]
+    assert integrity["loss_count"] == 1
+    assert integrity["losses_with_replay_json"] == 0
+    assert integrity["claims_without_evidence"][0]["battle_id"] == "battle-gen9ou-missing-proof"
+    markdown = researcher.render_markdown(report)
+    assert "Unsupported mechanics/strategy claims are blocked" in markdown
 
 
 def test_autoresearch_prefers_fresher_devstream_elo_proof(tmp_path: Path):
@@ -180,6 +328,22 @@ def test_pipeline_autoresearch_accepts_no_discord_flag():
     result = subprocess.run(
         [sys.executable, "pipeline.py", "autoresearch", "-n", "1", "--no-discord"],
         cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert "window_size" in payload
+
+
+def test_pipeline_autoresearch_accepts_inline_comment_batch_size():
+    repo = Path(__file__).resolve().parent.parent
+    result = subprocess.run(
+        [sys.executable, "pipeline.py", "autoresearch", "-n", "1", "--no-discord"],
+        cwd=repo,
+        env={**os.environ, "FOULER_BATCH_SIZE": "10  # safe smaller live cycle"},
         capture_output=True,
         text=True,
         check=False,
