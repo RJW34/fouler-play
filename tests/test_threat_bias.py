@@ -506,6 +506,43 @@ class TestSwitchChainSelectionOverride(unittest.TestCase):
 
         self.assertLess(adjusted["spikes"], adjusted["earthquake"])
 
+    def test_hazard_maintenance_pressures_active_spinner_before_first_layer(self):
+        battle = _mk_battle(
+            active_hp=320,
+            active_max_hp=354,
+            move_names=["spikes", "earthquake", "toxic", "protect"],
+        )
+        battle.user.active.name = "gliscor"
+        battle.opponent.active = SimpleNamespace(
+            name="irontreads",
+            hp=320,
+            max_hp=384,
+            moves=[_mk_move("rapidspin"), _mk_move("highhorsepower")],
+            types=["ground", "steel"],
+        )
+        battle.opponent.side_conditions = defaultdict(int)
+
+        ability_state = OpponentAbilityState(
+            opponent_hp_percent=320 / 384,
+            our_hp_percent=320 / 354,
+            opponent_alive_count=5,
+            opponent_has_hazard_removal=True,
+            opponent_hazard_layers=0,
+            opponent_active_has_hazard_removal=True,
+            opponent_active_removal_is_spin=True,
+        )
+
+        policy = {
+            "spikes": 1.0,
+            "earthquake": 0.82,
+            "toxic": 0.35,
+            "protect": 0.22,
+        }
+
+        adjusted = apply_hazard_maintenance_bias(policy, battle, ability_state)
+
+        self.assertLess(adjusted["spikes"], adjusted["earthquake"])
+
     def test_hazard_maintenance_prefers_spinblock_over_passive_pivot(self):
         battle = _mk_battle(
             active_hp=190,

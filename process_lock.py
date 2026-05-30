@@ -42,8 +42,10 @@ def is_bot_process(pid: int) -> bool:
     try:
         proc = psutil.Process(pid)
         cmdline = " ".join(proc.cmdline()).lower()
-        return "run.py" in cmdline and ("showdown" in cmdline or "search_ladder" in cmdline)
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        cwd = proc.cwd()
+        cwd_matches = bool(cwd) and os.path.abspath(cwd) == os.path.abspath(LOCK_DIR)
+        return cwd_matches and "run.py" in cmdline and ("showdown" in cmdline or "search_ladder" in cmdline)
+    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
         return False
 
 

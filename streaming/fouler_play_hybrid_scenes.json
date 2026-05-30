@@ -246,61 +246,6 @@
                         "private_settings": {}
                     },
                     {
-                        "name": "Debug Overlay",
-                        "source_uuid": "88c6ff30-0775-4c4b-862b-7c47012411f3",
-                        "visible": true,
-                        "locked": false,
-                        "rot": 0.0,
-                        "scale_ref": {
-                            "x": 2560.0,
-                            "y": 1440.0
-                        },
-                        "align": 5,
-                        "bounds_type": 2,
-                        "bounds_align": 0,
-                        "bounds_crop": false,
-                        "crop_left": 0,
-                        "crop_top": 0,
-                        "crop_right": 0,
-                        "crop_bottom": 0,
-                        "id": 5,
-                        "group_item_backup": false,
-                        "pos": {
-                            "x": 10.0,
-                            "y": 10.0
-                        },
-                        "pos_rel": {
-                            "x": -1.7638888359069824,
-                            "y": -0.9861111044883728
-                        },
-                        "scale": {
-                            "x": 1.0,
-                            "y": 1.0
-                        },
-                        "scale_rel": {
-                            "x": 1.0,
-                            "y": 1.0
-                        },
-                        "bounds": {
-                            "x": 640.0,
-                            "y": 360.0
-                        },
-                        "bounds_rel": {
-                            "x": 0.8888888955116272,
-                            "y": 0.5
-                        },
-                        "scale_filter": "disable",
-                        "blend_method": "default",
-                        "blend_type": "normal",
-                        "show_transition": {
-                            "duration": 0
-                        },
-                        "hide_transition": {
-                            "duration": 0
-                        },
-                        "private_settings": {}
-                    },
-                    {
                         "name": "Stats Overlay",
                         "source_uuid": "b78d26ef-4ae2-45d3-8060-dd809489ee7b",
                         "visible": true,
@@ -397,7 +342,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "is_local_file": false,
-                "url": "http://localhost:8777/idle",
+                "url": "http://localhost:8777/slot/1?slot_idle=public",
                 "width": 853,
                 "height": 1440,
                 "fps": 60,
@@ -438,7 +383,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "is_local_file": false,
-                "url": "http://localhost:8777/idle",
+                "url": "http://localhost:8777/slot/2?slot_idle=public",
                 "width": 853,
                 "height": 1440,
                 "fps": 60,
@@ -479,7 +424,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "is_local_file": false,
-                "url": "http://localhost:8777/idle",
+                "url": "http://localhost:8777/slot/3?slot_idle=public",
                 "width": 854,
                 "height": 1440,
                 "fps": 60,
@@ -1167,46 +1112,6 @@
         },
         {
             "prev_ver": 536870916,
-            "name": "Debug Overlay",
-            "uuid": "88c6ff30-0775-4c4b-862b-7c47012411f3",
-            "id": "browser_source",
-            "versioned_id": "browser_source",
-            "settings": {
-                "is_local_file": false,
-                "url": "http://localhost:8777/dashboard/hybrid",
-                "width": 1280,
-                "height": 720,
-                "fps": 30,
-                "fps_custom": true,
-                "shutdown": false,
-                "restart_when_active": true,
-                "css": ""
-            },
-            "mixers": 255,
-            "sync": 0,
-            "flags": 0,
-            "volume": 1.0,
-            "balance": 0.5,
-            "enabled": true,
-            "muted": false,
-            "push-to-mute": false,
-            "push-to-mute-delay": 0,
-            "push-to-talk": false,
-            "push-to-talk-delay": 0,
-            "hotkeys": {
-                "libobs.mute": [],
-                "libobs.unmute": [],
-                "libobs.push-to-mute": [],
-                "libobs.push-to-talk": [],
-                "ObsBrowser.Refresh": []
-            },
-            "deinterlace_mode": 0,
-            "deinterlace_field_order": 0,
-            "monitoring_type": 0,
-            "private_settings": {}
-        },
-        {
-            "prev_ver": 536870916,
             "name": "Window Capture",
             "uuid": "cca2f514-f80a-4260-ad59-72d4e4b04b72",
             "id": "window_capture",
@@ -1273,7 +1178,7 @@
             "versioned_id": "browser_source",
             "settings": {
                 "undo_uuid": "b78d26ef-4ae2-45d3-8060-dd809489ee7b",
-                "url": "http://localhost:8777/overlay/hybrid",
+                "url": "http://localhost:8777/overlay?mode=bottom&hide_recent=1",
                 "width": 2560,
                 "height": 1440,
                 "fps": 30,

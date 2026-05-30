@@ -25,6 +25,21 @@ DEFAULT_ACCEPTANCE_CHECKS = [
     "python3 -m pytest tests/test_autoresearch.py tests/test_eval.py tests/test_state_endpoint_status.py -q",
     "python3 scripts/devstream_session.py doctor",
 ]
+BATTLE_ID_RE = re.compile(r"\b(?:battle-)?gen\d+[a-z0-9]*-\d+(?:-[a-z0-9]+)?\b", re.IGNORECASE)
+TRACE_ONLY_DECISION_RE = re.compile(
+    r"\b(decision[_ -]?instability|decision trace|fallback|timeout|repeated same action|loop)\b",
+    re.IGNORECASE,
+)
+MECHANICS_OR_MATCHUP_RE = re.compile(
+    r"\b(type|ability|damage|weak|resist|immune|immunity|terrain|weather|tera|hazard pressure|speed tier|coverage)\b",
+    re.IGNORECASE,
+)
+REQUEST_LEGAL_OPTION_RE = re.compile(
+    r"\b(requestHash|legal options|legalMoves|legalSwitches|candidateSet|showdown request|showdown-request)\b",
+    re.IGNORECASE,
+)
+REQUEST_HASH_RE = re.compile(r"\brequestHash=([a-f0-9]{64})\b", re.IGNORECASE)
+LEGAL_COUNT_RE = re.compile(r"\blegal(?:Moves|Switches)=(\d+)\b")
 
 
 def slugify(text: str) -> str:
@@ -53,6 +68,171 @@ def extract_evidence(item: dict[str, Any]) -> list[str]:
     for key in ("evidence", "proof", "examples"):
         evidence.extend(_text_items(item.get(key)))
     return list(dict.fromkeys(evidence))
+
+
+def extract_battle_ids(texts: list[str]) -> list[str]:
+    ids: list[str] = []
+    for text in texts:
+        ids.extend(match.group(0) for match in BATTLE_ID_RE.finditer(text))
+    return list(dict.fromkeys(ids))
+
+
+def _positive_int(value: Any) -> bool:
+    try:
+        return int(value) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _raw_showdown_request_has_legal_options(value: dict[str, Any]) -> bool:
+    active = value.get("active") if isinstance(value.get("active"), list) else []
+    legal_move_count = 0
+    for request in active:
+        if not isinstance(request, dict):
+            continue
+        moves = request.get("moves") if isinstance(request.get("moves"), list) else []
+        legal_move_count += sum(1 for move in moves if isinstance(move, dict) and move.get("disabled") is not True)
+    side = value.get("side") if isinstance(value.get("side"), dict) else {}
+    side_pokemon = side.get("pokemon") if isinstance(side.get("pokemon"), list) else []
+    legal_switch_count = sum(
+        1
+        for mon in side_pokemon
+        if isinstance(mon, dict)
+        and mon.get("active") is not True
+        and not str(mon.get("condition") or "").startswith("0 fnt")
+    )
+    return bool(active or side_pokemon) and (
+        legal_move_count > 0
+        or legal_switch_count > 0
+        or "forceSwitch" in value
+        or "wait" in value
+    )
+
+
+def _structured_request_legal_option_evidence(value: Any) -> bool:
+    if isinstance(value, dict):
+        if _raw_showdown_request_has_legal_options(value):
+            return True
+        has_request_hash = isinstance(value.get("requestHash"), str) and bool(re.fullmatch(r"[a-f0-9]{64}", value["requestHash"], re.IGNORECASE))
+        legal_moves = value.get("legalMoves") or value.get("legal_moves")
+        legal_switches = value.get("legalSwitches") or value.get("legal_switches")
+        candidate_bounded = value.get("candidateSetBounded") is True or value.get("candidate_set_bounded") is True
+        if has_request_hash and candidate_bounded and (
+            (isinstance(legal_moves, list) and bool(legal_moves))
+            or (isinstance(legal_switches, list) and bool(legal_switches))
+            or value.get("forceSwitch") is not None
+            or value.get("wait") is not None
+        ):
+            return True
+        return any(_structured_request_legal_option_evidence(child) for child in value.values())
+    if isinstance(value, list):
+        return any(_structured_request_legal_option_evidence(child) for child in value)
+    return False
+
+
+def _proof_text_has_request_legal_option_evidence(text: str) -> bool:
+    if _text_has_showdown_request_protocol(text):
+        return True
+    if not REQUEST_LEGAL_OPTION_RE.search(text):
+        return False
+    if not REQUEST_HASH_RE.search(text):
+        return False
+    counts = [int(match.group(1)) for match in LEGAL_COUNT_RE.finditer(text)]
+    return any(count > 0 for count in counts)
+
+
+def _text_has_showdown_request_protocol(text: str) -> bool:
+    for line in text.splitlines():
+        if "|request|" not in line:
+            continue
+        raw = line.split("|request|", 1)[1].strip()
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and _raw_showdown_request_has_legal_options(payload):
+            return True
+    return False
+
+
+def has_request_legal_option_evidence(source_data: dict[str, Any], finding: dict[str, Any], evidence: list[str]) -> bool:
+    if _structured_request_legal_option_evidence(source_data) or _structured_request_legal_option_evidence(finding):
+        return True
+    for value in (source_data.get("protocol_lines"), source_data.get("protocolLines"), source_data.get("showdown_protocol"), source_data.get("showdownProtocol")):
+        if isinstance(value, list) and any(_text_has_showdown_request_protocol(str(item)) for item in value):
+            return True
+        if isinstance(value, str) and _text_has_showdown_request_protocol(value):
+            return True
+    integrity = source_data.get("evidence_integrity") if isinstance(source_data.get("evidence_integrity"), dict) else {}
+    if not _positive_int(integrity.get("losses_with_request_legal_options")):
+        return False
+    return any(_proof_text_has_request_legal_option_evidence(text) for text in evidence)
+
+
+def evidence_integrity(source_data: dict[str, Any], finding: dict[str, Any]) -> dict[str, Any]:
+    evidence = list(finding.get("evidence") or [])
+    battle_ids = extract_battle_ids(evidence)
+    batch = source_data.get("batch") if isinstance(source_data.get("batch"), dict) else {}
+    grounded = source_data.get("grounded_context") if isinstance(source_data.get("grounded_context"), dict) else {}
+    source_contract = str(grounded.get("source") or "")
+    unsupported_claims = [
+        str(item)
+        for item in source_data.get("unsupported_mechanics_claims", [])
+        if str(item).strip()
+    ] if isinstance(source_data.get("unsupported_mechanics_claims"), list) else []
+    claims_without_evidence = [
+        item
+        for item in source_data.get("evidence_integrity", {}).get("claims_without_evidence", [])
+        if item
+    ] if isinstance(source_data.get("evidence_integrity"), dict) else []
+    rejected_claims = [
+        item
+        for item in source_data.get("mechanics_claims", [])
+        if isinstance(item, dict) and str(item.get("status") or "").lower() == "rejected"
+    ] if isinstance(source_data.get("mechanics_claims"), list) else []
+    blockers: list[str] = []
+    warnings: list[str] = []
+    finding_text = "\n".join(
+        str(finding.get(key) or "")
+        for key in ("key", "title", "summary", "recommendation")
+    ) + "\n" + "\n".join(evidence)
+    trace_only_issue = bool(TRACE_ONLY_DECISION_RE.search(finding_text)) and not bool(MECHANICS_OR_MATCHUP_RE.search(finding_text))
+    request_legal_option_evidence = has_request_legal_option_evidence(source_data, finding, evidence)
+    if not evidence:
+        blockers.append("finding has no replay, trace, or battle proof strings")
+    if evidence and not battle_ids:
+        blockers.append("finding evidence is not linked to any Showdown battle id")
+    if not source_data.get("generated_at") and not source_data.get("generatedAt"):
+        blockers.append("source report has no generated_at timestamp")
+    if not batch.get("id"):
+        blockers.append("source report has no batch id")
+    if not source_contract:
+        warnings.append("source report did not expose grounded_context.source")
+    if unsupported_claims:
+        blockers.append("source report contains unsupported mechanics claims")
+    if claims_without_evidence and not trace_only_issue:
+        blockers.append("source report evidence_integrity contains claims without replay/trace evidence")
+    elif claims_without_evidence and not request_legal_option_evidence:
+        blockers.append("trace-only finding lacks request-backed legal-option evidence")
+    elif claims_without_evidence:
+        warnings.append("source report has mechanics/strategy claim gaps; this packet is only promotable for trace-only fallback/runtime fixes")
+    if rejected_claims:
+        blockers.append("source report contains rejected mechanics claims")
+    return {
+        "ok": not blockers,
+        "battleIds": battle_ids,
+        "battleIdCount": len(battle_ids),
+        "allEvidenceBattleLinked": bool(evidence) and bool(battle_ids),
+        "sourceGeneratedAt": source_data.get("generated_at") or source_data.get("generatedAt"),
+        "sourceBatchId": batch.get("id"),
+        "mechanicsClaimsValidated": not unsupported_claims and not rejected_claims,
+        "requestLegalOptionEvidence": request_legal_option_evidence,
+        "unsupportedMechanicsClaimCount": len(unsupported_claims) + len(rejected_claims),
+        "claimsWithoutEvidenceCount": len(claims_without_evidence),
+        "sourceContract": source_contract,
+        "blockers": blockers,
+        "warnings": warnings,
+    }
 
 
 def extract_findings(data: dict[str, Any]) -> list[dict[str, Any]]:
@@ -124,9 +304,10 @@ def source_report_path(source: Path) -> str:
         return str(source).replace("\\", "/")
 
 
-def build_packet(finding: dict[str, Any], index: int, source: Path) -> dict[str, Any]:
+def build_packet(finding: dict[str, Any], index: int, source: Path, source_data: dict[str, Any] | None = None) -> dict[str, Any]:
     slug = slugify(finding["title"])
     recommendation = str(finding.get("recommendation") or "").strip()
+    integrity = evidence_integrity(source_data if source_data is not None else load_source(source), finding)
     proposed_change = ["Inspect replay/decision evidence named in evidence[]"]
     if recommendation:
         proposed_change.append(recommendation)
@@ -146,6 +327,7 @@ def build_packet(finding: dict[str, Any], index: int, source: Path) -> dict[str,
         "recommendation": recommendation,
         "source_report": source_report_path(source),
         "evidence": finding.get("evidence") or [],
+        "evidence_integrity": integrity,
         "proposed_change": proposed_change,
         "allowed_paths": DEFAULT_ALLOWED_PATHS,
         "forbidden_paths": [".env", "config/secrets*"],
@@ -162,6 +344,7 @@ def build_packet(finding: dict[str, Any], index: int, source: Path) -> dict[str,
         "runtime_mutation_allowed": False,
         "risk": "medium",
         "done_when": [
+            "evidence_integrity.ok is true with battle-linked proof before any source patch is promoted",
             "Offline acceptance checks pass after the patch",
             "A bounded post-packet battle proof is produced only through the HERMES approval gate",
             "The related failure class is reduced or explicitly marked unresolved with fresh replay evidence",
@@ -179,7 +362,7 @@ def main() -> int:
     args = parser.parse_args()
     data = load_source(args.source)
     findings = extract_findings(data)
-    packets = [build_packet(finding, idx, args.source) for idx, finding in enumerate(findings, start=1)]
+    packets = [build_packet(finding, idx, args.source, data) for idx, finding in enumerate(findings, start=1)]
     payload = {"schemaVersion": "fouler-play-packetizer/v1", "source": str(args.source), "packetCount": len(packets), "packets": packets}
     if args.write:
         args.output_dir.mkdir(parents=True, exist_ok=True)

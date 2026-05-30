@@ -247,6 +247,32 @@ def test_endgame_mode_is_preserved(tmp_path):
     assert state["timeline"][0]["decision_mode"] == "endgame"
 
 
+def test_mcts_mode_and_candidates_are_preserved(tmp_path):
+    trace_dir = tmp_path / "decision_traces"
+    _write_trace(
+        trace_dir,
+        "battle-gen9ou-4_turn7_1.json",
+        {
+            "battle_tag": "battle-gen9ou-4",
+            "turn": 7,
+            "timestamp": "2026-02-10T22:05:00Z",
+            "decision_mode": "mcts",
+            "choice": "earthquake",
+            "mcts_policy_raw": {"earthquake": 0.62, "stealthrock": 0.25, "switch toxapex": 0.13},
+        },
+    )
+    provider = DashboardDataProvider(
+        trace_dir=trace_dir,
+        state_module=_FakeStateStore(),
+        scan_interval_sec=0.0,
+    )
+    state = provider.get_state_payload()
+    latest = state["latest_decision"]
+    assert latest["decision_mode"] == "mcts"
+    assert latest["candidate_list"] == ["earthquake", "stealthrock", "switch toxapex"]
+    assert latest["engine_choice"] == "earthquake"
+
+
 def test_trace_reason_redacts_project_key():
     payload = {
         "battle_tag": "battle-gen9ou-4",

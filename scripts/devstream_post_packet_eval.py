@@ -193,6 +193,11 @@ def acceptance_summary(acceptance: dict[str, Any], latest_battle_at: Any) -> dic
     }
 
 
+def packet_evidence_integrity(packet: dict[str, Any]) -> dict[str, Any]:
+    integrity = packet.get("evidence_integrity") or packet.get("evidenceIntegrity")
+    return integrity if isinstance(integrity, dict) else {}
+
+
 def build_report(
     *,
     packet: dict[str, Any],
@@ -209,12 +214,16 @@ def build_report(
     generated_after_latest = newer_than(autoresearch_generated_at(autoresearch), latest_battle_at)
     failure = failure_class(packet, autoresearch, covers_latest)
     acceptance_info = acceptance_summary(acceptance, latest_battle_at)
+    integrity = packet_evidence_integrity(packet)
     blockers: list[str] = []
     warnings: list[str] = []
 
     if not packet:
         status = "packet-missing"
         blockers.append("no devstream work packet is available for post-packet evaluation")
+    elif integrity and integrity.get("ok") is not True:
+        status = "packet-evidence-integrity-blocked"
+        blockers.extend(string_list(integrity.get("blockers")) or ["packet evidence_integrity.ok is false"])
     elif not elo_proof:
         status = "elo-proof-missing"
         blockers.append("devstream/truth/latest-elo-proof.json is missing or unreadable")
@@ -265,6 +274,7 @@ def build_report(
             "latestBattleAfterAcceptance": acceptance_info.get("latestBattleAfterAcceptance"),
         },
         "acceptance": acceptance_info,
+        "evidenceIntegrity": integrity or {"exists": False},
         "failureClass": failure,
         "blockers": blockers,
         "warnings": warnings,

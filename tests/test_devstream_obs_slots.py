@@ -21,7 +21,7 @@ def test_battle_slot_polls_local_slot_state() -> None:
     assert "/magneton-state" not in html
 
 
-def test_devstream_defaults_to_three_showdown_slots() -> None:
+def test_devstream_defaults_to_three_rated_showdown_battles() -> None:
     assert devstream_session.DEFAULT_MAX_CONCURRENT == 3
 
     command = devstream_session.shell_command_for_session(

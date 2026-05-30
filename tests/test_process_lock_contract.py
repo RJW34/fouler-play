@@ -54,3 +54,31 @@ def test_stale_reaper_ignores_other_fouler_repos():
     )
 
     assert not process_lock._is_stale_bot_process(proc, repo, {42, 43})
+
+
+def test_lock_pid_file_rejects_run_py_from_other_repo(monkeypatch):
+    class ProcessFromOtherRepo:
+        def cmdline(self):
+            return ["python.exe", "run.py", "--bot-mode", "search_ladder"]
+
+        def cwd(self):
+            return "D:\\Other\\fouler-play"
+
+    monkeypatch.setattr(process_lock.psutil, "Process", lambda pid: ProcessFromOtherRepo())
+
+    assert process_lock.is_bot_process(1234) is False
+
+
+def test_lock_pid_file_accepts_same_repo_run_py(monkeypatch):
+    repo = os.path.abspath(process_lock.LOCK_DIR)
+
+    class ProcessFromThisRepo:
+        def cmdline(self):
+            return ["python.exe", "run.py", "--bot-mode", "search_ladder"]
+
+        def cwd(self):
+            return repo
+
+    monkeypatch.setattr(process_lock.psutil, "Process", lambda pid: ProcessFromThisRepo())
+
+    assert process_lock.is_bot_process(1234) is True

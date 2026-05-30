@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 ACTIVE_BATTLES_PATH = ROOT_DIR / "active_battles.json"
@@ -23,6 +25,7 @@ STREAM_STATUS_PATH = ROOT_DIR / "stream_status.json"
 DAILY_STATS_PATH = ROOT_DIR / "daily_stats.json"
 NEXT_FIX_PATH = ROOT_DIR / "next_fix.txt"
 STABILITY_REPORT_PATH = ROOT_DIR / "stability_report.json"
+STATE_STORE_WRITE_FAILURE_PATH = ROOT_DIR / "devstream" / "truth" / "state-store-write-failure.json"
 
 DEFAULT_NEXT_FIX = "Pending replay review"
 
@@ -46,11 +49,51 @@ def _status_with_cleared_blocker(status: dict[str, Any]) -> dict[str, Any]:
     return cleared
 
 
+def _write_state_store_failure(path: Path, exc: BaseException, attempts: int) -> None:
+    failure = {
+        "schemaVersion": "fouler-play-state-store-write-failure/v1",
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "target": str(path),
+        "attempts": attempts,
+        "errorType": type(exc).__name__,
+        "error": str(exc),
+        "safeForPublicLogs": True,
+    }
+    STATE_STORE_WRITE_FAILURE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    STATE_STORE_WRITE_FAILURE_PATH.write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
+
+
 def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp")
+    attempts = 6
+    with tmp.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    last_error: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError as exc:
+            last_error = exc
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 5:
+                raise
+            last_error = exc
+        if attempt < attempts:
+            time.sleep(0.05 * attempt)
+    if tmp.exists():
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+    if last_error is None:
+        last_error = RuntimeError(f"atomic write failed for {path}")
+    _write_state_store_failure(path, last_error, attempts)
+    raise last_error
 
 
 def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:

@@ -184,6 +184,7 @@ RESUME_ACTIVE_BATTLES = os.getenv("RESUME_ACTIVE_BATTLES", "1").strip().lower() 
 )
 RESUME_MAX_AGE_SEC = int(os.getenv("RESUME_MAX_AGE_SEC", "900"))
 RESUME_JOIN_TIMEOUT_SEC = int(os.getenv("RESUME_JOIN_TIMEOUT_SEC", "10"))
+SEARCH_WAIT_TIMEOUT_SEC = int(os.getenv("SEARCH_WAIT_TIMEOUT_SEC", "120"))
 REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "60"))
 REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
@@ -1636,10 +1637,23 @@ async def get_battle_tag_and_opponent(
                 # If battle is closed/finished, drop and continue to next entry.
 
     battle_tag_pattern = re.compile(r'^>(battle-[a-z0-9-]+)')
+    search_wait_started = time.time()
 
     while True:
         if stop_event is not None and stop_event.is_set():
             _release_search("stopped")
+            return None, None, False, None
+        if SEARCH_WAIT_TIMEOUT_SEC > 0 and (time.time() - search_wait_started) >= SEARCH_WAIT_TIMEOUT_SEC:
+            logger.warning(
+                "Timed out waiting %ss for worker %s ladder search; cancelling and retrying.",
+                SEARCH_WAIT_TIMEOUT_SEC,
+                worker_id,
+            )
+            try:
+                await ps_websocket_client.cancel_search()
+            except Exception:
+                pass
+            _release_search("search wait timeout")
             return None, None, False, None
         # First try to atomically claim a pending battle (prevents race conditions)
         battle_tag, pending_msgs = await ps_websocket_client.claim_pending_battle(worker_id)

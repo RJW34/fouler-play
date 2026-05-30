@@ -41,15 +41,14 @@
   "obs": {
     "collection": "CrossProjectDevstream",
     "profile": "CrossProjectDevstream",
-    "primaryScene": "fouler-play - Hybrid Main",
-    "scenes": ["fouler-play - Hybrid Main", "fouler-play - Dashboard Focus"],
+    "primaryScene": "fouler-play - Battle Lab Main",
+    "scenes": ["fouler-play - Battle Lab Main", "fouler-play - Battle Slots"],
     "surfaces": [
-      {"name": "slot 1", "url": "http://jigglypuff.tail4859dd.ts.net:8777/slot/1", "required": true},
-      {"name": "slot 2", "url": "http://jigglypuff.tail4859dd.ts.net:8777/slot/2", "required": false},
-      {"name": "slot 3", "url": "http://jigglypuff.tail4859dd.ts.net:8777/slot/3", "required": false},
-      {"name": "hybrid overlay", "url": "http://jigglypuff.tail4859dd.ts.net:8777/overlay/hybrid", "required": true},
-      {"name": "hybrid dashboard", "url": "http://jigglypuff.tail4859dd.ts.net:8777/dashboard/hybrid", "required": true},
-      {"name": "health", "url": "http://jigglypuff.tail4859dd.ts.net:8777/health", "required": true, "captureRequired": false}
+      {"name": "slot 1", "url": "http://192.168.1.126:8777/slot/1?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/1?slot_idle=public"], "required": true},
+      {"name": "slot 2", "url": "http://192.168.1.126:8777/slot/2?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/2?slot_idle=public"], "required": true},
+      {"name": "slot 3", "url": "http://192.168.1.126:8777/slot/3?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/3?slot_idle=public"], "required": true},
+      {"name": "battle lab overlay", "url": "http://192.168.1.126:8777/overlay?mode=bottom&hide_recent=1", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/overlay?mode=bottom&hide_recent=1"], "required": true},
+      {"name": "health", "url": "http://192.168.1.126:8777/health", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/health"], "required": true, "captureRequired": false, "operatorOnly": true}
     ]
   },
   "focus": {
@@ -100,6 +99,7 @@
       ".venv/bin/python scripts/devstream_session.py doctor",
       ".venv/bin/python scripts/devstream_cycle_report.py --write",
       ".venv/bin/python scripts/showdown_login_check.py",
+      ".venv/bin/python -m pytest tests/test_autoresearch.py tests/test_loss_learning_guardrails.py tests/test_pokedex_oracle.py tests/test_threat_bias.py -q",
       ".venv/bin/python -m pytest tests/test_hybrid_dashboard.py tests/test_state_endpoint_status.py"
     ]
   }

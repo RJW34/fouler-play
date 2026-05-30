@@ -55,6 +55,9 @@ def test_run_hybrid_rerank_skips_when_non_eval_mode():
     assert result.metadata["status"] == "skipped"
     assert result.metadata["engine_choice"] == "move1"
     assert isinstance(result.metadata["candidates"], list)
+    assert result.metadata["llm_authority"] == "advisory_rerank_only"
+    assert result.metadata["truth_source"] == "engine_candidate_list"
+    assert result.metadata["mechanics_claims_allowed"] is False
 
 
 def test_run_hybrid_rerank_skips_when_clear_best_eval():
@@ -108,3 +111,97 @@ def test_run_hybrid_rerank_skips_when_in_backoff_window():
         assert result.metadata["retry_in_sec"] >= 1
     finally:
         hybrid_policy._RERANK_RATE_LIMIT_UNTIL = old
+
+
+def test_run_hybrid_rerank_rejects_llm_choice_outside_showdown_request(monkeypatch):
+    class FakeResponse:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def text(self):
+            return '{"choices":[{"message":{"content":"{\\"choice_index\\":1,\\"reason\\":\\"pick illegal coverage\\"}"}}]}'
+
+    class FakeSession:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def post(self, *args, **kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr(hybrid_policy.aiohttp, "ClientSession", FakeSession)
+    trace = {
+        "decision_mode": "eval",
+        "eval_scores_raw": {
+            "earthquake": 1.0,
+            "recover": 0.99,
+        },
+        "legalOptions": {
+            "source": "showdown-request",
+            "requestHash": "a" * 64,
+            "candidateSetBounded": True,
+            "legalMoves": [{"id": "recover"}],
+            "legalSwitches": [],
+        },
+    }
+
+    result = asyncio.run(
+        run_hybrid_rerank(
+            battle=object(),
+            engine_choice="recover",
+            trace=trace,
+            api_key="dummy",
+            model="gpt-4.1-mini",
+            api_base="https://api.openai.com/v1",
+            timeout_sec=1.0,
+            top_k=3,
+        )
+    )
+
+    assert result.decision is None
+    assert result.metadata["status"] == "blocked"
+    assert result.metadata["reason"] == "candidate_not_in_showdown_request"
+    assert result.metadata["selected_decision"] == "earthquake"
+
+
+def test_run_hybrid_rerank_blocks_when_showdown_request_legality_missing(monkeypatch):
+    class FakeSession:
+        def __init__(self, *args, **kwargs):
+            raise AssertionError("hybrid rerank must not call the LLM without request-backed legal options")
+
+    monkeypatch.setattr(hybrid_policy.aiohttp, "ClientSession", FakeSession)
+    trace = {
+        "decision_mode": "eval",
+        "eval_scores_raw": {
+            "earthquake": 1.0,
+            "recover": 0.99,
+        },
+    }
+
+    result = asyncio.run(
+        run_hybrid_rerank(
+            battle=object(),
+            engine_choice="recover",
+            trace=trace,
+            api_key="dummy",
+            model="gpt-4.1-mini",
+            api_base="https://api.openai.com/v1",
+            timeout_sec=1.0,
+            top_k=3,
+        )
+    )
+
+    assert result.decision is None
+    assert result.metadata["status"] == "blocked"
+    assert result.metadata["reason"] == "missing_showdown_request_legal_options"
+    assert result.metadata["truth_source"] == "showdown_request_legal_options"

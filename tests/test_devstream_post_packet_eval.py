@@ -141,3 +141,30 @@ def test_waits_for_autoresearch_when_post_packet_battle_is_not_consumed():
     assert report["status"] == "awaiting-post-packet-autoresearch"
     assert report["actionablePostPacketEval"] is False
     assert report["proofWindow"]["autoresearchCoversLatestBattle"] is False
+
+
+def test_packet_evidence_integrity_blocks_post_packet_success():
+    bad_packet = packet(status="implemented")
+    bad_packet["evidence_integrity"] = {
+        "ok": False,
+        "blockers": ["finding evidence is not linked to any Showdown battle id"],
+    }
+
+    report = evaluator.build_report(
+        packet=bad_packet,
+        elo_proof=elo_proof(
+            latest_at="2026-05-08T00:00:00+00:00",
+            latest_id="battle-gen9ou-post",
+            improving=True,
+        ),
+        autoresearch=autoresearch(
+            latest_at="2026-05-08T00:01:00+00:00",
+            latest_id="battle-gen9ou-post",
+            issue_present=False,
+            shift_direction="better",
+        ),
+    )
+
+    assert report["status"] == "packet-evidence-integrity-blocked"
+    assert report["actionablePostPacketEval"] is False
+    assert "not linked to any Showdown battle id" in report["blockers"][0]

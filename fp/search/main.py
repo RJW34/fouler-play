@@ -4671,14 +4671,27 @@ def apply_hazard_maintenance_bias(
     """
     if battle is None or ability_state is None or getattr(battle, "force_switch", False):
         return policy
-    if getattr(ability_state, "opponent_hazard_layers", 0) <= 0:
-        return policy
     if not getattr(ability_state, "opponent_active_has_hazard_removal", False):
         return policy
 
-    hazard_layers = max(1, int(getattr(ability_state, "opponent_hazard_layers", 0) or 0))
+    active_hazard_can_progress = any(
+        not move.startswith("switch ")
+        and normalize_name(move.split(":")[-1] if ":" in move else move) in HAZARD_SETTING_MOVES_NORM
+        and _hazard_move_can_progress(
+            normalize_name(move.split(":")[-1] if ":" in move else move),
+            battle,
+        )
+        for move, weight in policy.items()
+        if weight > 0
+    )
+    raw_hazard_layers = int(getattr(ability_state, "opponent_hazard_layers", 0) or 0)
+    if raw_hazard_layers <= 0 and not active_hazard_can_progress:
+        return policy
+
+    hazard_layers = max(1, raw_hazard_layers)
     urgency = min(1.0, 0.30 + hazard_layers * 0.14)
     spinner_active = bool(getattr(ability_state, "opponent_active_removal_is_spin", False))
+    no_layers_yet = raw_hazard_layers <= 0
 
     best_pressure_weight = 0.0
     for move, weight in policy.items():
@@ -4734,8 +4747,12 @@ def apply_hazard_maintenance_bias(
                     reason = "hazard_preserve_pressure"
             elif move_norm in HAZARD_SETTING_MOVES:
                 if _hazard_move_can_progress(move_norm, battle):
-                    new_weight = weight * 0.72
-                    reason = "hazard_preserve_delay_restack"
+                    new_weight = weight * (0.62 if no_layers_yet else 0.72)
+                    reason = (
+                        "hazard_preserve_pressure_remover_first"
+                        if no_layers_yet
+                        else "hazard_preserve_delay_restack"
+                    )
                 else:
                     new_weight = weight * 0.35
                     reason = "hazard_preserve_no_progress"

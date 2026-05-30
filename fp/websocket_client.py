@@ -12,6 +12,30 @@ from fp.ws_rate_limiter import WSSendQueue, _classify
 logger = logging.getLogger(__name__)
 
 
+def _public_replay_id_from_ref(value):
+    """Return the public replay id portion for a battle tag or replay URL."""
+    if not value:
+        return ""
+    ref = str(value).strip()
+    if "/" in ref:
+        ref = ref.rsplit("/", 1)[-1]
+    if ref.endswith(".json"):
+        ref = ref[:-5]
+    if ref.startswith("battle-"):
+        ref = ref.replace("battle-", "", 1)
+    parts = ref.split("-")
+    if len(parts) >= 2 and parts[1].isdigit():
+        return f"{parts[0]}-{parts[1]}"
+    return ref
+
+
+def _replay_ref_matches_battle(replay_ref, battle_tag):
+    """Reject savereplay responses that belong to another active battle."""
+    expected = _public_replay_id_from_ref(battle_tag)
+    actual = _public_replay_id_from_ref(replay_ref)
+    return bool(expected and actual and expected == actual)
+
+
 class LoginError(Exception):
     pass
 
@@ -667,10 +691,17 @@ class PSWebsocketClient:
 
                 # Check for direct replay URL (some server versions)
                 if "replay.pokemonshowdown.com" in msg:
-                    import re
                     replay_match = re.search(r'https://replay\.pokemonshowdown\.com/([\w-]+)', msg)
                     if replay_match:
-                        replay_url = f"https://replay.pokemonshowdown.com/{replay_match.group(1)}"
+                        replay_id = replay_match.group(1)
+                        if not _replay_ref_matches_battle(replay_id, battle_tag):
+                            logger.warning(
+                                "Ignoring savereplay URL for %s because it belongs to %s",
+                                battle_tag,
+                                replay_id,
+                            )
+                            continue
+                        replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
                         logger.info(f"Replay saved: {replay_url}")
                         return replay_url
 
@@ -679,27 +710,33 @@ class PSWebsocketClient:
                     try:
                         json_str = msg.split("|queryresponse|savereplay|", 1)[1]
                         replay_data = json.loads(json_str)
+                        replay_id = replay_data.get("id", battle_tag)
+                        if not _replay_ref_matches_battle(replay_id, battle_tag):
+                            logger.warning(
+                                "Ignoring savereplay response for %s because replay id was %s",
+                                battle_tag,
+                                replay_id,
+                            )
+                            continue
 
                         # Upload the replay to create the public URL
                         upload_url = "https://play.pokemonshowdown.com/~~showdown/action.php"
                         post_data = {
                             "act": "uploadreplay",
                             "log": replay_data.get("log", ""),
-                            "id": replay_data.get("id", battle_tag),
+                            "id": replay_id,
                         }
 
                         resp = requests.post(upload_url, data=post_data, timeout=15)
 
                         if resp.status_code == 200:
                             # Response should contain the replay URL or ID
-                            replay_id = replay_data.get("id", battle_tag)
                             replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
                             logger.info(f"Replay saved: {replay_url}")
                             return replay_url
                         else:
                             logger.warning(f"Replay upload failed with status {resp.status_code}: {resp.text[:200]}")
                             # Still return the URL - replay might exist anyway
-                            replay_id = replay_data.get("id", battle_tag)
                             replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
                             logger.info(f"Replay URL (upload may have failed): {replay_url}")
                             return replay_url

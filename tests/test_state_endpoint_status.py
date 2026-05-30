@@ -110,3 +110,45 @@ def test_status_endpoint_reflects_active_battles(tmp_path, monkeypatch):
     assert payload["status"] == "Active"
     assert payload["active_battles"] == ["battle-gen9ou-12345678"]
     assert payload["battle_info"] == "vs TestOpponent"
+
+
+def test_status_endpoint_clears_stale_battle_info_when_searching(tmp_path, monkeypatch):
+    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
+    monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
+    monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+
+    state_store.write_status({"status": "Searching", "battle_info": "vs stale-opponent"})
+    state_store.update_daily_stats(0, 0)
+    state_store.write_active_battles({"battles": [], "count": 0})
+
+    response = asyncio.run(serve_obs_page.handle_status(None))
+    payload = json.loads(response.text)
+
+    assert payload["status"] == "Searching"
+    assert payload["battle_info"] == "Searching..."
+    assert payload["active_battles"] == []
+
+
+def test_active_battle_atomic_write_retries_windows_replace_lock(tmp_path, monkeypatch):
+    active_path = tmp_path / "active_battles.json"
+    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", active_path)
+    monkeypatch.setattr(state_store, "STATE_STORE_WRITE_FAILURE_PATH", tmp_path / "devstream" / "truth" / "state-store-write-failure.json")
+    monkeypatch.setattr(state_store.time, "sleep", lambda _seconds: None)
+
+    calls = {"count": 0}
+    original_replace = state_store.os.replace
+
+    def flaky_replace(src, dst):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise PermissionError("simulated Windows file lock")
+        return original_replace(src, dst)
+
+    monkeypatch.setattr(state_store.os, "replace", flaky_replace)
+
+    state_store.write_active_battles({"battles": [], "count": 0})
+
+    assert calls["count"] == 2
+    assert json.loads(active_path.read_text(encoding="utf-8"))["count"] == 0
+    assert not (tmp_path / "active_battles.json.tmp").exists()
+    assert not state_store.STATE_STORE_WRITE_FAILURE_PATH.exists()
