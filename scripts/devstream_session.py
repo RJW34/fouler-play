@@ -912,6 +912,27 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
             timeout=args.proof_timeout_seconds,
         )
     )
+
+    # --- Self-improvement loop (Phase D wired into the live runtime) ---------
+    # After fresh autoresearch, attempt ONE bounded improvement and then let the
+    # ELO watchdog judge/revert the previous deploy. Both steps are own-gated and
+    # self-reverting; they only run between battle cycles (idle phase) so they
+    # never disrupt a live battle. improve_agent enforces deploy-spacing +
+    # offline pytest + auto-revert and records a deploy_log entry; elo_watchdog
+    # reverts a deploy whose post-deploy ELO dropped past the guardrail.
+    if not args.skip_improve:
+        payload["actions"].append(
+            run_supervisor_command(
+                [py, "infrastructure/improve_agent.py"],
+                timeout=args.improve_timeout_seconds,
+            )
+        )
+        payload["actions"].append(
+            run_supervisor_command(
+                [py, "infrastructure/elo_watchdog.py"],
+                timeout=args.proof_timeout_seconds,
+            )
+        )
     payload["actions"].append(
         run_supervisor_command(
             [
@@ -1294,6 +1315,9 @@ def main() -> int:
     supervise.add_argument("--autoresearch-count", type=int, default=30)
     supervise.add_argument("--proof-timeout-seconds", type=int, default=300)
     supervise.add_argument("--start-timeout-seconds", type=int, default=60)
+    supervise.add_argument("--improve-timeout-seconds", type=int, default=240)
+    supervise.add_argument("--skip-improve", action="store_true",
+                           help="Disable the self-improvement loop (improve_agent + elo_watchdog).")
     stop = sub.add_parser("stop")
     stop.add_argument("--force", action="store_true")
     stop.add_argument("--max-wait-seconds", type=int, default=1800)
