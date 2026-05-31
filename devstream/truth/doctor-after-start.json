@@ -1,0 +1,516 @@
+{
+  "checkedAt": "2026-05-25T04:06:47.613686+00:00",
+  "checks": [
+    {
+      "details": {
+        "activeBattleCount": 2,
+        "blockers": [],
+        "checkedAt": "2026-05-25T04:06:47.515760+00:00",
+        "credentials": {
+          "recentShowdownFailure": {
+            "found": false,
+            "latestSuccessfulProof": {
+              "checkedAt": "2026-05-03T00:15:38.661699+00:00",
+              "found": true,
+              "mtime": "2026-05-03T00:15:39.360803+00:00",
+              "ok": true,
+              "path": "devstream/truth/showdown-login-proof.json"
+            },
+            "scanned": [
+              {
+                "ageSeconds": 0.929,
+                "exists": true,
+                "mtime": "2026-05-25T04:06:46.585319+00:00",
+                "path": "logs/devstream_battle_session.log",
+                "scanned": true
+              },
+              {
+                "ageSeconds": 3.106,
+                "exists": true,
+                "mtime": "2026-05-25T04:06:44.408037+00:00",
+                "path": "logs/init.log",
+                "scanned": true
+              }
+            ]
+          }
+        },
+        "endpoints": {
+          "/battles": {
+            "contentType": "application/json; charset=utf-8",
+            "json": {
+              "battles": [
+                {
+                  "id": "battle-gen9ou-2617391691",
+                  "opponent": "blueThe12thman",
+                  "players": [
+                    "claudechamp",
+                    "blueThe12thman"
+                  ],
+                  "slot": 2,
+                  "started": "2026-05-25T00:01:46.183953",
+                  "status": "active",
+                  "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391691",
+                  "worker_id": 1
+                },
+                {
+                  "id": "battle-gen9ou-2617391746",
+                  "opponent": "pazortegaFGC",
+                  "players": [
+                    "claudechamp",
+                    "pazortegaFGC"
+                  ],
+                  "slot": 1,
+                  "started": "2026-05-25T00:01:52.974772",
+                  "status": "active",
+                  "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391746",
+                  "worker_id": 0
+                }
+              ],
+              "count": 2,
+              "max_slots": 2,
+              "updated": "2026-05-25T00:06:32.069392"
+            },
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/battles"
+          },
+          "/dashboard/hybrid": {
+            "contentType": "text/html",
+            "json": null,
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/dashboard/hybrid"
+          },
+          "/overlay/hybrid": {
+            "contentType": "text/html",
+            "json": null,
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/overlay/hybrid"
+          },
+          "/slot/1": {
+            "contentType": "text/html; charset=utf-8",
+            "json": null,
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/slot/1"
+          },
+          "/slot/1/state": {
+            "contentType": "application/json; charset=utf-8",
+            "json": {
+              "battle_id": "battle-gen9ou-2617391746",
+              "slot": 1,
+              "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391746"
+            },
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/slot/1/state"
+          },
+          "/slot/2/state": {
+            "contentType": "application/json; charset=utf-8",
+            "json": {
+              "battle_id": "battle-gen9ou-2617391691",
+              "slot": 2,
+              "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391691"
+            },
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/slot/2/state"
+          },
+          "/slot/3/state": {
+            "contentType": "application/json; charset=utf-8",
+            "json": {
+              "battle_id": null,
+              "slot": 3,
+              "url": null
+            },
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/slot/3/state"
+          },
+          "/state": {
+            "contentType": "application/json; charset=utf-8",
+            "json": {
+              "accounts_elo": {},
+              "battles": [
+                {
+                  "id": "battle-gen9ou-2617391691",
+                  "opponent": "blueThe12thman",
+                  "players": [
+                    "claudechamp",
+                    "blueThe12thman"
+                  ],
+                  "slot": 2,
+                  "started": "2026-05-25T00:01:46.183953",
+                  "status": "active",
+                  "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391691",
+                  "worker_id": 1
+                },
+                {
+                  "id": "battle-gen9ou-2617391746",
+                  "opponent": "pazortegaFGC",
+                  "players": [
+                    "claudechamp",
+                    "pazortegaFGC"
+                  ],
+                  "slot": 1,
+                  "started": "2026-05-25T00:01:52.974772",
+                  "status": "active",
+                  "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391746",
+                  "worker_id": 0
+                }
+              ],
+              "count": 2,
+              "max_slots": 2,
+              "runtime_blocked": false,
+              "status": {
+                "accounts_elo": {},
+                "battle_info": "vs blueThe12thman",
+                "elo": "---",
+                "losses": 1,
+                "next_fix": "Pending replay review",
+                "status": "Active",
+                "stream_pid": null,
+                "streaming": false,
+                "today_losses": 1,
+                "today_wins": 1,
+                "updated": "2026-05-25T00:01:45.852957",
+                "wins": 1
+              },
+              "updated": "2026-05-25T00:06:32.069392"
+            },
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/state"
+          },
+          "/status": {
+            "contentType": "application/json; charset=utf-8",
+            "json": {
+              "active_battles": [
+                "battle-gen9ou-2617391691",
+                "battle-gen9ou-2617391746"
+              ],
+              "battle_info": "vs blueThe12thman, vs pazortegaFGC",
+              "elo": "---",
+              "losses": 1,
+              "next_fix": "Pending replay review",
+              "status": "Searching",
+              "stream_pid": null,
+              "streaming": false,
+              "today_losses": 1,
+              "today_wins": 1,
+              "updated": "2026-05-25T00:01:45.852957",
+              "wins": 1
+            },
+            "ok": true,
+            "statusCode": 200,
+            "url": "http://127.0.0.1:8777/status"
+          }
+        },
+        "git": {
+          "commit": "fb62db6",
+          "dirty": true
+        },
+        "healthy": true,
+        "ports": {
+          "obsHttp": {
+            "open": true,
+            "port": 8777
+          },
+          "obsWebSocket": {
+            "open": false,
+            "port": 4455
+          }
+        },
+        "projectId": "fouler-play",
+        "readiness": {
+          "analyticsFresh": false,
+          "runtimeReady": true,
+          "streamReady": true
+        },
+        "readyForLiveFocus": false,
+        "running": true,
+        "schemaVersion": "devstream-health/v1",
+        "services": {
+          "fouler-devstream.service": {
+            "active": false,
+            "activeState": "unknown",
+            "enabledState": "unknown"
+          },
+          "fouler-pipeline.service": {
+            "active": false,
+            "activeState": "unknown",
+            "enabledState": "unknown"
+          },
+          "fouler-play-watcher.service": {
+            "active": false,
+            "activeState": "unknown",
+            "enabledState": "unknown"
+          },
+          "fouler-play.service": {
+            "active": false,
+            "activeState": "unknown",
+            "enabledState": "unknown"
+          },
+          "fouler-stability-monitor.service": {
+            "active": false,
+            "activeState": "unknown",
+            "enabledState": "unknown"
+          }
+        },
+        "slotReadiness": {
+          "checks": [
+            {
+              "battleId": "battle-gen9ou-2617391691",
+              "localState": {
+                "battle_id": "battle-gen9ou-2617391691",
+                "slot": 2,
+                "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391691"
+              },
+              "localStateOk": true,
+              "opponent": "blueThe12thman",
+              "ready": true,
+              "showdownPage": {
+                "checked": true,
+                "ok": false,
+                "statusCode": 200,
+                "title": "Showdown!",
+                "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391691"
+              },
+              "slot": 2
+            },
+            {
+              "battleId": "battle-gen9ou-2617391746",
+              "localState": {
+                "battle_id": "battle-gen9ou-2617391746",
+                "slot": 1,
+                "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391746"
+              },
+              "localStateOk": true,
+              "opponent": "pazortegaFGC",
+              "ready": true,
+              "showdownPage": {
+                "checked": true,
+                "ok": false,
+                "statusCode": 200,
+                "title": "Showdown!",
+                "url": "https://play.pokemonshowdown.com/battle-gen9ou-2617391746"
+              },
+              "slot": 1
+            }
+          ],
+          "ready": true
+        },
+        "status": "running",
+        "truth": [
+          {
+            "ageSeconds": 14.746,
+            "exists": true,
+            "label": "active battles",
+            "mtime": "2026-05-25T04:06:32.070104+00:00",
+            "optional": true,
+            "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\active_battles.json",
+            "relativePath": "active_battles.json",
+            "stale": false,
+            "staleAfterSeconds": 1800,
+            "summary": {
+              "battleCount": 2,
+              "updated": "2026-05-25T00:06:32.069392"
+            }
+          },
+          {
+            "ageSeconds": 300.963,
+            "exists": true,
+            "label": "stream status",
+            "mtime": "2026-05-25T04:01:45.852642+00:00",
+            "optional": true,
+            "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\stream_status.json",
+            "relativePath": "stream_status.json",
+            "stale": false,
+            "staleAfterSeconds": 21600,
+            "summary": {
+              "blockerCode": null,
+              "blockerSummary": null,
+              "elo": "---",
+              "nextFix": "Pending replay review",
+              "runtimeBlocked": false,
+              "status": "Searching",
+              "updated": "2026-05-25T00:01:45.852957"
+            }
+          },
+          {
+            "ageSeconds": 300.971,
+            "exists": true,
+            "label": "daily stats",
+            "mtime": "2026-05-25T04:01:45.845130+00:00",
+            "optional": true,
+            "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\daily_stats.json",
+            "relativePath": "daily_stats.json",
+            "stale": false,
+            "staleAfterSeconds": 21600,
+            "summary": {
+              "losses": 1,
+              "wins": 1
+            }
+          },
+          {
+            "ageSeconds": 299.035,
+            "exists": true,
+            "label": "battle stats",
+            "mtime": "2026-05-25T04:01:47.781750+00:00",
+            "optional": true,
+            "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\battle_stats.json",
+            "relativePath": "battle_stats.json",
+            "stale": false,
+            "staleAfterSeconds": null,
+            "summary": null
+          },
+          {
+            "ageSeconds": 17896.75,
+            "exists": true,
+            "label": "autoresearch json",
+            "mtime": "2026-05-24T23:08:30.076929+00:00",
+            "optional": true,
+            "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\replay_analysis\\autoresearch_latest.json",
+            "relativePath": "replay_analysis/autoresearch_latest.json",
+            "stale": false,
+            "staleAfterSeconds": 86400,
+            "summary": null
+          },
+          {
+            "ageSeconds": 202262.883,
+            "exists": true,
+            "label": "autoresearch report",
+            "mtime": "2026-05-22T19:55:43.944212+00:00",
+            "optional": true,
+            "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\replay_analysis\\reports\\autoresearch_latest.md",
+            "relativePath": "replay_analysis/reports/autoresearch_latest.md",
+            "stale": true,
+            "staleAfterSeconds": 86400,
+            "summary": null
+          },
+          {
+            "ageSeconds": 17896.743,
+            "exists": true,
+            "label": "stability report",
+            "mtime": "2026-05-24T23:08:30.084928+00:00",
+            "optional": true,
+            "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\stability_report.json",
+            "relativePath": "stability_report.json",
+            "stale": false,
+            "staleAfterSeconds": 86400,
+            "summary": null
+          }
+        ],
+        "warnings": [
+          "stale truth file: replay_analysis/reports/autoresearch_latest.md"
+        ]
+      },
+      "name": "health_probe",
+      "ok": true
+    },
+    {
+      "name": "elo_proof_schema",
+      "ok": true,
+      "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\devstream\\truth\\elo-proof.schema.json"
+    },
+    {
+      "name": "elo_proof_example",
+      "ok": true,
+      "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\devstream\\truth\\elo-proof.example.json"
+    },
+    {
+      "name": "showdown_login_check_tool",
+      "ok": true,
+      "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\scripts\\showdown_login_check.py"
+    },
+    {
+      "name": "showdown_identity_env",
+      "note": "PS_USERNAME or SHOWDOWN_USER_ID must be available at runtime",
+      "ok": true
+    },
+    {
+      "name": "showdown_password_env",
+      "note": "PS_PASSWORD is required for registered Showdown ladder sessions; the value is never emitted.",
+      "ok": true,
+      "required": true
+    },
+    {
+      "details": {
+        "found": false,
+        "latestSuccessfulProof": {
+          "checkedAt": "2026-05-03T00:15:38.661699+00:00",
+          "found": true,
+          "mtime": "2026-05-03T00:15:39.360803+00:00",
+          "ok": true,
+          "path": "devstream/truth/showdown-login-proof.json"
+        },
+        "scanned": [
+          {
+            "ageSeconds": 1.026,
+            "exists": true,
+            "mtime": "2026-05-25T04:06:46.585319+00:00",
+            "path": "logs/devstream_battle_session.log",
+            "scanned": true
+          },
+          {
+            "ageSeconds": 3.203,
+            "exists": true,
+            "mtime": "2026-05-25T04:06:44.408037+00:00",
+            "path": "logs/init.log",
+            "scanned": true
+          }
+        ]
+      },
+      "name": "showdown_recent_credential_failure",
+      "ok": true
+    },
+    {
+      "details": [
+        {
+          "changed": false,
+          "mode": "0o666",
+          "ok": true,
+          "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\.env"
+        }
+      ],
+      "name": "env_file_permissions",
+      "ok": true
+    },
+    {
+      "command": [
+        "C:\\Users\\mtoli\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe",
+        "run.py",
+        "--websocket-uri",
+        "wss://sim3.psim.us/showdown/websocket",
+        "--ps-username",
+        "claudechamp",
+        "--bot-mode",
+        "search_ladder",
+        "--pokemon-format",
+        "gen9ou",
+        "--run-count",
+        "25",
+        "--max-concurrent-battles",
+        "3",
+        "--save-replay",
+        "always",
+        "--log-to-file",
+        "--team-names",
+        "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo",
+        "--spectator-username",
+        "CHUNGMIGHT"
+      ],
+      "name": "run_command_materializes",
+      "ok": true
+    },
+    {
+      "activeBattleCount": 2,
+      "name": "active_battle_drain",
+      "ok": false
+    }
+  ],
+  "note": "Read-only doctor; it does not queue battles or start services.",
+  "ready": false,
+  "schemaVersion": "fouler-play-devstream-doctor/v1"
+}

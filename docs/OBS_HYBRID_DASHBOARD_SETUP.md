@@ -28,7 +28,7 @@ This writes:
 
 In OBS: `Scene Collection` -> select `Fouler Play Hybrid Battles`.
 
-## 2) Browser dashboard (normal browser)
+## 2) Operator dashboard (normal browser only)
 
 Open:
 
@@ -36,14 +36,14 @@ Open:
 http://localhost:8777/dashboard/hybrid
 ```
 
-This is the full decision dashboard with timeline, latest decision details, and learning signals.
+This is the full decision dashboard with timeline, latest decision details, and learning signals. It is for local/operator review only. Do not add it to public OBS scenes.
 
-## 3) OBS Browser Source URL
+## 3) Public OBS Browser Source URL
 
 Use this for the OBS-optimized overlay:
 
 ```text
-http://localhost:8777/overlay/hybrid
+http://localhost:8777/overlay?mode=bottom&hide_recent=1
 ```
 
 Recommended Browser Source settings:
@@ -80,7 +80,7 @@ For 720p scenes:
 1. Verify server is running on the same machine/port:
    - `http://localhost:8777/obs-debug`
 2. Confirm Browser Source URL exactly matches:
-   - `http://localhost:8777/overlay/hybrid`
+   - `http://localhost:8777/overlay?mode=bottom&hide_recent=1`
 3. In OBS Browser Source, click `Refresh cache of current page`.
 4. If battle slots stay idle, verify OBS WebSocket is connected in debug JSON:
    - `obs.client_status` should be `connected`

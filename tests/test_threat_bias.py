@@ -506,6 +506,43 @@ class TestSwitchChainSelectionOverride(unittest.TestCase):
 
         self.assertLess(adjusted["spikes"], adjusted["earthquake"])
 
+    def test_hazard_maintenance_pressures_active_spinner_before_first_layer(self):
+        battle = _mk_battle(
+            active_hp=320,
+            active_max_hp=354,
+            move_names=["spikes", "earthquake", "toxic", "protect"],
+        )
+        battle.user.active.name = "gliscor"
+        battle.opponent.active = SimpleNamespace(
+            name="irontreads",
+            hp=320,
+            max_hp=384,
+            moves=[_mk_move("rapidspin"), _mk_move("highhorsepower")],
+            types=["ground", "steel"],
+        )
+        battle.opponent.side_conditions = defaultdict(int)
+
+        ability_state = OpponentAbilityState(
+            opponent_hp_percent=320 / 384,
+            our_hp_percent=320 / 354,
+            opponent_alive_count=5,
+            opponent_has_hazard_removal=True,
+            opponent_hazard_layers=0,
+            opponent_active_has_hazard_removal=True,
+            opponent_active_removal_is_spin=True,
+        )
+
+        policy = {
+            "spikes": 1.0,
+            "earthquake": 0.82,
+            "toxic": 0.35,
+            "protect": 0.22,
+        }
+
+        adjusted = apply_hazard_maintenance_bias(policy, battle, ability_state)
+
+        self.assertLess(adjusted["spikes"], adjusted["earthquake"])
+
     def test_hazard_maintenance_prefers_spinblock_over_passive_pivot(self):
         battle = _mk_battle(
             active_hp=190,
@@ -1314,6 +1351,123 @@ class TestTeamStrategyThreatSuppression(unittest.TestCase):
         self.assertLess(adjusted["recover"], policy["recover"])
         self.assertLess(adjusted["nastyplot"], policy["nastyplot"])
         self.assertLess(adjusted["stealthrock"], policy["stealthrock"])
+
+
+class TestTeamStrategyHazardRouting(unittest.TestCase):
+    def _mk_hazard_route_battle(
+        self,
+        active_moves: list[str] | None = None,
+        opponent_boosts: dict[str, int] | None = None,
+    ):
+        active = SimpleNamespace(
+            name="dondozo",
+            hp=430,
+            max_hp=504,
+            moves=[_mk_move(m) for m in (active_moves or ["bodypress", "rest", "protect"])],
+            types=["water"],
+        )
+        blissey = SimpleNamespace(
+            name="blissey",
+            hp=620,
+            max_hp=652,
+            moves=[_mk_move("stealthrock"), _mk_move("softboiled")],
+            types=["normal"],
+            stats={
+                constants.DEFENSE: 75,
+                constants.SPECIAL_DEFENSE: 135,
+            },
+        )
+        clefable = SimpleNamespace(
+            name="clefable",
+            hp=360,
+            max_hp=394,
+            moves=[_mk_move("moonblast"), _mk_move("wish")],
+            types=["normal"],
+            stats={
+                constants.DEFENSE: 75,
+                constants.SPECIAL_DEFENSE: 135,
+            },
+        )
+        user = SimpleNamespace(
+            active=active,
+            reserve=[blissey, clefable],
+            side_conditions=defaultdict(int),
+        )
+        opponent_active = SimpleNamespace(
+            name="alomomola",
+            hp=520,
+            max_hp=534,
+            boosts=opponent_boosts or {},
+            moves=[_mk_move("wish"), _mk_move("flipturn")],
+            types=["water"],
+            stats={},
+        )
+        opponent = SimpleNamespace(
+            active=opponent_active,
+            reserve=[
+                SimpleNamespace(name="gliscor", hp=300, max_hp=354),
+                SimpleNamespace(name="tinglu", hp=430, max_hp=504),
+            ],
+            side_conditions=defaultdict(int),
+            account_name=None,
+            name=None,
+        )
+        return SimpleNamespace(
+            user=user,
+            opponent=opponent,
+            turn=6,
+            force_switch=False,
+        )
+
+    def test_routes_fat_team_into_available_hazard_setter_when_active_cannot_set(self):
+        battle = self._mk_hazard_route_battle()
+        team_plan = SimpleNamespace(
+            hazard_setters={"blissey"},
+            wincons=set(),
+        )
+        policy = {
+            "bodypress": 0.40,
+            "switch blissey": 0.45,
+            "switch clefable": 0.45,
+        }
+
+        adjusted = apply_team_strategy_bias(policy, battle, team_plan, Playstyle.FAT)
+
+        self.assertGreater(adjusted["switch blissey"], adjusted["switch clefable"])
+        self.assertGreater(adjusted["switch blissey"], policy["switch blissey"])
+
+    def test_does_not_switch_to_setter_when_active_can_set_progressing_hazard(self):
+        battle = self._mk_hazard_route_battle(active_moves=["stealthrock", "bodypress", "rest"])
+        team_plan = SimpleNamespace(
+            hazard_setters={"blissey", "dondozo"},
+            wincons=set(),
+        )
+        policy = {
+            "stealthrock": 0.35,
+            "switch blissey": 0.45,
+            "switch clefable": 0.45,
+        }
+
+        adjusted = apply_team_strategy_bias(policy, battle, team_plan, Playstyle.FAT)
+
+        self.assertAlmostEqual(adjusted["switch blissey"], adjusted["switch clefable"], places=6)
+        self.assertGreater(adjusted["stealthrock"], policy["stealthrock"])
+
+    def test_does_not_route_to_hazard_setter_into_boosted_threat(self):
+        battle = self._mk_hazard_route_battle(opponent_boosts={constants.ATTACK: 1})
+        team_plan = SimpleNamespace(
+            hazard_setters={"blissey"},
+            wincons=set(),
+        )
+        policy = {
+            "bodypress": 0.40,
+            "switch blissey": 0.45,
+            "switch clefable": 0.45,
+        }
+
+        adjusted = apply_team_strategy_bias(policy, battle, team_plan, Playstyle.FAT)
+
+        self.assertAlmostEqual(adjusted["switch blissey"], adjusted["switch clefable"], places=6)
 
 
 class TestPivotAndSwitchSafety(unittest.TestCase):

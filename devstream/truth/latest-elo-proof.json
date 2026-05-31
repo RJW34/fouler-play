@@ -1,0 +1,501 @@
+{
+  "account": {
+    "ratingSource": "battle_stats.json mirrored from JIGGLYPUFF",
+    "showdownUserId": "npctypebeat"
+  },
+  "checkedAtUtc": "2026-05-09T19:44:10.097413+00:00",
+  "evidence": {
+    "autoresearch": {
+      "batch": {
+        "end_battle_id": "battle-gen9ou-2602394852",
+        "end_timestamp": "2026-05-05T17:37:27.187647+00:00",
+        "id": "batch-1-2602394852",
+        "size": 1,
+        "start_battle_id": "battle-gen9ou-2602394852",
+        "start_timestamp": "2026-05-05T17:37:27.187647+00:00"
+      },
+      "battleSource": "devstream/truth/latest-elo-proof.json",
+      "exists": true,
+      "generatedAt": "2026-05-09T15:43:41.218941",
+      "topIssue": {
+        "key": "hazard_pressure",
+        "proof": [
+          "battle-gen9ou-2602394852: bot never established Stealth Rock or equivalent chip pressure"
+        ],
+        "recommendation": "Raise hazard-setting urgency earlier in neutral matchups, especially on stall/fat lines that need passive damage to convert.",
+        "summary": "Losses repeatedly come from games where Fouler Play never establishes its own chip engine or gives up the hazards race.",
+        "title": "Hazard pressure is being lost"
+      }
+    },
+    "latestBattleLogs": [
+      {
+        "mtime": "2026-05-05T17:37:27.2186450Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\battle-gen9ou-2602394852_Clutchmcgee99.log",
+        "size": 7929068
+      }
+    ],
+    "latestDecisionTraces": [
+      {
+        "mtime": "2026-05-05T17:37:15.9417195Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn69_1778002635939.json",
+        "size": 15780
+      },
+      {
+        "mtime": "2026-05-05T17:37:11.6255382Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn68_1778002631624.json",
+        "size": 16178
+      },
+      {
+        "mtime": "2026-05-05T17:37:06.4319244Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn67_1778002626429.json",
+        "size": 14077
+      },
+      {
+        "mtime": "2026-05-05T17:36:58.2568262Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn67_1778002618254.json",
+        "size": 14559
+      },
+      {
+        "mtime": "2026-05-05T17:36:46.2514844Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn66_1778002606249.json",
+        "size": 14495
+      },
+      {
+        "mtime": "2026-05-05T17:36:40.7293741Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn65_1778002600727.json",
+        "size": 17311
+      },
+      {
+        "mtime": "2026-05-05T17:36:36.5254169Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn64_1778002596523.json",
+        "size": 14744
+      },
+      {
+        "mtime": "2026-05-05T17:36:22.0924941Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn64_1778002582090.json",
+        "size": 14908
+      },
+      {
+        "mtime": "2026-05-05T17:36:10.3143069Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn63_1778002570312.json",
+        "size": 16758
+      },
+      {
+        "mtime": "2026-05-05T17:35:58.1306870Z",
+        "path": "D:\\Projects\\fouler-play\\logs\\decision_traces\\battle-gen9ou-2602394852_turn62_1778002558128.json",
+        "size": 16707
+      }
+    ],
+    "latestReplayAnalysis": {
+      "exists": true,
+      "mtime": "2026-05-05T17:37:20.9440329Z",
+      "path": "D:\\Projects\\fouler-play\\replay_analysis\\gen9ou-2602394852.json",
+      "size": 22642
+    }
+  },
+  "format": "gen9ou",
+  "games": [
+    {
+      "battleId": "battle-gen9ou-2600238748",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1136,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600238748",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T01:32:55.451701+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600241426-ydd7kiki0om38yb6l3r7ivq9defqjbnpw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1133,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600241426-ydd7kiki0om38yb6l3r7ivq9defqjbnpw",
+      "result": "win",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T01:35:33.873575+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600240020-b4m8gnnmgg6vpap3jtb91b0twftg8pjpw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1112,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600240020-b4m8gnnmgg6vpap3jtb91b0twftg8pjpw",
+      "result": "loss",
+      "teamFile": "fat-team-2-pivot",
+      "timestamp": "2026-05-03T01:35:51.578510+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600239175",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1112,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600239175",
+      "result": "loss",
+      "teamFile": "fat-team-3-dondozo",
+      "timestamp": "2026-05-03T01:36:44.113526+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600242803",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1090,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600242803",
+      "result": "loss",
+      "teamFile": "fat-team-2-pivot",
+      "timestamp": "2026-05-03T01:45:26.403872+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600242695-vhamj2u5f09l1fyeder89tqkifla9v8pw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1120,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600242695-vhamj2u5f09l1fyeder89tqkifla9v8pw",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T01:45:41.384788+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600246830",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1143,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600246830",
+      "result": "win",
+      "teamFile": "fat-team-2-pivot",
+      "timestamp": "2026-05-03T01:46:58.319163+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600247784",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1117,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600247784",
+      "result": "win",
+      "teamFile": "fat-team-2-pivot",
+      "timestamp": "2026-05-03T01:47:28.817988+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600246864-dxpkslvg9ea3dyy2s0fy52ebmkt7umhpw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1117,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600246864-dxpkslvg9ea3dyy2s0fy52ebmkt7umhpw",
+      "result": "loss",
+      "teamFile": "fat-team-3-dondozo",
+      "timestamp": "2026-05-03T01:47:35.018221+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600246874-iisdfdx06ag51qjrpem03t7d3gqbc8ipw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1143,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600246874-iisdfdx06ag51qjrpem03t7d3gqbc8ipw",
+      "result": "win",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T01:48:55.125656+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600248599",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1076,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600248599",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T01:53:24.483859+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600251902",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1106,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600251902",
+      "result": "win",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T01:53:44.314847+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600248016-pmor2thgxpeqfdy9byfhj243i04i7jypw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1132,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600248016-pmor2thgxpeqfdy9byfhj243i04i7jypw",
+      "result": "win",
+      "teamFile": "fat-team-3-dondozo",
+      "timestamp": "2026-05-03T02:04:06.361237+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600257371-t9rfvb9r1hntwmfu5yg5uj6kbd2hbkfpw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1103,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600257371-t9rfvb9r1hntwmfu5yg5uj6kbd2hbkfpw",
+      "result": "loss",
+      "teamFile": "fat-team-3-dondozo",
+      "timestamp": "2026-05-03T02:22:43.100562+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600269767",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1132,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600269767",
+      "result": "win",
+      "teamFile": "fat-team-2-pivot",
+      "timestamp": "2026-05-03T02:28:42.943498+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600269797",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1084,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600269797",
+      "result": "loss",
+      "teamFile": "fat-team-2-pivot",
+      "timestamp": "2026-05-03T02:31:54.922749+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600270207-xkb51lgs9xe7pehfxuim78ry5a44tefpw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1084,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600270207-xkb51lgs9xe7pehfxuim78ry5a44tefpw",
+      "result": "loss",
+      "teamFile": "fat-team-3-dondozo",
+      "timestamp": "2026-05-03T02:31:56.304190+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600269736",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1084,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600269736",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T02:31:58.355795+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600271928-fo6iqib1ylugqen4rqh3l530o3a14ukpw",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1078,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600271928-fo6iqib1ylugqen4rqh3l530o3a14ukpw",
+      "result": "win",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T02:37:48.106547+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600274939",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1059,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600274939",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T02:43:32.385886+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600277908",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1039,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600277908",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T02:46:42.526371+00:00"
+    },
+    {
+      "battleId": "unknown",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1039,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/unknown",
+      "result": "unknown",
+      "teamFile": "fat-team-2-pivot",
+      "timestamp": "2026-05-03T03:12:07.886379+00:00"
+    },
+    {
+      "battleId": "unknown",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1039,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/unknown",
+      "result": "unknown",
+      "teamFile": "fat-team-2-pivot",
+      "timestamp": "2026-05-03T03:12:08.223825+00:00"
+    },
+    {
+      "battleId": "unknown",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1027,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/unknown",
+      "result": "unknown",
+      "teamFile": "fat-team-3-dondozo",
+      "timestamp": "2026-05-03T03:15:25.923950+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600294224",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1068,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600294224",
+      "result": "win",
+      "teamFile": "fat-team-3-dondozo",
+      "timestamp": "2026-05-03T03:16:42.934469+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600556619",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1049,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600556619",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T13:55:21.036339+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600636796",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1034,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600636796",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T16:09:06.029473+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600639759",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1018,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600639759",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T16:11:49.918345+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2600641520",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1053,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2600641520",
+      "result": "win",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-03T16:24:16.907163+00:00"
+    },
+    {
+      "battleId": "battle-gen9ou-2602394852",
+      "failureClasses": [],
+      "opponent": "",
+      "opponentRating": null,
+      "ratingAfter": 1038,
+      "ratingBefore": null,
+      "replayUrl": "https://replay.pokemonshowdown.com/gen9ou-2602394852",
+      "result": "loss",
+      "teamFile": "fat-team-1-stall",
+      "timestamp": "2026-05-05T17:37:27.187647+00:00"
+    }
+  ],
+  "schemaVersion": "fouler-play-elo-proof/v1",
+  "session": {
+    "endedAt": "2026-05-05T17:37:27.187647+00:00",
+    "maxConcurrentBattles": 1,
+    "runCountTarget": 30,
+    "startedAt": "2026-05-03T01:32:55.451701+00:00"
+  },
+  "source": {
+    "battleStatsMtime": "2026-05-09T19:43:39.976454+00:00",
+    "battleStatsPath": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\devstream\\truth\\latest-elo-proof.json",
+    "machine": "HERMES-local-truth",
+    "repoRoot": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play"
+  },
+  "summary": {
+    "activeImprovementVerified": false,
+    "autoresearchCoversLatestBattle": true,
+    "autoresearchGeneratedAt": "2026-05-09T15:43:41.218941",
+    "completedGames": 30,
+    "finalRating": 1038,
+    "improvementStatus": "latest-battle-analyzed-performance-declining",
+    "latestBattleAt": "2026-05-05T17:37:27.187647+00:00",
+    "latestBattleId": "battle-gen9ou-2602394852",
+    "latestBattleLearningVerified": true,
+    "latestBattleLogCount": 1,
+    "latestDecisionTraceCount": 10,
+    "latestReplayAnalysisExists": true,
+    "losses": 17,
+    "passesTarget": false,
+    "peakRating": 1143,
+    "performanceImprovementVerified": false,
+    "performanceTrendStatus": "declining",
+    "ratingDelta": -98,
+    "unknownResults": 3,
+    "winRate": 0.3333333333333333,
+    "wins": 10
+  },
+  "target": {
+    "minimumCompletedGames": 30,
+    "noCherryPicking": true,
+    "opponentBand": "prefer 1700+ when opponent rating is known",
+    "ratingFloor": 1800
+  }
+}

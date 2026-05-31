@@ -1,0 +1,885 @@
+{
+  "ability_state": {
+    "ability_known": false,
+    "ability_name": "unknown",
+    "at_full_hp": false,
+    "choice_locked_move": "",
+    "disguise_broken": false,
+    "has_air_balloon": false,
+    "has_armor_tail": false,
+    "has_bulletproof": false,
+    "has_clear_body": true,
+    "has_competitive_defiant": false,
+    "has_contact_punish": false,
+    "has_contrary": false,
+    "has_dazzling": false,
+    "has_disguise": false,
+    "has_dry_skin_fire_weak": false,
+    "has_earth_eater": false,
+    "has_electric_immunity": false,
+    "has_flash_fire": false,
+    "has_fluffy": false,
+    "has_focus_sash": false,
+    "has_good_as_gold": false,
+    "has_guts_like": false,
+    "has_justified": false,
+    "has_levitate": false,
+    "has_magic_bounce": false,
+    "has_mirror_armor": false,
+    "has_overcoat": false,
+    "has_phazing": false,
+    "has_poison_heal": false,
+    "has_priority_block": false,
+    "has_purifying_salt": true,
+    "has_queenly_majesty": false,
+    "has_sap_sipper": false,
+    "has_snowball_ability": false,
+    "has_soundproof": false,
+    "has_status": false,
+    "has_steam_engine": false,
+    "has_sturdy": true,
+    "has_substitute": false,
+    "has_supreme_overlord": false,
+    "has_unaware": false,
+    "has_water_immunity": false,
+    "has_well_baked_body": false,
+    "has_wind_rider": false,
+    "is_choice_locked": false,
+    "is_grass_type": false,
+    "ko_line_available": false,
+    "ko_line_move": "",
+    "ko_line_turns": 0,
+    "momentum": -0.44142344497607633,
+    "momentum_level": "neutral",
+    "opponent_active_has_hazard_removal": false,
+    "opponent_active_is_threat": false,
+    "opponent_active_removal_is_spin": false,
+    "opponent_alive_count": 6,
+    "opponent_attack_boost": 0,
+    "opponent_has_aurora_veil": false,
+    "opponent_has_defiant_pokemon": false,
+    "opponent_has_hazard_removal": false,
+    "opponent_has_light_screen": false,
+    "opponent_has_offensive_boost": false,
+    "opponent_has_reflect": false,
+    "opponent_has_salt_cure": true,
+    "opponent_has_sr_weak": false,
+    "opponent_has_terastallized": false,
+    "opponent_hazard_layers": 3,
+    "opponent_hp_percent": 0.18,
+    "opponent_is_dark_type": false,
+    "opponent_is_grounded": true,
+    "opponent_low_stab_pp": false,
+    "opponent_recovery_pp_exhausted": false,
+    "opponent_spa_boost": 0,
+    "opponent_speed_boost": 0,
+    "opponent_spikes_layers": 3,
+    "opponent_sr_up": false,
+    "opponent_tera_type": "",
+    "opponent_used_damaging_move": false,
+    "opponent_used_protect": false,
+    "opponent_used_setup": false,
+    "our_active_is_salt_cured": true,
+    "our_active_is_spinblocker": false,
+    "our_active_is_wincon": true,
+    "our_alive_count": 6,
+    "our_attack_boost": 2,
+    "our_has_alive_spinblocker": true,
+    "our_has_mold_breaker": false,
+    "our_has_prankster": false,
+    "our_hazard_layers": 5,
+    "our_hp_percent": 0.7613636363636364,
+    "our_is_slow": false,
+    "our_spa_boost": 0,
+    "our_speed_stat": 250,
+    "our_spikes_layers": 3,
+    "our_sr_up": true,
+    "our_tera_type": "dark",
+    "pokemon_name": "garganacl",
+    "terrain": "",
+    "terrain_type": "",
+    "trick_room_active": false,
+    "trick_room_turns": 0,
+    "we_are_grounded": false,
+    "we_have_terastallized": false,
+    "we_have_weather_speed": false,
+    "weather": "none"
+  },
+  "battle_tag": "battle-gen9ou-2619294401",
+  "battle_type": "STANDARD_BATTLE",
+  "choice": "knockoff",
+  "decision_mode": "mcts",
+  "decision_profile": "low",
+  "decision_time_s": 2.618,
+  "detected_abilities": [
+    "Purifying Salt",
+    "Clear Body/White Smoke",
+    "Weather: none",
+    "Low HP (18%)",
+    "Hazards on our side (5 layers)",
+    "Opponent has Salt Cure",
+    "Opponent can still Tera",
+    "(Our active is win condition)",
+    "(Our active is Salt Cured)"
+  ],
+  "eval": {
+    "events": [
+      {
+        "after": 0.34302175021511466,
+        "before": 0.33962549526248975,
+        "move": "earthquake",
+        "reason": "heuristic_adjustment",
+        "score": 0.2,
+        "source": "heuristic_bias",
+        "type": "heuristic"
+      },
+      {
+        "after": 0.6533378227695424,
+        "before": 0.6468691314549925,
+        "move": "knockoff",
+        "reason": "heuristic_adjustment",
+        "score": 0.2,
+        "source": "heuristic_bias",
+        "type": "heuristic"
+      },
+      {
+        "after": 0.41162610025813756,
+        "before": 0.34302175021511466,
+        "move": "earthquake",
+        "reason": "Coverage vs potential Tera",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.7840053873234509,
+        "before": 0.6533378227695424,
+        "move": "knockoff",
+        "reason": "Coverage vs potential Tera",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.002390721165549862,
+        "before": 0.0018390162811922016,
+        "move": "protect",
+        "reason": "Win condition (prefer safe plays)",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.00028421393153839906,
+        "before": 0.0003441979914750355,
+        "move": "switch gholdengo",
+        "reason": "Salt Cure risk (Water/Steel chip), hazards (31% damage), resists opponent STAB, playstyle 0.6x",
+        "source": "switch",
+        "type": "penalty"
+      },
+      {
+        "after": 0.0004226936469465035,
+        "before": 0.0004938009894234854,
+        "move": "switch skarmory",
+        "reason": "Salt Cure risk (Water/Steel chip), playstyle 0.6x",
+        "source": "switch",
+        "type": "penalty"
+      },
+      {
+        "after": 0.00032106623332732145,
+        "before": 0.0003275255956531761,
+        "move": "switch pecharunt",
+        "reason": "reset active Salt Cure chip, hazards (37% damage), has recovery, playstyle 0.6x",
+        "source": "switch",
+        "type": "penalty"
+      },
+      {
+        "after": 0.0007868881177044197,
+        "before": 0.0006335653121613685,
+        "move": "switch zamazenta",
+        "reason": "reset active Salt Cure chip, resists opponent STAB",
+        "source": "switch",
+        "type": "boost"
+      },
+      {
+        "after": 0.0005852567208809626,
+        "before": 0.0005419043711860764,
+        "move": "switch blissey",
+        "reason": "reset active Salt Cure chip",
+        "source": "switch",
+        "type": "boost"
+      },
+      {
+        "after": 0.007953766664515634,
+        "before": 0.005533055070967398,
+        "move": "swordsdance",
+        "reason": "team_intent(stay_in=1.15, setup=1.25)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.000812230058879828,
+        "before": 0.0005650296061772717,
+        "move": "swordsdance-tera",
+        "reason": "team_intent(stay_in=1.15, setup=1.25)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.3786960122374865,
+        "before": 0.32930088020651005,
+        "move": "earthquake",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.0012863924978410018,
+        "before": 0.001118602172035654,
+        "move": "earthquake-tera",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.7224395055168675,
+        "before": 0.6282082656668414,
+        "move": "knockoff",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.0012205795780579958,
+        "before": 0.0010613735461373877,
+        "move": "knockoff-tera",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.0027493293403823412,
+        "before": 0.002390721165549862,
+        "move": "protect",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.0004973962167347029,
+        "before": 0.0004325184493345243,
+        "move": "protect-tera",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      }
+    ],
+    "policy_post_penalty": {
+      "earthquake": 0.3786960122374865,
+      "earthquake-tera": 0.0012863924978410018,
+      "knockoff": 0.7224395055168675,
+      "knockoff-tera": 0.0012205795780579958,
+      "protect": 0.0027493293403823412,
+      "protect-tera": 0.0004973962167347029,
+      "switch blissey": 0.0006145195569250108,
+      "switch gholdengo": 0.000298424628115319,
+      "switch pecharunt": 0.00033711954499368753,
+      "switch skarmory": 0.0004438283292938287,
+      "switch zamazenta": 0.0008262325235896407,
+      "swordsdance": 0.007953766664515634,
+      "swordsdance-tera": 0.000812230058879828
+    },
+    "policy_pre_penalty": {
+      "earthquake": 0.33962549526248975,
+      "earthquake-tera": 0.001118602172035654,
+      "knockoff": 0.6468691314549925,
+      "knockoff-tera": 0.0010613735461373877,
+      "protect": 0.0018390162811922016,
+      "protect-tera": 0.0004325184493345243,
+      "switch blissey": 0.0005419043711860764,
+      "switch gholdengo": 0.0003441979914750355,
+      "switch pecharunt": 0.0003275255956531761,
+      "switch skarmory": 0.0004938009894234854,
+      "switch zamazenta": 0.0006335653121613685,
+      "swordsdance": 0.006147838967741554,
+      "swordsdance-tera": 0.0005650296061772717
+    },
+    "top_moves": [
+      {
+        "eval_weight": 0.7224395055168675,
+        "move": "knockoff",
+        "pre_penalty_score": 0.6468691314549925
+      },
+      {
+        "eval_weight": 0.3786960122374865,
+        "move": "earthquake",
+        "pre_penalty_score": 0.33962549526248975
+      },
+      {
+        "eval_weight": 0.007953766664515634,
+        "move": "swordsdance",
+        "pre_penalty_score": 0.006147838967741554
+      },
+      {
+        "eval_weight": 0.0027493293403823412,
+        "move": "protect",
+        "pre_penalty_score": 0.0018390162811922016
+      },
+      {
+        "eval_weight": 0.0012863924978410018,
+        "move": "earthquake-tera",
+        "pre_penalty_score": 0.001118602172035654
+      }
+    ]
+  },
+  "format": "gen9ou",
+  "formatted_choice": [
+    "/choose move knockoff",
+    "33"
+  ],
+  "hybrid": {
+    "candidate_count": 0,
+    "candidates": [],
+    "engine_choice": "knockoff",
+    "llm_authority": "advisory_rerank_only",
+    "mechanics_claims_allowed": false,
+    "override": false,
+    "promotion_rule": "selected_decision_must_equal_one_supplied_candidate",
+    "reason": "non_eval_decision",
+    "selected_decision": "knockoff",
+    "status": "skipped",
+    "truth_source": "engine_candidate_list"
+  },
+  "legalOptions": {
+    "candidateSetBounded": true,
+    "forceSwitch": false,
+    "legalMoves": [
+      {
+        "activeSlot": 0,
+        "id": "swordsdance",
+        "target": "self"
+      },
+      {
+        "activeSlot": 0,
+        "id": "earthquake",
+        "target": "allAdjacent"
+      },
+      {
+        "activeSlot": 0,
+        "id": "knockoff",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "protect",
+        "target": "self"
+      }
+    ],
+    "legalSwitches": [
+      {
+        "condition": "234/380 brn",
+        "details": "Pecharunt",
+        "slot": 1
+      },
+      {
+        "condition": "378/378",
+        "details": "Gholdengo",
+        "slot": 2
+      },
+      {
+        "condition": "325/325",
+        "details": "Zamazenta",
+        "slot": 3
+      },
+      {
+        "condition": "652/652",
+        "details": "Blissey, F",
+        "slot": 4
+      },
+      {
+        "condition": "334/334",
+        "details": "Skarmory, F",
+        "slot": 5
+      }
+    ],
+    "requestHash": "63b4ad098befb2e1bf65776a733a99131f28287c90ed17d6f60ae7a31e51e431",
+    "rqid": 33,
+    "source": "showdown-request",
+    "trapped": false
+  },
+  "mcts_meta": {
+    "per_sample_ms": 761,
+    "samples_attempted": 3,
+    "samples_failed": 0,
+    "samples_succeeded": 3,
+    "total_visits": 921000
+  },
+  "mcts_policy_raw": {
+    "earthquake": 0.33962549526248975,
+    "earthquake-tera": 0.001118602172035654,
+    "knockoff": 0.6468691314549925,
+    "knockoff-tera": 0.0010613735461373877,
+    "protect": 0.0018390162811922016,
+    "protect-tera": 0.0004325184493345243,
+    "switch blissey": 0.0005419043711860764,
+    "switch gholdengo": 0.0003441979914750355,
+    "switch pecharunt": 0.0003275255956531761,
+    "switch skarmory": 0.0004938009894234854,
+    "switch zamazenta": 0.0006335653121613685,
+    "swordsdance": 0.006147838967741554,
+    "swordsdance-tera": 0.0005650296061772717
+  },
+  "oddities": [],
+  "playstyle": "fat",
+  "reason": "",
+  "search": {
+    "num_battles": 3,
+    "search_time_ms": 761,
+    "time_budget_s": 20
+  },
+  "showdownRequest": {
+    "candidateSetBounded": true,
+    "forceSwitch": false,
+    "legalMoves": [
+      {
+        "activeSlot": 0,
+        "id": "swordsdance",
+        "target": "self"
+      },
+      {
+        "activeSlot": 0,
+        "id": "earthquake",
+        "target": "allAdjacent"
+      },
+      {
+        "activeSlot": 0,
+        "id": "knockoff",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "protect",
+        "target": "self"
+      }
+    ],
+    "legalOptionsSource": "showdown-request",
+    "legalSwitches": [
+      {
+        "condition": "234/380 brn",
+        "details": "Pecharunt",
+        "slot": 1
+      },
+      {
+        "condition": "378/378",
+        "details": "Gholdengo",
+        "slot": 2
+      },
+      {
+        "condition": "325/325",
+        "details": "Zamazenta",
+        "slot": 3
+      },
+      {
+        "condition": "652/652",
+        "details": "Blissey, F",
+        "slot": 4
+      },
+      {
+        "condition": "334/334",
+        "details": "Skarmory, F",
+        "slot": 5
+      }
+    ],
+    "requestHash": "63b4ad098befb2e1bf65776a733a99131f28287c90ed17d6f60ae7a31e51e431",
+    "rqid": 33,
+    "trapped": false,
+    "wait": false
+  },
+  "snapshot": {
+    "battle_tag": "battle-gen9ou-2619294401",
+    "field": null,
+    "field_turns": 0,
+    "gravity": false,
+    "opponent": {
+      "account": "SnaKeeKiss",
+      "active": {
+        "ability": null,
+        "boosts": {},
+        "fainted": false,
+        "hp": 65.16,
+        "item": "leftovers",
+        "max_hp": 362,
+        "moves": [
+          "saltcure",
+          "recover",
+          "stealthrock"
+        ],
+        "name": "garganacl",
+        "status": null,
+        "tera": {
+          "active": false,
+          "type": null
+        },
+        "types": [
+          "rock"
+        ],
+        "volatile_statuses": []
+      },
+      "baton_passing": false,
+      "future_sight": [
+        0,
+        ""
+      ],
+      "name": "p1",
+      "reserve": [
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 322,
+          "item": "unknownitem",
+          "max_hp": 322,
+          "moves": [],
+          "name": "ironmoth",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "fire",
+            "poison"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 302,
+          "item": "unknownitem",
+          "max_hp": 302,
+          "moves": [],
+          "name": "lilliganthisui",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "grass",
+            "fighting"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 328.0,
+          "item": "unknownitem",
+          "max_hp": 328,
+          "moves": [
+            "spikes",
+            "sunnyday"
+          ],
+          "name": "glimmora",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "rock",
+            "poison"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "protosynthesis",
+          "boosts": {},
+          "fainted": false,
+          "hp": 297.92,
+          "item": "unknownitem",
+          "max_hp": 392,
+          "moves": [
+            "knockoff"
+          ],
+          "name": "greattusk",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "ground",
+            "fighting"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 96.64,
+          "item": "heavydutyboots",
+          "max_hp": 302,
+          "moves": [
+            "lavaplume"
+          ],
+          "name": "torkoal",
+          "status": "tox",
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "fire"
+          ],
+          "volatile_statuses": []
+        }
+      ],
+      "shed_tailing": false,
+      "side_conditions": {
+        "auroraveil": 0,
+        "lightscreen": 0,
+        "mist": 0,
+        "protect": 0,
+        "reflect": 0,
+        "safeguard": 0,
+        "spikes": 3,
+        "stealthrock": 0,
+        "stickyweb": 0,
+        "tailwind": 0,
+        "toxic_count": 0,
+        "toxicspikes": 0
+      },
+      "trapped": false,
+      "wish": [
+        0,
+        0
+      ]
+    },
+    "team_preview": false,
+    "time_remaining": 150,
+    "trick_room": false,
+    "trick_room_turns": 0,
+    "turn": 15,
+    "user": {
+      "account": null,
+      "active": {
+        "ability": "poisonheal",
+        "boosts": {
+          "attack": 2
+        },
+        "fainted": false,
+        "hp": 268,
+        "item": "toxicorb",
+        "max_hp": 352,
+        "moves": [
+          "swordsdance",
+          "earthquake",
+          "knockoff",
+          "protect"
+        ],
+        "name": "gliscor",
+        "status": "tox",
+        "tera": {
+          "active": false,
+          "type": "dark"
+        },
+        "types": [
+          "ground",
+          "flying"
+        ],
+        "volatile_statuses": [
+          "saltcure"
+        ]
+      },
+      "baton_passing": false,
+      "future_sight": [
+        0,
+        ""
+      ],
+      "name": "p2",
+      "reserve": [
+        {
+          "ability": "goodasgold",
+          "boosts": {},
+          "fainted": false,
+          "hp": 378,
+          "item": "abilityshield",
+          "max_hp": 378,
+          "moves": [
+            "nastyplot",
+            "thunderwave",
+            "hex",
+            "recover"
+          ],
+          "name": "gholdengo",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "fairy"
+          },
+          "types": [
+            "steel",
+            "ghost"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "dauntlessshield",
+          "boosts": {},
+          "fainted": false,
+          "hp": 325,
+          "item": "heavydutyboots",
+          "max_hp": 325,
+          "moves": [
+            "closecombat",
+            "crunch",
+            "icefang",
+            "heavyslam"
+          ],
+          "name": "zamazenta",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "ice"
+          },
+          "types": [
+            "fighting"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "naturalcure",
+          "boosts": {},
+          "fainted": false,
+          "hp": 652,
+          "item": "heavydutyboots",
+          "max_hp": 652,
+          "moves": [
+            "softboiled",
+            "calmmind",
+            "shadowball",
+            "stealthrock"
+          ],
+          "name": "blissey",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "dark"
+          },
+          "types": [
+            "normal"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "sturdy",
+          "boosts": {},
+          "fainted": false,
+          "hp": 334,
+          "item": "heavydutyboots",
+          "max_hp": 334,
+          "moves": [
+            "bodypress",
+            "whirlwind",
+            "roost",
+            "spikes"
+          ],
+          "name": "skarmory",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "dragon"
+          },
+          "types": [
+            "steel",
+            "flying"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "poisonpuppeteer",
+          "boosts": {},
+          "fainted": false,
+          "hp": 234,
+          "item": null,
+          "max_hp": 380,
+          "moves": [
+            "shadowball",
+            "toxic",
+            "partingshot",
+            "recover"
+          ],
+          "name": "pecharunt",
+          "status": "brn",
+          "tera": {
+            "active": false,
+            "type": "fairy"
+          },
+          "types": [
+            "poison",
+            "ghost"
+          ],
+          "volatile_statuses": []
+        }
+      ],
+      "shed_tailing": false,
+      "side_conditions": {
+        "auroraveil": 0,
+        "lightscreen": 0,
+        "mist": 0,
+        "protect": 0,
+        "reflect": 0,
+        "safeguard": 0,
+        "spikes": 3,
+        "stealthrock": 1,
+        "tailwind": 0,
+        "toxic_count": 0
+      },
+      "trapped": false,
+      "wish": [
+        0,
+        0
+      ]
+    },
+    "weather": "none",
+    "weather_source": null,
+    "weather_turns": 5
+  },
+  "strategic": {
+    "archetype": "HazardStack",
+    "confidence": 0.7,
+    "engine_choice": "knockoff",
+    "win_condition": "Set all hazards early (turn 1-5), then wall and wear down opponent"
+  },
+  "team_intent": {
+    "active_intent": {
+      "handles_types": [
+        "bug",
+        "electric",
+        "fighting",
+        "fire",
+        "ghost",
+        "ground",
+        "poison",
+        "psychic",
+        "rock",
+        "steel"
+      ],
+      "is_win_condition": true,
+      "recovery_threshold": 0.0,
+      "role": "setup sweeper",
+      "role_tags": [
+        "setup sweeper"
+      ]
+    },
+    "team_style": "bulky offense",
+    "win_conditions": [
+      "gliscor"
+    ]
+  },
+  "timestamp": "2026-05-27T17:55:33.313061Z",
+  "turn": 15,
+  "worker_id": 0
+}

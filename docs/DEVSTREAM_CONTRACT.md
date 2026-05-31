@@ -18,11 +18,10 @@ Live battles are not just content. They are the training and evaluation loop: co
 - `http://127.0.0.1:8777/slot/1`
 - `http://127.0.0.1:8777/slot/2`
 - `http://127.0.0.1:8777/slot/3`
-- `http://127.0.0.1:8777/overlay/hybrid`
-- `http://127.0.0.1:8777/dashboard/hybrid`
+- `http://127.0.0.1:8777/overlay?mode=bottom&hide_recent=1`
 - `http://127.0.0.1:8777/health`
 
-The next OBS pass should improve scene composition around these endpoints, but this pass only establishes the contract and health truth.
+The `/dashboard/hybrid` and `/overlay/hybrid` endpoints are operator-only decision review surfaces. Public OBS scenes must use slot or battle-lab overlay endpoints only, with health, model decisions, and proof details kept in reports rather than visible Twitch panels.
 
 ## Truth Files
 

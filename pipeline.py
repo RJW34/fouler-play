@@ -32,7 +32,7 @@ try:
 except ImportError:
     pass  # python-dotenv not required, but recommended
 
-from replay_analysis.batch_analyzer import BatchAnalyzer
+from replay_analysis.batch_analyzer import ANALYSIS_MODEL, ANALYSIS_PROVIDER, BatchAnalyzer
 from replay_analysis.autoresearch import run_autoresearch
 from infrastructure.event_queue_lib import queue_event
 from infrastructure.discord_reporting import build_contract_payload
@@ -40,7 +40,22 @@ from infrastructure.discord_reporting import build_contract_payload
 # Configuration
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
 STATE_FILE = PROJECT_ROOT / ".pipeline_state"
-BATCH_SIZE = int(os.getenv("FOULER_BATCH_SIZE", "30"))  # 30 battles = 10 per team (3 teams)
+
+
+def env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    value = raw.split("#", 1)[0].strip()
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+BATCH_SIZE = env_int("FOULER_BATCH_SIZE", 30)  # 30 battles = 10 per team (3 teams)
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
 DISCORD_CHANNEL_ID = "1466691161363054840"  # #project-fouler-play (where analysis belongs)
 OPENCLAW_SESSION = "agent:main:discord:channel:1466691161363054840"  # fouler-play project channel
@@ -602,7 +617,7 @@ class Pipeline:
         return {
             "description": (
                 f"📊 **Full Report:** `{report_path.name}`\n"
-                f"🤖 **Analysis:** qwen2.5-coder:7b on MAGNETON\n"
+                f"🤖 **Analysis:** {ANALYSIS_MODEL} via {ANALYSIS_PROVIDER}\n"
                 f"📍 **Location:** `/home/ryan/projects/fouler-play/replay_analysis/reports/`"
             ),
             "color": 0x95a5a6,  # Gray

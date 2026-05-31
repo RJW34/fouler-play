@@ -1,0 +1,989 @@
+{
+  "ability_state": {
+    "ability_known": false,
+    "ability_name": "unknown",
+    "at_full_hp": false,
+    "choice_locked_move": "",
+    "disguise_broken": false,
+    "has_air_balloon": false,
+    "has_armor_tail": false,
+    "has_bulletproof": false,
+    "has_clear_body": true,
+    "has_competitive_defiant": false,
+    "has_contact_punish": false,
+    "has_contrary": false,
+    "has_dazzling": false,
+    "has_disguise": false,
+    "has_dry_skin_fire_weak": false,
+    "has_earth_eater": false,
+    "has_electric_immunity": false,
+    "has_flash_fire": false,
+    "has_fluffy": false,
+    "has_focus_sash": false,
+    "has_good_as_gold": false,
+    "has_guts_like": false,
+    "has_justified": false,
+    "has_levitate": false,
+    "has_magic_bounce": false,
+    "has_mirror_armor": false,
+    "has_overcoat": false,
+    "has_phazing": false,
+    "has_poison_heal": false,
+    "has_priority_block": false,
+    "has_purifying_salt": true,
+    "has_queenly_majesty": false,
+    "has_sap_sipper": false,
+    "has_snowball_ability": false,
+    "has_soundproof": false,
+    "has_status": false,
+    "has_steam_engine": false,
+    "has_sturdy": true,
+    "has_substitute": false,
+    "has_supreme_overlord": false,
+    "has_unaware": false,
+    "has_water_immunity": false,
+    "has_well_baked_body": false,
+    "has_wind_rider": false,
+    "is_choice_locked": false,
+    "is_grass_type": false,
+    "ko_line_available": false,
+    "ko_line_move": "",
+    "ko_line_turns": 0,
+    "momentum": 1.704377336186468,
+    "momentum_level": "positive",
+    "opponent_active_has_hazard_removal": false,
+    "opponent_active_is_threat": true,
+    "opponent_active_removal_is_spin": false,
+    "opponent_alive_count": 6,
+    "opponent_attack_boost": 1,
+    "opponent_has_aurora_veil": false,
+    "opponent_has_defiant_pokemon": false,
+    "opponent_has_hazard_removal": false,
+    "opponent_has_light_screen": false,
+    "opponent_has_offensive_boost": true,
+    "opponent_has_reflect": false,
+    "opponent_has_salt_cure": true,
+    "opponent_has_sr_weak": false,
+    "opponent_has_terastallized": false,
+    "opponent_hazard_layers": 5,
+    "opponent_hp_percent": 0.79,
+    "opponent_is_dark_type": false,
+    "opponent_is_grounded": true,
+    "opponent_low_stab_pp": false,
+    "opponent_recovery_pp_exhausted": false,
+    "opponent_spa_boost": 0,
+    "opponent_speed_boost": -1,
+    "opponent_spikes_layers": 3,
+    "opponent_sr_up": true,
+    "opponent_tera_type": "",
+    "opponent_used_damaging_move": true,
+    "opponent_used_protect": false,
+    "opponent_used_setup": false,
+    "our_active_is_salt_cured": true,
+    "our_active_is_spinblocker": true,
+    "our_active_is_wincon": false,
+    "our_alive_count": 6,
+    "our_attack_boost": 0,
+    "our_has_alive_spinblocker": true,
+    "our_has_mold_breaker": false,
+    "our_has_prankster": false,
+    "our_hazard_layers": 2,
+    "our_hp_percent": 0.45789473684210524,
+    "our_is_slow": false,
+    "our_spa_boost": 0,
+    "our_speed_stat": 219,
+    "our_spikes_layers": 2,
+    "our_sr_up": false,
+    "our_tera_type": "dark",
+    "pokemon_name": "garganacl",
+    "terrain": "",
+    "terrain_type": "",
+    "trick_room_active": false,
+    "trick_room_turns": 0,
+    "we_are_grounded": true,
+    "we_have_terastallized": false,
+    "we_have_weather_speed": false,
+    "weather": ""
+  },
+  "battle_tag": "battle-gen9ou-2619206678",
+  "battle_type": "STANDARD_BATTLE",
+  "choice": "switch blissey",
+  "decision_mode": "mcts",
+  "decision_profile": "low",
+  "decision_time_s": 4.368,
+  "detected_abilities": [
+    "Purifying Salt",
+    "Clear Body/White Smoke",
+    "Opponent used damaging move last turn",
+    "Hazards on our side (2 layers)",
+    "Opponent SR up",
+    "Opponent has Salt Cure",
+    "Opponent can still Tera",
+    "Opponent active is THREAT",
+    "Momentum: positive (1.7)",
+    "(Our active is Salt Cured)"
+  ],
+  "eval": {
+    "events": [
+      {
+        "after": 0.01861534834293657,
+        "before": 0.02659335477562367,
+        "move": "malignantchain",
+        "reason": "Strong attack vs +1 threat (manageable)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.001425147941028314,
+        "before": 0.0023752465683805233,
+        "move": "malignantchain-tera",
+        "reason": "Weak move vs +1 threat (should consider switching)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.009631937337420656,
+        "before": 0.01375991048202951,
+        "move": "foulplay",
+        "reason": "Strong attack vs +1 threat (manageable)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.0014061556074552364,
+        "before": 0.0023435926790920606,
+        "move": "foulplay-tera",
+        "reason": "Weak move vs +1 threat (should consider switching)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.050274005775410864,
+        "before": 0.16758001925136956,
+        "move": "partingshot",
+        "reason": "Emergency anti-setup: deny +1 threat (no reset answer alive)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.0016962493501315899,
+        "before": 0.0028270822502193165,
+        "move": "partingshot-tera",
+        "reason": "Weak move vs +1 threat (should consider switching)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.26044057013101524,
+        "before": 0.7441159146600436,
+        "move": "recover",
+        "reason": "Emergency anti-setup: deny +1 threat (no reset answer alive)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.004633234324365822,
+        "before": 0.007722057207276371,
+        "move": "recover-tera",
+        "reason": "Weak move vs +1 threat (should consider switching)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.006725698616397606,
+        "before": 0.006114271469452369,
+        "move": "switch walkingwake",
+        "reason": "Switch vs +1 threat (low HP, limited counterplay)",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.005513916046429563,
+        "before": 0.005012650951299602,
+        "move": "switch corviknight",
+        "reason": "Switch vs +1 threat (low HP, limited counterplay)",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.0033396404645111236,
+        "before": 0.003036036785919203,
+        "move": "switch gliscor",
+        "reason": "Switch vs +1 threat (low HP, limited counterplay)",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.009754886803922466,
+        "before": 0.008868078912656787,
+        "move": "switch ogerpon",
+        "reason": "Switch vs +1 threat (low HP, limited counterplay)",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.010616962407301155,
+        "before": 0.009651784006637413,
+        "move": "switch blissey",
+        "reason": "Switch vs +1 threat (low HP, limited counterplay)",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.004304447114494468,
+        "before": 0.006725698616397606,
+        "move": "switch walkingwake",
+        "reason": "Salt Cure risk (Water/Steel chip), critical penalty (skip playstyle softening)",
+        "source": "switch",
+        "type": "penalty"
+      },
+      {
+        "after": 0.00393914162356928,
+        "before": 0.005513916046429563,
+        "move": "switch corviknight",
+        "reason": "Salt Cure risk (Water/Steel chip), has recovery (de-emphasized vs boosted threat), critical penalty (skip playstyle softening)",
+        "source": "switch",
+        "type": "penalty"
+      },
+      {
+        "after": 0.0036068117016720136,
+        "before": 0.0033396404645111236,
+        "move": "switch gliscor",
+        "reason": "reset active Salt Cure chip",
+        "source": "switch",
+        "type": "boost"
+      },
+      {
+        "after": 0.010535277748236264,
+        "before": 0.009754886803922466,
+        "move": "switch ogerpon",
+        "reason": "reset active Salt Cure chip",
+        "source": "switch",
+        "type": "boost"
+      },
+      {
+        "after": 0.010778340235892133,
+        "before": 0.010616962407301155,
+        "move": "switch blissey",
+        "reason": "reset active Salt Cure chip, has recovery (de-emphasized vs boosted threat)",
+        "source": "switch",
+        "type": "boost"
+      },
+      {
+        "after": 0.009916073017020762,
+        "before": 0.009631937337420656,
+        "move": "foulplay",
+        "reason": "boosted_threat_keep_attack_live",
+        "source": "threat_switch",
+        "type": "boost"
+      },
+      {
+        "after": 0.011541515972620672,
+        "before": 0.050274005775410864,
+        "move": "partingshot",
+        "reason": "boosted_threat_suppress_passive",
+        "source": "threat_switch",
+        "type": "penalty"
+      },
+      {
+        "after": 0.017126120475501643,
+        "before": 0.26044057013101524,
+        "move": "recover",
+        "reason": "boosted_threat_suppress_passive",
+        "source": "threat_switch",
+        "type": "penalty"
+      },
+      {
+        "after": 0.013849819167144806,
+        "before": 0.011541515972620672,
+        "move": "partingshot",
+        "reason": "team_intent(pivot=1.20)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.0020354992201579076,
+        "before": 0.0016962493501315899,
+        "move": "partingshot-tera",
+        "reason": "team_intent(pivot=1.20)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.012245176139983677,
+        "before": 0.009419366261525905,
+        "move": "recover",
+        "reason": "team_intent(recovery=1.30)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.006023204621675569,
+        "before": 0.004633234324365822,
+        "move": "recover-tera",
+        "reason": "team_intent(recovery=1.30)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.013403050806914328,
+        "before": 0.02233841801152388,
+        "move": "malignantchain",
+        "reason": "repeated_3_of_last_6_turns",
+        "source": "repetition_detection",
+        "type": "penalty"
+      },
+      {
+        "after": 0.0072314711523507064,
+        "before": 0.004519669470219191,
+        "move": "switch walkingwake",
+        "reason": "active_pokemon_stagnating",
+        "source": "stagnation_switch_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.0066177579275963905,
+        "before": 0.004136098704747744,
+        "move": "switch corviknight",
+        "reason": "active_pokemon_stagnating",
+        "source": "stagnation_switch_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.006059443658808983,
+        "before": 0.0037871522867556143,
+        "move": "switch gliscor",
+        "reason": "active_pokemon_stagnating",
+        "source": "stagnation_switch_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.017699266617036923,
+        "before": 0.011062041635648077,
+        "move": "switch ogerpon",
+        "reason": "active_pokemon_stagnating",
+        "source": "stagnation_switch_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.018107611596298784,
+        "before": 0.01131725724768674,
+        "move": "switch blissey",
+        "reason": "active_pokemon_stagnating",
+        "source": "stagnation_switch_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.013403050806914328,
+        "before": 0.013403050806914328,
+        "move": "malignantchain",
+        "reason": "inject_progress_when_considered_all_switches",
+        "source": "threat_considered",
+        "type": "override"
+      }
+    ],
+    "policy_post_penalty": {
+      "foulplay": 0.011899287620424914,
+      "foulplay-tera": 0.0014061556074552364,
+      "malignantchain": 0.013403050806914328,
+      "malignantchain-tera": 0.001425147941028314,
+      "partingshot": 0.013849819167144806,
+      "partingshot-tera": 0.0020354992201579076,
+      "recover": 0.012245176139983677,
+      "recover-tera": 0.006023204621675569,
+      "switch blissey": 0.018107611596298784,
+      "switch corviknight": 0.0066177579275963905,
+      "switch gliscor": 0.006059443658808983,
+      "switch ogerpon": 0.017699266617036923,
+      "switch walkingwake": 0.0072314711523507064
+    },
+    "policy_pre_penalty": {
+      "foulplay": 0.01375991048202951,
+      "foulplay-tera": 0.0023435926790920606,
+      "malignantchain": 0.02659335477562367,
+      "malignantchain-tera": 0.0023752465683805233,
+      "partingshot": 0.16758001925136956,
+      "partingshot-tera": 0.0028270822502193165,
+      "recover": 0.7441159146600436,
+      "recover-tera": 0.007722057207276371,
+      "switch blissey": 0.009651784006637413,
+      "switch corviknight": 0.005012650951299602,
+      "switch gliscor": 0.003036036785919203,
+      "switch ogerpon": 0.008868078912656787,
+      "switch walkingwake": 0.006114271469452369
+    },
+    "top_moves": [
+      {
+        "eval_weight": 0.018107611596298784,
+        "move": "switch blissey",
+        "pre_penalty_score": 0.009651784006637413
+      },
+      {
+        "eval_weight": 0.017699266617036923,
+        "move": "switch ogerpon",
+        "pre_penalty_score": 0.008868078912656787
+      },
+      {
+        "eval_weight": 0.013849819167144806,
+        "move": "partingshot",
+        "pre_penalty_score": 0.16758001925136956
+      },
+      {
+        "eval_weight": 0.013403050806914328,
+        "move": "malignantchain",
+        "pre_penalty_score": 0.02659335477562367
+      },
+      {
+        "eval_weight": 0.012245176139983677,
+        "move": "recover",
+        "pre_penalty_score": 0.7441159146600436
+      }
+    ]
+  },
+  "format": "gen9ou",
+  "formatted_choice": [
+    "/switch 6",
+    "27"
+  ],
+  "hybrid": {
+    "candidate_count": 0,
+    "candidates": [],
+    "engine_choice": "switch blissey",
+    "llm_authority": "advisory_rerank_only",
+    "mechanics_claims_allowed": false,
+    "override": false,
+    "promotion_rule": "selected_decision_must_equal_one_supplied_candidate",
+    "reason": "non_eval_decision",
+    "selected_decision": "switch blissey",
+    "status": "skipped",
+    "truth_source": "engine_candidate_list"
+  },
+  "legalOptions": {
+    "candidateSetBounded": true,
+    "forceSwitch": false,
+    "legalMoves": [
+      {
+        "activeSlot": 0,
+        "id": "malignantchain",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "foulplay",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "partingshot",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "recover",
+        "target": "self"
+      }
+    ],
+    "legalSwitches": [
+      {
+        "condition": "288/354 brn",
+        "details": "Gliscor, M",
+        "slot": 1
+      },
+      {
+        "condition": "339/339",
+        "details": "Walking Wake",
+        "slot": 2
+      },
+      {
+        "condition": "301/301",
+        "details": "Ogerpon, F",
+        "slot": 3
+      },
+      {
+        "condition": "371/371",
+        "details": "Corviknight, F",
+        "slot": 4
+      },
+      {
+        "condition": "572/652",
+        "details": "Blissey, F",
+        "slot": 5
+      }
+    ],
+    "requestHash": "9a7366006fe3c115194376c5aa03d7217c6b42b2e8b6fbdfe9719dba45e91f1a",
+    "rqid": 27,
+    "source": "showdown-request",
+    "trapped": false
+  },
+  "mcts_meta": {
+    "per_sample_ms": 649,
+    "samples_attempted": 3,
+    "samples_failed": 0,
+    "samples_succeeded": 3,
+    "total_visits": 738000
+  },
+  "mcts_policy_raw": {
+    "foulplay": 0.01375991048202951,
+    "foulplay-tera": 0.0023435926790920606,
+    "malignantchain": 0.02659335477562367,
+    "malignantchain-tera": 0.0023752465683805233,
+    "partingshot": 0.16758001925136956,
+    "partingshot-tera": 0.0028270822502193165,
+    "recover": 0.7441159146600436,
+    "recover-tera": 0.007722057207276371,
+    "switch blissey": 0.009651784006637413,
+    "switch corviknight": 0.005012650951299602,
+    "switch gliscor": 0.003036036785919203,
+    "switch ogerpon": 0.008868078912656787,
+    "switch walkingwake": 0.006114271469452369
+  },
+  "oddities": [],
+  "playstyle": "bulky_offense",
+  "reason": "",
+  "search": {
+    "num_battles": 3,
+    "search_time_ms": 649,
+    "time_budget_s": 20
+  },
+  "showdownRequest": {
+    "candidateSetBounded": true,
+    "forceSwitch": false,
+    "legalMoves": [
+      {
+        "activeSlot": 0,
+        "id": "malignantchain",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "foulplay",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "partingshot",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "recover",
+        "target": "self"
+      }
+    ],
+    "legalOptionsSource": "showdown-request",
+    "legalSwitches": [
+      {
+        "condition": "288/354 brn",
+        "details": "Gliscor, M",
+        "slot": 1
+      },
+      {
+        "condition": "339/339",
+        "details": "Walking Wake",
+        "slot": 2
+      },
+      {
+        "condition": "301/301",
+        "details": "Ogerpon, F",
+        "slot": 3
+      },
+      {
+        "condition": "371/371",
+        "details": "Corviknight, F",
+        "slot": 4
+      },
+      {
+        "condition": "572/652",
+        "details": "Blissey, F",
+        "slot": 5
+      }
+    ],
+    "requestHash": "9a7366006fe3c115194376c5aa03d7217c6b42b2e8b6fbdfe9719dba45e91f1a",
+    "rqid": 27,
+    "trapped": false,
+    "wait": false
+  },
+  "snapshot": {
+    "battle_tag": "battle-gen9ou-2619206678",
+    "field": null,
+    "field_turns": 0,
+    "gravity": false,
+    "opponent": {
+      "account": "55tyhg4",
+      "active": {
+        "ability": null,
+        "boosts": {
+          "attack": 1,
+          "defense": 1,
+          "speed": -1
+        },
+        "fainted": false,
+        "hp": 285.98,
+        "item": "leftovers",
+        "max_hp": 362,
+        "moves": [
+          "saltcure",
+          "curse"
+        ],
+        "name": "garganacl",
+        "status": null,
+        "tera": {
+          "active": false,
+          "type": null
+        },
+        "types": [
+          "rock"
+        ],
+        "volatile_statuses": []
+      },
+      "baton_passing": false,
+      "future_sight": [
+        0,
+        ""
+      ],
+      "name": "p1",
+      "reserve": [
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 352,
+          "item": "unknownitem",
+          "max_hp": 352,
+          "moves": [],
+          "name": "clefable",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "fairy"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 262,
+          "item": "unknownitem",
+          "max_hp": 262,
+          "moves": [],
+          "name": "toxapex",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "poison",
+            "water"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 262.0,
+          "item": "unknownitem",
+          "max_hp": 262,
+          "moves": [
+            "willowisp"
+          ],
+          "name": "rotomwash",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "electric",
+            "water"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "imposter",
+          "boosts": {},
+          "fainted": false,
+          "hp": 227.04,
+          "item": "choicescarf",
+          "max_hp": 258,
+          "moves": [],
+          "name": "ditto",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "normal"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 25.340000000000003,
+          "item": "choicescarf",
+          "max_hp": 362,
+          "moves": [
+            "willowisp"
+          ],
+          "name": "mew",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "psychic"
+          ],
+          "volatile_statuses": []
+        }
+      ],
+      "shed_tailing": false,
+      "side_conditions": {
+        "auroraveil": 0,
+        "lightscreen": 0,
+        "mist": 0,
+        "protect": 0,
+        "reflect": 0,
+        "safeguard": 0,
+        "spikes": 3,
+        "stealthrock": 1,
+        "stickyweb": 0,
+        "tailwind": 0,
+        "toxic_count": 0,
+        "toxicspikes": 0
+      },
+      "trapped": false,
+      "wish": [
+        0,
+        0
+      ]
+    },
+    "team_preview": false,
+    "time_remaining": 150,
+    "trick_room": false,
+    "trick_room_turns": 0,
+    "turn": 12,
+    "user": {
+      "account": null,
+      "active": {
+        "ability": "poisonpuppeteer",
+        "boosts": {},
+        "fainted": false,
+        "hp": 174,
+        "item": "heavydutyboots",
+        "max_hp": 380,
+        "moves": [
+          "malignantchain",
+          "foulplay",
+          "partingshot",
+          "recover"
+        ],
+        "name": "pecharunt",
+        "status": null,
+        "tera": {
+          "active": false,
+          "type": "dark"
+        },
+        "types": [
+          "poison",
+          "ghost"
+        ],
+        "volatile_statuses": [
+          "saltcure"
+        ]
+      },
+      "baton_passing": false,
+      "future_sight": [
+        0,
+        ""
+      ],
+      "name": "p2",
+      "reserve": [
+        {
+          "ability": "protosynthesis",
+          "boosts": {},
+          "fainted": false,
+          "hp": 339,
+          "item": "heavydutyboots",
+          "max_hp": 339,
+          "moves": [
+            "surf",
+            "dracometeor",
+            "knockoff",
+            "substitute"
+          ],
+          "name": "walkingwake",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "water"
+          },
+          "types": [
+            "water",
+            "dragon"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "pressure",
+          "boosts": {},
+          "fainted": false,
+          "hp": 371,
+          "item": "heavydutyboots",
+          "max_hp": 371,
+          "moves": [
+            "bodypress",
+            "thief",
+            "uturn",
+            "roost"
+          ],
+          "name": "corviknight",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "ghost"
+          },
+          "types": [
+            "flying",
+            "steel"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "poisonheal",
+          "boosts": {},
+          "fainted": false,
+          "hp": 288,
+          "item": "toxicorb",
+          "max_hp": 354,
+          "moves": [
+            "spikes",
+            "earthquake",
+            "toxic",
+            "protect"
+          ],
+          "name": "gliscor",
+          "status": "brn",
+          "tera": {
+            "active": false,
+            "type": "ghost"
+          },
+          "types": [
+            "ground",
+            "flying"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "defiant",
+          "boosts": {},
+          "fainted": false,
+          "hp": 301,
+          "item": "heavydutyboots",
+          "max_hp": 301,
+          "moves": [
+            "ivycudgel",
+            "knockoff",
+            "uturn",
+            "encore"
+          ],
+          "name": "ogerpon",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "grass"
+          },
+          "types": [
+            "grass"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "naturalcure",
+          "boosts": {},
+          "fainted": false,
+          "hp": 572,
+          "item": "heavydutyboots",
+          "max_hp": 652,
+          "moves": [
+            "softboiled",
+            "calmmind",
+            "seismictoss",
+            "stealthrock"
+          ],
+          "name": "blissey",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "dark"
+          },
+          "types": [
+            "normal"
+          ],
+          "volatile_statuses": []
+        }
+      ],
+      "shed_tailing": false,
+      "side_conditions": {
+        "auroraveil": 0,
+        "lightscreen": 0,
+        "mist": 0,
+        "protect": 0,
+        "reflect": 0,
+        "safeguard": 0,
+        "spikes": 2,
+        "tailwind": 0,
+        "toxic_count": 0
+      },
+      "trapped": false,
+      "wish": [
+        0,
+        0
+      ]
+    },
+    "weather": null,
+    "weather_source": "",
+    "weather_turns": -1
+  },
+  "strategic": {
+    "archetype": "HazardStack",
+    "confidence": 0.7,
+    "engine_choice": "switch blissey",
+    "win_condition": "Set all hazards early (turn 1-5), then wall and wear down opponent"
+  },
+  "team_intent": {
+    "active_intent": {
+      "handles_types": [
+        "bug",
+        "fairy",
+        "fighting",
+        "ghost",
+        "grass",
+        "normal",
+        "poison",
+        "psychic"
+      ],
+      "is_win_condition": false,
+      "recovery_threshold": 0.6,
+      "role": "physical wall",
+      "role_tags": [
+        "physical wall",
+        "pivot",
+        "recovery user"
+      ]
+    },
+    "team_style": "fat",
+    "win_conditions": []
+  },
+  "timestamp": "2026-05-27T15:47:18.210551Z",
+  "turn": 12,
+  "worker_id": 1
+}

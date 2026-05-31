@@ -566,6 +566,105 @@ body.hide-recent #mid-streak,
 body.hide-recent #mid-form {
   display: none;
 }
+
+body.mode-slot {
+  background:
+    radial-gradient(circle at 15% 10%, rgba(239,68,68,0.28), transparent 28%),
+    linear-gradient(135deg, #090b12 0%, #151821 55%, #0b1018 100%);
+}
+
+body.mode-slot #top-bar,
+body.mode-slot #bottom-bar,
+body.mode-slot .dead-column.col-center,
+body.mode-slot .dead-column.col-right {
+  display: none;
+}
+
+body.mode-slot #deadspace-grid {
+  inset: 0;
+  top: 0;
+  bottom: 0;
+  grid-template-columns: 1fr;
+  padding: 24px;
+  gap: 0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.04), transparent 28%, rgba(255,255,255,0.03)),
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent 40%);
+}
+
+body.mode-slot .dead-column.col-left {
+  transform: none;
+  padding: 0;
+  min-height: 100%;
+}
+
+body.mode-slot .worker-pill {
+  border-radius: 22px;
+  padding: 22px 28px;
+  min-height: 132px;
+  border-color: rgba(255,255,255,0.34);
+  background: rgba(12,14,24,0.95);
+}
+
+body.mode-slot .worker-label {
+  font-size: 22px;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.68);
+}
+
+body.mode-slot .worker-opponent {
+  font-size: 48px;
+  line-height: 0.96;
+  letter-spacing: 0;
+  max-width: 520px;
+}
+
+body.mode-slot .worker-status {
+  font-size: 20px;
+  padding: 10px 18px;
+  border-radius: 18px;
+}
+
+body.mode-slot .dead-card {
+  margin-top: 18px;
+  border-radius: 22px;
+  padding: 24px 30px;
+  flex: 1 1 auto;
+  background: rgba(13,16,27,0.96);
+}
+
+body.mode-slot .hud-label {
+  font-size: 22px;
+  letter-spacing: 4px;
+}
+
+body.mode-slot .hud-record .hud-w,
+body.mode-slot .hud-record .hud-l {
+  font-size: 74px;
+}
+
+body.mode-slot .hud-record .hud-sep {
+  font-size: 42px;
+}
+
+body.mode-slot .hud-sub {
+  font-size: 22px;
+}
+
+body.mode-slot .slot-proof {
+  display: block;
+  margin-top: 12px;
+  color: rgba(255,255,255,0.62);
+  font-size: 16px;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body:not(.mode-slot) .slot-proof {
+  display: none;
+}
 .result-pip {
   width: 30px;
   height: 30px;
@@ -663,7 +762,7 @@ body.hide-recent #mid-form {
   <div class="dead-column col-left">
     <div class="worker-pill" id="worker-1">
       <div class="worker-left">
-        <div class="worker-label" id="worker-1-label">WORKER 01</div>
+        <div class="worker-label" id="worker-1-label">FEATURED MATCH 1</div>
         <div class="worker-opponent" id="worker-1-name">Idle</div>
       </div>
       <div class="worker-status idle" id="worker-1-status">Idle</div>
@@ -677,13 +776,14 @@ body.hide-recent #mid-form {
       </div>
       <div class="hud-sub" id="mid-winrate"></div>
       <div class="hud-sub" id="mid-streak"></div>
+      <div class="hud-sub slot-proof" id="slot-battle-id"></div>
     </div>
   </div>
   <div class="dead-column col-center">
     <div class="dead-card emerald-card">
-      <div class="hud-label" style="color: #4ade80;">🎮 EMERALD AI</div>
-      <div class="hud-sub" id="emerald-status" style="color: rgba(255,255,255,0.85);">Title Screen — Awaiting Start</div>
-      <div class="hud-sub" style="font-size: 11px; opacity: 0.6;">DEKU plays Pokémon Emerald to 100% via mGBA</div>
+      <div class="hud-label" style="color: #4ade80;">BATTLE LAB</div>
+      <div class="hud-sub" id="emerald-status" style="color: rgba(255,255,255,0.85);">Showdown queue active</div>
+      <div class="hud-sub" style="font-size: 11px; opacity: 0.6;">Bounded battles create replay evidence after each match</div>
     </div>
     <div class="dead-card" style="padding: 14px 20px;">
       <div class="hud-label">ELO</div>
@@ -698,7 +798,7 @@ body.hide-recent #mid-form {
   <div class="dead-column col-right">
     <div class="worker-pill" id="worker-2">
       <div class="worker-left">
-        <div class="worker-label">WORKER 02</div>
+        <div class="worker-label">FEATURED MATCH 2</div>
         <div class="worker-opponent" id="worker-2-name">Idle</div>
       </div>
       <div class="worker-status idle" id="worker-2-status">Idle</div>
@@ -721,7 +821,7 @@ body.hide-recent #mid-form {
       <div id="recent-results"></div>
       <div id="streak"></div>
     </div>
-    <div id="ticker">DEKU SIMULCAST — Gen 9 OU Ladder</div>
+    <div id="ticker">SHOWDOWN BATTLE LAB — Gen 9 OU Ladder</div>
   </div>
 </div>
 
@@ -741,9 +841,16 @@ const RECENT_STORAGE_KEY = 'fp_recent_results_v1';
 const COUNTER_STORAGE_KEY = 'fp_recent_counters_v1';
 const params = new URLSearchParams(window.location.search);
 const mode = params.get('mode');
+const selectedSlot = (() => {
+  const raw = Number(params.get('slot') || 0);
+  return Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : null;
+})();
 const showRecent = params.get('hide_recent') !== '1';
 if (mode === 'bottom') {
   document.body.classList.add('mode-bottom');
+}
+if (mode === 'slot' || selectedSlot) {
+  document.body.classList.add('mode-slot');
 }
 if (!showRecent) {
   document.body.classList.add('hide-recent');
@@ -857,6 +964,24 @@ function normalizeBattles(battles) {
   });
 }
 
+function battleSlotOf(battle, index) {
+  if (!battle || typeof battle !== 'object') return index + 1;
+  const raw = battle.slot ?? (battle.worker_id !== undefined ? Number(battle.worker_id) + 1 : index + 1);
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 1 ? Math.floor(parsed) : index + 1;
+}
+
+function shortBattleId(battle) {
+  const raw = battle && typeof battle === 'object' ? String(battle.id || battle.battle_id || '') : '';
+  return raw.replace(/^battle-gen9ou-/, '').replace(/^battle-/, '');
+}
+
+function slotBattlesOnly(battles) {
+  if (!selectedSlot) return battles;
+  const selected = battles.find((battle, index) => battleSlotOf(battle, index) === selectedSlot);
+  return selected ? [{ ...selected, slot: 1 }] : [];
+}
+
 function buildBattleInfo(status, battles) {
   const normalized = normalizeBattles(battles);
   if (normalized.length) {
@@ -891,7 +1016,7 @@ function isStatusPayload(payload) {
 
 function updateOverlay(status, battles) {
   const data = status || {};
-  const activeBattles = normalizeBattles(battles);
+  const activeBattles = slotBattlesOnly(normalizeBattles(battles));
   const eloEl = document.getElementById('elo');
   const winsEl = document.getElementById('wins');
   const lossesEl = document.getElementById('losses');
@@ -915,6 +1040,12 @@ function updateOverlay(status, battles) {
   const worker2NameEl = document.getElementById('worker-2-name');
   const worker1StatusEl = document.getElementById('worker-1-status');
   const worker2StatusEl = document.getElementById('worker-2-status');
+  const worker1LabelEl = document.getElementById('worker-1-label');
+  const slotBattleIdEl = document.getElementById('slot-battle-id');
+
+  if (selectedSlot && worker1LabelEl) {
+    setText(worker1LabelEl, `FEATURED MATCH ${String(selectedSlot).padStart(2, '0')}`, 'worker-1-label:text');
+  }
   
   // Multi-account ELO with change detection
   const accountsElo = data.accounts_elo || {};
@@ -958,11 +1089,11 @@ function updateOverlay(status, battles) {
   
     // Update name labels dynamically from state
   const firstAcctName = Object.keys(accountsElo)[0];
-  if (firstAcctName) {
+  if (firstAcctName && !selectedSlot) {
     const lbl = document.getElementById("worker-1-label");
     const tkr = document.getElementById("ticker");
     if (lbl) lbl.textContent = firstAcctName.toUpperCase();
-    if (tkr) tkr.textContent = "DEKU SIMULCAST — Gen 9 OU Ladder";
+    if (tkr) tkr.textContent = "SHOWDOWN BATTLE LAB — Gen 9 OU Ladder";
   }
   // Backward compat: update top bar ELO with primary account
   const newElo = data.elo || '---';
@@ -1163,9 +1294,9 @@ function updateOverlay(status, battles) {
   }
 
   const slotMap = {};
-  for (const battle of activeBattles) {
+  for (const [index, battle] of activeBattles.entries()) {
     if (!battle || typeof battle !== 'object') continue;
-    const slot = battle.slot ?? (battle.worker_id !== undefined ? battle.worker_id + 1 : null);
+    const slot = battleSlotOf(battle, index);
     if (slot) {
       slotMap[slot] = battle;
     }
@@ -1175,17 +1306,22 @@ function updateOverlay(status, battles) {
     if (!nameEl || !statusEl) return;
     const battle = slotMap[slot];
     if (battle) {
-      const opponent = battle.opponent || battle.id || 'Unknown';
+      const opponent = selectedSlot ? 'Active ladder battle' : (battle.opponent || battle.id || 'Unknown');
       setText(nameEl, opponent, `${nameEl.id}:text`);
       setText(statusEl, 'Active', `${statusEl.id}:text`);
       setClass(statusEl, 'worker-status active', `${statusEl.id}:class`);
     } else {
-      setText(nameEl, 'Idle', `${nameEl.id}:text`);
+      setText(nameEl, selectedSlot ? 'Next match ready' : 'Idle', `${nameEl.id}:text`);
       setText(statusEl, slotStatus, `${statusEl.id}:text`);
       setClass(statusEl, `worker-status ${slotStatus.toLowerCase()}`, `${statusEl.id}:class`);
     }
   };
   updateWorker(1, worker1NameEl, worker1StatusEl);
+  if (selectedSlot && slotBattleIdEl) {
+    const battle = slotMap[1];
+    const label = battle ? 'Live ladder battle' : 'Next matchup ready';
+    setText(slotBattleIdEl, label, 'slot-battle-id:text');
+  }
   // Worker 2 is updated by pollDeku() separately
   mergeBotStats();
 }
@@ -1303,7 +1439,7 @@ function connectWs() {
   });
 }
 
-// DEKU worker poller — updates Worker 2 pill + merged stats
+// Remote battle poller updates the secondary public match view and merged stats.
 const DEKU_STATE_URL = '/deku-state';
 let dekuWins = 0, dekuLosses = 0, dekuOpponent = '';
 async function pollDeku() {
@@ -1381,10 +1517,14 @@ function mergeBotStats() {
 }
 
 pollOnce();
-pollDeku();
+if (!selectedSlot) {
+  pollDeku();
+}
 connectWs();
 setInterval(pollOnce, 2000);
-setInterval(pollDeku, 3000);
+if (!selectedSlot) {
+  setInterval(pollDeku, 3000);
+}
 </script>
 </body>
 </html>

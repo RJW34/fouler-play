@@ -148,3 +148,19 @@ def test_batch_stats_only_prompt_fails_closed_without_replay_evidence(monkeypatc
     assert "Aggregate statistics are not mechanics proof" in content
     assert "No local loss replay artifacts were available" in content
     assert "Do not write unsupported mechanics claims as fact" in content
+
+
+def test_batch_prompt_does_not_smuggle_historical_meta_claims():
+    analyzer = BatchAnalyzer.__new__(BatchAnalyzer)
+    analyzer.bot_username = "Bot"
+
+    prompt = analyzer.build_analysis_prompt(
+        reviews=["--- Battle: battle-gen9ou-1 ---", "Turn 1: Bot chose Protect"],
+        stats={"total": 1, "wins": 0, "losses": 1, "teams": {}},
+        mechanics_summary="Proven lessons: none yet",
+    )
+
+    assert "76% of losses" not in prompt
+    assert "No exceptions" not in prompt
+    assert "advisory only" in prompt
+    assert "label it unknown" in prompt

@@ -8,6 +8,8 @@ from pathlib import Path
 import subprocess
 from typing import Sequence
 
+from data.pokedex_oracle import oracle as pokedex_oracle
+
 logger = logging.getLogger(__name__)
 
 _DEFAULT_THEKNOWER_ROOT = Path(os.environ.get("THEKNOWER_ROOT", "/home/ryan/projects/theknower"))
@@ -69,7 +71,7 @@ def load_competitive_topic(
         )
     except Exception as exc:
         logger.warning("kb-query competitive lookup failed, falling back to local topic parse: %s", exc)
-        fallback_hits = _load_local_fallback(topic_root)
+        fallback_hits = _load_local_fallback(topic_root, effective_query)
         return CompetitiveTopicSnapshot(
             topic_root=topic_root,
             query=effective_query,
@@ -119,6 +121,23 @@ def build_pokedex_oracle_context(
     ]
     if species:
         lines.append(f"- Team species focus: {', '.join(species[:12])}")
+        lines.append("- Canonical Pokedex Oracle facts:")
+        for name in species[:8]:
+            block = pokedex_oracle.grounding_block(name)
+            if block.get("error"):
+                lines.append(f"  - {name}: {block['error']}")
+                continue
+            abilities = block.get("abilities") if isinstance(block.get("abilities"), dict) else {}
+            ability_names = ", ".join(str(value) for value in abilities.values() if value) or "unknown"
+            common_moves = block.get("common_moves") if isinstance(block.get("common_moves"), list) else []
+            move_names = ", ".join(str(move.get("name") or "?") for move in common_moves[:4] if isinstance(move, dict)) or "usage data unavailable"
+            common_items = block.get("common_items") if isinstance(block.get("common_items"), dict) else {}
+            item_names = ", ".join(str(item) for item in list(common_items.keys())[:3]) or "usage data unavailable"
+            lines.append(
+                f"  - {block.get('pokemon', name)}: types={', '.join(block.get('types') or [])}; "
+                f"abilities={ability_names}; common moves={move_names}; common items={item_names}; "
+                f"source={block.get('source')}"
+            )
     if snapshot.highlights:
         lines.append("- Relevant knower notes:")
         lines.extend(f"  - {line}" for line in snapshot.highlights[:6])
@@ -186,7 +205,7 @@ def _collect_species(*teams: Sequence[dict] | None) -> list[str]:
 
 
 
-def _load_local_fallback(topic_root: Path) -> list[CompetitiveKnowledgeHit]:
+def _load_local_fallback(topic_root: Path, query: str) -> list[CompetitiveKnowledgeHit]:
     docs = []
     for path in sorted(topic_root.glob("*.md")):
         try:
@@ -200,6 +219,18 @@ def _load_local_fallback(topic_root: Path) -> list[CompetitiveKnowledgeHit]:
                     distance=None,
                     path=str(path),
                     text=text[:4000],
-                )
             )
-    return docs
+        )
+    if docs:
+        return docs
+    return [
+        CompetitiveKnowledgeHit(
+            id="fallback:query-context",
+            distance=None,
+            path=str(topic_root),
+            text=(
+                "# Competitive knowledge query fallback\n\n"
+                f"- No local TheKnower topic files were available for: {query}\n"
+            ),
+        )
+    ]

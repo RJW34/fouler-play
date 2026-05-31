@@ -13,9 +13,11 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
+from uuid import uuid4
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 ACTIVE_BATTLES_PATH = ROOT_DIR / "active_battles.json"
@@ -23,6 +25,7 @@ STREAM_STATUS_PATH = ROOT_DIR / "stream_status.json"
 DAILY_STATS_PATH = ROOT_DIR / "daily_stats.json"
 NEXT_FIX_PATH = ROOT_DIR / "next_fix.txt"
 STABILITY_REPORT_PATH = ROOT_DIR / "stability_report.json"
+STATE_STORE_WRITE_FAILURE_PATH = ROOT_DIR / "devstream" / "truth" / "state-store-write-failure.json"
 
 DEFAULT_NEXT_FIX = "Pending replay review"
 
@@ -39,11 +42,58 @@ DEFAULT_STATUS = {
 }
 
 
+def _status_with_cleared_blocker(status: dict[str, Any]) -> dict[str, Any]:
+    cleared = dict(status)
+    for key in ("runtime_blocked", "blocker_code", "blocker_summary"):
+        cleared.pop(key, None)
+    return cleared
+
+
+def _write_state_store_failure(path: Path, exc: BaseException, attempts: int) -> None:
+    failure = {
+        "schemaVersion": "fouler-play-state-store-write-failure/v1",
+        "generatedAt": datetime.now(timezone.utc).isoformat(),
+        "target": str(path),
+        "attempts": attempts,
+        "errorType": type(exc).__name__,
+        "error": str(exc),
+        "safeForPublicLogs": True,
+    }
+    STATE_STORE_WRITE_FAILURE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    STATE_STORE_WRITE_FAILURE_PATH.write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
+
+
 def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp")
+    attempts = 6
+    with tmp.open("w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    last_error: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError as exc:
+            last_error = exc
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 5:
+                raise
+            last_error = exc
+        if attempt < attempts:
+            time.sleep(0.05 * attempt)
+    if tmp.exists():
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+    if last_error is None:
+        last_error = RuntimeError(f"atomic write failed for {path}")
+    _write_state_store_failure(path, last_error, attempts)
+    raise last_error
 
 
 def _read_json(path: Path, default: dict[str, Any]) -> dict[str, Any]:
@@ -176,6 +226,59 @@ def write_runtime_blocked_status(*, code: str, summary: str) -> dict[str, Any]:
         "details": {
             "active_battles": 0,
             "reason": "No stability sample is meaningful while the runtime is blocked before battle launch.",
+        },
+    }
+    _atomic_write_json(STABILITY_REPORT_PATH, stability_payload)
+    return {
+        "activeBattles": active_payload,
+        "status": read_status(),
+        "dailyStats": daily,
+        "stabilityReport": stability_payload,
+    }
+
+
+def write_runtime_ready_status(*, summary: str, mode: str = "ready") -> dict[str, Any]:
+    """Publish fresh, secret-free runtime truth after a safe readiness proof."""
+    now = datetime.now(timezone.utc).isoformat()
+    clean_summary = (summary or "Runtime ready.").strip()
+    clean_mode = (mode or "ready").strip()
+    status_label = "Offline rehearsal ready" if clean_mode == "offline_rehearsal" else "Ready"
+    active_payload = {
+        "battles": [],
+        "count": 0,
+        "updated": now,
+        "runtime_mode": clean_mode,
+        "runtime_blocked": False,
+    }
+    daily = update_daily_stats(0, 0)
+    existing_status = _status_with_cleared_blocker(read_status())
+    status_payload = {
+        **existing_status,
+        "wins": daily.get("wins", 0),
+        "losses": daily.get("losses", 0),
+        "today_wins": daily.get("wins", 0),
+        "today_losses": daily.get("losses", 0),
+        "status": status_label,
+        "battle_info": clean_summary,
+        "streaming": False,
+        "stream_pid": None,
+        "runtime_mode": clean_mode,
+        "next_fix": "Start a bounded devstream batch." if clean_mode != "offline_rehearsal" else "Offline rehearsal is available; live ladder still needs a successful executed login proof.",
+    }
+    write_active_battles(active_payload)
+    write_status(status_payload)
+    stability_payload = {
+        "generated_at": now,
+        "runtime_blocked": False,
+        "runtime_mode": clean_mode,
+        "stability": {
+            "health": "ready" if clean_mode != "offline_rehearsal" else "offline_rehearsal",
+            "summary": clean_summary,
+            "next_fix": status_payload["next_fix"],
+        },
+        "details": {
+            "active_battles": 0,
+            "reason": "Fresh readiness truth was published without launching a battle.",
         },
     }
     _atomic_write_json(STABILITY_REPORT_PATH, stability_payload)

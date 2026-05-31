@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Battle Slot</title>
+<title>Showdown Battle Feed</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -17,7 +17,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{
-  width:640px;height:540px;overflow:hidden;
+  width:100vw;height:100vh;overflow:hidden;
   background:var(--bg-dark);
   font-family:'Outfit',sans-serif;color:var(--text-main);
   position:relative;
@@ -127,8 +127,8 @@ body{
     <div class="sonar-circle"></div>
     <div class="sonar-circle"></div>
   </div>
-  <div class="searching-text">SCANNING...</div>
-  <div class="searching-sub" id="searchingSub">Slot <span id="slotLabel">?</span> &mdash; Waiting for battle</div>
+  <div class="searching-text">MATCHMAKING</div>
+  <div class="searching-sub" id="searchingSub">RANKED BATTLE FEED <span id="slotLabel">?</span></div>
   <div class="slot-number" id="bigSlotNum"></div>
 </div>
 
@@ -138,7 +138,7 @@ body{
 <!-- UI overlay -->
 <div class="ui-layer">
   <div class="slot-header">
-    <div class="badge" id="slotBadge">SLOT ?</div>
+    <div class="badge" id="slotBadge">BATTLE</div>
     <div class="badge live" id="liveBadge" style="display:none">LIVE</div>
   </div>
   <div class="battle-card" id="battleCard">
@@ -154,7 +154,7 @@ body{
 // Get slot number from URL path: /slot/1, /slot/2, /slot/3
 const pathParts = window.location.pathname.split('/');
 const SLOT_NUM = parseInt(pathParts[pathParts.length - 1]) || 1;
-const STATE_URL = '/magneton-state';
+const STATE_URL = '/slot/' + SLOT_NUM + '/state';
 const REFRESH_MS = 5000;
 
 const badgeColors = {1:'slot1', 2:'slot2', 3:'slot3'};
@@ -163,7 +163,7 @@ const badgeLabels = {1:'BATTLE 01', 2:'BATTLE 02', 3:'BATTLE 03'};
 // Init labels
 document.getElementById('slotLabel').textContent = SLOT_NUM;
 document.getElementById('bigSlotNum').textContent = SLOT_NUM;
-document.getElementById('slotBadge').textContent = badgeLabels[SLOT_NUM] || ('SLOT ' + SLOT_NUM);
+document.getElementById('slotBadge').textContent = badgeLabels[SLOT_NUM] || ('BATTLE ' + SLOT_NUM);
 document.getElementById('slotBadge').classList.add(badgeColors[SLOT_NUM] || 'slot1');
 
 let currentBattleId = null;
@@ -193,10 +193,9 @@ async function fetchState() {
     if (!resp.ok) return;
     const data = await resp.json();
     if (data.error) return;
-    const battles = data.battles || [];
-    const slotMap = {};
-    battles.forEach((b, i) => { slotMap[b.slot || (i+1)] = b; });
-    const battle = slotMap[SLOT_NUM] || null;
+    const battle = data.battle_id
+      ? {id: data.battle_id, url: data.url, opponent: data.opponent}
+      : null;
     updateSlot(battle);
   } catch(e) {}
 }

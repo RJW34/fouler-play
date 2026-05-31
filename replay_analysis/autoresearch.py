@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -45,12 +46,16 @@ class AutoResearcher:
     def __init__(self, *, project_root: Path | None = None):
         self.project_root = project_root or PROJECT_ROOT
         self.battle_stats_path = self.project_root / "battle_stats.json"
+        self.elo_proof_path = self.project_root / "devstream" / "truth" / "latest-elo-proof.json"
         self.replay_dir = self.project_root / "replay_analysis"
         self.trace_dir = self.project_root / "logs" / "decision_traces"
         self.reports_dir = self.replay_dir / "reports"
         self.batch_history_dir = self.replay_dir / "batches"
+        self.trace_evidence_dir = self.replay_dir / "evidence_traces"
+        self.last_battle_source = "battle_stats.json"
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         self.batch_history_dir.mkdir(parents=True, exist_ok=True)
+        self.trace_evidence_dir.mkdir(parents=True, exist_ok=True)
 
     def _detect_team_paths(self, window: list[dict[str, Any]]) -> list[str]:
         """Extract unique team file paths from the battle window."""
@@ -69,13 +74,65 @@ class AutoResearcher:
                         break
         return paths
 
-    def load_battles(self) -> list[dict[str, Any]]:
+    def _latest_timestamp(self, battles: list[dict[str, Any]]) -> str:
+        timestamps = [str(battle.get("timestamp") or "") for battle in battles]
+        return max(timestamps) if timestamps else ""
+
+    def _normalize_elo_proof_battle(self, game: dict[str, Any]) -> dict[str, Any]:
+        battle_id = str(game.get("battleId") or game.get("battle_id") or "")
+        replay_url = str(game.get("replayUrl") or game.get("replay_url") or "")
+        replay_id = battle_id
+        if not replay_id and replay_url:
+            replay_id = replay_url.rstrip("/").split("/")[-1]
+        return {
+            "battle_id": battle_id or replay_id,
+            "timestamp": game.get("timestamp"),
+            "team_file": game.get("teamFile") or game.get("team_file"),
+            "result": game.get("result"),
+            "replay_id": replay_id,
+            "replay_url": replay_url,
+            "rating": game.get("ratingAfter") or game.get("rating"),
+            "ratingBefore": game.get("ratingBefore"),
+            "opponent": game.get("opponent", ""),
+            "opponentRating": game.get("opponentRating"),
+            "source": "devstream/truth/latest-elo-proof.json",
+        }
+
+    def load_elo_proof_battles(self) -> list[dict[str, Any]]:
+        if not self.elo_proof_path.exists():
+            return []
+        try:
+            data = json.loads(self.elo_proof_path.read_text(encoding="utf-8"))
+        except Exception:
+            return []
+        games = data.get("games", [])
+        if not isinstance(games, list):
+            return []
+        battles = [
+            self._normalize_elo_proof_battle(game)
+            for game in games
+            if isinstance(game, dict)
+        ]
+        battles = [battle for battle in battles if battle.get("battle_id") or battle.get("timestamp")]
+        battles.sort(key=lambda b: b.get("timestamp", ""))
+        return battles
+
+    def load_battle_stats_battles(self) -> list[dict[str, Any]]:
         if not self.battle_stats_path.exists():
             return []
         data = json.loads(self.battle_stats_path.read_text(encoding="utf-8"))
         battles = data.get("battles", [])
         battles.sort(key=lambda b: b.get("timestamp", ""))
         return battles
+
+    def load_battles(self) -> list[dict[str, Any]]:
+        local_battles = self.load_battle_stats_battles()
+        proof_battles = self.load_elo_proof_battles()
+        if proof_battles and self._latest_timestamp(proof_battles) > self._latest_timestamp(local_battles):
+            self.last_battle_source = "devstream/truth/latest-elo-proof.json"
+            return proof_battles
+        self.last_battle_source = "battle_stats.json"
+        return local_battles
 
     def recent_window(self, battles: list[dict[str, Any]], last_n: int = 30) -> list[dict[str, Any]]:
         return battles[-last_n:] if len(battles) > last_n else battles
@@ -117,10 +174,26 @@ class AutoResearcher:
         traces: list[dict[str, Any]] = []
         for path in paths[-limit:]:
             try:
-                traces.append(json.loads(path.read_text(encoding="utf-8")))
+                raw_bytes = path.read_bytes()
+                raw = raw_bytes.decode("utf-8")
+                trace = json.loads(raw)
+                if isinstance(trace, dict):
+                    snapshot_path, snapshot_sha = self._snapshot_trace_evidence(path, raw_bytes)
+                    trace["_source_trace_path"] = path.relative_to(self.project_root).as_posix()
+                    trace["_trace_path"] = snapshot_path.relative_to(self.project_root).as_posix()
+                    trace["_trace_sha256"] = snapshot_sha
+                    traces.append(trace)
             except Exception:
                 continue
         return traces
+
+    def _snapshot_trace_evidence(self, source_path: Path, raw: bytes) -> tuple[Path, str]:
+        digest = hashlib.sha256(raw).hexdigest()
+        snapshot_name = f"{source_path.stem}-{digest[:12]}{source_path.suffix}"
+        snapshot_path = self.trace_evidence_dir / snapshot_name
+        if not snapshot_path.exists() or hashlib.sha256(snapshot_path.read_bytes()).hexdigest() != digest:
+            snapshot_path.write_bytes(raw)
+        return snapshot_path, digest
 
     def _extract_log_lines(self, replay_data: dict[str, Any] | None) -> list[str]:
         if not replay_data:
@@ -137,6 +210,8 @@ class AutoResearcher:
         return "p1"
 
     def _hazard_issue(self, lines: list[str], bot_slot: str) -> tuple[bool, str]:
+        if not lines:
+            return False, "hazard analysis unavailable without replay or Showdown protocol log lines"
         our_rocks = False
         opp_rocks = False
         for line in lines:
@@ -184,9 +259,27 @@ class AutoResearcher:
             return True, f"loss lasted {turns} turns, suggesting endgame conversion or long-game planning failure"
         return False, ""
 
+    def _trace_has_request_legal_options(self, trace: dict[str, Any]) -> bool:
+        legal_options = trace.get("legalOptions") if isinstance(trace.get("legalOptions"), dict) else {}
+        request = trace.get("showdownRequest") if isinstance(trace.get("showdownRequest"), dict) else {}
+        request_hash = str(legal_options.get("requestHash") or request.get("requestHash") or "").strip()
+        legal_moves = legal_options.get("legalMoves") if isinstance(legal_options.get("legalMoves"), list) else request.get("legalMoves")
+        legal_switches = legal_options.get("legalSwitches") if isinstance(legal_options.get("legalSwitches"), list) else request.get("legalSwitches")
+        candidate_bounded = legal_options.get("candidateSetBounded") is True or request.get("candidateSetBounded") is True
+        return bool(
+            request_hash
+            and len(request_hash) == 64
+            and candidate_bounded
+            and (
+                (isinstance(legal_moves, list) and legal_moves)
+                or (isinstance(legal_switches, list) and legal_switches)
+            )
+        )
+
     def _trace_issue(self, traces: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
         choice_counter: Counter[str] = Counter()
         reasons: list[str] = []
+        legal_option_proofs: list[str] = []
         for trace in traces:
             choice = str(trace.get("choice", "")).strip()
             if choice:
@@ -194,6 +287,20 @@ class AutoResearcher:
             reason = str(trace.get("reason", "")).strip()
             if reason:
                 reasons.append(reason)
+            legal_options = trace.get("legalOptions") if isinstance(trace.get("legalOptions"), dict) else {}
+            request = trace.get("showdownRequest") if isinstance(trace.get("showdownRequest"), dict) else {}
+            request_hash = str(legal_options.get("requestHash") or request.get("requestHash") or "").strip()
+            legal_moves = legal_options.get("legalMoves") if isinstance(legal_options.get("legalMoves"), list) else request.get("legalMoves")
+            legal_switches = legal_options.get("legalSwitches") if isinstance(legal_options.get("legalSwitches"), list) else request.get("legalSwitches")
+            if self._trace_has_request_legal_options(trace):
+                legal_option_proofs.append(
+                    "request-backed legal options: "
+                    f"requestHash={request_hash} "
+                    f"legalMoves={len(legal_moves) if isinstance(legal_moves, list) else 0} "
+                    f"legalSwitches={len(legal_switches) if isinstance(legal_switches, list) else 0} "
+                    f"trace={trace.get('_trace_path', 'unknown')} "
+                    f"traceSha256={trace.get('_trace_sha256', 'unknown')}"
+                )
         repeated = [name for name, count in choice_counter.items() if count >= 3]
         findings: list[str] = []
         if repeated:
@@ -202,6 +309,8 @@ class AutoResearcher:
             timeout_count = sum(1 for r in reasons if "timeout" in r or "fallback" in r or "error" in r)
             if timeout_count >= 2:
                 findings.append(f"decision traces show {timeout_count} fallback/timeout/error selections")
+        if legal_option_proofs:
+            findings.append(legal_option_proofs[-1])
         return findings, reasons
 
     def _build_batch_identity(self, window: list[dict[str, Any]]) -> dict[str, Any]:
@@ -331,6 +440,13 @@ class AutoResearcher:
         evidence_map: dict[str, list[str]] = defaultdict(list)
         team_counter: Counter[str] = Counter()
         opponent_counter: Counter[str] = Counter()
+        evidence_integrity = {
+            "loss_count": len(losses),
+            "losses_with_replay_json": 0,
+            "losses_with_decision_trace": 0,
+            "losses_with_request_legal_options": 0,
+            "claims_without_evidence": [],
+        }
 
         for battle in losses:
             replay_data = self._load_replay_json(battle.get("replay_id") or battle.get("battle_id"))
@@ -338,6 +454,24 @@ class AutoResearcher:
             bot_slot = self._parse_bot_slot(lines) if lines else "p1"
             battle_label = battle.get("battle_id", "unknown")
             team_counter[str(battle.get("team_file", "unknown"))] += 1
+            traces = self._load_trace_files(battle.get("replay_id") or battle.get("battle_id"))
+            has_request_legal_trace = any(self._trace_has_request_legal_options(trace) for trace in traces)
+            if replay_data and lines:
+                evidence_integrity["losses_with_replay_json"] += 1
+            elif has_request_legal_trace:
+                # Trace-only decision-instability findings are evidence-backed when the
+                # trace includes the exact Showdown request legal option set.
+                pass
+            else:
+                evidence_integrity["claims_without_evidence"].append({
+                    "battle_id": battle_label,
+                    "claim_class": "mechanics_or_strategy",
+                    "reason": "no replay JSON, Showdown protocol log lines, or request-backed decision trace; battle stats may seed hypotheses but cannot support mechanics claims",
+                })
+            if traces:
+                evidence_integrity["losses_with_decision_trace"] += 1
+                if has_request_legal_trace:
+                    evidence_integrity["losses_with_request_legal_options"] += 1
 
             for line in lines:
                 if line.startswith("|poke|") and f"|{'p2' if bot_slot == 'p1' else 'p1'}|" in line:
@@ -360,10 +494,10 @@ class AutoResearcher:
                 pattern_counter["endgame_conversion"] += 1
                 evidence_map["endgame_conversion"].append(f"{battle_label}: {long_detail}")
 
-            trace_findings, _ = self._trace_issue(self._load_trace_files(battle.get("replay_id") or battle.get("battle_id")))
+            trace_findings, _ = self._trace_issue(traces)
             if trace_findings:
                 pattern_counter["decision_instability"] += 1
-                evidence_map["decision_instability"].append(f"{battle_label}: {'; '.join(trace_findings[:2])}")
+                evidence_map["decision_instability"].append(f"{battle_label}: {'; '.join(trace_findings[:3])}")
 
         issue_defs = {
             "hazard_pressure": (
@@ -457,7 +591,8 @@ class AutoResearcher:
                 pass
 
         result = {
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "battle_source": self.last_battle_source,
             "batch": batch_identity,
             "window_size": len(window),
             "wins": len(wins),
@@ -489,6 +624,7 @@ class AutoResearcher:
                 "source": "data/pokedex_oracle.py — all facts from pokedex.json, moves.json, smogon_stats_cache",
                 "our_teams": grounded_teams,
             },
+            "evidence_integrity": evidence_integrity,
         }
         return result
 
@@ -510,6 +646,24 @@ class AutoResearcher:
         lines.append(f"Window: last {report['window_size']} battles")
         lines.append(f"Record: {report['wins']}-{report['losses']} ({report['win_rate']:.1%} WR)")
         lines.append("")
+        integrity = report.get("evidence_integrity") or {}
+        if integrity:
+            lines.append("## Evidence integrity")
+            lines.append(
+                f"Replay-backed losses: {integrity.get('losses_with_replay_json', 0)}/{integrity.get('loss_count', 0)}"
+            )
+            lines.append(
+                f"Decision-trace-backed losses: {integrity.get('losses_with_decision_trace', 0)}/{integrity.get('loss_count', 0)}"
+            )
+            lines.append(
+                f"Request-legal-option-backed losses: {integrity.get('losses_with_request_legal_options', 0)}/{integrity.get('loss_count', 0)}"
+            )
+            unsupported = integrity.get("claims_without_evidence") or []
+            if unsupported:
+                lines.append("Unsupported mechanics/strategy claims are blocked until replay or trace proof exists:")
+                for item in unsupported[:5]:
+                    lines.append(f"- {item.get('battle_id', 'unknown')}: {item.get('reason', 'missing evidence')}")
+            lines.append("")
 
         regression = report.get("regression") or {}
         if regression:

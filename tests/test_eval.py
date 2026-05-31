@@ -913,6 +913,58 @@ class TestForcedLines(unittest.TestCase):
         self.assertEqual(forced.line_type, "safe_hazard")
         self.assertEqual(forced.move, "stealthrock")
 
+    def test_early_safe_hazard_preempts_generic_stay_in_2hko(self):
+        """Hazard pressure should be established before generic safe 2HKO pressure."""
+        from fp.search.forced_lines import detect_forced_line
+
+        our = _make_pokemon(
+            name="landorustherian",
+            types=["ground", "flying"],
+            moves=["earthquake", "stealthrock", "uturn"],
+            stats={
+                constants.ATTACK: 300,
+                constants.DEFENSE: 250,
+                constants.SPECIAL_ATTACK: 105,
+                constants.SPECIAL_DEFENSE: 200,
+                constants.SPEED: 280,
+                constants.HITPOINTS: 400,
+            },
+            hp=400,
+            max_hp=400,
+        )
+        opp = _make_pokemon(
+            name="slowking",
+            types=["water", "psychic"],
+            moves=["tackle"],
+            stats={
+                constants.ATTACK: 100,
+                constants.DEFENSE: 180,
+                constants.SPECIAL_ATTACK: 200,
+                constants.SPECIAL_DEFENSE: 250,
+                constants.SPEED: 80,
+                constants.HITPOINTS: 400,
+            },
+            hp=400,
+            max_hp=400,
+        )
+        reserve1 = _make_pokemon(name="garchomp", hp=300, max_hp=357)
+        reserve2 = _make_pokemon(name="heatran", hp=300, max_hp=386)
+        battle = _make_battle(
+            user_active=our,
+            opp_active=opp,
+            opp_reserve=[reserve1, reserve2],
+            opp_side_conditions={},
+            turn=2,
+        )
+
+        forced = detect_forced_line(battle)
+
+        self.assertIsNotNone(forced)
+        self.assertEqual(forced.line_type, "safe_hazard")
+        self.assertEqual(forced.move, "stealthrock")
+        self.assertIn("Early hazard pressure", forced.reason)
+        self.assertGreater(forced.confidence, 0.75)
+
     def test_toxic_stall_win_condition(self):
         """Should detect toxic stall when opponent is poisoned and can't break through."""
         from fp.search.forced_lines import detect_forced_line

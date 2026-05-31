@@ -20,6 +20,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from replay_analysis.turn_review import TurnReviewer
 from replay_analysis.loss_learning import aggregate_loss_lessons, build_loss_artifact
 from fp.theknower_competitive import build_competitive_meta_context
+from infrastructure.gen9_validation import Gen9Validator
 
 # Analysis source contract:
 # - Use a strong external reasoning agent via OpenClaw for Pokemon-competent analysis.
@@ -242,34 +243,14 @@ class BatchAnalyzer:
         prompt = """You are analyzing Pokemon Showdown Gen9 OU battle replays for a competitive bot named {bot_username}.
 
 === DOMAIN KNOWLEDGE & CONSTRAINTS ===
-DO NOT hallucinate Pokemon knowledge. Ground analysis in these facts:
+DO NOT hallucinate Pokemon knowledge. Treat the reasoning agent as advisory only.
+Mechanics, type, ability, damage, speed, hazard, and move claims are promotable only when they are backed by:
+1. the mechanics-backed loss learning summary below,
+2. the local replay/Showdown protocol excerpts below, or
+3. the current TheKnower snapshot below.
 
-GEN9 OU META FUNDAMENTALS:
-- Stall/Fat teams REQUIRE Stealth Rock. No exceptions. Missing Stealth Rock = immediate threat accumulation = loss.
-- Common walls: Blissey, Tyranitar, Weavile (hazard control), Corviknight (phys wall)
-- Common threats: Raging Bolt (special sweeper), Gholdengo (coverage), Hydreigon (special attacker), Ting-Lu (sand setter)
-- Pivot moves are core to tempo: U-turn, Chilly Reception, Teleport essential for positioning
-- Recovery moves on stall are MANDATORY: Roost, Recover, Moonlight, Synthesis
-- Type immunities grant free switches: Ghost immunity to Normal/Fighting, Water immunity via Storm Drain/Dry Skin
-
-{bot_username}'S TEAMS & STRATEGIES:
-1. STALL (fat-team-*): Walls + recovery + Stealth Rock setter. Win condition: chip damage via status/hazards.
-   - Role: Support hazard control, wall key threats, maintain defenses
-   - KNOWN ISSUE: 76% of losses had NO Stealth Rock. This is critical—force rock early.
-   
-2. PIVOT (pivot-team-*): Fast pivots, chip damage, force switches. Win condition: accumulate damage + threat advantage.
-   - Role: Tempo control, coverage gaps, speed control
-   - Expected pattern: Early U-turns, switch advantage into threats
-   
-3. DONDOZO (dondozo-team-*): Dondozo is bulky water sweeper. Win condition: sweep after walls broken.
-   - Role: Late-game threat, aqua jet priority for finish
-   - Expected pattern: Bait in walling pokemon, then pivot to sweep
-
-PREVIOUS BATCH FINDINGS:
-- Switchout decisions: Too aggressive (switching on predicted incoming threats without hazard/health advantage)
-- Move selection: Good coverage, but underutilizing recovery moves on stall
-- Hazard management: Critical weakness—Stealth Rock setup timing often poor
-- Team matchups: All three teams have viable matchup spreads; issue is execution, not composition
+If a claim is absent from those sources, label it unknown instead of making it a fact.
+Do not reuse historical percentages or prior-batch conclusions unless they are present in this prompt.
 
 CURRENT THEKNOWER COMPETITIVE SNAPSHOT:
 {competitive_context}
@@ -382,6 +363,21 @@ Format response as structured improvement report with battle citations.
         lines.append(must_not["overfit_guardrail"])
         return "\n".join(lines)
 
+    def _sanitize_reasoning_analysis(self, analysis: str) -> str:
+        """Fail closed when reasoning-agent prose contains unsupported Pokemon claims."""
+        validator = Gen9Validator()
+        is_valid, errors, warnings = validator.validate_analysis(analysis)
+        if is_valid and not warnings:
+            return analysis
+        blocker_count = len(errors) + len(warnings)
+        print(f"✗ Reasoning-agent analysis rejected by Gen 9 validator ({blocker_count} blocker/warning item(s))")
+        return (
+            "Reasoning-agent output was withheld because the Gen 9 validation gate "
+            f"found {blocker_count} unsupported or under-specified Pokemon mechanics claim(s). "
+            "HERMES must regenerate the analysis from replay/protocol-backed evidence before "
+            "using it for policy or source changes."
+        )
+
     def _format_team_breakdown(self, teams: Dict) -> str:
         """Format team performance breakdown."""
         lines = []
@@ -466,6 +462,7 @@ Format response as structured improvement report with battle citations.
         if not analysis:
             print("⚠ Reasoning-agent analysis failed—falling back to stats-only report")
             return self.generate_stats_only_report(last_n, stats)
+        analysis = self._sanitize_reasoning_analysis(analysis)
         
         # Generate report
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -556,6 +553,7 @@ Be specific about evidence gaps. Do not write unsupported mechanics claims as fa
         if not analysis:
             print("✗ Failed to get reasoning-agent analysis")
             return None
+        analysis = self._sanitize_reasoning_analysis(analysis)
         
         # Generate report
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

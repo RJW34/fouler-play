@@ -18,6 +18,11 @@ node_modules/
 *.out
 logs/
 
+# Devstream local artifacts
+artifacts/
+output/
+replay_analysis/gen*.json
+
 # PID files
 .pids/
 
@@ -87,6 +92,8 @@ Overlay
 state/citadel_status.json
 devstream/truth/cycle-report.json
 devstream/truth/cycle-report.md
+devstream/truth/health.json
+devstream/truth/offline-rehearsal.json
 devstream/truth/showdown-login-proof.json
 devstream/truth/jigglypuff-runtime.json
 Press

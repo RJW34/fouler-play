@@ -5,6 +5,7 @@ import argparse
 import asyncio
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -13,10 +14,16 @@ import requests
 import websockets
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from streaming import state_store
+
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 DEFAULT_WS = "wss://sim3.psim.us/showdown/websocket"
 LOGIN_URL = "https://play.pokemonshowdown.com/api/login"
 PROOF_FILE = ROOT / "devstream" / "truth" / "showdown-login-proof.json"
+OFFLINE_REHEARSAL_FILE = ROOT / "devstream" / "truth" / "offline-rehearsal.json"
 
 
 def iso_now() -> str:
@@ -98,6 +105,14 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         "websocketUri": ws_url,
         "secretValuesPrinted": False,
     }
+    if args.offline_rehearsal:
+        payload.update({
+            "ok": True,
+            "offlineRehearsal": True,
+            "dryRun": True,
+            "note": "Unauthenticated offline rehearsal is available; no Showdown login or battle queue was attempted.",
+        })
+        return payload
     if not username:
         payload.update({"ok": False, "blockers": ["PS_USERNAME or SHOWDOWN_USER_ID is missing"]})
         return payload
@@ -115,8 +130,6 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     payload["ok"] = bool(result.get("ok"))
     if not payload["ok"]:
         payload["blockers"] = [str(result.get("reason") or "login probe failed")]
-    if args.write:
-        write_proof(payload)
     return payload
 
 
@@ -136,13 +149,52 @@ def write_proof(payload: dict[str, Any]) -> None:
     PROOF_FILE.write_text(json.dumps(proof, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def write_offline_rehearsal(payload: dict[str, Any]) -> None:
+    proof = {
+        "schemaVersion": "fouler-play-offline-rehearsal/v1",
+        "checkedAt": payload.get("checkedAt"),
+        "ok": bool(payload.get("ok")),
+        "offlineRehearsal": True,
+        "secretValuesPrinted": False,
+        "note": payload.get("note"),
+    }
+    OFFLINE_REHEARSAL_FILE.parent.mkdir(parents=True, exist_ok=True)
+    OFFLINE_REHEARSAL_FILE.write_text(json.dumps(proof, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def publish_runtime_truth(payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("offlineRehearsal"):
+        write_offline_rehearsal(payload)
+        return state_store.write_runtime_ready_status(
+            mode="offline_rehearsal",
+            summary="Offline rehearsal ready; no Showdown login or ladder queue was attempted.",
+        )
+    if payload.get("execute") and payload.get("ok") and (payload.get("login") or {}).get("ok"):
+        return state_store.write_runtime_ready_status(
+            mode="login_proven",
+            summary="Showdown login proof succeeded; ready for a bounded devstream batch.",
+        )
+    if payload.get("execute") and not payload.get("ok"):
+        blockers = payload.get("blockers") if isinstance(payload.get("blockers"), list) else []
+        summary = str(blockers[0] if blockers else "Showdown login proof failed.")
+        lowered = summary.lower()
+        code = "showdown_credential_rejected" if "reject" in lowered or "password" in lowered else "showdown_login_failed"
+        return state_store.write_runtime_blocked_status(code=code, summary=summary)
+    return {}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Perform a login-only Pokemon Showdown credential proof without queuing a battle.")
     parser.add_argument("--execute", action="store_true", help="perform the network login proof")
+    parser.add_argument("--offline-rehearsal", action="store_true", help="publish fresh unauthenticated/offline rehearsal truth without touching Showdown")
     parser.add_argument("--timeout-seconds", type=int, default=20)
     parser.add_argument("--write", action="store_true", help=f"write a secret-free proof to {PROOF_FILE.relative_to(ROOT)}")
     args = parser.parse_args()
     payload = build_payload(args)
+    if args.write:
+        if not payload.get("offlineRehearsal"):
+            write_proof(payload)
+        payload["publishedTruth"] = publish_runtime_truth(payload)
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 0 if payload.get("ok") else 1
 

@@ -8,8 +8,33 @@
 .ps-overlay[aria-label*="privacy"],
 div[class*="ccpa"],
 div[class*="cookie-banner"],
-div[class*="privacy-banner"] {
+div[class*="privacy-banner"],
+#onetrust-banner-sdk,
+#onetrust-consent-sdk,
+#ot-sdk-btn-floating,
+.fc-ccpa-root,
+.fc-dialog-container,
+.fc-dialog,
+.fc-dns-dialog,
+.fc-dns-link,
+.fc-button-background,
+div[id*="onetrust" i],
+div[class*="onetrust" i],
+div[class*="ccpa"],
+div[class*="fc-ccpa"],
+div[id*="cookie" i],
+div[class*="cookie" i],
+div[id*="privacy" i],
+div[class*="privacy" i],
+button[aria-label*="Do Not Sell"],
+button[aria-label*="do not sell"] {
   display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
 }
 
 /* Hide Showdown header/navigation bar */
@@ -55,8 +80,29 @@ body {
 .ps-room-light,
 .ps-room-opaque {
   top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   margin-top: 0 !important;
   padding-top: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  overflow: visible !important;
+}
+
+.battle {
+  margin: 0 !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: auto !important;
+  min-width: 1280px !important;
+  min-height: 720px !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  transform: none !important;
+  transform-origin: top left !important;
 }
 
 /* Hide any promotional banners */

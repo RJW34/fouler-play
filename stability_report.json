@@ -1,15 +1,112 @@
 {
-  "generated_at": "2026-04-30T22:39:58.849325+00:00",
-  "runtime_blocked": true,
-  "blocker_code": "showdown_credential_rejected",
-  "blocker_summary": "Showdown login failed; credential was rejected.",
+  "generated_at": "2026-05-27T15:37:46.307679+00:00",
   "stability": {
-    "health": "blocked",
-    "summary": "Showdown login failed; credential was rejected.",
-    "next_fix": "Refresh Showdown credentials and rerun the login proof."
+    "battles_last_100": 100,
+    "wins": 50,
+    "total_losses": 50,
+    "timeout_losses": 6,
+    "skill_losses": 44,
+    "unknown_losses": 0,
+    "timeout_loss_rate": 12.0,
+    "memory_trend": "stable",
+    "avg_memory_mb": 270.2,
+    "max_memory_mb": 270.2,
+    "avg_cpu_percent": 0.0,
+    "avg_gap_seconds": 208.3,
+    "max_gap_seconds": 2282.397786,
+    "timeout_gaps_count": 17,
+    "service_restarts_24h": -1,
+    "health": "\u26a0\ufe0f WARNING - \u26a0\ufe0f WARNING timeout rate"
   },
   "details": {
-    "active_battles": 0,
-    "reason": "No stability sample is meaningful while the runtime is blocked before battle launch."
+    "recent_timeout_losses": [
+      {
+        "battle_id": "battle-gen9ou-2619054813",
+        "timestamp": "2026-05-27T11:44:09.469832+00:00",
+        "reason": "large_gap_before_10min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2619067151-a6tr5fvwlqmec3wl4fjgy0t492ev8rypw",
+        "timestamp": "2026-05-27T12:06:25.670850+00:00",
+        "reason": "large_gap_after_20min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2619078554",
+        "timestamp": "2026-05-27T12:26:56.304371+00:00",
+        "reason": "large_gap_before_20min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2619134680",
+        "timestamp": "2026-05-27T14:08:35.610433+00:00",
+        "reason": "large_gap_after_14min"
+      },
+      {
+        "battle_id": "battle-gen9ou-2619138460-fmjccfskmd76xvo03cfwbb63unawertpw",
+        "timestamp": "2026-05-27T14:23:31.243095+00:00",
+        "reason": "large_gap_after_11min"
+      }
+    ],
+    "large_gaps": [
+      {
+        "before_battle": "battle-gen9ou-2619005133",
+        "after_battle": "battle-gen9ou-2619019949",
+        "gap_seconds": 2282.397786,
+        "gap_minutes": 38.0
+      },
+      {
+        "before_battle": "battle-gen9ou-2619019981",
+        "after_battle": "battle-gen9ou-2619019960-2ho0i7bb08wv62ajnewo6cv6bg8wcjgpw",
+        "gap_seconds": 460.587982,
+        "gap_minutes": 7.7
+      },
+      {
+        "before_battle": "battle-gen9ou-2619019960-2ho0i7bb08wv62ajnewo6cv6bg8wcjgpw",
+        "after_battle": "battle-gen9ou-2619027015",
+        "gap_seconds": 583.889495,
+        "gap_minutes": 9.7
+      },
+      {
+        "before_battle": "battle-gen9ou-2619040773",
+        "after_battle": "battle-gen9ou-2619042511",
+        "gap_seconds": 429.524347,
+        "gap_minutes": 7.2
+      },
+      {
+        "before_battle": "battle-gen9ou-2619051346",
+        "after_battle": "battle-gen9ou-2619054813",
+        "gap_seconds": 650.547719,
+        "gap_minutes": 10.8
+      },
+      {
+        "before_battle": "battle-gen9ou-2619060697",
+        "after_battle": "battle-gen9ou-2619062355",
+        "gap_seconds": 587.337182,
+        "gap_minutes": 9.8
+      },
+      {
+        "before_battle": "battle-gen9ou-2619067151-a6tr5fvwlqmec3wl4fjgy0t492ev8rypw",
+        "after_battle": "battle-gen9ou-2619078554",
+        "gap_seconds": 1230.633521,
+        "gap_minutes": 20.5
+      },
+      {
+        "before_battle": "battle-gen9ou-2619082577",
+        "after_battle": "battle-gen9ou-2619085051",
+        "gap_seconds": 533.801965,
+        "gap_minutes": 8.9
+      },
+      {
+        "before_battle": "battle-gen9ou-2619085051",
+        "after_battle": "battle-gen9ou-2619084709",
+        "gap_seconds": 597.989973,
+        "gap_minutes": 10.0
+      },
+      {
+        "before_battle": "battle-gen9ou-2619106475",
+        "after_battle": "battle-gen9ou-2619108566",
+        "gap_seconds": 355.050243,
+        "gap_minutes": 5.9
+      }
+    ]
   }
 }
