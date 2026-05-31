@@ -491,8 +491,58 @@ def build_prompt(report: dict, code: str, target_file: str) -> str:
     """)
 
 
-def call_claude(prompt: str) -> str:
-    """Call Claude API and return the response text."""
+def _find_claude_cli() -> str | None:
+    """Locate the `claude` CLI (Max OAuth path). No ANTHROPIC_API_KEY needed."""
+    override = os.getenv("IMPROVE_AGENT_CLAUDE_CLI")
+    if override and Path(override).exists():
+        return override
+    from shutil import which
+    found = which("claude")
+    if found:
+        return found
+    # Common per-user install locations on the devstream hosts.
+    candidates = [
+        Path.home() / ".local" / "bin" / "claude.exe",   # JIGGLYPUFF (Windows)
+        Path.home() / ".local" / "bin" / "claude",        # ubunztu / DEKU (Linux)
+        Path("/usr/bin/claude"),
+        Path("/usr/local/bin/claude"),
+    ]
+    for c in candidates:
+        if c.exists():
+            return str(c)
+    return None
+
+
+def _call_claude_cli(prompt: str, cli_path: str) -> str:
+    """Drive the `claude` CLI in headless print mode (uses the host's Max OAuth login).
+
+    This is the autonomous path on the devstream hosts: no ANTHROPIC_API_KEY is
+    present, but `claude -p` authenticates via the already-installed Max OAuth
+    credentials that HERMES uses. The prompt is fed on stdin so it never hits
+    argv length limits.
+    """
+    cli_model = os.getenv("IMPROVE_AGENT_CLI_MODEL", "sonnet")
+    cmd = [cli_path, "-p", "--model", cli_model]
+    result = subprocess.run(
+        cmd,
+        input=prompt,
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        timeout=int(os.getenv("IMPROVE_AGENT_CLI_TIMEOUT", "300")),
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"claude CLI exited {result.returncode}: {result.stderr.strip()[:500]}"
+        )
+    out = (result.stdout or "").strip()
+    if not out:
+        raise RuntimeError("claude CLI returned empty output")
+    return out
+
+
+def _call_claude_sdk(prompt: str) -> str:
+    """API-key path. Only used when ANTHROPIC_API_KEY is explicitly set."""
     import anthropic
     client = anthropic.Anthropic()
     message = client.messages.create(
@@ -501,6 +551,47 @@ def call_claude(prompt: str) -> str:
         messages=[{"role": "user", "content": prompt}],
     )
     return message.content[0].text
+
+
+def call_claude(prompt: str) -> str:
+    """Return Claude's response text via whichever auth path is available.
+
+    Order of preference:
+      1. `claude` CLI subprocess (Max OAuth) — the autonomous path on the
+         devstream hosts; needs NO ANTHROPIC_API_KEY. This is what lets the
+         self-improvement loop run unattended on JIGGLYPUFF/DEKU.
+      2. anthropic SDK — only when ANTHROPIC_API_KEY is actually set.
+
+    The CLI is preferred so the loop works on machines that have a Max login
+    but no API key. If both paths are unavailable we raise a clear, actionable
+    error instead of crashing on a bare `import anthropic`.
+    """
+    prefer_sdk = bool(os.getenv("ANTHROPIC_API_KEY")) and os.getenv(
+        "IMPROVE_AGENT_PREFER_SDK", ""
+    ).lower() in ("1", "true", "yes")
+
+    cli_path = _find_claude_cli()
+    if cli_path and not prefer_sdk:
+        try:
+            return _call_claude_cli(prompt, cli_path)
+        except Exception as cli_err:
+            print(f"[AGENT] claude CLI path failed ({cli_err}); trying SDK fallback.")
+            if os.getenv("ANTHROPIC_API_KEY"):
+                return _call_claude_sdk(prompt)
+            raise
+
+    if os.getenv("ANTHROPIC_API_KEY"):
+        return _call_claude_sdk(prompt)
+
+    if cli_path:
+        # prefer_sdk was set but no key; fall back to the CLI anyway.
+        return _call_claude_cli(prompt, cli_path)
+
+    raise RuntimeError(
+        "No LLM path available: the `claude` CLI was not found on PATH and "
+        "ANTHROPIC_API_KEY is not set. Install/login the Claude CLI "
+        "(`claude` on PATH, Max OAuth) or set ANTHROPIC_API_KEY."
+    )
 
 
 def extract_diff(response: str) -> str:
@@ -637,23 +728,6 @@ def _git_head() -> str:
         return "unknown"
 
 
-def _current_branch() -> str:
-    """Push to the branch the runtime is actually on, not a hardcoded master.
-
-    The JIGGLY live runtime tracks a codex/devstream-fouler-sync-* branch; a
-    hardcoded 'master' push would fail or push the wrong ref. Fall back to
-    'HEAD' (push current commit to its upstream) only if detection fails.
-    """
-    try:
-        branch = subprocess.run(
-            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=str(PROJECT_ROOT), capture_output=True, text=True,
-        ).stdout.strip()
-        return branch or "HEAD"
-    except Exception:
-        return "HEAD"
-
-
 def commit_and_push(target_file: str, issue_title: str) -> bool:
     """Commit the change and push to origin."""
     try:
@@ -680,7 +754,7 @@ def commit_and_push(target_file: str, issue_title: str) -> bool:
         # files, so the change is in play regardless of whether the push succeeds.
         record_deploy(pre_commit, post_commit)
         subprocess.run(
-            ["git", "push", "origin", _current_branch()],
+            ["git", "push", "origin", "master"],
             cwd=str(PROJECT_ROOT),
             check=True,
         )
