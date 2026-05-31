@@ -1,0 +1,1759 @@
+{
+  "archivalDisposition": "stale-pending-events-expired-locally-not-sent",
+  "archivedAt": "2026-05-28T01:16:53Z",
+  "archivedBattleResultCount": 102,
+  "archivedEventCount": 102,
+  "archivedEventTypes": {
+    "battle_result": 102
+  },
+  "events": [
+    {
+      "ageSeconds": 39202.822,
+      "battleIds": [
+        "battle-gen9ou-2619138460",
+        "gen9ou-2619138460"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "8450bfc85d9d36592441df31b471fbbcf47b7d4bac817c1b707d2b88c0d21ac9",
+      "eventIdHash": "e0a4863e6ac8b3d9",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779891810.6562665
+    },
+    {
+      "ageSeconds": 38527.329,
+      "battleIds": [
+        "battle-gen9ou-2619154332",
+        "gen9ou-2619154332"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "7bea3523bf7291d4c281a155b7de1f7b0430c7fe60e962a6c77b35a6f8f98a2e",
+      "eventIdHash": "2e1ca3b89e656e75",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779892486.1492004
+    },
+    {
+      "ageSeconds": 38378.36,
+      "battleIds": [
+        "battle-gen9ou-2619154232",
+        "gen9ou-2619154232"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "c911484701727724907b831e4bbcdc321ccaa3ff9963963145cba4afcacb1e8d",
+      "eventIdHash": "5228ff9a0fc16733",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779892635.118307
+    },
+    {
+      "ageSeconds": 38306.966,
+      "battleIds": [
+        "battle-gen9ou-2619154056",
+        "gen9ou-2619154056"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "61ad2a9adf46bfa09f06b0be091a0be21d47fad3045f7cc2063ff8754bc534cc",
+      "eventIdHash": "103deaa24a1cbe50",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779892706.5122228
+    },
+    {
+      "ageSeconds": 38045.683,
+      "battleIds": [
+        "battle-gen9ou-2619157828",
+        "gen9ou-2619157828"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "c71def7cf08bdef34e2ee2fe3cb59d27d75ab6b107ef87285ac16acf64aaff79",
+      "eventIdHash": "8d8b833ae5c68532",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779892967.79517
+    },
+    {
+      "ageSeconds": 37916.028,
+      "battleIds": [
+        "battle-gen9ou-2619160587",
+        "gen9ou-2619160587"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "e5888559f2cf4c21190f3dc352e002470237919501ccbd876588cb8e2c8ecb80",
+      "eventIdHash": "c2c2ec39e0f039f4",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779893097.4501789
+    },
+    {
+      "ageSeconds": 37898.732,
+      "battleIds": [
+        "battle-gen9ou-2619159457",
+        "gen9ou-2619159457"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "9efe2c9aad694d9582589ecf682a6ec694f33eed58b8b53b506c7cad45990c3c",
+      "eventIdHash": "8df49e5d8fa92202",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779893114.7463377
+    },
+    {
+      "ageSeconds": 37668.068,
+      "battleIds": [
+        "battle-gen9ou-2619164604",
+        "gen9ou-2619164604"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "eccb4d678bcfe89ddfdccd9f02b83f0635e0597942bab6ac5aab324358e2a998",
+      "eventIdHash": "3298cd6566afc412",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779893345.410349
+    },
+    {
+      "ageSeconds": 37641.328,
+      "battleIds": [
+        "battle-gen9ou-2619164771",
+        "gen9ou-2619164771"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "eff5bae03d3d05770827df45e9f91aa65f52a31b94e71d4addda77e3a96414f2",
+      "eventIdHash": "655e67ff4b2bffbe",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779893372.1503704
+    },
+    {
+      "ageSeconds": 37542.188,
+      "battleIds": [
+        "battle-gen9ou-2619167859",
+        "gen9ou-2619167859"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "b8e08b44d54247a750b6117fc287ff0c65af56c9954a5b9f648aa804cce14417",
+      "eventIdHash": "c46edc05425fcc21",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779893471.2895749
+    },
+    {
+      "ageSeconds": 37383.997,
+      "battleIds": [
+        "battle-gen9ou-2619167592",
+        "gen9ou-2619167592"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "bcd2c79f5c8d90422c819ea38d330c98ac53493af59981995c7e61bd85ca7329",
+      "eventIdHash": "5f5cd90adc68c5ac",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779893629.480902
+    },
+    {
+      "ageSeconds": 37246.22,
+      "battleIds": [
+        "battle-gen9ou-2619168883",
+        "gen9ou-2619168883"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "bf90f2ade529d13dd35c73655228b40b2078b9e511ba707c54c07f6455276216",
+      "eventIdHash": "f6b8f0b9ae96eeaf",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779893767.2576427
+    },
+    {
+      "ageSeconds": 36992.506,
+      "battleIds": [
+        "battle-gen9ou-2619170778",
+        "gen9ou-2619170778"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "a22e6844b5b54dbb22d527f20eb0cd9c02a53d2334ecf98fb3ff4e3a6e3e55af",
+      "eventIdHash": "8bcda389c98902da",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779894020.972038
+    },
+    {
+      "ageSeconds": 36740.793,
+      "battleIds": [
+        "battle-gen9ou-2619172439",
+        "gen9ou-2619172439"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "9e367aa36b6774a5559b910423f71b1d6d1a7ee286836b0e5d37a9da8e64d4c0",
+      "eventIdHash": "103a1464ec651560",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779894272.6849127
+    },
+    {
+      "ageSeconds": 36675.617,
+      "battleIds": [
+        "battle-gen9ou-2619178157",
+        "gen9ou-2619178157"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "c7e3de7384c58c0d6f9b245a35c41b2ec1d7f623e8cd198a3b37d3ad0611586a",
+      "eventIdHash": "2305d1957a35d83d",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779894337.8613477
+    },
+    {
+      "ageSeconds": 36644.706,
+      "battleIds": [
+        "battle-gen9ou-2619175455",
+        "gen9ou-2619175455"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "a370e9ef942c92908b9ec0de544444f3dc961f7f8476f65bf012d11db057f9cc",
+      "eventIdHash": "2f8657a744e6ef47",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779894368.7719123
+    },
+    {
+      "ageSeconds": 36279.296,
+      "battleIds": [
+        "battle-gen9ou-2619163238",
+        "gen9ou-2619163238"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "fe3e6017cab7698e043e1f536f689da901f2d7b1594c53d6193322f8070f25e7",
+      "eventIdHash": "99012b445821c995",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779894734.1816273
+    },
+    {
+      "ageSeconds": 36085.855,
+      "battleIds": [
+        "battle-gen9ou-2619179319",
+        "gen9ou-2619179319"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "6a322cd801ef5aa01e96ac8a38cd0fb9f77dca557166161a2efbc9022c421029",
+      "eventIdHash": "1dfc5fae1b445742",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779894927.623361
+    },
+    {
+      "ageSeconds": 35979.935,
+      "battleIds": [
+        "battle-gen9ou-2619178897",
+        "gen9ou-2619178897"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "606805669d28402a27de64816ff852a0009023b890ec48d5116389dc9a7cd233",
+      "eventIdHash": "02513daa49bec09c",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779895033.5424778
+    },
+    {
+      "ageSeconds": 35970.076,
+      "battleIds": [
+        "battle-gen9ou-2619183453",
+        "gen9ou-2619183453"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "8a63e4d237e615c0abe116a38ca2c84d2adcab7841234cb07b483bbbb559b64c",
+      "eventIdHash": "80da14dcdca8d44f",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779895043.4016674
+    },
+    {
+      "ageSeconds": 35697.71,
+      "battleIds": [
+        "battle-gen9ou-2619185748",
+        "gen9ou-2619185748"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "c62e782b7a5241d42e6bdcb1f4b1900839ca281f8f794de6f8111d8a0bcbeac5",
+      "eventIdHash": "7ff4d62ca710cb17",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779895315.7679963
+    },
+    {
+      "ageSeconds": 35624.835,
+      "battleIds": [
+        "battle-gen9ou-2619186916",
+        "gen9ou-2619186916"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "1eddb1cd8af827689664906844ab76ea5c67b6c77388d3d8907a3809c71ae84d",
+      "eventIdHash": "ffd6c1f27355ed95",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779895388.6431804
+    },
+    {
+      "ageSeconds": 35499.884,
+      "battleIds": [
+        "battle-gen9ou-2619190008",
+        "gen9ou-2619190008"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "c7c7f81f5efd5764af3342158c7eb4de03aca2c648a9eefa82b96799ed8b755a",
+      "eventIdHash": "81d8de7c0e0d045a",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779895513.5940242
+    },
+    {
+      "ageSeconds": 35467.282,
+      "battleIds": [
+        "battle-gen9ou-2619190817",
+        "gen9ou-2619190817"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "8dea1e1de9878da2a3af309f9b6cf967a01d281712cb1ba0fe385d168e11a6c5",
+      "eventIdHash": "381f3f53657595f8",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779895546.196288
+    },
+    {
+      "ageSeconds": 34694.824,
+      "battleIds": [
+        "battle-gen9ou-2619192547",
+        "gen9ou-2619192547"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "cc6d354208a2a1c6d26a6a2c6f04c90a299538a1a31d1ca8a49fda348462d492",
+      "eventIdHash": "bf9cc8c4e70884b6",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779896318.6539056
+    },
+    {
+      "ageSeconds": 34443.76,
+      "battleIds": [
+        "battle-gen9ou-2619201425",
+        "gen9ou-2619201425"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "3c4d68bf5125e08f63e27f07f1b795b8a3a866df3a2cf2b6ae29da8519c0f4fe",
+      "eventIdHash": "3e8cc1408e9638c9",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779896569.718421
+    },
+    {
+      "ageSeconds": 34144.981,
+      "battleIds": [
+        "battle-gen9ou-2619206513",
+        "gen9ou-2619206513"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "2c369f574adee8407eb07fd390f6706a6a3fa5c82f8c939b8b93960a3fb366ad",
+      "eventIdHash": "03ad0385b9379fff",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779896868.4965818
+    },
+    {
+      "ageSeconds": 33966.004,
+      "battleIds": [
+        "battle-gen9ou-2619206678",
+        "gen9ou-2619206678"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "fa6ee2e418742d2d6fb07c641e298c147b918c0d157cb16ad1bfb9216f189f94",
+      "eventIdHash": "6e4befea3462ffc3",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779897047.4742277
+    },
+    {
+      "ageSeconds": 33890.099,
+      "battleIds": [
+        "battle-gen9ou-2619206731",
+        "gen9ou-2619206731"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "98d962772d709b2bf307617f6aba296508967ca0bcfd5cf26e2ace1d9f5a9cfd",
+      "eventIdHash": "72b17f60e91cce5c",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779897123.378473
+    },
+    {
+      "ageSeconds": 33757.016,
+      "battleIds": [
+        "battle-gen9ou-2619209932",
+        "gen9ou-2619209932"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "6115fdfd40f1d07b051a3eeb5e2f1eaf3a5eac9945296b32083df2c9ea7b51f8",
+      "eventIdHash": "f0b4ffa8c9d5f191",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779897256.462175
+    },
+    {
+      "ageSeconds": 33735.456,
+      "battleIds": [
+        "battle-gen9ou-2619210010",
+        "gen9ou-2619210010"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "6e0ad5e9273dae1d524fad35cd4c94ebdf9f9c474a556faee4d87a9ea9acd413",
+      "eventIdHash": "4d830239fd3a8bfe",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779897278.0219834
+    },
+    {
+      "ageSeconds": 33537.053,
+      "battleIds": [
+        "battle-gen9ou-2619210930",
+        "gen9ou-2619210930"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "eea4c988fbb6bcc24e0f1886f3ae7e53fda08ff9ebb28cfbeba9dd7472933300",
+      "eventIdHash": "ff92105ccafd86a4",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779897476.4253285
+    },
+    {
+      "ageSeconds": 33536.475,
+      "battleIds": [
+        "battle-gen9ou-2619212445",
+        "gen9ou-2619212445"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "dc4189aa6a7a0f4fd31d15469414d70a3a46f5706bd03d0064a4a85ec3fef7d7",
+      "eventIdHash": "f39ba0ddb425173e",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779897477.003072
+    },
+    {
+      "ageSeconds": 33179.445,
+      "battleIds": [
+        "battle-gen9ou-2619215001",
+        "gen9ou-2619215001"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "b9720bcc2c1e561e8c808be5390e17206eb39c964cb5941d38b0d655692942ab",
+      "eventIdHash": "feafa232b7f5e1d9",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779897834.0326185
+    },
+    {
+      "ageSeconds": 32927.833,
+      "battleIds": [
+        "battle-gen9ou-2619212693",
+        "gen9ou-2619212693"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "a69f1a9deec366f064f40f9bcb9cd31c559ced0eef68ea9cf475e47e3db09a62",
+      "eventIdHash": "dfaa7c21112b94ce",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779898085.6454332
+    },
+    {
+      "ageSeconds": 32871.279,
+      "battleIds": [
+        "battle-gen9ou-2619221970",
+        "gen9ou-2619221970"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "9ab9be1c357285bbfed5e7992dce5ca5f74d55a22f6cde5f920ec20cb3a6454f",
+      "eventIdHash": "6c73a1de16f898ab",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779898142.198781
+    },
+    {
+      "ageSeconds": 32800.121,
+      "battleIds": [
+        "battle-gen9ou-2619219071",
+        "gen9ou-2619219071"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "3c0d1ab105ff99f865db6751fdfe9a961620eac1114ddf5554efb2b69c7ae545",
+      "eventIdHash": "ab43cc2dced995bd",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779898213.35691
+    },
+    {
+      "ageSeconds": 32739.242,
+      "battleIds": [
+        "battle-gen9ou-2619214924",
+        "gen9ou-2619214924"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "16afa1bc8cbb98c6ffd5ec2be05c60f5d263280d51979597cb8aebff1fde3ec3",
+      "eventIdHash": "10bebb73669da122",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779898274.2355635
+    },
+    {
+      "ageSeconds": 32610.661,
+      "battleIds": [
+        "battle-gen9ou-2619223888",
+        "gen9ou-2619223888"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "b45245e631001c96f4203e0aff9bd905fd5e7f3a2a9c57750fe2865614461b16",
+      "eventIdHash": "84adaee0a587365b",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779898402.8173811
+    },
+    {
+      "ageSeconds": 32446.795,
+      "battleIds": [
+        "battle-gen9ou-2619223476",
+        "gen9ou-2619223476"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "f58c9464c330be328dc980256712c87455fcd416c31c5f1069326869bb9b4e6d",
+      "eventIdHash": "2262a3b43b0a5d13",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779898566.6827817
+    },
+    {
+      "ageSeconds": 31893.695,
+      "battleIds": [
+        "battle-gen9ou-2619227171",
+        "gen9ou-2619227171"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "4c7245595b0d60639152fc9f676835f305567bb8887bb198cb822ad1be026fa4",
+      "eventIdHash": "3ed03763b36123b0",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779899119.782713
+    },
+    {
+      "ageSeconds": 31368.394,
+      "battleIds": [
+        "battle-gen9ou-2619222594",
+        "gen9ou-2619222594"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "b86a3b39669854dee00ed59c3e301e18a57751e1ac0a73fe9ccc7a96c32e18ca",
+      "eventIdHash": "dc241380c291a8ad",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779899645.0842407
+    },
+    {
+      "ageSeconds": 30756.966,
+      "battleIds": [
+        "battle-gen9ou-2619239572",
+        "gen9ou-2619239572"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "0d7d88a96c3ee7b58d0b17db645ef9b6a438a72e4c15099401049ef40abfc4fb",
+      "eventIdHash": "245d0accc317782f",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779900256.5124192
+    },
+    {
+      "ageSeconds": 30756.865,
+      "battleIds": [
+        "battle-gen9ou-2619225427",
+        "gen9ou-2619225427"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "605d1473a276002e93d942f863939e46795ed94e7bf3d4a731d72ac81042c627",
+      "eventIdHash": "e0c3249ef491d54f",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779900256.6129835
+    },
+    {
+      "ageSeconds": 30690.656,
+      "battleIds": [
+        "battle-gen9ou-2619246668",
+        "gen9ou-2619246668"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "54cd30e80460c10dd6af882e9be84b3e564a646f675cd51e503222792f3aae58",
+      "eventIdHash": "4eb92df83493f371",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779900322.822099
+    },
+    {
+      "ageSeconds": 30563.745,
+      "battleIds": [
+        "battle-gen9ou-2619233524",
+        "gen9ou-2619233524"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "85a73259ba41103e7e6d45a4b53fa5399b070a3498630f3032af376112affc65",
+      "eventIdHash": "0a16551f7e34435e",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779900449.7329178
+    },
+    {
+      "ageSeconds": 30403.34,
+      "battleIds": [
+        "battle-gen9ou-2619246815",
+        "gen9ou-2619246815"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "10f8157f22c983d02fc0c46111e42ff13a0c66ab1bb44abfe0f4f4c6bb8bd77c",
+      "eventIdHash": "f22ff46074d4525f",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779900610.1378212
+    },
+    {
+      "ageSeconds": 30169.035,
+      "battleIds": [
+        "battle-gen9ou-2619247581",
+        "gen9ou-2619247581"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "db19c783e99076ac04518af62459d175c7419247f8be6d2869e83c981c1a3d21",
+      "eventIdHash": "55a8cd2616d04814",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779900844.4433992
+    },
+    {
+      "ageSeconds": 30150.58,
+      "battleIds": [
+        "battle-gen9ou-2619248950",
+        "gen9ou-2619248950"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "b49226392c19aa844d88df533282a263f20cf10f64501be9729b5482b6d4e2bf",
+      "eventIdHash": "1884168690b20cd5",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779900862.8978503
+    },
+    {
+      "ageSeconds": 30073.036,
+      "battleIds": [
+        "battle-gen9ou-2619251007",
+        "gen9ou-2619251007"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "d36962165cb8ae497704e716db24a3a47521f084b26127b1beba8dfe64e9781c",
+      "eventIdHash": "b588728e0f36f094",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779900940.4418483
+    },
+    {
+      "ageSeconds": 29933.917,
+      "battleIds": [
+        "battle-gen9ou-2619254774",
+        "gen9ou-2619254774"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "743916a262a6058069c14a7e1c0703effa194d86031a1eaeed6ebc1111806e0f",
+      "eventIdHash": "db259e0d05854195",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779901079.560743
+    },
+    {
+      "ageSeconds": 29285.513,
+      "battleIds": [
+        "battle-gen9ou-2619261926",
+        "gen9ou-2619261926"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "01c55d763750bdcb0f7e01e976284fe8cdbcd1d3320222da7f983fbfd038aa5d",
+      "eventIdHash": "8dda49aa399a6648",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779901727.9649959
+    },
+    {
+      "ageSeconds": 29170.536,
+      "battleIds": [
+        "battle-gen9ou-2619264014",
+        "gen9ou-2619264014"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "f0ce6532fe7e2fc640cd7b96e8db84bd3fae13a12f3af39a51ef62db862000d1",
+      "eventIdHash": "f1223119e2f47917",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779901842.9416175
+    },
+    {
+      "ageSeconds": 29156.317,
+      "battleIds": [
+        "battle-gen9ou-2619261775",
+        "gen9ou-2619261775"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "dd14057cb09e3c4cdbddadc15bfae8fa4c7844a6abc84d4b5ee3419bc48e9791",
+      "eventIdHash": "54720e6fc91d8843",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779901857.1613336
+    },
+    {
+      "ageSeconds": 28718.168,
+      "battleIds": [
+        "battle-gen9ou-2619265467",
+        "gen9ou-2619265467"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "b49b627818ae4566fd9fd6c21d2d68a4d90bac04cf27a9239099017e7be34b86",
+      "eventIdHash": "c8b67e6651880d13",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779902295.309977
+    },
+    {
+      "ageSeconds": 28704.679,
+      "battleIds": [
+        "battle-gen9ou-2619261780",
+        "gen9ou-2619261780"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "bb8ecb21cca1f50b7e62a7cb1aa78434d29f5027eb2559edf670358a241f9f70",
+      "eventIdHash": "990ff866982ad020",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779902308.7992594
+    },
+    {
+      "ageSeconds": 28683.678,
+      "battleIds": [
+        "battle-gen9ou-2619265288",
+        "gen9ou-2619265288"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "3d08c4f3cb712381449995d91ae741bc0e28dfa26134be0031a9b1129fc92d85",
+      "eventIdHash": "a94935d25e8b9bef",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779902329.7995095
+    },
+    {
+      "ageSeconds": 28524.693,
+      "battleIds": [
+        "battle-gen9ou-2619270606",
+        "gen9ou-2619270606"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "042abd307887b03c557fc80486efa7a58a7865f15976cb2fe81f1f651f74936b",
+      "eventIdHash": "87f8e9aacf631707",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779902488.7852924
+    },
+    {
+      "ageSeconds": 28130.824,
+      "battleIds": [
+        "battle-gen9ou-2619275749",
+        "gen9ou-2619275749"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "c20b64cf5db53bbc8ed28bbd03c5c2b9e03384ca01e80dc423e855dbd0c1c9a5",
+      "eventIdHash": "86251805f064a55c",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779902882.6537735
+    },
+    {
+      "ageSeconds": 28089.749,
+      "battleIds": [
+        "battle-gen9ou-2619275568",
+        "gen9ou-2619275568"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "3253cef690030c86decfeef2e2c61fb493c5bfe1c8b76bedf6eb0cefa82aae86",
+      "eventIdHash": "bff3bd93594f8d2c",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779902923.7288942
+    },
+    {
+      "ageSeconds": 27872.061,
+      "battleIds": [
+        "battle-gen9ou-2619278041",
+        "gen9ou-2619278041"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "4c3287f82d993d87e9d75adf712d7f9a0333a17f902206481aaf7b1169de4578",
+      "eventIdHash": "2af8761e05c5ad7f",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779903141.4170663
+    },
+    {
+      "ageSeconds": 27759.486,
+      "battleIds": [
+        "battle-gen9ou-2619277585",
+        "gen9ou-2619277585"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "0720ebbf5a2d7299642a29d2ef38bda88d71ab5f9c9bc5dfedaa2b4b67c64d2c",
+      "eventIdHash": "496e8fb792f187fd",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779903253.9916844
+    },
+    {
+      "ageSeconds": 27371.247,
+      "battleIds": [
+        "battle-gen9ou-2619275423",
+        "gen9ou-2619275423"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "fa7b9ee18ef442ae33206782646b68202eb74e4eedcf052016de9fdc536eb3a5",
+      "eventIdHash": "567d2d4e63438e83",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779903642.2311869
+    },
+    {
+      "ageSeconds": 27366.141,
+      "battleIds": [
+        "battle-gen9ou-2619282049",
+        "gen9ou-2619282049"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "db63a11e06b8f188e05f8db7444b13f69290673b41cc045f50de85348410084c",
+      "eventIdHash": "9cb6d3c53544fd97",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779903647.337128
+    },
+    {
+      "ageSeconds": 27290.948,
+      "battleIds": [
+        "battle-gen9ou-2619280664",
+        "gen9ou-2619280664"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "60b5ff674b1b10ae640d1468a7560eaf845d4592200413d0824b1aaaef2fd2f5",
+      "eventIdHash": "c1ae43a7f15d293a",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779903722.530219
+    },
+    {
+      "ageSeconds": 27229.279,
+      "battleIds": [
+        "battle-gen9ou-2619286995",
+        "gen9ou-2619286995"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "275b9e2c6fbef897767a5b67e4caf6ba8d2780b1ff282beeab2c318f06aa84ae",
+      "eventIdHash": "07e0505b133c3ad4",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779903784.1994457
+    },
+    {
+      "ageSeconds": 27051.488,
+      "battleIds": [
+        "battle-gen9ou-2619287860",
+        "gen9ou-2619287860"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "7bb51bd935f6c7810bfe7141951089de8ad0c612407b37e76b6ed10ec60e009a",
+      "eventIdHash": "e9d88a57971f3e8b",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779903961.9898806
+    },
+    {
+      "ageSeconds": 26745.451,
+      "battleIds": [
+        "battle-gen9ou-2619288510",
+        "gen9ou-2619288510"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "e1831fc8d84f6d939d015ffa8320c08d3850a1f07384852b296bcef81af12f48",
+      "eventIdHash": "c858ee54ce0daa64",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779904268.0267138
+    },
+    {
+      "ageSeconds": 26639.171,
+      "battleIds": [
+        "battle-gen9ou-2619290774",
+        "gen9ou-2619290774"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "d6d59a94dd36bd74eb61c9fcf805a09b6b4955ff03529e1540085b94994e272c",
+      "eventIdHash": "c81a1eaa473f76f9",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779904374.307234
+    },
+    {
+      "ageSeconds": 26474.973,
+      "battleIds": [
+        "battle-gen9ou-2619287008",
+        "gen9ou-2619287008"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "67dcbf06d3dc691dd63ef710964d306db53922a3f7e4e0b3568a2da9dbe71a79",
+      "eventIdHash": "97e34760eaa09cdd",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779904538.5046802
+    },
+    {
+      "ageSeconds": 26118.255,
+      "battleIds": [
+        "battle-gen9ou-2619295570",
+        "gen9ou-2619295570"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "f4c217b2d4cb85b0f6e6a8fd4eba8797b998d71337293bb826b655a14f75ccb7",
+      "eventIdHash": "a9b12123bc2e1175",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779904895.2227743
+    },
+    {
+      "ageSeconds": 26118.113,
+      "battleIds": [
+        "battle-gen9ou-2619294401",
+        "gen9ou-2619294401"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "76211270c0695b70997a6c8c15116019f0c009786131e5d91f12390c2d107886",
+      "eventIdHash": "3f832a988625491f",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779904895.3646603
+    },
+    {
+      "ageSeconds": 26111.237,
+      "battleIds": [
+        "battle-gen9ou-2619297624",
+        "gen9ou-2619297624"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "3a049e144d5205370267dee5e9cee602b5bb4c09a280c92fc705a91c4207ed7c",
+      "eventIdHash": "c8be75adc3092edb",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779904902.2405846
+    },
+    {
+      "ageSeconds": 23599.076,
+      "battleIds": [
+        "battle-gen9ou-2619329409",
+        "gen9ou-2619329409"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "0c6ad740b53f413946e604ce540f965549b5108bf93822f274e7d1d5651f915e",
+      "eventIdHash": "60122fbd4fb6ad1c",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779907414.4017124
+    },
+    {
+      "ageSeconds": 23369.21,
+      "battleIds": [
+        "battle-gen9ou-2619330895",
+        "gen9ou-2619330895"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "444d5dbead00efbe8ac04de6354716b6cdc959943704d007fb12e574c711699c",
+      "eventIdHash": "f06d0c03ae025c1d",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779907644.2679977
+    },
+    {
+      "ageSeconds": 23352.956,
+      "battleIds": [
+        "battle-gen9ou-2619329355",
+        "gen9ou-2619329355"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "ae1e55daadbef1e03f8be44481c10339f3ad8d8b412fb48ac3101128cc908068",
+      "eventIdHash": "d6ed352e4b73a351",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779907660.5218446
+    },
+    {
+      "ageSeconds": 23232.895,
+      "battleIds": [
+        "battle-gen9ou-2619329638",
+        "gen9ou-2619329638"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "b79add4a45f31106bbc6c79629a517300ef1df10dad61a2aa3afbc2c2d78e206",
+      "eventIdHash": "27ddef41d17dbdac",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779907780.582899
+    },
+    {
+      "ageSeconds": 22731.657,
+      "battleIds": [
+        "battle-gen9ou-2619338747",
+        "gen9ou-2619338747"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "73b8048bc17cc7a3b0c7b8bbee377aa36653668c346a933ed4f227a874ea36cd",
+      "eventIdHash": "c08fde357fa2d8fb",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779908281.820742
+    },
+    {
+      "ageSeconds": 22627.248,
+      "battleIds": [
+        "battle-gen9ou-2619338634",
+        "gen9ou-2619338634"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "2ca0ef14acaa688a815eb2a35a6b8a55a7a8d527b2440aadf25c8c3f63ae3f7c",
+      "eventIdHash": "a21304faf98cf43f",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779908386.2299702
+    },
+    {
+      "ageSeconds": 22364.233,
+      "battleIds": [
+        "battle-gen9ou-2619342005",
+        "gen9ou-2619342005"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "0ee6beb1523ea3410975e4e45025f55317f4125a05860fe5f7f84b1ac1779d88",
+      "eventIdHash": "48ce386554b1f716",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779908649.2451496
+    },
+    {
+      "ageSeconds": 22330.775,
+      "battleIds": [
+        "battle-gen9ou-2619338755",
+        "gen9ou-2619338755"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "217f74b21ab349aa189af950c9aeb7d784c0e3fe99fb16ca5fad85f5f527f62a",
+      "eventIdHash": "d7d645103790cd8f",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779908682.7027893
+    },
+    {
+      "ageSeconds": 22145.88,
+      "battleIds": [
+        "battle-gen9ou-2619340795",
+        "gen9ou-2619340795"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "8cfa2ac3ae89923bb735719c67bbadadd72533357644f25c8a10c8eb1956004e",
+      "eventIdHash": "167f91d7b18bb044",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779908867.5979095
+    },
+    {
+      "ageSeconds": 22051.064,
+      "battleIds": [
+        "battle-gen9ou-2619344871",
+        "gen9ou-2619344871"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "dbd633aacd8b09994f574f2327eb88af21823dc08ed9dd22c97d95c05da33de3",
+      "eventIdHash": "3c7100465c666878",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779908962.4143472
+    },
+    {
+      "ageSeconds": 21999.16,
+      "battleIds": [
+        "battle-gen9ou-2619345339",
+        "gen9ou-2619345339"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "ff003c0d02bfd041279bd3aa6342d6cab790a2ac27fe063fc200788e1607de9f",
+      "eventIdHash": "cd63d7ecdbe701e3",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779909014.317796
+    },
+    {
+      "ageSeconds": 21801.493,
+      "battleIds": [
+        "battle-gen9ou-2619348276",
+        "gen9ou-2619348276"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "d2276579288a848643b9c52e9ddc51958709aaafc00ff520d14a0eb765c24b18",
+      "eventIdHash": "915713e73c385313",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779909211.9848607
+    },
+    {
+      "ageSeconds": 21717.555,
+      "battleIds": [
+        "battle-gen9ou-2619348827",
+        "gen9ou-2619348827"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "ff7dc23b5cb12fd9b6dcc09bebaab7e3a8fe4afdbb08040b6065947a7442832f",
+      "eventIdHash": "ad81699715cc49ad",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779909295.9227118
+    },
+    {
+      "ageSeconds": 21605.49,
+      "battleIds": [
+        "battle-gen9ou-2619351082",
+        "gen9ou-2619351082"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "afd7b0b440d68085ee8df0914533da49790a6d5b94116a2fa22b23f7ad848dc4",
+      "eventIdHash": "2715bc6080ed8969",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779909407.9884002
+    },
+    {
+      "ageSeconds": 21039.599,
+      "battleIds": [
+        "battle-gen9ou-2619347247",
+        "gen9ou-2619347247"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "03df51aee9faa457c4c9bae7d90780395ad32009e3a08d9d25e51418cf0750a1",
+      "eventIdHash": "ec63edc6200b5b10",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779909973.8785152
+    },
+    {
+      "ageSeconds": 21015.163,
+      "battleIds": [
+        "battle-gen9ou-2619353150",
+        "gen9ou-2619353150"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "17c7eb3aef06f4adc86616ddc918346ef7c02d19516776931f9b5a39e59a4b74",
+      "eventIdHash": "5475e0896c48e9fc",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779909998.3146415
+    },
+    {
+      "ageSeconds": 20772.807,
+      "battleIds": [
+        "battle-gen9ou-2619351899",
+        "gen9ou-2619351899"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "a248dd87250c8b9104545fe7795e3fc8bdcefa51988ae83a58cec05722b6769d",
+      "eventIdHash": "8ad4376948a0fb99",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779910240.6708362
+    },
+    {
+      "ageSeconds": 20723.673,
+      "battleIds": [
+        "battle-gen9ou-2619359604",
+        "gen9ou-2619359604"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "bb3d2e15bde01acdec1553f1cf9c22c664d4dd0df19e2e0c1899cdb8d3a506a9",
+      "eventIdHash": "43e063510ee047b3",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779910289.8049386
+    },
+    {
+      "ageSeconds": 20521.406,
+      "battleIds": [
+        "battle-gen9ou-2619359807",
+        "gen9ou-2619359807"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "d48ce4f7cdab313e9b5944eb378f08dd38817c52eeb8f250f49c78e6e9687fb3",
+      "eventIdHash": "e54f0b0f6b979f4c",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779910492.0719504
+    },
+    {
+      "ageSeconds": 20495.988,
+      "battleIds": [
+        "battle-gen9ou-2619363022",
+        "gen9ou-2619363022"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "f571aeb0d19680fb2b9ce71a1bf691db9ff9198ba18c76795c59fefbc91cf7e0",
+      "eventIdHash": "2138ed2255990ecf",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779910517.4902303
+    },
+    {
+      "ageSeconds": 20379.572,
+      "battleIds": [
+        "battle-gen9ou-2619365345",
+        "gen9ou-2619365345"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "35f95ce465770388901cb2b5a6bc75e966c096e1037790ab02adffb1e3c6ebad",
+      "eventIdHash": "d5d4558be0d3ad87",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779910633.9060655
+    },
+    {
+      "ageSeconds": 20174.063,
+      "battleIds": [
+        "battle-gen9ou-2619362498",
+        "gen9ou-2619362498"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "1e787ff0c7b1ee862260b1d2d3eacd690734b191c44578df582901ebddccb470",
+      "eventIdHash": "93b1c3d6a9908884",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779910839.4146824
+    },
+    {
+      "ageSeconds": 20136.054,
+      "battleIds": [
+        "battle-gen9ou-2619366877",
+        "gen9ou-2619366877"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "1159176ff8896acc37d0fb4ad64cb9e427d7f5e3f25ead3a9afc920039f8643b",
+      "eventIdHash": "15250c25d4f8049d",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779910877.4240448
+    },
+    {
+      "ageSeconds": 20027.377,
+      "battleIds": [
+        "battle-gen9ou-2619365560",
+        "gen9ou-2619365560"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "55ac315d8b8d4d1972957a3c3fa98144c8eb765feb83554337568848d7643f8f",
+      "eventIdHash": "1e15f537ea718b4b",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779910986.1006017
+    },
+    {
+      "ageSeconds": 19682.656,
+      "battleIds": [
+        "battle-gen9ou-2619370752",
+        "gen9ou-2619370752"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "01129bcbb0bd59f06bacdc3da9ea5ef481831bcdbcd1e238682653d269e37266",
+      "eventIdHash": "1b0ff201328b7825",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779911330.8222408
+    },
+    {
+      "ageSeconds": 19599.261,
+      "battleIds": [
+        "battle-gen9ou-2619374492",
+        "gen9ou-2619374492"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "78778cbe6ae334708a5158e2902d1c62164e235dda522d8dd0e528c77ce5ef20",
+      "eventIdHash": "d972c32b9f39369a",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779911414.2173107
+    },
+    {
+      "ageSeconds": 19102.774,
+      "battleIds": [
+        "battle-gen9ou-2619369108",
+        "gen9ou-2619369108"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "0c38c6d1842a1fc60fb66fc4b03b529c387488240f573e63702278ff6882ab77",
+      "eventIdHash": "2d019445149ffa0b",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779911910.7037435
+    },
+    {
+      "ageSeconds": 18822.52,
+      "battleIds": [
+        "battle-gen9ou-2619380900",
+        "gen9ou-2619380900"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "6b5402f4c6e02c2675bcae18d2d612488bf3dd6b1fb334a0ec4fdc30a33dba2d",
+      "eventIdHash": "e62bb12fe38a8a16",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779912190.9582226
+    },
+    {
+      "ageSeconds": 18524.562,
+      "battleIds": [
+        "battle-gen9ou-2619383903",
+        "gen9ou-2619383903"
+      ],
+      "channelAlias": "battles",
+      "contentSha256": "d3b2d6b08923655dd1d5f5ce1883108ff8447104ad04803a4a3bceea01eb6179",
+      "eventIdHash": "225bed47dc313f94",
+      "eventType": "battle_result",
+      "hasNextHermesAction": true,
+      "hasStructuredAnalysis": true,
+      "hasStructuredProof": true,
+      "proofReadinessStatus": "proof-ready",
+      "statusBeforeArchive": "pending",
+      "timestamp": 1779912488.9157095
+    }
+  ],
+  "liveDiscordMessagesSent": false,
+  "maxAgeSeconds": 600,
+  "newestArchivedTimestamp": "2026-05-27T20:08:08Z",
+  "nextHermesAction": "Treat this as local stale-proof archive only; transport only fresh events after the queue is clean.",
+  "oldestArchivedTimestamp": "2026-05-27T14:23:30Z",
+  "queueFile": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\events_queue.json",
+  "queueHashBeforeArchive": "146e65bc65deeaeae7d51fca1ae74acf8bbab05a7ae9f60a3bbf291dee4dd7a8",
+  "reason": "pending-discord-event-expired-before-transport",
+  "remainingFreshBattleResultCount": 0,
+  "remainingFreshPendingEventCount": 0,
+  "remainingPendingEventCount": 0,
+  "remainingPendingEventTypes": {},
+  "schemaVersion": "fouler-play-discord-backlog-archive/v1",
+  "secretValuesPrinted": false
+}

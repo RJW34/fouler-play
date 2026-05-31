@@ -1,0 +1,691 @@
+{
+  "bounds": {
+    "maxConcurrentBattles": 3,
+    "maxRuntimeMinutes": 180,
+    "queueTimeoutSeconds": 180,
+    "runCount": 25,
+    "turnTimeoutSeconds": 90
+  },
+  "checkedAt": "2026-05-26T15:52:25.402819+00:00",
+  "commands": {
+    "battleSession": [
+      "C:\\Users\\mtoli\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe",
+      "run.py",
+      "--websocket-uri",
+      "wss://sim3.psim.us/showdown/websocket",
+      "--ps-username",
+      "claudechamp",
+      "--bot-mode",
+      "search_ladder",
+      "--pokemon-format",
+      "gen9ou",
+      "--run-count",
+      "25",
+      "--max-concurrent-battles",
+      "3",
+      "--save-replay",
+      "always",
+      "--log-to-file",
+      "--team-names",
+      "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo",
+      "--spectator-username",
+      "CHUNGMIGHT"
+    ],
+    "obsHttp": [
+      "C:\\Users\\mtoli\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe",
+      "streaming/serve_obs_page.py"
+    ]
+  },
+  "dryRun": false,
+  "envFilePermissions": [
+    {
+      "changed": false,
+      "mode": "0o666",
+      "ok": true,
+      "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\.env"
+    }
+  ],
+  "postHealth": {
+    "activeBattleCount": 3,
+    "blockers": [],
+    "checkedAt": "2026-05-26T15:52:28.490726+00:00",
+    "credentials": {
+      "recentShowdownFailure": {
+        "found": false,
+        "latestSuccessfulProof": {
+          "checkedAt": "2026-05-03T00:15:38.661699+00:00",
+          "found": true,
+          "mtime": "2026-05-03T00:15:39.360803+00:00",
+          "ok": true,
+          "path": "devstream/truth/showdown-login-proof.json"
+        },
+        "scanned": [
+          {
+            "ageSeconds": 2.161,
+            "exists": true,
+            "mtime": "2026-05-26T15:52:26.130701+00:00",
+            "path": "logs/devstream_battle_session.log",
+            "scanned": true
+          },
+          {
+            "ageSeconds": 3.956,
+            "exists": true,
+            "mtime": "2026-05-26T15:52:24.335134+00:00",
+            "path": "logs/init.log",
+            "scanned": true
+          }
+        ]
+      }
+    },
+    "devstreamReporting": {
+      "backlogClassification": {
+        "blocking": true,
+        "nextHermesAction": "drain the Discord event queue in dry-run or approved transport mode and refresh proof-status.json",
+        "severity": "reliability-blocker",
+        "status": "backlogged",
+        "whyItMatters": "589 Discord event(s) are still pending, including 587 battle_result event(s)."
+      },
+      "currentBattleState": "3 active Showdown battle(s) are in flight",
+      "nextHermesAction": "drain the Discord event queue in dry-run or approved transport mode and refresh proof-status.json",
+      "proofReadiness": {
+        "blockers": [
+          "589 Discord event(s) are still pending, including 587 battle_result event(s)."
+        ],
+        "localProofClassified": true,
+        "localProofStatus": "classified-redacted-local-proof",
+        "machineActionablePendingBattleResults": 587,
+        "missingStructuredFieldCounts": {},
+        "nextHermesAction": "drain the Discord event queue in dry-run or approved transport mode and refresh proof-status.json",
+        "pendingBattleResults": 587,
+        "readyForLocalProofHandoff": true,
+        "readyForProofHandoff": false,
+        "status": "queue-backlogged"
+      },
+      "whyItMatters": "589 Discord event(s) are still pending, including 587 battle_result event(s)."
+    },
+    "discordQueue": {
+      "available": true,
+      "backlogClassification": {
+        "blocking": true,
+        "nextHermesAction": "drain the Discord event queue in dry-run or approved transport mode and refresh proof-status.json",
+        "severity": "reliability-blocker",
+        "status": "backlogged",
+        "whyItMatters": "589 Discord event(s) are still pending, including 587 battle_result event(s)."
+      },
+      "blockers": [
+        "pending Discord delivery backlog: 589 event(s)"
+      ],
+      "deliveryFailures": 0,
+      "dnsFailures": 0,
+      "expiredDeliveries": 0,
+      "expiredEventTypes": {},
+      "failedEventTypes": {},
+      "failureTypes": {},
+      "nextHermesAction": "drain the Discord event queue in dry-run or approved transport mode and refresh proof-status.json",
+      "oldestPendingAgeSeconds": 531082.852,
+      "oldestPendingEventId": "f0e99401-162",
+      "pendingAgeBuckets": {
+        "d1to3": 171,
+        "gt3d": 10,
+        "h1to24": 384,
+        "lt5m": 1,
+        "m5to60": 23
+      },
+      "pendingBacklog": 589,
+      "pendingBattleResultStructuredFields": {
+        "analysis": 587,
+        "battle_id": 587,
+        "current_battle_state": 587,
+        "loser": 586,
+        "next_hermes_action": 587,
+        "proof": 587,
+        "proof_readiness": 587,
+        "turns": 576,
+        "why_it_matters": 587,
+        "winner": 586
+      },
+      "pendingBattleResults": 587,
+      "pendingEventTypes": {
+        "autoresearch_deep_dive": 1,
+        "autoresearch_summary": 1,
+        "battle_result": 587
+      },
+      "pendingPlaceholderFieldCounts": {
+        "falseTurns": 6
+      },
+      "proofReadiness": {
+        "blockers": [
+          "589 Discord event(s) are still pending, including 587 battle_result event(s)."
+        ],
+        "localProofClassified": true,
+        "localProofStatus": "classified-redacted-local-proof",
+        "machineActionablePendingBattleResults": 587,
+        "missingStructuredFieldCounts": {},
+        "nextHermesAction": "drain the Discord event queue in dry-run or approved transport mode and refresh proof-status.json",
+        "pendingBattleResults": 587,
+        "readyForLocalProofHandoff": true,
+        "readyForProofHandoff": false,
+        "status": "queue-backlogged"
+      },
+      "queueFile": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\events_queue.json",
+      "ready": false,
+      "retryingDeliveries": 0,
+      "status": "backlogged",
+      "statusCounts": {
+        "pending": 589
+      },
+      "webhookFailures": 0
+    },
+    "endpoints": {
+      "/battles": {
+        "contentType": "application/json; charset=utf-8",
+        "json": {
+          "battles": [
+            {
+              "id": "battle-gen9ou-2618439922",
+              "opponent": "Gabefrom63rd",
+              "players": [
+                "claudechamp",
+                "Gabefrom63rd"
+              ],
+              "slot": 1,
+              "started": "2026-05-26T11:42:42.326641",
+              "status": "active",
+              "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618439922",
+              "worker_id": 0
+            },
+            {
+              "id": "battle-gen9ou-2618442521",
+              "opponent": "pegandotopglobal",
+              "players": [
+                "claudechamp",
+                "pegandotopglobal"
+              ],
+              "slot": 2,
+              "started": "2026-05-26T11:46:19.864909",
+              "status": "active",
+              "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618442521",
+              "worker_id": 1
+            },
+            {
+              "id": "battle-gen9ou-2618444679",
+              "opponent": "Ecrypsel",
+              "players": [
+                "claudechamp",
+                "Ecrypsel"
+              ],
+              "slot": 3,
+              "started": "2026-05-26T11:49:26.796519",
+              "status": "active",
+              "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618444679",
+              "worker_id": 2
+            }
+          ],
+          "count": 3,
+          "max_slots": 3,
+          "updated": "2026-05-26T11:52:17.318181"
+        },
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/battles"
+      },
+      "/dashboard/hybrid": {
+        "contentType": "text/html",
+        "json": null,
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/dashboard/hybrid"
+      },
+      "/overlay/hybrid": {
+        "contentType": "text/html",
+        "json": null,
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/overlay/hybrid"
+      },
+      "/slot/1": {
+        "contentType": "text/html; charset=utf-8",
+        "json": null,
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/slot/1"
+      },
+      "/slot/1/state": {
+        "contentType": "application/json; charset=utf-8",
+        "json": {
+          "battle_id": "battle-gen9ou-2618439922",
+          "slot": 1,
+          "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618439922"
+        },
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/slot/1/state"
+      },
+      "/slot/2/state": {
+        "contentType": "application/json; charset=utf-8",
+        "json": {
+          "battle_id": "battle-gen9ou-2618442521",
+          "slot": 2,
+          "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618442521"
+        },
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/slot/2/state"
+      },
+      "/slot/3/state": {
+        "contentType": "application/json; charset=utf-8",
+        "json": {
+          "battle_id": "battle-gen9ou-2618444679",
+          "slot": 3,
+          "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618444679"
+        },
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/slot/3/state"
+      },
+      "/state": {
+        "contentType": "application/json; charset=utf-8",
+        "json": {
+          "accounts_elo": {},
+          "battles": [
+            {
+              "id": "battle-gen9ou-2618439922",
+              "opponent": "Gabefrom63rd",
+              "players": [
+                "claudechamp",
+                "Gabefrom63rd"
+              ],
+              "slot": 1,
+              "started": "2026-05-26T11:42:42.326641",
+              "status": "active",
+              "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618439922",
+              "worker_id": 0
+            },
+            {
+              "id": "battle-gen9ou-2618442521",
+              "opponent": "pegandotopglobal",
+              "players": [
+                "claudechamp",
+                "pegandotopglobal"
+              ],
+              "slot": 2,
+              "started": "2026-05-26T11:46:19.864909",
+              "status": "active",
+              "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618442521",
+              "worker_id": 1
+            },
+            {
+              "id": "battle-gen9ou-2618444679",
+              "opponent": "Ecrypsel",
+              "players": [
+                "claudechamp",
+                "Ecrypsel"
+              ],
+              "slot": 3,
+              "started": "2026-05-26T11:49:26.796519",
+              "status": "active",
+              "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618444679",
+              "worker_id": 2
+            }
+          ],
+          "count": 3,
+          "max_slots": 3,
+          "runtime_blocked": false,
+          "status": {
+            "accounts_elo": {},
+            "battle_info": "vs Gabefrom63rd",
+            "elo": "---",
+            "losses": 126,
+            "next_fix": "Pending replay review",
+            "status": "Active",
+            "stream_pid": null,
+            "streaming": false,
+            "today_losses": 126,
+            "today_wins": 122,
+            "updated": "2026-05-26T11:49:20.503295",
+            "wins": 122
+          },
+          "updated": "2026-05-26T11:52:17.318181"
+        },
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/state"
+      },
+      "/status": {
+        "contentType": "application/json; charset=utf-8",
+        "json": {
+          "active_battles": [
+            "battle-gen9ou-2618439922",
+            "battle-gen9ou-2618442521",
+            "battle-gen9ou-2618444679"
+          ],
+          "battle_info": "vs Gabefrom63rd, vs pegandotopglobal, vs Ecrypsel",
+          "elo": "---",
+          "losses": 126,
+          "next_fix": "Pending replay review",
+          "status": "Active",
+          "stream_pid": null,
+          "streaming": false,
+          "today_losses": 126,
+          "today_wins": 122,
+          "updated": "2026-05-26T11:49:20.503295",
+          "wins": 122
+        },
+        "ok": true,
+        "statusCode": 200,
+        "url": "http://127.0.0.1:8777/status"
+      }
+    },
+    "git": {
+      "commit": "fb62db6",
+      "dirty": true
+    },
+    "healthy": true,
+    "ports": {
+      "obsHttp": {
+        "open": true,
+        "port": 8777
+      },
+      "obsWebSocket": {
+        "open": false,
+        "port": 4455
+      }
+    },
+    "projectId": "fouler-play",
+    "proofBlockers": [
+      "pending Discord delivery backlog: 589 event(s)"
+    ],
+    "readiness": {
+      "analyticsFresh": true,
+      "discordReportingReady": false,
+      "proofHandoffReady": false,
+      "runtimeReady": true,
+      "streamReady": true
+    },
+    "readyForLiveFocus": true,
+    "running": true,
+    "runtimeProcesses": [
+      {
+        "ageSeconds": 1577.49,
+        "alive": true,
+        "commandSummary": "C:\\Users\\mtoli\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe run.py --websocket-uri wss://sim3.psim.us/showdown/websocket",
+        "cwdMatchesRepo": true,
+        "isBattleRunner": true,
+        "pid": 29852,
+        "pidFile": ".bot.pid",
+        "pidFileExists": true
+      },
+      {
+        "alive": false,
+        "isBattleRunner": false,
+        "pid": 36736,
+        "pidFile": ".pids/devstream_battle_session.pid",
+        "pidFileExists": true
+      }
+    ],
+    "schemaVersion": "devstream-health/v1",
+    "services": {
+      "fouler-devstream.service": {
+        "active": false,
+        "activeState": "unknown",
+        "enabledState": "unknown"
+      },
+      "fouler-pipeline.service": {
+        "active": false,
+        "activeState": "unknown",
+        "enabledState": "unknown"
+      },
+      "fouler-play-watcher.service": {
+        "active": false,
+        "activeState": "unknown",
+        "enabledState": "unknown"
+      },
+      "fouler-play.service": {
+        "active": false,
+        "activeState": "unknown",
+        "enabledState": "unknown"
+      },
+      "fouler-stability-monitor.service": {
+        "active": false,
+        "activeState": "unknown",
+        "enabledState": "unknown"
+      }
+    },
+    "slotReadiness": {
+      "checks": [
+        {
+          "battleId": "battle-gen9ou-2618439922",
+          "localState": {
+            "battle_id": "battle-gen9ou-2618439922",
+            "slot": 1,
+            "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618439922"
+          },
+          "localStateOk": true,
+          "opponent": "Gabefrom63rd",
+          "ready": true,
+          "showdownPage": {
+            "checked": true,
+            "ok": false,
+            "statusCode": 200,
+            "title": "Showdown!",
+            "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618439922"
+          },
+          "slot": 1
+        },
+        {
+          "battleId": "battle-gen9ou-2618442521",
+          "localState": {
+            "battle_id": "battle-gen9ou-2618442521",
+            "slot": 2,
+            "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618442521"
+          },
+          "localStateOk": true,
+          "opponent": "pegandotopglobal",
+          "ready": true,
+          "showdownPage": {
+            "checked": true,
+            "ok": false,
+            "statusCode": 200,
+            "title": "Showdown!",
+            "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618442521"
+          },
+          "slot": 2
+        },
+        {
+          "battleId": "battle-gen9ou-2618444679",
+          "localState": {
+            "battle_id": "battle-gen9ou-2618444679",
+            "slot": 3,
+            "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618444679"
+          },
+          "localStateOk": true,
+          "opponent": "Ecrypsel",
+          "ready": true,
+          "showdownPage": {
+            "checked": true,
+            "ok": false,
+            "statusCode": 200,
+            "title": "Showdown!",
+            "url": "https://play.pokemonshowdown.com/battle-gen9ou-2618444679"
+          },
+          "slot": 3
+        }
+      ],
+      "ready": true
+    },
+    "status": "running",
+    "truth": [
+      {
+        "ageSeconds": 10.272,
+        "blocksAnalyticsFresh": true,
+        "exists": true,
+        "freshnessSource": "mtime",
+        "label": "active battles",
+        "mtime": "2026-05-26T15:52:17.341146+00:00",
+        "optional": true,
+        "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\active_battles.json",
+        "relativePath": "active_battles.json",
+        "stale": false,
+        "staleAfterSeconds": 1800,
+        "summary": {
+          "battleCount": 3,
+          "updated": "2026-05-26T11:52:17.318181"
+        }
+      },
+      {
+        "ageSeconds": 187.11,
+        "blocksAnalyticsFresh": true,
+        "exists": true,
+        "freshnessSource": "mtime",
+        "label": "stream status",
+        "mtime": "2026-05-26T15:49:20.503908+00:00",
+        "optional": true,
+        "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\stream_status.json",
+        "relativePath": "stream_status.json",
+        "stale": false,
+        "staleAfterSeconds": 21600,
+        "summary": {
+          "blockerCode": null,
+          "blockerSummary": null,
+          "elo": "---",
+          "nextFix": "Pending replay review",
+          "runtimeBlocked": false,
+          "status": "Battling",
+          "updated": "2026-05-26T11:49:20.503295"
+        }
+      },
+      {
+        "ageSeconds": 187.124,
+        "blocksAnalyticsFresh": true,
+        "exists": true,
+        "freshnessSource": "mtime",
+        "label": "daily stats",
+        "mtime": "2026-05-26T15:49:20.489908+00:00",
+        "optional": true,
+        "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\daily_stats.json",
+        "relativePath": "daily_stats.json",
+        "stale": false,
+        "staleAfterSeconds": 21600,
+        "summary": {
+          "losses": 126,
+          "wins": 122
+        }
+      },
+      {
+        "ageSeconds": 186.194,
+        "blocksAnalyticsFresh": true,
+        "exists": true,
+        "freshnessSource": "mtime",
+        "label": "battle stats",
+        "mtime": "2026-05-26T15:49:21.424061+00:00",
+        "optional": true,
+        "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\battle_stats.json",
+        "relativePath": "battle_stats.json",
+        "stale": false,
+        "staleAfterSeconds": null,
+        "summary": null
+      },
+      {
+        "ageSeconds": 1227.067,
+        "blocksAnalyticsFresh": true,
+        "exists": true,
+        "freshnessSource": "generated_at",
+        "label": "autoresearch json",
+        "mtime": "2026-05-26T15:32:00.571463+00:00",
+        "optional": true,
+        "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\replay_analysis\\autoresearch_latest.json",
+        "relativePath": "replay_analysis/autoresearch_latest.json",
+        "stale": false,
+        "staleAfterSeconds": 86400,
+        "summary": null
+      },
+      {
+        "ageSeconds": 1227.047,
+        "blocksAnalyticsFresh": true,
+        "exists": true,
+        "freshnessSource": "mtime",
+        "label": "autoresearch report",
+        "mtime": "2026-05-26T15:32:00.572000+00:00",
+        "optional": true,
+        "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\replay_analysis\\reports\\autoresearch_latest.md",
+        "relativePath": "replay_analysis/reports/autoresearch_latest.md",
+        "stale": false,
+        "staleAfterSeconds": 86400,
+        "summary": null
+      },
+      {
+        "ageSeconds": 1319.728,
+        "blocksAnalyticsFresh": false,
+        "exists": true,
+        "freshnessSource": "mtime",
+        "label": "stability report",
+        "mtime": "2026-05-26T15:30:27.891111+00:00",
+        "optional": true,
+        "path": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\stability_report.json",
+        "relativePath": "stability_report.json",
+        "stale": false,
+        "staleAfterSeconds": 86400,
+        "summary": null
+      }
+    ],
+    "warnings": []
+  },
+  "schemaVersion": "fouler-play-devstream-start-plan/v1",
+  "staleActiveBattleCleanup": {
+    "activeBattleCount": 3,
+    "ageSeconds": 8.076,
+    "battleRunnerAlive": false,
+    "cleared": false,
+    "execute": true,
+    "reason": "active battle truth is not stale enough to clear",
+    "staleAfterSeconds": 180
+  },
+  "staleBattleRuntimeRecovery": {
+    "actions": [],
+    "activeBattleCount": 3,
+    "candidates": [],
+    "execute": true,
+    "reason": "active battles are present; not replacing runner",
+    "recovered": false,
+    "staleAfterSeconds": 180
+  },
+  "started": {
+    "battleSession": {
+      "command": [
+        "C:\\Users\\mtoli\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe",
+        "run.py",
+        "--websocket-uri",
+        "wss://sim3.psim.us/showdown/websocket",
+        "--ps-username",
+        "claudechamp",
+        "--bot-mode",
+        "search_ladder",
+        "--pokemon-format",
+        "gen9ou",
+        "--run-count",
+        "25",
+        "--max-concurrent-battles",
+        "3",
+        "--save-replay",
+        "always",
+        "--log-to-file",
+        "--team-names",
+        "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo",
+        "--spectator-username",
+        "CHUNGMIGHT"
+      ],
+      "log": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\logs\\devstream_battle_session.log",
+      "pid": 36736,
+      "pidFile": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\.pids\\devstream_battle_session.pid"
+    },
+    "obsHttp": {
+      "command": [
+        "C:\\Users\\mtoli\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\python.exe",
+        "streaming/serve_obs_page.py"
+      ],
+      "log": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\logs\\devstream_obs_http.log",
+      "pid": 32900,
+      "pidFile": "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\.pids\\devstream_obs_http.pid"
+    }
+  }
+}

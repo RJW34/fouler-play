@@ -1,0 +1,100 @@
+{
+  "activeBattleTelemetry": {
+    "battleCount": 0,
+    "battleIds": [],
+    "classification": "empty-active-battle-telemetry",
+    "ghostBattleCount": 0,
+    "ghostBattleIds": [],
+    "isCompletedProof": false,
+    "note": "no active battle telemetry is present",
+    "rawBattleCount": 0
+  },
+  "artifactPaths": {
+    "completion": "devstream\\truth\\completion.json",
+    "cycleMarkdown": "devstream\\truth\\cycle-report.md",
+    "cycleReport": "devstream\\truth\\cycle-report.json",
+    "discordDelivery": "devstream\\truth\\discord-delivery.json",
+    "discordReporting": "devstream\\truth\\discord-reporting.json",
+    "eventQueue": "events_queue.json",
+    "proofStatus": "devstream\\truth\\proof-status.json"
+  },
+  "blockers": [],
+  "completedCycleProof": {
+    "classification": "completed-cycle-proof",
+    "isCurrent": true,
+    "latestBattleAt": "2026-05-27T20:08:09.518540+00:00",
+    "latestBattleId": "battle-gen9ou-2619383903",
+    "latestBattleLearningVerified": true,
+    "performanceTrendStatus": "flat",
+    "status": "cycle-proof-current"
+  },
+  "discordBacklog": {
+    "backlogClassification": {
+      "blocking": false,
+      "nextHermesAction": "keep monitoring the queue and attach the next completed battle proof to the devstream cycle",
+      "severity": "clear",
+      "status": "ready",
+      "whyItMatters": "Discord reporting has no pending or failed queue events blocking proof handoff."
+    },
+    "deliveryFailures": 0,
+    "dnsFailures": 0,
+    "freshPendingBacklog": 0,
+    "freshPendingBattleResults": 0,
+    "healthStatus": "ready",
+    "nextHermesAction": "keep monitoring the queue and attach the next completed battle proof to the devstream cycle",
+    "oldestPendingAgeSeconds": null,
+    "pending": 0,
+    "pendingAgeBuckets": {
+      "d1to3": 0,
+      "gt3d": 0,
+      "h1to24": 0,
+      "lt5m": 0,
+      "m5to60": 0
+    },
+    "pendingBattleResultStructuredFields": {},
+    "pendingBattleResults": 0,
+    "pendingEventTypes": {},
+    "pendingPlaceholderFieldCounts": {},
+    "proofReadiness": {
+      "blockers": [],
+      "localProofClassified": false,
+      "localProofStatus": "needs-classification",
+      "machineActionablePendingBattleResults": 0,
+      "missingStructuredFieldCounts": {},
+      "nextHermesAction": "keep monitoring the queue and attach the next completed battle proof to the devstream cycle",
+      "pendingBattleResults": 0,
+      "readyForLocalProofHandoff": false,
+      "readyForProofHandoff": true,
+      "status": "ready"
+    },
+    "staleAfterSeconds": 600,
+    "stalePendingBacklog": 0,
+    "stalePendingBattleResults": 0,
+    "webhookFailures": 0
+  },
+  "discordDeliveryProof": {
+    "analysis": null,
+    "battle_id": null,
+    "currentBattleState": null,
+    "cycleId": "discord-20260530T055727Z",
+    "loser": null,
+    "nextHermesAction": null,
+    "proof": null,
+    "proofReadiness": null,
+    "secretValuesPrinted": false,
+    "status": "idle",
+    "turns": null,
+    "whyItMatters": null,
+    "winner": null
+  },
+  "generatedAt": "2026-05-30T05:57:30.305138+00:00",
+  "nextHermesAction": "keep monitoring the queue and attach the next completed battle proof to the devstream cycle",
+  "projectId": "fouler-play",
+  "readyForProofHandoff": true,
+  "schemaVersion": "fouler-play-proof-status/v1",
+  "secretValuesPrinted": false,
+  "status": "proof-ready",
+  "warnings": [
+    "runtime is idle after completed cycle proof; plan restoration only after readiness gate allows project starts"
+  ]
+}
