@@ -1,0 +1,903 @@
+{
+  "ability_state": {
+    "ability_known": true,
+    "ability_name": "quarkdrive",
+    "at_full_hp": false,
+    "choice_locked_move": "",
+    "disguise_broken": false,
+    "has_air_balloon": false,
+    "has_armor_tail": false,
+    "has_bulletproof": false,
+    "has_clear_body": false,
+    "has_competitive_defiant": false,
+    "has_contact_punish": false,
+    "has_contrary": false,
+    "has_dazzling": false,
+    "has_disguise": false,
+    "has_dry_skin_fire_weak": false,
+    "has_earth_eater": false,
+    "has_electric_immunity": false,
+    "has_flash_fire": false,
+    "has_fluffy": false,
+    "has_focus_sash": false,
+    "has_good_as_gold": false,
+    "has_guts_like": false,
+    "has_justified": false,
+    "has_levitate": false,
+    "has_magic_bounce": false,
+    "has_mirror_armor": false,
+    "has_overcoat": false,
+    "has_phazing": false,
+    "has_poison_heal": false,
+    "has_priority_block": false,
+    "has_purifying_salt": false,
+    "has_queenly_majesty": false,
+    "has_sap_sipper": false,
+    "has_snowball_ability": false,
+    "has_soundproof": false,
+    "has_status": false,
+    "has_steam_engine": false,
+    "has_sturdy": false,
+    "has_substitute": false,
+    "has_supreme_overlord": false,
+    "has_unaware": false,
+    "has_water_immunity": false,
+    "has_well_baked_body": false,
+    "has_wind_rider": false,
+    "is_choice_locked": false,
+    "is_grass_type": false,
+    "ko_line_available": false,
+    "ko_line_move": "",
+    "ko_line_turns": 0,
+    "momentum": -1.4831563421828908,
+    "momentum_level": "negative",
+    "opponent_active_has_hazard_removal": false,
+    "opponent_active_is_threat": true,
+    "opponent_active_removal_is_spin": false,
+    "opponent_alive_count": 2,
+    "opponent_attack_boost": 0,
+    "opponent_has_aurora_veil": false,
+    "opponent_has_defiant_pokemon": false,
+    "opponent_has_hazard_removal": false,
+    "opponent_has_light_screen": false,
+    "opponent_has_offensive_boost": true,
+    "opponent_has_reflect": false,
+    "opponent_has_salt_cure": false,
+    "opponent_has_sr_weak": true,
+    "opponent_has_terastallized": false,
+    "opponent_hazard_layers": 1,
+    "opponent_hp_percent": 0.22,
+    "opponent_is_dark_type": false,
+    "opponent_is_grounded": true,
+    "opponent_low_stab_pp": false,
+    "opponent_recovery_pp_exhausted": false,
+    "opponent_spa_boost": 5,
+    "opponent_speed_boost": 0,
+    "opponent_spikes_layers": 1,
+    "opponent_sr_up": false,
+    "opponent_tera_type": "",
+    "opponent_used_damaging_move": true,
+    "opponent_used_protect": false,
+    "opponent_used_setup": false,
+    "our_active_is_salt_cured": false,
+    "our_active_is_spinblocker": false,
+    "our_active_is_wincon": false,
+    "our_alive_count": 1,
+    "our_attack_boost": 0,
+    "our_has_alive_spinblocker": false,
+    "our_has_mold_breaker": false,
+    "our_has_prankster": false,
+    "our_hazard_layers": 0,
+    "our_hp_percent": 0.2536873156342183,
+    "our_is_slow": false,
+    "our_spa_boost": 0,
+    "our_speed_stat": 348,
+    "our_spikes_layers": 0,
+    "our_sr_up": false,
+    "our_tera_type": "water",
+    "pokemon_name": "ironmoth",
+    "terrain": "",
+    "terrain_type": "",
+    "trick_room_active": false,
+    "trick_room_turns": 0,
+    "we_are_grounded": true,
+    "we_have_terastallized": false,
+    "we_have_weather_speed": false,
+    "weather": ""
+  },
+  "battle_tag": "battle-gen9ou-2619287860",
+  "battle_type": "STANDARD_BATTLE",
+  "choice": "dracometeor",
+  "decision_mode": "mcts",
+  "decision_profile": "low",
+  "decision_time_s": 3.078,
+  "detected_abilities": [
+    "Opponent used damaging move last turn",
+    "Low HP (22%)",
+    "Opponent has SR-weak Pokemon",
+    "Opponent can still Tera",
+    "Opponent active is THREAT",
+    "Momentum: negative (-1.5)"
+  ],
+  "eval": {
+    "events": [
+      {
+        "after": 0.1258804742955035,
+        "before": 0.12463413296584504,
+        "move": "surf",
+        "reason": "heuristic_adjustment",
+        "score": 0.2,
+        "source": "heuristic_bias",
+        "type": "heuristic"
+      },
+      {
+        "after": 0.12618171069383788,
+        "before": 0.12493238682558207,
+        "move": "dracometeor",
+        "reason": "heuristic_adjustment",
+        "score": 0.2,
+        "source": "heuristic_bias",
+        "type": "heuristic"
+      },
+      {
+        "after": 0.12661295208047324,
+        "before": 0.12535935849551805,
+        "move": "knockoff",
+        "reason": "heuristic_adjustment",
+        "score": 0.2,
+        "source": "heuristic_bias",
+        "type": "heuristic"
+      },
+      {
+        "after": 0.031157641936075314,
+        "before": 0.12463056774430126,
+        "move": "surf-tera",
+        "reason": "Weak move vs +5 threat (very dangerous)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.031320864266937434,
+        "before": 0.12528345706774974,
+        "move": "dracometeor-tera",
+        "reason": "Weak move vs +5 threat (very dangerous)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.03165323802011831,
+        "before": 0.12661295208047324,
+        "move": "knockoff",
+        "reason": "Weak move vs +5 threat (very dangerous)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.031192662420011417,
+        "before": 0.12477064968004567,
+        "move": "knockoff-tera",
+        "reason": "Weak move vs +5 threat (very dangerous)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.027550795736782728,
+        "before": 0.12523088971264876,
+        "move": "substitute",
+        "reason": "Emergency anti-setup: deny +5 threat (no reset answer alive)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.031289639377077336,
+        "before": 0.12515855750830934,
+        "move": "substitute-tera",
+        "reason": "Weak move vs +5 threat (very dangerous)",
+        "source": "ability",
+        "type": "penalty"
+      },
+      {
+        "after": 0.17623266401370488,
+        "before": 0.1258804742955035,
+        "move": "surf",
+        "reason": "Opponent threat active (revenge kill)",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.17665439497137303,
+        "before": 0.12618171069383788,
+        "move": "dracometeor",
+        "reason": "Opponent threat active (revenge kill)",
+        "source": "ability",
+        "type": "boost"
+      },
+      {
+        "after": 0.15898895547423572,
+        "before": 0.03165323802011831,
+        "move": "knockoff",
+        "reason": "boosted_threat_no_switch_attack_now",
+        "source": "threat_switch",
+        "type": "boost"
+      },
+      {
+        "after": 0.24320107633891272,
+        "before": 0.21147919681644586,
+        "move": "surf",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.03583128822648661,
+        "before": 0.031157641936075314,
+        "move": "surf-tera",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.24378306506049474,
+        "before": 0.21198527396564762,
+        "move": "dracometeor",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.03601899390697805,
+        "before": 0.031320864266937434,
+        "move": "dracometeor-tera",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.21940475855444527,
+        "before": 0.19078674656908287,
+        "move": "knockoff",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.03587156178301313,
+        "before": 0.031192662420011417,
+        "move": "knockoff-tera",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.03168341509730013,
+        "before": 0.027550795736782728,
+        "move": "substitute",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.03598308528363893,
+        "before": 0.031289639377077336,
+        "move": "substitute-tera",
+        "reason": "team_intent(stay_in=1.15)",
+        "source": "team_intent",
+        "type": "boost"
+      },
+      {
+        "after": 0.36480161450836907,
+        "before": 0.24320107633891272,
+        "move": "surf",
+        "reason": "switch_oscillation_detected",
+        "source": "stagnation_attack_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.053746932339729915,
+        "before": 0.03583128822648661,
+        "move": "surf-tera",
+        "reason": "switch_oscillation_detected",
+        "source": "stagnation_attack_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.3656745975907421,
+        "before": 0.24378306506049474,
+        "move": "dracometeor",
+        "reason": "switch_oscillation_detected",
+        "source": "stagnation_attack_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.05402849086046707,
+        "before": 0.03601899390697805,
+        "move": "dracometeor-tera",
+        "reason": "switch_oscillation_detected",
+        "source": "stagnation_attack_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.3291071378316679,
+        "before": 0.21940475855444527,
+        "move": "knockoff",
+        "reason": "switch_oscillation_detected",
+        "source": "stagnation_attack_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.0538073426745197,
+        "before": 0.03587156178301313,
+        "move": "knockoff-tera",
+        "reason": "switch_oscillation_detected",
+        "source": "stagnation_attack_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.0475251226459502,
+        "before": 0.03168341509730013,
+        "move": "substitute",
+        "reason": "switch_oscillation_detected",
+        "source": "stagnation_attack_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.053974627925458395,
+        "before": 0.03598308528363893,
+        "move": "substitute-tera",
+        "reason": "switch_oscillation_detected",
+        "source": "stagnation_attack_boost",
+        "type": "boost"
+      },
+      {
+        "after": 0.3656745975907421,
+        "before": 0.3656745975907421,
+        "move": "dracometeor",
+        "reason": "prefer_progress_after_switch",
+        "source": "switch_chain",
+        "type": "override"
+      }
+    ],
+    "policy_post_penalty": {
+      "dracometeor": 0.3656745975907421,
+      "dracometeor-tera": 0.05402849086046707,
+      "knockoff": 0.3291071378316679,
+      "knockoff-tera": 0.0538073426745197,
+      "substitute": 0.0475251226459502,
+      "substitute-tera": 0.053974627925458395,
+      "surf": 0.36480161450836907,
+      "surf-tera": 0.053746932339729915
+    },
+    "policy_pre_penalty": {
+      "dracometeor": 0.12493238682558207,
+      "dracometeor-tera": 0.12528345706774974,
+      "knockoff": 0.12535935849551805,
+      "knockoff-tera": 0.12477064968004567,
+      "substitute": 0.12523088971264876,
+      "substitute-tera": 0.12515855750830934,
+      "surf": 0.12463413296584504,
+      "surf-tera": 0.12463056774430126
+    },
+    "top_moves": [
+      {
+        "eval_weight": 0.3656745975907421,
+        "move": "dracometeor",
+        "pre_penalty_score": 0.12493238682558207
+      },
+      {
+        "eval_weight": 0.36480161450836907,
+        "move": "surf",
+        "pre_penalty_score": 0.12463413296584504
+      },
+      {
+        "eval_weight": 0.3291071378316679,
+        "move": "knockoff",
+        "pre_penalty_score": 0.12535935849551805
+      },
+      {
+        "eval_weight": 0.05402849086046707,
+        "move": "dracometeor-tera",
+        "pre_penalty_score": 0.12528345706774974
+      },
+      {
+        "eval_weight": 0.053974627925458395,
+        "move": "substitute-tera",
+        "pre_penalty_score": 0.12515855750830934
+      }
+    ]
+  },
+  "format": "gen9ou",
+  "formatted_choice": [
+    "/choose move dracometeor",
+    "61"
+  ],
+  "hybrid": {
+    "candidate_count": 0,
+    "candidates": [],
+    "engine_choice": "dracometeor",
+    "llm_authority": "advisory_rerank_only",
+    "mechanics_claims_allowed": false,
+    "override": false,
+    "promotion_rule": "selected_decision_must_equal_one_supplied_candidate",
+    "reason": "non_eval_decision",
+    "selected_decision": "dracometeor",
+    "status": "skipped",
+    "truth_source": "engine_candidate_list"
+  },
+  "legalOptions": {
+    "candidateSetBounded": true,
+    "forceSwitch": false,
+    "legalMoves": [
+      {
+        "activeSlot": 0,
+        "id": "surf",
+        "target": "allAdjacent"
+      },
+      {
+        "activeSlot": 0,
+        "id": "dracometeor",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "knockoff",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "substitute",
+        "target": "self"
+      }
+    ],
+    "legalSwitches": [],
+    "requestHash": "6382e118dc1816b6e34d09841534ccf13ca7c59464f4835e493b91c6fb002c9e",
+    "rqid": 61,
+    "source": "showdown-request",
+    "trapped": false
+  },
+  "mcts_meta": {
+    "per_sample_ms": 1000,
+    "samples_attempted": 3,
+    "samples_failed": 0,
+    "samples_succeeded": 3,
+    "total_visits": 23941000
+  },
+  "mcts_policy_raw": {
+    "dracometeor": 0.12493238682558207,
+    "dracometeor-tera": 0.12528345706774974,
+    "knockoff": 0.12535935849551805,
+    "knockoff-tera": 0.12477064968004567,
+    "substitute": 0.12523088971264876,
+    "substitute-tera": 0.12515855750830934,
+    "surf": 0.12463413296584504,
+    "surf-tera": 0.12463056774430126
+  },
+  "oddities": [],
+  "playstyle": "bulky_offense",
+  "reason": "",
+  "search": {
+    "num_battles": 3,
+    "search_time_ms": 1000,
+    "time_budget_s": 20
+  },
+  "showdownRequest": {
+    "candidateSetBounded": true,
+    "forceSwitch": false,
+    "legalMoves": [
+      {
+        "activeSlot": 0,
+        "id": "surf",
+        "target": "allAdjacent"
+      },
+      {
+        "activeSlot": 0,
+        "id": "dracometeor",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "knockoff",
+        "target": "normal"
+      },
+      {
+        "activeSlot": 0,
+        "id": "substitute",
+        "target": "self"
+      }
+    ],
+    "legalOptionsSource": "showdown-request",
+    "legalSwitches": [],
+    "requestHash": "6382e118dc1816b6e34d09841534ccf13ca7c59464f4835e493b91c6fb002c9e",
+    "rqid": 61,
+    "trapped": false,
+    "wait": false
+  },
+  "snapshot": {
+    "battle_tag": "battle-gen9ou-2619287860",
+    "field": null,
+    "field_turns": 0,
+    "gravity": false,
+    "opponent": {
+      "account": "kvgreat1234567",
+      "active": {
+        "ability": "quarkdrive",
+        "boosts": {
+          "special-attack": 5
+        },
+        "fainted": false,
+        "hp": 70.84,
+        "item": null,
+        "max_hp": 322,
+        "moves": [
+          "dazzlinggleam",
+          "fierydance"
+        ],
+        "name": "ironmoth",
+        "status": null,
+        "tera": {
+          "active": false,
+          "type": null
+        },
+        "types": [
+          "fire",
+          "poison"
+        ],
+        "volatile_statuses": [
+          "quarkdrivespa"
+        ]
+      },
+      "baton_passing": false,
+      "future_sight": [
+        0,
+        ""
+      ],
+      "name": "p1",
+      "reserve": [
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": false,
+          "hp": 322,
+          "item": "unknownitem",
+          "max_hp": 322,
+          "moves": [],
+          "name": "blaziken",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "fire",
+            "fighting"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "unknownitem",
+          "max_hp": 322,
+          "moves": [
+            "playrough"
+          ],
+          "name": "ogerponwellspring",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "grass",
+            "water"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "dauntlessshield",
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "lifeorb",
+          "max_hp": 346,
+          "moves": [
+            "ironhead",
+            "crunch"
+          ],
+          "name": "zamazenta",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "fighting"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "lifeorb",
+          "max_hp": 322,
+          "moves": [
+            "darkpulse"
+          ],
+          "name": "hoopaunbound",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "psychic",
+            "dark"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": null,
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "unknownitem",
+          "max_hp": 302,
+          "moves": [
+            "nastyplot",
+            "icebeam",
+            "darkpulse"
+          ],
+          "name": "darkrai",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": null
+          },
+          "types": [
+            "dark"
+          ],
+          "volatile_statuses": []
+        }
+      ],
+      "shed_tailing": false,
+      "side_conditions": {
+        "auroraveil": 0,
+        "lightscreen": 0,
+        "mist": 0,
+        "protect": 0,
+        "reflect": 0,
+        "safeguard": 0,
+        "spikes": 1,
+        "stealthrock": 0,
+        "stickyweb": 0,
+        "tailwind": 0,
+        "toxic_count": 0,
+        "toxicspikes": 0
+      },
+      "trapped": false,
+      "wish": [
+        0,
+        0
+      ]
+    },
+    "team_preview": false,
+    "time_remaining": 150,
+    "trick_room": false,
+    "trick_room_turns": 0,
+    "turn": 20,
+    "user": {
+      "account": null,
+      "active": {
+        "ability": "protosynthesis",
+        "boosts": {},
+        "fainted": false,
+        "hp": 86,
+        "item": "heavydutyboots",
+        "max_hp": 339,
+        "moves": [
+          "surf",
+          "dracometeor",
+          "knockoff",
+          "substitute"
+        ],
+        "name": "walkingwake",
+        "status": null,
+        "tera": {
+          "active": false,
+          "type": "water"
+        },
+        "types": [
+          "water",
+          "dragon"
+        ],
+        "volatile_statuses": []
+      },
+      "baton_passing": false,
+      "future_sight": [
+        0,
+        ""
+      ],
+      "name": "p2",
+      "reserve": [
+        {
+          "ability": "poisonheal",
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "toxicorb",
+          "max_hp": 0,
+          "moves": [
+            "spikes",
+            "earthquake",
+            "toxic",
+            "protect"
+          ],
+          "name": "gliscor",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "ghost"
+          },
+          "types": [
+            "ground",
+            "flying"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "poisonpuppeteer",
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "heavydutyboots",
+          "max_hp": 0,
+          "moves": [
+            "malignantchain",
+            "foulplay",
+            "partingshot",
+            "recover"
+          ],
+          "name": "pecharunt",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "dark"
+          },
+          "types": [
+            "poison",
+            "ghost"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "defiant",
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "heavydutyboots",
+          "max_hp": 0,
+          "moves": [
+            "ivycudgel",
+            "knockoff",
+            "uturn",
+            "encore"
+          ],
+          "name": "ogerpon",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "grass"
+          },
+          "types": [
+            "grass"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "naturalcure",
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "heavydutyboots",
+          "max_hp": 0,
+          "moves": [
+            "softboiled",
+            "calmmind",
+            "seismictoss",
+            "stealthrock"
+          ],
+          "name": "blissey",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "dark"
+          },
+          "types": [
+            "normal"
+          ],
+          "volatile_statuses": []
+        },
+        {
+          "ability": "pressure",
+          "boosts": {},
+          "fainted": true,
+          "hp": 0,
+          "item": "heavydutyboots",
+          "max_hp": 0,
+          "moves": [
+            "bodypress",
+            "thief",
+            "uturn",
+            "roost"
+          ],
+          "name": "corviknight",
+          "status": null,
+          "tera": {
+            "active": false,
+            "type": "ghost"
+          },
+          "types": [
+            "flying",
+            "steel"
+          ],
+          "volatile_statuses": []
+        }
+      ],
+      "shed_tailing": false,
+      "side_conditions": {
+        "auroraveil": 0,
+        "lightscreen": 0,
+        "mist": 0,
+        "protect": 0,
+        "reflect": 0,
+        "safeguard": 0,
+        "tailwind": 0,
+        "toxic_count": 0
+      },
+      "trapped": false,
+      "wish": [
+        0,
+        0
+      ]
+    },
+    "weather": null,
+    "weather_source": "",
+    "weather_turns": -1
+  },
+  "strategic": {
+    "archetype": "HazardStack",
+    "confidence": 0.7,
+    "engine_choice": "dracometeor",
+    "win_condition": "Set all hazards early (turn 1-5), then wall and wear down opponent"
+  },
+  "team_intent": {
+    "active_intent": {
+      "handles_types": [
+        "dragon",
+        "fire",
+        "ghost",
+        "ground",
+        "psychic",
+        "rock",
+        "steel",
+        "water"
+      ],
+      "is_win_condition": false,
+      "recovery_threshold": 0.0,
+      "role": "fast attacker",
+      "role_tags": [
+        "fast attacker",
+        "substitute user",
+        "setup sweeper"
+      ]
+    },
+    "team_style": "fat",
+    "win_conditions": []
+  },
+  "timestamp": "2026-05-27T17:45:32.960165Z",
+  "turn": 20,
+  "worker_id": 1
+}

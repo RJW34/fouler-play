@@ -1,0 +1,151 @@
+{
+  "checkedAt": "2026-05-30T06:53:47Z",
+  "config": {
+    "aliases": {
+      "battles": {
+        "configured": true,
+        "redactedUrl": "https://discord.com/api/webhooks/REDACTED",
+        "source": "DISCORD_BATTLES_WEBHOOK_URL"
+      },
+      "feedback": {
+        "configured": false,
+        "redactedUrl": "",
+        "source": null
+      },
+      "project": {
+        "configured": true,
+        "redactedUrl": "https://discord.com/api/webhooks/REDACTED",
+        "source": "DISCORD_BATTLES_WEBHOOK_URL"
+      },
+      "workspace": {
+        "configured": true,
+        "redactedUrl": "https://discord.com/api/webhooks/REDACTED",
+        "source": "DISCORD_BATTLES_WEBHOOK_URL"
+      }
+    },
+    "anyWebhookConfigured": true,
+    "loadedEnvFiles": [
+      "C:\\Users\\mtoli\\Documents\\Code\\fouler-play\\.env"
+    ],
+    "openclawAvailable": false
+  },
+  "cycleId": "discord-20260530T065347Z",
+  "logFile": "logs\\event_poster.log",
+  "note": "Read-only doctor; it does not post to Discord.",
+  "queue": {
+    "deliveryFailures": 0,
+    "dnsFailures": 0,
+    "expired": 1047,
+    "expiredDeliveries": 1047,
+    "expiredEventTypes": {
+      "autoresearch_deep_dive": 3,
+      "autoresearch_summary": 3,
+      "battle_result": 1041
+    },
+    "failed": 0,
+    "failedEventTypes": {},
+    "failureTypes": {},
+    "freshPendingBacklog": 0,
+    "freshPendingBattleResults": 0,
+    "health": {
+      "available": true,
+      "backlogClassification": {
+        "blocking": false,
+        "nextHermesAction": "keep monitoring the queue and attach the next completed battle proof to the devstream cycle",
+        "severity": "clear",
+        "status": "ready",
+        "whyItMatters": "Discord reporting has no pending or failed queue events blocking proof handoff."
+      },
+      "blockers": [],
+      "deliveryFailures": 0,
+      "dnsFailures": 0,
+      "expiredDeliveries": 1047,
+      "expiredEventTypes": {
+        "autoresearch_deep_dive": 3,
+        "autoresearch_summary": 3,
+        "battle_result": 1041
+      },
+      "failedEventTypes": {},
+      "failureTypes": {},
+      "freshPendingBacklog": 0,
+      "freshPendingBattleResults": 0,
+      "nextHermesAction": "keep monitoring the queue and attach the next completed battle proof to the devstream cycle",
+      "oldestPendingAgeSeconds": null,
+      "oldestPendingEventId": null,
+      "pendingAgeBuckets": {
+        "d1to3": 0,
+        "gt3d": 0,
+        "h1to24": 0,
+        "lt5m": 0,
+        "m5to60": 0
+      },
+      "pendingBacklog": 0,
+      "pendingBattleResultStructuredFields": {},
+      "pendingBattleResults": 0,
+      "pendingEventTypes": {},
+      "pendingPlaceholderFieldCounts": {},
+      "proofReadiness": {
+        "blockers": [],
+        "localProofClassified": false,
+        "localProofStatus": "needs-classification",
+        "machineActionablePendingBattleResults": 0,
+        "missingStructuredFieldCounts": {},
+        "nextHermesAction": "keep monitoring the queue and attach the next completed battle proof to the devstream cycle",
+        "pendingBattleResults": 0,
+        "readyForLocalProofHandoff": false,
+        "readyForProofHandoff": true,
+        "status": "ready"
+      },
+      "ready": true,
+      "retryingDeliveries": 0,
+      "staleAfterSeconds": 600,
+      "stalePendingBacklog": 0,
+      "stalePendingBattleResults": 0,
+      "status": "ready",
+      "statusCounts": {
+        "expired": 1047
+      },
+      "webhookFailures": 0
+    },
+    "healthStatus": "ready",
+    "oldestPendingAgeSeconds": null,
+    "oldestPendingEventId": null,
+    "pending": 0,
+    "pendingAgeBuckets": {
+      "d1to3": 0,
+      "gt3d": 0,
+      "h1to24": 0,
+      "lt5m": 0,
+      "m5to60": 0
+    },
+    "pendingBacklog": 0,
+    "pendingBattleResultStructuredFields": {},
+    "pendingBattleResults": 0,
+    "pendingEventTypes": {},
+    "pendingPlaceholderFieldCounts": {},
+    "posted": 0,
+    "ready": true,
+    "retryingDeliveries": 0,
+    "staleAfterSeconds": 600,
+    "stalePendingBacklog": 0,
+    "stalePendingBattleResults": 0,
+    "statusCounts": {
+      "expired": 1047
+    },
+    "total": 1047,
+    "webhookFailures": 0
+  },
+  "queueFile": "events_queue.json",
+  "ready": true,
+  "reportPaths": {
+    "discordBacklogArchive": "devstream\\truth\\discord-backlog-archive.json",
+    "discordDelivery": "devstream\\truth\\discord-delivery.json",
+    "discordDoctor": "devstream\\truth\\discord-reporting-doctor.json",
+    "discordReporting": "devstream\\truth\\discord-reporting.json",
+    "eventPosterLog": "logs\\event_poster.log",
+    "queueFile": "events_queue.json"
+  },
+  "schemaVersion": "fouler-play-discord-poster-doctor/v1",
+  "secretValuesPrinted": false,
+  "transportReady": true
+}
