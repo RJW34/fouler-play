@@ -87,6 +87,103 @@ LEGAL_OPTION_EVIDENCE_RE = re.compile(
 REQUEST_HASH_RE = re.compile(r"\brequestHash=([a-f0-9]{64})\b", re.IGNORECASE)
 LEGAL_COUNT_RE = re.compile(r"\blegal(?:Moves|Switches)=(\d+)\b")
 
+# --- Deploy-spacing + deploy-record (Phase D improvement-loop hardening) ---
+# The bot applies a diff to live files at commit time, so each accepted change is
+# immediately in play. Without spacing, multiple unvalidated changes stack faster
+# than elo_watchdog can attribute ELO to any one of them -> the loop "changes a lot
+# but never learns". We (a) refuse to ship a new change until the previous one has
+# had min_games_between_deploys live games, and (b) record a deploy entry so the
+# watchdog has something to revert.
+BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
+DEPLOY_LOG_PATH = PROJECT_ROOT / "infrastructure" / "deploy_log.json"
+
+
+def load_guardrails() -> dict:
+    try:
+        return json.loads(GUARDRAILS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def min_games_between_deploys() -> int:
+    safety = load_guardrails().get("safety", {})
+    try:
+        return int(safety.get("min_games_between_deploys", 15))
+    except (TypeError, ValueError):
+        return 15
+
+
+def _load_battles() -> list:
+    try:
+        data = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    if isinstance(data, dict):
+        data = data.get("battles", [])
+    return data if isinstance(data, list) else []
+
+
+def _latest_deploy_timestamp() -> str | None:
+    try:
+        log = json.loads(DEPLOY_LOG_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(log, list):
+        return None
+    deploys = [e for e in log if isinstance(e, dict) and e.get("type") == "deploy"]
+    return deploys[-1].get("timestamp") if deploys else None
+
+
+def games_since_last_deploy() -> int:
+    """Count battles recorded after the most recent deploy entry."""
+    battles = _load_battles()
+    ts = _latest_deploy_timestamp()
+    if not ts:
+        return len(battles)  # no prior deploy on record -> nothing gating us
+    try:
+        cutoff = datetime.fromisoformat(ts)
+    except (ValueError, TypeError):
+        return len(battles)
+    count = 0
+    for b in battles:
+        bt = b.get("timestamp") or b.get("time") or ""
+        try:
+            if datetime.fromisoformat(bt) > cutoff:
+                count += 1
+        except (ValueError, TypeError):
+            continue
+    return count
+
+
+def record_deploy(pre_commit: str, post_commit: str) -> None:
+    """Append a deploy entry so elo_watchdog can attribute/revert and spacing is tracked."""
+    try:
+        log = []
+        if DEPLOY_LOG_PATH.exists():
+            try:
+                log = json.loads(DEPLOY_LOG_PATH.read_text(encoding="utf-8"))
+            except Exception:
+                log = []
+        if not isinstance(log, list):
+            log = []
+        battles = _load_battles()
+        elo = None
+        if battles:
+            last = battles[-1]
+            elo = last.get("elo", last.get("rating"))
+        log.append({
+            "timestamp": datetime.now().isoformat(),
+            "type": "deploy",
+            "pre_commit": pre_commit or "unknown",
+            "post_commit": post_commit or "unknown",
+            "elo_at_deploy": elo,
+            "source": "improve_agent",
+        })
+        DEPLOY_LOG_PATH.write_text(json.dumps(log, indent=2), encoding="utf-8")
+        print(f"[AGENT] Recorded deploy entry (post={str(post_commit)[:8]}, elo_at_deploy={elo}).")
+    except Exception as e:
+        print(f"[AGENT] WARN: failed to record deploy entry: {e}")
+
 
 def load_autoresearch() -> dict:
     if not AUTORESEARCH_PATH.exists():
@@ -530,9 +627,20 @@ def syntax_check(target_file: str) -> bool:
         return False
 
 
+def _git_head() -> str:
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+        ).stdout.strip()
+    except Exception:
+        return "unknown"
+
+
 def commit_and_push(target_file: str, issue_title: str) -> bool:
     """Commit the change and push to origin."""
     try:
+        pre_commit = _git_head()
         subprocess.run(
             ["git", "add", target_file],
             cwd=str(PROJECT_ROOT),
@@ -550,6 +658,10 @@ def commit_and_push(target_file: str, issue_title: str) -> bool:
             cwd=str(PROJECT_ROOT),
             check=True,
         )
+        post_commit = _git_head()
+        # Record the deploy BEFORE the push: the diff is already applied to live
+        # files, so the change is in play regardless of whether the push succeeds.
+        record_deploy(pre_commit, post_commit)
         subprocess.run(
             ["git", "push", "origin", "master"],
             cwd=str(PROJECT_ROOT),
@@ -580,6 +692,18 @@ def main():
         print("[AGENT] Autoresearch is not promotable. Skipping.")
         for blocker in blockers:
             print(f"[AGENT] BLOCKER: {blocker}")
+        return
+
+    # Deploy-spacing gate: don't ship another change until the previous one has had
+    # enough live games to be judged by elo_watchdog. Prevents unvalidated changes
+    # from stacking (the root of "edits constantly but ELO never climbs").
+    min_games = min_games_between_deploys()
+    since = games_since_last_deploy()
+    if since < min_games:
+        print(
+            f"[AGENT] Deferring: only {since}/{min_games} games since last deploy. "
+            f"Letting the previous change be validated (elo_watchdog) before shipping another."
+        )
         return
 
     top = report["top_issue"]
