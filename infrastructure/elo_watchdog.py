@@ -111,6 +111,24 @@ def get_post_deploy_elo(battle_stats, deploy_timestamp_str: str) -> float | None
     return post_deploy_elos[-1]
 
 
+def _current_branch() -> str:
+    """Push to the branch the runtime is actually on, not a hardcoded master.
+
+    The live runtime tracks a codex/devstream-fouler-sync-* branch; pushing to a
+    hardcoded 'master' would fail or target the wrong ref.
+    """
+    try:
+        branch = subprocess.run(
+            ["git", "-C", str(REPO_DIR), "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        ).stdout.strip()
+        return branch or "HEAD"
+    except Exception:
+        return "HEAD"
+
+
 def git_revert(commit_hash: str) -> bool:
     """Revert a specific commit using git revert."""
     try:
@@ -124,7 +142,7 @@ def git_revert(commit_hash: str) -> bool:
             print(f"Successfully reverted commit {commit_hash[:8]}")
             # Push the revert
             push_result = subprocess.run(
-                ["git", "-C", str(REPO_DIR), "push", "origin", "master"],
+                ["git", "-C", str(REPO_DIR), "push", "origin", _current_branch()],
                 capture_output=True,
                 text=True,
                 timeout=60,

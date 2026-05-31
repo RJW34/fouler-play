@@ -5971,6 +5971,109 @@ def apply_team_strategy_bias(
     return adjusted
 
 
+def _recent_action_history(battle: Battle | None) -> list[str]:
+    """Grounded recent action list from the live battle (action_history + the
+    pending last_selected_move that has not yet been flushed into history).
+
+    All entries are normalized move/switch strings exactly as recorded by
+    run_battle (e.g. "seismictoss", "switch blissey"). No LLM/heuristic data.
+    """
+    if battle is None:
+        return []
+    user = getattr(battle, "user", None)
+    if user is None:
+        return []
+    history = [str(a).lower().strip() for a in (getattr(user, "action_history", []) or [])]
+    last = getattr(getattr(user, "last_selected_move", None), "move", "") or ""
+    last = str(last).lower().strip()
+    if last and (not history or history[-1] != last):
+        history.append(last)
+    return history
+
+
+def break_repeated_decision(
+    sorted_policy: list[tuple[str, float]],
+    battle: Battle | None,
+    *,
+    repeat_threshold: int = 3,
+    window: int = 6,
+    trace_events: list[dict] | None = None,
+) -> list[tuple[str, float]]:
+    """Hard loop-breaker for decision_instability.
+
+    The soft repetition penalty (apply_repetition_penalty) only scales weights
+    and floors at 0.1x, so a dominant move can still win the final selection and
+    the bot relives the same loss-driving loop (autoresearch top_issue:
+    decision_instability -> "repeated same action patterns"). This guard runs at
+    the single decision chokepoint: if the current best action is the SAME action
+    the bot has already chosen >= repeat_threshold times in the recent window AND
+    a distinct legal alternative with positive weight exists, demote the repeated
+    action just below the best distinct alternative so every downstream selection
+    path (dominance, considered-pool, weighted sample) picks something different.
+
+    Grounded only: uses the live action_history / legal policy moves; never any
+    model knowledge of Pokemon. The repeated action is demoted, never removed, so
+    it stays a legal last resort when it is the only option.
+    """
+    if not sorted_policy or battle is None:
+        return sorted_policy
+
+    recent = _recent_action_history(battle)[-window:]
+    if len(recent) < repeat_threshold:
+        return sorted_policy
+
+    best_move = sorted_policy[0][0]
+    best_norm = best_move.lower().strip()
+
+    # Count how many times the about-to-win action appears in the recent window.
+    repeats = sum(1 for a in recent if a == best_norm)
+    if repeats < repeat_threshold:
+        return sorted_policy
+
+    # Find the best DISTINCT legal alternative with positive weight.
+    alternative = next(
+        ((m, w) for m, w in sorted_policy if m.lower().strip() != best_norm and w > 0),
+        None,
+    )
+    if alternative is None:
+        # No distinct legal alternative: the repeated action is forced; keep it.
+        return sorted_policy
+
+    alt_move, alt_weight = alternative
+    best_weight = sorted_policy[0][1]
+
+    # Demote the repeated action to just below the best distinct alternative.
+    demoted_weight = alt_weight * 0.5
+    rebuilt = [
+        (m, demoted_weight if m == best_move else w)
+        for m, w in sorted_policy
+    ]
+    rebuilt.sort(key=lambda x: x[1], reverse=True)
+
+    if trace_events is not None:
+        trace_events.append(
+            {
+                "type": "override",
+                "source": "decision_loop_break",
+                "move": alt_move,
+                "reason": f"{best_move}_repeated_{repeats}_in_last_{len(recent)}_forcing_distinct",
+                "before": best_weight,
+                "after": demoted_weight,
+            }
+        )
+    logger.info(
+        "DECISION LOOP-BREAK: %s repeated %d/%d recent turns; demoting it below "
+        "distinct legal alternative %s (weight %.3f -> %.3f)",
+        best_move,
+        repeats,
+        len(recent),
+        alt_move,
+        best_weight,
+        demoted_weight,
+    )
+    return rebuilt
+
+
 def select_move_from_eval_scores(
     eval_scores: dict[str, float],
     ability_state: OpponentAbilityState | None = None,
@@ -6140,6 +6243,15 @@ def select_move_from_eval_scores(
                 blended_policy = filtered_policy
 
     sorted_policy = sorted(blended_policy.items(), key=lambda x: x[1], reverse=True)
+
+    # Hard loop-breaker: if the best move is one the bot has already repeated
+    # this many times recently, demote it below a distinct legal alternative so
+    # the downstream selection cannot relive the same decision_instability loop.
+    sorted_policy = break_repeated_decision(
+        sorted_policy,
+        battle,
+        trace_events=trace_events,
+    )
 
     if trace is not None:
         top_moves = []
