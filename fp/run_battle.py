@@ -334,6 +334,83 @@ def _normalize_username(name: str) -> str:
     return re.sub(r'[^a-z0-9]', '', name.lower()) if name else ""
 
 
+# Authoritative per-battle rating transition emitted by Showdown to the battle
+# room at the end of a RATED game. The live wire format wraps both the player
+# name and the new rating in HTML, e.g.
+#   |raw|<username ...>npctypebeat</username>'s rating: 1105 &rarr; <strong>1133</strong><br />(+28 for winning)
+# CRUCIALLY, Showdown sends a separate rating line for BOTH players. We must
+# parse the line for OUR account only -- grabbing the first/opponent line gives
+# the wrong sign (e.g. reporting the winner's +24 on our LOSS).
+#
+# We must capture THIS, not the lagging shared ladder-API aggregate, because
+# with concurrent battles the API value is moved by other games between this
+# battle's before/after snapshots (collapsing the delta to ~+/-1).
+#
+# Each per-player segment looks like: NAME's rating: OLD <arrow> [<tags>] NEW
+# where NAME may itself be HTML-wrapped (e.g. <username ...>npctypebeat</username>).
+# We match the "rating: OLD -> NEW" part here, then attribute it to a player by
+# inspecting the text that precedes the match (see parse_rating_transition).
+_RATING_TRANSITION_RE = re.compile(
+    r"rating:\s*(\d+)\s*(?:&rarr;|&#8594;|→|->|&gt;)\s*(?:<[^>]+>\s*)*(\d+)",
+    re.IGNORECASE,
+)
+
+
+def parse_rating_transition(
+    msg: str, our_username: str | None = None
+) -> tuple[int, int, int] | None:
+    """Parse a Showdown |raw| end-of-battle rating line for OUR account.
+
+    Showdown emits one rating line per player, e.g.::
+
+        |raw|<username ...>npctypebeat</username>'s rating: 1221 &rarr; <strong>1197</strong><br />(-24 for losing)
+
+    When *our_username* is provided we return the transition belonging to the
+    segment that names our account, so a LOSS is never mis-reported with the
+    winning opponent's positive delta. Each transition is attributed to the
+    player whose (HTML-stripped) name appears in the text segment immediately
+    preceding that ``rating:`` token. If *our_username* is None we fall back to
+    the first rating transition found (legacy single-player behaviour).
+
+    Returns (old, new, delta) where delta = new - old, or None if no matching
+    rating transition is present. ``delta`` is the TRUE per-battle rating change
+    computed by Showdown's authoritative engine.
+    """
+    if not msg or "rating:" not in msg:
+        return None
+
+    want = _normalize_username(our_username) if our_username else None
+    fallback: tuple[int, int, int] | None = None
+    prev_end = 0
+
+    for match in _RATING_TRANSITION_RE.finditer(msg):
+        try:
+            old = int(match.group(1))
+            new = int(match.group(2))
+        except (TypeError, ValueError):
+            prev_end = match.end()
+            continue
+        transition = (old, new, new - old)
+        if fallback is None:
+            fallback = transition
+        if want is None:
+            return transition
+        # The player name lives in the text between the previous segment's end
+        # and this "rating:" token. Strip HTML and normalize, then check whether
+        # our account name is named there.
+        segment = msg[prev_end:match.start()]
+        segment_names = _normalize_username(re.sub(r"<[^>]+>", " ", segment))
+        if want and want in segment_names:
+            return transition
+        prev_end = match.end()
+
+    # No segment matched our username. When a username filter was requested we
+    # refuse to guess (return None so the caller falls back to the ladder API,
+    # rather than reporting the opponent's delta). Only use the first-found
+    # fallback when no username filter was requested.
+    return None if want is not None else fallback
+
+
 def _normalize_replay_id(battle_id: str) -> str:
     """Convert a battle tag to a public replay ID.
     
@@ -463,14 +540,15 @@ async def _post_battle_to_discord(
     our_player_name: str | None = None,
     elo_before: float | None = None,
     turn_count: int | None = None,
+    rating_delta: tuple[int, int, int] | None = None,
 ) -> float | None:
     """Post battle result to Discord webhook using the Lucario reporting format.
-    
+
     Format:
         ⚔️ WIN vs Opponent (1050 → 1065 ELO)
         🏆 Team: fat-team-a | Turns: 42
         🔗 <https://replay.pokemonshowdown.com/gen9ou-XXXXX>
-    
+
     Args:
         battle_tag: Battle ID
         winner: Winner's username (None for tie/forfeit)
@@ -480,6 +558,9 @@ async def _post_battle_to_discord(
         our_player_name: Our actual player name in this battle
         elo_before: ELO before battle (for delta display)
         turn_count: Number of turns the battle lasted
+        rating_delta: Authoritative per-battle (old, new, delta) parsed from
+            Showdown's end-of-battle |raw| rating line. When present this is
+            the TRUE rating change and overrides the lagging ladder-API value.
     """
     # Determine if we won
     showdown_accounts = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
@@ -490,43 +571,60 @@ async def _post_battle_to_discord(
     if not our_player_name:
         our_player_name = winner if is_win else FoulPlayConfig.username
 
-    # Fetch current ELO (post-battle)
     ps_username = our_player_name or FoulPlayConfig.username
-    elo_after, gxe = await _fetch_elo(ps_username)
 
-    # FOULER-ELO-PROPAGATION-RETRY-2026-05-20: PS profile API has a cache lag; if we got the
-    # same value as elo_before, retry with backoff to give the rating
-    # update time to propagate. If all retries return the same value,
-    # set elo_after = None so the formatter shows no ELO info rather
-    # than fabricating a +0 delta for a real win/loss.
-    if (
-        elo_after is not None
-        and elo_before is not None
-        and abs(float(elo_after) - float(elo_before)) < 0.01
-    ):
-        for _retry_delay in (5, 10, 15):
-            try:
-                await asyncio.sleep(_retry_delay)
-            except Exception:
-                pass
-            _retry_elo, _retry_gxe = await _fetch_elo(ps_username)
-            if (
-                _retry_elo is not None
-                and abs(float(_retry_elo) - float(elo_before)) >= 0.01
-            ):
-                elo_after = _retry_elo
-                if _retry_gxe is not None:
-                    gxe = _retry_gxe
-                break
-        else:
-            # All retries returned the same value as elo_before.
-            # Honest-fail: report no ELO info instead of fake "+0".
-            logger.info(
-                "ELO update did not propagate within 30s for %s; "
-                "marking elo_after=None (was %s, before=%s).",
-                ps_username, elo_after, elo_before,
-            )
-            elo_after = None
+    # --- AUTHORITATIVE per-battle rating (preferred) ---
+    # If Showdown sent us the end-of-battle |raw| rating transition for this
+    # game, use it verbatim. This is the real per-game delta (typically +/-8..30)
+    # and is immune to the concurrent-battle ladder-API lag that collapsed the
+    # old elo_after - elo_before computation to ~+/-1.
+    if rating_delta is not None:
+        rd_old, rd_new, rd_delta = rating_delta
+        elo_before = float(rd_old)
+        elo_after = float(rd_new)
+        gxe = None
+        logger.info(
+            "Using authoritative |raw| rating for %s: %d -> %d (%+d)",
+            battle_tag, rd_old, rd_new, rd_delta,
+        )
+    else:
+        # Fallback: poll the shared ladder API (lagging aggregate). Only used
+        # when no |raw| rating arrived (e.g. an unrated battle).
+        elo_after, gxe = await _fetch_elo(ps_username)
+
+        # FOULER-ELO-PROPAGATION-RETRY-2026-05-20: PS profile API has a cache lag; if we got the
+        # same value as elo_before, retry with backoff to give the rating
+        # update time to propagate. If all retries return the same value,
+        # set elo_after = None so the formatter shows no ELO info rather
+        # than fabricating a +0 delta for a real win/loss.
+        if (
+            elo_after is not None
+            and elo_before is not None
+            and abs(float(elo_after) - float(elo_before)) < 0.01
+        ):
+            for _retry_delay in (5, 10, 15):
+                try:
+                    await asyncio.sleep(_retry_delay)
+                except Exception:
+                    pass
+                _retry_elo, _retry_gxe = await _fetch_elo(ps_username)
+                if (
+                    _retry_elo is not None
+                    and abs(float(_retry_elo) - float(elo_before)) >= 0.01
+                ):
+                    elo_after = _retry_elo
+                    if _retry_gxe is not None:
+                        gxe = _retry_gxe
+                    break
+            else:
+                # All retries returned the same value as elo_before.
+                # Honest-fail: report no ELO info instead of fake "+0".
+                logger.info(
+                    "ELO update did not propagate within 30s for %s; "
+                    "marking elo_after=None (was %s, before=%s).",
+                    ps_username, elo_after, elo_before,
+                )
+                elo_after = None
 
     # --- Line 1: Result header ---
     if is_tie:
@@ -2440,6 +2538,52 @@ async def pokemon_battle(
                     else None
                 )
                 logger.info("Battle finished: %s Winner: %s", battle_tag, winner)
+
+                # Capture Showdown's AUTHORITATIVE per-battle rating change.
+                # The |raw| rating-transition line ("X's rating: 1234 &rarr; 1250")
+                # may already be in this |win| batch, or arrive in the next few
+                # room messages. Briefly drain remaining room messages here so we
+                # don't miss it before reporting. This replaces the lagging
+                # shared-ladder-API delta (which collapsed to ~+/-1 under
+                # concurrent battles).
+                #
+                # Showdown emits a rating line for BOTH players, so we must scope
+                # the parse to our own account name -- otherwise a LOSS gets the
+                # winning opponent's positive delta.
+                _our_name = (
+                    (battle.user.account_name if battle.user and battle.user.account_name else None)
+                    or FoulPlayConfig.username
+                )
+                _rating_delta = parse_rating_transition(msg, _our_name)
+                if _rating_delta is None:
+                    _rating_deadline = time.time() + 5.0
+                    while time.time() < _rating_deadline:
+                        try:
+                            _post_win_msg = await asyncio.wait_for(
+                                ps_websocket_client.receive_battle_message(battle_tag),
+                                timeout=1.0,
+                            )
+                        except asyncio.TimeoutError:
+                            continue
+                        except ValueError:
+                            break
+                        _rating_delta = parse_rating_transition(_post_win_msg, _our_name)
+                        if _rating_delta is not None:
+                            break
+                        if "deinit" in _post_win_msg:
+                            break
+                if _rating_delta is not None:
+                    logger.info(
+                        "Captured authoritative rating transition for %s: %d -> %d (%+d)",
+                        battle_tag, _rating_delta[0], _rating_delta[1], _rating_delta[2],
+                    )
+                else:
+                    logger.info(
+                        "No |raw| rating transition seen for %s; "
+                        "falling back to ladder-API ELO.",
+                        battle_tag,
+                    )
+
                 await _send_battle_chat(ps_websocket_client, battle_tag, post_battle_messages())
 
                 # Save replay and capture URL if configured
@@ -2510,6 +2654,7 @@ async def pokemon_battle(
                     our_player_name=our_player_name,
                     turn_count=battle_turn_count,
                     elo_before=_elo_before_val,
+                    rating_delta=_rating_delta,
                 )
 
                 # Cleanup battle queue to prevent buildup over time.
