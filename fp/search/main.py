@@ -317,7 +317,26 @@ MCTS_BLEND_MIN_TIME_MS = max(200, int(os.getenv("MCTS_BLEND_MIN_TIME_MS", "1800"
 MCTS_BLEND_MIN_PER_SAMPLE_MS = max(
     120, int(os.getenv("MCTS_BLEND_MIN_PER_SAMPLE_MS", "350"))
 )
-MCTS_BLEND_MAX_SAMPLES = max(1, int(os.getenv("MCTS_BLEND_MAX_SAMPLES", "2")))
+# --- P0: penalty-pipeline gate -------------------------------------------------
+# fouler is a port of pmariglia/foul-play (~1879 ELO). Upstream trusts MCTS over
+# sampled opponent sets and does NOT post-process the search policy through a deep
+# stack of heuristic bias/penalty layers. The fork accreted a ~14-layer penalty
+# pipeline in select_move_from_eval_scores() that mutates and frequently OVERRIDES
+# the MCTS visit-count policy, throwing away the search's strength.
+#
+# FOULER_PENALTY_PIPELINE controls that pipeline. It defaults OFF: when the policy
+# came from MCTS, we choose directly from the (forced-line-biased) MCTS policy and
+# apply ONLY hard-legality safety (trapped-switch removal, decision loop-breaker,
+# immediate-survival switch). The full pipeline is preserved (not deleted) and can
+# be re-enabled for A/B testing by exporting FOULER_PENALTY_PIPELINE=1.
+PENALTY_PIPELINE_ENABLED = str(
+    os.getenv("FOULER_PENALTY_PIPELINE", "0")
+).lower() in {"1", "true", "yes", "on"}
+
+# Number of MCTS samples to actually search per turn. Raised to track the sampled
+# opponent-set count (max_mcts_battles) so every plausible team is searched, rather
+# than the old default of 2 which starved the hidden-information averaging.
+MCTS_BLEND_MAX_SAMPLES = max(1, int(os.getenv("MCTS_BLEND_MAX_SAMPLES", "8")))
 MCTS_BLEND_UNCERTAIN_RATIO = max(
     1.01, float(os.getenv("MCTS_BLEND_UNCERTAIN_RATIO", "1.28"))
 )
@@ -6074,6 +6093,121 @@ def break_repeated_decision(
     return rebuilt
 
 
+def _apply_hard_legality_and_safety(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list | None,
+) -> list[tuple[str, float]]:
+    """
+    Apply ONLY hard-legality + immediate-survival safety to a policy and return a
+    sorted (move, weight) list. This is the minimal-safe path used when the
+    heuristic penalty pipeline is gated OFF (default) so the MCTS policy is
+    respected. It does NOT apply any soft bias/penalty heuristics.
+    """
+    working = dict(policy)
+
+    # Hard legality: never keep switch options when trapped.
+    if battle is not None and not getattr(battle, "force_switch", False):
+        trapped = bool(getattr(getattr(battle, "user", None), "trapped", False))
+        request = getattr(battle, "request_json", None) or {}
+        active = request.get(constants.ACTIVE, []) if isinstance(request, dict) else []
+        if active:
+            trapped = trapped or bool(
+                active[0].get(constants.TRAPPED, False)
+                or active[0].get(constants.MAYBE_TRAPPED, False)
+            )
+        if trapped:
+            filtered = {m: w for m, w in working.items() if not m.startswith("switch ")}
+            if filtered:
+                working = filtered
+
+    sorted_policy = sorted(working.items(), key=lambda x: x[1], reverse=True)
+
+    # Hard loop-breaker: demote a move repeated too many times recently.
+    sorted_policy = break_repeated_decision(
+        sorted_policy,
+        battle,
+        trace_events=trace_events,
+    )
+    return sorted_policy
+
+
+def _choose_mcts_only(
+    mcts_policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    decision_profile: DecisionProfile,
+    trace: dict | None,
+) -> str:
+    """
+    MCTS-respecting move selection (penalty pipeline gated OFF).
+
+    Trusts the MCTS visit-count policy. Applies only hard-legality safety and the
+    decision loop-breaker, then picks the top line (with a small stochastic tie
+    spread among near-equal lines to avoid deterministic loops), plus the
+    immediate-survival switch override which is a safety net, not a heuristic bias.
+    """
+    trace_events: list = []
+    sorted_policy = _apply_hard_legality_and_safety(
+        mcts_policy,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+    if not sorted_policy:
+        # Nothing legal survived; fall back to raw argmax of the input.
+        ranked = sorted((mcts_policy or {}).items(), key=lambda x: x[1], reverse=True)
+        return ranked[0][0] if ranked else ""
+
+    # Immediate survival override (safety, not heuristic bias): if we are likely to
+    # be KOed before acting and the top line is not itself a survival line, prefer a
+    # competitive switch.
+    if (
+        battle is not None
+        and not getattr(battle, "force_switch", False)
+        and not sorted_policy[0][0].startswith("switch ")
+    ):
+        try:
+            survival = _assess_immediate_survival_risk(battle)
+        except Exception:
+            survival = {"risk": False}
+        if bool(survival.get("risk", False)):
+            top_move, top_weight = sorted_policy[0]
+            try:
+                incoming_pressure = float(survival.get("incoming", 0.0))
+            except Exception:
+                incoming_pressure = None
+            if not _is_non_switch_stall_survival_line(
+                top_move, battle, incoming_pressure=incoming_pressure
+            ):
+                best_switch = next(
+                    ((m, w) for m, w in sorted_policy if m.startswith("switch ") and w > 0),
+                    None,
+                )
+                if best_switch is not None and best_switch[1] >= top_weight * 0.62:
+                    if trace is not None:
+                        trace["decision_mode_detail"] = "mcts_only:survival_switch"
+                    return best_switch[0]
+
+    choice = _choose_from_weighted_policy(
+        dict(sorted_policy), decision_profile=decision_profile
+    )
+    if trace is not None:
+        trace["mcts_only"] = {
+            "top_moves": [
+                {"move": m, "weight": round(float(w), 6)} for m, w in sorted_policy[:5]
+            ],
+            "events": trace_events,
+        }
+        trace["decision_mode_detail"] = trace.get(
+            "decision_mode_detail", "mcts_only"
+        )
+    return choice or sorted_policy[0][0]
+
+
 def select_move_from_eval_scores(
     eval_scores: dict[str, float],
     ability_state: OpponentAbilityState | None = None,
@@ -6081,8 +6215,24 @@ def select_move_from_eval_scores(
     playstyle: Playstyle | None = None,
     decision_profile: DecisionProfile = DecisionProfile.DEFAULT,
     trace: dict | None = None,
+    policy_source: str = "eval",
 ) -> str:
-    """Select a move from a policy (MCTS or eval), applying penalty layers."""
+    """Select a move from a policy (MCTS or eval), applying penalty layers.
+
+    When ``policy_source == "mcts"`` and the penalty pipeline is gated OFF
+    (FOULER_PENALTY_PIPELINE unset/0, the default), the MCTS policy is respected
+    and only hard-legality + survival safety is applied. Set FOULER_PENALTY_PIPELINE=1
+    to route MCTS output through the full heuristic stack (A/B testing).
+    """
+    if policy_source == "mcts" and not PENALTY_PIPELINE_ENABLED:
+        return _choose_mcts_only(
+            eval_scores,
+            battle=battle,
+            ability_state=ability_state,
+            decision_profile=decision_profile,
+            trace=trace,
+        )
+
     trace_events = []
     pre_penalty_scores = dict(eval_scores)
 
@@ -7086,6 +7236,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 playstyle=playstyle,
                 decision_profile=decision_profile,
                 trace=trace,
+                policy_source="mcts",
             )
 
             elapsed_total = time.time() - start_time
