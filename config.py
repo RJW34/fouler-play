@@ -240,7 +240,7 @@ class _FoulPlayConfig:
         parser.add_argument(
             "--search-parallelism",
             type=int,
-            default=_env_int("SEARCH_PARALLELISM", 1),
+            default=_env_int("SEARCH_PARALLELISM", 4),
             help="Number of states to search in parallel",
         )
         parser.add_argument(
@@ -252,8 +252,11 @@ class _FoulPlayConfig:
         parser.add_argument(
             "--max-mcts-battles",
             type=int,
-            default=_env_int("MAX_MCTS_BATTLES", 1),
-            help="Cap the number of simulated battles for MCTS (0 = no cap)",
+            default=_env_int("MAX_MCTS_BATTLES", 8),
+            help="Cap the number of simulated battles for MCTS (0 = no cap). "
+            "gen9ou is a hidden-information game; sampling multiple plausible "
+            "opponent sets and averaging the policy is the core robustness "
+            "mechanism, so the default samples several teams per turn.",
         )
         parser.add_argument(
             "--run-count",
@@ -364,7 +367,11 @@ class _FoulPlayConfig:
         self.search_time_ms = args.search_time_ms
         self.parallelism = args.search_parallelism
         self.max_concurrent_battles = max(1, args.max_concurrent_battles)
-        self.max_mcts_battles = args.max_mcts_battles if args.max_mcts_battles > 0 else 1
+        # >0 caps the sampled-opponent battles; 0 (or negative) means "no cap"
+        # (None) so the search uses however many samples the per-format
+        # heuristic yields. Previously this collapsed to 1, silently disabling
+        # multi-sample uncertainty handling and clobbering the prior fix.
+        self.max_mcts_battles = args.max_mcts_battles if args.max_mcts_battles > 0 else None
         self.run_count = args.run_count
         self.team_name = args.team_name or self.pokemon_format
         self.team_names = [t.strip() for t in args.team_names.split(",")] if args.team_names else None
