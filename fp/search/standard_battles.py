@@ -452,13 +452,38 @@ def _sample_pokemon(pkmn: Pokemon, battle: Battle = None):
         sets_list = [s for s, _ in bayesian_probs]
         probs_list = [p for _, p in bayesian_probs]
         sampled_set = deepcopy(random.choices(sets_list, weights=probs_list)[0])
-        
+
         # Determine source based on where the set came from
         if sampled_set in TeamDatasets.get_pkmn_sets_from_pkmn_name(pkmn):
             source = "bayesian-teamdatasets"
         else:
             source = "bayesian-smogonsets"
-        
+
+        # CRITICAL: a Bayesian SmogonSets candidate is constructed with ONLY the
+        # revealed moves (see bayesian_set_probabilities), so a fully-unrevealed
+        # opponent pokemon would otherwise be serialized with ZERO moves -- which
+        # makes it inert in MCTS (no threats simulated), defeating the whole point
+        # of opponent-set sampling. If the sampled set has fewer than 4 moves,
+        # complete the moveset by sampling likely moves for the chosen set, exactly
+        # as the non-Bayesian fallback paths do.
+        existing_moves = list(sampled_set.pkmn_moveset.moves)
+        if len(existing_moves) < 4:
+            completed_moves = sample_pokemon_moveset_with_known_pkmn_set(
+                pkmn, sampled_set.pkmn_set
+            )
+            # Preserve any moves the Bayesian set already carried, then add the
+            # sampled completions (dedup, cap at 4).
+            merged = list(existing_moves)
+            for mv in completed_moves:
+                if mv not in merged:
+                    merged.append(mv)
+                if len(merged) >= 4:
+                    break
+            sampled_set = PredictedPokemonSet(
+                pkmn_set=sampled_set.pkmn_set,
+                pkmn_moveset=PokemonMoveset(moves=tuple(merged)),
+            )
+
         populate_pkmn_from_set(pkmn, sampled_set, source=source)
         return
 
