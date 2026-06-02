@@ -1,5 +1,10 @@
 # CLAUDE.md - Fouler-Play Autonomous Operations Manual
 
+> **NEW AGENT? START AT `AGENTS.md`** (zero-context index: mission, launch path, architecture map,
+> current blockers, guardrails). Canonical mission: climb to and SUSTAIN **1700 ELO** in gen9ou on the
+> 3 provided fat/stall teams via the closed learn-from-loss self-improvement loop — **do NOT redesign
+> the teams**. Account `LEBOTJAMESXD00N`. Source of truth: `~/projects/the-abso-citadel/docs/hermes/DEVSTREAM_MISSIONS.md`.
+
 ## Mission
 
 Build an **overnight team-testing service** for a competitive Pokemon player. The player loads fat/stall teams, the bot plays them on ladder while they sleep, and in the morning they get a report: which matchups were hard, which Pokemon underperformed, which replays to study. The live bot account on this machine is the `.env`-configured `PS_USERNAME` (currently **"npctypebeat"**), playing **gen9ou**. The Windows bot machine hostname may be MAGNETON, MIRAIDON, or similar — use OS detection, not hostname.
