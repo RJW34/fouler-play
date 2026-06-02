@@ -529,6 +529,8 @@ def _call_claude_cli(prompt: str, cli_path: str) -> str:
         cwd=str(PROJECT_ROOT),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=int(os.getenv("IMPROVE_AGENT_CLI_TIMEOUT", "300")),
     )
     if result.returncode != 0:
@@ -595,19 +597,35 @@ def call_claude(prompt: str) -> str:
 
 
 def extract_diff(response: str) -> str:
-    """Extract the unified diff from Claude's response."""
+    """Extract the unified diff from Claude's response.
+
+    Robust against the model wrapping the diff in a fenced code block: a
+    closing ``` fence used to be swallowed into the patch body, producing
+    "corrupt patch" errors. We start at the first diff header and stop at the
+    closing fence or the first prose line after the body. Blank context lines
+    are normalized to a single space so git apply accepts them.
+    """
     lines = response.strip().splitlines()
-    diff_lines = []
+    diff_lines: list[str] = []
     in_diff = False
     for line in lines:
         if line.startswith("---") or line.startswith("+++") or line.startswith("@@"):
             in_diff = True
-        if in_diff:
             diff_lines.append(line)
-        # Also capture lines starting with +/- when in diff context
-        elif diff_lines and (line.startswith("+") or line.startswith("-") or line.startswith(" ")):
+            continue
+        if not in_diff:
+            continue
+        if line.strip().startswith("```"):
+            break
+        if line == "":
+            diff_lines.append(" ")
+            continue
+        if line[0] in (" ", "+", "-", chr(92)):
             diff_lines.append(line)
-    return "\n".join(diff_lines) if diff_lines else ""
+            continue
+        break
+    text = "\n".join(diff_lines)
+    return text + "\n" if text else ""
 
 
 def _diff_header_path(line: str) -> str | None:
@@ -665,17 +683,30 @@ def apply_diff(diff_text: str, target_file: str) -> bool:
     diff_path = PROJECT_ROOT / ".agent_diff.patch"
     diff_path.write_text(diff_text, encoding="utf-8")
     try:
+        apply_flags = ["--recount", "--whitespace=nowarn"]
         result = subprocess.run(
-            ["git", "apply", "--check", str(diff_path)],
+            ["git", "apply", "--check", *apply_flags, str(diff_path)],
             cwd=str(PROJECT_ROOT),
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         if result.returncode != 0:
-            print(f"[AGENT] Diff doesn't apply cleanly: {result.stderr}")
-            return False
+            result = subprocess.run(
+                ["git", "apply", "--check", *apply_flags, "-C1", str(diff_path)],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            if result.returncode != 0:
+                print(f"[AGENT] Diff doesn't apply cleanly: {result.stderr}")
+                return False
+            apply_flags = [*apply_flags, "-C1"]
         subprocess.run(
-            ["git", "apply", str(diff_path)],
+            ["git", "apply", *apply_flags, str(diff_path)],
             cwd=str(PROJECT_ROOT),
             check=True,
         )
@@ -700,6 +731,8 @@ def run_tests() -> bool:
         cwd=str(PROJECT_ROOT),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=120,
     )
     print(f"[AGENT] Tests: {result.stdout.strip().splitlines()[-1] if result.stdout.strip() else 'no output'}")

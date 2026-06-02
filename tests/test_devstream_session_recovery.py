@@ -488,6 +488,8 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
         autoresearch_count=30,
         proof_timeout_seconds=300,
         start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
     )
 
     payload = devstream_session.run_supervisor_cycle(args, 1)
@@ -529,6 +531,8 @@ def test_supervisor_cycle_clears_stale_active_truth_when_runner_is_dead(monkeypa
         autoresearch_count=30,
         proof_timeout_seconds=300,
         start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
     )
 
     payload = devstream_session.run_supervisor_cycle(args, 2)

@@ -902,14 +902,14 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
     py = supervisor_child_python()
     payload["actions"].append(
         run_supervisor_command(
-            [py, "pipeline.py", "autoresearch", "-n", str(args.autoresearch_count), "--no-discord"],
-            timeout=args.proof_timeout_seconds,
+            [py, "pipeline.py", "autoresearch", "-n", str(getattr(args, "autoresearch_count", 30)), "--no-discord"],
+            timeout=getattr(args, "proof_timeout_seconds", 300),
         )
     )
     payload["actions"].append(
         run_supervisor_command(
             [py, "scripts/devstream_cycle_report.py", "--write"],
-            timeout=args.proof_timeout_seconds,
+            timeout=getattr(args, "proof_timeout_seconds", 300),
         )
     )
 
@@ -920,17 +920,17 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
     # never disrupt a live battle. improve_agent enforces deploy-spacing +
     # offline pytest + auto-revert and records a deploy_log entry; elo_watchdog
     # reverts a deploy whose post-deploy ELO dropped past the guardrail.
-    if not args.skip_improve:
+    if not getattr(args, "skip_improve", False):
         payload["actions"].append(
             run_supervisor_command(
                 [py, "infrastructure/improve_agent.py"],
-                timeout=args.improve_timeout_seconds,
+                timeout=getattr(args, "improve_timeout_seconds", 240),
             )
         )
         payload["actions"].append(
             run_supervisor_command(
                 [py, "infrastructure/elo_watchdog.py"],
-                timeout=args.proof_timeout_seconds,
+                timeout=getattr(args, "proof_timeout_seconds", 300),
             )
         )
     payload["actions"].append(
@@ -947,7 +947,7 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
                 str(args.queue_timeout_seconds),
                 "--execute",
             ],
-            timeout=args.start_timeout_seconds,
+            timeout=getattr(args, "start_timeout_seconds", 60),
         )
     )
     payload["battleRunnerAliveAfter"] = any_battle_runner_alive()
