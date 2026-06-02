@@ -27,6 +27,38 @@ if (-not $Foreground) {
 }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $ProjectDir ".pids") | Out-Null
+
+# --- SINGLETON GUARD ------------------------------------------------------
+# Exactly one battle supervisor may run for this repo. Before launching a new
+# one, terminate any pre-existing devstream_session.py "supervise" process that
+# belongs to THIS project directory. This prevents two supervisors (each of
+# which spawns its own bounded run.py batch) from laddering the same Showdown
+# account at once -- the duplicate-runner failure mode that abandons battles
+# and pins ELO. We match on the repo path so we never touch a supervisor from
+# another install, and we exclude our own PID/ancestry.
+$selfPid = $PID
+$repoNeedle = $ProjectDir.ToLower()
+foreach ($p in @(Get-CimInstance Win32_Process -Filter "name like 'python%'" -ErrorAction SilentlyContinue)) {
+    $cl = $p.CommandLine
+    if (-not $cl) { continue }
+    $clLower = $cl.ToLower()
+    if ($clLower -match 'devstream_session\.py' -and $clLower -match 'supervise' -and $clLower.Contains($repoNeedle)) {
+        if ($p.ProcessId -ne $selfPid) {
+            try {
+                Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+                Write-Output "[singleton-guard] terminated pre-existing supervisor PID $($p.ProcessId)"
+            } catch {}
+        }
+    }
+}
+# Also clear a stale supervisor PID file so the new supervisor owns it cleanly.
+$supPidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
+if (Test-Path -LiteralPath $supPidFile) {
+    try { Remove-Item -LiteralPath $supPidFile -Force -ErrorAction SilentlyContinue } catch {}
+}
+Start-Sleep -Seconds 1
+# --- END SINGLETON GUARD --------------------------------------------------
+
 $stopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
 if (Test-Path -LiteralPath $stopFile -PathType Leaf) {
     Remove-Item -LiteralPath $stopFile -Force

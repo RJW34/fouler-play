@@ -136,6 +136,8 @@ def git_revert(commit_hash: str) -> bool:
             ["git", "-C", str(REPO_DIR), "revert", "--no-edit", commit_hash],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=60,
         )
         if result.returncode == 0:
@@ -145,6 +147,8 @@ def git_revert(commit_hash: str) -> bool:
                 ["git", "-C", str(REPO_DIR), "push", "origin", _current_branch()],
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=60,
             )
             if push_result.returncode == 0:
