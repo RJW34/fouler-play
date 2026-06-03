@@ -122,7 +122,9 @@ def run_eval(
         "--bot-mode", "accept_challenge",
         "--pokemon-format", fmt,
         "--team-name", team,
-        "--run-count", str(battles),
+        # Keep fouler alive a few battles past the baseline's challenge count so it
+        # never exits mid-series and strands a pending challenge.
+        "--run-count", str(battles + 5),
         "--search-time-ms", str(search_time_ms),
         "--save-replay", "never",
     ]

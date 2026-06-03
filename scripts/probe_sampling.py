@@ -96,6 +96,62 @@ def main():
         dummies = s.lower().count("pikachu")
         print(f"  state[{i}] pikachu-dummy count in serialized state: {dummies}")
 
+    return battle
+
+
+def mcts_ab(battle):
+    """
+    Deterministic search-quality A/B: run the MCTS policy pass on the SAME position
+    with opponent set-sampling ON vs OFF (FOULER_FORCE_NO_SETSAMPLE), and report how
+    many opponent moves the engine actually sees and the resulting move policy. With
+    sampling OFF, fully-unrevealed opponents are inert (no threats), so MCTS optimizes
+    against a blank wall; with sampling ON it must answer real threats.
+    """
+    import importlib
+    from concurrent.futures import ThreadPoolExecutor
+
+    def run_once(no_setsample: bool):
+        os.environ["FOULER_FORCE_NO_SETSAMPLE"] = "1" if no_setsample else "0"
+        import fp.search.standard_battles as sb
+        importlib.reload(sb)
+        from poke_engine import monte_carlo_tree_search
+
+        samples = sb.prepare_battles(deepcopy(battle), 4)
+        # Count opponent moves visible to the engine across samples
+        total_moves = 0
+        for b, _w in samples:
+            for p in [b.opponent.active] + list(b.opponent.reserve):
+                if p is None:
+                    continue
+                total_moves += len([m for m in p.moves if m.name not in ("none", "")])
+        # Run MCTS on the top-weighted sample
+        state = battle_to_poke_engine_state(sorted(samples, key=lambda x: -x[1])[0][0])
+        with ThreadPoolExecutor(max_workers=1) as ex:
+            result = ex.submit(monte_carlo_tree_search, state, 800).result(timeout=20)
+        policy = {}
+        tv = float(getattr(result, "total_visits", 0) or 0) or 1.0
+        for opt in getattr(result, "side_one", []) or []:
+            mv = str(getattr(opt, "move_choice", "") or "")
+            v = float(getattr(opt, "visits", 0) or 0)
+            if mv and v > 0:
+                policy[mv] = round(v / tv, 3)
+        top = sorted(policy.items(), key=lambda x: -x[1])[:4]
+        return total_moves, top
+
+    print("\n=== MCTS search-quality A/B (same position) ===")
+    moves_off, top_off = run_once(no_setsample=True)
+    moves_on, top_on = run_once(no_setsample=False)
+    print(f"  set-sampling OFF (pre-fix): opp moves visible to engine = {moves_off}")
+    print(f"      MCTS top policy: {top_off}")
+    print(f"  set-sampling ON  (fixed):   opp moves visible to engine = {moves_on}")
+    print(f"      MCTS top policy: {top_on}")
+    print(f"  -> visibility gain: {moves_on - moves_off} more opponent moves searched")
+    os.environ["FOULER_FORCE_NO_SETSAMPLE"] = "0"
+
 
 if __name__ == "__main__":
-    main()
+    b = main()
+    try:
+        mcts_ab(b)
+    except Exception as e:
+        print(f"[mcts_ab] skipped ({e})")

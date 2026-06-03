@@ -64,9 +64,17 @@ async def main():
     )
 
     # Challenge the fouler bot N times, one at a time so fouler (single worker)
-    # can accept each in turn.
+    # can accept each in turn. A short settle delay between challenges gives
+    # fouler's worker loop time to re-enter accept_challenge state, avoiding a
+    # race where a challenge is issued before the bot is listening (which would
+    # otherwise block send_challenges forever).
     sent = 0
     for i in range(args.battles):
+        # Wait until fouler has finished the previous battle and is idle again.
+        for _ in range(int(args.per_battle_timeout)):
+            if player.n_finished_battles >= i:
+                break
+            await asyncio.sleep(1)
         try:
             await asyncio.wait_for(
                 player.send_challenges(args.opponent, n_challenges=1),
@@ -74,11 +82,12 @@ async def main():
             )
             sent += 1
         except asyncio.TimeoutError:
-            print(f"[baseline] challenge {i} timed out", flush=True)
+            print(f"[baseline] challenge {i} timed out; bot may have exited", flush=True)
             break
         except Exception as e:
             print(f"[baseline] challenge {i} error: {e}", flush=True)
             break
+        await asyncio.sleep(1.5)  # settle: let fouler re-enter accept state
 
     wins = player.n_won_battles
     finished = player.n_finished_battles
