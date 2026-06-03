@@ -190,42 +190,56 @@ class BattleStats:
         except Exception as e:
             logger.warning("Failed to save battle_stats.json: %s", e)
 
-    def _record_battle(self, team_file_name, result, battle_tag=None, rating=None):
+    def _record_battle(self, team_file_name, result, battle_tag=None, rating=None,
+                       elo_before=None, elo_after=None, elo_delta=None, gxe=None):
         from datetime import datetime, timezone
+        # FOULER-ELO-CAPTURE-FIX-2026-06-03: persist the AUTHORITATIVE per-battle
+        # ELO transition (from Showdown's |raw| rating line, captured in
+        # pokemon_battle) under canonical field names. The legacy "rating" field
+        # held only the lagging/duplicated ladder-API aggregate and no entry ever
+        # carried an "elo_after" key, so the decline was invisible in telemetry.
+        # "rating" is kept (== elo_after) for backward-compat with old readers.
         entry = {
             "battle_id": battle_tag or "unknown",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "team_file": team_file_name or "unknown",
             "result": result,
             "replay_id": battle_tag or "",
-            "rating": rating,
+            "rating": elo_after if elo_after is not None else rating,
+            "elo_before": elo_before,
+            "elo_after": elo_after if elo_after is not None else rating,
+            "elo_delta": elo_delta,
+            "gxe": gxe,
         }
         self._battles.append(entry)
         if len(self._battles) > BATTLE_STATS_MAX_ENTRIES:
             del self._battles[:-BATTLE_STATS_MAX_ENTRIES]
         self._save_battles()
 
-    async def record_win(self, team_file_name, battle_tag=None, rating=None):
+    async def record_win(self, team_file_name, battle_tag=None, rating=None,
+                         elo_before=None, elo_after=None, elo_delta=None, gxe=None):
         async with self._lock:
             self.wins += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "win", battle_tag, rating=rating)
+            self._record_battle(team_file_name, "win", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe)
             logger.info("Won with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
-    async def record_loss(self, team_file_name, battle_tag=None, rating=None):
+    async def record_loss(self, team_file_name, battle_tag=None, rating=None,
+                         elo_before=None, elo_after=None, elo_delta=None, gxe=None):
         async with self._lock:
             self.losses += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "loss", battle_tag, rating=rating)
+            self._record_battle(team_file_name, "loss", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe)
             logger.info("Lost with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
-    async def record_disconnect(self, team_file_name, battle_tag=None, rating=None):
+    async def record_disconnect(self, team_file_name, battle_tag=None, rating=None,
+                         elo_before=None, elo_after=None, elo_delta=None, gxe=None):
         async with self._lock:
             self.disconnects += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "disconnect", battle_tag, rating=rating)
+            self._record_battle(team_file_name, "disconnect", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe)
             logger.info("Disconnect with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}\tDC: {}".format(self.wins, self.losses, self.disconnects))
 
@@ -498,19 +512,42 @@ async def battle_worker(
             worker_battles += 1
             lost_battle = False
             try:
-                _post_elo = None
+                # FOULER-ELO-CAPTURE-FIX-2026-06-03: prefer the AUTHORITATIVE
+                # per-battle ELO snapshot captured by pokemon_battle (from
+                # Showdown's |raw| rating line). This is the true per-game
+                # transition and is immune to the concurrent-battle ladder-API
+                # lag that previously produced duplicate/collapsed values. Fall
+                # back to a direct ladder-API fetch only if no snapshot exists.
+                _elo_snap = None
                 try:
-                    from fp.run_battle import _fetch_elo
-                    _post_elo, _ = await _fetch_elo(FoulPlayConfig.username)
+                    from fp.run_battle import pop_battle_elo
+                    _elo_snap = pop_battle_elo(battle_tag)
                 except Exception:
-                    pass
-
-                if winner == FoulPlayConfig.username:
-                    await stats.record_win(team_file_name, battle_tag, rating=_post_elo)
-                elif winner is None:
-                    await stats.record_disconnect(team_file_name, battle_tag, rating=_post_elo)
+                    _elo_snap = None
+                if _elo_snap:
+                    _elo_before = _elo_snap.get("elo_before")
+                    _post_elo = _elo_snap.get("elo_after")
+                    _elo_delta = _elo_snap.get("elo_delta")
+                    _gxe = _elo_snap.get("gxe")
                 else:
-                    await stats.record_loss(team_file_name, battle_tag, rating=_post_elo)
+                    _elo_before = None
+                    _post_elo = None
+                    _elo_delta = None
+                    _gxe = None
+                    try:
+                        from fp.run_battle import _fetch_elo
+                        _post_elo, _gxe = await _fetch_elo(FoulPlayConfig.username)
+                    except Exception:
+                        pass
+
+                _elo_kw = dict(rating=_post_elo, elo_before=_elo_before,
+                               elo_after=_post_elo, elo_delta=_elo_delta, gxe=_gxe)
+                if winner == FoulPlayConfig.username:
+                    await stats.record_win(team_file_name, battle_tag, **_elo_kw)
+                elif winner is None:
+                    await stats.record_disconnect(team_file_name, battle_tag, **_elo_kw)
+                else:
+                    await stats.record_loss(team_file_name, battle_tag, **_elo_kw)
                     lost_battle = True
             except Exception as rec_err:
                 logger.error(f"Worker {worker_id}: Failed to record battle result: {rec_err}")

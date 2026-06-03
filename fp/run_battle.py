@@ -279,6 +279,24 @@ _replay_cache: dict[str, dict[str, float | bool]] = {}
 # Per-battle ELO cache: battle_tag -> pre-battle ELO value
 # Used to compute ELO delta for Discord reports
 _elo_before_cache: dict[str, float] = {}
+# FOULER-ELO-CAPTURE-FIX-2026-06-03: authoritative per-battle ELO result,
+# keyed by battle_tag, populated by pokemon_battle() right after the Discord
+# report computes the true elo_after. run.py reads this to record real
+# elo_after/elo_before/elo_delta/gxe into battle_stats.json (the prior path
+# wrote only the lagging ladder-API 'rating' and never an 'elo_after' field).
+_last_battle_elo: dict[str, dict] = {}
+
+
+def pop_battle_elo(battle_tag: str | None) -> dict | None:
+    """Return and clear the authoritative ELO snapshot for a finished battle.
+
+    Snapshot dict: {elo_before, elo_after, elo_delta, gxe}. Any field may be
+    None if Showdown did not emit a |raw| rating line and the ladder-API
+    fallback also failed. Returns None if no snapshot was recorded.
+    """
+    if not battle_tag:
+        return None
+    return _last_battle_elo.pop(battle_tag, None)
 
 
 def _blacklist_battle_tag(battle_tag: str) -> None:
@@ -479,6 +497,35 @@ async def _fetch_elo(username: str, fmt: str = "gen9ou") -> tuple:
     except Exception:
         pass
     return (None, None)
+
+
+async def _fetch_glicko(username: str, fmt: str = "gen9ou") -> tuple:
+    """Fetch (rpr, rprd, gxe) from the canonical ladder JSON API.
+
+    rpr  = Glicko-1 rating, rprd = its deviation. ELO is only a meaningful progress
+    signal once rprd < 50 (well-established rating); below that the ladder is still
+    placing the account and single-battle ELO swings are noise. Used by the ELO
+    watchdog to avoid reverting on placement-period jitter.
+    Returns (None, None, None) on failure.
+    """
+    try:
+        url = f"https://pokemonshowdown.com/users/{_normalize_username(username)}.json"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status != 200:
+                    return (None, None, None)
+                data = await resp.json(content_type=None)
+                if 'ratings' in data and fmt in data['ratings']:
+                    rating = data['ratings'][fmt]
+                    def _f(v):
+                        try:
+                            return float(v)
+                        except (TypeError, ValueError):
+                            return None
+                    return (_f(rating.get('rpr')), _f(rating.get('rprd')), _f(rating.get('gxe')))
+    except Exception:
+        pass
+    return (None, None, None)
 
 
 
@@ -2656,6 +2703,41 @@ async def pokemon_battle(
                     elo_before=_elo_before_val,
                     rating_delta=_rating_delta,
                 )
+
+                # FOULER-ELO-CAPTURE-FIX-2026-06-03: stash the authoritative
+                # per-battle ELO so run.py can record real elo_after/before/
+                # delta/gxe into battle_stats.json. Prefer the |raw| rating
+                # transition (true per-game delta); fall back to the ladder-
+                # API elo_after returned above. _fetch_elo gives (elo, gxe);
+                # fetch gxe alongside elo_after only when we lack the |raw|
+                # line (the authoritative path does not carry gxe).
+                _elo_before_final = None
+                _elo_after_final = None
+                _elo_delta_final = None
+                _gxe_final = None
+                if _rating_delta is not None:
+                    _elo_before_final = float(_rating_delta[0])
+                    _elo_after_final = float(_rating_delta[1])
+                    _elo_delta_final = int(_rating_delta[2])
+                else:
+                    _elo_after_final = elo_after
+                    if _elo_before_val is not None:
+                        _elo_before_final = float(_elo_before_val)
+                    if _elo_after_final is not None and _elo_before_final is not None:
+                        _elo_delta_final = int(round(_elo_after_final - _elo_before_final))
+                if _elo_after_final is not None:
+                    try:
+                        _, _gxe_final = await _fetch_elo(
+                            our_player_name or FoulPlayConfig.username
+                        )
+                    except Exception:
+                        _gxe_final = None
+                _last_battle_elo[battle_tag] = {
+                    "elo_before": _elo_before_final,
+                    "elo_after": _elo_after_final,
+                    "elo_delta": _elo_delta_final,
+                    "gxe": _gxe_final,
+                }
 
                 # Cleanup battle queue to prevent buildup over time.
                 timeout = 5
