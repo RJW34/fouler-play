@@ -1,4 +1,5 @@
 import asyncio
+import os
 import websockets
 import requests
 import json
@@ -61,11 +62,19 @@ class PSWebsocketClient:
         self.address = address
         self.websocket = None
         self.expected_format = expected_format  # CRITICAL: validate claimed battles match this format
-        self.login_uri = (
-            "https://play.pokemonshowdown.com/api/login"
-            if password
-            else "https://play.pokemonshowdown.com/action.php?"
-        )
+        # FOULER_LOGIN_URI lets the offline eval harness point the login/assertion
+        # request at a LOCAL pokemon-showdown server (--no-security), e.g.
+        # http://localhost:8765/action.php?  . Production leaves it unset and uses
+        # the public Showdown login server exactly as before.
+        _login_override = os.getenv("FOULER_LOGIN_URI")
+        if _login_override:
+            self.login_uri = _login_override
+        else:
+            self.login_uri = (
+                "https://play.pokemonshowdown.com/api/login"
+                if password
+                else "https://play.pokemonshowdown.com/action.php?"
+            )
         # Message routing for concurrent battles
         self.battle_queues = {}  # battle_tag -> asyncio.Queue
         self.pending_battle_messages = {}  # battle_tag -> list of msgs (pre-registration buffer)
@@ -516,6 +525,15 @@ class PSWebsocketClient:
     async def login(self):
         logger.info("Logging in...")
         client_id, challstr = await self.get_id_and_challstr()
+
+        # Local --no-security showdown server (offline eval harness): no assertion
+        # is required; sending `/trn user,0,` with an empty assertion logs in.
+        if os.getenv("FOULER_NO_SECURITY_LOGIN", "").lower() in {"1", "true", "yes", "on"}:
+            message = ["/trn " + self.username + ",0,"]
+            logger.info("Logging in via --no-security local server (no assertion)")
+            await self.send_message("", message)
+            await asyncio.sleep(3)
+            return self.username
 
         guest_login = self.password is None
 

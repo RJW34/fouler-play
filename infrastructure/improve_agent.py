@@ -404,15 +404,105 @@ def pick_target_file(report: dict) -> str:
     return "fp/search/main.py"
 
 
-def read_code_file(rel_path: str) -> str:
-    """Read a code file, truncated to MAX_CODE_LINES from the most relevant section."""
+FUNC_NAME_RE = re.compile(r"\b([a-z_][a-z0-9_]{3,})\s*\(", re.IGNORECASE)
+
+
+def _implicated_symbols(report: dict) -> list[str]:
+    """
+    Extract candidate function/symbol names the report implicates, so we can send
+    the agent the SPECIFIC functions instead of a blind 500-line tail. Looks at the
+    top issue title/proof and any explicit `target_symbols`/`functions` fields.
+    """
+    top = report.get("top_issue", {}) if isinstance(report, dict) else {}
+    names: list[str] = []
+    for key in ("target_symbols", "functions", "implicated_functions"):
+        val = report.get(key) or top.get(key)
+        if isinstance(val, (list, tuple)):
+            names.extend(str(v) for v in val)
+        elif isinstance(val, str):
+            names.append(val)
+    blob = " ".join(
+        [str(top.get("title", "")), " ".join(text_list(top.get("proof") or top.get("evidence")))]
+    )
+    # snake_case identifiers that look like function calls
+    for m in FUNC_NAME_RE.finditer(blob):
+        cand = m.group(1)
+        if "_" in cand or cand.islower():
+            names.append(cand)
+    # dedupe preserving order
+    seen: set[str] = set()
+    out: list[str] = []
+    for n in names:
+        nl = n.strip()
+        if nl and nl.lower() not in seen:
+            seen.add(nl.lower())
+            out.append(nl)
+    return out
+
+
+def _extract_functions_from_source(source: str, wanted: list[str]) -> str:
+    """Return the source of the named top-level/methods functions (with a little
+    surrounding context), using AST line spans. Empty string if none matched."""
+    import ast
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return ""
+    lines = source.splitlines()
+    wanted_set = {w.lower() for w in wanted}
+    spans: list[tuple[int, int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.lower() in wanted_set:
+                start = max(0, (node.lineno - 1) - 2)  # include 2 lines of context
+                end = getattr(node, "end_lineno", node.lineno)
+                spans.append((start, end, node.name))
+    if not spans:
+        return ""
+    spans.sort()
+    chunks: list[str] = []
+    for start, end, name in spans:
+        body = "\n".join(lines[start:end])
+        chunks.append(f"# ---- function: {name} (lines {start + 1}-{end}) ----\n{body}")
+    return "\n\n".join(chunks)
+
+
+def read_code_file(rel_path: str, report: dict | None = None) -> str:
+    """
+    Read a code file for the agent prompt.
+
+    For small files, return the whole file. For large files (e.g. the 7k-line
+    fp/search/main.py), extract the SPECIFIC functions implicated by the report
+    instead of blindly tailing MAX_CODE_LINES (which sent the agent the wrong
+    region -- the penalty pipeline tail -- regardless of the actual issue).
+    Falls back to the tail only if no implicated function is found.
+    """
     full_path = PROJECT_ROOT / rel_path
     if not full_path.exists():
         return f"# File not found: {rel_path}"
-    lines = full_path.read_text(encoding="utf-8").splitlines()
+    source = full_path.read_text(encoding="utf-8")
+    lines = source.splitlines()
     if len(lines) <= MAX_CODE_LINES:
         return "\n".join(lines)
-    # For large files, return the last MAX_CODE_LINES (penalty pipeline is at the end)
+
+    if report is not None:
+        wanted = _implicated_symbols(report)
+        extracted = _extract_functions_from_source(source, wanted)
+        if extracted:
+            header = (
+                f"# NOTE: {rel_path} is {len(lines)} lines. Showing the functions "
+                f"implicated by the top issue ({', '.join(wanted[:6])}). Edit ONLY "
+                f"these unless you have strong evidence the fix belongs elsewhere.\n"
+            )
+            # Guard prompt size: cap extracted region.
+            ex_lines = extracted.splitlines()
+            if len(ex_lines) > MAX_CODE_LINES * 3:
+                ex_lines = ex_lines[: MAX_CODE_LINES * 3]
+                extracted = "\n".join(ex_lines) + "\n# ...(truncated)..."
+            return header + extracted
+
+    # Fallback: last MAX_CODE_LINES.
     return "\n".join(lines[-MAX_CODE_LINES:])
 
 
@@ -739,6 +829,88 @@ def run_tests() -> bool:
     return result.returncode == 0
 
 
+EVAL_GATE_ENABLED = str(os.getenv("IMPROVE_AGENT_EVAL_GATE", "1")).lower() in {
+    "1", "true", "yes", "on",
+}
+EVAL_GATE_BATTLES = int(os.getenv("IMPROVE_AGENT_EVAL_BATTLES", "200"))
+EVAL_GATE_BASELINE = os.getenv("IMPROVE_AGENT_EVAL_BASELINE", "simple")
+EVAL_GATE_TEAM = os.getenv("IMPROVE_AGENT_EVAL_TEAM", "gen9/ou/fat-team-1-stall")
+FROZEN_BASELINE_PATH = PROJECT_ROOT / "eval_results" / "offline" / "frozen.json"
+
+
+def offline_eval_gate() -> tuple[bool, dict]:
+    """
+    The REAL acceptance gate (P1): a candidate change is accepted only if it beats
+    a FROZEN baseline by a statistically significant win-rate margin over
+    N>=200-400 battles on a local poke-env + pokemon-showdown harness.
+
+    pytest is only a cheap pre-filter (run earlier in main()); THIS is the gate.
+
+    Returns (accepted, detail). Requires a stored frozen baseline at
+    eval_results/offline/frozen.json (produce it once with offline_eval.py).
+    If the eval harness is unavailable (no venv / no local server), the gate is
+    skipped with a loud warning rather than silently passing a change to live.
+    """
+    import importlib.util
+
+    if not EVAL_GATE_ENABLED:
+        return True, {"skipped": "IMPROVE_AGENT_EVAL_GATE disabled"}
+
+    eval_script = PROJECT_ROOT / "infrastructure" / "offline_eval.py"
+    venv_py = PROJECT_ROOT / ".venv-eval" / "Scripts" / "python.exe"
+    if not venv_py.exists():
+        venv_py = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
+    if not eval_script.exists() or not venv_py.exists():
+        print("[AGENT] WARNING: offline eval harness/venv missing; eval gate SKIPPED "
+              "(install .venv-eval + local pokemon-showdown to enable the real gate).")
+        return True, {"skipped": "harness/venv unavailable"}
+
+    # Run the candidate arm.
+    print(f"[AGENT] Running offline eval gate: {EVAL_GATE_BATTLES} battles vs "
+          f"{EVAL_GATE_BASELINE} on {EVAL_GATE_TEAM} ...")
+    proc = subprocess.run(
+        [
+            sys.executable, str(eval_script),
+            "--battles", str(EVAL_GATE_BATTLES),
+            "--team", EVAL_GATE_TEAM,
+            "--baseline", EVAL_GATE_BASELINE,
+            "--label", "candidate",
+        ],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        timeout=EVAL_GATE_BATTLES * 220 + 300,
+    )
+    print(proc.stdout[-1500:] if proc.stdout else "(no eval stdout)")
+    cand_path = PROJECT_ROOT / "eval_results" / "offline" / "candidate.json"
+    if not cand_path.exists():
+        print("[AGENT] Eval gate produced no candidate result; treating as FAIL.")
+        return False, {"error": "no candidate result"}
+
+    cand = json.loads(cand_path.read_text(encoding="utf-8"))
+    # If we have a frozen reference, do the two-proportion comparison.
+    if FROZEN_BASELINE_PATH.exists():
+        cmp_proc = subprocess.run(
+            [sys.executable, str(eval_script), "--compare", "frozen", "candidate"],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=60,
+        )
+        print(cmp_proc.stdout)
+        verdict_path = PROJECT_ROOT / "eval_results" / "offline" / "compare-frozen-vs-candidate.json"
+        if verdict_path.exists():
+            verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+            return bool(verdict.get("ACCEPT", False)), verdict
+
+    # No frozen reference yet: accept only if the candidate beats the baseline
+    # with a Wilson lower bound > 0.50 (we are confident fouler wins >half).
+    accepted = bool(cand.get("fouler_wilson_lcb", 0.0) > 0.50)
+    return accepted, {
+        "fouler_win_rate": cand.get("fouler_win_rate"),
+        "fouler_wilson_lcb": cand.get("fouler_wilson_lcb"),
+        "rule": "wilson_lcb_gt_0.50 (no frozen reference)",
+    }
+
+
 def syntax_check(target_file: str) -> bool:
     """AST parse check on the modified file."""
     import ast
@@ -839,7 +1011,7 @@ def main():
     # 2. Pick target file and load code
     target_file = pick_target_file(report)
     print(f"[AGENT] Target file: {target_file}")
-    code = read_code_file(target_file)
+    code = read_code_file(target_file, report)
 
     # 3. Build prompt and call Claude
     prompt = build_prompt(report, code, target_file)
@@ -874,13 +1046,22 @@ def main():
         restore_file_snapshot(target_file, original_target_text)
         return
 
-    # 7. Run tests
+    # 7. Run tests — now only a CHEAP PRE-FILTER, not the acceptance gate.
     if not run_tests():
-        print("[AGENT] Tests failed. Reverting.")
+        print("[AGENT] Tests failed (pre-filter). Reverting.")
         restore_file_snapshot(target_file, original_target_text)
         return
 
-    # 8. Commit and push
+    # 8. REAL acceptance gate (P1): offline win-rate eval vs frozen baseline.
+    accepted, detail = offline_eval_gate()
+    print(f"[AGENT] Eval gate verdict: ACCEPT={accepted} :: {json.dumps(detail)[:600]}")
+    if not accepted:
+        print("[AGENT] Eval gate REJECTED the change (no significant win-rate gain "
+              "/ regression). Reverting.")
+        restore_file_snapshot(target_file, original_target_text)
+        return
+
+    # 9. Commit and push
     if commit_and_push(target_file, top["title"]):
         print(f"[AGENT] Successfully deployed fix for: {top['title']}")
     else:
