@@ -481,6 +481,35 @@ async def _fetch_elo(username: str, fmt: str = "gen9ou") -> tuple:
     return (None, None)
 
 
+async def _fetch_glicko(username: str, fmt: str = "gen9ou") -> tuple:
+    """Fetch (rpr, rprd, gxe) from the canonical ladder JSON API.
+
+    rpr  = Glicko-1 rating, rprd = its deviation. ELO is only a meaningful progress
+    signal once rprd < 50 (well-established rating); below that the ladder is still
+    placing the account and single-battle ELO swings are noise. Used by the ELO
+    watchdog to avoid reverting on placement-period jitter.
+    Returns (None, None, None) on failure.
+    """
+    try:
+        url = f"https://pokemonshowdown.com/users/{_normalize_username(username)}.json"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status != 200:
+                    return (None, None, None)
+                data = await resp.json(content_type=None)
+                if 'ratings' in data and fmt in data['ratings']:
+                    rating = data['ratings'][fmt]
+                    def _f(v):
+                        try:
+                            return float(v)
+                        except (TypeError, ValueError):
+                            return None
+                    return (_f(rating.get('rpr')), _f(rating.get('rprd')), _f(rating.get('gxe')))
+    except Exception:
+        pass
+    return (None, None, None)
+
+
 
 async def _save_replay_json_locally(replay_id: str) -> dict | None:
     """Fetch replay JSON from Pokemon Showdown and save it locally.

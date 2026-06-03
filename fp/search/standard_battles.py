@@ -1,6 +1,15 @@
 import logging
+import os
 import random
 from copy import deepcopy
+
+# A/B switch for the offline eval harness ONLY. When set, the Bayesian-sampled
+# opponent set keeps just its revealed moves (no move completion), reproducing the
+# pre-fix "inert opponent" behavior so the harness can measure the win-rate impact
+# of the set-sampling restoration. NEVER set this in production.
+_FORCE_NO_SETSAMPLE = str(os.getenv("FOULER_FORCE_NO_SETSAMPLE", "0")).lower() in {
+    "1", "true", "yes", "on",
+}
 
 import constants
 from data import all_move_json, pokedex
@@ -467,7 +476,7 @@ def _sample_pokemon(pkmn: Pokemon, battle: Battle = None):
         # complete the moveset by sampling likely moves for the chosen set, exactly
         # as the non-Bayesian fallback paths do.
         existing_moves = list(sampled_set.pkmn_moveset.moves)
-        if len(existing_moves) < 4:
+        if len(existing_moves) < 4 and not _FORCE_NO_SETSAMPLE:
             completed_moves = sample_pokemon_moveset_with_known_pkmn_set(
                 pkmn, sampled_set.pkmn_set
             )

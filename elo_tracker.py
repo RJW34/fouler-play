@@ -46,14 +46,30 @@ def save_stats(stats):
 
 
 def get_current_elo():
-    """Scrape current ELO from Showdown profile"""
+    """Return current gen9ou ELO from the canonical ladder JSON API.
+
+    DEPRECATED ELO SOURCE NOTE (P1 single-source-of-truth fix):
+    This previously scraped ELO out of the profile HTML with a brittle regex
+    (``gen9ou.*?<strong>(\\d+)</strong>``) that silently broke whenever Showdown
+    changed its page markup. The ONE authoritative ELO source is now the ladder
+    JSON endpoint (``/users/<id>.json`` -> ratings[fmt].elo), the same path used by
+    ``fp/run_battle.py::_fetch_elo``. We delegate here so there is exactly one ELO
+    parser in the codebase.
+    """
     try:
-        r = requests.get(f"https://pokemonshowdown.com/users/{USERNAME.lower().replace(' ', '')}", timeout=10)
-        # Look for gen9ou rating
-        match = re.search(r'gen9ou.*?<strong>(\d+)</strong>', r.text, re.DOTALL)
-        if match:
-            return int(match.group(1))
-    except:
+        uid = USERNAME.lower().replace(" ", "")
+        r = requests.get(
+            f"https://pokemonshowdown.com/users/{uid}.json", timeout=10
+        )
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        ratings = data.get("ratings", {})
+        rating = ratings.get("gen9ou")
+        if rating:
+            elo = rating.get("elo")
+            return int(round(float(elo))) if elo is not None else None
+    except Exception:
         pass
     return None
 
