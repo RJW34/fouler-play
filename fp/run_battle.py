@@ -2913,6 +2913,56 @@ async def pokemon_battle(
             except Exception as e:
                 logger.debug(f"Opponent model update failed: {e}")
 
+            # FOULER-EVAL-TURNCAP-2026-06-03: eval-only hard turn cap with
+            # remaining-mons (fewer-fainted) scoring. Gated behind FOULER_MAX_TURNS
+            # (default 0 => DISABLED, so the live ladder bot is completely
+            # unaffected). Stall/fat mirror matches can run hundreds of turns at
+            # ~70s/turn and never reach a decisive board, which made the self-play
+            # gate non-viable (0 decisive in 32min). When the cap is hit we score
+            # by fewer fainted Pokemon (fainted are always announced, so the count
+            # is accurate even with unrevealed reserves), emit the SAME
+            # "Battle finished: <tag> Winner: <name>" line the eval harness already
+            # parses, forfeit to free the server slot, and return a decisive winner.
+            if action_required and "|turn|" in msg:
+                try:
+                    _max_turns = int(os.getenv("FOULER_MAX_TURNS", "0") or 0)
+                except (TypeError, ValueError):
+                    _max_turns = 0
+                if _max_turns > 0:
+                    _cur_turn = getattr(battle, "turn", 0) or 0
+                    if _cur_turn >= _max_turns:
+                        try:
+                            _self_f = battle.user.num_fainted_pkmn() if battle.user else 0
+                            _opp_f = battle.opponent.num_fainted_pkmn() if battle.opponent else 0
+                        except Exception:
+                            _self_f = _opp_f = 0
+                        _me = FoulPlayConfig.username
+                        if _opp_f > _self_f:
+                            _tc_winner = _me
+                        elif _self_f > _opp_f:
+                            _tc_winner = opponent_name
+                        else:
+                            _tc_winner = ""  # true tie -> excluded from decisive
+                        logger.info(
+                            "EVAL_TURNCAP: %s turn=%s self_fainted=%s opp_fainted=%s winner=%s",
+                            battle_tag, _cur_turn, _self_f, _opp_f, _tc_winner or "tie",
+                        )
+                        # Emit the canonical finish line so selfplay_eval.parse_winners
+                        # scores this battle exactly like a natural finish.
+                        logger.info("Battle finished: %s Winner: %s", battle_tag, _tc_winner)
+                        try:
+                            await ps_websocket_client.send_message(battle_tag, ["/forfeit"])
+                        except Exception:
+                            pass
+                        try:
+                            await send_stream_event(
+                                "BATTLE_END",
+                                {"id": battle_tag, "winner": _tc_winner or None, "ended": time.time()},
+                            )
+                        except Exception:
+                            pass
+                        return (_tc_winner or None), battle_tag
+
             # Send turn update for real-time OBS updates
             if action_required and "|turn|" in msg:
                 try:

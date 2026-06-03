@@ -1090,16 +1090,29 @@ async def run_foul_play():
 
 
 if __name__ == "__main__":
-    # Prevent duplicate bot instances
-    try:
-        from process_lock import acquire_lock
-        if not acquire_lock(username=getattr(FoulPlayConfig, "username", "unknown")):
-            logger.error("Another bot instance is already running. Exiting.")
-            sys.exit(1)
-    except ImportError as e:
-        logger.warning("Process lock unavailable (%s); continuing without singleton lock.", e)
-    except Exception as e:
-        logger.warning("Process lock failed (%s); continuing without singleton lock.", e)
+    # Prevent duplicate bot instances.
+    # FOULER-EVAL-NO-SINGLETON-2026-06-03: the self-play eval launches extra
+    # run.py arms (foulerNEW/foulerOLD) from THIS SAME directory against a local
+    # showdown server. The singleton lock would (a) refuse to start the eval arm
+    # because the LIVE ladder bot holds the lock, and worse (b) its
+    # kill_stale_processes() would KILL the live ladder bot (same LOCK_DIR). The
+    # eval arms are isolated (own users, own port, own BATTLE_STATS_FILE) so they
+    # must NOT participate in the live singleton at all. When the eval sets
+    # FOULER_NO_SINGLETON_LOCK=1 we skip lock acquisition entirely -- the live
+    # ladder bot keeps its lock untouched and is never reaped by an eval run.
+    _skip_lock = (os.getenv("FOULER_NO_SINGLETON_LOCK", "0") or "0").strip() not in ("", "0")
+    if _skip_lock:
+        logger.warning("FOULER_NO_SINGLETON_LOCK set; skipping singleton lock (eval arm).")
+    else:
+        try:
+            from process_lock import acquire_lock
+            if not acquire_lock(username=getattr(FoulPlayConfig, "username", "unknown")):
+                logger.error("Another bot instance is already running. Exiting.")
+                sys.exit(1)
+        except ImportError as e:
+            logger.warning("Process lock unavailable (%s); continuing without singleton lock.", e)
+        except Exception as e:
+            logger.warning("Process lock failed (%s); continuing without singleton lock.", e)
 
     try:
         asyncio.run(run_foul_play())
