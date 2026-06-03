@@ -20,6 +20,59 @@
 
 ## Current Status
 
+### 2026-06-02 — SOTA rebuild toward 1700 ELO (branch resolution + P0/P1/P2 landed)
+
+**Canonical branch = `opus48/multisample-mcts`** (NOT master/`claude/wincon-plan-bias`).
+
+**Branch resolution (prerequisite):** ubunztu was on `claude/wincon-plan-bias`
+(master + 3 commits); the JIGGLY runtime was on `opus48/multisample-mcts` (21
+commits ahead, incl. the real search fixes: `e95683b9` restore multi-sample MCTS,
+`724d21ae` authoritative |raw| rating, `82dee164` improve-loop unblock). The two
+shared a base at `72a410be` then diverged. Resolution: JIGGLY's `opus48` line is
+canonical (live runtime + real fixes); ubunztu's docs commit (`9d24a8b` AGENTS.md)
+was cherry-picked on top (CLAUDE.md conflict resolved in favor of the mission
+pointer). The `e4a5aab` win-condition-bias commit was DELIBERATELY NOT merged — it
+is part of the heuristic penalty family the audit says to gate OFF, and it
+conflicts with the MCTS-first selection. ubunztu now fast-forwarded to canonical.
+
+**Work landed on `opus48/multisample-mcts` (4 commits, 2026-06-02):**
+- **P0** `20d703bf` — restore opponent set-sampling for MCTS; gate penalty pipeline
+  OFF (`FOULER_PENALTY_PIPELINE`, default 0); `MCTS_BLEND_MAX_SAMPLES` 2->8.
+  Root cause: the fork's `bayesian_set_probabilities` built SmogonSets candidates
+  from ONLY revealed moves, so unrevealed opponents were sampled with an EMPTY
+  moveset and were INERT in MCTS. Proof (`scripts/probe_sampling.py`): opponent
+  moves visible to the engine 15 -> 96 (+81); MCTS policy goes from degenerate
+  93.7% scald-spam to a faithful stall hedge.
+- **P1** `9fd9192b` — REAL offline win-rate eval gate (`infrastructure/offline_eval.py`
+  + `_offline_baseline.py`): fouler `run.py` vs frozen poke-env baseline on a LOCAL
+  pokemon-showdown `--no-security` server, Wilson LCB + two-proportion z-test.
+  `improve_agent` now gates on this (pytest = pre-filter only) and sends the LLM the
+  AST-extracted implicated functions, not a 500-line tail. `elo_watchdog` now uses
+  win-rate over a >=30-battle window as the primary metric and only trusts ELO once
+  Glicko deviation (rprd) < 50. ELO single-source: retired the regex-HTML scraper in
+  `elo_tracker.py`; canonical path is the ladder JSON API (`_fetch_elo`/`_fetch_glicko`).
+- **P2** `00a21908` — replay-grounded regret mining (`autoresearch._regret_issue`):
+  flags turns where the chosen move's MCTS value << best legal line.
+- proof/harness hardening `b3b314c9`.
+
+**Tests:** 986 pass (1 pre-existing unrelated devstream-report flake).
+
+**DEPLOY STEP (not yet done — do not disrupt live runtime carelessly):**
+The JIGGLY runtime at `D:\Projects\fouler-play` is still on the OLD `opus48` tip
+(`82dee164`), missing the docs commit + the 4 work commits. To deploy:
+1. On JIGGLY: stash/commit the dirty runtime state files (battle_stats.json etc.),
+   then `git pull`/fast-forward `opus48/multisample-mcts` to `b3b314c9`.
+2. No poke-engine rebuild needed (poke-engine version unchanged; pure-Python edits).
+3. Penalty pipeline is OFF by default — to A/B against the old behavior on ladder,
+   set `FOULER_PENALTY_PIPELINE=1`.
+4. To run the offline gate on JIGGLY, create `.venv-eval` (poke-env) and clone
+   `pokemon-showdown` locally as on MIRAIDON.
+**Honest scope note:** P0 search-quality restoration is PROVEN deterministically
+(probe A/B). The offline harness is functional (smoke: fouler 2/2 vs
+SimpleHeuristicsPlayer) but SimpleHeuristics is below fouler's discrimination floor,
+so full-battle win-rate deltas vs that baseline are uninformative; live-ladder ELO
+is still required to confirm the 1700 trajectory.
+
 **2026-03-25 — Bot running, all critical bugs fixed, focus on Phase 2-3**
 
 - **Bot is live** on `npctypebeat`, playing gen9ou with 3 concurrent battles across all 3 teams.
