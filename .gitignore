@@ -11,7 +11,12 @@ build/
 !.env.example
 venv/
 .venv/
+.venv-eval/
 node_modules/
+
+# Offline eval harness artifacts (keep result JSONs, drop logs/processes)
+eval_results/offline/*.log
+eval_results/offline/*-result.json
 
 # Logs
 *.log
