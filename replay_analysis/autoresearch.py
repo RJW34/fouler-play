@@ -313,6 +313,54 @@ class AutoResearcher:
             findings.append(legal_option_proofs[-1])
         return findings, reasons
 
+    def _regret_issue(self, traces: list[dict[str, Any]]) -> tuple[bool, str]:
+        """
+        Replay-grounded REGRET MINING (P2).
+
+        A turn is "high regret" when the move actually chosen had a much lower MCTS
+        value than the best legal line the search found -- i.e. the engine knew a
+        better move existed and a downstream layer (or a bad sample) overrode it.
+        We read the decision trace's mcts_policy_raw (visit-count policy) and the
+        final choice, and flag turns where chosen_value << best_value.
+
+        This grounds the issue in the ACTUAL search output for that turn rather than
+        a hardcoded heuristic bucket. Returns (flagged, detail).
+        """
+        REGRET_RATIO = 0.45  # chosen kept < 45% of the best line's weight
+        high_regret_turns: list[str] = []
+        for trace in traces:
+            policy = trace.get("mcts_policy_raw")
+            if not isinstance(policy, dict) or not policy:
+                # Fall back to the eval policy if MCTS policy is absent.
+                ev = trace.get("eval") if isinstance(trace.get("eval"), dict) else {}
+                policy = ev.get("policy_pre_penalty") if isinstance(ev.get("policy_pre_penalty"), dict) else {}
+            if not isinstance(policy, dict) or not policy:
+                continue
+            choice = str(trace.get("choice", "")).strip()
+            if not choice or choice not in policy:
+                continue
+            try:
+                weights = {k: float(v) for k, v in policy.items() if v is not None}
+            except (TypeError, ValueError):
+                continue
+            if not weights:
+                continue
+            best_move = max(weights, key=weights.get)
+            best_w = weights[best_move]
+            chosen_w = weights.get(choice, 0.0)
+            if best_w <= 0 or best_move == choice:
+                continue
+            if chosen_w < best_w * REGRET_RATIO:
+                turn = trace.get("turn", trace.get("battle_turn", "?"))
+                high_regret_turns.append(
+                    f"turn {turn}: chose {choice} (mcts {chosen_w:.3f}) over "
+                    f"{best_move} (mcts {best_w:.3f}); regret "
+                    f"{(best_w - chosen_w) / best_w:.0%}"
+                )
+        if len(high_regret_turns) >= 2:
+            return True, "; ".join(high_regret_turns[:3])
+        return False, ""
+
     def _build_batch_identity(self, window: list[dict[str, Any]]) -> dict[str, Any]:
         if not window:
             return {
@@ -499,6 +547,12 @@ class AutoResearcher:
                 pattern_counter["decision_instability"] += 1
                 evidence_map["decision_instability"].append(f"{battle_label}: {'; '.join(trace_findings[:3])}")
 
+            # P2: replay-grounded regret mining (chosen-move MCTS value << best legal)
+            regret_flag, regret_detail = self._regret_issue(traces)
+            if regret_flag:
+                pattern_counter["search_regret"] += 1
+                evidence_map["search_regret"].append(f"{battle_label}: {regret_detail}")
+
         issue_defs = {
             "hazard_pressure": (
                 "Hazard pressure is being lost",
@@ -519,6 +573,15 @@ class AutoResearcher:
                 "Decision traces show unstable fallback behavior",
                 "Losses contain repeated fallback/timeout/error decisions or obvious repeated action loops.",
                 "Prioritize stability fixes around slow or failing decision branches before chasing niche matchup ideas.",
+            ),
+            "search_regret": (
+                "High-regret moves: the engine overrode its own best search line",
+                "On multiple turns the move actually played had a much lower MCTS visit-value "
+                "than the best legal line the search found -- the engine knew a stronger move "
+                "existed but a downstream layer (or a bad opponent-set sample) selected a worse one.",
+                "Audit the move-selection path between the MCTS policy and the final choice "
+                "(penalty pipeline overrides, sampling quality). With FOULER_PENALTY_PIPELINE "
+                "OFF this should shrink; if regret persists, the sampled opponent sets are wrong.",
             ),
         }
 
