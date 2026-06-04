@@ -87,6 +87,20 @@ LEGAL_OPTION_EVIDENCE_RE = re.compile(
 REQUEST_HASH_RE = re.compile(r"\brequestHash=([a-f0-9]{64})\b", re.IGNORECASE)
 LEGAL_COUNT_RE = re.compile(r"\blegal(?:Moves|Switches)=(\d+)\b")
 
+# FOULER-IMPROVE-AGENT-NON-CODE-TOP-ISSUE-KEYS-2026-06-03: autoresearch can now
+# synthesize a top_issue whose key signals an UPSTREAM-pipeline / operator
+# concern that no code patch in this repo can fix. evidence_starved is the
+# canonical case: when the loss-evidence sync from JIGGLY -> ubunztu has broken
+# and zero losses carry replay/trace data, the synthesizer surfaces an
+# evidence_starved ResearchIssue so Discord overlay / cycle-report / propose-
+# and-gate can see the upstream break instead of a silent top_issue=null.
+# improve_agent.validate_autoresearch_for_improvement must REFUSE to send these
+# to Claude with a NAMED blocker -- relying on incidental wording (the synthesis
+# text happens to contain "decision trace" and trips trace_only_issue today)
+# is fragile: a future synthesizer wording change would silently let the agent
+# burn a propose-and-gate slot on a non-code problem. Keep this list explicit.
+NON_CODE_TOP_ISSUE_KEYS = frozenset({"evidence_starved"})
+
 # --- Deploy-spacing + deploy-record (Phase D improvement-loop hardening) ---
 # The bot applies a diff to live files at commit time, so each accepted change is
 # immediately in play. Without spacing, multiple unvalidated changes stack faster
@@ -343,6 +357,13 @@ def validate_autoresearch_for_improvement(report: dict) -> list[str]:
     top = report.get("top_issue", {})
     if not isinstance(top, dict) or not top:
         return ["autoresearch report has no top_issue"]
+    top_key = str(top.get("key") or "").strip().lower()
+    if top_key in NON_CODE_TOP_ISSUE_KEYS:
+        return [
+            f"top_issue key '{top_key}' is non-code (upstream/operator territory); "
+            "improve_agent must not propose a code patch -- resolve the underlying "
+            "evidence/sync pipeline first"
+        ]
     proof = top_issue_evidence(top)
     battle_ids = battle_ids_from_evidence(proof)
     batch = report.get("batch") if isinstance(report.get("batch"), dict) else {}
@@ -404,16 +425,130 @@ def pick_target_file(report: dict) -> str:
     return "fp/search/main.py"
 
 
-def read_code_file(rel_path: str) -> str:
-    """Read a code file, truncated to MAX_CODE_LINES from the most relevant section."""
+FUNC_NAME_RE = re.compile(r"\b([a-z_][a-z0-9_]{3,})\s*\(", re.IGNORECASE)
+
+
+def _implicated_symbols(report: dict) -> list[str]:
+    """
+    Extract candidate function/symbol names the report implicates, so we can send
+    the agent the SPECIFIC functions instead of a blind 500-line tail. Looks at the
+    top issue title/proof and any explicit `target_symbols`/`functions` fields.
+    """
+    top = report.get("top_issue", {}) if isinstance(report, dict) else {}
+    names: list[str] = []
+    for key in ("target_symbols", "functions", "implicated_functions"):
+        val = report.get(key) or top.get(key)
+        if isinstance(val, (list, tuple)):
+            names.extend(str(v) for v in val)
+        elif isinstance(val, str):
+            names.append(val)
+    blob = " ".join(
+        [str(top.get("title", "")), " ".join(text_list(top.get("proof") or top.get("evidence")))]
+    )
+    # snake_case identifiers that look like function calls
+    for m in FUNC_NAME_RE.finditer(blob):
+        cand = m.group(1)
+        if "_" in cand or cand.islower():
+            names.append(cand)
+    # dedupe preserving order
+    seen: set[str] = set()
+    out: list[str] = []
+    for n in names:
+        nl = n.strip()
+        if nl and nl.lower() not in seen:
+            seen.add(nl.lower())
+            out.append(nl)
+    return out
+
+
+def _extract_functions_from_source(source: str, wanted: list[str]) -> str:
+    """Return the source of the named top-level/methods functions (with a little
+    surrounding context), using AST line spans. Empty string if none matched."""
+    import ast
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return ""
+    lines = source.splitlines()
+    wanted_set = {w.lower() for w in wanted}
+    spans: list[tuple[int, int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.lower() in wanted_set:
+                start = max(0, (node.lineno - 1) - 2)  # include 2 lines of context
+                end = getattr(node, "end_lineno", node.lineno)
+                spans.append((start, end, node.name))
+    if not spans:
+        return ""
+    spans.sort()
+    chunks: list[str] = []
+    for start, end, name in spans:
+        body = "\n".join(lines[start:end])
+        chunks.append(f"# ---- function: {name} (lines {start + 1}-{end}) ----\n{body}")
+    return "\n\n".join(chunks)
+
+
+def read_code_file(rel_path: str, report: dict | None = None) -> str:
+    """
+    Read a code file for the agent prompt.
+
+    For small files, return the whole file. For large files (e.g. the 7k-line
+    fp/search/main.py), extract the SPECIFIC functions implicated by the report
+    instead of blindly tailing MAX_CODE_LINES (which sent the agent the wrong
+    region -- the penalty pipeline tail -- regardless of the actual issue).
+    Falls back to the tail only if no implicated function is found.
+    """
     full_path = PROJECT_ROOT / rel_path
     if not full_path.exists():
         return f"# File not found: {rel_path}"
-    lines = full_path.read_text(encoding="utf-8").splitlines()
+    source = full_path.read_text(encoding="utf-8")
+    lines = source.splitlines()
     if len(lines) <= MAX_CODE_LINES:
         return "\n".join(lines)
-    # For large files, return the last MAX_CODE_LINES (penalty pipeline is at the end)
+
+    if report is not None:
+        wanted = _implicated_symbols(report)
+        extracted = _extract_functions_from_source(source, wanted)
+        if extracted:
+            header = (
+                f"# NOTE: {rel_path} is {len(lines)} lines. Showing the functions "
+                f"implicated by the top issue ({', '.join(wanted[:6])}). Edit ONLY "
+                f"these unless you have strong evidence the fix belongs elsewhere.\n"
+            )
+            # Guard prompt size: cap extracted region.
+            ex_lines = extracted.splitlines()
+            if len(ex_lines) > MAX_CODE_LINES * 3:
+                ex_lines = ex_lines[: MAX_CODE_LINES * 3]
+                extracted = "\n".join(ex_lines) + "\n# ...(truncated)..."
+            return header + extracted
+
+    # Fallback: last MAX_CODE_LINES.
     return "\n".join(lines[-MAX_CODE_LINES:])
+
+
+def _ladder_line() -> str:
+    """Truthful one-line ELO trajectory for the fix prompt. Uses the real
+    recorded ladder history (ladder_trajectory) so the coding agent is told
+    the ACTUAL state (e.g. ~1170 and DECLINING) instead of a stale constant --
+    a declining trend should bias the fix toward stabilizing losses, not
+    chasing marginal wins."""
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "ladder_trajectory", PROJECT_ROOT / "infrastructure" / "ladder_trajectory.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        t = mod.trajectory()
+        cur = t.get("current_elo")
+        if cur is None:
+            return "Current ELO: unknown (insufficient recorded ratings), target: 1700."
+        slope = t.get("recent_slope_per_game", 0.0) or 0.0
+        trend = "climbing" if slope > 0.2 else ("declining" if slope < -0.2 else "flat")
+        return (f"Current ELO: ~{cur:.0f} (peak {t.get('peak_elo',cur):.0f}, "
+                f"recent trend {trend} {slope:+.1f}/game), target: 1700.")
+    except Exception:
+        return "Current ELO: unknown, target: 1700."
 
 
 def build_prompt(report: dict, code: str, target_file: str) -> str:
@@ -451,7 +586,7 @@ def build_prompt(report: dict, code: str, target_file: str) -> str:
     return textwrap.dedent(f"""\
     You are improving a competitive Pokemon gen9ou battle bot.
     The bot plays fat/stall teams on Pokemon Showdown ladder.
-    Current ELO: ~1359, target: 1700.
+    {_ladder_line()}
 
     ## Autoresearch Report (latest batch)
     Record: {report.get('wins',0)}-{report.get('losses',0)} ({report.get('win_rate',0):.1%} WR)
@@ -739,6 +874,298 @@ def run_tests() -> bool:
     return result.returncode == 0
 
 
+EVAL_GATE_ENABLED = str(os.getenv("IMPROVE_AGENT_EVAL_GATE", "1")).lower() in {
+    "1", "true", "yes", "on",
+}
+# --- Self-play gate config (the discriminating gate) ---
+# maxbp/simple baselines cannot rank fouler engine variants (new/pen_on/no_ss all
+# swept ~20/20). The ONLY discriminating signal is fouler-NEW vs fouler-OLD
+# self-play. This is the gate. The legacy fouler-vs-baseline path is kept only as
+# an explicitly-opted-in fallback.
+EVAL_GATE_MODE = os.getenv("IMPROVE_AGENT_EVAL_MODE", "selfplay").strip().lower()
+SELFPLAY_GATE_BATTLES = int(os.getenv("IMPROVE_AGENT_SELFPLAY_BATTLES", "50"))
+SELFPLAY_GATE_TEAMS_FILE = os.getenv(
+    "IMPROVE_AGENT_SELFPLAY_TEAMS", "teams/eval-fast-teams.list"
+)
+SELFPLAY_SEARCH_MS = int(os.getenv("IMPROVE_AGENT_SELFPLAY_SEARCH_MS", "1200"))
+SELFPLAY_PER_BATTLE_TIMEOUT = float(
+    os.getenv("IMPROVE_AGENT_SELFPLAY_BATTLE_TIMEOUT", "180")
+)
+# Legacy fouler-vs-frozen-baseline config (fallback only).
+EVAL_GATE_BATTLES = int(os.getenv("IMPROVE_AGENT_EVAL_BATTLES", "200"))
+EVAL_GATE_BASELINE = os.getenv("IMPROVE_AGENT_EVAL_BASELINE", "simple")
+EVAL_GATE_TEAM = os.getenv("IMPROVE_AGENT_EVAL_TEAM", "gen9/ou/fat-team-1-stall")
+FROZEN_BASELINE_PATH = PROJECT_ROOT / "eval_results" / "offline" / "frozen.json"
+
+
+def _local_showdown_status(
+    port: int,
+    *,
+    ws_path: str = "/showdown/websocket",
+    timeout: float = 3.0,
+) -> tuple[bool, str]:
+    """Authoritative readiness check for the self-play gate.
+
+    The gate's arms open ws://127.0.0.1:{port}{ws_path} via run.py and die on
+    the spot if that handshake fails (e.g. HTTP/1.0 404 from a non-showdown
+    service holding the port). The old HTTP /action.php probe used to return
+    True on ANY 200 response on that path -- so a stray webserver squatting
+    :8765 produced a false-positive "showdown is up" verdict, and the gate
+    then wasted minutes spawning arms that all crashed at connect with zero
+    battles finished. The truthful signal is the WS handshake the gate will
+    actually perform.
+
+    Returns (ok, reason). ok=True iff the websocket handshake completes;
+    reason is "" on success, otherwise the exception class + message so
+    callers can route the precise failure into the skip detail and the
+    dry_run ledger row (instead of a generic "no showdown server").
+    """
+    import socket
+    # 1) Cheap reachability -- avoid burning the full WS timeout when the
+    # port is dead (the common case: showdown not running at all).
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=2):
+            pass
+    except OSError as e:
+        return False, f"tcp connect refused on 127.0.0.1:{port} ({type(e).__name__}: {e})"
+
+    # 2) Authoritative: actual WS handshake at the path the gate's arms use.
+    import asyncio
+    import websockets
+
+    uri = f"ws://127.0.0.1:{port}{ws_path}"
+
+    async def _try():
+        ws = await asyncio.wait_for(
+            websockets.connect(uri), timeout=timeout
+        )
+        try:
+            await ws.close()
+        except Exception:
+            pass
+
+    try:
+        asyncio.run(_try())
+        return True, ""
+    except asyncio.TimeoutError:
+        return False, f"ws handshake timeout > {timeout}s at {uri}"
+    except Exception as e:
+        # websockets surfaces HTTP/1.0 404 as ValueError, connect-refuse as
+        # OSError, bad-status as InvalidStatus/InvalidStatusCode, mid-handshake
+        # disconnect as ConnectionClosed, etc. Keep the full class+message so
+        # the ledger has the truthful reason for the skip.
+        return False, f"{type(e).__name__}: {e}"
+
+
+def _local_showdown_up(port: int) -> bool:
+    """Back-compat bool wrapper around _local_showdown_status."""
+    ok, _reason = _local_showdown_status(port)
+    return ok
+
+
+# When the gate CANNOT run (no showdown server, missing harness, worktree fail),
+# fail CLOSED by default: do NOT promote an unmeasured change. The autonomous
+# loop relies on this. Set IMPROVE_AGENT_GATE_FAIL_CLOSED=0 to allow ship-on-skip.
+GATE_FAIL_CLOSED = str(os.getenv("IMPROVE_AGENT_GATE_FAIL_CLOSED", "1")).lower() in {"1", "true", "yes", "on"}
+
+
+def _gate_skip(detail: dict) -> tuple[bool, dict]:
+    detail = dict(detail)
+    accept = not GATE_FAIL_CLOSED
+    detail["accept_default"] = accept
+    detail["fail_closed"] = GATE_FAIL_CLOSED
+    return accept, detail
+
+
+def selfplay_eval_gate() -> tuple[bool, dict]:
+    """
+    The DISCRIMINATING acceptance gate: fouler-NEW (the candidate working tree,
+    with the just-applied diff) vs fouler-OLD (the incumbent commit, materialized
+    in a throwaway git worktree at HEAD) on the local showdown server, over
+    SELFPLAY_GATE_BATTLES head-to-head games across the 3 fat/stall teams.
+
+    ACCEPT iff the Wilson lower bound of NEW's win-rate vs OLD > 0.50 (we are
+    statistically confident NEW beats the incumbent more than half the time).
+
+    This is the only gate that can rank engine variants; maxbp/simple cannot.
+
+    The eval is HEAVY (~2.5h at N=50). It is intended to run in a JIGGLY low-load
+    burst window. If no local showdown server is reachable, the gate is SKIPPED
+    with a loud warning (it does NOT silently pass — see caller).
+    """
+    eval_script = PROJECT_ROOT / "infrastructure" / "selfplay_eval.py"
+    if not eval_script.exists():
+        return _gate_skip({"skipped": "selfplay_eval.py missing"})
+
+    # Default eval port is 18765, NOT 8765. The PokeCompletionist OBS
+    # overlay HTTP server permanently holds :8765 on the devstream box;
+    # if we ever default back to 8765 the gate's WS handshake will hit the
+    # overlay and fail with a misleading "HTTP/1.0 404" rather than the
+    # truthful "tcp connect refused". See tests/test_eval_showdown_port_default.py
+    # for the regression pin.
+    port = int(os.getenv("EVAL_SHOWDOWN_PORT", "18765"))
+    showdown_ok, showdown_reason = _local_showdown_status(port)
+    if not showdown_ok:
+        print(f"[AGENT] WARNING: no local showdown server on :{port} "
+              f"({showdown_reason}); self-play gate SKIPPED. (Start pokemon-"
+              f"showdown --no-security {port} in a JIGGLY burst window to enable "
+              f"the real gate.)")
+        return _gate_skip({
+            "skipped": f"no showdown server on :{port}",
+            "skipped_reason": showdown_reason,
+            "port": port,
+        })
+
+    # Materialize OLD = incumbent committed state in a throwaway worktree.
+    # The candidate diff lives in the working tree (uncommitted), so HEAD is the
+    # true incumbent to play NEW against.
+    head = _git_head()
+    old_wt = PROJECT_ROOT.parent / f".fouler-old-{head[:8]}"
+    label = f"gate-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    created_wt = False
+    try:
+        if old_wt.exists():
+            subprocess.run(["git", "worktree", "remove", "--force", str(old_wt)],
+                           cwd=str(PROJECT_ROOT), capture_output=True, text=True)
+        wt = subprocess.run(
+            ["git", "worktree", "add", "--detach", str(old_wt), head],
+            cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+        )
+        if wt.returncode != 0:
+            print(f"[AGENT] WARNING: git worktree add failed: {wt.stderr.strip()}; "
+                  "self-play gate SKIPPED.")
+            return _gate_skip({"skipped": "worktree add failed", "stderr": wt.stderr.strip()[:300]})
+        created_wt = True
+
+        print(f"[AGENT] Self-play gate: NEW(working tree) vs OLD({head[:8]}), "
+              f"{SELFPLAY_GATE_BATTLES} battles across {SELFPLAY_GATE_TEAMS_FILE} ...")
+        proc = subprocess.run(
+            [
+                sys.executable, str(eval_script),
+                "--battles", str(SELFPLAY_GATE_BATTLES),
+                "--teams-from", SELFPLAY_GATE_TEAMS_FILE,
+                "--label", label,
+                "--new-checkout", str(PROJECT_ROOT),
+                "--old-checkout", str(old_wt),
+                "--search-time-ms", str(SELFPLAY_SEARCH_MS),
+                "--per-battle-timeout", str(SELFPLAY_PER_BATTLE_TIMEOUT),
+                "--showdown-port", str(port),
+            ],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=int(SELFPLAY_PER_BATTLE_TIMEOUT) * (SELFPLAY_GATE_BATTLES + len(_read_team_lines())) + 600,
+        )
+        print(proc.stdout[-2000:] if proc.stdout else "(no self-play stdout)")
+    finally:
+        if created_wt:
+            subprocess.run(["git", "worktree", "remove", "--force", str(old_wt)],
+                           cwd=str(PROJECT_ROOT), capture_output=True, text=True)
+
+    verdict_path = PROJECT_ROOT / "eval_results" / "selfplay" / f"{label}.json"
+    if not verdict_path.exists():
+        print("[AGENT] Self-play gate produced no verdict; treating as FAIL "
+              "(do NOT promote an unmeasured change).")
+        return False, {"error": "no self-play verdict", "label": label}
+    verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+    # The gate JSON now carries gate_failed_to_run when both arms died at
+    # connect (e.g. showdown server dropped the websocket mid-run). That is a
+    # SKIP, not a real REJECT — the candidate was never actually tested. Route
+    # it through _gate_skip so it respects IMPROVE_AGENT_GATE_FAIL_CLOSED and
+    # the loop's skip_reason classifier can see it.
+    if verdict.get("gate_failed_to_run"):
+        reason = verdict.get("failure_reason") or "unknown arm failure"
+        print(f"[AGENT] WARNING: self-play gate FAILED TO RUN: {reason}; "
+              "treating as SKIP, not REJECT.")
+        return _gate_skip({
+            "skipped": f"gate_failed_to_run: {reason}",
+            "label": label,
+            "verdict": verdict,
+        })
+    return bool(verdict.get("ACCEPT", False)), verdict
+
+
+def _read_team_lines() -> list:
+    try:
+        p = PROJECT_ROOT / SELFPLAY_GATE_TEAMS_FILE
+        return [ln.strip() for ln in p.read_text(encoding="utf-8").splitlines()
+                if ln.strip() and not ln.strip().startswith("#")]
+    except Exception:
+        return ["a", "b", "c"]
+
+
+def offline_eval_gate() -> tuple[bool, dict]:
+    """
+    Acceptance gate dispatcher.
+
+    Default (IMPROVE_AGENT_EVAL_MODE=selfplay): fouler-NEW vs fouler-OLD self-play
+    — the only thing that can rank engine variants. ACCEPT iff NEW's Wilson LCB
+    over the incumbent > 0.50.
+
+    Fallback (IMPROVE_AGENT_EVAL_MODE=baseline): the legacy fouler-vs-frozen-
+    baseline win-rate gate. Kept only because it predates self-play; it CANNOT
+    discriminate small engine changes (maxbp/simple sweep ~20/20), so it must be
+    opted into explicitly.
+
+    Returns (accepted, detail). pytest is a cheap pre-filter run earlier; THIS is
+    the real gate.
+    """
+    if not EVAL_GATE_ENABLED:
+        return True, {"skipped": "IMPROVE_AGENT_EVAL_GATE disabled"}
+
+    if EVAL_GATE_MODE == "selfplay":
+        return selfplay_eval_gate()
+
+    # --- Legacy baseline fallback (explicit opt-in only) ---
+    eval_script = PROJECT_ROOT / "infrastructure" / "offline_eval.py"
+    venv_py = PROJECT_ROOT / ".venv-eval" / "Scripts" / "python.exe"
+    if not venv_py.exists():
+        venv_py = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
+    if not eval_script.exists() or not venv_py.exists():
+        print("[AGENT] WARNING: offline eval harness/venv missing; eval gate SKIPPED "
+              "(install .venv-eval + local pokemon-showdown to enable the real gate).")
+        return True, {"skipped": "harness/venv unavailable"}
+
+    print(f"[AGENT] Running offline eval gate (baseline mode): {EVAL_GATE_BATTLES} "
+          f"battles vs {EVAL_GATE_BASELINE} on {EVAL_GATE_TEAM} ...")
+    proc = subprocess.run(
+        [
+            sys.executable, str(eval_script),
+            "--battles", str(EVAL_GATE_BATTLES),
+            "--team", EVAL_GATE_TEAM,
+            "--baseline", EVAL_GATE_BASELINE,
+            "--label", "candidate",
+        ],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        timeout=EVAL_GATE_BATTLES * 220 + 300,
+    )
+    print(proc.stdout[-1500:] if proc.stdout else "(no eval stdout)")
+    cand_path = PROJECT_ROOT / "eval_results" / "offline" / "candidate.json"
+    if not cand_path.exists():
+        print("[AGENT] Eval gate produced no candidate result; treating as FAIL.")
+        return False, {"error": "no candidate result"}
+
+    cand = json.loads(cand_path.read_text(encoding="utf-8"))
+    if FROZEN_BASELINE_PATH.exists():
+        cmp_proc = subprocess.run(
+            [sys.executable, str(eval_script), "--compare", "frozen", "candidate"],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=60,
+        )
+        print(cmp_proc.stdout)
+        verdict_path = PROJECT_ROOT / "eval_results" / "offline" / "compare-frozen-vs-candidate.json"
+        if verdict_path.exists():
+            verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
+            return bool(verdict.get("ACCEPT", False)), verdict
+
+    accepted = bool(cand.get("fouler_wilson_lcb", 0.0) > 0.50)
+    return accepted, {
+        "fouler_win_rate": cand.get("fouler_win_rate"),
+        "fouler_wilson_lcb": cand.get("fouler_wilson_lcb"),
+        "rule": "wilson_lcb_gt_0.50 (no frozen reference)",
+    }
+
 def syntax_check(target_file: str) -> bool:
     """AST parse check on the modified file."""
     import ast
@@ -839,7 +1266,7 @@ def main():
     # 2. Pick target file and load code
     target_file = pick_target_file(report)
     print(f"[AGENT] Target file: {target_file}")
-    code = read_code_file(target_file)
+    code = read_code_file(target_file, report)
 
     # 3. Build prompt and call Claude
     prompt = build_prompt(report, code, target_file)
@@ -874,13 +1301,22 @@ def main():
         restore_file_snapshot(target_file, original_target_text)
         return
 
-    # 7. Run tests
+    # 7. Run tests — now only a CHEAP PRE-FILTER, not the acceptance gate.
     if not run_tests():
-        print("[AGENT] Tests failed. Reverting.")
+        print("[AGENT] Tests failed (pre-filter). Reverting.")
         restore_file_snapshot(target_file, original_target_text)
         return
 
-    # 8. Commit and push
+    # 8. REAL acceptance gate (P1): offline win-rate eval vs frozen baseline.
+    accepted, detail = offline_eval_gate()
+    print(f"[AGENT] Eval gate verdict: ACCEPT={accepted} :: {json.dumps(detail)[:600]}")
+    if not accepted:
+        print("[AGENT] Eval gate REJECTED the change (no significant win-rate gain "
+              "/ regression). Reverting.")
+        restore_file_snapshot(target_file, original_target_text)
+        return
+
+    # 9. Commit and push
     if commit_and_push(target_file, top["title"]):
         print(f"[AGENT] Successfully deployed fix for: {top['title']}")
     else:

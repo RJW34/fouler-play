@@ -7,57 +7,19 @@ from logging.handlers import RotatingFileHandler
 from typing import Optional
 
 
-def _configure_windows_stdio() -> None:
-    """Prefer UTF-8 console output on Windows without replacing stream objects."""
-    if sys.platform != "win32":
-        return
-    # pytest capture can close wrapped streams; skip stream reconfiguration in tests.
-    if "PYTEST_CURRENT_TEST" in os.environ:
-        return
-    for stream_name in ("stdout", "stderr"):
-        stream = getattr(sys, stream_name, None)
-        if stream is None:
-            continue
-        reconfigure = getattr(stream, "reconfigure", None)
-        if callable(reconfigure):
-            try:
-                reconfigure(encoding="utf-8", errors="replace")
-            except Exception:
-                pass
-
-
-_configure_windows_stdio()
-
-
 class CustomFormatter(logging.Formatter):
     def format(self, record):
         lvl = "{}".format(record.levelname)
-        return "{} {}".format(lvl.ljust(8), record.getMessage())
+        return "{} {}".format(lvl.ljust(8), record.msg)
 
 
 class CustomRotatingFileHandler(RotatingFileHandler):
-    def __init__(self, file_name, maxBytes=10*1024*1024, backupCount=3, **kwargs):
-        """
-        Custom rotating file handler with size limits.
-        
-        Args:
-            file_name: Base log file name
-            maxBytes: Maximum size in bytes before rotation (default 10MB)
-            backupCount: Number of backup files to keep (default 3)
-        """
+    def __init__(self, file_name, **kwargs):
         self.base_dir = "logs"
         if not os.path.exists(self.base_dir):
             os.mkdir(self.base_dir)
 
-        # Use UTF-8 encoding to handle Pokemon Showdown unicode chars
-        # (e.g. ☆ in usernames) without crashing on Windows cp1252
-        kwargs.setdefault("encoding", "utf-8")
-        super().__init__(
-            "{}/{}".format(self.base_dir, file_name),
-            maxBytes=maxBytes,
-            backupCount=backupCount,
-            **kwargs
-        )
+        super().__init__("{}/{}".format(self.base_dir, file_name), **kwargs)
 
     def do_rollover(self, new_file_name):
         new_file_name = new_file_name.replace("/", "_")
@@ -74,16 +36,7 @@ def init_logging(level, log_to_file):
     # Gets the root logger to set handlers/formatters
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
-    
-    # Use a UTF-8 wrapper for stdout to avoid cp1252 crashes from PS Unicode chars
-    # (e.g. ☆ in player names). StreamHandler.emit() calls stream.write() directly,
-    # so the stream itself must handle encoding.
-    _stdout = sys.stdout
-    if sys.platform == "win32" and hasattr(_stdout, "buffer"):
-        import io
-        _stdout = io.TextIOWrapper(_stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
-    stdout_handler = logging.StreamHandler(_stdout)
-
+    stdout_handler = logging.StreamHandler(sys.stdout)
     stdout_handler.setLevel(level)
     stdout_handler.setFormatter(CustomFormatter())
     logger.addHandler(stdout_handler)
@@ -95,8 +48,6 @@ def init_logging(level, log_to_file):
         file_handler.setFormatter(CustomFormatter())
         logger.addHandler(file_handler)
         FoulPlayConfig.file_log_handler = file_handler
-    else:
-        FoulPlayConfig.file_log_handler = None
 
 
 class SaveReplay(Enum):
@@ -112,48 +63,6 @@ class BotModes(Enum):
     search_ladder = auto()
 
 
-def _env_int_prefer(names: tuple[str, ...], default: int) -> int:
-    """Read the first valid int env var from names; otherwise return default."""
-    for name in names:
-        raw = os.getenv(name)
-        if raw is None or raw == "":
-            continue
-        try:
-            return int(raw)
-        except ValueError:
-            continue
-    return default
-
-
-def _coerce_ladder_search_time_ms(
-    *,
-    search_time_ms: int,
-    bot_mode: BotModes,
-    pokemon_format: str,
-    decision_policy: str,
-    min_search_time_ms: int,
-) -> tuple[int, bool]:
-    """
-    Apply a conservative floor for ladder quality to avoid accidental low-time runs.
-    Returns (effective_search_time_ms, clamped).
-    """
-    fmt = (pokemon_format or "").lower()
-    is_ladder_ou = bot_mode == BotModes.search_ladder and "gen9ou" in fmt
-    if not is_ladder_ou:
-        return int(search_time_ms), False
-
-    floor = max(0, int(min_search_time_ms))
-    if (decision_policy or "").lower() == "hybrid":
-        floor = max(floor, 1500)
-    else:
-        floor = max(floor, 1200)
-
-    current = int(search_time_ms)
-    if floor > 0 and current < floor:
-        return floor, True
-    return current, False
-
-
 class _FoulPlayConfig:
     websocket_uri: str
     username: str
@@ -165,47 +74,19 @@ class _FoulPlayConfig:
     smogon_stats: str = None
     search_time_ms: int
     parallelism: int
-    max_concurrent_battles: int
-    max_mcts_battles: int | None
     run_count: int
+    battle_turn_cap: int
     team_name: str
-    team_names: list[str] = None  # Per-worker team assignment
     team_list: str = None
     user_to_challenge: str
     save_replay: SaveReplay
     room_name: str
     log_level: str
     log_to_file: bool
-    playstyle: str = "balance"  # Team playstyle: hyper_offense, bulky_offense, balance, fat, stall
-    decision_policy: str = "eval"  # Decision policy: eval, hybrid
-    openai_api_key: str | None = None
-    openai_api_key_learner: str | None = None
-    openai_model: str = "gpt-4.1-mini"
-    openai_api_base: str = "https://api.openai.com/v1"
-    llm_timeout_sec: float = 3.0
-    llm_rerank_top_k: int = 5
     stdout_log_handler: logging.StreamHandler
     file_log_handler: Optional[CustomRotatingFileHandler]
 
     def configure(self):
-        def _env_int(name: str, default: int) -> int:
-            raw = os.getenv(name)
-            if raw is None or raw == "":
-                return default
-            try:
-                return int(raw)
-            except ValueError:
-                return default
-
-        def _env_float(name: str, default: float) -> float:
-            raw = os.getenv(name)
-            if raw is None or raw == "":
-                return default
-            try:
-                return float(raw)
-            except ValueError:
-                return default
-
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "--websocket-uri",
@@ -213,7 +94,7 @@ class _FoulPlayConfig:
             help="The PokemonShowdown websocket URI, e.g. wss://sim3.psim.us/showdown/websocket",
         )
         parser.add_argument("--ps-username", required=True)
-        parser.add_argument("--ps-password", default=os.getenv("PS_PASSWORD"))
+        parser.add_argument("--ps-password", default=None)
         parser.add_argument("--ps-avatar", default=None)
         parser.add_argument(
             "--bot-mode", required=True, choices=[e.name for e in BotModes]
@@ -234,29 +115,14 @@ class _FoulPlayConfig:
         parser.add_argument(
             "--search-time-ms",
             type=int,
-            default=_env_int_prefer(("SEARCH_TIME_MS", "PS_SEARCH_TIME_MS"), 100),
+            default=100,
             help="Time to search per battle in milliseconds",
         )
         parser.add_argument(
             "--search-parallelism",
             type=int,
-            default=_env_int("SEARCH_PARALLELISM", 4),
+            default=1,
             help="Number of states to search in parallel",
-        )
-        parser.add_argument(
-            "--max-concurrent-battles",
-            type=int,
-            default=_env_int("MAX_CONCURRENT_BATTLES", 1),
-            help="Maximum number of concurrent ladder battles (workers)",
-        )
-        parser.add_argument(
-            "--max-mcts-battles",
-            type=int,
-            default=_env_int("MAX_MCTS_BATTLES", 8),
-            help="Cap the number of simulated battles for MCTS (0 = no cap). "
-            "gen9ou is a hidden-information game; sampling multiple plausible "
-            "opponent sets and averaging the policy is the core robustness "
-            "mechanism, so the default samples several teams per turn.",
         )
         parser.add_argument(
             "--run-count",
@@ -265,17 +131,21 @@ class _FoulPlayConfig:
             help="Number of PokemonShowdown battles to run",
         )
         parser.add_argument(
+            "--battle-turn-cap",
+            type=int,
+            default=int(os.environ.get("FOULER_BATTLE_TURN_CAP", "0")),
+            help="If > 0, force-decide any battle that reaches this turn "
+            "number by forfeiting the side with the lower HP-fraction sum "
+            "(score-on-cap). 0 (default) disables the cap so live ladder "
+            "play is unaffected. The self-play eval sets this so stall "
+            "mirrors terminate DECISIVELY instead of ~1 turn/70s forever.",
+        )
+        parser.add_argument(
             "--team-name",
             default=None,
             help="Which team to use. Can be a filename or a foldername relative to ./teams/teams/. "
             "If a foldername, a random team from that folder will be chosen each battle. "
             "If not set, defaults to the --pokemon-format value.",
-        )
-        parser.add_argument(
-            "--team-names",
-            default=None,
-            help="Comma-separated list of teams for per-worker assignment. Worker 0 gets first team, etc. "
-            "Takes precedence over --team-name. Example: gen9/ou/team1,gen9/ou/team2,gen9/ou/team3",
         )
         parser.add_argument(
             "--team-list",
@@ -293,67 +163,11 @@ class _FoulPlayConfig:
             default=None,
             help="If bot_mode is `accept_challenge`, the room to join while waiting",
         )
-        parser.add_argument(
-            "--log-level",
-            default="DEBUG" if os.getenv("FOULER_DEBUG") == "1" else "INFO",
-            help="Python logging level (defaults to INFO; set FOULER_DEBUG=1 for DEBUG)",
-        )
+        parser.add_argument("--log-level", default="DEBUG", help="Python logging level")
         parser.add_argument(
             "--log-to-file",
             action="store_true",
             help="When enabled, DEBUG logs will be written to a file in the logs/ directory",
-        )
-        parser.add_argument(
-            "--playstyle",
-            default="auto",
-            choices=["auto", "hyper_offense", "bulky_offense", "balance", "fat", "stall"],
-            help="Team playstyle (auto = detect from team name)",
-        )
-        parser.add_argument(
-            "--decision-policy",
-            default=os.getenv("DECISION_POLICY", "eval"),
-            choices=["eval", "hybrid"],
-            help="Move policy: eval-only or hybrid (engine + LLM rerank)",
-        )
-        parser.add_argument(
-            "--openai-api-key",
-            default=os.getenv("OPENAI_API_KEY_PLAYER") or os.getenv("OPENAI_API_KEY"),
-            help=(
-                "OpenAI API key for live hybrid decisions. "
-                "Reads OPENAI_API_KEY_PLAYER first, then OPENAI_API_KEY."
-            ),
-        )
-        parser.add_argument(
-            "--openai-api-key-learner",
-            default=os.getenv("OPENAI_API_KEY_LEARNER"),
-            help="OpenAI API key reserved for learner/offline analysis jobs",
-        )
-        parser.add_argument(
-            "--openai-model",
-            default=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
-            help="OpenAI model used for hybrid reranking",
-        )
-        parser.add_argument(
-            "--openai-api-base",
-            default=os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1"),
-            help="OpenAI API base URL",
-        )
-        parser.add_argument(
-            "--llm-timeout-sec",
-            type=float,
-            default=_env_float("LLM_TIMEOUT_SEC", 3.0),
-            help="Timeout in seconds for LLM rerank call",
-        )
-        parser.add_argument(
-            "--llm-rerank-top-k",
-            type=int,
-            default=_env_int("LLM_RERANK_TOP_K", 5),
-            help="Number of top eval candidates sent to the LLM reranker",
-        )
-        parser.add_argument(
-            "--spectator-username",
-            default=None,
-            help="Username to automatically invite to battles",
         )
 
         args = parser.parse_args()
@@ -366,44 +180,22 @@ class _FoulPlayConfig:
         self.smogon_stats = args.smogon_stats_format
         self.search_time_ms = args.search_time_ms
         self.parallelism = args.search_parallelism
-        self.max_concurrent_battles = max(1, args.max_concurrent_battles)
-        # >0 caps the sampled-opponent battles; 0 (or negative) means "no cap"
-        # (None) so the search uses however many samples the per-format
-        # heuristic yields. Previously this collapsed to 1, silently disabling
-        # multi-sample uncertainty handling and clobbering the prior fix.
-        self.max_mcts_battles = args.max_mcts_battles if args.max_mcts_battles > 0 else None
         self.run_count = args.run_count
+        self.battle_turn_cap = args.battle_turn_cap
         self.team_name = args.team_name or self.pokemon_format
-        self.team_names = [t.strip() for t in args.team_names.split(",")] if args.team_names else None
         self.team_list = args.team_list
         self.user_to_challenge = args.user_to_challenge
         self.save_replay = SaveReplay[args.save_replay]
         self.room_name = args.room_name
         self.log_level = args.log_level
         self.log_to_file = args.log_to_file
-        self.playstyle = args.playstyle
-        self.decision_policy = args.decision_policy
-        min_search_time_ms = _env_int_prefer(("MIN_SEARCH_TIME_MS",), 1200)
-        self.search_time_ms, clamped = _coerce_ladder_search_time_ms(
-            search_time_ms=self.search_time_ms,
-            bot_mode=self.bot_mode,
-            pokemon_format=self.pokemon_format,
-            decision_policy=self.decision_policy,
-            min_search_time_ms=min_search_time_ms,
+
+        self.validate_config()
+
+    def requires_team(self) -> bool:
+        return not (
+            "random" in self.pokemon_format or "battlefactory" in self.pokemon_format
         )
-        if clamped:
-            logging.getLogger(__name__).warning(
-                "search-time-ms increased to %sms for ladder stability "
-                "(set MIN_SEARCH_TIME_MS=0 to disable floor).",
-                self.search_time_ms,
-            )
-        self.openai_api_key = args.openai_api_key
-        self.openai_api_key_learner = args.openai_api_key_learner
-        self.openai_model = args.openai_model
-        self.openai_api_base = args.openai_api_base
-        self.llm_timeout_sec = max(0.5, float(args.llm_timeout_sec))
-        self.llm_rerank_top_k = max(2, int(args.llm_rerank_top_k))
-        self.spectator_username = args.spectator_username
 
     def validate_config(self):
         if self.bot_mode == BotModes.challenge_user:
@@ -411,11 +203,5 @@ class _FoulPlayConfig:
                 self.user_to_challenge is not None
             ), "If bot_mode is `CHALLENGE_USER`, you must declare USER_TO_CHALLENGE"
 
-    def requires_team(self) -> bool:
-        return not (
-            "random" in self.pokemon_format or "battlefactory" in self.pokemon_format
-        )
-
 
 FoulPlayConfig = _FoulPlayConfig()
-

@@ -111,6 +111,78 @@ def parse_winners(log_path: Path) -> list[tuple[str, str]]:
     return out
 
 
+# Substrings (lowercased) that, if any of them appear in an arm's stdout/stderr
+# log, mean the arm never got into a usable Showdown session. Most commonly the
+# local pokemon-showdown server is missing / restarted / a stray process owns
+# the port and replies with the wrong protocol. When this happens we get 0
+# finished battles and the math layer reports "REJECT, 0/0" -- which is
+# indistinguishable from a real loss. The scanner+summary below let the verdict
+# JSON say WHY the gate produced nothing.
+_ARM_FAILURE_PATTERNS: tuple[str, ...] = (
+    "unsupported protocol",                 # websockets: HTTP/1.0 vs 1.1
+    "expected http/1.1",                    # same family
+    "handshake_exc",                        # websockets handshake failure
+    "connectionrefusederror",               # TCP connect refused
+    "[errno 111]",                          # connection refused on linux
+    "no route to host",                     # network unreachable
+    "name or service not known",            # DNS failure
+    "websocket connection is closed",       # disconnected mid-handshake
+)
+
+
+def scan_arm_log_for_failure(log_path: Path) -> str | None:
+    """Return the most-informative log line that signals the arm never connected.
+
+    Python tracebacks print frames first ("most recent call last") and the
+    exception message last, so we prefer the LAST matching line in the log --
+    that's almost always the human-readable exception (e.g.
+    "ValueError: unsupported protocol; ...") rather than an intermediate
+    `raise self.protocol.handshake_exc` frame. Returns None if the log is
+    missing, empty, or contains nothing matching _ARM_FAILURE_PATTERNS.
+    """
+    if not log_path.exists():
+        return None
+    text = log_path.read_text(encoding="utf-8", errors="replace")
+    best: str | None = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        low = line.lower()
+        for pat in _ARM_FAILURE_PATTERNS:
+            if pat in low:
+                best = line
+                break
+    return best
+
+
+def gate_failure_summary(per_team_results: list[dict]) -> str | None:
+    """One-line "why the gate produced nothing" string, or None.
+
+    Returns a summary iff there is at least one arm-failure across the per-team
+    results AND the run as a whole produced zero finished battles. If even one
+    team got a real battle in, we did NOT fail to run -- a real result exists
+    and the math layer's REJECT is meaningful.
+    """
+    total_finished = sum(int(t.get("battles_finished", 0)) for t in per_team_results)
+    if total_finished > 0:
+        return None
+    errs: list[str] = []
+    for t in per_team_results:
+        ae = t.get("arm_errors") or {}
+        # Prefer NEW (the candidate) since the candidate failing is the
+        # actionable case; fall back to OLD if NEW is silent.
+        msg = ae.get("new") or ae.get("old")
+        if msg:
+            errs.append(f"{t.get('team', '?')}: {msg}")
+    if not errs:
+        return None
+    # Collapse to the first arm error -- they're almost always the same root
+    # cause (e.g. the websocket port is wrong for every arm). Keep all teams
+    # in the per-team blob; the top-level just needs ONE actionable line.
+    return errs[0]
+
+
 def tally(
     new_user: str, old_user: str, new_winners: list[tuple[str, str]]
 ) -> dict:
@@ -152,6 +224,15 @@ def tally(
 # only; promotion requires a real burst eval (N>=MIN_DECISIVE).
 MIN_DECISIVE = int(os.getenv("SELFPLAY_MIN_DECISIVE", "30"))
 
+# Hard per-battle turn cap. A stall mirror can otherwise run ~1 turn/70s and
+# NEVER emit a "Battle finished" line inside per_battle_timeout, so it is killed
+# and counted as 0 decisive -- which is exactly why the N>=30 gate could never
+# terminate. With a cap, run.py force-decides at this turn via the HP-fraction
+# score-on-cap (one side forfeits), Showdown emits a real |win|, and the battle
+# counts as DECISIVE. 0 disables (NOT used by the gate). The eval ALWAYS sets a
+# positive cap so every battle terminates decisively.
+DEFAULT_TURN_CAP = int(os.getenv("SELFPLAY_TURN_CAP", "60"))
+
 
 def verdict_from_counts(new_wins: int, decisive: int, label: str,
                         min_decisive: int = MIN_DECISIVE) -> dict:
@@ -176,30 +257,18 @@ def verdict_from_counts(new_wins: int, decisive: int, label: str,
     }
 
 
-def _build_env(arm_env: dict | None, search_time_ms: int, stats_file: Path) -> dict:
+def _build_env(arm_env: dict | None, search_time_ms: int, stats_file: Path,
+               turn_cap: int = DEFAULT_TURN_CAP) -> dict:
     env = os.environ.copy()
     env.setdefault("PS_PASSWORD", "")
     env["FOULER_NO_SECURITY_LOGIN"] = "1"
-    # FOULER-EVAL-NO-SINGLETON-2026-06-03: eval arms run run.py from the SAME
-    # directory as the live ladder bot. Without this, run.py's singleton lock
-    # would refuse to start the arm (live bot holds the lock) AND its stale-proc
-    # reaper would KILL the live ladder bot. Skip the singleton lock for eval
-    # arms -- they are fully isolated (own users/port/stats file).
-    env["FOULER_NO_SINGLETON_LOCK"] = "1"
     env["SEARCH_TIME_MS"] = str(search_time_ms)
     env["MIN_SEARCH_TIME_MS"] = "0"
+    # Force-decide stall mirrors at the turn cap so EVERY eval battle is
+    # decisive within per_battle_timeout (the keystone of gate viability).
+    env["FOULER_BATTLE_TURN_CAP"] = str(int(turn_cap))
     env["LOSS_TRIGGERED_DRAIN"] = "0"  # play all battles regardless of losses
     env["MAX_CONCURRENT_BATTLES"] = "1"
-    # FOULER-EVAL-TURNCAP-2026-06-03: forward the eval-only hard turn cap to BOTH
-    # arms. run.py/fp.run_battle honour FOULER_MAX_TURNS (default 0 = disabled in
-    # the live ladder bot); setting it here makes stall/fat mirror matches that
-    # would otherwise run hundreds of turns terminate at the cap with a decisive
-    # fewer-fainted (remaining-mons) winner, so the self-play gate can actually
-    # reach N>=30 decisive in a sane window. Read from the eval process env so the
-    # burst runner can set it once; both arms inherit the same cap.
-    _cap = os.getenv("FOULER_MAX_TURNS")
-    if _cap and _cap.strip() not in ("", "0"):
-        env["FOULER_MAX_TURNS"] = _cap.strip()
     # CRITICAL: redirect each eval engine's battle stats to a throwaway file so
     # the eval NEVER pollutes the live ladder battle_stats.json (which feeds
     # autoresearch + elo_watchdog). run.py honours BATTLE_STATS_FILE.
@@ -222,7 +291,7 @@ def _run_arm(
     search_time_ms: int,
     env: dict,
     challenge_user: str | None = None,
-) -> subprocess.Popen:
+) -> tuple[subprocess.Popen, object]:
     cmd = [
         sys.executable, "run.py",
         "--websocket-uri", ws_uri,
@@ -234,12 +303,48 @@ def _run_arm(
         "--search-time-ms", str(search_time_ms),
         "--save-replay", "never",
     ]
+    # Mirror the env turn cap onto the CLI so it is explicit in the arm log
+    # (run.py reads FOULER_BATTLE_TURN_CAP as the arg default, but a stale
+    # incumbent worktree may predate that default -- the explicit flag wins).
+    _cap = env.get("FOULER_BATTLE_TURN_CAP")
+    if _cap and _cap != "0":
+        cmd += ["--battle-turn-cap", _cap]
     if bot_mode == "challenge_user" and challenge_user:
         cmd += ["--user-to-challenge", challenge_user]
     flog = open(log_path, "w", encoding="utf-8")
-    return subprocess.Popen(
+    proc = subprocess.Popen(
         cmd, cwd=str(cwd), env=env, stdout=flog, stderr=subprocess.STDOUT
     )
+    # Return the log handle too so the caller can ALWAYS close it (an
+    # un-closed handle per arm leaks an fd across a 50-battle gate).
+    return proc, flog
+
+
+def _stop_proc(proc, *, grace: float = 15.0) -> None:
+    """Terminate then KILL a child engine and REAP it (no zombies, no orphans).
+
+    A bare ``.kill()`` without a following ``.wait()`` leaves a zombie, and a
+    raised exception mid-team used to orphan both run.py engines -- which keep
+    the showdown websocket session open and can wedge the next team. This makes
+    teardown unconditional and idempotent.
+    """
+    if proc is None or proc.poll() is not None:
+        return
+    try:
+        proc.terminate()
+        proc.wait(timeout=grace)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        try:
+            proc.wait(timeout=grace)
+        except subprocess.TimeoutExpired:
+            pass
+    except Exception:
+        # Best-effort: never let teardown raise and mask the real error.
+        try:
+            proc.kill()
+        except Exception:
+            pass
 
 
 def run_selfplay(
@@ -256,6 +361,7 @@ def run_selfplay(
     new_checkout: Path,
     old_checkout: Path,
     per_battle_timeout: float,
+    turn_cap: int = DEFAULT_TURN_CAP,
     fmt: str = "gen9ou",
 ) -> dict:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -281,49 +387,63 @@ def run_selfplay(
         old_stats = RESULTS_DIR / f"{label}-{safe}-old-stats.json"
         new_stats = RESULTS_DIR / f"{label}-{safe}-new-stats.json"
 
-        old_e = _build_env(old_env, search_time_ms, old_stats)
-        new_e = _build_env(new_env, search_time_ms, new_stats)
+        old_e = _build_env(old_env, search_time_ms, old_stats, turn_cap=turn_cap)
+        new_e = _build_env(new_env, search_time_ms, new_stats, turn_cap=turn_cap)
 
         print(f"[selfplay:{label}] team={team} n={n}: starting OLD (accept) ...",
               flush=True)
         # OLD accepts; keep it alive past the challenge count so it never strands
         # a pending challenge.
-        old_proc = _run_arm(
+        old_proc, old_flog = _run_arm(
             cwd=old_checkout, log_path=old_log, user=old_user,
             bot_mode="accept_challenge", team=team, fmt=fmt, ws_uri=ws_uri,
             run_count=n + 5, search_time_ms=search_time_ms, env=old_e,
         )
-        time.sleep(12)  # let OLD log in and idle in accept state
-
-        print(f"[selfplay:{label}] team={team} n={n}: starting NEW (challenge) ...",
-              flush=True)
-        new_proc = _run_arm(
-            cwd=new_checkout, log_path=new_log, user=new_user,
-            bot_mode="challenge_user", team=team, fmt=fmt, ws_uri=ws_uri,
-            run_count=n, search_time_ms=search_time_ms, env=new_e,
-            challenge_user=old_user,
-        )
-
-        overall_timeout = per_battle_timeout * n + 120
+        new_proc = None
+        new_flog = None
         try:
-            new_proc.wait(timeout=overall_timeout)
-        except subprocess.TimeoutExpired:
-            print(f"[selfplay:{label}] NEW timed out after {overall_timeout:.0f}s",
+            time.sleep(12)  # let OLD log in and idle in accept state
+
+            print(f"[selfplay:{label}] team={team} n={n}: starting NEW (challenge) ...",
                   flush=True)
-            new_proc.kill()
-        # OLD should drain; give it a moment then stop.
-        try:
-            old_proc.wait(timeout=30)
-        except subprocess.TimeoutExpired:
-            old_proc.terminate()
+            new_proc, new_flog = _run_arm(
+                cwd=new_checkout, log_path=new_log, user=new_user,
+                bot_mode="challenge_user", team=team, fmt=fmt, ws_uri=ws_uri,
+                run_count=n, search_time_ms=search_time_ms, env=new_e,
+                challenge_user=old_user,
+            )
+
+            overall_timeout = per_battle_timeout * n + 120
             try:
-                old_proc.wait(timeout=15)
+                new_proc.wait(timeout=overall_timeout)
             except subprocess.TimeoutExpired:
-                old_proc.kill()
+                print(f"[selfplay:{label}] NEW timed out after {overall_timeout:.0f}s",
+                      flush=True)
+            # OLD should drain on its own; give it a brief window.
+            try:
+                old_proc.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                pass
+        finally:
+            # Unconditionally reap BOTH engines (no zombies / no orphaned
+            # run.py holding the showdown port) and close BOTH log handles
+            # (no fd leak), even if tally/anything above raised.
+            _stop_proc(new_proc)
+            _stop_proc(old_proc)
+            for _fh in (new_flog, old_flog):
+                try:
+                    if _fh is not None:
+                        _fh.close()
+                except Exception:
+                    pass
 
         counts = tally(new_user, old_user, parse_winners(new_log))
         counts["team"] = team
         counts["requested"] = n
+        counts["arm_errors"] = {
+            "new": scan_arm_log_for_failure(new_log),
+            "old": scan_arm_log_for_failure(old_log),
+        }
         per_team_results.append(counts)
         for k in agg:
             agg[k] += counts[k]
@@ -331,8 +451,11 @@ def run_selfplay(
               f"OLD {counts['old_wins']} / tie {counts['ties']} "
               f"(decisive {counts['decisive']})", flush=True)
 
+    failure_reason = gate_failure_summary(per_team_results)
     v = verdict_from_counts(agg["new_wins"], agg["decisive"], label)
     v.update({
+        "gate_failed_to_run": failure_reason is not None,
+        "failure_reason": failure_reason,
         "teams": teams,
         "requested_battles": battles,
         "battles_finished": agg["battles_finished"],
@@ -345,11 +468,16 @@ def run_selfplay(
         "new_checkout": str(new_checkout),
         "old_checkout": str(old_checkout),
         "search_time_ms": search_time_ms,
+        "turn_cap": turn_cap,
         "per_team": per_team_results,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     })
     (RESULTS_DIR / f"{label}.json").write_text(json.dumps(v, indent=2),
                                                encoding="utf-8")
+    if v.get("gate_failed_to_run"):
+        # Loud, single-line marker so the agent stdout capture surfaces this.
+        print(f"[selfplay:{label}] GATE_FAILED_TO_RUN: {v['failure_reason']}",
+              flush=True)
     print(f"[selfplay:{label}] VERDICT: NEW {v['new_wins']}/{v['decisive_battles']} "
           f"= {v['new_win_rate']:.1%} (LCB {v['new_wilson_lcb']:.1%}) "
           f"ACCEPT={v['ACCEPT']}", flush=True)
@@ -373,7 +501,16 @@ def _load_teams(args) -> list[str]:
         return [ln for ln in lines if ln and not ln.startswith("#")]
     if args.teams:
         return [t.strip() for t in args.teams.split(",") if t.strip()]
-    return ["gen9/ou/fat-team-1-stall"]
+    # Fast NON-STALL default so battles end naturally fast; the turn cap is the
+    # backstop for any that still drag. fat-team-1-stall is the slowest mirror
+    # and is intentionally NOT the eval default.
+    fast = PROJECT_ROOT / "teams" / "eval-fast-teams.list"
+    if fast.exists():
+        lines = [ln.strip() for ln in fast.read_text(encoding="utf-8").splitlines()]
+        picked = [ln for ln in lines if ln and not ln.startswith("#")]
+        if picked:
+            return picked
+    return ["gen9/ou/fat-team-2-pivot"]
 
 
 def main():
@@ -384,8 +521,17 @@ def main():
     ap.add_argument("--teams-from", default=None,
                     help="File listing team names, one per line (e.g. teams/fat-teams.list).")
     ap.add_argument("--label", default="selfplay")
+    # Default eval port is 18765, NOT 8765. Port 8765 is permanently held on
+    # this devstream box by the PokeCompletionist OBS overlay HTTP server,
+    # which makes the gate's WS handshake fail with "HTTP/1.0 404 not found"
+    # from a totally unrelated service (the operator-facing reason was
+    # captured at eval_results/selfplay/gate-20260603-020259-*.log). With the
+    # default off 8765 the probe's reason becomes the truthful
+    # "tcp connect refused on 127.0.0.1:18765" -- i.e. "showdown not running"
+    # -- and the documented "Start pokemon-showdown --no-security 18765"
+    # command can actually succeed because the port is free.
     ap.add_argument("--showdown-port", type=int,
-                    default=int(os.getenv("EVAL_SHOWDOWN_PORT", "8765")))
+                    default=int(os.getenv("EVAL_SHOWDOWN_PORT", "18765")))
     ap.add_argument("--search-time-ms", type=int, default=1200)
     ap.add_argument("--new-user", default="foulerNEW")
     ap.add_argument("--old-user", default="foulerOLD")
@@ -399,8 +545,10 @@ def main():
                     help="Working dir for OLD (default: this checkout; use a "
                          "git worktree at the incumbent commit for a real gate).")
     ap.add_argument("--per-battle-timeout", type=float, default=180.0)
-    # NOTE: with FOULER_MAX_TURNS set and the HO eval teams, battles finish in
-    # ~1-3min; the 180s/battle default is a safe ceiling, not the expected time.
+    ap.add_argument("--turn-cap", type=int, default=DEFAULT_TURN_CAP,
+                    help="Force-decide any battle at this turn via score-on-cap "
+                         "(HP-fraction-sum). Makes stall mirrors terminate "
+                         "DECISIVELY. 0 disables (do not use for the gate).")
     args = ap.parse_args()
 
     teams = _load_teams(args)
@@ -417,6 +565,7 @@ def main():
         new_checkout=Path(args.new_checkout),
         old_checkout=Path(args.old_checkout),
         per_battle_timeout=args.per_battle_timeout,
+        turn_cap=args.turn_cap,
     )
 
 

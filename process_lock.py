@@ -1,12 +1,21 @@
 """
 Process lock to prevent duplicate bot instances.
 Creates a PID file and checks for stale processes before starting.
+
+Hardened 2026-06-04: acquisition is now ATOMIC. The previous check-then-write
+had a TOCTOU race: two near-simultaneous launches (e.g. a per-logon scheduled
+task firing twice, or a supervisor relaunch overlapping the old runner) could
+BOTH observe "no live bot" and BOTH proceed -> two real ladder bots on one
+account -> ELO thrash. We now claim the lock with O_CREAT|O_EXCL (atomic create)
+and write our PID into that exclusive fd immediately, so exactly one racer wins.
+Stale lock files (after a crash) are recovered via the same identity check.
 """
 
 import os
 import sys
 import signal
 import atexit
+import time
 import psutil
 
 LOCK_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -69,40 +78,83 @@ def kill_stale_processes():
     return killed
 
 
+def _claim_pid_file() -> bool:
+    """Atomically create the PID file and write our PID into it.
+
+    Returns True if WE created it (won the race), False if it already existed.
+    Writing happens through the exclusively-created fd so a racing loser can
+    never see an empty winner file for long."""
+    try:
+        fd = os.open(PID_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        return False
+    try:
+        os.write(fd, str(os.getpid()).encode("ascii"))
+    finally:
+        os.close(fd)
+    return True
+
+
+def _holder_pid() -> int | None:
+    try:
+        with open(PID_FILE) as f:
+            raw = f.read().strip()
+        return int(raw) if raw else None
+    except (ValueError, OSError):
+        return None
+
+
 def acquire_lock(username: str = "unknown") -> bool:
     """
-    Acquire the process lock. Returns True if lock acquired.
-    Kills stale processes if the PID file points to a dead/wrong process.
+    Atomically acquire the process lock. Returns True if lock acquired.
+
+    Exactly one racer can win the O_EXCL create. A live bot holder wins forever
+    (loser aborts). A stale/crashed holder is reaped and the lock reclaimed.
+    On ANY ambiguity (a holder mid-acquire that has not yet identified itself as
+    a live bot) we abort conservatively -- never risk a second ladder bot.
     """
-    if os.path.exists(PID_FILE):
-        try:
-            with open(PID_FILE) as f:
-                old_pid = int(f.read().strip())
-            
-            if is_bot_process(old_pid):
-                print(f"[LOCK] Bot already running (PID {old_pid}). Aborting.", file=sys.stderr)
-                return False
-            else:
-                print(f"[LOCK] Stale PID file (PID {old_pid} not a bot). Cleaning up.", file=sys.stderr)
+    for attempt in range(3):
+        if _claim_pid_file():
+            # We won the atomic create. Clean up any orphaned bot from a prior
+            # crash (protects our own launch chain), then arm release handlers.
+            killed = kill_stale_processes()
+            if killed:
+                print(f"[LOCK] Killed {killed} stale bot process(es).", file=sys.stderr)
+            atexit.register(release_lock)
+            signal.signal(signal.SIGTERM, lambda *_: (release_lock(), sys.exit(0)))
+            print(f"[LOCK] Acquired lock (PID {os.getpid()}, user={username})", file=sys.stderr)
+            return True
+
+        # The file already exists. Identify the holder, with a brief retry so a
+        # winner that is mid-write gets a chance to publish its PID.
+        holder = None
+        for _ in range(10):
+            holder = _holder_pid()
+            if holder is not None:
+                break
+            time.sleep(0.05)
+
+        if holder is not None and is_bot_process(holder):
+            print(f"[LOCK] Bot already running (PID {holder}). Aborting.", file=sys.stderr)
+            return False
+
+        if holder is not None and holder != os.getpid():
+            # Holder exists but is NOT a live bot from our dir -> stale/crashed.
+            # Reclaim: remove and retry the atomic create.
+            print(f"[LOCK] Stale PID file (PID {holder} not a live bot). Reclaiming.", file=sys.stderr)
+            try:
                 os.remove(PID_FILE)
-        except (ValueError, OSError):
-            os.remove(PID_FILE)
-    
-    # Kill any stale bot processes before starting
-    killed = kill_stale_processes()
-    if killed:
-        print(f"[LOCK] Killed {killed} stale bot process(es).", file=sys.stderr)
-    
-    # Write our PID
-    with open(PID_FILE, "w") as f:
-        f.write(str(os.getpid()))
-    
-    # Register cleanup
-    atexit.register(release_lock)
-    signal.signal(signal.SIGTERM, lambda *_: (release_lock(), sys.exit(0)))
-    
-    print(f"[LOCK] Acquired lock (PID {os.getpid()}, user={username})", file=sys.stderr)
-    return True
+            except OSError:
+                pass
+            continue
+
+        # holder unknown after retries: someone is mid-acquire. Abort, do not dup.
+        print("[LOCK] Lock contended and holder unresolved; aborting to avoid a duplicate bot.",
+              file=sys.stderr)
+        return False
+
+    print("[LOCK] Could not acquire lock after retries; aborting.", file=sys.stderr)
+    return False
 
 
 def release_lock():

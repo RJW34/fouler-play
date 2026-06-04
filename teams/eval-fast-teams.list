@@ -1,0 +1,16 @@
+# eval-fast-teams.list -- the self-play eval's DEFAULT team set.
+#
+# WHY: fat-team-1-stall vs itself is a pure stall mirror that can run ~1 turn/70s
+# and may never reach a natural |win| inside per_battle_timeout. That made the
+# N>=30 self-play gate impossible to satisfy (0 decisive -> never ACCEPT/REVERT).
+#
+# These two teams carry real offensive win-conditions (Ogerpon pivot break on
+# team-2, Dondozo + Ting-Lu pressure on team-3), so head-to-head games resolve
+# FAR faster than the stall mirror. The hard --battle-turn-cap is the backstop
+# that GUARANTEES termination for any game that still drags: at the cap the
+# lower-HP side forfeits (score-on-cap) and the battle counts as decisive.
+#
+# The slowest pure-stall team (fat-team-1-stall) is intentionally excluded here;
+# it remains available for a deliberate stall-vs-stall study via --teams-from.
+gen9/ou/fat-team-2-pivot
+gen9/ou/fat-team-3-dondozo
