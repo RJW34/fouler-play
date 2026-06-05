@@ -1035,49 +1035,6 @@ def _acquire_supervisor_singleton_or_exit() -> None:
     print("[supervisor-singleton] could not acquire lock after stale-reclaim; exiting", flush=True)
     sys.exit(0)
 
-def _enforce_singleton_each_cycle() -> None:
-    """Per-cycle backstop to the startup O_EXCL guard.
-
-    Several code paths can spawn a 'supervise' process (idle-restore start,
-    improve_agent deploy-restart, a stray task/manual run). The startup guard
-    blocks most, but a T=0 race or a lock-clearing restart can let a duplicate
-    slip through. So every cycle the CURRENT lock holder reaps any OTHER
-    supervise process for this repo, and a supervisor that has LOST the lock to a
-    live owner exits. With the per-account run.py lock (one ladderer) this
-    converges the system to exactly ONE supervisor within a single cycle, no
-    matter how a duplicate was born."""
-    me = os.getpid()
-    try:
-        holder = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
-    except Exception:
-        holder = 0
-    try:
-        import psutil
-    except Exception:
-        return
-    if holder and holder != me:
-        try:
-            if psutil.pid_exists(holder):
-                print(f"[supervisor-singleton] lost lock to live PID {holder}; exiting", flush=True)
-                sys.exit(0)
-        except SystemExit:
-            raise
-        except Exception:
-            pass
-        return
-    repo = str(ROOT).lower()
-    for p in psutil.process_iter(["pid", "cmdline"]):
-        try:
-            pid = p.info.get("pid")
-            if not pid or pid == me:
-                continue
-            cl = " ".join(p.info.get("cmdline") or []).lower()
-            if "devstream_session" in cl and "supervise" in cl and repo in cl:
-                p.kill()
-                print(f"[supervisor-singleton] reaped duplicate supervisor PID {pid}", flush=True)
-        except Exception:
-            continue
-
 
 def cmd_supervise(args: argparse.Namespace) -> int:
     _acquire_supervisor_singleton_or_exit()
@@ -1107,7 +1064,6 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     )
     try:
         while True:
-            _enforce_singleton_each_cycle()
             if SUPERVISOR_STOP_FILE.exists():
                 payload["state"] = "stopping"
                 payload["stopReason"] = "stop file present"
