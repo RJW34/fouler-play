@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import shutil
 import json
 import os
@@ -28,6 +29,7 @@ OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
 DRAIN_FILE = PID_DIR / "drain.request"
 SUPERVISOR_PID_FILE = PID_DIR / "devstream_battle_supervisor.pid"
+SUPERVISOR_LOCK_FILE = PID_DIR / "devstream_battle_supervisor.lock"
 SUPERVISOR_STOP_FILE = PID_DIR / "supervisor.stop"
 SUPERVISOR_STATUS_FILE = ROOT / "devstream" / "truth" / "supervisor-status.json"
 STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-backups"
@@ -956,7 +958,76 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
     return payload
 
 
+def _supervisor_is_live(pid: int) -> bool:
+    """True iff pid is a live devstream_session 'supervise' process for THIS repo."""
+    if not pid or pid <= 0 or pid == os.getpid():
+        return False
+    try:
+        import psutil
+        p = psutil.Process(pid)
+        cl = " ".join(p.cmdline()).lower()
+        try:
+            cwd = (p.cwd() or "").lower()
+        except Exception:
+            cwd = ""
+        repo = str(ROOT).lower()
+        return ("devstream_session" in cl and "supervise" in cl
+                and (repo in cl or repo in cwd))
+    except Exception:
+        return False
+
+
+def _acquire_supervisor_singleton_or_exit() -> None:
+    """Atomic, defense-in-depth singleton: exactly ONE battle supervisor per repo.
+
+    No matter HOW a second supervisor is launched (system python, a stray
+    scheduled task, a manual run) it exits immediately instead of laddering the
+    same Showdown account in parallel -- the ELO-thrash duplicate-runner bug.
+    O_CREAT|O_EXCL closes the TOCTOU race that a check-then-write leaves open; a
+    stale lock left by a crash is reclaimed via a liveness check."""
+    PID_DIR.mkdir(parents=True, exist_ok=True)
+    for _ in range(2):
+        try:
+            fd = os.open(str(SUPERVISOR_LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            holder = 0
+            try:
+                holder = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
+            except Exception:
+                holder = 0
+            if _supervisor_is_live(holder):
+                print(f"[supervisor-singleton] live supervisor PID {holder} already owns the lock; exiting", flush=True)
+                sys.exit(0)
+            try:
+                SUPERVISOR_LOCK_FILE.unlink()
+            except OSError:
+                pass
+            continue
+        else:
+            try:
+                with os.fdopen(fd, "w") as fh:
+                    fh.write(str(os.getpid()))
+            except Exception:
+                try:
+                    os.close(fd)
+                except Exception:
+                    pass
+
+            def _release():
+                try:
+                    cur = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
+                    if cur == os.getpid():
+                        SUPERVISOR_LOCK_FILE.unlink()
+                except Exception:
+                    pass
+            atexit.register(_release)
+            return
+    print("[supervisor-singleton] could not acquire lock after stale-reclaim; exiting", flush=True)
+    sys.exit(0)
+
+
 def cmd_supervise(args: argparse.Namespace) -> int:
+    _acquire_supervisor_singleton_or_exit()
     if SUPERVISOR_STOP_FILE.exists():
         SUPERVISOR_STOP_FILE.unlink()
     cycle_index = 0
