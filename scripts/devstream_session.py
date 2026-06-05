@@ -1036,6 +1036,32 @@ def _acquire_supervisor_singleton_or_exit() -> None:
     sys.exit(0)
 
 
+def _yield_if_not_lock_holder() -> None:
+    """Per-cycle convergence to ONE supervisor -- the SAFE half of singleton
+    enforcement. If another LIVE supervisor owns the lock, THIS process exits.
+
+    It only ever steps a NON-holder down; it never reaps and never touches the
+    holder, so it cannot race two supervisors down to zero (the failure mode of a
+    mutual-reap design). Combined with the startup O_EXCL guard, a duplicate that
+    slipped in via a T=0 lock-flap converges away within one cycle, while the
+    per-account run.py lock independently guarantees a single ladderer throughout."""
+    me = os.getpid()
+    try:
+        holder = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
+    except Exception:
+        return
+    if holder and holder != me:
+        try:
+            import psutil
+            if psutil.pid_exists(holder):
+                print(f"[supervisor-singleton] yielding to live lock holder PID {holder}; exiting", flush=True)
+                sys.exit(0)
+        except SystemExit:
+            raise
+        except Exception:
+            pass
+
+
 def cmd_supervise(args: argparse.Namespace) -> int:
     _acquire_supervisor_singleton_or_exit()
     if SUPERVISOR_STOP_FILE.exists():
@@ -1064,6 +1090,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     )
     try:
         while True:
+            _yield_if_not_lock_holder()
             if SUPERVISOR_STOP_FILE.exists():
                 payload["state"] = "stopping"
                 payload["stopReason"] = "stop file present"
