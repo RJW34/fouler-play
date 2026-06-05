@@ -241,6 +241,26 @@ def battle_supervisor_task_command(args: argparse.Namespace) -> list[str]:
 
 
 def start_supervisor_runtime(args: argparse.Namespace, command: list[str], env: dict[str, str]) -> dict[str, Any]:
+    # ROOT GUARD: never launch a second supervisor while a live one holds the
+    # singleton lock. This is the entry every supervisor-spawn path funnels
+    # through (idle-restore start --continuous, improve_agent deploy-restart,
+    # manual start), so gating it here stops the duplicate-supervisor churn at
+    # the source -- not just after the fact via the startup guard / yield.
+    try:
+        _holder = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
+    except Exception:
+        _holder = 0
+    if _holder and _holder != os.getpid():
+        try:
+            import psutil
+            if psutil.pid_exists(_holder):
+                return {
+                    "skipped": True,
+                    "reason": f"a live supervisor (lock holder PID {_holder}) already runs; not spawning a duplicate",
+                    "lockHolder": _holder,
+                }
+        except Exception:
+            pass
     installer = ROOT / "scripts" / "install_battle_supervisor_task.ps1"
     if os.name != "nt" or not installer.exists():
         return start_process(command, SUPERVISOR_PID_FILE, detached_child_env(env))
