@@ -325,6 +325,55 @@ def test_event_poster_drain_archives_stale_then_posts_only_fresh(monkeypatch, tm
     assert "secret-token-should-not-render" not in rendered_summary
 
 
+def test_event_poster_drain_second_pass_does_not_repost_success(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "event-fresh-once",
+                    "timestamp": time.time(),
+                    "event_type": "battle_result",
+                    "channel": "battles",
+                    "content": "[PROOF] battle `gen9ou-1001`",
+                    "status": "pending",
+                    "retry_count": 0,
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    truth_dir = tmp_path / "devstream" / "truth"
+    calls: list[dict] = []
+
+    monkeypatch.setenv("EVENT_QUEUE_FILE", str(queue_file))
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/example/token")
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setattr(event_queue_lib, "TRUTH_DIR", truth_dir)
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_DIR", tmp_path / "logs" / "discord-events")
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_LATEST", truth_dir / "discord-backlog-archive.json")
+    monkeypatch.setattr(event_poster, "TRUTH_DIR", truth_dir)
+    monkeypatch.setattr(event_poster, "DISCORD_REPORTING_PROOF", truth_dir / "discord-reporting.json")
+    monkeypatch.setattr(event_poster, "DISCORD_DELIVERY_PROOF", truth_dir / "discord-delivery.json")
+    monkeypatch.setattr(event_poster, "DISCORD_DOCTOR_PROOF", truth_dir / "discord-reporting-doctor.json")
+    monkeypatch.setattr(event_poster, "ENV_FILES", ())
+    monkeypatch.setattr(event_poster, "post_to_discord", lambda event: calls.append(event) or {"ok": True, "status": "posted"})
+
+    first = event_poster.drain_events(max_events=10, sleep_sec=0)
+    second = event_poster.drain_events(max_events=10, sleep_sec=0)
+
+    queue_after = json.loads(queue_file.read_text(encoding="utf-8"))
+    assert [event["id"] for event in calls] == ["event-fresh-once"]
+    assert queue_after[0]["status"] == "posted"
+    assert first["postedEvents"] == 1
+    assert first["stopReason"] == "queue_empty"
+    assert second["postedEvents"] == 0
+    assert second["stopReason"] == "queue_empty"
+
+
 def test_event_poster_archive_stale_command_does_not_transport_fresh(monkeypatch, tmp_path):
     import infrastructure.event_poster as event_poster
     import infrastructure.event_queue_lib as event_queue_lib

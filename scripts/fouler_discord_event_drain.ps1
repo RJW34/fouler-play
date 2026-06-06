@@ -28,9 +28,22 @@ try {
         $python = $pythonCmd.Source
     }
 
-    $output = & $python "infrastructure\event_poster.py" "--drain" "--max-events" "10" 2>&1
-    $exitCode = $LASTEXITCODE
-    Add-Content -Path $LogPath -Value $output
+    $oldErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & $python "infrastructure\event_poster.py" "--drain" "--max-events" "10" 2>&1
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $oldErrorActionPreference
+    }
+    $normalizedOutput = $output | ForEach-Object {
+        if ($_ -is [System.Management.Automation.ErrorRecord]) {
+            $_.ToString()
+        } else {
+            [string]$_
+        }
+    }
+    Add-Content -Path $LogPath -Value $normalizedOutput
 
     $done = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
     Add-Content -Path $LogPath -Value "$done exit=$exitCode"
