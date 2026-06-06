@@ -228,6 +228,7 @@ def propose_and_gate(dry_run: bool, smoke_battles: int | None) -> dict:
         "head_after": head_after,
         "verdict_line": verdict_blob,
         "agent_returncode": proc.returncode,
+        "agent_output_tail": out[-1000:],
         "gate_started_at": gate_started_at,
     }
 
@@ -454,6 +455,7 @@ def one_iteration(*, num_battles: int, dry_run: bool, smoke_battles: int | None)
                 "new_win_rate", "new_wilson_lcb", "ACCEPT")
         } if verdict else None,
         "decision_source": "selfplay_lcb_gt_0.50",
+        "agent_returncode": result.get("agent_returncode"),
         "ladder": _ladder_snapshot(),
         "smoke_battles": smoke_battles,
     }
@@ -465,6 +467,8 @@ def one_iteration(*, num_battles: int, dry_run: bool, smoke_battles: int | None)
     # parallel to the existing autoresearch ``skip_reason`` field.
     if outcome in {"gate_skipped", "ship_on_skip_unmeasured"}:
         entry["gate_skip_reason"] = result.get("gate_skip_reason")
+    if outcome == "agent_failed":
+        entry["agent_error_tail"] = result.get("agent_output_tail")
     append_ledger(entry)
     return entry
 
@@ -487,6 +491,12 @@ def _classify_outcome(result: dict) -> str:
     """
     if result.get("gate_skipped"):
         return "ship_on_skip_unmeasured" if result["committed"] else "gate_skipped"
+    if (
+        result.get("agent_returncode") not in (0, None)
+        and not result.get("verdict_line")
+        and not result.get("committed")
+    ):
+        return "agent_failed"
     if result["accepted"]:
         return "accepted_merged" if result["committed"] else "accepted_but_commit_failed"
     return "reverted"
@@ -635,6 +645,11 @@ def loop_status() -> dict:
             # them sends operators to the wrong blocker.
             headline = (f"learn-loop gate-blocked ({gate_skip_reason_val}); "
                         f"{ladder_phrase}")
+        elif last_outcome == "agent_failed":
+            rc = (last or {}).get("agent_returncode")
+            headline = (f"learn-loop agent-failed"
+                        f"{f' (rc={rc})' if rc is not None else ''}; "
+                        f"{ladder_phrase}")
         else:
             reason = (last or {}).get("skip_reason")
             if reason == "evidence_starved":
@@ -698,6 +713,7 @@ def loop_status() -> dict:
         "last_outcome": (last or {}).get("outcome"),
         "last_skip_reason": (last or {}).get("skip_reason"),
         "last_gate_skip_reason": (last or {}).get("gate_skip_reason"),
+        "last_agent_returncode": (last or {}).get("agent_returncode"),
         "last_dry_run_skip_reason": last_dry_run_skip_reason,
         "last_iteration_at": last_iteration_at,
         "minutes_since_last_iteration": minutes_since_last_iteration,
