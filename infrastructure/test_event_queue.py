@@ -3,28 +3,62 @@
 
 import json
 import os
+import shutil
 import sys
 import time
+import tempfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 # Use a test queue file
-TEST_QUEUE = PROJECT_ROOT / "events_queue_test.json"
+TEST_ROOT = Path(tempfile.mkdtemp(prefix="fouler_play_event_queue_test_"))
+TEST_QUEUE = TEST_ROOT / "events_queue_test.json"
+TEST_TRUTH_DIR = TEST_ROOT / "truth"
+TEST_ARCHIVE_DIR = TEST_ROOT / "discord-events"
 os.environ["EVENT_QUEUE_FILE"] = str(TEST_QUEUE)
 
 # Clean slate
 if TEST_QUEUE.exists():
     TEST_QUEUE.unlink()
 
-from infrastructure.event_queue_lib import (
-    queue_event, read_queue, get_pending_events, mark_posted,
-    mark_failed, expire_old_events, cleanup_queue, queue_stats,
-)
+import infrastructure.event_queue_lib as event_queue_lib
+
+event_queue_lib.QUEUE_FILE = TEST_QUEUE
+event_queue_lib.TRUTH_DIR = TEST_TRUTH_DIR
+event_queue_lib.BACKLOG_ARCHIVE_DIR = TEST_ARCHIVE_DIR
+event_queue_lib.BACKLOG_ARCHIVE_LATEST = TEST_TRUTH_DIR / "discord-backlog-archive.json"
+
+queue_event = event_queue_lib.queue_event
+read_queue = event_queue_lib.read_queue
+get_pending_events = event_queue_lib.get_pending_events
+mark_posted = event_queue_lib.mark_posted
+mark_failed = event_queue_lib.mark_failed
+expire_old_events = event_queue_lib.expire_old_events
+cleanup_queue = event_queue_lib.cleanup_queue
+queue_stats = event_queue_lib.queue_stats
+
+
+def teardown_module(module):
+    shutil.rmtree(TEST_ROOT, ignore_errors=True)
+
+
+def _bind_test_queue():
+    TEST_ROOT.mkdir(parents=True, exist_ok=True)
+    event_queue_lib.QUEUE_FILE = TEST_QUEUE
+    event_queue_lib.TRUTH_DIR = TEST_TRUTH_DIR
+    event_queue_lib.BACKLOG_ARCHIVE_DIR = TEST_ARCHIVE_DIR
+    event_queue_lib.BACKLOG_ARCHIVE_LATEST = TEST_TRUTH_DIR / "discord-backlog-archive.json"
+
+
+def _reset_test_queue():
+    _bind_test_queue()
+    TEST_QUEUE.write_text("[]", encoding="utf-8")
 
 def test_basic_queue():
     """Test 1: Basic queue and read."""
+    _reset_test_queue()
     eid = queue_event("test_event", "test_channel", "Hello world")
     assert eid is not None, "Should return event ID"
     
@@ -35,6 +69,7 @@ def test_basic_queue():
 
 def test_dedup():
     """Test 2: Deduplication within window."""
+    _reset_test_queue()
     eid1 = queue_event("dedup_test", "ch", "Same message", dedup_window_sec=30)
     eid2 = queue_event("dedup_test", "ch", "Same message", dedup_window_sec=30)
     assert eid1 is not None
@@ -43,6 +78,7 @@ def test_dedup():
 
 def test_mark_posted():
     """Test 3: Mark as posted."""
+    _reset_test_queue()
     eid = queue_event("post_test", "ch", f"Unique {time.time()}")
     assert mark_posted(eid)
     events = read_queue()
@@ -52,6 +88,7 @@ def test_mark_posted():
 
 def test_retry_and_fail():
     """Test 4: Retry logic and eventual failure."""
+    _reset_test_queue()
     eid = queue_event("retry_test", "ch", f"Retry {time.time()}")
     for i in range(3):
         mark_failed(eid, f"error {i}")
@@ -64,7 +101,7 @@ def test_retry_and_fail():
 def test_simultaneous_batch_crash():
     """Test 5: Queue batch_complete + process_crash simultaneously."""
     # Clear test queue
-    TEST_QUEUE.write_text("[]")
+    _reset_test_queue()
     
     eid1 = queue_event("batch_complete", "battles", "📊 Batch report",
                        precondition_check_fn="bot_is_alive")
@@ -86,7 +123,7 @@ def test_simultaneous_batch_crash():
 
 def test_fifo_ordering():
     """Test 6: 10 events queue in order."""
-    TEST_QUEUE.write_text("[]")
+    _reset_test_queue()
     ids = []
     for i in range(10):
         eid = queue_event(f"order_{i}", "ch", f"Event {i} at {time.time()}")
@@ -101,7 +138,7 @@ def test_fifo_ordering():
 
 def test_expiry():
     """Test 7: Event expiry."""
-    TEST_QUEUE.write_text("[]")
+    _reset_test_queue()
     eid = queue_event("expire_test", "ch", "Will expire")
     # Manually backdate timestamp
     events = read_queue()
@@ -116,6 +153,7 @@ def test_expiry():
 
 def test_stats():
     """Test 8: Queue stats."""
+    _bind_test_queue()
     stats = queue_stats()
     assert "total" in stats
     assert "pending" in stats

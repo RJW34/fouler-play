@@ -701,24 +701,37 @@ def _post_via_cli(event, channel, content):
 
 # ── Main Loop ───────────────────────────────────────────────────────
 
-def process_one_event(dry_run: bool = False) -> bool:
-    """Process the oldest pending event. Returns True if an event was processed."""
-    if not dry_run:
-        expired = expire_old_events(EXPIRY_SEC)
+def archive_stale_backlog() -> int:
+    """Archive/expire stale pending events without posting them to Discord."""
+    expired = expire_old_events(EXPIRY_SEC)
+    if expired:
+        logger.warning("Archived and expired %s stale Discord event(s); live transport withheld", expired)
+        write_delivery_proof(
+            status="blocked",
+            event=None,
+            destination_alias="unknown",
+            dry_run=False,
+            blockers=[
+                f"archived {expired} stale Discord event(s) before transport",
+                "live Discord transport is withheld until the next fresh queue pass",
+            ],
+            error_code="stale_backlog_archived",
+        )
+    return expired
+
+
+def process_one_event_result(dry_run: bool = False, *, expire_stale: bool = True) -> dict[str, Any]:
+    """Process the oldest pending event and return a structured one-step result."""
+    if not dry_run and expire_stale:
+        expired = archive_stale_backlog()
         if expired:
-            logger.warning("Archived and expired %s stale Discord event(s); live transport withheld", expired)
-            write_delivery_proof(
-                status="blocked",
-                event=None,
-                destination_alias="unknown",
-                dry_run=False,
-                blockers=[
-                    f"archived {expired} stale Discord event(s) before transport",
-                    "live Discord transport is withheld until the next fresh queue pass",
-                ],
-                error_code="stale_backlog_archived",
-            )
-            return False
+            return {
+                "processed": False,
+                "action": "archived-stale",
+                "status": "blocked",
+                "expired": expired,
+                "errorCode": "stale_backlog_archived",
+            }
 
     pending = get_pending_events()
     if not pending:
@@ -730,7 +743,12 @@ def process_one_event(dry_run: bool = False) -> bool:
             blockers=["no pending Discord events"],
             error_code="no_pending_events",
         )
-        return False
+        return {
+            "processed": False,
+            "action": "idle",
+            "status": "idle",
+            "errorCode": "no_pending_events",
+        }
 
     # Process oldest first (FIFO)
     event = pending[0]
@@ -749,7 +767,14 @@ def process_one_event(dry_run: bool = False) -> bool:
             error_code=None if is_valid else "validation_failed",
         )
         logger.info("Dry-run proof written for %s id=%s", event_type, event_id)
-        return True
+        return {
+            "processed": True,
+            "action": "dry-run",
+            "status": "dry-run" if is_valid else "blocked",
+            "eventId": event_id,
+            "eventType": event_type,
+            "errorCode": None if is_valid else "validation_failed",
+        }
 
     # Check precondition
     if not check_precondition(event):
@@ -761,7 +786,14 @@ def process_one_event(dry_run: bool = False) -> bool:
             blockers=[f"precondition not met: {event.get('precondition_check') or 'always_true'}"],
             error_code="precondition_not_met",
         )
-        return False
+        return {
+            "processed": False,
+            "action": "blocked",
+            "status": "blocked",
+            "eventId": event_id,
+            "eventType": event_type,
+            "errorCode": "precondition_not_met",
+        }
 
     # Post to Discord
     result = post_to_discord(event)
@@ -777,10 +809,91 @@ def process_one_event(dry_run: bool = False) -> bool:
 
     if result.get("ok"):
         mark_posted(event_id)
+        action = "posted"
     else:
         mark_failed(event_id, str(result.get("errorCode") or result.get("status") or "post_failed"))
+        action = "rate-limited" if result.get("errorCode") == "rate_limited" else "failed"
 
-    return True
+    return {
+        "processed": True,
+        "action": action,
+        "status": str(result.get("status") or ("posted" if result.get("ok") else "failed")),
+        "eventId": event_id,
+        "eventType": event_type,
+        "httpStatus": result.get("httpStatus"),
+        "retryAfter": result.get("retryAfter"),
+        "errorCode": result.get("errorCode"),
+    }
+
+
+def process_one_event(dry_run: bool = False) -> bool:
+    """Process the oldest pending event. Returns True if an event was processed."""
+    return bool(process_one_event_result(dry_run=dry_run).get("processed"))
+
+
+def drain_events(*, max_events: int = 10, dry_run: bool = False, sleep_sec: float = 0.5) -> dict[str, Any]:
+    """Archive stale backlog, then process up to max_events fresh pending events."""
+    max_events = max(0, int(max_events))
+    summary: dict[str, Any] = {
+        "schemaVersion": "fouler-play-discord-drain/v1",
+        "startedAtUtc": _iso_now(),
+        "completedAtUtc": None,
+        "dryRun": dry_run,
+        "maxEvents": max_events,
+        "archivedStaleEvents": 0,
+        "attemptedEvents": 0,
+        "postedEvents": 0,
+        "failedEvents": 0,
+        "blocked": False,
+        "stopReason": None,
+        "lastResult": None,
+        "secretValuesPrinted": False,
+    }
+
+    if not dry_run:
+        summary["archivedStaleEvents"] = archive_stale_backlog()
+
+    if max_events == 0:
+        summary["stopReason"] = "max_events_zero"
+        summary["completedAtUtc"] = _iso_now()
+        summary["queue"] = _queue_summary()
+        return summary
+
+    for index in range(max_events):
+        result = process_one_event_result(dry_run=dry_run, expire_stale=False)
+        summary["lastResult"] = result
+        action = str(result.get("action") or "")
+
+        if action == "idle":
+            summary["stopReason"] = "queue_empty"
+            break
+        if action == "blocked":
+            summary["blocked"] = True
+            summary["stopReason"] = str(result.get("errorCode") or "blocked")
+            break
+        if action == "dry-run":
+            summary["attemptedEvents"] += 1
+            summary["stopReason"] = "dry_run_complete"
+            break
+
+        if result.get("processed"):
+            summary["attemptedEvents"] += 1
+            if action == "posted":
+                summary["postedEvents"] += 1
+            else:
+                summary["failedEvents"] += 1
+                summary["blocked"] = True
+                summary["stopReason"] = str(result.get("errorCode") or action or "post_failed")
+                break
+
+        if index < max_events - 1 and sleep_sec > 0:
+            time.sleep(sleep_sec)
+    else:
+        summary["stopReason"] = "max_events_reached"
+
+    summary["completedAtUtc"] = _iso_now()
+    summary["queue"] = _queue_summary()
+    return summary
 
 
 def main_loop():
@@ -851,6 +964,9 @@ def main() -> int:
     parser.add_argument("--doctor", action="store_true", help="print read-only Discord queue/poster readiness")
     parser.add_argument("--once", action="store_true", help="process at most one event and exit")
     parser.add_argument("--dry-run", action="store_true", help="write redacted Discord proof for the oldest pending event without posting")
+    parser.add_argument("--archive-stale", action="store_true", help="archive stale pending events locally without live Discord posting")
+    parser.add_argument("--drain", action="store_true", help="archive stale events, then transport up to --max-events fresh events")
+    parser.add_argument("--max-events", type=int, default=10, help="maximum fresh events to transport with --drain")
     parser.add_argument("--require-ready", action="store_true", help="with --doctor, exit non-zero if no transport is configured")
     args = parser.parse_args()
     if args.doctor:
@@ -869,6 +985,14 @@ def main() -> int:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 1 if args.require_ready and not payload["ready"] else 0
     load_env_chain()
+    if args.archive_stale:
+        payload = drain_events(max_events=0)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if args.drain:
+        payload = drain_events(max_events=args.max_events, dry_run=args.dry_run)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 1 if payload.get("blocked") else 0
     if args.dry_run:
         return 0 if process_one_event(dry_run=True) else 1
     if args.once:
