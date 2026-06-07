@@ -2,28 +2,81 @@
 REM =============================================================================
 REM Fouler-Play Deploy Update (Windows Machine)
 REM =============================================================================
-REM Pulls latest code from master, records the deploy event.
+REM Pulls an explicitly approved fast-forward deploy target and records it.
+REM This legacy deploy path is disabled by default so stale player loops cannot
+REM silently merge over active agent work.
 REM =============================================================================
 
 setlocal enabledelayedexpansion
 
-set REPO_DIR=%~dp0..\..
-set BRANCH=master
-set DEPLOY_LOG=%REPO_DIR%\infrastructure\deploy_log.json
-set BATTLE_STATS=%REPO_DIR%\battle_stats.json
+set "REPO_DIR=%~dp0..\.."
+set "DEPLOY_LOG=%REPO_DIR%\infrastructure\deploy_log.json"
+set "BATTLE_STATS=%REPO_DIR%\battle_stats.json"
+set "ENABLE_DEPLOY_UPDATE=%FOULER_PLAY_ENABLE_DEPLOY_UPDATE%"
+set "PULL_REMOTE=%FOULER_PLAY_PULL_REMOTE%"
+set "PULL_BRANCH=%FOULER_PLAY_PULL_BRANCH%"
+
+if /I not "%ENABLE_DEPLOY_UPDATE%"=="1" (
+    echo [%date% %time%] BLOCKED: deploy_update.bat is disabled. Set FOULER_PLAY_ENABLE_DEPLOY_UPDATE=1 with FOULER_PLAY_PULL_REMOTE and FOULER_PLAY_PULL_BRANCH.
+    exit /b 2
+)
+if not defined PULL_REMOTE (
+    echo [%date% %time%] BLOCKED: FOULER_PLAY_PULL_REMOTE is required.
+    exit /b 2
+)
+if not defined PULL_BRANCH (
+    echo [%date% %time%] BLOCKED: FOULER_PLAY_PULL_BRANCH is required.
+    exit /b 2
+)
+if /I "%PULL_REMOTE%"=="origin" (
+    if /I "%PULL_BRANCH%"=="master" (
+        if /I not "%FOULER_PLAY_ALLOW_MASTER_PULL%"=="1" (
+            echo [%date% %time%] BLOCKED: refusing origin/master from legacy deploy_update.bat. Set FOULER_PLAY_ALLOW_MASTER_PULL=1 only for an intentional deploy window.
+            exit /b 2
+        )
+    )
+    if /I "%PULL_BRANCH%"=="main" (
+        if /I not "%FOULER_PLAY_ALLOW_MASTER_PULL%"=="1" (
+            echo [%date% %time%] BLOCKED: refusing origin/main from legacy deploy_update.bat. Set FOULER_PLAY_ALLOW_MASTER_PULL=1 only for an intentional deploy window.
+            exit /b 2
+        )
+    )
+)
 
 echo [%date% %time%] ---- Deploy Update Starting ----
 
 REM Step 1: Record pre-deploy ELO
 cd /d "%REPO_DIR%"
 for /f %%a in ('git rev-parse HEAD') do set PRE_DEPLOY_COMMIT=%%a
+for /f %%a in ('git rev-parse --abbrev-ref HEAD') do set CURRENT_BRANCH=%%a
 echo [%date% %time%] Pre-deploy commit: %PRE_DEPLOY_COMMIT%
+echo [%date% %time%] Current branch: %CURRENT_BRANCH%
 
-REM Step 2: Pull latest code
-echo [%date% %time%] Pulling from %BRANCH%...
-git pull origin %BRANCH%
+if /I not "%CURRENT_BRANCH%"=="%PULL_BRANCH%" (
+    echo [%date% %time%] BLOCKED: current branch "%CURRENT_BRANCH%" does not match FOULER_PLAY_PULL_BRANCH "%PULL_BRANCH%".
+    exit /b 2
+)
+
+git update-index -q --refresh
+set "WORKTREE_DIRTY="
+for /f "delims=" %%s in ('git status --porcelain --untracked-files=no') do set "WORKTREE_DIRTY=1"
+if defined WORKTREE_DIRTY (
+    echo [%date% %time%] BLOCKED: tracked worktree changes are present; refusing legacy deploy pull.
+    git status --short
+    exit /b 2
+)
+
+REM Step 2: Pull latest code by explicit fast-forward only
+echo [%date% %time%] Fetching %PULL_REMOTE% %PULL_BRANCH%...
+git fetch "%PULL_REMOTE%" "%PULL_BRANCH%"
 if errorlevel 1 (
-    echo [%date% %time%] ERROR: git pull failed. Deploy aborted.
+    echo [%date% %time%] ERROR: git fetch failed. Deploy aborted.
+    exit /b 1
+)
+echo [%date% %time%] Fast-forwarding from FETCH_HEAD...
+git merge --ff-only "FETCH_HEAD"
+if errorlevel 1 (
+    echo [%date% %time%] ERROR: fast-forward failed. Deploy aborted.
     exit /b 1
 )
 

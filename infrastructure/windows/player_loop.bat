@@ -10,7 +10,7 @@ setlocal EnableExtensions DisableDelayedExpansion
 set "REPO_DIR=%~dp0..\.."
 set "BATCH_SIZE=%BATCH_SIZE%"
 if not defined BATCH_SIZE set "BATCH_SIZE=10"
-set "AUTO_PULL=%AUTO_PULL%"
+set "AUTO_PULL=%FOULER_PLAY_ENABLE_AUTO_PULL%"
 if not defined AUTO_PULL set "AUTO_PULL=0"
 set "ENABLE_AUTO_IMPROVE=%FOULER_PLAY_ENABLE_AUTO_IMPROVE%"
 if not defined ENABLE_AUTO_IMPROVE set "ENABLE_AUTO_IMPROVE=0"
@@ -26,6 +26,7 @@ echo  Fouler-Play Player Loop starting
 echo  Repo: %REPO_DIR%
 echo  Batch size: %BATCH_SIZE%
 echo  Mode: current launcher default worker profile
+echo  Auto pull: %AUTO_PULL%
 echo  Auto improve: %ENABLE_AUTO_IMPROVE%
 echo  Auto push: %ENABLE_AUTO_PUSH%
 echo ==========================================
@@ -53,10 +54,15 @@ echo [%date% %time%] --- Cycle start ---
 
 cd /d "%REPO_DIR%"
 if /I "%AUTO_PULL%"=="1" (
+    if /I not "%FOULER_PLAY_ENABLE_DEPLOY_UPDATE%"=="1" (
+        echo [%date% %time%] ERROR: FOULER_PLAY_ENABLE_AUTO_PULL=1 requires FOULER_PLAY_ENABLE_DEPLOY_UPDATE=1 plus explicit FOULER_PLAY_PULL_REMOTE/FOULER_PLAY_PULL_BRANCH.
+        exit /b 2
+    )
     echo [%date% %time%] Running deploy update...
     call "%REPO_DIR%\infrastructure\windows\deploy_update.bat"
     if errorlevel 1 (
-        echo [%date% %time%] WARNING: deploy update failed. Continuing with local code.
+        echo [%date% %time%] ERROR: deploy update failed or was blocked; refusing to continue legacy player loop.
+        exit /b 2
     )
 )
 

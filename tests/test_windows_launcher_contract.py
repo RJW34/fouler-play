@@ -131,3 +131,26 @@ def test_jigglypuff_control_exposes_auto_improve_start_flag():
     assert 'start.add_argument("--enable-auto-improve", action="store_true")' in text
     assert '"autoImprove": enable_auto_improve' in text
     assert 'powershell_args.append("-AutoImprove")' in text
+
+
+def test_legacy_windows_auto_pull_is_fail_closed():
+    player_loop = (ROOT / "infrastructure" / "windows" / "player_loop.bat").read_text(encoding="utf-8")
+    deploy_update = (ROOT / "infrastructure" / "windows" / "deploy_update.bat").read_text(encoding="utf-8")
+
+    assert 'set "AUTO_PULL=%FOULER_PLAY_ENABLE_AUTO_PULL%"' in player_loop
+    assert "FOULER_PLAY_ENABLE_DEPLOY_UPDATE=1" in player_loop
+    assert "refusing to continue legacy player loop" in player_loop
+    assert "FOULER_PLAY_ENABLE_DEPLOY_UPDATE" in deploy_update
+    assert "FOULER_PLAY_PULL_REMOTE" in deploy_update
+    assert "FOULER_PLAY_PULL_BRANCH" in deploy_update
+    assert "git status --porcelain --untracked-files=no" in deploy_update
+    assert 'git merge --ff-only "FETCH_HEAD"' in deploy_update
+    assert "git pull origin %BRANCH%" not in deploy_update
+    assert "set BRANCH=master" not in deploy_update
+
+
+def test_legacy_onlogon_task_install_requires_explicit_sentinel():
+    text = (ROOT / "infrastructure" / "windows" / "install_task.bat").read_text(encoding="utf-8")
+
+    assert "FOULER_PLAY_ENABLE_LEGACY_ONLOGON_TASK" in text
+    assert "legacy on-logon live battle task installation is disabled" in text

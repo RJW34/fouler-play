@@ -17,6 +17,12 @@ echo   Script: %SCRIPT_PATH%
 echo   User: %TASK_USER%
 echo.
 
+if /I not "%FOULER_PLAY_ENABLE_LEGACY_ONLOGON_TASK%"=="1" (
+    echo BLOCKED: legacy on-logon live battle task installation is disabled.
+    echo Set FOULER_PLAY_ENABLE_LEGACY_ONLOGON_TASK=1 only during an intentional runtime setup window.
+    exit /b 2
+)
+
 if not exist "%SCRIPT_PATH%" (
     echo ERROR: Missing launcher script: %SCRIPT_PATH%
     exit /b 1
