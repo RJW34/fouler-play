@@ -309,7 +309,8 @@ _last_battle_elo: dict[str, dict] = {}
 def pop_battle_elo(battle_tag: str | None) -> dict | None:
     """Return and clear the authoritative ELO snapshot for a finished battle.
 
-    Snapshot dict: {elo_before, elo_after, elo_delta, gxe}. Any field may be
+    Snapshot dict: {elo_before, elo_after, elo_delta, gxe} plus replay handoff
+    fields when available (replay_id, replay_url, replay_status, etc.). Any field may be
     None if Showdown did not emit a |raw| rating line and the ladder-API
     fallback also failed. Returns None if no snapshot was recorded.
     """
@@ -2822,12 +2823,14 @@ async def pokemon_battle(
                         )
                     except Exception:
                         _gxe_final = None
-                _last_battle_elo[battle_tag] = {
+                _battle_result_snapshot = {
                     "elo_before": _elo_before_final,
                     "elo_after": _elo_after_final,
                     "elo_delta": _elo_delta_final,
                     "gxe": _gxe_final,
                 }
+                _battle_result_snapshot.update(_replay_handoff)
+                _last_battle_elo[battle_tag] = _battle_result_snapshot
 
                 # Cleanup battle queue to prevent buildup over time.
                 timeout = 5

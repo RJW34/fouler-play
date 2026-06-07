@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 
@@ -76,6 +77,62 @@ def test_run_battle_finalizer_clears_pre_battle_elo_cache_without_dropping_snaps
     assert battle_tag not in run_battle._elo_before_cache
     assert run_battle._last_battle_elo[battle_tag] == {"elo_after": 1250}
     run_battle._last_battle_elo.pop(battle_tag, None)
+
+
+def test_battle_stats_replay_fields_preserve_public_handoff():
+    import run
+
+    snapshot = {
+        "elo_after": 1261,
+        "replay_id": "gen9ou-2626223137",
+        "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2626223137",
+        "replay_status": "public",
+        "replay_public_verified": True,
+        "raw_replay_url": "https://replay.pokemonshowdown.com/gen9ou-2626223137",
+        "verified_replay_url": "https://replay.pokemonshowdown.com/gen9ou-2626223137",
+        "ignored": "not persisted",
+    }
+
+    assert run.battle_stats_replay_fields(snapshot) == {
+        "replay_id": "gen9ou-2626223137",
+        "replay_url": "https://replay.pokemonshowdown.com/gen9ou-2626223137",
+        "replay_status": "public",
+        "replay_public_verified": True,
+        "raw_replay_url": "https://replay.pokemonshowdown.com/gen9ou-2626223137",
+        "verified_replay_url": "https://replay.pokemonshowdown.com/gen9ou-2626223137",
+    }
+
+
+def test_battle_stats_writer_stamps_replay_url_when_available(tmp_path, monkeypatch):
+    import run
+
+    stats_path = tmp_path / "battle_stats.json"
+    monkeypatch.setattr(run, "BATTLE_STATS_FILE", stats_path)
+    monkeypatch.setattr(run, "BATTLE_STATS_MAX_ENTRIES", 100)
+
+    stats = run.BattleStats()
+    asyncio.run(stats.record_loss(
+        "gen9/ou/fat-team-3-dondozo",
+        "battle-gen9ou-2626223137-privatehash",
+        elo_before=1286,
+        elo_after=1261,
+        elo_delta=-25,
+        replay_id="gen9ou-2626223137",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2626223137",
+        replay_status="public",
+        replay_public_verified=True,
+        raw_replay_url="https://replay.pokemonshowdown.com/gen9ou-2626223137",
+    ))
+
+    payload = json.loads(stats_path.read_text(encoding="utf-8"))
+    entry = payload["battles"][-1]
+
+    assert entry["battle_id"] == "battle-gen9ou-2626223137-privatehash"
+    assert entry["replay_id"] == "gen9ou-2626223137"
+    assert entry["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2626223137"
+    assert entry["replay_status"] == "public"
+    assert entry["replay_public_verified"] is True
+    assert entry["raw_replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2626223137"
 
 
 def test_run_battle_replay_save_tasks_are_bounded_and_observed(monkeypatch):

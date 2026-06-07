@@ -184,6 +184,22 @@ def _battle_stats_max_entries() -> int:
 BATTLE_STATS_MAX_ENTRIES = _battle_stats_max_entries()
 
 
+BATTLE_STATS_REPLAY_FIELDS = (
+    "replay_id",
+    "replay_url",
+    "replay_status",
+    "replay_public_verified",
+    "raw_replay_url",
+    "verified_replay_url",
+)
+
+
+def battle_stats_replay_fields(snapshot):
+    if not isinstance(snapshot, dict):
+        return {}
+    return {key: snapshot[key] for key in BATTLE_STATS_REPLAY_FIELDS if snapshot.get(key) not in (None, "")}
+
+
 class BattleStats:
     """Thread-safe battle statistics tracker with per-team persistence"""
     def __init__(self):
@@ -220,7 +236,9 @@ class BattleStats:
             logger.warning("Failed to save battle stats to %s: %s", BATTLE_STATS_FILE, e)
 
     def _record_battle(self, team_file_name, result, battle_tag=None, rating=None,
-                       elo_before=None, elo_after=None, elo_delta=None, gxe=None):
+                       elo_before=None, elo_after=None, elo_delta=None, gxe=None,
+                       replay_id=None, replay_url=None, replay_status=None,
+                       replay_public_verified=None, raw_replay_url=None, verified_replay_url=None):
         from datetime import datetime, timezone
         # FOULER-ELO-CAPTURE-FIX-2026-06-03: persist the AUTHORITATIVE per-battle
         # ELO transition (from Showdown's |raw| rating line, captured in
@@ -233,42 +251,55 @@ class BattleStats:
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "team_file": team_file_name or "unknown",
             "result": result,
-            "replay_id": battle_tag or "",
+            "replay_id": replay_id or battle_tag or "",
             "rating": elo_after if elo_after is not None else rating,
             "elo_before": elo_before,
             "elo_after": elo_after if elo_after is not None else rating,
             "elo_delta": elo_delta,
             "gxe": gxe,
         }
+        if replay_url:
+            entry["replay_url"] = replay_url
+        if replay_status:
+            entry["replay_status"] = replay_status
+        if replay_public_verified is not None:
+            entry["replay_public_verified"] = replay_public_verified
+        if raw_replay_url:
+            entry["raw_replay_url"] = raw_replay_url
+        if verified_replay_url:
+            entry["verified_replay_url"] = verified_replay_url
         self._battles.append(entry)
         if len(self._battles) > BATTLE_STATS_MAX_ENTRIES:
             del self._battles[:-BATTLE_STATS_MAX_ENTRIES]
         self._save_battles()
 
     async def record_win(self, team_file_name, battle_tag=None, rating=None,
-                         elo_before=None, elo_after=None, elo_delta=None, gxe=None):
+                         elo_before=None, elo_after=None, elo_delta=None, gxe=None,
+                         **battle_fields):
         async with self._lock:
             self.wins += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "win", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe)
+            self._record_battle(team_file_name, "win", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe, **battle_fields)
             logger.info("Won with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
     async def record_loss(self, team_file_name, battle_tag=None, rating=None,
-                         elo_before=None, elo_after=None, elo_delta=None, gxe=None):
+                         elo_before=None, elo_after=None, elo_delta=None, gxe=None,
+                         **battle_fields):
         async with self._lock:
             self.losses += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "loss", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe)
+            self._record_battle(team_file_name, "loss", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe, **battle_fields)
             logger.info("Lost with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}".format(self.wins, self.losses))
 
     async def record_disconnect(self, team_file_name, battle_tag=None, rating=None,
-                         elo_before=None, elo_after=None, elo_delta=None, gxe=None):
+                         elo_before=None, elo_after=None, elo_delta=None, gxe=None,
+                         **battle_fields):
         async with self._lock:
             self.disconnects += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "disconnect", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe)
+            self._record_battle(team_file_name, "disconnect", battle_tag, rating=rating, elo_before=elo_before, elo_after=elo_after, elo_delta=elo_delta, gxe=gxe, **battle_fields)
             logger.info("Disconnect with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}\tDC: {}".format(self.wins, self.losses, self.disconnects))
 
@@ -571,6 +602,7 @@ async def battle_worker(
 
                 _elo_kw = dict(rating=_post_elo, elo_before=_elo_before,
                                elo_after=_post_elo, elo_delta=_elo_delta, gxe=_gxe)
+                _elo_kw.update(battle_stats_replay_fields(_elo_snap))
                 if winner == FoulPlayConfig.username:
                     await stats.record_win(team_file_name, battle_tag, **_elo_kw)
                 elif winner is None:
