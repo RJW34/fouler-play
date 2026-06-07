@@ -27,6 +27,44 @@ def _runner(age: int = 30) -> list[dict]:
     }]
 
 
+def test_runtime_processes_does_not_mark_reused_pid_alive(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    pid_file = tmp_path / ".bot.pid"
+    pid_file.write_text(
+        json.dumps({
+            "pid": 1234,
+            "command": ["python", "run.py", "--bot-mode", "search_ladder"],
+            "startedAt": devstream_health.iso_now(),
+        }),
+        encoding="utf-8",
+    )
+
+    class ReusedPidProcess:
+        def cmdline(self):
+            return ["python", "not-fouler-runtime.py"]
+
+        def cwd(self):
+            return str(tmp_path)
+
+        def create_time(self):
+            return time.time()
+
+        def status(self):
+            return "running"
+
+        def is_running(self):
+            return True
+
+    monkeypatch.setattr(devstream_health.psutil, "Process", lambda pid: ReusedPidProcess())
+
+    process = devstream_health.runtime_processes()[0]
+
+    assert process["processRunning"] is True
+    assert process["alive"] is False
+    assert process["isBattleRunner"] is False
+    assert process["stalePidReason"] == "pid belongs to unexpected command, cwd, or older process"
+
+
 def test_optional_stale_stability_report_does_not_gate_readiness(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": port == devstream_health.HTTP_PORT)

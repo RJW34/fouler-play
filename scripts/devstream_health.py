@@ -109,7 +109,7 @@ def run_command(command: list[str], *, timeout: int = 4) -> subprocess.Completed
         return None
 
 
-def read_pid_file(path: Path) -> int | None:
+def read_pid_payload(path: Path) -> dict[str, Any] | str | None:
     try:
         raw = path.read_text(encoding="utf-8", errors="replace").strip()
     except OSError:
@@ -119,9 +119,22 @@ def read_pid_file(path: Path) -> int | None:
     try:
         if raw.startswith("{"):
             parsed = json.loads(raw)
-            return int(parsed.get("pid") or 0) or None
+            return parsed if isinstance(parsed, dict) else None
         return int(raw)
     except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def read_pid_file(path: Path) -> int | None:
+    payload = read_pid_payload(path)
+    if isinstance(payload, dict):
+        try:
+            return int(payload.get("pid") or 0) or None
+        except (TypeError, ValueError):
+            return None
+    try:
+        return int(str(payload or "").strip())
+    except (TypeError, ValueError):
         return None
 
 
@@ -131,11 +144,13 @@ def runtime_processes() -> list[dict[str, Any]]:
     root = os.path.abspath(ROOT)
     for rel in BATTLE_PID_FILES:
         path = ROOT / rel
+        pid_payload = read_pid_payload(path)
         pid = read_pid_file(path)
         item: dict[str, Any] = {
             "pidFile": rel,
             "pid": pid,
             "pidFileExists": path.exists(),
+            "processRunning": False,
             "alive": False,
             "isBattleRunner": False,
         }
@@ -150,19 +165,28 @@ def runtime_processes() -> list[dict[str, Any]]:
             cmdline = proc.cmdline()
             cwd = proc.cwd()
             create_time = proc.create_time()
+            status = proc.status() if hasattr(proc, "status") else ""
         except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
             processes.append(item)
             continue
         command = " ".join(cmdline).lower()
         cwd_matches = os.path.abspath(cwd) == root if cwd else False
-        is_runner = cwd_matches and "run.py" in command and ("showdown" in command or "search_ladder" in command)
+        process_running = bool(proc.is_running()) and status != getattr(psutil, "STATUS_ZOMBIE", "zombie")
+        is_runner = process_running and cwd_matches and "run.py" in command and ("showdown" in command or "search_ladder" in command)
+        if isinstance(pid_payload, dict):
+            started_at = parse_payload_timestamp(pid_payload.get("startedAt") or pid_payload.get("started_at"))
+            if started_at is not None and create_time < started_at - 2:
+                is_runner = False
         item.update({
-            "alive": proc.is_running(),
+            "processRunning": process_running,
+            "alive": is_runner,
             "isBattleRunner": is_runner,
             "cwdMatchesRepo": cwd_matches,
             "ageSeconds": round(max(0.0, time.time() - create_time), 3),
             "commandSummary": " ".join(cmdline[:4]),
         })
+        if process_running and not is_runner:
+            item["stalePidReason"] = "pid belongs to unexpected command, cwd, or older process"
         processes.append(item)
     return processes
 

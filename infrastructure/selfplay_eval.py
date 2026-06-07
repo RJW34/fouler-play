@@ -262,6 +262,10 @@ def _build_env(arm_env: dict | None, search_time_ms: int, stats_file: Path,
     env = os.environ.copy()
     env.setdefault("PS_PASSWORD", "")
     env["FOULER_NO_SECURITY_LOGIN"] = "1"
+    # Eval arms are legitimately separate run.py instances (throwaway stats,
+    # local server, distinct users). Bypass the live-ladder singleton lock so
+    # the gate can run while the live bot holds the lock (run.py honours this).
+    env["FOULER_NO_SINGLETON_LOCK"] = "1"
     env["SEARCH_TIME_MS"] = str(search_time_ms)
     env["MIN_SEARCH_TIME_MS"] = "0"
     # Force-decide stall mirrors at the turn cap so EVERY eval battle is

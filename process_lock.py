@@ -47,15 +47,30 @@ def _is_stale_bot_process(proc, our_dir: str, protected_pids: set[int]) -> bool:
 
 
 def is_bot_process(pid: int) -> bool:
-    """Check if a PID is actually a fouler-play bot process."""
+    """Check if a PID is actually a fouler-play bot process.
+
+    CONSERVATIVE on AccessDenied (root-cause fix 2026-06-05): a process that EXISTS
+    but we cannot inspect is assumed to be a live bot, so the lock is NEVER reclaimed
+    out from under a live ladder bot we merely lack permission to read. The previous
+    version returned False on AccessDenied -> a SYSTEM-python dup that could not read
+    the .venv holder's cwd treated the live holder as 'stale', reclaimed the lock, and
+    BOTH ran -> the recurring ELO-thrash duplicate. NoSuchProcess (genuinely gone) is
+    still the only path that returns False."""
     try:
         proc = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        return False
+    except (psutil.AccessDenied, OSError):
+        return True  # exists but uninspectable -> assume live bot; never dup
+    try:
         cmdline = " ".join(proc.cmdline()).lower()
         cwd = proc.cwd()
         cwd_matches = bool(cwd) and os.path.abspath(cwd) == os.path.abspath(LOCK_DIR)
         return cwd_matches and "run.py" in cmdline and ("showdown" in cmdline or "search_ladder" in cmdline)
-    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+    except psutil.NoSuchProcess:
         return False
+    except (psutil.AccessDenied, OSError):
+        return True  # exists but uninspectable -> assume live bot; never dup
 
 
 def kill_stale_processes():

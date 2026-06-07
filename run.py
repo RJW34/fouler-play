@@ -142,7 +142,17 @@ def check_dictionaries_are_unmodified(original_pokedex, original_move_json):
         logger.debug("Pokedex JSON unmodified!")
 
 
-BATTLE_STATS_FILE = Path(__file__).resolve().parent / "battle_stats.json"
+def _battle_stats_file() -> Path:
+    configured = os.getenv("BATTLE_STATS_FILE")
+    if configured:
+        path = Path(configured).expanduser()
+        if not path.is_absolute():
+            path = Path(__file__).resolve().parent / path
+        return path
+    return Path(__file__).resolve().parent / "battle_stats.json"
+
+
+BATTLE_STATS_FILE = _battle_stats_file()
 
 
 def _battle_stats_max_entries() -> int:
@@ -177,18 +187,19 @@ class BattleStats:
                     battles = battles[-BATTLE_STATS_MAX_ENTRIES:]
                 return battles
         except Exception as e:
-            logger.warning("Failed to load battle_stats.json: %s", e)
+            logger.warning("Failed to load battle stats from %s: %s", BATTLE_STATS_FILE, e)
         return []
 
     def _save_battles(self):
         try:
             data = {"battles": self._battles}
+            BATTLE_STATS_FILE.parent.mkdir(parents=True, exist_ok=True)
             BATTLE_STATS_FILE.write_text(
                 json.dumps(data, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
         except Exception as e:
-            logger.warning("Failed to save battle_stats.json: %s", e)
+            logger.warning("Failed to save battle stats to %s: %s", BATTLE_STATS_FILE, e)
 
     def _record_battle(self, team_file_name, result, battle_tag=None, rating=None,
                        elo_before=None, elo_after=None, elo_delta=None, gxe=None):
@@ -1101,6 +1112,25 @@ if __name__ == "__main__":
     # FOULER_NO_SINGLETON_LOCK=1 we skip lock acquisition entirely -- the live
     # ladder bot keeps its lock untouched and is never reaped by an eval run.
     _skip_lock = (os.getenv("FOULER_NO_SINGLETON_LOCK", "0") or "0").strip() not in ("", "0")
+    # HARDENING 2026-06-05: FOULER_NO_SINGLETON_LOCK is ONLY for isolated eval arms that
+    # battle a LOCAL showdown server (own users/port/stats). A client laddering the PUBLIC
+    # server is the live bot -- or an ELO-thrashing DUPLICATE of it (e.g. a stray
+    # system-python child that inherited the env and lacks psutil). Such a dup must be
+    # refused, so NEVER honour the skip for a public-ladder client: force it back onto the
+    # singleton, where it either loses the race (already-running -> exit) or, on system
+    # python, ImportErrors process_lock -> exit. Eval arms (local server) are unaffected.
+    _argv_blob = " ".join(sys.argv)
+    _is_public_ladder = (
+        ("sim3.psim.us" in _argv_blob or "sim.smogon.com" in _argv_blob
+         or "play.pokemonshowdown.com" in _argv_blob)
+        and "search_ladder" in _argv_blob
+    )
+    if _skip_lock and _is_public_ladder:
+        logger.error(
+            "FOULER_NO_SINGLETON_LOCK IGNORED: this is a PUBLIC-LADDER client; enforcing the "
+            "singleton lock. An unguarded public-ladder duplicate is exactly what thrashes ELO."
+        )
+        _skip_lock = False
     if _skip_lock:
         logger.warning("FOULER_NO_SINGLETON_LOCK set; skipping singleton lock (eval arm).")
     else:
@@ -1110,9 +1140,18 @@ if __name__ == "__main__":
                 logger.error("Another bot instance is already running. Exiting.")
                 sys.exit(1)
         except ImportError as e:
-            logger.warning("Process lock unavailable (%s); continuing without singleton lock.", e)
+            logger.error(
+                "Process lock module unavailable (%s); REFUSING to ladder without "
+                "singleton protection. A client that cannot prove it is the only one "
+                "on this account is exactly the duplicate that thrashes ELO -- this is "
+                "what happens when run.py is launched with SYSTEM python (no psutil) "
+                "instead of the .venv. Exiting.", e)
+            sys.exit(1)
         except Exception as e:
-            logger.warning("Process lock failed (%s); continuing without singleton lock.", e)
+            logger.error(
+                "Process lock acquisition failed (%s); REFUSING to ladder without "
+                "singleton protection. Exiting.", e)
+            sys.exit(1)
 
     try:
         asyncio.run(run_foul_play())
