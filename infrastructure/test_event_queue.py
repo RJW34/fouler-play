@@ -23,6 +23,7 @@ os.environ["EVENT_QUEUE_FILE"] = str(TEST_QUEUE)
 if TEST_QUEUE.exists():
     TEST_QUEUE.unlink()
 
+from infrastructure.discord_reporting import build_contract_payload, replay_handoff_fields
 import infrastructure.event_queue_lib as event_queue_lib
 
 event_queue_lib.QUEUE_FILE = TEST_QUEUE
@@ -162,6 +163,57 @@ def test_pending_backlog_cap_archives_oldest_without_posting():
         event_queue_lib.MAX_PENDING_EVENTS = old_max
     print("✅ Test 6b: Pending backlog cap archives oldest without posting PASSED")
 
+def test_archive_preserves_pending_replay_summary():
+    """Expired local proof must retain pending replay evidence after Discord lag."""
+    _reset_test_queue()
+    handoff = replay_handoff_fields(
+        battle_tag="battle-gen9ou-2626011055-privatehash",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2626011055",
+        verified_replay_url=None,
+    )
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result win vs ArchiveCheck",
+        "Battle battle-gen9ou-2626011055-privatehash ended win against ArchiveCheck.",
+        "Archived Discord backlog should still point HERMES at the replay evidence.",
+        (
+            "battle_id=battle-gen9ou-2626011055-privatehash; result=win; "
+            f"replay={handoff['replay_url']}; replay_status={handoff['replay_status']}"
+        ),
+        "Append ladder delta if more context lands after posting.",
+        source="unit-test",
+        battle_id="battle-gen9ou-2626011055-privatehash",
+        result="win",
+        opponent="ArchiveCheck",
+        turns=12,
+        replay_url=handoff["replay_url"],
+        replay_id=handoff["replay_id"],
+        replay_status=handoff["replay_status"],
+        replay_public_verified=handoff["replay_public_verified"],
+        raw_replay_url=handoff["raw_replay_url"],
+        next_battle_action="Verify public upload before proof handoff.",
+    )
+    eid = queue_event("battle_result", "battles", payload, dedup_window_sec=0)
+    assert eid is not None
+
+    events = read_queue()
+    events[0]["timestamp"] = time.time() - 700
+    TEST_QUEUE.write_text(json.dumps(events), encoding="utf-8")
+
+    expired = expire_old_events(600)
+    assert expired == 1
+
+    archive = json.loads(event_queue_lib.BACKLOG_ARCHIVE_LATEST.read_text(encoding="utf-8"))
+    archived = archive["events"][0]
+    assert "gen9ou-2626011055" in archived["battleIds"]
+    assert archived["replay"] == {
+        "status": "pending-public-upload",
+        "id": "gen9ou-2626011055",
+        "url": "",
+    }
+    assert archived["proofReadinessStatus"] == "proof-needs-fields"
+    print("OK Test 6c: Pending replay archive proof PASSED")
+
 def test_expiry():
     """Test 7: Event expiry."""
     _reset_test_queue()
@@ -193,6 +245,7 @@ if __name__ == "__main__":
     test_retry_and_fail()
     test_simultaneous_batch_crash()
     test_fifo_ordering()
+    test_archive_preserves_pending_replay_summary()
     test_pending_backlog_cap_archives_oldest_without_posting()
     test_expiry()
     test_stats()

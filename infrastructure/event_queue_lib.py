@@ -144,6 +144,30 @@ def _queue_hash(events: list[dict]) -> str:
 def _event_id_hash(event_id: object) -> str:
     return hashlib.sha256(str(event_id or "").encode("utf-8")).hexdigest()[:16]
 
+def _replay_for_archive(event: dict) -> dict[str, object]:
+    proof = event.get("proof") if isinstance(event.get("proof"), dict) else {}
+    replay = proof.get("replay") if isinstance(proof.get("replay"), dict) else {}
+    if not replay:
+        try:
+            extracted = structured_report_fields(
+                str(event.get("content") or ""),
+                event_type=str(event.get("event_type") or ""),
+            )
+        except Exception:
+            extracted = {}
+        proof = extracted.get("proof") if isinstance(extracted.get("proof"), dict) else {}
+        replay = proof.get("replay") if isinstance(proof.get("replay"), dict) else {}
+
+    status = str(replay.get("status") or "absent").strip() or "absent"
+    replay_id = str(replay.get("id") or "").strip()
+    replay_url = str(replay.get("url") or "").strip()
+    return {
+        "status": status[:80],
+        "id": replay_id[:120],
+        "url": replay_url[:240],
+    }
+
+
 
 def _battle_ids_for_archive(event: dict) -> list[str]:
     ids: list[str] = []
@@ -181,6 +205,7 @@ def _archive_event_summary(event: dict, *, now: float) -> dict[str, object]:
         "timestamp": event.get("timestamp"),
         "ageSeconds": round(max(0.0, now - _event_timestamp(event, now)), 3),
         "battleIds": _battle_ids_for_archive(event),
+        "replay": _replay_for_archive(event),
         "proofReadinessStatus": str(proof_readiness.get("status") or "unknown"),
         "hasStructuredProof": isinstance(event.get("proof"), dict) and bool(event.get("proof")),
         "hasStructuredAnalysis": isinstance(event.get("analysis"), dict) and bool(event.get("analysis")),
