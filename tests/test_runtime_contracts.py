@@ -102,6 +102,12 @@ def test_battle_stats_replay_fields_preserve_public_handoff():
         "verified_replay_url": "https://replay.pokemonshowdown.com/gen9ou-2626223137",
     }
 
+def test_run_py_drains_replay_save_tasks_before_shutdown():
+    source = read("run.py")
+
+    assert "drain_replay_save_tasks" in source
+    assert "await drain_replay_save_tasks()" in source
+
 
 def test_battle_stats_writer_stamps_replay_url_when_available(tmp_path, monkeypatch):
     import run
@@ -134,6 +140,33 @@ def test_battle_stats_writer_stamps_replay_url_when_available(tmp_path, monkeypa
     assert entry["replay_public_verified"] is True
     assert entry["raw_replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2626223137"
 
+def test_battle_stats_writer_stamps_pending_replay_handoff_when_unverified(tmp_path, monkeypatch):
+    import run
+
+    stats_path = tmp_path / "battle_stats.json"
+    monkeypatch.setattr(run, "BATTLE_STATS_FILE", stats_path)
+    monkeypatch.setattr(run, "BATTLE_STATS_MAX_ENTRIES", 100)
+
+    stats = run.BattleStats()
+    asyncio.run(
+        stats.record_disconnect(
+            "gen9/ou/fat-team-3-dondozo",
+            "battle-gen9ou-2626223137-privatehash",
+            elo_before=1286,
+            elo_after=1286,
+            elo_delta=0,
+        )
+    )
+
+    payload = json.loads(stats_path.read_text(encoding="utf-8"))
+    entry = payload["battles"][-1]
+
+    assert entry["battle_id"] == "battle-gen9ou-2626223137-privatehash"
+    assert entry["replay_id"] == "gen9ou-2626223137"
+    assert entry["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2626223137"
+    assert entry["replay_status"] == "pending-public-upload"
+    assert entry["replay_public_verified"] is False
+
 
 def test_run_battle_replay_save_tasks_are_bounded_and_observed(monkeypatch):
     import fp.run_battle as run_battle
@@ -158,6 +191,31 @@ def test_run_battle_replay_save_tasks_are_bounded_and_observed(monkeypatch):
 
     assert seen == ["first"]
     assert run_battle._replay_save_tasks == set()
+
+def test_run_battle_replay_save_tasks_drain_cancels_over_timeout():
+    import fp.run_battle as run_battle
+
+    run_battle._replay_save_tasks.clear()
+
+    async def sleeper():
+        await asyncio.sleep(60)
+
+    async def exercise():
+        task = asyncio.create_task(sleeper())
+        run_battle._replay_save_tasks.add(task)
+
+        result = await run_battle.drain_replay_save_tasks(timeout_sec=0.01)
+
+        assert result == {
+            "pending": 1,
+            "completed": 0,
+            "cancelled": 1,
+            "timeout_sec": 0.01,
+        }
+        assert task.cancelled()
+        assert run_battle._replay_save_tasks == set()
+
+    asyncio.run(exercise())
 
 def test_recursive_improvement_gate_verifies_showdown_source_lock():
     agent = read("infrastructure/improve_agent.py")

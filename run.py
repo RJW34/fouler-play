@@ -29,6 +29,7 @@ from fp.run_battle import (
     has_resume_battle,
     prime_resume_battles,
     cleanup_old_logs,
+    drain_replay_save_tasks,
     _current_worker_id,
 )
 from fp.websocket_client import PSWebsocketClient
@@ -36,6 +37,7 @@ from fp.websocket_client import PSWebsocketClient
 from data import all_move_json
 from data import pokedex
 from data.mods.apply_mods import apply_mods
+from infrastructure.discord_reporting import replay_handoff_fields
 
 logger = logging.getLogger(__name__)
 
@@ -246,12 +248,25 @@ class BattleStats:
         # held only the lagging/duplicated ladder-API aggregate and no entry ever
         # carried an "elo_after" key, so the decline was invisible in telemetry.
         # "rating" is kept (== elo_after) for backward-compat with old readers.
+        replay_defaults = replay_handoff_fields(
+            battle_tag=battle_tag,
+            replay_url=replay_url,
+            verified_replay_url=verified_replay_url,
+        )
+        replay_id = replay_id or replay_defaults.get("replay_id") or ""
+        replay_url = replay_url or replay_defaults.get("replay_url")
+        replay_status = replay_status or replay_defaults.get("replay_status")
+        if replay_public_verified is None:
+            replay_public_verified = replay_defaults.get("replay_public_verified")
+        raw_replay_url = raw_replay_url or replay_defaults.get("raw_replay_url")
+        verified_replay_url = verified_replay_url or replay_defaults.get("verified_replay_url")
+
         entry = {
             "battle_id": battle_tag or "unknown",
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "team_file": team_file_name or "unknown",
             "result": result,
-            "replay_id": replay_id or battle_tag or "",
+            "replay_id": replay_id,
             "rating": elo_after if elo_after is not None else rating,
             "elo_before": elo_before,
             "elo_after": elo_after if elo_after is not None else rating,
@@ -1110,6 +1125,13 @@ async def run_foul_play():
                 await parent_watch_task
             except asyncio.CancelledError:
                 pass
+
+        try:
+            replay_drain = await drain_replay_save_tasks()
+            if replay_drain.get("pending"):
+                logger.info("Replay save task drain: %s", replay_drain)
+        except Exception as e:
+            logger.warning("Replay save task drain failed: %s", e)
 
         await ps_websocket_client.close()
 

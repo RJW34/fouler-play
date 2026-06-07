@@ -208,6 +208,10 @@ REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
 REPLAY_SAVE_TASKS_MAX = max(1, int(os.getenv("REPLAY_SAVE_TASKS_MAX", "32")))
+try:
+    REPLAY_SAVE_DRAIN_TIMEOUT_SEC = max(0.0, float(os.getenv("REPLAY_SAVE_DRAIN_TIMEOUT_SEC", "15")))
+except ValueError:
+    REPLAY_SAVE_DRAIN_TIMEOUT_SEC = 15.0
 DEAD_BATTLE_BLACKLIST_MAX = max(100, int(os.getenv("DEAD_BATTLE_BLACKLIST_MAX", "2000")))
 
 # Hard battle timeout (seconds). 0 disables forced battle termination.
@@ -378,6 +382,32 @@ def _track_replay_save_task(coro) -> asyncio.Task | None:
     _replay_save_tasks.add(task)
     task.add_done_callback(_replay_save_task_done)
     return task
+
+async def drain_replay_save_tasks(timeout_sec: float | None = None) -> dict[str, float | int]:
+    """Wait briefly for pending replay archive writes before runtime shutdown."""
+    pending_tasks = [task for task in list(_replay_save_tasks) if not task.done()]
+    if not pending_tasks:
+        return {"pending": 0, "completed": 0, "cancelled": 0, "timeout_sec": 0.0}
+
+    timeout = REPLAY_SAVE_DRAIN_TIMEOUT_SEC if timeout_sec is None else max(0.0, float(timeout_sec))
+    done, still_pending = await asyncio.wait(pending_tasks, timeout=timeout)
+
+    cancelled = 0
+    for task in still_pending:
+        task.cancel()
+        cancelled += 1
+    if still_pending:
+        await asyncio.gather(*still_pending, return_exceptions=True)
+
+    for task in done | still_pending:
+        _replay_save_tasks.discard(task)
+
+    result = {"pending": len(pending_tasks), "completed": len(done), "cancelled": cancelled, "timeout_sec": timeout}
+    if cancelled:
+        logger.warning("Cancelled %d replay save task(s) after %.1fs drain timeout", cancelled, timeout)
+    else:
+        logger.info("Drained %d replay save task(s) before shutdown", len(done))
+    return result
 
 
 def _parse_started_ts(value: str | None) -> datetime | None:
