@@ -943,6 +943,7 @@ def _proof_readiness(
     analysis: object = None,
     turns: object = None,
     next_action: object = "",
+    replay: object = None,
 ) -> dict[str, object]:
     required = ["battle_id", "proof", "analysis.nextAction"]
     if event_type == "battle_result" or _normalize_result(result):
@@ -958,6 +959,13 @@ def _proof_readiness(
         missing.append("analysis")
     if not _clean_line(next_action):
         missing.append("analysis.nextAction")
+    replay_status = ""
+    if isinstance(replay, dict):
+        replay_status = _clean_line(replay.get("status"))
+        if replay_status == "pending-public-upload":
+            missing.append("replay.url")
+        elif replay_status == "public" and not canonical_replay_url(replay.get("url")):
+            missing.append("replay.url")
     quality_gaps: list[str] = []
     if (event_type == "battle_result" or _normalize_result(result)) and _positive_turn_count(turns) is None:
         quality_gaps.append("turns")
@@ -968,7 +976,10 @@ def _proof_readiness(
         "classification": "battle-result-proof" if event_type == "battle_result" or _normalize_result(result) else "status-update-proof",
         "missingFields": missing,
         "qualityGaps": quality_gaps,
-        "blockers": [f"missing {field}" for field in missing],
+        "blockers": [
+            "replay pending public upload" if field == "replay.url" and replay_status == "pending-public-upload" else f"missing {field}"
+            for field in missing
+        ],
     }
 
 
@@ -1207,6 +1218,7 @@ def structured_report_fields(content: str, *, event_type: str = "") -> dict[str,
         analysis=summary,
         turns=turns,
         next_action=next_hermes_action,
+        replay=replay,
     )
 
     analysis = {
