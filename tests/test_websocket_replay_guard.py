@@ -44,9 +44,9 @@ def test_global_websocket_queue_drops_oldest_when_capacity_is_reached():
     asyncio.run(run())
 
 
-def test_pending_battle_buffer_keeps_request_when_bounded():
+def test_pending_battle_buffer_keeps_critical_messages_when_bounded():
     messages = [
-        ">battle-gen9ou-1\n|turn|1",
+        ">battle-gen9ou-1\n|chat|opponent|hello",
         ">battle-gen9ou-1\n|request|{\"active\":true}",
     ]
 
@@ -56,10 +56,40 @@ def test_pending_battle_buffer_keeps_request_when_bounded():
         limit=2,
     )
 
-    assert dropped == ">battle-gen9ou-1\n|turn|1"
+    assert dropped == ">battle-gen9ou-1\n|chat|opponent|hello"
     assert len(messages) == 2
     assert any("|request|" in message for message in messages)
     assert messages[-1].endswith("|turn|2")
+
+
+def test_pending_battle_buffer_rejects_noise_before_terminal_and_replay_messages():
+    win = ">battle-gen9ou-1\n|win|fouler"
+    replay = ">battle-gen9ou-1\n|queryresponse|savereplay|{\"id\":\"gen9ou-1\"}"
+    chat = ">battle-gen9ou-1\n|chat|opponent|hello"
+    messages = [win, replay]
+
+    dropped = _append_bounded_pending_message(messages, chat, limit=2)
+
+    assert dropped == chat
+    assert messages == [win, replay]
+
+
+def test_global_queue_eviction_preserves_ladder_rating_response():
+    async def run():
+        client = object.__new__(PSWebsocketClient)
+        client.global_queue = asyncio.Queue(maxsize=2)
+        client._dropped_global_messages = 0
+        ladder = "|queryresponse|ladder|{\"formatid\":\"gen9ou\",\"acre\":1249}"
+
+        await client._enqueue_global_message("|pm|noise|one")
+        await client._enqueue_global_message(ladder)
+        await client._enqueue_global_message("|pm|noise|two")
+
+        assert client._dropped_global_messages == 1
+        remaining = [client.global_queue.get_nowait(), client.global_queue.get_nowait()]
+        assert ladder in remaining
+
+    asyncio.run(run())
 
 
 def test_battle_queue_eviction_preserves_critical_messages():

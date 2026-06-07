@@ -27,3 +27,18 @@ Append replay or ladder delta if more context lands after posting.
     assert fields["proof_readiness"]["status"] == "proof-needs-fields"
     assert "replay.url" in fields["proof_readiness"]["missingFields"]
     assert "replay pending public upload" in fields["proof_readiness"]["blockers"]
+
+
+def test_replay_public_verified_false_overrides_public_status_claim():
+    content = """
+{"event_class":"PROOF","headline":"battle result win vs Pending","what_happened":"Battle battle-gen9ou-777-private ended win.","why_it_matters":"Replay upload is still pending.","proof":"replay=https://replay.pokemonshowdown.com/gen9ou-777","remaining":"wait for upload","battle_id":"battle-gen9ou-777-private","result":"win","replay_url":"https://replay.pokemonshowdown.com/gen9ou-777","replay_status":"public","replay_public_verified":false,"next_battle_action":"wait for upload"}
+""".strip()
+
+    fields = structured_report_fields(content, event_type="battle_result")
+
+    assert fields["proof"]["replay"] == {
+        "status": "pending-public-upload",
+        "id": "gen9ou-777",
+        "url": "",
+    }
+    assert fields["proof_readiness"]["readyForHermes"] is False

@@ -25,7 +25,11 @@ import uuid
 from pathlib import Path
 from typing import Optional, Callable
 
-from infrastructure.discord_reporting import format_payload_or_message, structured_report_fields
+from infrastructure.discord_reporting import (
+    format_payload_or_message,
+    public_replay_id_candidate,
+    structured_report_fields,
+)
 
 # Cross-platform file locking
 if sys.platform == "win32":
@@ -94,6 +98,28 @@ def _content_hash(event_type: str, channel: str, content: str) -> str:
     """MD5 hash for deduplication."""
     raw = f"{event_type}:{channel}:{content}"
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
+
+
+def _battle_result_idempotency_key(event_type: str, channel: str, structured_fields: dict) -> str:
+    """Stable semantic duplicate key for one battle result, independent of wording."""
+    if event_type != "battle_result":
+        return ""
+
+    candidates: list[object] = [structured_fields.get("battle_id")]
+    proof = structured_fields.get("proof") if isinstance(structured_fields.get("proof"), dict) else {}
+    replay = proof.get("replay") if isinstance(proof.get("replay"), dict) else {}
+    candidates.extend([replay.get("id"), replay.get("url")])
+    candidates.extend(proof.get("battleIds") or [])
+
+    for candidate in candidates:
+        replay_id = public_replay_id_candidate(candidate)
+        if replay_id:
+            return f"battle_result:{channel}:{replay_id}"
+
+    raw_battle_id = str(structured_fields.get("battle_id") or "").strip()
+    if raw_battle_id:
+        return f"battle_result:{channel}:{raw_battle_id.lower()}"
+    return ""
 
 
 def _read_queue_locked(f) -> list:
@@ -358,6 +384,7 @@ def queue_event(
     if not structured_fields.get("analysis"):
         structured_fields = structured_report_fields(content, event_type=event_type)
     content_md5 = _content_hash(event_type, channel, content)
+    idempotency_key = _battle_result_idempotency_key(event_type, channel, structured_fields)
     now = time.time()
 
     def _do_queue(f):
@@ -370,6 +397,13 @@ def queue_event(
                     and (now - ev["timestamp"]) < dedup_window_sec):
                 logger.info(f"Dedup rejected: {event_type} (hash={content_md5[:8]})")
                 return None
+            if (idempotency_key
+                    and ev.get("idempotency_key") == idempotency_key
+                    and ev["status"] in (STATUS_PENDING, STATUS_POSTED)):
+                logger.info(
+                    "Dedup rejected: %s (idempotency_key=%s)", event_type, idempotency_key
+                )
+                return None
 
         events = _archive_over_capacity_pending(events, now=now)
 
@@ -381,6 +415,7 @@ def queue_event(
             "channel": channel,
             "content": content,
             "content_hash": content_md5,
+            "idempotency_key": idempotency_key or None,
             "precondition_check": precondition_check_fn,
             "suppress_embeds": suppress_embeds,
             "status": STATUS_PENDING,

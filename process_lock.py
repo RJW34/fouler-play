@@ -21,6 +21,45 @@ import psutil
 LOCK_DIR = os.path.dirname(os.path.abspath(__file__))
 PID_FILE = os.path.join(LOCK_DIR, ".bot.pid")
 
+_PUBLIC_SHOWDOWN_WS_MARKERS = (
+    "play.pokemonshowdown.com",
+    "sim.smogon.com",
+    ".psim.us",
+)
+
+
+def _cmd_arg_value(cmdline: list[str], option: str) -> str | None:
+    for idx, part in enumerate(cmdline):
+        if part == option and idx + 1 < len(cmdline):
+            return str(cmdline[idx + 1])
+        prefix = option + "="
+        if str(part).startswith(prefix):
+            return str(part)[len(prefix):]
+    return None
+
+
+def _is_public_showdown_websocket(websocket_uri: object) -> bool:
+    uri = str(websocket_uri or "").strip().lower()
+    return any(marker in uri for marker in _PUBLIC_SHOWDOWN_WS_MARKERS)
+
+
+def _is_public_ladder_cmdline(cmdline_parts: list[str]) -> bool:
+    """Return True only for parsed public-ladder run.py commands.
+
+    Missing websocket URI stays conservative: if a same-repo run.py clearly says
+    search_ladder but lacks a parseable URI, treat it as public rather than
+    risking a duplicate live ladder bot. A local ws://127.0.0.1 eval arm is not
+    a public-ladder singleton participant.
+    """
+    lowered = [str(part).lower() for part in (cmdline_parts or [])]
+    if not any(part.endswith("run.py") or part == "run.py" for part in lowered):
+        return False
+    bot_mode = (_cmd_arg_value(lowered, "--bot-mode") or "").lower()
+    if bot_mode != "search_ladder" and "search_ladder" not in " ".join(lowered):
+        return False
+    websocket_uri = _cmd_arg_value(lowered, "--websocket-uri")
+    return True if websocket_uri is None else _is_public_showdown_websocket(websocket_uri)
+
 
 def _protected_process_ids() -> set[int]:
     """Return PIDs that belong to this launch chain and must not be reaped."""
@@ -37,8 +76,7 @@ def _is_stale_bot_process(proc, our_dir: str, protected_pids: set[int]) -> bool:
     """Check whether a process is a stale fouler bot from this repo."""
     if proc.pid in protected_pids:
         return False
-    cmdline = " ".join(proc.info.get("cmdline") or []).lower()
-    if "run.py" not in cmdline or "search_ladder" not in cmdline:
+    if not _is_public_ladder_cmdline(proc.info.get("cmdline") or []):
         return False
     cwd = proc.info.get("cwd", "")
     if not cwd:
@@ -63,10 +101,9 @@ def is_bot_process(pid: int) -> bool:
     except (psutil.AccessDenied, OSError):
         return True  # exists but uninspectable -> assume live bot; never dup
     try:
-        cmdline = " ".join(proc.cmdline()).lower()
         cwd = proc.cwd()
         cwd_matches = bool(cwd) and os.path.abspath(cwd) == os.path.abspath(LOCK_DIR)
-        return cwd_matches and "run.py" in cmdline and ("showdown" in cmdline or "search_ladder" in cmdline)
+        return cwd_matches and _is_public_ladder_cmdline(proc.cmdline())
     except psutil.NoSuchProcess:
         return False
     except (psutil.AccessDenied, OSError):

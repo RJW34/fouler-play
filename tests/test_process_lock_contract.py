@@ -27,7 +27,14 @@ def test_stale_reaper_protects_current_windows_venv_launch_chain():
     repo = os.path.abspath(process_lock.LOCK_DIR)
     proc = FakeProcess(
         42,
-        ["D:\\Projects\\fouler-play\\.venv\\Scripts\\python.exe", "run.py", "--bot-mode", "search_ladder"],
+        [
+            "D:\\Projects\\fouler-play\\.venv\\Scripts\\python.exe",
+            "run.py",
+            "--websocket-uri",
+            "wss://sim3.psim.us/showdown/websocket",
+            "--bot-mode",
+            "search_ladder",
+        ],
         repo,
     )
 
@@ -38,7 +45,14 @@ def test_stale_reaper_targets_only_same_repo_ladder_bots():
     repo = os.path.abspath(process_lock.LOCK_DIR)
     proc = FakeProcess(
         99,
-        ["python.exe", "run.py", "--bot-mode", "search_ladder"],
+        [
+            "python.exe",
+            "run.py",
+            "--websocket-uri",
+            "wss://sim3.psim.us/showdown/websocket",
+            "--bot-mode",
+            "search_ladder",
+        ],
         repo,
     )
 
@@ -49,8 +63,33 @@ def test_stale_reaper_ignores_other_fouler_repos():
     repo = os.path.abspath(process_lock.LOCK_DIR)
     proc = FakeProcess(
         99,
-        ["python.exe", "run.py", "--bot-mode", "search_ladder"],
+        [
+            "python.exe",
+            "run.py",
+            "--websocket-uri",
+            "wss://sim3.psim.us/showdown/websocket",
+            "--bot-mode",
+            "search_ladder",
+        ],
         "D:\\Other\\fouler-play",
+    )
+
+    assert not process_lock._is_stale_bot_process(proc, repo, {42, 43})
+
+
+def test_stale_reaper_ignores_local_eval_search_ladder_runtime():
+    repo = os.path.abspath(process_lock.LOCK_DIR)
+    proc = FakeProcess(
+        99,
+        [
+            "python.exe",
+            "run.py",
+            "--websocket-uri",
+            "ws://127.0.0.1:8000/showdown/websocket",
+            "--bot-mode",
+            "search_ladder",
+        ],
+        repo,
     )
 
     assert not process_lock._is_stale_bot_process(proc, repo, {42, 43})
@@ -59,7 +98,14 @@ def test_stale_reaper_ignores_other_fouler_repos():
 def test_lock_pid_file_rejects_run_py_from_other_repo(monkeypatch):
     class ProcessFromOtherRepo:
         def cmdline(self):
-            return ["python.exe", "run.py", "--bot-mode", "search_ladder"]
+            return [
+                "python.exe",
+                "run.py",
+                "--websocket-uri",
+                "wss://sim3.psim.us/showdown/websocket",
+                "--bot-mode",
+                "search_ladder",
+            ]
 
         def cwd(self):
             return "D:\\Other\\fouler-play"
@@ -74,7 +120,14 @@ def test_lock_pid_file_accepts_same_repo_run_py(monkeypatch):
 
     class ProcessFromThisRepo:
         def cmdline(self):
-            return ["python.exe", "run.py", "--bot-mode", "search_ladder"]
+            return [
+                "python.exe",
+                "run.py",
+                "--websocket-uri",
+                "wss://sim3.psim.us/showdown/websocket",
+                "--bot-mode",
+                "search_ladder",
+            ]
 
         def cwd(self):
             return repo
@@ -82,3 +135,25 @@ def test_lock_pid_file_accepts_same_repo_run_py(monkeypatch):
     monkeypatch.setattr(process_lock.psutil, "Process", lambda pid: ProcessFromThisRepo())
 
     assert process_lock.is_bot_process(1234) is True
+
+
+def test_lock_pid_file_rejects_same_repo_local_eval_runtime(monkeypatch):
+    repo = os.path.abspath(process_lock.LOCK_DIR)
+
+    class LocalEvalProcess:
+        def cmdline(self):
+            return [
+                "python.exe",
+                "run.py",
+                "--websocket-uri",
+                "ws://127.0.0.1:8000/showdown/websocket",
+                "--bot-mode",
+                "search_ladder",
+            ]
+
+        def cwd(self):
+            return repo
+
+    monkeypatch.setattr(process_lock.psutil, "Process", lambda pid: LocalEvalProcess())
+
+    assert process_lock.is_bot_process(1234) is False

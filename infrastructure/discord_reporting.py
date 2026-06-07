@@ -206,7 +206,11 @@ def _truthy_field(value: object) -> bool:
 
 def _payload_replay_is_public(data: dict) -> bool:
     status = _clean_line(data.get("replay_status")).lower()
-    return _truthy_field(data.get("replay_public_verified")) or status in {
+    if status in {"pending-public-upload", "pending", "absent", "missing"}:
+        return False
+    if "replay_public_verified" in data:
+        return _truthy_field(data.get("replay_public_verified"))
+    return status in {
         "public",
         "public-upload-verified",
         "verified",

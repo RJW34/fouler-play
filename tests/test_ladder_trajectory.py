@@ -15,6 +15,8 @@ def test_trajectory_from_battles_uses_authoritative_elo_after_fields():
     assert traj["current_elo"] == 1260
     assert traj["peak_elo"] == 1260
     assert traj["rated_games"] == 3
+    assert traj["authoritative_elo_games"] == 2
+    assert traj["fallback_rating_games"] == 1
     assert traj["remaining_to_target"] == 440
     assert traj["recent_slope_per_game"] == 30
     assert traj["games_to_target_at_rate"] == 15
@@ -43,3 +45,34 @@ def test_trajectory_loads_battle_stats_dict_shape(tmp_path):
 
     assert ladder_trajectory.trajectory(path)["current_elo"] == 1100
     assert ladder_trajectory.proof(path)["rated_games"] == 1
+    assert ladder_trajectory.proof(path)["fallback_rating_games"] == 1
+
+
+def test_rated_points_marks_authoritative_and_fallback_sources_separately():
+    points = ladder_trajectory.rated_points(
+        [
+            {"battle_id": "battle-gen9ou-1", "elo_after": 1200, "rating": 1100},
+            {"battle_id": "battle-gen9ou-2", "rating": 1210},
+        ]
+    )
+
+    assert points == [
+        {
+            "index": 0,
+            "battle_id": "battle-gen9ou-1",
+            "timestamp": "",
+            "result": "",
+            "elo": 1200.0,
+            "elo_source": "authoritative_elo",
+            "elo_delta": None,
+        },
+        {
+            "index": 1,
+            "battle_id": "battle-gen9ou-2",
+            "timestamp": "",
+            "result": "",
+            "elo": 1210.0,
+            "elo_source": "fallback_rating",
+            "elo_delta": None,
+        },
+    ]

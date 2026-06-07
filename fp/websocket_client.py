@@ -51,21 +51,33 @@ def _is_critical_battle_message(message):
     )
 
 
+def _capacity_drop_index(messages):
+    """Prefer dropping oldest non-critical protocol noise at queue capacity."""
+    return max(
+        range(len(messages)),
+        key=lambda idx: (not _is_critical_battle_message(messages[idx]), -idx),
+    )
+
+
 def _pending_message_drop_index(messages):
-    """Prefer dropping non-request battle updates from pre-registration buffers."""
-    for idx, message in enumerate(messages):
-        if "|request|" not in message:
-            return idx
+    """Prefer dropping non-critical battle updates from pre-registration buffers."""
+    if messages:
+        return _capacity_drop_index(messages)
     return 0
 
 
 def _append_bounded_pending_message(messages, message, limit=MAX_PENDING_BATTLE_MESSAGES):
     """Append a pending battle message, evicting old low-value entries at capacity."""
     dropped = None
-    while len(messages) >= limit:
-        drop_idx = _pending_message_drop_index(messages)
-        dropped = messages.pop(drop_idx)
-    messages.append(message)
+    limit = max(1, int(limit))
+    if len(messages) < limit:
+        messages.append(message)
+        return dropped
+
+    candidates = list(messages) + [message]
+    drop_idx = _pending_message_drop_index(candidates)
+    dropped = candidates.pop(drop_idx)
+    messages[:] = candidates
     return dropped
 
 
@@ -415,23 +427,15 @@ class PSWebsocketClient:
 
     async def _enqueue_global_message(self, msg):
         """Bound non-battle protocol buffering so disconnected consumers cannot leak memory."""
-        try:
-            self.global_queue.put_nowait(msg)
-            return
-        except asyncio.QueueFull:
-            pass
-        try:
-            self.global_queue.get_nowait()
+        dropped = _put_bounded_nowait(self.global_queue, msg, "global websocket")
+        if dropped is not None:
             self._dropped_global_messages = getattr(self, "_dropped_global_messages", 0) + 1
             if self._dropped_global_messages == 1 or self._dropped_global_messages % 100 == 0:
                 logger.warning(
-                    "Dropped %s stale global websocket message(s); queue maxsize=%s",
+                    "Dropped %s low-priority global websocket message(s); queue maxsize=%s",
                     self._dropped_global_messages,
                     self.global_queue.maxsize,
                 )
-        except asyncio.QueueEmpty:
-            pass
-        await self.global_queue.put(msg)
 
 
     async def register_battle(self, battle_tag):

@@ -27,12 +27,16 @@ def _as_float(value: Any) -> float | None:
     return out
 
 
-def _rating_after(row: dict) -> float | None:
-    for key in ("elo_after", "rating_after", "ratingAfter", "rating", "elo"):
+def _rating_after(row: dict) -> tuple[float | None, str]:
+    for key in ("elo_after",):
         value = _as_float(row.get(key))
         if value is not None:
-            return value
-    return None
+            return value, "authoritative_elo"
+    for key in ("rating_after", "ratingAfter", "rating", "elo"):
+        value = _as_float(row.get(key))
+        if value is not None:
+            return value, "fallback_rating"
+    return None, "missing"
 
 
 def _battle_id(row: dict) -> str:
@@ -66,7 +70,7 @@ def rated_points(battles: list[dict]) -> list[dict]:
 
     points: list[dict] = []
     for row in battles:
-        elo = _rating_after(row)
+        elo, source = _rating_after(row)
         if elo is None:
             continue
         points.append(
@@ -76,6 +80,7 @@ def rated_points(battles: list[dict]) -> list[dict]:
                 "timestamp": row.get("timestamp") or row.get("time") or "",
                 "result": row.get("result") or row.get("outcome") or "",
                 "elo": elo,
+                "elo_source": source,
                 "elo_delta": _as_float(row.get("elo_delta")),
             }
         )
@@ -109,6 +114,8 @@ def trajectory_from_battles(
             "remaining_to_target": None,
             "at_or_above_target": False,
             "recent_points": [],
+            "authoritative_elo_games": 0,
+            "fallback_rating_games": 0,
         }
 
     current = points[-1]["elo"]
@@ -130,6 +137,8 @@ def trajectory_from_battles(
         "games_to_target_at_rate": games_to_target,
         "progress_fraction_1000_to_target": progress,
         "rated_games": len(points),
+        "authoritative_elo_games": sum(1 for point in points if point.get("elo_source") == "authoritative_elo"),
+        "fallback_rating_games": sum(1 for point in points if point.get("elo_source") == "fallback_rating"),
         "target": target,
         "remaining_to_target": remaining,
         "at_or_above_target": current >= target,
@@ -163,5 +172,7 @@ def proof(path: Path = BATTLE_STATS_PATH, *, recent_window: int = RECENT_WINDOW)
         "current_elo": traj["current_elo"],
         "peak_elo": traj["peak_elo"],
         "recent_slope_per_game": traj["recent_slope_per_game"],
+        "authoritative_elo_games": traj["authoritative_elo_games"],
+        "fallback_rating_games": traj["fallback_rating_games"],
         "recent_points": traj["recent_points"],
     }

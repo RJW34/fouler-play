@@ -214,6 +214,46 @@ def test_archive_preserves_pending_replay_summary():
     assert archived["proofReadinessStatus"] == "proof-needs-fields"
     print("OK Test 6c: Pending replay archive proof PASSED")
 
+
+def test_battle_result_idempotency_uses_battle_id_beyond_hash_window():
+    _reset_test_queue()
+    payload1 = build_contract_payload(
+        "PROOF",
+        "battle result win vs DedupeA",
+        "Battle battle-gen9ou-909-private ended win against DedupeA.",
+        "First wording.",
+        "battle_id=battle-gen9ou-909-private; result=win",
+        "none",
+        source="unit-test",
+        battle_id="battle-gen9ou-909-private",
+        result="win",
+        opponent="DedupeA",
+        turns=12,
+        next_battle_action="none",
+    )
+    payload2 = build_contract_payload(
+        "PROOF",
+        "battle result win vs DedupeA replay arrived",
+        "Same battle now has a replay candidate.",
+        "Second wording should still dedupe.",
+        "replay=https://replay.pokemonshowdown.com/gen9ou-909",
+        "none",
+        source="unit-test",
+        battle_id="battle-gen9ou-909-private",
+        result="win",
+        opponent="DedupeA",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-909",
+        next_battle_action="none",
+    )
+
+    eid1 = queue_event("battle_result", "battles", payload1, dedup_window_sec=0)
+    eid2 = queue_event("battle_result", "battles", payload2, dedup_window_sec=0)
+
+    assert eid1 is not None
+    assert eid2 is None
+    assert read_queue()[0]["idempotency_key"] == "battle_result:battles:gen9ou-909"
+
+
 def test_expiry():
     """Test 7: Event expiry."""
     _reset_test_queue()
