@@ -38,6 +38,7 @@ param(
     # scoring) + fast HO eval teams so mirror matches terminate decisively.
     # Default ON for a viable gate; -MaxTurns 0 restores the old behaviour.
     [int]$MaxTurns = 25,
+    [int]$PerBattleTimeout = 180,
     [string]$TeamsFile = "teams/eval-teams.list",
     [string]$ShowdownLock = ""
 )
@@ -230,7 +231,8 @@ try {
         "--label", $Label,
         "--showdown-port", "$Port",
         "--search-time-ms", "$SearchMs",
-        "--turn-cap", "$MaxTurns"
+        "--turn-cap", "$MaxTurns",
+        "--per-battle-timeout", "$PerBattleTimeout"
     )
     if ($OldCheckout -ne "") {
         $spArgs += @("--old-checkout", $OldCheckout, "--new-checkout", $Repo)

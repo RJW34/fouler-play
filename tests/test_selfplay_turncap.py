@@ -30,7 +30,8 @@ def test_default_teams_prefer_fast_non_stall_set():
     args = argparse.Namespace(teams=None, teams_from=None)
     teams = sp._load_teams(args)
     assert teams, "fast default team set must be non-empty"
-    assert "gen9/ou/fat-team-1-stall" not in teams
+    assert all("eval-ho" in team for team in teams)
+    assert not any("fat-team" in team for team in teams)
 
 
 def test_default_teams_file_exists_on_disk():
@@ -42,6 +43,7 @@ def test_burst_runner_forwards_turn_cap_to_harness_and_env():
 
     assert "FOULER_BATTLE_TURN_CAP" in text
     assert "--turn-cap" in text
+    assert "--per-battle-timeout" in text
     assert "FOULER_MAX_TURNS" not in text
 
 
