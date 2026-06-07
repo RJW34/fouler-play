@@ -102,3 +102,25 @@ Server
 # HERMES/DEKU generated analysis runtime state
 infrastructure/linux/.last_analysis_count
 replay_analysis/team_report.json
+
+# Codex/HERMES runtime residue
+.codex_backups/
+*.bak
+*.bak-*
+*.predeploybak
+*.predeploy-bak
+*.pre-gatefix-*
+*.pre-turncap-port
+*.cwbak-*
+*.utf8branch-bak
+*.utf8fix-bak
+*.singleton-bak
+*.live-bak-*
+devstream/backups/
+devstream/truth/*.json
+devstream/truth/*.md
+devstream/truth/stale-active-battles-backups/
+eval_results/
+infrastructure/deploy_log.json
+replay_analysis/evidence_traces/
+replay_analysis/autoresearch_latest.json
