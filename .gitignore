@@ -129,3 +129,6 @@ replay_analysis/autoresearch_latest.json
 *.pre-locktbypass
 *.skipimprove-bak
 *.prefillbak
+
+battle_stats.json
+fp/data/movepool_data.json
