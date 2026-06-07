@@ -84,7 +84,7 @@ if BOT_DISPLAY_NAME:
 # Import turn reviewer for turn-by-turn loss analysis from turn 1 onward.
 from replay_analysis.turn_review import TurnReviewer
 from infrastructure.event_queue_lib import queue_event
-from infrastructure.discord_reporting import build_contract_payload
+from infrastructure.discord_reporting import build_contract_payload, public_replay_id_candidate
 update_daily_stats = __import__(
     "streaming.state_store", fromlist=["update_daily_stats"]
 ).update_daily_stats
@@ -207,7 +207,7 @@ class BotMonitor:
         self._posted_replay_order = deque()
         self.num_workers = 0
         # Batch reporting state
-        self.batch_results = []  # list of (opponent, result, replay_url)
+        self.batch_results = []  # list of (opponent, result, replay_url, battle_id)
         self.batch_losses = []  # loss replay URLs for batch analysis
         self.batch_wins_count = 0
         self.batch_losses_count = 0
@@ -482,7 +482,8 @@ class BotMonitor:
         msg += f"**Overall Record:** {self.wins}W - {self.losses}L\n\n"
 
         # List results â€” suppress Discord embeds on non-loss replays with <url>
-        for opp, result, replay in self.batch_results:
+        for item in self.batch_results:
+            opp, result, replay, battle_id = self._batch_result_parts(item)
             if result == "won":
                 icon = "W"
             elif result == "lost":
@@ -497,7 +498,8 @@ class BotMonitor:
                     # Wins/ties get suppressed embed (angle brackets)
                     replay_link = f" â€” [replay](<{replay}>)"
             else:
-                replay_link = ""
+                replay_id = public_replay_id_candidate(battle_id)
+                replay_link = f" (replay pending public upload {replay_id})" if replay_id else ""
             msg += f"{icon} vs {opp}{replay_link}\n"
 
         # Loss analysis summary
@@ -537,9 +539,26 @@ class BotMonitor:
         self.batch_wins_count = 0
         self.batch_losses_count = 0
 
-    def record_batch_result(self, opponent, result, replay_url=None):
+    @staticmethod
+    def _batch_result_parts(item):
+        if isinstance(item, dict):
+            return (
+                item.get("opponent", ""),
+                item.get("result", ""),
+                item.get("replay_url") or item.get("replay") or item.get("url"),
+                item.get("battle_id") or item.get("battle_tag") or item.get("battle"),
+            )
+        fields = list(item) if isinstance(item, (list, tuple)) else [item]
+        return (
+            fields[0] if len(fields) > 0 else "",
+            fields[1] if len(fields) > 1 else "",
+            fields[2] if len(fields) > 2 else None,
+            fields[3] if len(fields) > 3 else None,
+        )
+
+    def record_batch_result(self, opponent, result, replay_url=None, battle_id=None):
         """Add a game result to the current batch."""
-        self.batch_results.append((opponent, result, replay_url))
+        self.batch_results.append((opponent, result, replay_url, battle_id))
         while len(self.batch_results) > BATCH_RESULTS_MAX:
             self.batch_results.pop(0)
         if result == "won":
@@ -552,8 +571,8 @@ class BotMonitor:
                     self.batch_losses = self.batch_losses[-BATCH_LOSSES_MAX:]
 
         # Keep counters aligned with bounded buffers.
-        self.batch_wins_count = sum(1 for _, r, _ in self.batch_results if r == "won")
-        self.batch_losses_count = sum(1 for _, r, _ in self.batch_results if r == "lost")
+        self.batch_wins_count = sum(1 for item in self.batch_results if self._batch_result_parts(item)[1] == "won")
+        self.batch_losses_count = sum(1 for item in self.batch_results if self._batch_result_parts(item)[1] == "lost")
 
     async def analyze_loss_async(self, replay_url, battle_state):
         """Analyze a loss replay in the background from turn 1 onward."""
@@ -828,7 +847,7 @@ class BotMonitor:
                     self._track_finished_battle(battle_id, opponent, result_key)
                     del self.active_battles[battle_id]
                     # Record for batch report (replay URL added later when detected)
-                    self.record_batch_result(opponent, result_key)
+                    self.record_batch_result(opponent, result_key, battle_id=battle_id)
 
                 else:
                     # Couldn't associate with a battle - still record it
@@ -893,9 +912,11 @@ class BotMonitor:
 
                         # Update the batch entry with the replay URL
                         for i in range(len(self.batch_results) - 1, -1, -1):
-                            opp, res, url = self.batch_results[i]
-                            if opp == opponent and res == result and url is None:
-                                self.batch_results[i] = (opp, res, replay_url)
+                            opp, res, url, recorded_battle_id = self._batch_result_parts(self.batch_results[i])
+                            same_battle = bool(recorded_battle_id and battle_id and recorded_battle_id == battle_id)
+                            same_result = opp == opponent and res == result
+                            if (same_battle or same_result) and url is None:
+                                self.batch_results[i] = (opp, res, replay_url, recorded_battle_id or battle_id)
                                 break
 
                         # Track loss replays for batch analysis

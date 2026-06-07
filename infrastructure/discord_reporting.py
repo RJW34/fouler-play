@@ -429,6 +429,47 @@ def _replay_from_batch_item(item: object) -> str:
     return ""
 
 
+def _battle_id_from_batch_item(item: object) -> str:
+    if isinstance(item, dict):
+        return _clean_line(item.get("battle_id") or item.get("battle_tag") or item.get("battle"))
+    if isinstance(item, (list, tuple)) and len(item) > 3:
+        return _clean_line(item[3])
+    return ""
+
+
+def _batch_public_replay_url(item: object) -> str:
+    return canonical_replay_url(_replay_from_batch_item(item))
+
+
+def _batch_pending_replay_id(item: object) -> str:
+    replay = _replay_from_batch_item(item)
+    if replay and not canonical_replay_url(replay):
+        pending = public_replay_id_candidate(replay)
+        if pending:
+            return pending
+    if not replay:
+        battle_id = _battle_id_from_batch_item(item)
+        pending = public_replay_id_candidate(battle_id)
+        if pending:
+            return pending
+    return ""
+
+
+def _first_batch_replay_summary(batch_results: list) -> dict[str, object]:
+    for item in batch_results:
+        public_url = _batch_public_replay_url(item)
+        if public_url:
+            return {
+                "status": "public",
+                "id": public_url.rstrip("/").rsplit("/", 1)[-1],
+                "url": public_url,
+            }
+        pending_id = _batch_pending_replay_id(item)
+        if pending_id:
+            return {"status": "pending-public-upload", "id": pending_id, "url": ""}
+    return {"status": "absent", "id": "", "url": ""}
+
+
 def _top_loss_pattern(batch_results: list) -> str:
     losses: dict[str, int] = {}
     for item in batch_results:
@@ -445,15 +486,20 @@ def _top_loss_pattern(batch_results: list) -> str:
 
 def _batch_coverage_line(batch_results: list, analysis_count: object) -> str:
     total = len(batch_results)
-    public_replay_count = sum(1 for item in batch_results if canonical_replay_url(_replay_from_batch_item(item)))
+    public_replay_count = sum(1 for item in batch_results if _batch_public_replay_url(item))
+    pending_replay_count = sum(1 for item in batch_results if _batch_pending_replay_id(item))
     unresolved_count = sum(
         1
         for item in batch_results
-        if _replay_from_batch_item(item) and not canonical_replay_url(_replay_from_batch_item(item))
+        if _replay_from_batch_item(item)
+        and not _batch_public_replay_url(item)
+        and not _batch_pending_replay_id(item)
     )
     pending = _safe_int(analysis_count) or 0
     reviewed = max(0, min(public_replay_count, public_replay_count - pending))
     parts = [f"public replays {public_replay_count}/{total}"]
+    if pending_replay_count:
+        parts.append(f"pending public replays {pending_replay_count}")
     if unresolved_count:
         parts.append(f"unresolved replay refs {unresolved_count}")
     parts.extend([f"loss reviews queued {pending}", f"reviewed {reviewed}"])
@@ -548,15 +594,19 @@ def _proof_from_payload(data: dict) -> str:
     if isinstance(batch_results, list) and batch_results:
         wins, losses, total = _record_from_batch_results(batch_results)
         add(f"batch {wins}-{losses}")
-        replay_count = sum(1 for item in batch_results if canonical_replay_url(_replay_from_batch_item(item)))
+        replay_count = sum(1 for item in batch_results if _batch_public_replay_url(item))
         if replay_count:
             add(f"{replay_count} replay link(s)")
         add(f"coverage {_batch_coverage_line(batch_results, data.get('analysis_count'))}")
         for item in batch_results:
-            replay_url = _replay_from_batch_item(item)
+            replay_url = _batch_public_replay_url(item)
             if replay_url:
                 for bit in _extract_replay_bits(replay_url):
                     add(bit)
+            else:
+                replay_id = _batch_pending_replay_id(item)
+                if replay_id:
+                    add(f"replay pending public upload {replay_id}")
 
     analysis_count = data.get("analysis_count")
     if analysis_count not in (None, ""):
@@ -1103,6 +1153,9 @@ def redacted_report_summary(content: str) -> dict[str, object]:
         replay = _first_replay_summary(
             data.get("replay_url"), data.get("replay"), data.get("battle_id"), public_verified=public_verified
         )
+        batch_results = data.get("batch_results")
+        if replay.get("status") == "absent" and isinstance(batch_results, list):
+            replay = _first_batch_replay_summary(batch_results)
         ops_signal = "operational-loss" if _detect_operational_flag(data) else ("loss-review" if result == "loss" else "routine")
         why, changed = _safe_report_text(_why_from_payload(data), 240)
         secret_redacted = secret_redacted or changed

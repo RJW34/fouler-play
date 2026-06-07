@@ -1205,6 +1205,33 @@ def test_payload_formatter_summarizes_batch_payload_without_blob_dump():
     assert "vs A https://replay.pokemonshowdown.com/battle-gen9ou-111" not in formatted
 
 
+def test_payload_formatter_preserves_pending_batch_replay_reference():
+    payload = build_contract_payload(
+        "PROOF",
+        "batch complete 1-1",
+        "bot_monitor closed a live batch with 2 battle(s) and queued the concise Discord summary.",
+        "Routine batch updates should show replay coverage without pretending pending uploads are public.",
+        "W vs WaitingReplay (replay pending public upload gen9ou-333)",
+        "Append replay URLs after public upload catches up.",
+        source="bot_monitor.batch_complete",
+        batch_results=[
+            ("WaitingReplay", "won", None, "battle-gen9ou-333-privatehash"),
+            ("LinkedLoss", "lost", "https://replay.pokemonshowdown.com/battle-gen9ou-444"),
+        ],
+        analysis_count=1,
+    )
+
+    formatted = format_payload_or_message(payload)
+    fields = structured_report_fields(payload, event_type="batch_complete")
+
+    assert "public replays 1/2; pending public replays 1; loss reviews queued 1; reviewed 0" in formatted
+    assert "- replay pending public upload `gen9ou-333`" in formatted
+    assert "- replay `gen9ou-444`: https://replay.pokemonshowdown.com/gen9ou-444" in formatted
+    assert "https://replay.pokemonshowdown.com/gen9ou-333" not in formatted
+    assert fields["proof"]["replay"]["status"] == "pending-public-upload"
+    assert fields["proof"]["replay"]["id"] == "gen9ou-333"
+
+
 def test_payload_formatter_summarizes_pipeline_report_with_lead_issue_only():
     payload = build_contract_payload(
         "PROOF",
