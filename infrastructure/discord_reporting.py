@@ -159,6 +159,36 @@ def canonical_replay_url(value: object) -> str:
     return f"https://replay.pokemonshowdown.com/{replay_id}" if replay_id else ""
 
 
+def replay_handoff_fields(
+    *,
+    battle_tag: object = None,
+    replay_url: object = None,
+    verified_replay_url: object = None,
+) -> dict[str, object]:
+    """Preserve replay evidence even when public upload verification lags."""
+    replay_id = public_replay_id_candidate(verified_replay_url or replay_url or battle_tag)
+    candidate_url = (
+        _clean_line(verified_replay_url)
+        or _clean_line(replay_url)
+        or (f"https://replay.pokemonshowdown.com/{replay_id}" if replay_id else "")
+    )
+    verified = bool(_clean_line(verified_replay_url))
+    if verified:
+        status = "public"
+    elif replay_id or candidate_url:
+        status = "pending-public-upload"
+    else:
+        status = "absent"
+    return {
+        "replay_id": replay_id,
+        "replay_url": candidate_url or None,
+        "replay_status": status,
+        "replay_public_verified": verified,
+        "raw_replay_url": _clean_line(replay_url) or None,
+        "verified_replay_url": _clean_line(verified_replay_url) or None,
+    }
+
+
 def _replay_pending_bit(value: object) -> str:
     replay_id = public_replay_id_candidate(value)
     return f"replay pending public upload {replay_id}" if replay_id else ""

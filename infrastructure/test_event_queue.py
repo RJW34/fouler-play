@@ -148,7 +148,7 @@ def test_expiry():
     expired = expire_old_events(600)
     assert expired == 1
     events = read_queue()
-    assert events[0]["status"] == "expired"
+    assert events == [], "Expired events should be archived and compacted out of the live queue"
     print("✅ Test 7: Expiry PASSED")
 
 def test_stats():

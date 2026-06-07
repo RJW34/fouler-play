@@ -412,6 +412,7 @@ def expire_old_events(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> int:
             max_age_sec=max_age_sec,
             reason="pending-discord-event-expired-before-transport",
         )
+        stale_event_ids = {id(ev) for ev in stale_events}
         for ev in stale_events:
             if ev["status"] == STATUS_PENDING:
                 ev["status"] = STATUS_EXPIRED
@@ -423,7 +424,16 @@ def expire_old_events(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> int:
                     _event_id_hash(ev.get("id")),
                     now - _event_timestamp(ev, now),
                 )
-        _write_queue_locked(f, events)
+        compacted_events = [
+            ev
+            for ev in events
+            if not (
+                isinstance(ev, dict)
+                and id(ev) in stale_event_ids
+                and ev.get("status") == STATUS_EXPIRED
+            )
+        ]
+        _write_queue_locked(f, compacted_events)
         return len(stale_events)
 
     return _with_lock(_do_expire)

@@ -140,9 +140,23 @@ from infrastructure.discord_reporting import (
     build_contract_payload,
     format_elo_delta,
     public_replay_id_candidate,
+    replay_handoff_fields,
 )
 
 logger = logging.getLogger(__name__)
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def battle_stats_file() -> Path:
+    configured = os.getenv("BATTLE_STATS_FILE")
+    if configured:
+        path = Path(configured).expanduser()
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        return path
+    return PROJECT_ROOT / "battle_stats.json"
 
 # Blacklist for dead battles (forcibly terminated due to timeout)
 # Prevents re-claiming the same stuck battle immediately after termination
@@ -712,8 +726,8 @@ async def _post_battle_to_discord(
     replay_id = public_replay_id_candidate(replay_ref)
     if replay_id and await _replay_exists(replay_id):
         replay_line = f"🔗 <https://replay.pokemonshowdown.com/{replay_id}>"
-    elif replay_url:
-        replay_line = "🔗 Replay pending public upload"
+    elif replay_id:
+        replay_line = f"🔗 <https://replay.pokemonshowdown.com/{replay_id}> (pending public upload)"
 
     # Assemble message
     lines = [line1]
@@ -2719,6 +2733,13 @@ async def pokemon_battle(
                 _discord_replay_id = public_replay_id_candidate(replay_url or battle_tag)
                 if _discord_replay_id and await _replay_exists(_discord_replay_id):
                     _discord_replay_url = f"https://replay.pokemonshowdown.com/{_discord_replay_id}"
+                _replay_handoff = replay_handoff_fields(
+                    battle_tag=battle_tag,
+                    replay_url=replay_url,
+                    verified_replay_url=_discord_replay_url,
+                )
+                _queue_replay_url = _replay_handoff.get("replay_url")
+                _queue_replay_status = str(_replay_handoff.get("replay_status") or "absent")
 
                 elo_after = await _post_battle_to_discord(
                     battle_tag=battle_tag,
@@ -2861,8 +2882,7 @@ async def pokemon_battle(
                     _turn_count_ev = getattr(battle, "turn", None)
                     _recent_summary = ""
                     try:
-                        from pathlib import Path as _Path
-                        _stats_path = _Path(__file__).resolve().parent.parent / "battle_stats.json"
+                        _stats_path = battle_stats_file()
                         if _stats_path.exists():
                             _stats_data = json.loads(_stats_path.read_text(encoding="utf-8"))
                             _recent_battles = _stats_data.get("battles", [])[-5:]
@@ -2892,7 +2912,6 @@ async def pokemon_battle(
                     elif _result_str == "win":
                         _next_action = "Keep watching whether this line keeps converting in the next few games."
 
-                    _queued_replay_url = _discord_replay_url or replay_url
                     queue_event(
                         "battle_result",
                         "battles",
@@ -2901,7 +2920,7 @@ async def pokemon_battle(
                             f"battle result {_result_str} vs {opponent_name}",
                             f"Battle {battle_tag} ended {_result_str} against {opponent_name}.",
                             "Operator-facing battle posts should immediately show whether the bot is climbing through repeatable play, variance, or an operational failure.",
-                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={_queued_replay_url or ''}",
+                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={_queue_replay_url or ''}; replay_status={_queue_replay_status}",
                             "Append replay or ladder delta if more context lands after posting.",
                             source="fp.run_battle",
                             battle_id=battle_tag,
@@ -2909,7 +2928,11 @@ async def pokemon_battle(
                             team_file=_team_name_ev or "unknown",
                             opponent=opponent_name,
                             turns=_turn_count_ev,
-                            replay_url=_queued_replay_url,
+                            replay_url=_queue_replay_url,
+                            replay_id=_replay_handoff.get("replay_id"),
+                            replay_status=_queue_replay_status,
+                            replay_public_verified=_replay_handoff.get("replay_public_verified"),
+                            raw_replay_url=_replay_handoff.get("raw_replay_url"),
                             elo_before=_elo_before_val,
                             elo_after=elo_after if 'elo_after' in locals() else None,
                             recent_record=_recent_summary,
