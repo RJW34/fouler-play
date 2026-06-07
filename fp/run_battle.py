@@ -386,7 +386,7 @@ def _normalize_username(name: str) -> str:
 # We match the "rating: OLD -> NEW" part here, then attribute it to a player by
 # inspecting the text that precedes the match (see parse_rating_transition).
 _RATING_TRANSITION_RE = re.compile(
-    r"rating:\s*(\d+)\s*(?:&rarr;|&#8594;|â†’|->|&gt;)\s*(?:<[^>]+>\s*)*(\d+)",
+    r"rating:\s*(\d+)\s*(?:&rarr;|&#8594;|\u2192|â†’|->|&gt;)\s*(?:<[^>]+>\s*)*(\d+)",
     re.IGNORECASE,
 )
 

@@ -37,11 +37,15 @@ def _utcnow() -> str:
 def _pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
-    if psutil is not None:
+    if psutil is not None and hasattr(psutil, "pid_exists") and hasattr(psutil, "Process"):
         try:
-            psutil.Process(pid)
-            return True
+            if not psutil.pid_exists(pid):
+                return False
+            proc = psutil.Process(pid)
+            return proc.is_running() and proc.status() != getattr(psutil, "STATUS_ZOMBIE", "zombie")
         except psutil.NoSuchProcess:
+            return False
+        except psutil.ZombieProcess:
             return False
         except (psutil.AccessDenied, OSError):
             return True
