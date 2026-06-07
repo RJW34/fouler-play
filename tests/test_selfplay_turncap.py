@@ -43,3 +43,13 @@ def test_burst_runner_forwards_turn_cap_to_harness_and_env():
     assert "FOULER_BATTLE_TURN_CAP" in text
     assert "--turn-cap" in text
     assert "FOULER_MAX_TURNS" not in text
+
+
+def test_burst_runner_participates_in_runtime_lane_lease():
+    text = (ROOT / "infrastructure" / "run_selfplay_burst.ps1").read_text(encoding="utf-8")
+
+    assert "fouler-runtime-lane.lease.json" in text
+    assert "New-RuntimeLease" in text
+    assert "Remove-OwnedRuntimeLease" in text
+    assert "[System.IO.FileMode]::CreateNew" in text
+    assert "FOULER_RUNTIME_LEASE_TOKEN" in text

@@ -89,6 +89,103 @@ function Test-ShowdownSourceLock {
     Write-Host "[burst] Showdown source lock verified: $actualHead ($Showdown)"
 }
 
+function Test-LivePid {
+    param([int]$ProcessId)
+    if ($ProcessId -le 0) { return $false }
+    return [bool](Get-CimInstance Win32_Process -Filter "ProcessId=$ProcessId" -ErrorAction SilentlyContinue)
+}
+
+function Read-RuntimeLease {
+    param([string]$RuntimeLease)
+    if (-not (Test-Path -LiteralPath $RuntimeLease)) { return $null }
+    try {
+        return (Get-Content -LiteralPath $RuntimeLease -Raw -Encoding UTF8 | ConvertFrom-Json)
+    } catch {
+        return $null
+    }
+}
+
+function Test-RuntimeLeaseAvailable {
+    param(
+        [string]$RuntimeLease,
+        [string]$LeaseToken
+    )
+
+    $lease = Read-RuntimeLease -RuntimeLease $RuntimeLease
+    if (-not $lease) {
+        if (Test-Path -LiteralPath $RuntimeLease) {
+            Remove-Item -LiteralPath $RuntimeLease -Force -ErrorAction SilentlyContinue
+        }
+        return $true
+    }
+    if ($env:FOULER_RUNTIME_LEASE_TOKEN -and $lease.token -eq $env:FOULER_RUNTIME_LEASE_TOKEN -and (Test-LivePid ([int]$lease.pid))) {
+        return $true
+    }
+    if (-not (Test-LivePid ([int]$lease.pid))) {
+        Remove-Item -LiteralPath $RuntimeLease -Force -ErrorAction SilentlyContinue
+        return $true
+    }
+    return $false
+}
+
+function New-RuntimeLease {
+    param(
+        [string]$Repo,
+        [string]$Label
+    )
+
+    $leaseDir = Join-Path $Repo ".pids"
+    $runtimeLease = Join-Path $leaseDir "fouler-runtime-lane.lease.json"
+    New-Item -ItemType Directory -Force -Path $leaseDir | Out-Null
+    $leaseToken = [guid]::NewGuid().ToString("N")
+    if (-not (Test-RuntimeLeaseAvailable -RuntimeLease $runtimeLease -LeaseToken $leaseToken)) {
+        throw "Fouler runtime lane lease is busy: $runtimeLease"
+    }
+
+    $leasePayload = [ordered]@{
+        schemaVersion = "fouler-play-runtime-lease/v1"
+        name = "fouler-runtime-lane"
+        holder = "run_selfplay_burst"
+        pid = $PID
+        token = $leaseToken
+        cwd = $Repo
+        argv = @("infrastructure\run_selfplay_burst.ps1", "--label", $Label)
+        createdAt = (Get-Date).ToUniversalTime().ToString("o")
+    }
+
+    try {
+        $stream = [System.IO.File]::Open($runtimeLease, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)
+        try {
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes(($leasePayload | ConvertTo-Json -Depth 5) + "`n")
+            $stream.Write($bytes, 0, $bytes.Length)
+        } finally {
+            $stream.Dispose()
+        }
+    } catch {
+        if (-not (Test-RuntimeLeaseAvailable -RuntimeLease $runtimeLease -LeaseToken $leaseToken)) {
+            throw "Fouler runtime lane lease is busy after create race: $runtimeLease"
+        }
+    }
+
+    $env:FOULER_RUNTIME_LEASE_TOKEN = $leaseToken
+    $env:FOULER_RUNTIME_LEASE_NAME = "fouler-runtime-lane"
+    Write-Host "[burst] acquired runtime lease $runtimeLease"
+    return [pscustomobject]@{ Path = $runtimeLease; Token = $leaseToken }
+}
+
+function Remove-OwnedRuntimeLease {
+    param($Lease)
+    if (-not $Lease) { return }
+
+    $current = Read-RuntimeLease -RuntimeLease $Lease.Path
+    if ($current -and $current.token -eq $Lease.Token -and [int]$current.pid -eq $PID) {
+        Remove-Item -LiteralPath $Lease.Path -Force -ErrorAction SilentlyContinue
+        Write-Host "[burst] released runtime lease $($Lease.Path)"
+    }
+    Remove-Item Env:\FOULER_RUNTIME_LEASE_TOKEN -ErrorAction SilentlyContinue
+    Remove-Item Env:\FOULER_RUNTIME_LEASE_NAME -ErrorAction SilentlyContinue
+}
+
 # --- 1. RAM-headroom guard ---------------------------------------------------
 $os = Get-CimInstance Win32_OperatingSystem
 $freeGB = [math]::Round($os.FreePhysicalMemory / 1MB, 2)
@@ -104,15 +201,19 @@ Test-ShowdownSourceLock -Repo $Repo -Showdown $Showdown -LockPath $ShowdownLock
 # --- 2. Start throwaway showdown on a spare port -----------------------------
 $py = Join-Path $Repo ".venv\Scripts\python.exe"
 $sdLog = Join-Path $Repo "eval_results\selfplay\showdown-$Port.log"
+$lease = $null
+$sd = $null
 New-Item -ItemType Directory -Force (Split-Path $sdLog) | Out-Null
-Write-Host "[burst] starting throwaway showdown on :$Port ..."
-$sd = Start-Process -FilePath "node" `
-    -ArgumentList @((Join-Path $Showdown "pokemon-showdown"), "start", "--no-security", "$Port") `
-    -WorkingDirectory $Showdown -PassThru -RedirectStandardOutput $sdLog `
-    -RedirectStandardError "$sdLog.err" -WindowStyle Hidden
-Start-Sleep -Seconds 20
 
 try {
+    $lease = New-RuntimeLease -Repo $Repo -Label $Label
+    Write-Host "[burst] starting throwaway showdown on :$Port ..."
+    $sd = Start-Process -FilePath "node" `
+        -ArgumentList @((Join-Path $Showdown "pokemon-showdown"), "start", "--no-security", "$Port") `
+        -WorkingDirectory $Showdown -PassThru -RedirectStandardOutput $sdLog `
+        -RedirectStandardError "$sdLog.err" -WindowStyle Hidden
+    Start-Sleep -Seconds 20
+
     # --- 3. Run the self-play eval -------------------------------------------
     # FOULER-EVAL-TURNCAP: forward the eval-only turn cap to both engine arms.
     if ($MaxTurns -gt 0) {
@@ -147,14 +248,17 @@ try {
     Write-Host "[burst] selfplay_eval exit=$code"
 }
 finally {
-    # --- 4. Stop the throwaway server ----------------------------------------
+    # --- 4. Stop the throwaway server and release the runtime lane ------------
     if ($sd -and -not $sd.HasExited) {
         Write-Host "[burst] stopping throwaway showdown (pid $($sd.Id)) ..."
         Stop-Process -Id $sd.Id -Force -ErrorAction SilentlyContinue
     }
-    Get-Process node -ErrorAction SilentlyContinue |
-        Where-Object { $_.Id -eq $sd.Id } |
-        Stop-Process -Force -ErrorAction SilentlyContinue
+    if ($sd) {
+        Get-Process node -ErrorAction SilentlyContinue |
+            Where-Object { $_.Id -eq $sd.Id } |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+    Remove-OwnedRuntimeLease -Lease $lease
 }
 
 $verdict = Join-Path $Repo "eval_results\selfplay\$Label.json"
