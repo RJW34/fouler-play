@@ -32,6 +32,9 @@ OBS_HTTP = os.environ.get("FOULER_JIGGLYPUFF_OBS_HTTP", DEFAULT_OBS_HTTP).rstrip
 WORKER_HTTP = os.environ.get("FOULER_JIGGLYPUFF_WORKER_HTTP", DEFAULT_WORKER_HTTP).rstrip("/")
 WORKER_SECRET_ENV = Path.home() / ".config" / "deku-devstream" / "secrets" / "jigglypuff-worker.env"
 
+DEFAULT_RUN_COUNT = 10
+DEFAULT_SUPERVISOR_MAX_CYCLES = 1
+
 
 def endpoint_candidates(primary: str, fallback_env: str, defaults: list[str]) -> list[str]:
     raw = [primary, *fallback_env.replace(";", ",").split(","), *defaults]
@@ -230,10 +233,12 @@ def resident_command(
     action: str,
     *,
     execute: bool = False,
-    run_count: int = 1000000,
+    run_count: int = DEFAULT_RUN_COUNT,
     max_concurrent_battles: int = 3,
     obs_only: bool = False,
     enable_auto_improve: bool = False,
+    max_cycles: int = DEFAULT_SUPERVISOR_MAX_CYCLES,
+    allow_unbounded_supervisor: bool = False,
     timeout: int = 90,
 ) -> dict[str, Any]:
     if action == "status":
@@ -245,6 +250,8 @@ def resident_command(
             "maxConcurrentBattles": max_concurrent_battles,
             "obsOnly": obs_only,
             "autoImprove": enable_auto_improve,
+            "maxCycles": max_cycles,
+            "allowUnboundedSupervisor": allow_unbounded_supervisor,
         })
     return worker_request(
         f"/fouler/{action}",
@@ -259,10 +266,12 @@ def remote_command(
     action: str,
     *,
     execute: bool = False,
-    run_count: int = 1000000,
+    run_count: int = DEFAULT_RUN_COUNT,
     max_concurrent_battles: int = 3,
     obs_only: bool = False,
     enable_auto_improve: bool = False,
+    max_cycles: int = DEFAULT_SUPERVISOR_MAX_CYCLES,
+    allow_unbounded_supervisor: bool = False,
     timeout: int = 90,
 ) -> dict[str, Any]:
     resident = resident_command(
@@ -272,6 +281,8 @@ def remote_command(
         max_concurrent_battles=max_concurrent_battles,
         obs_only=obs_only,
         enable_auto_improve=enable_auto_improve,
+        max_cycles=max_cycles,
+        allow_unbounded_supervisor=allow_unbounded_supervisor,
         timeout=min(timeout, 180),
     )
     if resident.get("json") and resident.get("workerStatus") != 404:
@@ -289,9 +300,11 @@ def remote_command(
         action,
     ]
     if action in {"start"}:
-        powershell_args.extend(["-RunCount", str(run_count), "-MaxConcurrentBattles", str(max_concurrent_battles)])
+        powershell_args.extend(["-RunCount", str(run_count), "-MaxConcurrentBattles", str(max_concurrent_battles), "-MaxCycles", str(max_cycles)])
         if enable_auto_improve:
             powershell_args.append("-AutoImprove")
+        if allow_unbounded_supervisor:
+            powershell_args.append("-AllowUnboundedSupervisor")
     if obs_only:
         powershell_args.append("-ObsOnly")
     if execute:
@@ -535,6 +548,8 @@ def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
             "maxConcurrentBattles": args.max_concurrent_battles,
             "obsOnly": bool(args.obs_only),
             "autoImprove": bool(getattr(args, "enable_auto_improve", False)),
+            "maxCycles": getattr(args, "max_cycles", DEFAULT_SUPERVISOR_MAX_CYCLES),
+            "allowUnboundedSupervisor": bool(getattr(args, "allow_unbounded_supervisor", False)),
         }
     return payload
 
@@ -556,6 +571,8 @@ def action_mutating(action: str, args: argparse.Namespace) -> tuple[int, dict[st
         max_concurrent_battles=getattr(args, "max_concurrent_battles", 3),
         obs_only=getattr(args, "obs_only", False),
         enable_auto_improve=getattr(args, "enable_auto_improve", False),
+        max_cycles=getattr(args, "max_cycles", DEFAULT_SUPERVISOR_MAX_CYCLES),
+        allow_unbounded_supervisor=getattr(args, "allow_unbounded_supervisor", False),
         timeout=args.timeout,
     )
     payload = mirror_status(result.get("json"), action=action, raw=result)
@@ -594,8 +611,10 @@ def main() -> int:
 
     start = sub.add_parser("start")
     start.add_argument("--execute", action="store_true")
-    start.add_argument("--run-count", type=int, default=1000000)
+    start.add_argument("--run-count", type=int, default=DEFAULT_RUN_COUNT)
     start.add_argument("--max-concurrent-battles", type=int, default=3)
+    start.add_argument("--max-cycles", type=int, default=DEFAULT_SUPERVISOR_MAX_CYCLES)
+    start.add_argument("--allow-unbounded-supervisor", action="store_true")
     start.add_argument("--obs-only", action="store_true")
     start.add_argument("--enable-auto-improve", action="store_true")
     start.add_argument("--timeout", type=int, default=180)

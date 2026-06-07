@@ -455,6 +455,8 @@ def test_continuous_start_spawns_supervisor_not_direct_battle_runner(monkeypatch
         queue_timeout_seconds=180,
         turn_timeout_seconds=90,
         supervisor_sleep_seconds=15,
+        supervisor_max_cycles=1,
+        allow_unbounded_supervisor=False,
         replace_stale_runner=True,
         continuous=True,
         execute=True,
@@ -631,7 +633,9 @@ def test_supervisor_commands_propagate_auto_improve_to_task_installer():
         max_concurrent_battles=3,
         queue_timeout_seconds=180,
         supervisor_sleep_seconds=15,
+        supervisor_max_cycles=0,
         enable_auto_improve=True,
+        allow_unbounded_supervisor=True,
     )
 
     supervisor_command = devstream_session.supervisor_command(
@@ -640,11 +644,79 @@ def test_supervisor_commands_propagate_auto_improve_to_task_installer():
         180,
         15,
         enable_auto_improve=True,
+        max_cycles=0,
+        allow_unbounded_supervisor=True,
     )
     task_command = devstream_session.battle_supervisor_task_command(args)
 
-    assert supervisor_command[-1] == "--enable-auto-improve"
+    assert supervisor_command[supervisor_command.index("--max-cycles") + 1] == "0"
+    assert "--enable-auto-improve" in supervisor_command
+    assert "--allow-unbounded-supervisor" in supervisor_command
+    assert task_command[task_command.index("-MaxCycles") + 1] == "0"
     assert "-AutoImprove" in task_command
+    assert "-AllowUnboundedSupervisor" in task_command
+
+
+def test_supervisor_blocks_unbounded_without_explicit_sentinel(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    monkeypatch.setattr(
+        devstream_session,
+        "acquire_runtime_lease",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("lease should not be acquired")),
+    )
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+
+    args = argparse.Namespace(
+        run_count=10,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=1,
+        sleep_seconds=1,
+        max_cycles=0,
+        enable_auto_improve=False,
+        allow_unbounded_supervisor=False,
+    )
+
+    assert devstream_session.cmd_supervise(args) == 2
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["state"] == "blocked-unbounded-supervisor"
+    assert payload["iterationGuard"]["unbounded"] is True
+    assert payload["iterationGuard"]["blocked"] is True
+    assert devstream_session.UNBOUNDED_SUPERVISOR_SENTINEL in payload["iterationGuard"]["reason"]
+
+
+def test_supervisor_releases_runtime_lease_after_bounded_cycle(tmp_path, monkeypatch):
+    from infrastructure import runtime_lease
+
+    lease_path = tmp_path / "fouler-runtime-lane.lease.json"
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_PID_FILE", tmp_path / "supervisor.pid")
+    monkeypatch.delenv(runtime_lease.LEASE_TOKEN_ENV, raising=False)
+    monkeypatch.delenv(runtime_lease.LEASE_NAME_ENV, raising=False)
+    monkeypatch.setattr(
+        devstream_session,
+        "acquire_runtime_lease",
+        lambda **kwargs: runtime_lease.acquire_runtime_lease(**kwargs, lease_dir=tmp_path),
+    )
+    monkeypatch.setattr(devstream_session, "run_supervisor_cycle", lambda args, cycle_index: {"state": "idle", "cycleIndex": cycle_index})
+    monkeypatch.setattr(devstream_session.time, "sleep", lambda _seconds: (_ for _ in ()).throw(AssertionError("bounded cycle should not sleep")))
+
+    args = argparse.Namespace(
+        run_count=1,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=1,
+        sleep_seconds=1,
+        max_cycles=1,
+        enable_auto_improve=False,
+        allow_unbounded_supervisor=False,
+    )
+
+    assert devstream_session.cmd_supervise(args) == 0
+    assert not lease_path.exists()
+    assert runtime_lease.LEASE_TOKEN_ENV not in os.environ
+    assert runtime_lease.LEASE_NAME_ENV not in os.environ
 
 
 def test_supervisor_runtime_lease_blocks_duplicate_owner(tmp_path, monkeypatch, capsys):

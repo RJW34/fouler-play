@@ -5,11 +5,13 @@ param(
     [switch]$Status,
     [switch]$Uninstall,
     [string]$TaskName = "HERMES-FoulerBattleSupervisor",
-    [int]$RunCount = 1000000,
+    [int]$RunCount = 10,
     [int]$MaxConcurrentBattles = 3,
     [int]$QueueTimeoutSeconds = 180,
     [int]$SleepSeconds = 15,
-    [switch]$AutoImprove
+    [int]$MaxCycles = 1,
+    [switch]$AutoImprove,
+    [switch]$AllowUnboundedSupervisor
 )
 
 $ErrorActionPreference = "Stop"
@@ -25,7 +27,8 @@ $StdoutLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.log"
 $StderrLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.err.log"
 $TaskExecute = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
 $AutoImproveArg = if ($AutoImprove) { " -AutoImprove" } else { "" }
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -QueueTimeoutSeconds {4} -SleepSeconds {5}{6}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $QueueTimeoutSeconds, $SleepSeconds, $AutoImproveArg
+$AllowUnboundedArg = if ($AllowUnboundedSupervisor) { " -AllowUnboundedSupervisor" } else { "" }
+$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -QueueTimeoutSeconds {4} -SleepSeconds {5} -MaxCycles {6}{7}{8}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $QueueTimeoutSeconds, $SleepSeconds, $MaxCycles, $AutoImproveArg, $AllowUnboundedArg
 $PidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
 $StopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
 

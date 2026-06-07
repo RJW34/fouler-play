@@ -1,10 +1,12 @@
 param(
     [ValidateSet("status", "bootstrap", "start", "stop", "login-proof")]
     [string]$Command = "status",
-    [int]$RunCount = 1000000,
+    [int]$RunCount = 10,
     [int]$MaxConcurrentBattles = 3,
+    [int]$MaxCycles = 1,
     [switch]$ObsOnly,
     [switch]$AutoImprove,
+    [switch]$AllowUnboundedSupervisor,
     [switch]$Execute
 )
 
@@ -411,7 +413,7 @@ function Start-ObsServer {
 }
 
 function Start-BattleSession {
-    param([int]$RunCount, [int]$MaxConcurrentBattles)
+    param([int]$RunCount, [int]$MaxConcurrentBattles, [int]$MaxCycles, [switch]$AllowUnboundedSupervisor)
     if (-not (Test-Path (Join-Path $RepoRoot ".env"))) {
         return @{ ok = $false; error = ".env is missing; refusing to queue Showdown battles" }
     }
@@ -428,10 +430,14 @@ function Start-BattleSession {
         "--run-count", "$RunCount",
         "--max-concurrent-battles", "$MaxConcurrentBattles",
         "--queue-timeout-seconds", "180",
-        "--sleep-seconds", "15"
+        "--sleep-seconds", "15",
+        "--max-cycles", "$MaxCycles"
     )
     if ($AutoImprove) {
         $supervisorArgs += "--enable-auto-improve"
+    }
+    if ($AllowUnboundedSupervisor) {
+        $supervisorArgs += "--allow-unbounded-supervisor"
     }
     $command = ($supervisorArgs | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join " "
     $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set BOT_LOG_TO_FILE=1&& set AUTO_START_OBS_SERVER=0&& set LOSS_TRIGGERED_DRAIN=0&& set BATTLE_STATS_MAX_ENTRIES=5000&& set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json&& {0} 1>>"{1}" 2>>"{2}""' -f $command, $stdout, $stderr
@@ -442,13 +448,15 @@ function Start-BattleSession {
         role = "battleSupervisor"
         runCount = $RunCount
         maxConcurrentBattles = $MaxConcurrentBattles
+        maxCycles = $MaxCycles
         autoImprove = [bool]$AutoImprove
+        allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor
         startedAt = Get-IsoNow
         stdout = $stdout
         stderr = $stderr
         launch = $launch
     }
-    return @{ ok = [bool]$launch.ok; pid = $launch.pid; role = "battleSupervisor"; launch = $launch; stdout = $stdout; stderr = $stderr; autoImprove = [bool]$AutoImprove }
+    return @{ ok = [bool]$launch.ok; pid = $launch.pid; role = "battleSupervisor"; launch = $launch; stdout = $stdout; stderr = $stderr; autoImprove = [bool]$AutoImprove; maxCycles = $MaxCycles; allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor }
 }
 
 function Install-Runtime {
@@ -597,12 +605,12 @@ if ($Command -eq "bootstrap") {
         $actions += @{ name = "stop-stale-processes"; result = Stop-FoulerProcesses }
         $actions += @{ name = "start-obs-server"; result = Start-ObsServer }
         if (-not $ObsOnly) {
-            $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -AutoImprove:$AutoImprove }
+            $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -AllowUnboundedSupervisor:$AllowUnboundedSupervisor -AutoImprove:$AutoImprove }
         }
     } else {
         $actions += @{ name = "start-obs-server"; planned = $true }
         if (-not $ObsOnly) {
-            $actions += @{ name = "start-battle-supervisor"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles; autoImprove = [bool]$AutoImprove }
+            $actions += @{ name = "start-battle-supervisor"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles; maxCycles = $MaxCycles; autoImprove = [bool]$AutoImprove; allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor }
         }
     }
 } elseif ($Command -eq "login-proof") {
@@ -620,6 +628,8 @@ $final = @{
     execute = [bool]$Execute
     obsOnly = [bool]$ObsOnly
     autoImprove = [bool]$AutoImprove
+    maxCycles = $MaxCycles
+    allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor
     actions = @($actions)
     postStatus = Get-Status
 }

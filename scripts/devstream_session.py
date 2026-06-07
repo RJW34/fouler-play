@@ -22,8 +22,9 @@ if str(ROOT) not in sys.path:
 from infrastructure.runtime_lease import RuntimeLeaseBusy, acquire_runtime_lease
 from streaming import state_store
 
-DEFAULT_RUN_COUNT = 1000000
+DEFAULT_RUN_COUNT = 10
 DEFAULT_MAX_CONCURRENT = 3
+DEFAULT_SUPERVISOR_MAX_CYCLES = 1
 PID_DIR = ROOT / ".pids"
 OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
@@ -35,6 +36,7 @@ STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-b
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
+UNBOUNDED_SUPERVISOR_SENTINEL = "FOULER_PLAY_ALLOW_UNBOUNDED_SUPERVISOR"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 
 
@@ -51,6 +53,30 @@ def supervisor_auto_improve_enabled(args: argparse.Namespace, env: dict[str, str
     if env_flag_enabled(env, AUTO_IMPROVE_SENTINEL):
         return True, f"{AUTO_IMPROVE_SENTINEL}=1"
     return False, f"missing --enable-auto-improve or {AUTO_IMPROVE_SENTINEL}=1"
+
+
+def supervisor_unbounded_enabled(args: argparse.Namespace, env: dict[str, str] | None = None) -> tuple[bool, str]:
+    if getattr(args, "allow_unbounded_supervisor", False):
+        return True, "--allow-unbounded-supervisor"
+    env = env if env is not None else load_env_files()
+    if env_flag_enabled(env, UNBOUNDED_SUPERVISOR_SENTINEL):
+        return True, f"{UNBOUNDED_SUPERVISOR_SENTINEL}=1"
+    return False, f"missing --allow-unbounded-supervisor or {UNBOUNDED_SUPERVISOR_SENTINEL}=1"
+
+
+def supervisor_iteration_guard(args: argparse.Namespace, env: dict[str, str] | None = None) -> dict[str, Any]:
+    max_cycles = int(getattr(args, "max_cycles", DEFAULT_SUPERVISOR_MAX_CYCLES))
+    if max_cycles < 0:
+        return {
+            "maxCycles": max_cycles,
+            "unbounded": False,
+            "blocked": True,
+            "reason": "--max-cycles must be >= 0",
+        }
+    if max_cycles != 0:
+        return {"maxCycles": max_cycles, "unbounded": False, "blocked": False, "reason": "bounded cycle count"}
+    enabled, reason = supervisor_unbounded_enabled(args, env)
+    return {"maxCycles": max_cycles, "unbounded": True, "blocked": not enabled, "reason": reason}
 
 
 def runtime_python() -> str:
@@ -192,6 +218,8 @@ def supervisor_command(
     sleep_seconds: int,
     *,
     enable_auto_improve: bool = False,
+    max_cycles: int = DEFAULT_SUPERVISOR_MAX_CYCLES,
+    allow_unbounded_supervisor: bool = False,
 ) -> list[str]:
     command = [
         runtime_python(),
@@ -205,9 +233,13 @@ def supervisor_command(
         str(queue_timeout_seconds),
         "--sleep-seconds",
         str(sleep_seconds),
+        "--max-cycles",
+        str(max_cycles),
     ]
     if enable_auto_improve:
         command.append("--enable-auto-improve")
+    if allow_unbounded_supervisor:
+        command.append("--allow-unbounded-supervisor")
     return command
 
 
@@ -263,9 +295,13 @@ def battle_supervisor_task_command(args: argparse.Namespace) -> list[str]:
         str(args.queue_timeout_seconds),
         "-SleepSeconds",
         str(args.supervisor_sleep_seconds),
+        "-MaxCycles",
+        str(getattr(args, "supervisor_max_cycles", getattr(args, "max_cycles", DEFAULT_SUPERVISOR_MAX_CYCLES))),
     ]
     if getattr(args, "enable_auto_improve", False):
         command.append("-AutoImprove")
+    if getattr(args, "allow_unbounded_supervisor", False):
+        command.append("-AllowUnboundedSupervisor")
     return command
 
 
@@ -994,8 +1030,30 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
 def cmd_supervise(args: argparse.Namespace) -> int:
     if SUPERVISOR_STOP_FILE.exists():
         SUPERVISOR_STOP_FILE.unlink()
+    iteration_guard = supervisor_iteration_guard(args)
+    if iteration_guard.get("blocked"):
+        payload = {
+            "schemaVersion": "fouler-play-battle-supervisor/v1",
+            "startedAt": iso_now(),
+            "pid": os.getpid(),
+            "state": "blocked-unbounded-supervisor",
+            "iterationGuard": iteration_guard,
+            "bounds": {
+                "runCount": args.run_count,
+                "maxConcurrentBattles": args.max_concurrent_battles,
+                "queueTimeoutSeconds": args.queue_timeout_seconds,
+                "sleepSeconds": args.sleep_seconds,
+                "maxCycles": args.max_cycles,
+                "unboundedSupervisorSentinel": UNBOUNDED_SUPERVISOR_SENTINEL,
+            },
+            "secretValuesPrinted": False,
+        }
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    lease = None
     try:
-        acquire_runtime_lease(holder="devstream_session supervise")
+        lease = acquire_runtime_lease(holder="devstream_session supervise")
     except RuntimeLeaseBusy as exc:
         payload = {
             "schemaVersion": "fouler-play-battle-supervisor/v1",
@@ -1021,8 +1079,11 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             "queueTimeoutSeconds": args.queue_timeout_seconds,
             "sleepSeconds": args.sleep_seconds,
             "maxCycles": args.max_cycles,
+            "unbounded": bool(iteration_guard.get("unbounded")),
+            "unboundedSupervisorSentinel": UNBOUNDED_SUPERVISOR_SENTINEL,
         },
         "stopFile": str(SUPERVISOR_STOP_FILE),
+        "iterationGuard": iteration_guard,
         "secretValuesPrinted": False,
     }
     write_pid_value(
@@ -1034,6 +1095,8 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             args.queue_timeout_seconds,
             args.sleep_seconds,
             enable_auto_improve=getattr(args, "enable_auto_improve", False),
+            max_cycles=args.max_cycles,
+            allow_unbounded_supervisor=getattr(args, "allow_unbounded_supervisor", False),
         ),
     )
     try:
@@ -1074,6 +1137,9 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 SUPERVISOR_PID_FILE.unlink()
             except OSError:
                 pass
+
+        if lease is not None:
+            lease.release()
 
 
 def wait_for_drain(max_wait_seconds: int) -> dict[str, Any]:
@@ -1149,7 +1215,9 @@ def build_doctor() -> dict[str, Any]:
         "ok": supervisor_running,
         "pid": supervisor_pid,
         "statusPath": str(SUPERVISOR_STATUS_FILE),
-        "note": "HERMES persistent battle supervisor must be alive for unattended devstream operation.",
+        "defaultMaxCycles": DEFAULT_SUPERVISOR_MAX_CYCLES,
+        "unboundedSentinel": UNBOUNDED_SUPERVISOR_SENTINEL,
+        "note": "HERMES battle supervisor is bounded by default; persistent operation requires the explicit unbounded sentinel or flag.",
     })
     return {
         "schemaVersion": "fouler-play-devstream-doctor/v1",
@@ -1176,6 +1244,8 @@ def cmd_start(args: argparse.Namespace) -> int:
             args.max_concurrent_battles,
             args.queue_timeout_seconds,
             args.supervisor_sleep_seconds,
+            max_cycles=args.supervisor_max_cycles,
+            allow_unbounded_supervisor=args.allow_unbounded_supervisor,
             enable_auto_improve=getattr(args, "enable_auto_improve", False),
         ),
     }
@@ -1189,7 +1259,9 @@ def cmd_start(args: argparse.Namespace) -> int:
             "maxConcurrentBattles": args.max_concurrent_battles,
             "maxRuntimeMinutes": args.max_runtime_minutes,
             "queueTimeoutSeconds": args.queue_timeout_seconds,
-            "turnTimeoutSeconds": args.turn_timeout_seconds
+            "turnTimeoutSeconds": args.turn_timeout_seconds,
+            "supervisorMaxCycles": args.supervisor_max_cycles,
+            "allowUnboundedSupervisor": bool(args.allow_unbounded_supervisor),
         },
         "envFilePermissions": secure_env_files(execute=args.execute),
     }
@@ -1360,6 +1432,8 @@ def main() -> int:
     start.add_argument("--turn-timeout-seconds", type=int, default=90)
     start.add_argument("--continuous", action="store_true")
     start.add_argument("--supervisor-sleep-seconds", type=int, default=15)
+    start.add_argument("--supervisor-max-cycles", type=int, default=DEFAULT_SUPERVISOR_MAX_CYCLES)
+    start.add_argument("--allow-unbounded-supervisor", action="store_true")
     start.add_argument("--replace-stale-runner", action=argparse.BooleanOptionalAction, default=True)
     start.add_argument(
         "--enable-auto-improve",
@@ -1372,7 +1446,8 @@ def main() -> int:
     supervise.add_argument("--max-concurrent-battles", type=int, default=DEFAULT_MAX_CONCURRENT)
     supervise.add_argument("--queue-timeout-seconds", type=int, default=180)
     supervise.add_argument("--sleep-seconds", type=int, default=15)
-    supervise.add_argument("--max-cycles", type=int, default=0)
+    supervise.add_argument("--max-cycles", type=int, default=DEFAULT_SUPERVISOR_MAX_CYCLES)
+    supervise.add_argument("--allow-unbounded-supervisor", action="store_true")
     supervise.add_argument("--autoresearch-count", type=int, default=30)
     supervise.add_argument("--proof-timeout-seconds", type=int, default=300)
     supervise.add_argument("--start-timeout-seconds", type=int, default=60)

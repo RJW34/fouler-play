@@ -47,7 +47,7 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert '"supervise"' in text
     assert '"--run-count", "$RunCount"' in text
     assert '"--max-concurrent-battles", "$MaxConcurrentBattles"' in text
-    assert "Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -AutoImprove:$AutoImprove" in text
+    assert "Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -AllowUnboundedSupervisor:$AllowUnboundedSupervisor -AutoImprove:$AutoImprove" in text
     assert "call start_one_touch.bat" not in text
 
 
@@ -112,9 +112,24 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert "[switch]$AutoImprove" in wrapper
     assert "[switch]$AutoImprove" in installer
     assert "[switch]$AutoImprove" in runtime
+    assert "[switch]$AllowUnboundedSupervisor" in wrapper
+    assert "[switch]$AllowUnboundedSupervisor" in installer
+    assert "[switch]$AllowUnboundedSupervisor" in runtime
+    assert "[int]$RunCount = 10" in wrapper
+    assert "[int]$RunCount = 10" in installer
+    assert "[int]$RunCount = 10" in runtime
+    assert "[int]$MaxCycles = 1" in wrapper
+    assert "[int]$MaxCycles = 1" in installer
+    assert "[int]$MaxCycles = 1" in runtime
     assert "--enable-auto-improve" in wrapper
     assert "--enable-auto-improve" in runtime
+    assert "--max-cycles" in wrapper
+    assert "--max-cycles" in runtime
+    assert "--allow-unbounded-supervisor" in wrapper
+    assert "--allow-unbounded-supervisor" in runtime
     assert "-AutoImprove" in installer
+    assert "-MaxCycles" in installer
+    assert "-AllowUnboundedSupervisor" in installer
     assert "Rotate-LogFileIfLarge" in wrapper
     assert "Rotate-LogFileIfLarge" in runtime
     assert "[int]$MaxConcurrentBattles = 3" in wrapper
@@ -129,8 +144,15 @@ def test_jigglypuff_control_exposes_auto_improve_start_flag():
     text = (ROOT / "scripts" / "jigglypuff_devstream_control.py").read_text(encoding="utf-8")
 
     assert 'start.add_argument("--enable-auto-improve", action="store_true")' in text
+    assert 'start.add_argument("--run-count", type=int, default=DEFAULT_RUN_COUNT)' in text
+    assert 'start.add_argument("--max-cycles", type=int, default=DEFAULT_SUPERVISOR_MAX_CYCLES)' in text
+    assert 'start.add_argument("--allow-unbounded-supervisor", action="store_true")' in text
     assert '"autoImprove": enable_auto_improve' in text
+    assert '"maxCycles": max_cycles' in text
+    assert '"allowUnboundedSupervisor": allow_unbounded_supervisor' in text
     assert 'powershell_args.append("-AutoImprove")' in text
+    assert '"-MaxCycles", str(max_cycles)' in text
+    assert 'powershell_args.append("-AllowUnboundedSupervisor")' in text
 
 
 def test_legacy_windows_auto_pull_is_fail_closed():

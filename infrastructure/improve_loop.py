@@ -78,6 +78,7 @@ STALE_THRESHOLD_MIN = 120
 # escalating when the feed has clearly gone silent.
 BATTLE_STREAM_STALE_THRESHOLD_MIN = 60
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
+MAX_ITERATIONS_WITHOUT_RECURSIVE_READY = 1
 OFFLINE_NO_LIVE_EXCLUSIONS = ("public ladder", "live Discord transport")
 
 
@@ -769,6 +770,7 @@ def offline_no_live_readiness(status: dict | None = None, *, cli_enabled: bool =
         "battleStreamStale": bool(status.get("battle_stream_stale")),
         "battleStreamAgeMinutes": status.get("battle_stream_age_minutes"),
         "headline": status.get("headline"),
+        "maxIterationsWithoutRecursiveReadiness": MAX_ITERATIONS_WITHOUT_RECURSIVE_READY,
     }
 
 
@@ -803,6 +805,24 @@ def main() -> int:
         print(json.dumps(readiness, indent=2))
         print(f"[LOOP] readiness readyForRecursiveAutoImprove={readiness['readyForRecursiveAutoImprove']}")
         return 0
+
+    if args.iterations < 1:
+        print(f"[LOOP] BLOCKED: --iterations must be >= 1 (got {args.iterations}).")
+        return 2
+
+    if (
+        not args.dry_run
+        and args.iterations > MAX_ITERATIONS_WITHOUT_RECURSIVE_READY
+    ):
+        readiness = offline_no_live_readiness(cli_enabled=args.enable_auto_improve)
+        if not readiness.get("readyForRecursiveAutoImprove"):
+            print(
+                f"[LOOP] BLOCKED: recursive auto-improvement requires "
+                f"readyForRecursiveAutoImprove=true before running "
+                f"{args.iterations} mutating iterations. "
+                f"Readiness: {json.dumps(readiness, sort_keys=True)}"
+            )
+            return 2
 
     if not args.dry_run and not auto_improve_enabled(args.enable_auto_improve):
         print(

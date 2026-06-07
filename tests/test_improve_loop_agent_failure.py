@@ -97,6 +97,66 @@ def test_offline_no_live_readiness_reports_sentinel_and_measured_gate(monkeypatc
     assert ready["readyForRecursiveAutoImprove"] is True
 
 
+def test_main_blocks_recursive_iterations_without_measured_gate_readiness(monkeypatch):
+    monkeypatch.setenv(improve_loop.AUTO_IMPROVE_SENTINEL, "1")
+    monkeypatch.setattr(sys, "argv", ["improve_loop.py", "--iterations", "2"])
+    monkeypatch.setattr(
+        improve_loop,
+        "loop_status",
+        lambda: {
+            "measured_gate_ever": False,
+            "battle_stream_stale": False,
+            "battle_stream_age_minutes": None,
+            "headline": "learn-loop awaiting first measured gate",
+        },
+    )
+    monkeypatch.setattr(
+        improve_loop,
+        "acquire_runtime_lease",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("lease should not be acquired")),
+    )
+
+    assert improve_loop.main() == 2
+
+
+def test_main_allows_recursive_iterations_when_readiness_is_measured(monkeypatch):
+    calls = []
+
+    class FakeLease:
+        def release(self):
+            calls.append("released")
+
+    monkeypatch.setenv(improve_loop.AUTO_IMPROVE_SENTINEL, "1")
+    monkeypatch.setattr(sys, "argv", ["improve_loop.py", "--iterations", "2"])
+    monkeypatch.setattr(improve_loop, "current_branch", lambda: "fix/test")
+    monkeypatch.setattr(improve_loop, "acquire_runtime_lease", lambda **_kwargs: FakeLease())
+    monkeypatch.setattr(
+        improve_loop,
+        "loop_status",
+        lambda: {
+            "measured_gate_ever": True,
+            "battle_stream_stale": False,
+            "battle_stream_age_minutes": None,
+            "headline": "learn-loop measured",
+        },
+    )
+    monkeypatch.setattr(improve_loop, "one_iteration", lambda **_kwargs: calls.append("iteration"))
+
+    assert improve_loop.main() == 0
+    assert calls == ["iteration", "iteration", "released"]
+
+
+def test_main_blocks_nonpositive_iteration_count(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["improve_loop.py", "--iterations", "0", "--dry-run"])
+    monkeypatch.setattr(
+        improve_loop,
+        "acquire_runtime_lease",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("lease should not be acquired")),
+    )
+
+    assert improve_loop.main() == 2
+
+
 def test_main_blocks_mutating_loop_before_runtime_lease_without_sentinel(monkeypatch):
     monkeypatch.delenv(improve_loop.AUTO_IMPROVE_SENTINEL, raising=False)
     monkeypatch.setattr(sys, "argv", ["improve_loop.py", "--iterations", "1"])

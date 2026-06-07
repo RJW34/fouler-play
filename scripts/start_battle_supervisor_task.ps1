@@ -1,9 +1,11 @@
 param(
-    [int]$RunCount = 1000000,
+    [int]$RunCount = 10,
     [int]$MaxConcurrentBattles = 3,
     [int]$QueueTimeoutSeconds = 180,
     [int]$SleepSeconds = 15,
+    [int]$MaxCycles = 1,
     [switch]$AutoImprove,
+    [switch]$AllowUnboundedSupervisor,
     [switch]$Foreground
 )
 
@@ -75,11 +77,16 @@ $supervisorArgs = @(
     "--run-count", "$RunCount",
     "--max-concurrent-battles", "$MaxConcurrentBattles",
     "--queue-timeout-seconds", "$QueueTimeoutSeconds",
-    "--sleep-seconds", "$SleepSeconds"
+    "--sleep-seconds", "$SleepSeconds",
+    "--max-cycles", "$MaxCycles"
 )
 if ($AutoImprove) {
     $supervisorArgs += "--enable-auto-improve"
 }
+if ($AllowUnboundedSupervisor) {
+    $supervisorArgs += "--allow-unbounded-supervisor"
+}
+
 
 if ($Foreground) {
     & $Py @supervisorArgs
