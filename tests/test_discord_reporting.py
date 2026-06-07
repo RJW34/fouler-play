@@ -1084,8 +1084,11 @@ def test_run_battle_replay_handoff_preserves_pending_public_replay():
     assert fields["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2626011055"
     assert fields["replay_status"] == "pending-public-upload"
     assert fields["replay_public_verified"] is False
-    assert structured["proof"]["replay"]["status"] == "public"
-    assert structured["proof"]["replay"]["url"] == "https://replay.pokemonshowdown.com/gen9ou-2626011055"
+    assert structured["proof"]["replay"]["status"] == "pending-public-upload"
+    assert structured["proof"]["replay"]["url"] == ""
+    formatted = format_payload_or_message(payload)
+    assert "- replay pending public upload `gen9ou-2626011055`" in formatted
+    assert "- replay `gen9ou-2626011055`: https://replay.pokemonshowdown.com/gen9ou-2626011055" not in formatted
     assert "gen9ou-2626011055" in structured["proof"]["battleIds"]
 
 

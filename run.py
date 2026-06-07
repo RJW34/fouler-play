@@ -78,6 +78,24 @@ LOSS_DRAIN_ENV = _strip_env_inline_comment(os.getenv("LOSS_TRIGGERED_DRAIN", "1"
 LOSS_DRAIN_ENABLED = _env_bool("LOSS_TRIGGERED_DRAIN", default=True)
 
 
+_PUBLIC_SHOWDOWN_WS_MARKERS = (
+    "play.pokemonshowdown.com",
+    "sim.smogon.com",
+    ".psim.us",
+)
+
+
+
+
+def _is_public_showdown_websocket(websocket_uri: object) -> bool:
+    uri = str(websocket_uri or "").strip().lower()
+    return any(marker in uri for marker in _PUBLIC_SHOWDOWN_WS_MARKERS)
+
+
+def _public_ladder_requires_singleton_lock() -> bool:
+    return FoulPlayConfig.bot_mode == BotModes.search_ladder and _is_public_showdown_websocket(FoulPlayConfig.websocket_uri)
+
+
 REQUIRED_CONSTANTS = {
     "BASE_POWER": "basePower",
     "CATEGORY": "category",
@@ -1112,6 +1130,7 @@ if __name__ == "__main__":
     # FOULER_NO_SINGLETON_LOCK=1 we skip lock acquisition entirely -- the live
     # ladder bot keeps its lock untouched and is never reaped by an eval run.
     _skip_lock = (os.getenv("FOULER_NO_SINGLETON_LOCK", "0") or "0").strip() not in ("", "0")
+    FoulPlayConfig.configure()
     # HARDENING 2026-06-05: FOULER_NO_SINGLETON_LOCK is ONLY for isolated eval arms that
     # battle a LOCAL showdown server (own users/port/stats). A client laddering the PUBLIC
     # server is the live bot -- or an ELO-thrashing DUPLICATE of it (e.g. a stray
@@ -1119,13 +1138,7 @@ if __name__ == "__main__":
     # refused, so NEVER honour the skip for a public-ladder client: force it back onto the
     # singleton, where it either loses the race (already-running -> exit) or, on system
     # python, ImportErrors process_lock -> exit. Eval arms (local server) are unaffected.
-    _argv_blob = " ".join(sys.argv)
-    _is_public_ladder = (
-        ("sim3.psim.us" in _argv_blob or "sim.smogon.com" in _argv_blob
-         or "play.pokemonshowdown.com" in _argv_blob)
-        and "search_ladder" in _argv_blob
-    )
-    if _skip_lock and _is_public_ladder:
+    if _skip_lock and _public_ladder_requires_singleton_lock():
         logger.error(
             "FOULER_NO_SINGLETON_LOCK IGNORED: this is a PUBLIC-LADDER client; enforcing the "
             "singleton lock. An unguarded public-ladder duplicate is exactly what thrashes ELO."

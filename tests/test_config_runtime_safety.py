@@ -98,3 +98,53 @@ def test_config_still_validates_challenge_user_target(monkeypatch):
         assert "USER_TO_CHALLENGE" in str(exc)
     else:
         raise AssertionError("challenge_user without user_to_challenge should fail validation")
+
+
+def test_public_ladder_singleton_detection_uses_parsed_config(monkeypatch):
+    monkeypatch.setenv("FOULER_NO_SINGLETON_LOCK", "1")
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "run.py",
+            "--websocket-uri",
+            "wss://sim3.psim.us/showdown/websocket",
+            "--ps-username",
+            "bot",
+            "--bot-mode",
+            "search_ladder",
+            "--pokemon-format",
+            "gen9ou",
+            "--team-name",
+            "gen9ou",
+        ],
+    )
+
+    FoulPlayConfig.configure()
+    import run
+
+    assert run._public_ladder_requires_singleton_lock() is True
+
+
+def test_local_eval_ladder_skip_does_not_match_public_singleton(monkeypatch):
+    monkeypatch.setenv("FOULER_NO_SINGLETON_LOCK", "1")
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "run.py",
+            "--websocket-uri",
+            "ws://localhost:8765/showdown/websocket",
+            "--ps-username",
+            "bot",
+            "--bot-mode",
+            "search_ladder",
+            "--pokemon-format",
+            "gen9ou",
+            "--team-name",
+            "gen9ou",
+        ],
+    )
+
+    FoulPlayConfig.configure()
+    import run
+
+    assert run._public_ladder_requires_singleton_lock() is False

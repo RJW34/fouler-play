@@ -194,26 +194,65 @@ def _replay_pending_bit(value: object) -> str:
     return f"replay pending public upload {replay_id}" if replay_id else ""
 
 
-def _extract_replay_bits(text: str) -> list[str]:
+def _payload_declares_replay_public_state(data: dict) -> bool:
+    return "replay_status" in data or "replay_public_verified" in data
+
+
+def _truthy_field(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    return _clean_line(value).lower() in {"1", "true", "yes", "on", "public", "verified"}
+
+
+def _payload_replay_is_public(data: dict) -> bool:
+    status = _clean_line(data.get("replay_status")).lower()
+    return _truthy_field(data.get("replay_public_verified")) or status in {
+        "public",
+        "public-upload-verified",
+        "verified",
+        "verified-public",
+    }
+
+
+def _extract_replay_bits(text: object) -> list[str]:
     bits: list[str] = []
     seen: set[str] = set()
-    for url in _PS_REPLAY_RE.findall(text):
+
+    for url in _PS_REPLAY_RE.findall(_clean_line(text)):
         canonical = canonical_replay_url(url)
         if not canonical:
             bit = _replay_pending_bit(url)
-            if bit and bit not in seen:
-                bits.append(bit)
-                seen.add(bit)
-            continue
-        replay_id = canonical.rstrip("/").rsplit("/", 1)[-1]
-        label = replay_id.replace("battle-gen9ou-", "").replace("battle-", "")
-        if len(label) > 8 and label.isdigit():
-            label = label[-8:]
-        bit = f"replay {label}: {canonical}"
+        else:
+            replay_id = canonical.rstrip("/").rsplit("/", 1)[-1]
+            label = replay_id.replace("battle-gen9ou-", "").replace("battle-", "")
+            if len(label) > 8 and label.isdigit():
+                label = label[-8:]
+            bit = f"replay {label}: {canonical}"
         if bit not in seen:
             bits.append(bit)
             seen.add(bit)
     return bits
+
+
+def _extract_replay_proof_bits(text: object, *, public_verified: bool) -> list[str]:
+    if public_verified:
+        return _extract_replay_bits(text)
+
+    bits: list[str] = []
+    seen: set[str] = set()
+    for url in _PS_REPLAY_RE.findall(_clean_line(text)):
+        bit = _replay_pending_bit(url)
+        if bit and bit not in seen:
+            bits.append(bit)
+            seen.add(bit)
+    return bits
+
+
+def _replay_ref_proof_bits(value: object, *, public_verified: bool) -> list[str]:
+    if public_verified:
+        return _extract_replay_bits(value)
+    bit = _replay_pending_bit(value)
+    return [bit] if bit else []
 
 
 def _extract_named_bits(text: str) -> list[str]:
@@ -475,7 +514,8 @@ def _proof_from_payload(data: dict) -> str:
             seen.add(cleaned)
 
     raw_proof = _clean_line(data.get("proof", ""))
-    for bit in _extract_replay_bits(raw_proof):
+    replay_public_verified = _payload_replay_is_public(data) or not _payload_declares_replay_public_state(data)
+    for bit in _extract_replay_proof_bits(raw_proof, public_verified=replay_public_verified):
         add(bit)
 
     battle_id = data.get("battle_id")
@@ -483,7 +523,7 @@ def _proof_from_payload(data: dict) -> str:
         add(f"battle {str(battle_id).replace('battle-gen9ou-', '').replace('battle-', '')}")
 
     replay_url = _clean_line(data.get("replay_url") or data.get("replay") or "")
-    for bit in _extract_replay_bits(replay_url):
+    for bit in _replay_ref_proof_bits(replay_url, public_verified=replay_public_verified):
         add(bit)
     if replay_url and not _extract_replay_bits(replay_url):
         add(_replay_pending_bit(replay_url))
@@ -891,8 +931,13 @@ def _battle_ids_from_report_text(text: str, limit: int = 8) -> list[str]:
     return ids
 
 
-def _first_replay_summary(*values: object) -> dict[str, object]:
+def _first_replay_summary(*values: object, public_verified: bool | None = None) -> dict[str, object]:
     for value in values:
+        pending = public_replay_id_candidate(value)
+        if public_verified is False:
+            if pending:
+                return {"status": "pending-public-upload", "id": pending, "url": ""}
+            continue
         canonical = canonical_replay_url(value)
         if canonical:
             return {
@@ -900,7 +945,6 @@ def _first_replay_summary(*values: object) -> dict[str, object]:
                 "id": canonical.rstrip("/").rsplit("/", 1)[-1],
                 "url": canonical,
             }
-        pending = public_replay_id_candidate(value)
         if pending:
             return {"status": "pending-public-upload", "id": pending, "url": ""}
     return {"status": "absent", "id": "", "url": ""}
@@ -1053,7 +1097,12 @@ def redacted_report_summary(content: str) -> dict[str, object]:
                 for key in ("battle_id", "replay_url", "replay", "proof", "headline")
             )
         )
-        replay = _first_replay_summary(data.get("replay_url"), data.get("replay"), data.get("battle_id"))
+        public_verified = None
+        if _payload_declares_replay_public_state(data):
+            public_verified = _payload_replay_is_public(data)
+        replay = _first_replay_summary(
+            data.get("replay_url"), data.get("replay"), data.get("battle_id"), public_verified=public_verified
+        )
         ops_signal = "operational-loss" if _detect_operational_flag(data) else ("loss-review" if result == "loss" else "routine")
         why, changed = _safe_report_text(_why_from_payload(data), 240)
         secret_redacted = secret_redacted or changed

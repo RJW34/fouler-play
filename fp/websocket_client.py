@@ -27,6 +27,30 @@ MAX_PENDING_BATTLE_MESSAGES = _env_int("FOULER_PENDING_BATTLE_MESSAGES_MAX", 80)
 MAX_GLOBAL_QUEUE_MESSAGES = _env_int("FOULER_GLOBAL_QUEUE_MAX", GLOBAL_QUEUE_MAXSIZE)
 
 
+def _is_critical_battle_message(message):
+    """Messages that must survive bounded queue pressure for battle progress."""
+    lower_message = str(message).lower()
+    return any(
+        token in lower_message
+        for token in (
+            "|request|",
+            "|turn|",
+            "|win|",
+            "|tie|",
+            "|error|",
+            "|inactive|",
+            "|queryresponse|savereplay|",
+            "|queryresponse|ladder|",
+            "|updatesearch|",
+            "|rated|",
+            "replay.pokemonshowdown.com",
+            "uploadreplay",
+            " rating:",
+            " elo",
+        )
+    )
+
+
 def _pending_message_drop_index(messages):
     """Prefer dropping non-request battle updates from pre-registration buffers."""
     for idx, message in enumerate(messages):
@@ -49,14 +73,42 @@ def _put_bounded_nowait(queue, message, label):
     """Put without allowing inactive consumers to grow queues forever."""
     dropped = None
     if queue.full():
+        items = []
         try:
-            dropped = queue.get_nowait()
-            queue.task_done()
+            while True:
+                item = queue.get_nowait()
+                queue.task_done()
+                items.append(item)
         except asyncio.QueueEmpty:
-            dropped = None
-    queue.put_nowait(message)
+            pass
+
+        candidates = items + [message]
+        if candidates:
+            drop_idx = max(
+                range(len(candidates)),
+                key=lambda idx: (
+                    not _is_critical_battle_message(candidates[idx]),
+                    -idx,
+                ),
+            )
+            dropped = candidates.pop(drop_idx)
+
+        for item in candidates:
+            queue.put_nowait(item)
+    else:
+        queue.put_nowait(message)
+
     if dropped is not None:
-        logger.warning("Dropped oldest %s message to keep queue bounded", label)
+        if dropped == message:
+            logger.warning(
+                "Dropped incoming low-priority %s message to preserve critical battle queue entries",
+                label,
+            )
+        else:
+            logger.warning(
+                "Dropped queued low-priority %s message to keep queue bounded",
+                label,
+            )
     return dropped
 
 

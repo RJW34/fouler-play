@@ -4,6 +4,7 @@ from fp.websocket_client import (
     PSWebsocketClient,
     _append_bounded_pending_message,
     _public_replay_id_from_ref,
+    _put_bounded_nowait,
     _replay_ref_matches_battle,
 )
 from fp.ws_rate_limiter import (
@@ -59,6 +60,75 @@ def test_pending_battle_buffer_keeps_request_when_bounded():
     assert len(messages) == 2
     assert any("|request|" in message for message in messages)
     assert messages[-1].endswith("|turn|2")
+
+
+def test_battle_queue_eviction_preserves_critical_messages():
+    queue = asyncio.Queue(maxsize=2)
+    old_chat = ">battle-gen9ou-1\n|chat|opponent|hello"
+    request = ">battle-gen9ou-1\n|request|{\"active\":true}"
+    next_turn = ">battle-gen9ou-1\n|turn|2"
+
+    queue.put_nowait(old_chat)
+    queue.put_nowait(request)
+
+    dropped = _put_bounded_nowait(queue, next_turn, "battle battle-gen9ou-1")
+
+    remaining = [queue.get_nowait(), queue.get_nowait()]
+    assert dropped == old_chat
+    assert request in remaining
+    assert next_turn in remaining
+
+
+def test_battle_queue_rejects_low_priority_arrival_before_critical_messages():
+    queue = asyncio.Queue(maxsize=2)
+    request = ">battle-gen9ou-1\n|request|{\"active\":true}"
+    next_turn = ">battle-gen9ou-1\n|turn|2"
+    incoming_chat = ">battle-gen9ou-1\n|chat|opponent|hello"
+
+    queue.put_nowait(request)
+    queue.put_nowait(next_turn)
+
+    dropped = _put_bounded_nowait(queue, incoming_chat, "battle battle-gen9ou-1")
+
+    remaining = [queue.get_nowait(), queue.get_nowait()]
+    assert dropped == incoming_chat
+    assert request in remaining
+    assert next_turn in remaining
+    assert incoming_chat not in remaining
+
+
+def test_battle_queue_eviction_preserves_replay_and_rating_messages():
+    queue = asyncio.Queue(maxsize=2)
+    old_chat = ">battle-gen9ou-1\n|chat|opponent|hello"
+    replay = ">battle-gen9ou-1\n|queryresponse|savereplay|{\"id\":\"gen9ou-2626011055\"}"
+    rating = ">battle-gen9ou-1\n|raw|Enzo RSETIS's rating: 1226 -> 1249"
+
+    queue.put_nowait(old_chat)
+    queue.put_nowait(replay)
+
+    dropped = _put_bounded_nowait(queue, rating, "battle battle-gen9ou-1")
+
+    remaining = [queue.get_nowait(), queue.get_nowait()]
+    assert dropped == old_chat
+    assert replay in remaining
+    assert rating in remaining
+
+
+def test_battle_queue_rejects_noise_before_replay_public_url():
+    queue = asyncio.Queue(maxsize=2)
+    replay_url = ">battle-gen9ou-1\n|raw|https://replay.pokemonshowdown.com/gen9ou-2626011055"
+    ladder = "|queryresponse|ladder|{\"formatid\":\"gen9ou\",\"acre\":1249}"
+    incoming_chat = ">battle-gen9ou-1\n|chat|opponent|hello"
+
+    queue.put_nowait(replay_url)
+    queue.put_nowait(ladder)
+
+    dropped = _put_bounded_nowait(queue, incoming_chat, "battle battle-gen9ou-1")
+
+    remaining = [queue.get_nowait(), queue.get_nowait()]
+    assert dropped == incoming_chat
+    assert replay_url in remaining
+    assert ladder in remaining
 
 
 def test_ws_send_queue_drops_oldest_lowest_priority_at_capacity():
