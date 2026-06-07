@@ -27,6 +27,7 @@ Usage (inside PSWebsocketClient):
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -43,6 +44,17 @@ PRIORITY_CHAT        = 5   # everything else
 
 # Minimum delay between consecutive sends (seconds)
 SEND_INTERVAL = 0.100  # 100 ms  →  max 10 msg/s
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        return default
+
+
+DEFAULT_MAX_QUEUE_SIZE = max(1, _env_int("FOULER_WS_SEND_QUEUE_MAX", 500))
 
 
 def _classify(message: str) -> int:
@@ -92,9 +104,10 @@ class WSSendQueue:
     same event loop (which is the fouler-play architecture).
     """
 
-    def __init__(self, send_interval: float = SEND_INTERVAL):
+    def __init__(self, send_interval: float = SEND_INTERVAL, max_queue_size: int | None = None):
         self._interval = send_interval
         self._pq: asyncio.PriorityQueue = asyncio.PriorityQueue()
+        self._max_queue_size = DEFAULT_MAX_QUEUE_SIZE if max_queue_size is None else max(1, max_queue_size)
         self._seq = 0
         self._task: asyncio.Task | None = None
         self._last_send_time: float = 0.0
@@ -134,6 +147,7 @@ class WSSendQueue:
 
         self._seq += 1
         item = _QueueItem(priority=priority, seq=self._seq, message=message, future=fut)
+        item.websocket = websocket  # type: ignore[attr-defined]
 
         queue_size = self._pq.qsize()
         if queue_size > 0:
@@ -142,15 +156,90 @@ class WSSendQueue:
                 priority, queue_size, message,
             )
 
-        await self._pq.put(item)
-
-        # Attach the live websocket reference so the sender can use it.
-        # We store it on the item after put() because item is immutable during
-        # the priority comparison, but we need to carry the ws reference.
-        item.websocket = websocket  # type: ignore[attr-defined]
+        if queue_size >= self._max_queue_size:
+            accepted = self._drop_for_incoming_item(item)
+            if not accepted:
+                await fut
+                return
+        else:
+            await self._pq.put(item)
 
         # Wait for the sender to complete this message
         await fut
+
+    def _drop_one_queued_item(self) -> bool:
+        """Drop the oldest lowest-priority queued send and fail its waiter."""
+        items: list[_QueueItem] = []
+        while True:
+            try:
+                queued: _QueueItem = self._pq.get_nowait()
+                self._pq.task_done()
+                items.append(queued)
+            except asyncio.QueueEmpty:
+                break
+
+        if not items:
+            return False
+
+        drop_idx = max(
+            range(len(items)),
+            key=lambda idx: (items[idx].priority, -items[idx].seq),
+        )
+        dropped = items.pop(drop_idx)
+        if not dropped.future.done():
+            dropped.future.set_exception(
+                RuntimeError(
+                    f"WSSendQueue dropped queued message at capacity {self._max_queue_size}: "
+                    f"{dropped.message[:80]}"
+                )
+            )
+        for queued in items:
+            self._pq.put_nowait(queued)
+        logger.warning(
+            "WSSendQueue: dropped queued message priority=%d seq=%d at capacity=%d msg=%.80s",
+            dropped.priority,
+            dropped.seq,
+            self._max_queue_size,
+            dropped.message,
+        )
+        return True
+
+    def _drop_for_incoming_item(self, item: _QueueItem) -> bool:
+        """Bound the queue without letting low-priority arrivals evict urgent sends."""
+        items: list[_QueueItem] = []
+        while True:
+            try:
+                queued: _QueueItem = self._pq.get_nowait()
+                self._pq.task_done()
+                items.append(queued)
+            except asyncio.QueueEmpty:
+                break
+
+        candidates = items + [item]
+        drop_idx = max(
+            range(len(candidates)),
+            key=lambda idx: (candidates[idx].priority, -candidates[idx].seq),
+        )
+        dropped = candidates.pop(drop_idx)
+        accepted = dropped is not item
+        if not dropped.future.done():
+            dropped.future.set_exception(
+                RuntimeError(
+                    f"WSSendQueue dropped queued message at capacity {self._max_queue_size}: "
+                    f"{dropped.message[:80]}"
+                )
+            )
+        for queued in candidates:
+            self._pq.put_nowait(queued)
+        logger.warning(
+            "WSSendQueue: dropped %s message priority=%d seq=%d at capacity=%d msg=%.80s",
+            "incoming" if not accepted else "queued",
+            dropped.priority,
+            dropped.seq,
+            self._max_queue_size,
+            dropped.message,
+        )
+        return accepted
 
     async def _sender_loop(self):
         """Drain the priority queue, enforcing minimum inter-send delay."""
