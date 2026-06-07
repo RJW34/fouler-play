@@ -540,7 +540,7 @@ def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
     assert not any("infrastructure/elo_watchdog.py" in command for command in commands)
 
 
-def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
+def test_supervisor_cycle_blocks_improve_without_recursive_readiness(monkeypatch):
     commands = []
 
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
@@ -572,14 +572,16 @@ def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
 
     payload = devstream_session.run_supervisor_cycle(args, 1)
 
-    assert payload["autoImprove"]["enabled"] is True
+    assert payload["autoImprove"]["enabled"] is False
     assert payload["autoImprove"]["reason"] == "--enable-auto-improve"
     assert payload["autoImprove"]["sentinel"] == devstream_session.AUTO_IMPROVE_SENTINEL
     assert payload["autoImprove"]["readiness"]["readyForOfflineIteration"] is True
+    assert payload["autoImprove"]["blocked"] is True
+    assert "recursive readiness gate not true" in " ".join(payload["autoImprove"]["blockers"])
     assert commands[2] == ["python", "infrastructure/improve_loop.py", "--readiness", "--enable-auto-improve"]
-    assert commands[3] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
-    assert commands[4] == ["python", "infrastructure/elo_watchdog.py"]
-    assert commands[5][:3] == ["python", "scripts/devstream_session.py", "start"]
+    assert not any("infrastructure/improve_agent.py" in command for command in commands)
+    assert not any("infrastructure/elo_watchdog.py" in command for command in commands)
+    assert commands[3][:3] == ["python", "scripts/devstream_session.py", "start"]
 
 
 def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag(monkeypatch):
@@ -601,7 +603,7 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
             result["stdoutTail"] = json.dumps(
                 {
                     "readyForOfflineIteration": True,
-                    "readyForRecursiveAutoImprove": False,
+                    "readyForRecursiveAutoImprove": True,
                     "blockers": [],
                 }
             )
@@ -626,7 +628,15 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
     assert payload["autoImprove"]["enabled"] is True
     assert payload["autoImprove"]["reason"] == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
     assert commands[2] == ["python", "infrastructure/improve_loop.py", "--readiness", "--enable-auto-improve"]
-    assert commands[3] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[3] == [
+        "python",
+        "infrastructure/improve_loop.py",
+        "--iterations",
+        "1",
+        "--num-battles",
+        "30",
+        "--enable-auto-improve",
+    ]
     assert commands[4] == ["python", "infrastructure/elo_watchdog.py"]
 
 

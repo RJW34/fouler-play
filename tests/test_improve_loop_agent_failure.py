@@ -169,6 +169,28 @@ def test_main_blocks_mutating_loop_before_runtime_lease_without_sentinel(monkeyp
     assert improve_loop.main() == 2
 
 
+def test_main_blocks_single_mutating_iteration_when_offline_readiness_fails(monkeypatch):
+    monkeypatch.setenv(improve_loop.AUTO_IMPROVE_SENTINEL, "1")
+    monkeypatch.setattr(sys, "argv", ["improve_loop.py", "--iterations", "1"])
+    monkeypatch.setattr(
+        improve_loop,
+        "loop_status",
+        lambda: {
+            "measured_gate_ever": True,
+            "battle_stream_stale": True,
+            "battle_stream_age_minutes": 360,
+            "headline": "STREAM-STALE learn-loop measured",
+        },
+    )
+    monkeypatch.setattr(
+        improve_loop,
+        "acquire_runtime_lease",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("lease should not be acquired")),
+    )
+
+    assert improve_loop.main() == 2
+
+
 def test_main_releases_runtime_lease_after_iteration(monkeypatch, tmp_path):
     from infrastructure import runtime_lease
 

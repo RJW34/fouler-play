@@ -112,6 +112,10 @@ POSTED_REPLAYS_MAX = max(500, int(os.getenv("MONITOR_POSTED_REPLAYS_MAX", "10000
 FINISHED_BATTLES_MAX = max(100, int(os.getenv("MONITOR_FINISHED_BATTLES_MAX", "2000")))
 BATCH_RESULTS_MAX = max(100, int(os.getenv("MONITOR_BATCH_RESULTS_MAX", "500")))
 BATCH_LOSSES_MAX = max(50, int(os.getenv("MONITOR_BATCH_LOSSES_MAX", "250")))
+FINISHED_REPLAY_PENDING_MAX_AGE_SEC = max(
+    60,
+    int(os.getenv("MONITOR_FINISHED_REPLAY_PENDING_MAX_AGE_SEC", "3600")),
+)
 
 # Patterns to detect in bot output
 # NOTE: Battle IDs can have alphanumeric hash suffixes like:
@@ -203,6 +207,7 @@ class BotMonitor:
         self.battle_message_map = {}  # Track most recent battle for each message stream
         self.finished_battles = OrderedDict()  # battle_id -> (opponent, result) awaiting replay
         self.finished_battle_times = OrderedDict()  # battle_id -> monotonic finish time
+        self.finished_replay_pending_max_age_sec = FINISHED_REPLAY_PENDING_MAX_AGE_SEC
         replay_grace_env = os.getenv("REPLAY_FLUSH_GRACE_SEC", "20").strip()
         try:
             self.replay_flush_grace_sec = max(0.0, float(replay_grace_env))
@@ -266,6 +271,28 @@ class BotMonitor:
         while len(self.finished_battles) > FINISHED_BATTLES_MAX:
             stale_battle_id, _ = self.finished_battles.popitem(last=False)
             self.finished_battle_times.pop(stale_battle_id, None)
+
+    def _expire_finished_replay_handoffs(self, now: float | None = None) -> list[str]:
+        """Drop old finished-battle replay waiters after the batch already noted pending upload."""
+        now = time.monotonic() if now is None else now
+        max_age = float(getattr(self, "finished_replay_pending_max_age_sec", FINISHED_REPLAY_PENDING_MAX_AGE_SEC))
+        if max_age <= 0:
+            return []
+        expired: list[str] = []
+        for battle_id, started in list(getattr(self, "finished_battle_times", {}).items()):
+            if (now - float(started)) < max_age:
+                continue
+            expired.append(battle_id)
+            self.finished_battle_times.pop(battle_id, None)
+            self.finished_battles.pop(battle_id, None)
+        if expired:
+            logging.warning(
+                "Expired %d pending replay handoff(s) after %.0fs: %s",
+                len(expired),
+                max_age,
+                ", ".join(expired[:5]),
+            )
+        return expired
 
     @staticmethod
     def _public_replay_id(value: str | None) -> str:
@@ -380,6 +407,7 @@ class BotMonitor:
             logging.warning("Failed to queue late replay handoff for %s: %s", battle_id, exc)
 
     def _pending_batch_replay_ids(self) -> list[str]:
+        self._expire_finished_replay_handoffs()
         finished_battles = getattr(self, "finished_battles", {})
         pending: list[str] = []
         for item in getattr(self, "batch_results", []):
@@ -769,6 +797,7 @@ class BotMonitor:
         self.batch_losses = []
         self.batch_wins_count = 0
         self.batch_losses_count = 0
+        self._expire_finished_replay_handoffs()
 
     @staticmethod
     def _batch_result_parts(item):
@@ -893,6 +922,7 @@ class BotMonitor:
             # Periodic cleanup of stale battles (every 5 minutes)
             if (datetime.now() - last_cleanup).total_seconds() > 300:
                 await self.cleanup_stale_battles()
+                self._expire_finished_replay_handoffs()
                 last_cleanup = datetime.now()
             
             # Periodic ELO fetch for stream overlay (every 60 seconds)

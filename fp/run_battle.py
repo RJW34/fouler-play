@@ -207,6 +207,7 @@ REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
+REPLAY_SAVE_TASKS_MAX = max(1, int(os.getenv("REPLAY_SAVE_TASKS_MAX", "32")))
 DEAD_BATTLE_BLACKLIST_MAX = max(100, int(os.getenv("DEAD_BATTLE_BLACKLIST_MAX", "2000")))
 
 # Hard battle timeout (seconds). 0 disables forced battle termination.
@@ -292,6 +293,7 @@ _resume_lock = asyncio.Lock()
 _resume_by_worker: dict[int, list[dict]] = {}
 _resume_queue: list[dict] = []
 _replay_cache: dict[str, dict[str, float | bool]] = {}
+_replay_save_tasks: set[asyncio.Task] = set()
 
 # Per-battle ELO cache: battle_tag -> pre-battle ELO value
 # Used to compute ELO delta for Discord reports
@@ -348,6 +350,33 @@ def _prune_replay_cache(now: float) -> None:
         )[:overflow]
         for replay_id, _ in oldest:
             _replay_cache.pop(replay_id, None)
+
+
+def _replay_save_task_done(task: asyncio.Task) -> None:
+    _replay_save_tasks.discard(task)
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        pass
+    except Exception as exc:
+        logger.debug("Replay JSON save task failed: %s", exc)
+
+
+def _track_replay_save_task(coro) -> asyncio.Task | None:
+    """Start a bounded background replay-save task and observe failures."""
+    if len(_replay_save_tasks) >= REPLAY_SAVE_TASKS_MAX:
+        close = getattr(coro, "close", None)
+        if close:
+            close()
+        logger.warning(
+            "Skipping replay JSON save; %d save task(s) already pending",
+            len(_replay_save_tasks),
+        )
+        return None
+    task = asyncio.create_task(coro)
+    _replay_save_tasks.add(task)
+    task.add_done_callback(_replay_save_task_done)
+    return task
 
 
 def _parse_started_ts(value: str | None) -> datetime | None:
@@ -2737,9 +2766,7 @@ async def pokemon_battle(
                 else:
                     _replay_save_id = None
                 if _replay_save_id:
-                    asyncio.ensure_future(
-                        _save_replay_json_locally(_replay_save_id)
-                    )
+                    _track_replay_save_task(_save_replay_json_locally(_replay_save_id))
 
                 # Retrieve pre-battle ELO for delta display
                 _elo_before_val = _elo_before_cache.pop(battle_tag, None)

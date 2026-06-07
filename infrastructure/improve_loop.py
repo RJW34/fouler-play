@@ -810,12 +810,19 @@ def main() -> int:
         print(f"[LOOP] BLOCKED: --iterations must be >= 1 (got {args.iterations}).")
         return 2
 
-    if (
-        not args.dry_run
-        and args.iterations > MAX_ITERATIONS_WITHOUT_RECURSIVE_READY
-    ):
+    if not args.dry_run:
         readiness = offline_no_live_readiness(cli_enabled=args.enable_auto_improve)
-        if not readiness.get("readyForRecursiveAutoImprove"):
+        if not readiness.get("readyForOfflineIteration"):
+            print(
+                f"[LOOP] BLOCKED: mutating auto-improvement requires "
+                f"readyForOfflineIteration=true. "
+                f"Readiness: {json.dumps(readiness, sort_keys=True)}"
+            )
+            return 2
+        if (
+            args.iterations > MAX_ITERATIONS_WITHOUT_RECURSIVE_READY
+            and not readiness.get("readyForRecursiveAutoImprove")
+        ):
             print(
                 f"[LOOP] BLOCKED: recursive auto-improvement requires "
                 f"readyForRecursiveAutoImprove=true before running "
@@ -823,13 +830,6 @@ def main() -> int:
                 f"Readiness: {json.dumps(readiness, sort_keys=True)}"
             )
             return 2
-
-    if not args.dry_run and not auto_improve_enabled(args.enable_auto_improve):
-        print(
-            f"[LOOP] BLOCKED: auto-improvement is disabled. Set {AUTO_IMPROVE_SENTINEL}=1 "
-            f"or pass --enable-auto-improve to allow mutating iterations."
-        )
-        return 2
 
     br = current_branch()
     if br in {"master", "main"} and not args.allow_master and not args.dry_run:

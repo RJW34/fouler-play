@@ -1016,24 +1016,37 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         payload["actions"].append(readiness_action)
         readiness = _readiness_from_action(readiness_action)
         payload["autoImprove"]["readiness"] = readiness
-        if readiness.get("readyForOfflineIteration"):
-            improve_command = [py, "infrastructure/improve_agent.py", "--enable-auto-improve"]
-            payload["actions"].append(
-                run_supervisor_command(
-                    improve_command,
-                    timeout=getattr(args, "improve_timeout_seconds", 240),
-                )
+        if readiness.get("readyForRecursiveAutoImprove"):
+            improve_command = [
+                py,
+                "infrastructure/improve_loop.py",
+                "--iterations",
+                "1",
+                "--num-battles",
+                str(getattr(args, "autoresearch_count", 30)),
+                "--enable-auto-improve",
+            ]
+            improve_action = run_supervisor_command(
+                improve_command,
+                timeout=getattr(args, "improve_timeout_seconds", 240),
             )
-            payload["actions"].append(
-                run_supervisor_command(
-                    [py, "infrastructure/elo_watchdog.py"],
-                    timeout=getattr(args, "proof_timeout_seconds", 300),
+            payload["actions"].append(improve_action)
+            if improve_action.get("returnCode") == 0 and not improve_action.get("timedOut"):
+                payload["actions"].append(
+                    run_supervisor_command(
+                        [py, "infrastructure/elo_watchdog.py"],
+                        timeout=getattr(args, "proof_timeout_seconds", 300),
+                    )
                 )
-            )
+            else:
+                payload["autoImprove"]["watchdogSkipped"] = "improve_loop did not complete cleanly"
         else:
             payload["autoImprove"]["enabled"] = False
             payload["autoImprove"]["blocked"] = True
-            payload["autoImprove"]["blockers"] = readiness.get("blockers") or ["readiness gate blocked auto-improve"]
+            blockers = list(readiness.get("blockers") or [])
+            if readiness.get("readyForOfflineIteration") and not readiness.get("readyForRecursiveAutoImprove"):
+                blockers.append("recursive readiness gate not true; measured self-play gate has not completed")
+            payload["autoImprove"]["blockers"] = blockers or ["readiness gate blocked auto-improve"]
     payload["actions"].append(
         run_supervisor_command(
             [

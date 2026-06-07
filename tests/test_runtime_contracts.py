@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 
@@ -75,6 +76,31 @@ def test_run_battle_finalizer_clears_pre_battle_elo_cache_without_dropping_snaps
     assert battle_tag not in run_battle._elo_before_cache
     assert run_battle._last_battle_elo[battle_tag] == {"elo_after": 1250}
     run_battle._last_battle_elo.pop(battle_tag, None)
+
+
+def test_run_battle_replay_save_tasks_are_bounded_and_observed(monkeypatch):
+    import fp.run_battle as run_battle
+
+    seen = []
+    run_battle._replay_save_tasks.clear()
+    monkeypatch.setattr(run_battle, "REPLAY_SAVE_TASKS_MAX", 1)
+
+    async def marker(name):
+        seen.append(name)
+        return name
+
+    async def exercise():
+        first = run_battle._track_replay_save_task(marker("first"))
+        second = run_battle._track_replay_save_task(marker("second"))
+        assert first is not None
+        assert second is None
+        await first
+        await asyncio.sleep(0)
+
+    asyncio.run(exercise())
+
+    assert seen == ["first"]
+    assert run_battle._replay_save_tasks == set()
 
 def test_recursive_improvement_gate_verifies_showdown_source_lock():
     agent = read("infrastructure/improve_agent.py")
