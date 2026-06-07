@@ -57,6 +57,7 @@ STATUS_EXPIRED = "expired"
 # Default expiry: 10 minutes
 DEFAULT_EXPIRY_SEC = 600
 MAX_RETRIES = 3
+MAX_PENDING_EVENTS = max(1, int(os.getenv("EVENT_QUEUE_MAX_PENDING", "200")))
 QUEUE_LOCK_RETRY_ATTEMPTS = int(os.getenv("EVENT_QUEUE_LOCK_RETRY_ATTEMPTS", "8"))
 QUEUE_LOCK_RETRY_DELAY_SEC = float(os.getenv("EVENT_QUEUE_LOCK_RETRY_DELAY_SEC", "0.05"))
 
@@ -269,6 +270,39 @@ def _with_lock(fn):
     raise RuntimeError("unreachable queue lock retry state")
 
 
+def _archive_over_capacity_pending(events: list[dict], *, now: float) -> list[dict]:
+    """Keep pending Discord backlog bounded without sending or silently dropping proof."""
+    pending = [
+        event
+        for event in events
+        if isinstance(event, dict) and event.get("status") == STATUS_PENDING
+    ]
+    overflow_count = len(pending) - MAX_PENDING_EVENTS + 1
+    if overflow_count <= 0:
+        return events
+
+    pending.sort(key=lambda event: _event_timestamp(event, now))
+    archived = pending[:overflow_count]
+    _write_backlog_archive(
+        events,
+        archived,
+        now=now,
+        max_age_sec=DEFAULT_EXPIRY_SEC,
+        reason="pending-discord-event-cap-archive",
+    )
+    archived_ids = {id(event) for event in archived}
+    logger.warning(
+        "Archived %s over-capacity pending Discord event(s); max_pending=%s",
+        len(archived),
+        MAX_PENDING_EVENTS,
+    )
+    return [
+        event
+        for event in events
+        if not (isinstance(event, dict) and id(event) in archived_ids)
+    ]
+
+
 def queue_event(
     event_type: str,
     channel: str,
@@ -311,6 +345,8 @@ def queue_event(
                     and (now - ev["timestamp"]) < dedup_window_sec):
                 logger.info(f"Dedup rejected: {event_type} (hash={content_md5[:8]})")
                 return None
+
+        events = _archive_over_capacity_pending(events, now=now)
 
         event_id = str(uuid.uuid4())[:12]
         event = {

@@ -136,6 +136,32 @@ def test_fifo_ordering():
         assert ev["id"] == ids[i], f"Order mismatch at {i}"
     print("✅ Test 6: FIFO ordering (10 events) PASSED")
 
+def test_pending_backlog_cap_archives_oldest_without_posting():
+    """Test 6b: Pending backlog is bounded and over-capacity proof is archived."""
+    _reset_test_queue()
+    old_max = event_queue_lib.MAX_PENDING_EVENTS
+    event_queue_lib.MAX_PENDING_EVENTS = 3
+    try:
+        ids = []
+        for i in range(4):
+            eid = queue_event(f"cap_{i}", "ch", f"Event {i} at {time.time()}", dedup_window_sec=0)
+            ids.append(eid)
+            time.sleep(0.01)
+
+        pending = get_pending_events()
+        assert len(pending) == 3
+        assert [ev["id"] for ev in pending] == ids[1:]
+
+        archive = json.loads(event_queue_lib.BACKLOG_ARCHIVE_LATEST.read_text(encoding="utf-8"))
+        assert archive["reason"] == "pending-discord-event-cap-archive"
+        assert archive["archivedEventCount"] == 1
+        assert archive["remainingPendingEventCount"] == 2
+        assert archive["liveDiscordMessagesSent"] is False
+        assert archive["events"][0]["eventType"] == "cap_0"
+    finally:
+        event_queue_lib.MAX_PENDING_EVENTS = old_max
+    print("✅ Test 6b: Pending backlog cap archives oldest without posting PASSED")
+
 def test_expiry():
     """Test 7: Event expiry."""
     _reset_test_queue()
@@ -167,6 +193,7 @@ if __name__ == "__main__":
     test_retry_and_fail()
     test_simultaneous_batch_crash()
     test_fifo_ordering()
+    test_pending_backlog_cap_archives_oldest_without_posting()
     test_expiry()
     test_stats()
     
