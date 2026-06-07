@@ -1,6 +1,6 @@
 import asyncio
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 
 import pytest
 
@@ -14,12 +14,15 @@ def _monitor_without_runtime():
     monitor.batch_wins_count = 0
     monitor.batch_losses_count = 0
     monitor.BATCH_SIZE = 3
+    monitor.active_battles = {}
     monitor.finished_battles = OrderedDict()
     monitor.finished_battle_times = OrderedDict()
     monitor.replay_flush_grace_sec = 20.0
     monitor._batch_flush_task = None
     monitor._analysis_tasks = set()
     monitor.max_analysis_tasks = 50
+    monitor.posted_replays = set()
+    monitor._posted_replay_order = deque()
     return monitor
 
 
@@ -107,6 +110,62 @@ def test_batch_flush_grace_allows_pending_replay_summary():
         monitor.record_batch_result(opponent, "won", battle_id=battle_id)
 
     assert monitor._batch_ready_to_flush() is True
+
+
+def test_savereplay_json_attaches_public_replay_to_finished_batch_result():
+    monitor = _monitor_without_runtime()
+    battle_id = "battle-gen9ou-2626011055-privatehash"
+    monitor._track_finished_battle(battle_id, "ReplayJson", "lost")
+    monitor.record_batch_result("ReplayJson", "lost", battle_id=battle_id)
+
+    replay_id = BotMonitor._replay_id_from_line(
+        f">{battle_id}\n|queryresponse|savereplay|{{\"id\":\"gen9ou-2626011055-privatehash\"}}"
+    )
+
+    assert replay_id == "gen9ou-2626011055"
+    assert monitor._attach_replay_to_finished_battle(
+        replay_id,
+        f">{battle_id}\n|queryresponse|savereplay|{{\"id\":\"gen9ou-2626011055-privatehash\"}}",
+    )
+    assert monitor.batch_results == [
+        (
+            "ReplayJson",
+            "lost",
+            "https://replay.pokemonshowdown.com/gen9ou-2626011055",
+            battle_id,
+        )
+    ]
+    assert monitor.batch_losses == [
+        ("https://replay.pokemonshowdown.com/gen9ou-2626011055", "ReplayJson")
+    ]
+    assert battle_id not in monitor.finished_battles
+    assert battle_id not in monitor.finished_battle_times
+    assert monitor._batch_ready_to_flush() is False
+
+
+def test_malformed_savereplay_json_does_not_create_replay_link():
+    monitor = _monitor_without_runtime()
+    battle_id = "battle-gen9ou-2626011055-privatehash"
+    monitor._track_finished_battle(battle_id, "ReplayJson", "won")
+    monitor.record_batch_result("ReplayJson", "won", battle_id=battle_id)
+
+    replay_id = BotMonitor._replay_id_from_line(
+        f">{battle_id}\n|queryresponse|savereplay|not-json"
+    )
+
+    assert replay_id == ""
+    assert monitor.batch_results == [("ReplayJson", "won", None, battle_id)]
+    assert battle_id in monitor.finished_battles
+
+
+def test_unmatched_replay_proof_is_not_marked_posted_before_attach():
+    monitor = _monitor_without_runtime()
+
+    assert not monitor._attach_replay_to_finished_battle(
+        "gen9ou-2626011055",
+        ">battle-gen9ou-2626011055\n|queryresponse|savereplay|{\"id\":\"gen9ou-2626011055\"}",
+    )
+    assert monitor.posted_replays == set()
 
 
 @pytest.mark.asyncio

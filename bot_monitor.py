@@ -128,6 +128,7 @@ BATTLE_START_PATTERN = re.compile(
     r')', re.IGNORECASE)
 BATTLE_END_PATTERN = re.compile(r'(Won|Lost) with team: (.+)')
 REPLAY_PATTERN = re.compile(r'https://replay\.pokemonshowdown\.com/([\w-]+)')
+SAVEREPLAY_PATTERN = re.compile(r'\|queryresponse\|savereplay\|(.+)$')
 ELO_PATTERN = re.compile(r'W: (\d+)\s+L: (\d+)')
 WINNER_PATTERN = re.compile(r'(?:Battle finished: (' + BATTLE_ID_RE + r')\s+)?Winner: (.+)', re.IGNORECASE)
 BATTLE_TAG_PATTERN = re.compile(BATTLE_ID_RE)
@@ -265,6 +266,84 @@ class BotMonitor:
         while len(self.finished_battles) > FINISHED_BATTLES_MAX:
             stale_battle_id, _ = self.finished_battles.popitem(last=False)
             self.finished_battle_times.pop(stale_battle_id, None)
+
+    @staticmethod
+    def _public_replay_id(value: str | None) -> str:
+        if not value:
+            return ""
+        replay_id = str(value).strip()
+        if "/" in replay_id:
+            replay_id = replay_id.rsplit("/", 1)[-1]
+        if replay_id.endswith(".json"):
+            replay_id = replay_id[:-5]
+        if replay_id.startswith("battle-"):
+            replay_id = replay_id.replace("battle-", "", 1)
+        parts = replay_id.split("-")
+        if len(parts) >= 2 and parts[1].isdigit():
+            return f"{parts[0]}-{parts[1]}"
+        return ""
+
+    @classmethod
+    def _replay_id_from_line(cls, line: str) -> str:
+        match = REPLAY_PATTERN.search(line)
+        if match:
+            return cls._public_replay_id(match.group(1))
+
+        match = SAVEREPLAY_PATTERN.search(line)
+        if not match:
+            return ""
+        try:
+            payload = json.loads(match.group(1))
+        except (TypeError, ValueError):
+            return ""
+        if not isinstance(payload, dict):
+            return ""
+        return cls._public_replay_id(payload.get("id") or payload.get("url"))
+
+    def _find_finished_battle_for_replay(self, replay_id: str) -> str | None:
+        for bid in self.finished_battles:
+            bid_suffix = bid.replace("battle-", "", 1)
+            public_bid = self._public_replay_id(bid_suffix)
+            if public_bid == replay_id:
+                return bid
+        return None
+
+    def _attach_replay_to_finished_battle(self, replay_id: str, line: str) -> bool:
+        replay_id = self._public_replay_id(replay_id)
+        if not replay_id:
+            return False
+        replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+        battle_id = self._find_finished_battle_for_replay(replay_id)
+
+        if not battle_id:
+            battle_id = self.find_battle_for_event(line)
+
+        if not (battle_id and battle_id in self.finished_battles):
+            return False
+
+        if self._remember_posted_replay(replay_url):
+            return False
+
+        opponent, result = self.finished_battles[battle_id]
+
+        for i in range(len(self.batch_results) - 1, -1, -1):
+            opp, res, url, recorded_battle_id = self._batch_result_parts(self.batch_results[i])
+            same_battle = bool(recorded_battle_id and battle_id and recorded_battle_id == battle_id)
+            same_result = opp == opponent and res == result
+            if (same_battle or same_result) and url is None:
+                self.batch_results[i] = (opp, res, replay_url, recorded_battle_id or battle_id)
+                break
+
+        if result == "lost":
+            if not any(u == replay_url for u, _ in self.batch_losses):
+                self.batch_losses.append((replay_url, opponent))
+                if len(self.batch_losses) > BATCH_LOSSES_MAX:
+                    self.batch_losses = self.batch_losses[-BATCH_LOSSES_MAX:]
+
+        self.finished_battle_times.pop(battle_id, None)
+        del self.finished_battles[battle_id]
+
+        return True
 
     def _pending_batch_replay_ids(self) -> list[str]:
         finished_battles = getattr(self, "finished_battles", {})
@@ -994,65 +1073,12 @@ class BotMonitor:
             if match:
                 pass
 
-            # Detect replay link - associate with battle
-            match = REPLAY_PATTERN.search(line)
-            if match:
-                replay_id = match.group(1)
-                # Strip any spectator hash from replay ID (format: gen9ou-NUMBER or gen9ou-NUMBER-HASH)
-                # Keep only format-number portions
-                parts = replay_id.split("-")
-                if len(parts) >= 3:
-                    # Remove hash suffix (everything after the second dash)
-                    replay_id = f"{parts[0]}-{parts[1]}"
-                replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
-
-                # Extract battle_id from replay_id
-                # Replay URLs contain the battle tag, e.g. gen9ou-2529712238
-                # But battle_id has "battle-" prefix, e.g. battle-gen9ou-2529712238
-                battle_id = None
-                replay_suffix = replay_url.split('/')[-1]  # "gen9ou-2529712238"
-                
-                # Check finished_battles (battles that have completed)
-                # Try exact match first, then prefix match for hash-suffixed IDs
-                for bid in self.finished_battles:
-                    bid_suffix = bid.replace("battle-", "", 1)
-                    if bid_suffix == replay_suffix or replay_suffix.startswith(bid_suffix) or bid_suffix.startswith(replay_suffix):
-                        battle_id = bid
-                        break
-                
-                # Last resort: use find_battle_for_event
-                if not battle_id:
-                    battle_id = self.find_battle_for_event(line)
-
-                # Attach replay URL to the most recent batch result for this battle
-                if not self._remember_posted_replay(replay_url):
-
-                    if battle_id and battle_id in self.finished_battles:
-                        opponent, result = self.finished_battles[battle_id]
-
-                        # Update the batch entry with the replay URL
-                        for i in range(len(self.batch_results) - 1, -1, -1):
-                            opp, res, url, recorded_battle_id = self._batch_result_parts(self.batch_results[i])
-                            same_battle = bool(recorded_battle_id and battle_id and recorded_battle_id == battle_id)
-                            same_result = opp == opponent and res == result
-                            if (same_battle or same_result) and url is None:
-                                self.batch_results[i] = (opp, res, replay_url, recorded_battle_id or battle_id)
-                                break
-
-                        # Track loss replays for batch analysis
-                        if result == "lost":
-                            # Update batch_losses with actual URL
-                            self.batch_losses = [(u, o) if u != replay_url else (u, o) for u, o in self.batch_losses]
-                            if not any(u == replay_url for u, _ in self.batch_losses):
-                                self.batch_losses.append((replay_url, opponent))
-                                if len(self.batch_losses) > BATCH_LOSSES_MAX:
-                                    self.batch_losses = self.batch_losses[-BATCH_LOSSES_MAX:]
-
-                        self.finished_battle_times.pop(battle_id, None)
-                        del self.finished_battles[battle_id]
-
-                    # Flush only when replay coverage is complete or the grace window elapsed.
-                    await self._maybe_flush_batch_report()
+            # Detect replay proof - associate URL or savereplay JSON with battle.
+            replay_id = self._replay_id_from_line(line)
+            if replay_id:
+                self._attach_replay_to_finished_battle(replay_id, line)
+                # Flush only when replay coverage is complete or the grace window elapsed.
+                await self._maybe_flush_batch_report()
 
     async def run_bot(self):
         """Run the bot process and monitor it
