@@ -8,7 +8,7 @@ Claude to write ONE targeted fix, applies it, runs tests, and commits
 if passing.  The ELO watchdog reverts if the fix hurts.
 
 Usage:
-    python infrastructure/improve_agent.py          # normal run
+    python infrastructure/improve_agent.py --enable-auto-improve
     python infrastructure/improve_agent.py --dry-run  # show what would change, don't apply
 """
 
@@ -26,6 +26,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+from infrastructure.runtime_lease import RuntimeLeaseBusy, acquire_runtime_lease
 
 try:
     from dotenv import load_dotenv
@@ -110,6 +112,36 @@ NON_CODE_TOP_ISSUE_KEYS = frozenset({"evidence_starved"})
 # watchdog has something to revert.
 BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
 DEPLOY_LOG_PATH = PROJECT_ROOT / "infrastructure" / "deploy_log.json"
+AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
+AUTO_PUSH_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_PUSH"
+PUSH_REMOTE_ENV = "IMPROVE_AGENT_PUSH_REMOTE"
+PUSH_BRANCH_ENV = "IMPROVE_AGENT_PUSH_BRANCH"
+TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+
+
+def env_flag_enabled(name: str) -> bool:
+    return str(os.getenv(name, "")).strip().lower() in TRUTHY_ENV_VALUES
+
+
+def auto_improve_enabled(cli_enabled: bool = False) -> bool:
+    return bool(cli_enabled or env_flag_enabled(AUTO_IMPROVE_SENTINEL))
+
+
+def auto_push_enabled(cli_enabled: bool = False) -> bool:
+    return bool(cli_enabled or env_flag_enabled(AUTO_PUSH_SENTINEL))
+
+
+def explicit_push_target(push_remote: str | None = None, push_branch: str | None = None) -> tuple[str, str]:
+    remote = (push_remote or os.getenv(PUSH_REMOTE_ENV) or "").strip()
+    branch = (push_branch or os.getenv(PUSH_BRANCH_ENV) or "").strip()
+    if not remote or not branch:
+        raise ValueError(
+            f"git push requires explicit --push-remote/--push-branch or "
+            f"{PUSH_REMOTE_ENV}/{PUSH_BRANCH_ENV}; no default push target is allowed"
+        )
+    if remote.lower() == "origin" and branch.lower() == "master":
+        raise ValueError("refusing unsafe push target origin master")
+    return remote, branch
 
 
 def load_guardrails() -> dict:
@@ -1188,9 +1220,17 @@ def _git_head() -> str:
         return "unknown"
 
 
-def commit_and_push(target_file: str, issue_title: str) -> bool:
-    """Commit the change and push to origin."""
+def commit_and_push(
+    target_file: str,
+    issue_title: str,
+    *,
+    push_enabled: bool = False,
+    push_remote: str | None = None,
+    push_branch: str | None = None,
+) -> bool:
+    """Commit the accepted change and optionally push to an explicit target."""
     try:
+        push_target = explicit_push_target(push_remote, push_branch) if push_enabled else None
         pre_commit = _git_head()
         subprocess.run(
             ["git", "add", target_file],
@@ -1213,37 +1253,79 @@ def commit_and_push(target_file: str, issue_title: str) -> bool:
         # Record the deploy BEFORE the push: the diff is already applied to live
         # files, so the change is in play regardless of whether the push succeeds.
         record_deploy(pre_commit, post_commit)
+        if push_target is None:
+            print(
+                f"[AGENT] Committed locally. Git push disabled; set {AUTO_PUSH_SENTINEL}=1 "
+                f"or pass --enable-git-push with an explicit push target."
+            )
+            return True
+        remote, branch = push_target
         subprocess.run(
-            ["git", "push", "origin", "master"],
+            ["git", "push", remote, f"HEAD:{branch}"],
             cwd=str(PROJECT_ROOT),
             check=True,
         )
-        print("[AGENT] Committed and pushed successfully.")
+        print(f"[AGENT] Committed and pushed successfully to {remote} HEAD:{branch}.")
         return True
+    except ValueError as e:
+        print(f"[AGENT] Git push blocked: {e}")
+        return False
     except subprocess.CalledProcessError as e:
         print(f"[AGENT] Git failed: {e}")
         return False
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Batch-triggered coding agent")
     parser.add_argument("--dry-run", action="store_true", help="Show diff but don't apply")
+    parser.add_argument(
+        "--enable-auto-improve",
+        action="store_true",
+        help=f"Allow this agent to mutate files and commit. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
+    )
+    parser.add_argument(
+        "--enable-git-push",
+        action="store_true",
+        help=f"Allow git push after a successful local commit. Alternative: {AUTO_PUSH_SENTINEL}=1.",
+    )
+    parser.add_argument(
+        "--push-remote",
+        help=f"Explicit git remote for push; alternatively set {PUSH_REMOTE_ENV}.",
+    )
+    parser.add_argument(
+        "--push-branch",
+        help=f"Explicit git branch for push; alternatively set {PUSH_BRANCH_ENV}.",
+    )
     args = parser.parse_args()
 
     print(f"[AGENT] {datetime.now().isoformat()} — Starting improvement cycle")
+
+    if not args.dry_run and not auto_improve_enabled(args.enable_auto_improve):
+        print(
+            f"[AGENT] BLOCKED: auto-improvement is disabled. Set {AUTO_IMPROVE_SENTINEL}=1 "
+            f"or pass --enable-auto-improve to allow mutation."
+        )
+        return 2
+
+    if not args.dry_run:
+        try:
+            acquire_runtime_lease(holder="improve_agent")
+        except RuntimeLeaseBusy as exc:
+            print(f"[AGENT] BLOCKED: {exc}")
+            return 3
 
     # 1. Load autoresearch report
     report = load_autoresearch()
     if not report or not report.get("top_issue"):
         print("[AGENT] No autoresearch report or no issues found. Skipping.")
-        return
+        return 0
 
     blockers = validate_autoresearch_for_improvement(report)
     if blockers:
         print("[AGENT] Autoresearch is not promotable. Skipping.")
         for blocker in blockers:
             print(f"[AGENT] BLOCKER: {blocker}")
-        return
+        return 0
 
     # Deploy-spacing gate: don't ship another change until the previous one has had
     # enough live games to be judged by elo_watchdog. Prevents unvalidated changes
@@ -1255,7 +1337,7 @@ def main():
             f"[AGENT] Deferring: only {since}/{min_games} games since last deploy. "
             f"Letting the previous change be validated (elo_watchdog) before shipping another."
         )
-        return
+        return 0
 
     top = report["top_issue"]
     print(f"[AGENT] Top issue: {top['title']}")
@@ -1275,7 +1357,7 @@ def main():
     if args.dry_run:
         print("[AGENT] DRY RUN — would send prompt to Claude. Exiting.")
         print(f"[AGENT] Prompt preview (first 500 chars):\n{prompt[:500]}")
-        return
+        return 0
 
     response = call_claude(prompt)
     print(f"[AGENT] Got response ({len(response)} chars)")
@@ -1285,7 +1367,7 @@ def main():
     if not diff_text:
         print("[AGENT] No valid diff in response. Skipping.")
         print(f"[AGENT] Response preview: {response[:300]}")
-        return
+        return 0
 
     print(f"[AGENT] Diff extracted ({len(diff_text.splitlines())} lines)")
 
@@ -1293,19 +1375,19 @@ def main():
     original_target_text = (PROJECT_ROOT / target_file).read_text(encoding="utf-8")
     if not apply_diff(diff_text, target_file):
         print("[AGENT] Diff failed to apply. Skipping.")
-        return
+        return 1
 
     # 6. Syntax check
     if not syntax_check(target_file):
         print("[AGENT] Syntax check failed. Reverting.")
         restore_file_snapshot(target_file, original_target_text)
-        return
+        return 1
 
     # 7. Run tests — now only a CHEAP PRE-FILTER, not the acceptance gate.
     if not run_tests():
         print("[AGENT] Tests failed (pre-filter). Reverting.")
         restore_file_snapshot(target_file, original_target_text)
-        return
+        return 1
 
     # 8. REAL acceptance gate (P1): offline win-rate eval vs frozen baseline.
     accepted, detail = offline_eval_gate()
@@ -1314,14 +1396,26 @@ def main():
         print("[AGENT] Eval gate REJECTED the change (no significant win-rate gain "
               "/ regression). Reverting.")
         restore_file_snapshot(target_file, original_target_text)
-        return
+        return 1
 
     # 9. Commit and push
-    if commit_and_push(target_file, top["title"]):
-        print(f"[AGENT] Successfully deployed fix for: {top['title']}")
+    push_requested = auto_push_enabled(args.enable_git_push)
+    if commit_and_push(
+        target_file,
+        top["title"],
+        push_enabled=push_requested,
+        push_remote=args.push_remote,
+        push_branch=args.push_branch,
+    ):
+        if push_requested:
+            print(f"[AGENT] Successfully committed and pushed fix for: {top['title']}")
+        else:
+            print(f"[AGENT] Successfully committed local fix for: {top['title']}")
+        return 0
     else:
         print("[AGENT] Commit/push failed. Change is staged but not pushed.")
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

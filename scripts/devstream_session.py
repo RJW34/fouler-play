@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import atexit
 import shutil
 import json
 import os
@@ -20,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from infrastructure.runtime_lease import RuntimeLeaseBusy, acquire_runtime_lease
 from streaming import state_store
 
 DEFAULT_RUN_COUNT = 1000000
@@ -29,12 +29,28 @@ OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
 DRAIN_FILE = PID_DIR / "drain.request"
 SUPERVISOR_PID_FILE = PID_DIR / "devstream_battle_supervisor.pid"
-SUPERVISOR_LOCK_FILE = PID_DIR / "devstream_battle_supervisor.lock"
 SUPERVISOR_STOP_FILE = PID_DIR / "supervisor.stop"
 SUPERVISOR_STATUS_FILE = ROOT / "devstream" / "truth" / "supervisor-status.json"
 STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-backups"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
+AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
+TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+
+
+def env_flag_enabled(env: dict[str, str], name: str) -> bool:
+    return str(env.get(name, "")).strip().lower() in TRUTHY_ENV_VALUES
+
+
+def supervisor_auto_improve_enabled(args: argparse.Namespace, env: dict[str, str] | None = None) -> tuple[bool, str]:
+    if getattr(args, "skip_improve", False):
+        return False, "--skip-improve"
+    if getattr(args, "enable_auto_improve", False):
+        return True, "--enable-auto-improve"
+    env = env if env is not None else load_env_files()
+    if env_flag_enabled(env, AUTO_IMPROVE_SENTINEL):
+        return True, f"{AUTO_IMPROVE_SENTINEL}=1"
+    return False, f"missing --enable-auto-improve or {AUTO_IMPROVE_SENTINEL}=1"
 
 
 def runtime_python() -> str:
@@ -169,8 +185,15 @@ def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str
     return command
 
 
-def supervisor_command(run_count: int, max_concurrent: int, queue_timeout_seconds: int, sleep_seconds: int) -> list[str]:
-    return [
+def supervisor_command(
+    run_count: int,
+    max_concurrent: int,
+    queue_timeout_seconds: int,
+    sleep_seconds: int,
+    *,
+    enable_auto_improve: bool = False,
+) -> list[str]:
+    command = [
         runtime_python(),
         "scripts/devstream_session.py",
         "supervise",
@@ -183,6 +206,9 @@ def supervisor_command(run_count: int, max_concurrent: int, queue_timeout_second
         "--sleep-seconds",
         str(sleep_seconds),
     ]
+    if enable_auto_improve:
+        command.append("--enable-auto-improve")
+    return command
 
 
 def showdown_password_required(env: dict[str, str]) -> bool:
@@ -220,7 +246,7 @@ def battle_supervisor_task_command(args: argparse.Namespace) -> list[str]:
     powershell = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
     if not os.path.exists(powershell):
         powershell = "powershell.exe"
-    return [
+    command = [
         powershell,
         "-NoProfile",
         "-ExecutionPolicy",
@@ -238,29 +264,12 @@ def battle_supervisor_task_command(args: argparse.Namespace) -> list[str]:
         "-SleepSeconds",
         str(args.supervisor_sleep_seconds),
     ]
+    if getattr(args, "enable_auto_improve", False):
+        command.append("-AutoImprove")
+    return command
 
 
 def start_supervisor_runtime(args: argparse.Namespace, command: list[str], env: dict[str, str]) -> dict[str, Any]:
-    # ROOT GUARD: never launch a second supervisor while a live one holds the
-    # singleton lock. This is the entry every supervisor-spawn path funnels
-    # through (idle-restore start --continuous, improve_agent deploy-restart,
-    # manual start), so gating it here stops the duplicate-supervisor churn at
-    # the source -- not just after the fact via the startup guard / yield.
-    try:
-        _holder = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
-    except Exception:
-        _holder = 0
-    if _holder and _holder != os.getpid():
-        try:
-            import psutil
-            if psutil.pid_exists(_holder):
-                return {
-                    "skipped": True,
-                    "reason": f"a live supervisor (lock holder PID {_holder}) already runs; not spawning a duplicate",
-                    "lockHolder": _holder,
-                }
-        except Exception:
-            pass
     installer = ROOT / "scripts" / "install_battle_supervisor_task.ps1"
     if os.name != "nt" or not installer.exists():
         return start_process(command, SUPERVISOR_PID_FILE, detached_child_env(env))
@@ -935,17 +944,21 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         )
     )
 
-    # --- Self-improvement loop (Phase D wired into the live runtime) ---------
-    # After fresh autoresearch, attempt ONE bounded improvement and then let the
-    # ELO watchdog judge/revert the previous deploy. Both steps are own-gated and
-    # self-reverting; they only run between battle cycles (idle phase) so they
-    # never disrupt a live battle. improve_agent enforces deploy-spacing +
-    # offline pytest + auto-revert and records a deploy_log entry; elo_watchdog
-    # reverts a deploy whose post-deploy ELO dropped past the guardrail.
-    if not getattr(args, "skip_improve", False):
+    # --- Self-improvement loop (explicit opt-in only) ------------------------
+    # Recursive improvement is disabled by default while the architecture is
+    # corrected. It may only run when the supervisor CLI flag or env sentinel is
+    # present; --skip-improve remains an explicit override.
+    improve_enabled, improve_reason = supervisor_auto_improve_enabled(args)
+    payload["autoImprove"] = {
+        "enabled": improve_enabled,
+        "reason": improve_reason,
+        "sentinel": AUTO_IMPROVE_SENTINEL,
+    }
+    if improve_enabled:
+        improve_command = [py, "infrastructure/improve_agent.py", "--enable-auto-improve"]
         payload["actions"].append(
             run_supervisor_command(
-                [py, "infrastructure/improve_agent.py"],
+                improve_command,
                 timeout=getattr(args, "improve_timeout_seconds", 240),
             )
         )
@@ -978,114 +991,23 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
     return payload
 
 
-def _supervisor_is_live(pid: int) -> bool:
-    """True iff pid is a live devstream_session 'supervise' process for THIS repo."""
-    if not pid or pid <= 0 or pid == os.getpid():
-        return False
-    try:
-        import psutil
-        p = psutil.Process(pid)
-        cl = " ".join(p.cmdline()).lower()
-        try:
-            cwd = (p.cwd() or "").lower()
-        except Exception:
-            cwd = ""
-        repo = str(ROOT).lower()
-        return ("devstream_session" in cl and "supervise" in cl
-                and (repo in cl or repo in cwd))
-    except Exception:
-        return False
-
-
-def _acquire_supervisor_singleton_or_exit() -> None:
-    """Atomic, defense-in-depth singleton: exactly ONE battle supervisor per repo.
-
-    No matter HOW a second supervisor is launched (system python, a stray
-    scheduled task, a manual run, or a launch racing this one within the same
-    instant) it exits immediately instead of laddering the same Showdown account
-    in parallel -- the ELO-thrash duplicate-runner bug. O_CREAT|O_EXCL makes the
-    claim atomic; the loser of the race exits as long as the winner's PID is
-    ALIVE (no dependency on the winner having finished exec'ing its cmdline, which
-    is what made an earlier cmdline-match check fragile at T=0). A lock left by a
-    genuinely dead process (crash) is reclaimed."""
-    PID_DIR.mkdir(parents=True, exist_ok=True)
-    for _ in range(2):
-        try:
-            fd = os.open(str(SUPERVISOR_LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError:
-            holder = 0
-            try:
-                holder = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
-            except Exception:
-                holder = 0
-            holder_alive = False
-            if holder and holder != os.getpid():
-                try:
-                    import psutil
-                    holder_alive = psutil.pid_exists(holder)
-                except Exception:
-                    holder_alive = False
-            if holder_alive:
-                print(f"[supervisor-singleton] lock held by live PID {holder}; exiting", flush=True)
-                sys.exit(0)
-            try:
-                SUPERVISOR_LOCK_FILE.unlink()
-            except OSError:
-                pass
-            continue
-        else:
-            try:
-                with os.fdopen(fd, "w") as fh:
-                    fh.write(str(os.getpid()))
-            except Exception:
-                try:
-                    os.close(fd)
-                except Exception:
-                    pass
-
-            def _release():
-                try:
-                    cur = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
-                    if cur == os.getpid():
-                        SUPERVISOR_LOCK_FILE.unlink()
-                except Exception:
-                    pass
-            atexit.register(_release)
-            return
-    print("[supervisor-singleton] could not acquire lock after stale-reclaim; exiting", flush=True)
-    sys.exit(0)
-
-
-def _yield_if_not_lock_holder() -> None:
-    """Per-cycle convergence to ONE supervisor -- the SAFE half of singleton
-    enforcement. If another LIVE supervisor owns the lock, THIS process exits.
-
-    It only ever steps a NON-holder down; it never reaps and never touches the
-    holder, so it cannot race two supervisors down to zero (the failure mode of a
-    mutual-reap design). Combined with the startup O_EXCL guard, a duplicate that
-    slipped in via a T=0 lock-flap converges away within one cycle, while the
-    per-account run.py lock independently guarantees a single ladderer throughout."""
-    me = os.getpid()
-    try:
-        holder = int((SUPERVISOR_LOCK_FILE.read_text(encoding="utf-8").strip() or "0"))
-    except Exception:
-        return
-    if holder and holder != me:
-        try:
-            import psutil
-            if psutil.pid_exists(holder):
-                print(f"[supervisor-singleton] yielding to live lock holder PID {holder}; exiting", flush=True)
-                sys.exit(0)
-        except SystemExit:
-            raise
-        except Exception:
-            pass
-
-
 def cmd_supervise(args: argparse.Namespace) -> int:
-    _acquire_supervisor_singleton_or_exit()
     if SUPERVISOR_STOP_FILE.exists():
         SUPERVISOR_STOP_FILE.unlink()
+    try:
+        acquire_runtime_lease(holder="devstream_session supervise")
+    except RuntimeLeaseBusy as exc:
+        payload = {
+            "schemaVersion": "fouler-play-battle-supervisor/v1",
+            "startedAt": iso_now(),
+            "pid": os.getpid(),
+            "state": "blocked-runtime-lease",
+            "runtimeLease": str(exc),
+            "secretValuesPrinted": False,
+        }
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 3
     cycle_index = 0
     payload: dict[str, Any] = {
         "schemaVersion": "fouler-play-battle-supervisor/v1",
@@ -1106,11 +1028,16 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     write_pid_value(
         SUPERVISOR_PID_FILE,
         os.getpid(),
-        supervisor_command(args.run_count, args.max_concurrent_battles, args.queue_timeout_seconds, args.sleep_seconds),
+        supervisor_command(
+            args.run_count,
+            args.max_concurrent_battles,
+            args.queue_timeout_seconds,
+            args.sleep_seconds,
+            enable_auto_improve=getattr(args, "enable_auto_improve", False),
+        ),
     )
     try:
         while True:
-            _yield_if_not_lock_holder()
             if SUPERVISOR_STOP_FILE.exists():
                 payload["state"] = "stopping"
                 payload["stopReason"] = "stop file present"
@@ -1249,6 +1176,7 @@ def cmd_start(args: argparse.Namespace) -> int:
             args.max_concurrent_battles,
             args.queue_timeout_seconds,
             args.supervisor_sleep_seconds,
+            enable_auto_improve=getattr(args, "enable_auto_improve", False),
         ),
     }
     payload = {
@@ -1433,6 +1361,11 @@ def main() -> int:
     start.add_argument("--continuous", action="store_true")
     start.add_argument("--supervisor-sleep-seconds", type=int, default=15)
     start.add_argument("--replace-stale-runner", action=argparse.BooleanOptionalAction, default=True)
+    start.add_argument(
+        "--enable-auto-improve",
+        action="store_true",
+        help=f"Allow the recursive improve_agent + elo_watchdog path. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
+    )
     start.add_argument("--execute", action="store_true")
     supervise = sub.add_parser("supervise")
     supervise.add_argument("--run-count", type=int, default=DEFAULT_RUN_COUNT)
@@ -1444,6 +1377,11 @@ def main() -> int:
     supervise.add_argument("--proof-timeout-seconds", type=int, default=300)
     supervise.add_argument("--start-timeout-seconds", type=int, default=60)
     supervise.add_argument("--improve-timeout-seconds", type=int, default=240)
+    supervise.add_argument(
+        "--enable-auto-improve",
+        action="store_true",
+        help=f"Allow the recursive improve_agent + elo_watchdog path. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
+    )
     supervise.add_argument("--skip-improve", action="store_true",
                            help="Disable the self-improvement loop (improve_agent + elo_watchdog).")
     stop = sub.add_parser("stop")

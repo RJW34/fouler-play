@@ -55,6 +55,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from infrastructure.runtime_lease import RuntimeLeaseBusy, acquire_runtime_lease
+
 LEDGER_PATH = PROJECT_ROOT / "eval_results" / "improve_ledger.jsonl"
 AUTORESEARCH_JSON = PROJECT_ROOT / "replay_analysis" / "autoresearch_latest.json"
 BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
@@ -757,6 +759,13 @@ def main():
               f"(or pass --allow-master). The loop never pushes; it commits to the "
               f"current branch only.")
         sys.exit(2)
+
+    try:
+        acquire_runtime_lease(holder="improve_loop")
+    except RuntimeLeaseBusy as exc:
+        print(f"[LOOP] BLOCKED: {exc}")
+        append_ledger({"outcome": "blocked_runtime_lease", "error": str(exc), "dry_run": args.dry_run})
+        sys.exit(3)
 
     print(f"[LOOP] branch={br} iterations={args.iterations} "
           f"smoke_battles={args.smoke_battles} dry_run={args.dry_run}")

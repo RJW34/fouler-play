@@ -501,6 +501,179 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
     assert "--continuous" not in commands[2]
 
 
+def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=False,
+        enable_auto_improve=False,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+
+    assert payload["autoImprove"]["enabled"] is False
+    assert devstream_session.AUTO_IMPROVE_SENTINEL in payload["autoImprove"]["reason"]
+    assert commands[0][:4] == ["python", "pipeline.py", "autoresearch", "-n"]
+    assert commands[1] == ["python", "scripts/devstream_cycle_report.py", "--write"]
+    assert commands[2][:3] == ["python", "scripts/devstream_session.py", "start"]
+    assert not any("infrastructure/improve_agent.py" in command for command in commands)
+    assert not any("infrastructure/elo_watchdog.py" in command for command in commands)
+
+
+def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=False,
+        enable_auto_improve=True,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+
+    assert payload["autoImprove"] == {
+        "enabled": True,
+        "reason": "--enable-auto-improve",
+        "sentinel": devstream_session.AUTO_IMPROVE_SENTINEL,
+    }
+    assert commands[2] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
+    assert commands[4][:3] == ["python", "scripts/devstream_session.py", "start"]
+
+
+def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "load_env_files",
+        lambda: {devstream_session.AUTO_IMPROVE_SENTINEL: "1"},
+    )
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=False,
+        enable_auto_improve=False,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+
+    assert payload["autoImprove"]["enabled"] is True
+    assert payload["autoImprove"]["reason"] == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
+    assert commands[2] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
+
+
+def test_supervisor_auto_improve_accepts_env_sentinel():
+    args = argparse.Namespace(skip_improve=False, enable_auto_improve=False)
+
+    enabled, reason = devstream_session.supervisor_auto_improve_enabled(
+        args,
+        {devstream_session.AUTO_IMPROVE_SENTINEL: "1"},
+    )
+
+    assert enabled is True
+    assert reason == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
+
+
+def test_supervisor_commands_propagate_auto_improve_to_task_installer():
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        supervisor_sleep_seconds=15,
+        enable_auto_improve=True,
+    )
+
+    supervisor_command = devstream_session.supervisor_command(
+        25,
+        3,
+        180,
+        15,
+        enable_auto_improve=True,
+    )
+    task_command = devstream_session.battle_supervisor_task_command(args)
+
+    assert supervisor_command[-1] == "--enable-auto-improve"
+    assert "-AutoImprove" in task_command
+
+
+def test_supervisor_runtime_lease_blocks_duplicate_owner(tmp_path, monkeypatch, capsys):
+    from infrastructure import runtime_lease
+
+    monkeypatch.setattr(runtime_lease, "PID_DIR", tmp_path)
+    monkeypatch.setattr(devstream_session, "PID_DIR", tmp_path)
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    busy = runtime_lease.acquire_runtime_lease(holder="other", lease_dir=tmp_path)
+    monkeypatch.delenv(runtime_lease.LEASE_TOKEN_ENV, raising=False)
+    monkeypatch.delenv(runtime_lease.LEASE_NAME_ENV, raising=False)
+    try:
+        args = argparse.Namespace(
+            run_count=1,
+            max_concurrent_battles=1,
+            queue_timeout_seconds=1,
+            sleep_seconds=1,
+            max_cycles=1,
+            enable_auto_improve=False,
+        )
+        assert devstream_session.cmd_supervise(args) == 3
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["state"] == "blocked-runtime-lease"
+        assert "runtime lease busy" in payload["runtimeLease"]
+    finally:
+        busy.release()
+
+
 def test_supervisor_cycle_clears_stale_active_truth_when_runner_is_dead(monkeypatch):
     commands = []
     counts = [1, 0, 0]

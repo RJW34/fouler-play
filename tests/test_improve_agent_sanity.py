@@ -1,5 +1,14 @@
+import pytest
+
 from infrastructure.improve_agent import (
+    AUTO_IMPROVE_SENTINEL,
+    AUTO_PUSH_SENTINEL,
+    PUSH_BRANCH_ENV,
+    PUSH_REMOTE_ENV,
+    auto_improve_enabled,
+    auto_push_enabled,
     battle_ids_from_evidence,
+    explicit_push_target,
     has_replay_protocol_evidence,
     has_request_legal_option_evidence,
     top_issue_evidence,
@@ -23,6 +32,68 @@ def _report(**overrides):
     }
     report.update(overrides)
     return report
+
+
+def test_auto_improve_requires_cli_flag_or_env_sentinel(monkeypatch):
+    monkeypatch.delenv(AUTO_IMPROVE_SENTINEL, raising=False)
+
+    assert not auto_improve_enabled(False)
+    assert auto_improve_enabled(True)
+
+    monkeypatch.setenv(AUTO_IMPROVE_SENTINEL, "1")
+
+    assert auto_improve_enabled(False)
+
+
+def test_auto_push_requires_cli_flag_or_env_sentinel(monkeypatch):
+    monkeypatch.delenv(AUTO_PUSH_SENTINEL, raising=False)
+
+    assert not auto_push_enabled(False)
+    assert auto_push_enabled(True)
+
+    monkeypatch.setenv(AUTO_PUSH_SENTINEL, "true")
+
+    assert auto_push_enabled(False)
+
+
+def test_push_target_requires_explicit_remote_and_branch(monkeypatch):
+    monkeypatch.delenv(PUSH_REMOTE_ENV, raising=False)
+    monkeypatch.delenv(PUSH_BRANCH_ENV, raising=False)
+
+    with pytest.raises(ValueError, match="explicit"):
+        explicit_push_target()
+
+
+def test_push_target_refuses_origin_master():
+    with pytest.raises(ValueError, match="origin master"):
+        explicit_push_target("origin", "master")
+
+
+def test_push_target_accepts_explicit_non_master_target():
+    assert explicit_push_target("origin", "auto-improve/proof") == ("origin", "auto-improve/proof")
+
+
+def test_improve_agent_runtime_lease_blocks_mutating_cycle(monkeypatch, tmp_path):
+    import sys
+
+    import infrastructure.improve_agent as improve_agent
+    from infrastructure import runtime_lease
+
+    monkeypatch.setattr(runtime_lease, "PID_DIR", tmp_path)
+    monkeypatch.setattr(sys, "argv", ["improve_agent.py", "--enable-auto-improve"])
+    monkeypatch.setenv(AUTO_IMPROVE_SENTINEL, "1")
+    monkeypatch.setattr(
+        improve_agent,
+        "load_autoresearch",
+        lambda: (_ for _ in ()).throw(AssertionError("lease should block before report load")),
+    )
+    busy = runtime_lease.acquire_runtime_lease(holder="other", lease_dir=tmp_path)
+    monkeypatch.delenv(runtime_lease.LEASE_TOKEN_ENV, raising=False)
+    monkeypatch.delenv(runtime_lease.LEASE_NAME_ENV, raising=False)
+    try:
+        assert improve_agent.main() == 3
+    finally:
+        busy.release()
 
 
 def test_improve_agent_requires_battle_linked_evidence():
