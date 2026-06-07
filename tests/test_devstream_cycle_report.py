@@ -91,6 +91,10 @@ def test_cycle_report_completion_payload_blocks_unsupported_autoresearch_claims(
 
 def test_cycle_report_blocks_when_health_probe_is_not_ready(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_cycle_report, "ROOT", tmp_path)
+    truth_dir = tmp_path / "devstream" / "truth"
+    truth_dir.mkdir(parents=True)
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(
         devstream_cycle_report.devstream_health,
         "build_payload",
@@ -103,12 +107,63 @@ def test_cycle_report_blocks_when_health_probe_is_not_ready(tmp_path, monkeypatc
             "blockers": ["fouler-play battle runner has no active battle proof after 181s (limit 180s)"],
         },
     )
+    (truth_dir / "discord-delivery.json").write_text(
+        '{"schemaVersion":"fouler-play-discord-delivery/v1","status":"idle","queue":{"pending":0,"pendingBattleResults":0},"secretValuesPrinted":false}',
+        encoding="utf-8",
+    )
+    (truth_dir / "discord-reporting.json").write_text(
+        '{"schemaVersion":"fouler-play-discord-reporting/v1","status":"idle","secretValuesPrinted":false}',
+        encoding="utf-8",
+    )
 
     payload = devstream_cycle_report.build_payload()
 
     assert payload["readyForHandoff"] is False
     assert payload["blockers"] == ["fouler-play battle runner has no active battle proof after 181s (limit 180s)"]
     assert payload["health"]["healthy"] is False
+
+
+def test_cycle_report_blocks_when_discord_delivery_truth_is_blocked(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_cycle_report, "ROOT", tmp_path)
+    truth_dir = tmp_path / "devstream" / "truth"
+    truth_dir.mkdir(parents=True)
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
+    monkeypatch.setattr(
+        devstream_cycle_report.devstream_health,
+        "build_payload",
+        lambda check_http=True: {
+            "healthy": True,
+            "status": "ready",
+            "readyForLiveFocus": True,
+            "activeBattleCount": 0,
+            "readiness": {},
+            "devstreamReporting": {},
+            "blockers": [],
+        },
+    )
+    (truth_dir / "discord-delivery.json").write_text(
+        json.dumps(
+            {
+                "schemaVersion": "fouler-play-discord-delivery/v1",
+                "status": "blocked",
+                "queue": {"pending": 0, "pendingBattleResults": 0},
+                "blockers": ["live Discord transport is withheld until the next fresh queue pass"],
+                "secretValuesPrinted": False,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (truth_dir / "discord-reporting.json").write_text(
+        '{"schemaVersion":"fouler-play-discord-reporting/v1","status":"blocked","secretValuesPrinted":false}',
+        encoding="utf-8",
+    )
+
+    payload = devstream_cycle_report.build_payload()
+
+    assert payload["readyForHandoff"] is False
+    assert "Discord delivery proof status is blocked" in payload["blockers"]
+    assert payload["discordDelivery"]["blockers"] == ["live Discord transport is withheld until the next fresh queue pass"]
 
 
 def test_cycle_report_allows_completed_cycle_with_classified_local_discord_proof(tmp_path, monkeypatch):
