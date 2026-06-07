@@ -818,8 +818,9 @@ def main() -> int:
               f"current branch only.")
         return 2
 
+    lease = None
     try:
-        acquire_runtime_lease(holder="improve_loop")
+        lease = acquire_runtime_lease(holder="improve_loop")
     except RuntimeLeaseBusy as exc:
         print(f"[LOOP] BLOCKED: {exc}")
         append_ledger({"outcome": "blocked_runtime_lease", "error": str(exc), "dry_run": args.dry_run})
@@ -827,16 +828,20 @@ def main() -> int:
 
     print(f"[LOOP] branch={br} iterations={args.iterations} "
           f"smoke_battles={args.smoke_battles} dry_run={args.dry_run}")
-    for i in range(args.iterations):
-        print(f"\n[LOOP] ===== iteration {i+1}/{args.iterations} =====")
-        try:
-            one_iteration(num_battles=args.num_battles, dry_run=args.dry_run,
-                          smoke_battles=args.smoke_battles)
-        except subprocess.TimeoutExpired as e:
-            append_ledger({"outcome": "timeout", "error": str(e)})
-        except Exception as e:
-            append_ledger({"outcome": "error", "error": repr(e)})
-            print(f"[LOOP] iteration error: {e!r}")
+    try:
+        for i in range(args.iterations):
+            print(f"\n[LOOP] ===== iteration {i+1}/{args.iterations} =====")
+            try:
+                one_iteration(num_battles=args.num_battles, dry_run=args.dry_run,
+                              smoke_battles=args.smoke_battles)
+            except subprocess.TimeoutExpired as e:
+                append_ledger({"outcome": "timeout", "error": str(e)})
+            except Exception as e:
+                append_ledger({"outcome": "error", "error": repr(e)})
+                print(f"[LOOP] iteration error: {e!r}")
+    finally:
+        if lease is not None:
+            lease.release()
     return 0
 
 

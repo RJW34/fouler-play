@@ -201,6 +201,19 @@ class BotMonitor:
         self.last_battle_id = None  # for associating events
         self.battle_message_map = {}  # Track most recent battle for each message stream
         self.finished_battles = OrderedDict()  # battle_id -> (opponent, result) awaiting replay
+        self.finished_battle_times = OrderedDict()  # battle_id -> monotonic finish time
+        replay_grace_env = os.getenv("REPLAY_FLUSH_GRACE_SEC", "20").strip()
+        try:
+            self.replay_flush_grace_sec = max(0.0, float(replay_grace_env))
+        except ValueError:
+            self.replay_flush_grace_sec = 20.0
+        self._batch_flush_task = None
+        analysis_tasks_env = os.getenv("MONITOR_MAX_ANALYSIS_TASKS", "50").strip()
+        try:
+            self.max_analysis_tasks = max(1, int(analysis_tasks_env))
+        except ValueError:
+            self.max_analysis_tasks = 50
+        self._analysis_tasks = set()
         self.analyzer = None  # ReplayAnalyzer remains disabled during upgrade
         self.turn_reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "npctypebeat"))
         self.posted_replays = set()  # Track posted replays with bounded retention
@@ -246,9 +259,112 @@ class BotMonitor:
 
     def _track_finished_battle(self, battle_id: str, opponent: str, result: str) -> None:
         self.finished_battles[battle_id] = (opponent, result)
+        self.finished_battle_times[battle_id] = time.monotonic()
         self.finished_battles.move_to_end(battle_id)
+        self.finished_battle_times.move_to_end(battle_id)
         while len(self.finished_battles) > FINISHED_BATTLES_MAX:
-            self.finished_battles.popitem(last=False)
+            stale_battle_id, _ = self.finished_battles.popitem(last=False)
+            self.finished_battle_times.pop(stale_battle_id, None)
+
+    def _pending_batch_replay_ids(self) -> list[str]:
+        finished_battles = getattr(self, "finished_battles", {})
+        pending: list[str] = []
+        for item in getattr(self, "batch_results", []):
+            _opp, _result, replay_url, battle_id = self._batch_result_parts(item)
+            if battle_id and replay_url is None and battle_id in finished_battles:
+                pending.append(battle_id)
+        return pending
+
+    def _batch_ready_to_flush(self, *, force: bool = False) -> bool:
+        batch_results = getattr(self, "batch_results", [])
+        if len(batch_results) < getattr(self, "BATCH_SIZE", 3):
+            return False
+        if force:
+            return True
+        pending = self._pending_batch_replay_ids()
+        if not pending:
+            return True
+        grace = float(getattr(self, "replay_flush_grace_sec", 20.0))
+        if grace <= 0:
+            return True
+        finished_times = getattr(self, "finished_battle_times", {})
+        now = time.monotonic()
+        oldest_finish = min(finished_times.get(bid, now) for bid in pending)
+        return (now - oldest_finish) >= grace
+
+    def _cancel_batch_flush_task(self) -> None:
+        task = getattr(self, "_batch_flush_task", None)
+        if not task:
+            return
+        if task.done():
+            self._batch_flush_task = None
+            return
+        try:
+            current = asyncio.current_task()
+        except RuntimeError:
+            current = None
+        if task is current:
+            return
+        task.cancel()
+        self._batch_flush_task = None
+
+    def _batch_flush_task_done(self, task: asyncio.Task) -> None:
+        if getattr(self, "_batch_flush_task", None) is task:
+            self._batch_flush_task = None
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            logging.warning("Delayed batch flush failed: %s", exc)
+
+    def _schedule_delayed_batch_flush(self) -> None:
+        task = getattr(self, "_batch_flush_task", None)
+        if task and not task.done():
+            return
+        delay = float(getattr(self, "replay_flush_grace_sec", 20.0))
+        if delay <= 0:
+            return
+        self._batch_flush_task = asyncio.create_task(self._delayed_batch_flush(delay))
+        self._batch_flush_task.add_done_callback(self._batch_flush_task_done)
+
+    async def _delayed_batch_flush(self, delay: float) -> None:
+        await asyncio.sleep(delay)
+        await self._maybe_flush_batch_report(force=True)
+
+    async def _maybe_flush_batch_report(self, *, force: bool = False) -> None:
+        if self._batch_ready_to_flush(force=force):
+            self._cancel_batch_flush_task()
+            await self.flush_batch_report()
+        elif len(getattr(self, "batch_results", [])) >= getattr(self, "BATCH_SIZE", 3):
+            self._schedule_delayed_batch_flush()
+
+    def _track_analysis_task(self, coro):
+        tasks = getattr(self, "_analysis_tasks", None)
+        if tasks is None:
+            tasks = self._analysis_tasks = set()
+        max_tasks = int(getattr(self, "max_analysis_tasks", 50))
+        if len(tasks) >= max_tasks:
+            logging.warning("Skipping loss analysis task; %s task(s) already pending", len(tasks))
+            close = getattr(coro, "close", None)
+            if close:
+                close()
+            return None
+        task = asyncio.create_task(coro)
+        tasks.add(task)
+        task.add_done_callback(self._analysis_task_done)
+        return task
+
+    def _analysis_task_done(self, task: asyncio.Task) -> None:
+        tasks = getattr(self, "_analysis_tasks", None)
+        if tasks is not None:
+            tasks.discard(task)
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            logging.warning("Loss analysis task failed: %s", exc)
 
     def _write_self_pid(self):
         try:
@@ -459,7 +575,9 @@ class BotMonitor:
     async def flush_batch_report(self):
         """Post a summary of the last BATCH_SIZE games to Discord."""
         if not self.batch_results:
+            self._cancel_batch_flush_task()
             return
+        self._cancel_batch_flush_task()
 
         wins = self.batch_wins_count
         losses = self.batch_losses_count
@@ -531,7 +649,7 @@ class BotMonitor:
                 def __init__(self, opp):
                     self.battle_id = "batch"
                     self.opponent = opp
-            asyncio.create_task(self.analyze_loss_async(replay_url, BattleStateStub(opponent)))
+            self._track_analysis_task(self.analyze_loss_async(replay_url, BattleStateStub(opponent)))
 
         # Reset batch
         self.batch_results = []
@@ -853,6 +971,8 @@ class BotMonitor:
                     # Couldn't associate with a battle - still record it
                     self.record_batch_result("Unknown", result_key)
 
+                await self._maybe_flush_batch_report()
+
                 # Always update stream overlay with remaining battles/stats
                 active_battle_ids = [bid for bid, b in self.active_battles.items() if b.result is None]
                 battle_info = ", ".join(
@@ -928,11 +1048,11 @@ class BotMonitor:
                                 if len(self.batch_losses) > BATCH_LOSSES_MAX:
                                     self.batch_losses = self.batch_losses[-BATCH_LOSSES_MAX:]
 
+                        self.finished_battle_times.pop(battle_id, None)
                         del self.finished_battles[battle_id]
 
-                    # Flush batch if we've hit BATCH_SIZE
-                    if len(self.batch_results) >= self.BATCH_SIZE:
-                        await self.flush_batch_report()
+                    # Flush only when replay coverage is complete or the grace window elapsed.
+                    await self._maybe_flush_batch_report()
 
     async def run_bot(self):
         """Run the bot process and monitor it

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -106,3 +107,24 @@ def test_main_blocks_mutating_loop_before_runtime_lease_without_sentinel(monkeyp
     )
 
     assert improve_loop.main() == 2
+
+
+def test_main_releases_runtime_lease_after_iteration(monkeypatch, tmp_path):
+    from infrastructure import runtime_lease
+
+    lease_path = tmp_path / "fouler-runtime-lane.lease.json"
+    monkeypatch.delenv(improve_loop.AUTO_IMPROVE_SENTINEL, raising=False)
+    monkeypatch.delenv(runtime_lease.LEASE_TOKEN_ENV, raising=False)
+    monkeypatch.delenv(runtime_lease.LEASE_NAME_ENV, raising=False)
+    monkeypatch.setattr(improve_loop, "current_branch", lambda: "fix/test")
+    monkeypatch.setattr(
+        improve_loop,
+        "acquire_runtime_lease",
+        lambda **kwargs: runtime_lease.acquire_runtime_lease(**kwargs, lease_dir=tmp_path),
+    )
+    monkeypatch.setattr(improve_loop, "one_iteration", lambda **_kwargs: {"outcome": "dry_run"})
+    monkeypatch.setattr(sys, "argv", ["improve_loop.py", "--dry-run", "--iterations", "1"])
+
+    assert improve_loop.main() == 0
+    assert not lease_path.exists()
+    assert runtime_lease.LEASE_TOKEN_ENV not in os.environ
