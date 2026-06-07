@@ -4,6 +4,7 @@ param(
     [int]$RunCount = 1000000,
     [int]$MaxConcurrentBattles = 3,
     [switch]$ObsOnly,
+    [switch]$AutoImprove,
     [switch]$Execute
 )
 
@@ -131,6 +132,9 @@ function Get-ProcessRole {
     if ($CommandLine -match "run\.py" -and $CommandLine -match "search_ladder") {
         return "battleSession"
     }
+    if ($CommandLine -match "devstream_session\.py" -and $CommandLine -match "\bsupervise\b") {
+        return "battleSupervisor"
+    }
     if ($CommandLine -match "start_one_touch\.bat") {
         return "battleLauncher"
     }
@@ -146,6 +150,7 @@ function Get-ProcessInfo {
                 $_.CommandLine -match $escapedRepo -and
                 (
                     $_.CommandLine -match "run\.py" -or
+                    ($_.CommandLine -match "devstream_session\.py" -and $_.CommandLine -match "\bsupervise\b") -or
                     $_.CommandLine -match "start_one_touch\.bat" -or
                     $_.CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or
                     $_.CommandLine -match "streaming\.serve_obs_page"
@@ -189,10 +194,15 @@ function Get-LogicalProcessSummary {
     param([array]$Processes)
     $obsLeafs = @(Get-LeafProcessesForRole -Processes $Processes -Role "obsServer")
     $battleLeafs = @(Get-LeafProcessesForRole -Processes $Processes -Role "battleSession")
+    $supervisorLeafs = @(Get-LeafProcessesForRole -Processes $Processes -Role "battleSupervisor")
     return @{
         obsServer = @{
             leafCount = @($obsLeafs).Count
             pids = @($obsLeafs | ForEach-Object { $_.pid })
+        }
+        battleSupervisor = @{
+            leafCount = @($supervisorLeafs).Count
+            pids = @($supervisorLeafs | ForEach-Object { $_.pid })
         }
         battleSession = @{
             leafCount = @($battleLeafs).Count
@@ -254,6 +264,26 @@ function Start-DetachedCommand {
             commandLine = $CommandLine
         }
     }
+}
+
+function Rotate-LogFileIfLarge {
+    param(
+        [string]$Path,
+        [int64]$MaxBytes = 10485760,
+        [int]$Keep = 6
+    )
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    $item = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $item -or $item.Length -lt $MaxBytes) { return }
+    $archive = Join-Path (Split-Path -Parent $Path) "archive"
+    New-Item -ItemType Directory -Force -Path $archive | Out-Null
+    $stamp = Get-Date -Format "yyyyMMddTHHmmss"
+    $name = [IO.Path]::GetFileName($Path)
+    Move-Item -LiteralPath $Path -Destination (Join-Path $archive "$stamp-$name") -Force
+    Get-ChildItem -LiteralPath $archive -Filter "*-$name" |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -Skip $Keep |
+        Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
 function Get-Endpoint {
@@ -386,21 +416,39 @@ function Start-BattleSession {
         return @{ ok = $false; error = ".env is missing; refusing to queue Showdown battles" }
     }
     if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
-    $stdout = Join-Path $LogDir "jigglypuff-battle-session.log"
-    $stderr = Join-Path $LogDir "jigglypuff-battle-session.err.log"
-    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set BOT_LOG_TO_FILE=1&& set AUTO_START_OBS_SERVER=0&& set LOSS_TRIGGERED_DRAIN=0&& set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json&& set PS_RUN_COUNT={0}&& set CONCURRENT_BATTLES={1}&& call start_one_touch.bat 1>>"{2}" 2>>"{3}""' -f $RunCount, $MaxConcurrentBattles, $stdout, $stderr
+    $stdout = Join-Path $LogDir "jigglypuff-battle-supervisor.log"
+    $stderr = Join-Path $LogDir "jigglypuff-battle-supervisor.err.log"
+    Rotate-LogFileIfLarge -Path $stdout
+    Rotate-LogFileIfLarge -Path $stderr
+    $python = Get-PythonPath
+    $supervisorArgs = @(
+        $python,
+        "scripts\devstream_session.py",
+        "supervise",
+        "--run-count", "$RunCount",
+        "--max-concurrent-battles", "$MaxConcurrentBattles",
+        "--queue-timeout-seconds", "180",
+        "--sleep-seconds", "15"
+    )
+    if ($AutoImprove) {
+        $supervisorArgs += "--enable-auto-improve"
+    }
+    $command = ($supervisorArgs | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join " "
+    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set BOT_LOG_TO_FILE=1&& set AUTO_START_OBS_SERVER=0&& set LOSS_TRIGGERED_DRAIN=0&& set BATTLE_STATS_MAX_ENTRIES=5000&& set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json&& {0} 1>>"{1}" 2>>"{2}""' -f $command, $stdout, $stderr
     $launch = Start-DetachedCommand -CommandLine $commandLine -WorkingDirectory $RepoRoot
     if (-not (Test-Path $PidDir)) { New-Item -ItemType Directory -Path $PidDir -Force | Out-Null }
     Write-JsonFile -Path (Join-Path $PidDir "jigglypuff-battle-session.json") -Payload @{
         pid = $launch.pid
+        role = "battleSupervisor"
         runCount = $RunCount
         maxConcurrentBattles = $MaxConcurrentBattles
+        autoImprove = [bool]$AutoImprove
         startedAt = Get-IsoNow
         stdout = $stdout
         stderr = $stderr
         launch = $launch
     }
-    return @{ ok = [bool]$launch.ok; pid = $launch.pid; launch = $launch; stdout = $stdout; stderr = $stderr }
+    return @{ ok = [bool]$launch.ok; pid = $launch.pid; role = "battleSupervisor"; launch = $launch; stdout = $stdout; stderr = $stderr; autoImprove = [bool]$AutoImprove }
 }
 
 function Install-Runtime {
@@ -465,6 +513,9 @@ function Get-Status {
     }
     if ([int]$logicalProcesses.battleSession.leafCount -gt 1) {
         $blockers += "multiple Fouler battle sessions are running: $($logicalProcesses.battleSession.pids -join ', ')"
+    }
+    if ([int]$logicalProcesses.battleSupervisor.leafCount -gt 1) {
+        $blockers += "multiple Fouler battle supervisors are running: $($logicalProcesses.battleSupervisor.pids -join ', ')"
     }
     if ($obsOpen -and [int]$logicalProcesses.obsServer.leafCount -eq 0) {
         $warnings += "OBS HTTP port is open but no canonical Fouler OBS server process was identified"
@@ -546,12 +597,12 @@ if ($Command -eq "bootstrap") {
         $actions += @{ name = "stop-stale-processes"; result = Stop-FoulerProcesses }
         $actions += @{ name = "start-obs-server"; result = Start-ObsServer }
         if (-not $ObsOnly) {
-            $actions += @{ name = "start-battle-session"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles }
+            $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -AutoImprove:$AutoImprove }
         }
     } else {
         $actions += @{ name = "start-obs-server"; planned = $true }
         if (-not $ObsOnly) {
-            $actions += @{ name = "start-battle-session"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles }
+            $actions += @{ name = "start-battle-supervisor"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles; autoImprove = [bool]$AutoImprove }
         }
     }
 } elseif ($Command -eq "login-proof") {
@@ -568,6 +619,7 @@ $final = @{
     action = $Command
     execute = [bool]$Execute
     obsOnly = [bool]$ObsOnly
+    autoImprove = [bool]$AutoImprove
     actions = @($actions)
     postStatus = Get-Status
 }

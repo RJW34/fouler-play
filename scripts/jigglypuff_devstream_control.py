@@ -233,13 +233,19 @@ def resident_command(
     run_count: int = 1000000,
     max_concurrent_battles: int = 3,
     obs_only: bool = False,
+    enable_auto_improve: bool = False,
     timeout: int = 90,
 ) -> dict[str, Any]:
     if action == "status":
         return worker_request("/fouler/status", timeout=min(timeout, STATUS_WORKER_TIMEOUT_SECONDS))
     body = {"execute": bool(execute)}
     if action == "start":
-        body.update({"runCount": run_count, "maxConcurrentBattles": max_concurrent_battles, "obsOnly": obs_only})
+        body.update({
+            "runCount": run_count,
+            "maxConcurrentBattles": max_concurrent_battles,
+            "obsOnly": obs_only,
+            "autoImprove": enable_auto_improve,
+        })
     return worker_request(
         f"/fouler/{action}",
         method="POST",
@@ -256,6 +262,7 @@ def remote_command(
     run_count: int = 1000000,
     max_concurrent_battles: int = 3,
     obs_only: bool = False,
+    enable_auto_improve: bool = False,
     timeout: int = 90,
 ) -> dict[str, Any]:
     resident = resident_command(
@@ -264,6 +271,7 @@ def remote_command(
         run_count=run_count,
         max_concurrent_battles=max_concurrent_battles,
         obs_only=obs_only,
+        enable_auto_improve=enable_auto_improve,
         timeout=min(timeout, 180),
     )
     if resident.get("json") and resident.get("workerStatus") != 404:
@@ -282,6 +290,8 @@ def remote_command(
     ]
     if action in {"start"}:
         powershell_args.extend(["-RunCount", str(run_count), "-MaxConcurrentBattles", str(max_concurrent_battles)])
+        if enable_auto_improve:
+            powershell_args.append("-AutoImprove")
     if obs_only:
         powershell_args.append("-ObsOnly")
     if execute:
@@ -524,6 +534,7 @@ def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
             "runCount": args.run_count,
             "maxConcurrentBattles": args.max_concurrent_battles,
             "obsOnly": bool(args.obs_only),
+            "autoImprove": bool(getattr(args, "enable_auto_improve", False)),
         }
     return payload
 
@@ -544,6 +555,7 @@ def action_mutating(action: str, args: argparse.Namespace) -> tuple[int, dict[st
         run_count=getattr(args, "run_count", 10),
         max_concurrent_battles=getattr(args, "max_concurrent_battles", 3),
         obs_only=getattr(args, "obs_only", False),
+        enable_auto_improve=getattr(args, "enable_auto_improve", False),
         timeout=args.timeout,
     )
     payload = mirror_status(result.get("json"), action=action, raw=result)
@@ -585,6 +597,7 @@ def main() -> int:
     start.add_argument("--run-count", type=int, default=1000000)
     start.add_argument("--max-concurrent-battles", type=int, default=3)
     start.add_argument("--obs-only", action="store_true")
+    start.add_argument("--enable-auto-improve", action="store_true")
     start.add_argument("--timeout", type=int, default=180)
 
     stop = sub.add_parser("stop")
