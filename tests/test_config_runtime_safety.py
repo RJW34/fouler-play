@@ -1,5 +1,6 @@
 from config import (
     BotModes,
+    FoulPlayConfig,
     _coerce_ladder_search_time_ms,
     _env_int_prefer,
 )
@@ -39,3 +40,61 @@ def test_coerce_ladder_search_time_no_clamp_outside_ladder_ou():
     )
     assert clamped is False
     assert value == 500
+
+
+def test_config_accepts_runtime_launcher_args(monkeypatch):
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "run.py",
+            "--websocket-uri",
+            "ws://localhost/showdown/websocket",
+            "--ps-username",
+            "bot",
+            "--bot-mode",
+            "search_ladder",
+            "--pokemon-format",
+            "gen9ou",
+            "--team-name",
+            "gen9ou",
+            "--max-concurrent-battles",
+            "3",
+            "--max-mcts-battles",
+            "4",
+            "--decision-policy",
+            "eval",
+            "--spectator-username",
+            "observer",
+        ],
+    )
+
+    FoulPlayConfig.configure()
+
+    assert FoulPlayConfig.max_concurrent_battles == 3
+    assert FoulPlayConfig.max_mcts_battles == 4
+    assert FoulPlayConfig.decision_policy == "eval"
+    assert FoulPlayConfig.spectator_username == "observer"
+
+
+def test_config_still_validates_challenge_user_target(monkeypatch):
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "run.py",
+            "--websocket-uri",
+            "ws://localhost/showdown/websocket",
+            "--ps-username",
+            "bot",
+            "--bot-mode",
+            "challenge_user",
+            "--pokemon-format",
+            "gen9ou",
+        ],
+    )
+
+    try:
+        FoulPlayConfig.configure()
+    except AssertionError as exc:
+        assert "USER_TO_CHALLENGE" in str(exc)
+    else:
+        raise AssertionError("challenge_user without user_to_challenge should fail validation")
