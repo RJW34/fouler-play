@@ -12,6 +12,10 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import devstream_health
 
 
+def test_expected_battle_surfaces_follow_devstream_session_default():
+    assert devstream_health.EXPECTED_DEVSTREAM_BATTLE_SURFACES == devstream_health.DEFAULT_SESSION_MAX_CONCURRENT
+
+
 def _write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -604,13 +608,14 @@ def test_long_running_search_with_fresh_truth_is_runtime_ready(tmp_path, monkeyp
     assert not payload["blockers"]
 
 
-def test_empty_active_battles_truth_is_not_stale_when_idle(tmp_path, monkeypatch):
+def test_stale_empty_active_battles_truth_without_runner_blocks_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": port == devstream_health.HTTP_PORT)
     monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
     monkeypatch.setattr(devstream_health, "fetch_endpoint", lambda path: {"url": path, "ok": True, "statusCode": 200, "json": {}})
     monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
     monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: [])
 
     active = tmp_path / "active_battles.json"
     _write_json(active, {"battles": [], "count": 0})
@@ -621,9 +626,10 @@ def test_empty_active_battles_truth_is_not_stale_when_idle(tmp_path, monkeypatch
     payload = devstream_health.build_payload(check_http=True)
 
     active_truth = next(item for item in payload["truth"] if item["relativePath"] == "active_battles.json")
-    assert active_truth["stale"] is False
-    assert active_truth["freshnessNote"] == "empty active battle truth is valid while the runner is idle or searching"
-    assert "stale truth file: active_battles.json" not in payload["warnings"]
+    assert active_truth["stale"] is True
+    assert active_truth["freshnessNote"] == "empty active battle truth is valid only while a live runner owns the idle/searching state"
+    assert payload["healthy"] is False
+    assert any("active_battles.json is stale and no battle runner is alive" in blocker for blocker in payload["blockers"])
 
 
 def test_autoresearch_json_freshness_uses_generated_at_not_touched_mtime(tmp_path, monkeypatch):

@@ -18,16 +18,33 @@ from typing import Any
 import psutil
 
 from devstream_runtime_checks import recent_showdown_credential_failure
+try:
+    from devstream_session import DEFAULT_MAX_CONCURRENT as DEFAULT_SESSION_MAX_CONCURRENT
+except Exception:
+    DEFAULT_SESSION_MAX_CONCURRENT = 3
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 HTTP_PORT = 8777
 OBS_WS_PORT = 4455
-EXPECTED_DEVSTREAM_BATTLE_SURFACES = 3
 IDLE_RUNNER_STALE_SECONDS = int(os.getenv("FP_IDLE_RUNNER_STALE_SECONDS", "180"))
 PROOF_STATUS_MAX_AGE_SECONDS = int(os.getenv("FP_PROOF_STATUS_MAX_AGE_SECONDS", "1800"))
 TERMINAL_BATTLE_RESULTS = {"win", "loss", "tie", "draw", "forfeit", "timeout", "ended", "error"}
+
+
+def positive_int_env(name: str, default: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+EXPECTED_DEVSTREAM_BATTLE_SURFACES = positive_int_env(
+    "FP_EXPECTED_DEVSTREAM_BATTLE_SURFACES",
+    DEFAULT_SESSION_MAX_CONCURRENT,
+)
 
 SERVICES = [
     "fouler-play.service",
@@ -65,12 +82,10 @@ ENDPOINTS = [
     "/battles",
     "/overlay/hybrid",
     "/dashboard/hybrid",
-    "/slot/1",
-    "/slot/2",
-    "/slot/3",
-    "/slot/1/state",
-    "/slot/2/state",
-    "/slot/3/state",
+] + [
+    endpoint
+    for slot in range(1, EXPECTED_DEVSTREAM_BATTLE_SURFACES + 1)
+    for endpoint in (f"/slot/{slot}", f"/slot/{slot}/state")
 ]
 
 BATTLE_PID_FILES = [
@@ -310,8 +325,7 @@ def truth_file_status(spec: dict[str, Any]) -> dict[str, Any]:
     stale = bool(stale_after and age is not None and age > int(stale_after))
     freshness_note = None
     if rel == "active_battles.json" and isinstance(summary, dict) and int(summary.get("battleCount") or 0) == 0:
-        stale = False
-        freshness_note = "empty active battle truth is valid while the runner is idle or searching"
+        freshness_note = "empty active battle truth is valid only while a live runner owns the idle/searching state"
     return {
         "label": spec.get("label") or rel,
         "path": str(path),
@@ -827,7 +841,13 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
             blockers.append("fouler-play OBS HTTP task is blocked by duplicate-guard false positive")
         if "obs_ws_auth_failed" in stderr_classes:
             warnings.append("fouler-play OBS WebSocket source sync has authentication failures in task stderr")
-    if not runner_active and battle_count == 0:
+    if not runner_active and battle_count == 0 and active_battle_truth.get("stale"):
+        runner_proof_missing = True
+        blockers.append(
+            "fouler-play active_battles.json is stale and no battle runner is alive; "
+            "clear/adopt runtime state through HERMES-owned devstream_session before proof handoff"
+        )
+    elif not runner_active and battle_count == 0:
         runner_proof_missing = True
         blockers.append("fouler-play battle runner is idle; OBS HTTP alone is not active battle proof")
     elif not runner_active and battle_count > 0 and active_battle_truth.get("stale"):
@@ -857,7 +877,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     if not battle_surfaces["ready"]:
         if not battle_surfaces["maxSlotsOk"]:
             blockers.append(
-                "devstream mode expects 3 concurrent battle surfaces; active_battles.json reports "
+                f"devstream mode expects {battle_surfaces['expected']} concurrent battle surfaces; active_battles.json reports "
                 f"max_slots={battle_surfaces['declaredMaxSlots']}"
             )
         failed_slots = [

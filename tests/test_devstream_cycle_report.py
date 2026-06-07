@@ -1,5 +1,7 @@
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 
@@ -7,6 +9,83 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import devstream_cycle_report
+
+
+def _empty_queue_backlog() -> dict:
+    return {
+        "available": True,
+        "total": 0,
+        "pending": 0,
+        "pendingBattleResults": 0,
+        "pendingEventTypes": {},
+        "pendingAgeBuckets": {},
+        "pendingPlaceholderFieldCounts": {},
+        "pendingBattleResultStructuredFields": {},
+        "stalePendingBacklog": False,
+        "stalePendingBattleResults": False,
+        "freshPendingBacklog": 0,
+        "freshPendingBattleResults": 0,
+        "staleAfterSeconds": 1800,
+        "oldestPendingAgeSeconds": None,
+        "deliveryFailures": 0,
+        "failedEventTypes": {},
+        "expiredEventTypes": {},
+        "statusCounts": {},
+        "dnsFailures": 0,
+        "webhookFailures": 0,
+        "failureTypes": {},
+        "healthStatus": "empty",
+        "backlogClassification": {},
+        "proofReadiness": {},
+        "nextHermesAction": None,
+        "blockers": [],
+    }
+
+
+def test_cycle_report_blocks_stale_empty_active_battles_without_runtime_owner(tmp_path, monkeypatch):
+    truth_dir = tmp_path / "devstream" / "truth"
+    truth_dir.mkdir(parents=True)
+    monkeypatch.setattr(devstream_cycle_report, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
+    monkeypatch.setattr(devstream_cycle_report, "summarize_queue_backlog", _empty_queue_backlog)
+    monkeypatch.setattr(
+        devstream_cycle_report.devstream_health,
+        "build_payload",
+        lambda check_http=True: {
+            "healthy": True,
+            "running": False,
+            "status": "ready",
+            "readyForLiveFocus": True,
+            "activeBattleCount": 0,
+            "readiness": {"runtimeReady": True, "streamReady": True, "analyticsFresh": True},
+            "runtimeOwnership": {"battleRunnerCount": 0},
+            "devstreamReporting": {},
+            "blockers": [],
+        },
+    )
+
+    active_path = tmp_path / "active_battles.json"
+    active_path.write_text('{"battles":[],"count":0}', encoding="utf-8")
+    old = time.time() - devstream_cycle_report.active_battle_stale_after_seconds() - 60
+    os.utime(active_path, (old, old))
+    (tmp_path / "stream_status.json").write_text('{"status":"Ready"}', encoding="utf-8")
+    (tmp_path / "daily_stats.json").write_text('{"wins":1,"losses":0}', encoding="utf-8")
+    (tmp_path / "battle_stats.json").write_text('{"battles":[]}', encoding="utf-8")
+    (truth_dir / "discord-delivery.json").write_text(
+        '{"schemaVersion":"fouler-play-discord-delivery/v1","status":"idle","queue":{"pending":0,"pendingBattleResults":0},"secretValuesPrinted":false}',
+        encoding="utf-8",
+    )
+    (truth_dir / "discord-reporting.json").write_text(
+        '{"schemaVersion":"fouler-play-discord-reporting/v1","status":"idle","secretValuesPrinted":false}',
+        encoding="utf-8",
+    )
+
+    payload = devstream_cycle_report.build_payload()
+
+    assert payload["readyForHandoff"] is False
+    assert payload["activeBattles"]["stale"] is True
+    assert any("active_battles.json is stale and no battle runner owns the runtime" in blocker for blocker in payload["blockers"])
 
 
 def test_cycle_report_completion_payload_marks_fresh_learning_proof():
