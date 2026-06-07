@@ -63,6 +63,16 @@ def test_recursive_improvement_entrypoints_share_runtime_lane_lease():
     assert "RuntimeLeaseBusy" in session
 
 
+def test_recursive_improvement_gate_verifies_showdown_source_lock():
+    agent = read("infrastructure/improve_agent.py")
+    lock = read("infrastructure/showdown.lock.json")
+
+    assert "verify_showdown_source" in agent
+    assert '"expected_head": "3d25154b0489523a2f5515ba9489292257b27666"' in lock
+    assert '"path": "D:\\\\Projects\\\\pokemon-showdown"' in lock
+    assert '"allow_dirty": false' in lock
+
+
 def test_clean_supervisor_participates_in_runtime_lane_lease():
     source = read("scripts/fouler_clean_supervisor.ps1")
 

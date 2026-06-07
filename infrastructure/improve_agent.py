@@ -923,6 +923,9 @@ SELFPLAY_SEARCH_MS = int(os.getenv("IMPROVE_AGENT_SELFPLAY_SEARCH_MS", "1200"))
 SELFPLAY_PER_BATTLE_TIMEOUT = float(
     os.getenv("IMPROVE_AGENT_SELFPLAY_BATTLE_TIMEOUT", "180")
 )
+SELFPLAY_TURN_CAP = int(
+    os.getenv("IMPROVE_AGENT_SELFPLAY_TURN_CAP", os.getenv("SELFPLAY_TURN_CAP", "60"))
+)
 # Legacy fouler-vs-frozen-baseline config (fallback only).
 EVAL_GATE_BATTLES = int(os.getenv("IMPROVE_AGENT_EVAL_BATTLES", "200"))
 EVAL_GATE_BASELINE = os.getenv("IMPROVE_AGENT_EVAL_BASELINE", "simple")
@@ -1029,6 +1032,22 @@ def selfplay_eval_gate() -> tuple[bool, dict]:
     if not eval_script.exists():
         return _gate_skip({"skipped": "selfplay_eval.py missing"})
 
+    try:
+        from infrastructure.showdown_lock import verify_showdown_source
+
+        lock_status = verify_showdown_source()
+    except Exception as exc:
+        lock_status = {"ok": False, "reason": f"showdown lock check crashed: {exc!r}"}
+    if not lock_status.get("ok"):
+        reason = lock_status.get("reason") or "unknown"
+        print(f"[AGENT] WARNING: Showdown source lock failed ({reason}); "
+              "self-play gate SKIPPED.")
+        return _gate_skip({
+            "skipped": "showdown source lock failed",
+            "skipped_reason": reason,
+            "showdown_lock": lock_status,
+        })
+
     # Default eval port is 18765, NOT 8765. The PokeCompletionist OBS
     # overlay HTTP server permanently holds :8765 on the devstream box;
     # if we ever default back to 8765 the gate's WS handshake will hit the
@@ -1082,6 +1101,7 @@ def selfplay_eval_gate() -> tuple[bool, dict]:
                 "--search-time-ms", str(SELFPLAY_SEARCH_MS),
                 "--per-battle-timeout", str(SELFPLAY_PER_BATTLE_TIMEOUT),
                 "--showdown-port", str(port),
+                "--turn-cap", str(SELFPLAY_TURN_CAP),
             ],
             cwd=str(PROJECT_ROOT),
             capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -1172,6 +1192,12 @@ def offline_eval_gate() -> tuple[bool, dict]:
         timeout=EVAL_GATE_BATTLES * 220 + 300,
     )
     print(proc.stdout[-1500:] if proc.stdout else "(no eval stdout)")
+    if proc.returncode != 0:
+        return False, {
+            "error": "offline eval subprocess failed",
+            "returncode": proc.returncode,
+            "stderr": (proc.stderr or "")[-500:],
+        }
     cand_path = PROJECT_ROOT / "eval_results" / "offline" / "candidate.json"
     if not cand_path.exists():
         print("[AGENT] Eval gate produced no candidate result; treating as FAIL.")

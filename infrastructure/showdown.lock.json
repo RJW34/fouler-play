@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "purpose": "Fouler self-play eval local Pokemon Showdown source lock",
+  "path": "D:\\Projects\\pokemon-showdown",
+  "expected_head": "3d25154b0489523a2f5515ba9489292257b27666",
+  "expected_branch": "master",
+  "allow_dirty": false,
+  "websocket_path": "/showdown/websocket",
+  "default_eval_port": 18765,
+  "default_burst_port": 8801
+}

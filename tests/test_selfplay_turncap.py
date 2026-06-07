@@ -35,3 +35,11 @@ def test_default_teams_prefer_fast_non_stall_set():
 
 def test_default_teams_file_exists_on_disk():
     assert (ROOT / "teams" / "eval-fast-teams.list").exists()
+
+
+def test_burst_runner_forwards_turn_cap_to_harness_and_env():
+    text = (ROOT / "infrastructure" / "run_selfplay_burst.ps1").read_text(encoding="utf-8")
+
+    assert "FOULER_BATTLE_TURN_CAP" in text
+    assert "--turn-cap" in text
+    assert "FOULER_MAX_TURNS" not in text

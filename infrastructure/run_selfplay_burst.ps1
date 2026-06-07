@@ -8,7 +8,7 @@ WHAT IT DOES
   2. Starts a THROWAWAY pokemon-showdown server on a spare port (default 8801,
      NOT the live ladder which uses the public sim server).
   3. Runs infrastructure/selfplay_eval.py: fouler-NEW vs fouler-OLD over -Battles
-     games across the 3 fat/stall teams.
+     games across the locked source-owned eval team file.
   4. Stops the throwaway server.
 
 It NEVER touches the live battle_stats.json (the harness redirects each engine's
@@ -38,10 +38,56 @@ param(
     # scoring) + fast HO eval teams so mirror matches terminate decisively.
     # Default ON for a viable gate; -MaxTurns 0 restores the old behaviour.
     [int]$MaxTurns = 25,
-    [string]$TeamsFile = "teams/eval-teams.list"
+    [string]$TeamsFile = "teams/eval-teams.list",
+    [string]$ShowdownLock = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+function Test-ShowdownSourceLock {
+    param(
+        [string]$Repo,
+        [string]$Showdown,
+        [string]$LockPath
+    )
+
+    if ($LockPath -eq "") {
+        $LockPath = Join-Path $Repo "infrastructure\showdown.lock.json"
+    }
+    if (-not (Test-Path -LiteralPath $LockPath)) {
+        throw "Showdown source lock missing: $LockPath"
+    }
+    $lock = Get-Content -Raw -LiteralPath $LockPath | ConvertFrom-Json
+    $expectedPath = [string]$lock.path
+    if ($Showdown -ne $expectedPath) {
+        throw "Showdown path '$Showdown' does not match source lock '$expectedPath'"
+    }
+    if (-not (Test-Path -LiteralPath $Showdown)) {
+        throw "Showdown path missing: $Showdown"
+    }
+    $actualHead = (& git -C $Showdown rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "git rev-parse failed for Showdown source"
+    }
+    if ($actualHead -ne [string]$lock.expected_head) {
+        throw "Showdown HEAD mismatch: $actualHead != $($lock.expected_head)"
+    }
+    $actualBranch = (& git -C $Showdown branch --show-current).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "git branch check failed for Showdown source"
+    }
+    if ($actualBranch -ne [string]$lock.expected_branch) {
+        throw "Showdown branch mismatch: $actualBranch != $($lock.expected_branch)"
+    }
+    $dirty = & git -C $Showdown status --porcelain
+    if ($LASTEXITCODE -ne 0) {
+        throw "git status failed for Showdown source"
+    }
+    if (($dirty | Measure-Object).Count -gt 0 -and -not [bool]$lock.allow_dirty) {
+        throw "Showdown source is dirty; refusing to run eval burst"
+    }
+    Write-Host "[burst] Showdown source lock verified: $actualHead ($Showdown)"
+}
 
 # --- 1. RAM-headroom guard ---------------------------------------------------
 $os = Get-CimInstance Win32_OperatingSystem
@@ -51,6 +97,9 @@ if ($freeGB -lt $MinFreeGB) {
     Write-Host "[burst] ABORT: insufficient free RAM; refusing to disrupt live work."
     exit 3
 }
+
+# --- 1b. Verify the source-owned Showdown lock before starting anything -------
+Test-ShowdownSourceLock -Repo $Repo -Showdown $Showdown -LockPath $ShowdownLock
 
 # --- 2. Start throwaway showdown on a spare port -----------------------------
 $py = Join-Path $Repo ".venv\Scripts\python.exe"
@@ -67,10 +116,10 @@ try {
     # --- 3. Run the self-play eval -------------------------------------------
     # FOULER-EVAL-TURNCAP: forward the eval-only turn cap to both engine arms.
     if ($MaxTurns -gt 0) {
-        $env:FOULER_MAX_TURNS = "$MaxTurns"
-        Write-Host "[burst] eval turn cap FOULER_MAX_TURNS=$MaxTurns (fewer-fainted scoring)"
+        $env:FOULER_BATTLE_TURN_CAP = "$MaxTurns"
+        Write-Host "[burst] eval turn cap FOULER_BATTLE_TURN_CAP=$MaxTurns (fewer-fainted scoring)"
     } else {
-        Remove-Item Env:\FOULER_MAX_TURNS -ErrorAction SilentlyContinue
+        Remove-Item Env:\FOULER_BATTLE_TURN_CAP -ErrorAction SilentlyContinue
         Write-Host "[burst] eval turn cap DISABLED (MaxTurns=0)"
     }
     $spArgs = @(
@@ -79,7 +128,8 @@ try {
         "--teams-from", "$TeamsFile",
         "--label", $Label,
         "--showdown-port", "$Port",
-        "--search-time-ms", "$SearchMs"
+        "--search-time-ms", "$SearchMs",
+        "--turn-cap", "$MaxTurns"
     )
     if ($OldCheckout -ne "") {
         $spArgs += @("--old-checkout", $OldCheckout, "--new-checkout", $Repo)

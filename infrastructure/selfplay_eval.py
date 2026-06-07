@@ -63,7 +63,6 @@ Writes eval_results/selfplay/<label>.json with the verdict.
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import os
 import re
@@ -75,14 +74,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = PROJECT_ROOT / "eval_results" / "selfplay"
 
-# Reuse the audited statistics from offline_eval.py (single source of truth).
-_oe_spec = importlib.util.spec_from_file_location(
-    "offline_eval", PROJECT_ROOT / "infrastructure" / "offline_eval.py"
-)
-offline_eval = importlib.util.module_from_spec(_oe_spec)
-_oe_spec.loader.exec_module(offline_eval)
-wilson_lower_bound = offline_eval.wilson_lower_bound
-two_proportion_z = offline_eval.two_proportion_z
+# Reuse the audited statistics from eval_stats.py (single source of truth).
+sys.path.insert(0, str(PROJECT_ROOT))
+from infrastructure.eval_stats import two_proportion_z, wilson_lower_bound
 
 # "Battle finished: <tag> Winner: <name>"  (name may be empty on tie/forfeit)
 _WINNER_RE = re.compile(r"Battle finished:\s*(\S+)\s+Winner:\s*(.*?)\s*$")
