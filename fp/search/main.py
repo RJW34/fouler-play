@@ -6074,6 +6074,221 @@ def break_repeated_decision(
     return rebuilt
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# WIN-CONDITION PLAN EXECUTION  (STRATEGIST → EXECUTOR wiring)
+#
+# A per-battle Gameplan is generated at team-preview by
+# fp.matchup_analyzer.analyze_matchup_from_battle and stored on battle.gameplan
+# (fields: win_condition, opponent_win_condition, opponent_weaknesses,
+# our_strategy, key_pivot_triggers, backup_plan).  Historically that plan was
+# LOGGED but NEVER CONSUMED by move selection — the executor was blind to it.
+#
+# This layer makes the policy pursue a coherent win condition, faithfully to the
+# FAT / STALL archetype (no cheese):
+#   1. PRESERVE our win-condition Pokemon — don't sac it, heal it, don't switch
+#      it out when it is healthy and not in immediate danger.
+#   2. CLEAR THE PATH — when our active is NOT the wincon, bias toward chipping /
+#      hazard-pressuring / removing the opponent Pokemon that CHECKS our wincon,
+#      and bias switching toward a teammate that handles the opponent threat.
+#   3. DON'T DEPLOY EARLY — discourage switching the wincon IN while its checks
+#      are still healthy on the opponent's side.
+#
+# All Pokemon facts are grounded via the type chart (type_effectiveness_modifier)
+# and all_move_json — never LLM knowledge.  All adjustments are gentle, bounded,
+# multiplicative weight nudges (never hard blocks), consistent with the
+# "penalties, not blocks" design principle.
+# ──────────────────────────────────────────────────────────────────────────
+def _resolve_wincon_species(battle, team_plan):
+    """Resolve our win-condition species name (grounded), or '' if none.
+
+    Prefers the explicit gameplan win_condition string (parsed against our
+    actual roster so we never trust a hallucinated name), then falls back to
+    team_plan.wincons from data-grounded team analysis.
+    """
+    roster = []
+    user = getattr(battle, "user", None)
+    if user is not None:
+        if getattr(user, "active", None) is not None:
+            roster.append(user.active)
+        roster.extend(getattr(user, "reserve", []) or [])
+    roster_names = {p.name for p in roster if p is not None}
+
+    gameplan = getattr(battle, "gameplan", None)
+    if gameplan is not None:
+        wc_text = normalize_name(str(getattr(gameplan, "win_condition", "") or ""))
+        # Match any roster species name that appears as a token in the plan text.
+        for name in roster_names:
+            if name and name in wc_text:
+                return name
+
+    if team_plan is not None and getattr(team_plan, "wincons", None):
+        for name in team_plan.wincons:
+            if name in roster_names:
+                return name
+        # wincons may be normalized already; return first regardless
+        return next(iter(team_plan.wincons))
+    return ""
+
+
+def _opp_checks_to_wincon(battle, wincon_pokemon):
+    """Opponent Pokemon (alive) that defensively CHECK our wincon: they resist /
+    are immune to the wincon's STAB types.  Grounded in the type chart."""
+    checks = set()
+    if wincon_pokemon is None:
+        return checks
+    opp = getattr(battle, "opponent", None)
+    if opp is None:
+        return checks
+    # STAB move types the wincon can threaten with.
+    stab_types = set()
+    for m in getattr(wincon_pokemon, "moves", []) or []:
+        mname = normalize_name(getattr(m, "name", m) if not isinstance(m, str) else m)
+        md = all_move_json.get(mname, {})
+        if md.get(constants.CATEGORY) in (constants.PHYSICAL, constants.SPECIAL):
+            mt = md.get(constants.TYPE)
+            if mt:
+                stab_types.add(mt)
+    if not stab_types:
+        from fp.search.eval import _get_effective_types as _eff
+        for t in _eff(wincon_pokemon) or []:
+            stab_types.add(t)
+    candidates = list(getattr(opp, "reserve", []) or [])
+    if getattr(opp, "active", None) is not None:
+        candidates.append(opp.active)
+    for p in candidates:
+        if p is None or getattr(p, "hp", 0) <= 0:
+            continue
+        try:
+            from fp.search.eval import _get_effective_types as _eff
+            ptypes = _eff(p)
+            best = max((type_effectiveness_modifier(st, ptypes) for st in stab_types), default=1.0)
+        except Exception:
+            best = 1.0
+        # Resists or is immune to ALL of the wincon's STABs → it's a check.
+        if best <= 0.5:
+            checks.add(p.name)
+    return checks
+
+
+def apply_win_condition_plan_bias(
+    policy: dict[str, float],
+    battle: "Battle | None",
+    team_plan: "TeamAnalysis | None",
+    playstyle: "Playstyle",
+    trace_events: list[dict] | None = None,
+) -> dict[str, float]:
+    """Bias the policy toward executing the battle's win condition (FAT/STALL)."""
+    if battle is None or getattr(battle, "pokemon_format", "") != "gen9ou":
+        return policy
+    if getattr(battle, "battle_type", None) != BattleType.STANDARD_BATTLE:
+        return policy
+    user = getattr(battle, "user", None)
+    if user is None or getattr(user, "active", None) is None:
+        return policy
+    # Only the patient archetypes execute a slow win-condition plan; HO does not.
+    if playstyle not in (Playstyle.FAT, Playstyle.STALL, Playstyle.BALANCE, Playstyle.BULKY_OFFENSE):
+        return policy
+
+    wincon_name = _resolve_wincon_species(battle, team_plan)
+    if not wincon_name:
+        return policy
+
+    active = user.active
+    active_name = active.name
+    active_is_wincon = active_name == wincon_name
+    hp_ratio = active.hp / max(getattr(active, "max_hp", 1), 1)
+
+    # Locate the wincon pokemon object (active or reserve) for path analysis.
+    wincon_pokemon = active if active_is_wincon else next(
+        (p for p in (getattr(user, "reserve", []) or []) if p.name == wincon_name), None
+    )
+    opp_checks = _opp_checks_to_wincon(battle, wincon_pokemon)
+    checks_alive = len(opp_checks)
+
+    recovery_norm = {normalize_name(m) for m in RECOVERY_MOVES}
+    hazard_norm = {normalize_name(m) for m in HAZARD_MOVES}
+    setup_norm = {normalize_name(m) for m in SETUP_MOVES}
+
+    adjusted = dict(policy)
+    applied = []
+
+    for move, weight in list(adjusted.items()):
+        if weight <= 0:
+            continue
+        is_switch = move.startswith("switch ")
+        target_name = normalize_name(move[len("switch "):]) if is_switch else ""
+        move_norm = normalize_name(move.split()[-1]) if not is_switch else ""
+        nw = weight
+
+        if active_is_wincon:
+            # PRESERVE the wincon: don't switch it out when healthy & safe.
+            if is_switch and hp_ratio >= 0.55:
+                nw *= 0.80
+                applied.append((move, "preserve_wincon_no_switch"))
+            # Keep it alive: encourage recovery when it's the wincon and dinged.
+            if move_norm in recovery_norm and hp_ratio < 0.65:
+                nw *= 1.25
+                applied.append((move, "preserve_wincon_recover"))
+            # Set up only once its checks are gone (faithful: don't force it early).
+            if move_norm in setup_norm:
+                if checks_alive == 0:
+                    nw *= 1.30
+                    applied.append((move, "wincon_clear_to_setup"))
+                else:
+                    nw *= 0.80
+                    applied.append((move, "wincon_checks_remain_hold_setup"))
+        else:
+            # CLEAR THE PATH for the wincon while it's in reserve.
+            # Bias hazards + chip while the wincon's checks are still alive.
+            if checks_alive > 0:
+                if move_norm in hazard_norm:
+                    nw *= 1.15
+                    applied.append((move, "clear_path_hazards"))
+                # Reward attacking a pokemon that checks our wincon.
+                opp_active = getattr(getattr(battle, "opponent", None), "active", None)
+                if (
+                    opp_active is not None
+                    and opp_active.name in opp_checks
+                    and move_norm in all_move_json
+                    and all_move_json[move_norm].get(constants.CATEGORY)
+                    in (constants.PHYSICAL, constants.SPECIAL)
+                ):
+                    nw *= 1.18
+                    applied.append((move, "pressure_wincon_check"))
+            # DON'T DEPLOY EARLY: discourage bringing the wincon in while its
+            # checks are healthy (it would just get walled / chipped for nothing).
+            if is_switch and target_name == wincon_name and checks_alive > 0:
+                nw *= 0.80
+                applied.append((move, "hold_wincon_checks_alive"))
+
+        if nw != weight:
+            adjusted[move] = nw
+
+    if applied and trace_events is not None:
+        for mv, reason in applied:
+            trace_events.append(
+                {
+                    "type": "bias",
+                    "source": "win_condition_plan",
+                    "move": mv,
+                    "reason": reason,
+                    "wincon": wincon_name,
+                    "checks_alive": checks_alive,
+                }
+            )
+    if applied:
+        logger.info(
+            "WINCON PLAN (%s, wincon=%s, active=%s, checks_alive=%d): %s",
+            playstyle.value if hasattr(playstyle, "value") else playstyle,
+            wincon_name,
+            active_name,
+            checks_alive,
+            ", ".join(sorted({r for _, r in applied})),
+        )
+    return adjusted
+
+
+
 def select_move_from_eval_scores(
     eval_scores: dict[str, float],
     ability_state: OpponentAbilityState | None = None,
@@ -6169,6 +6384,14 @@ def select_move_from_eval_scores(
             battle,
             team_plan,
             playstyle,
+        )
+        # STRATEGIST→EXECUTOR: pursue the per-battle win condition (FAT/STALL).
+        blended_policy = apply_win_condition_plan_bias(
+            blended_policy,
+            battle,
+            team_plan,
+            playstyle,
+            trace_events=trace_events,
         )
         # NOTE: Removed duplicate apply_threat_switch_bias() call here.
         # Threat safety is already enforced at line 5369 (FIRST PASS).
