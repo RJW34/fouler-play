@@ -606,14 +606,17 @@ def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> di
     creationflags = 0
     if os.name == "nt":
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-    proc = subprocess.Popen(
-        command,
-        cwd=str(ROOT),
-        env=env,
-        stdout=handle,
-        stderr=subprocess.STDOUT,
-        creationflags=creationflags,
-    )
+    try:
+        proc = subprocess.Popen(
+            command,
+            cwd=str(ROOT),
+            env=env,
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+            creationflags=creationflags,
+        )
+    finally:
+        handle.close()
     write_pid(pid_file, proc, command)
     payload = {"pidFile": str(pid_file), "pid": proc.pid, "log": str(log_path), "command": command}
     if stale_existing is not None:
@@ -1043,8 +1046,12 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         else:
             payload["autoImprove"]["enabled"] = False
             payload["autoImprove"]["blocked"] = True
-            blockers = list(readiness.get("blockers") or [])
-            if readiness.get("readyForOfflineIteration") and not readiness.get("readyForRecursiveAutoImprove"):
+            blockers = list(readiness.get("recursiveBlockers") or readiness.get("blockers") or [])
+            if (
+                readiness.get("readyForOfflineIteration")
+                and not readiness.get("readyForRecursiveAutoImprove")
+                and not any("measured self-play gate" in str(blocker) for blocker in blockers)
+            ):
                 blockers.append("recursive readiness gate not true; measured self-play gate has not completed")
             payload["autoImprove"]["blockers"] = blockers or ["readiness gate blocked auto-improve"]
     payload["actions"].append(

@@ -758,15 +758,27 @@ def offline_no_live_readiness(status: dict | None = None, *, cli_enabled: bool =
         age = status.get("battle_stream_age_minutes")
         blockers.append(f"battle evidence stream stale ({age}m since newest battle)")
 
+    measured_gate_ever = bool(status.get("measured_gate_ever"))
+    recursive_blockers = list(blockers)
+    if not measured_gate_ever:
+        recursive_blockers.append(
+            "no measured self-play gate recorded; run one bounded offline iteration before recursive auto-improvement"
+        )
+
+    ready_for_offline_iteration = enabled and not blockers
+    ready_for_recursive = ready_for_offline_iteration and not recursive_blockers
+
+
     return {
         "schemaVersion": "fouler-improve-loop-no-live-readiness/v1",
-        "readyForOfflineIteration": enabled and not blockers,
-        "readyForRecursiveAutoImprove": enabled and not blockers and bool(status.get("measured_gate_ever")),
+        "readyForOfflineIteration": ready_for_offline_iteration,
+        "readyForRecursiveAutoImprove": ready_for_recursive,
         "autoImproveEnabled": enabled,
         "sentinel": AUTO_IMPROVE_SENTINEL,
         "exclusions": list(OFFLINE_NO_LIVE_EXCLUSIONS),
         "blockers": blockers,
-        "measuredGateEver": bool(status.get("measured_gate_ever")),
+        "recursiveBlockers": recursive_blockers,
+        "measuredGateEver": measured_gate_ever,
         "battleStreamStale": bool(status.get("battle_stream_stale")),
         "battleStreamAgeMinutes": status.get("battle_stream_age_minutes"),
         "headline": status.get("headline"),

@@ -81,6 +81,7 @@ def test_offline_no_live_readiness_reports_sentinel_and_measured_gate(monkeypatc
     assert blocked["readyForRecursiveAutoImprove"] is False
     assert improve_loop.AUTO_IMPROVE_SENTINEL in blocked["blockers"][0]
     assert "public ladder" in blocked["exclusions"]
+    assert any("measured self-play gate" in blocker for blocker in blocked["recursiveBlockers"])
 
     monkeypatch.setenv(improve_loop.AUTO_IMPROVE_SENTINEL, "1")
 
@@ -89,12 +90,15 @@ def test_offline_no_live_readiness_reports_sentinel_and_measured_gate(monkeypatc
     assert gated["readyForOfflineIteration"] is True
     assert gated["readyForRecursiveAutoImprove"] is False
     assert gated["measuredGateEver"] is False
+    assert gated["blockers"] == []
+    assert any("measured self-play gate" in blocker for blocker in gated["recursiveBlockers"])
 
     status["measured_gate_ever"] = True
 
     ready = improve_loop.offline_no_live_readiness(status)
 
     assert ready["readyForRecursiveAutoImprove"] is True
+    assert ready["recursiveBlockers"] == []
 
 
 def test_main_blocks_recursive_iterations_without_measured_gate_readiness(monkeypatch):

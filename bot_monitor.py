@@ -348,7 +348,7 @@ class BotMonitor:
         if not (battle_id and battle_id in self.finished_battles):
             return False
 
-        if self._remember_posted_replay(replay_url):
+        if replay_url in getattr(self, "posted_replays", set()):
             return False
 
         opponent, result = self.finished_battles[battle_id]
@@ -363,14 +363,18 @@ class BotMonitor:
                 updated_batch_result = True
                 break
 
-        if result == "lost":
+        if result == "lost" and updated_batch_result:
             if not any(u == replay_url for u, _ in self.batch_losses):
                 self.batch_losses.append((replay_url, opponent))
                 if len(self.batch_losses) > BATCH_LOSSES_MAX:
                     self.batch_losses = self.batch_losses[-BATCH_LOSSES_MAX:]
 
         if not updated_batch_result:
-            self._queue_late_replay_handoff(battle_id, opponent, result, replay_url)
+            if not self._queue_late_replay_handoff(battle_id, opponent, result, replay_url):
+                return False
+
+        self._remember_posted_replay(replay_url)
+
 
         self.finished_battle_times.pop(battle_id, None)
         del self.finished_battles[battle_id]
@@ -378,11 +382,11 @@ class BotMonitor:
         return True
 
     @staticmethod
-    def _queue_late_replay_handoff(battle_id: str, opponent: str, result: str, replay_url: str) -> None:
+    def _queue_late_replay_handoff(battle_id: str, opponent: str, result: str, replay_url: str) -> bool:
         result_word = {"won": "win", "lost": "loss", "tie": "tie"}.get(result, result or "unknown")
         try:
-            queue_event(
-                "battle_result",
+            event_id = queue_event(
+                "battle_replay_available",
                 "battles",
                 build_contract_payload(
                     "PROOF",
@@ -403,8 +407,11 @@ class BotMonitor:
                 dedup_window_sec=5,
                 suppress_embeds=(result_word != "loss"),
             )
+            logging.info("Queued late replay handoff for %s%s", battle_id, f" as {event_id}" if event_id else "")
+            return True
         except Exception as exc:
             logging.warning("Failed to queue late replay handoff for %s: %s", battle_id, exc)
+            return False
 
     def _pending_batch_replay_ids(self) -> list[str]:
         self._expire_finished_replay_handoffs()
@@ -507,6 +514,28 @@ class BotMonitor:
         except Exception as exc:
             logging.warning("Loss analysis task failed: %s", exc)
 
+
+    async def _cancel_background_tasks(self) -> None:
+        pending: list[asyncio.Task] = []
+        batch_task = getattr(self, "_batch_flush_task", None)
+        if batch_task and not batch_task.done():
+            pending.append(batch_task)
+        self._cancel_batch_flush_task()
+
+        tasks = getattr(self, "_analysis_tasks", None)
+        if tasks:
+            pending.extend(task for task in list(tasks) if not task.done())
+
+        unique_pending = set(pending)
+        for task in unique_pending:
+            task.cancel()
+        if unique_pending:
+            await asyncio.gather(*unique_pending, return_exceptions=True)
+
+        if tasks is not None:
+            tasks.clear()
+        self._batch_flush_task = None
+
     def _write_self_pid(self):
         try:
             data = {
@@ -567,6 +596,7 @@ class BotMonitor:
 
     async def shutdown(self, reason="shutdown"):
         await self._shutdown_child(reason=reason)
+        await self._cancel_background_tasks()
         self._cleanup_bot_main_pid()
 
     async def send_discord_message(self, message, channel="project", suppress_embeds=False):

@@ -171,7 +171,7 @@ def test_late_replay_after_batch_flush_queues_public_handoff(monkeypatch):
     )
 
     assert len(queued) == 1
-    assert queued[0]["event_type"] == "battle_result"
+    assert queued[0]["event_type"] == "battle_replay_available"
     assert queued[0]["kwargs"]["suppress_embeds"] is False
     fields = structured_report_fields(queued[0]["content"], event_type="battle_result")
     assert fields["proof"]["replay"] == {
@@ -204,6 +204,54 @@ def test_unmatched_replay_proof_is_not_marked_posted_before_attach():
         ">battle-gen9ou-2626011055\n|queryresponse|savereplay|{\"id\":\"gen9ou-2626011055\"}",
     )
     assert monitor.posted_replays == set()
+
+
+def test_late_replay_queue_failure_retains_handoff_for_retry(monkeypatch):
+    monitor = _monitor_without_runtime()
+    battle_id = "battle-gen9ou-2626011055-privatehash"
+    monitor._track_finished_battle(battle_id, "LateReplay", "lost")
+
+    def fail_queue_event(*_args, **_kwargs):
+        raise OSError("queue locked")
+
+    monkeypatch.setattr(bot_monitor, "queue_event", fail_queue_event)
+
+    assert not monitor._attach_replay_to_finished_battle(
+        "gen9ou-2626011055",
+        f">{battle_id}\n|raw|https://replay.pokemonshowdown.com/gen9ou-2626011055",
+    )
+
+    assert battle_id in monitor.finished_battles
+    assert battle_id in monitor.finished_battle_times
+    assert monitor.posted_replays == set()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_cancels_background_tasks(monkeypatch):
+    monitor = _monitor_without_runtime()
+    child_shutdowns = []
+    monkeypatch.setattr(
+        monitor,
+        "_shutdown_child",
+        lambda reason="shutdown": child_shutdowns.append(reason) or asyncio.sleep(0),
+    )
+    monkeypatch.setattr(monitor, "_cleanup_bot_main_pid", lambda: None)
+
+    async def sleeper():
+        await asyncio.sleep(60)
+
+    batch_task = asyncio.create_task(sleeper())
+    analysis_task = asyncio.create_task(sleeper())
+    monitor._batch_flush_task = batch_task
+    monitor._analysis_tasks.add(analysis_task)
+
+    await monitor.shutdown("test shutdown")
+
+    assert child_shutdowns == ["test shutdown"]
+    assert batch_task.cancelled()
+    assert analysis_task.cancelled()
+    assert monitor._batch_flush_task is None
+    assert monitor._analysis_tasks == set()
 
 
 @pytest.mark.asyncio
