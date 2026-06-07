@@ -1,4 +1,5 @@
 import asyncio
+import os
 import websockets
 import requests
 import json
@@ -10,6 +11,53 @@ import logging
 from fp.ws_rate_limiter import WSSendQueue, _classify
 
 logger = logging.getLogger(__name__)
+
+
+def _env_int(name, default):
+    try:
+        value = int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return max(1, value)
+
+
+GLOBAL_QUEUE_MAXSIZE = _env_int("FOULER_GLOBAL_QUEUE_MAXSIZE", 2048)
+MAX_BATTLE_QUEUE_MESSAGES = _env_int("FOULER_BATTLE_QUEUE_MAX", 200)
+MAX_PENDING_BATTLE_MESSAGES = _env_int("FOULER_PENDING_BATTLE_MESSAGES_MAX", 80)
+MAX_GLOBAL_QUEUE_MESSAGES = _env_int("FOULER_GLOBAL_QUEUE_MAX", GLOBAL_QUEUE_MAXSIZE)
+
+
+def _pending_message_drop_index(messages):
+    """Prefer dropping non-request battle updates from pre-registration buffers."""
+    for idx, message in enumerate(messages):
+        if "|request|" not in message:
+            return idx
+    return 0
+
+
+def _append_bounded_pending_message(messages, message, limit=MAX_PENDING_BATTLE_MESSAGES):
+    """Append a pending battle message, evicting old low-value entries at capacity."""
+    dropped = None
+    while len(messages) >= limit:
+        drop_idx = _pending_message_drop_index(messages)
+        dropped = messages.pop(drop_idx)
+    messages.append(message)
+    return dropped
+
+
+def _put_bounded_nowait(queue, message, label):
+    """Put without allowing inactive consumers to grow queues forever."""
+    dropped = None
+    if queue.full():
+        try:
+            dropped = queue.get_nowait()
+            queue.task_done()
+        except asyncio.QueueEmpty:
+            dropped = None
+    queue.put_nowait(message)
+    if dropped is not None:
+        logger.warning("Dropped oldest %s message to keep queue bounded", label)
+    return dropped
 
 
 def _public_replay_id_from_ref(value):
@@ -61,17 +109,26 @@ class PSWebsocketClient:
         self.address = address
         self.websocket = None
         self.expected_format = expected_format  # CRITICAL: validate claimed battles match this format
-        self.login_uri = (
-            "https://play.pokemonshowdown.com/api/login"
-            if password
-            else "https://play.pokemonshowdown.com/action.php?"
-        )
+        # FOULER_LOGIN_URI lets the offline eval harness point the login/assertion
+        # request at a LOCAL pokemon-showdown server (--no-security), e.g.
+        # http://localhost:8765/action.php?  . Production leaves it unset and uses
+        # the public Showdown login server exactly as before.
+        _login_override = os.getenv("FOULER_LOGIN_URI")
+        if _login_override:
+            self.login_uri = _login_override
+        else:
+            self.login_uri = (
+                "https://play.pokemonshowdown.com/api/login"
+                if password
+                else "https://play.pokemonshowdown.com/action.php?"
+            )
         # Message routing for concurrent battles
         self.battle_queues = {}  # battle_tag -> asyncio.Queue
         self.pending_battle_messages = {}  # battle_tag -> list of msgs (pre-registration buffer)
         self.pending_battle_times = {}  # battle_tag -> first-seen timestamp
         self.pending_battle_owners = {}  # battle_tag -> worker_id that initiated search (or None)
-        self.global_queue = asyncio.Queue()  # for non-battle messages (login, search, etc.)
+        self.global_queue = asyncio.Queue(maxsize=MAX_GLOBAL_QUEUE_MESSAGES)  # for non-battle messages (login, search, etc.)
+        self._dropped_global_messages = 0
         self.dispatcher_task = None
         self._dispatcher_running = False
         self._reconnect_task = None  # Track reconnect task to prevent duplicates
@@ -251,9 +308,10 @@ class PSWebsocketClient:
                     routed = False
                     buffered_count = None
                     async with self._pending_lock:
+                        self._purge_stale_pending()
                         queue = self.battle_queues.get(battle_tag)
                         if queue is not None:
-                            queue.put_nowait(msg)
+                            _put_bounded_nowait(queue, msg, f"battle {battle_tag}")
                             routed = True
                         elif battle_tag in self._recently_finished:
                             # Stray message from a battle we just finished — discard
@@ -266,7 +324,15 @@ class PSWebsocketClient:
                                 # Capture the current search owner (if any) so the
                                 # same worker that started the search claims this battle.
                                 self.pending_battle_owners[battle_tag] = self._search_owner
-                            self.pending_battle_messages[battle_tag].append(msg)
+                            dropped = _append_bounded_pending_message(
+                                self.pending_battle_messages[battle_tag],
+                                msg,
+                            )
+                            if dropped is not None:
+                                logger.warning(
+                                    "Dropped oldest non-critical pending message for %s",
+                                    battle_tag,
+                                )
                             buffered_count = len(self.pending_battle_messages[battle_tag])
                     if routed:
                         logger.debug(f"Routed message to battle {battle_tag}")
@@ -276,7 +342,7 @@ class PSWebsocketClient:
                         )
                 else:
                     # Non-battle message (login responses, search updates, etc.)
-                    await self.global_queue.put(msg)
+                    await self._enqueue_global_message(msg)
 
             except websockets.exceptions.ConnectionClosed:
                 logger.error("WebSocket connection closed in dispatcher")
@@ -295,6 +361,27 @@ class PSWebsocketClient:
                 await asyncio.sleep(0.1)
 
 
+    async def _enqueue_global_message(self, msg):
+        """Bound non-battle protocol buffering so disconnected consumers cannot leak memory."""
+        try:
+            self.global_queue.put_nowait(msg)
+            return
+        except asyncio.QueueFull:
+            pass
+        try:
+            self.global_queue.get_nowait()
+            self._dropped_global_messages = getattr(self, "_dropped_global_messages", 0) + 1
+            if self._dropped_global_messages == 1 or self._dropped_global_messages % 100 == 0:
+                logger.warning(
+                    "Dropped %s stale global websocket message(s); queue maxsize=%s",
+                    self._dropped_global_messages,
+                    self.global_queue.maxsize,
+                )
+        except asyncio.QueueEmpty:
+            pass
+        await self.global_queue.put(msg)
+
+
     async def register_battle(self, battle_tag):
         """Register a new battle and create its message queue, flushing any buffered messages.
 
@@ -302,14 +389,14 @@ class PSWebsocketClient:
         """
         async with self._pending_lock:
             if battle_tag not in self.battle_queues:
-                self.battle_queues[battle_tag] = asyncio.Queue()
+                self.battle_queues[battle_tag] = asyncio.Queue(maxsize=MAX_BATTLE_QUEUE_MESSAGES)
                 # Flush any messages that arrived before registration
                 if battle_tag in self.pending_battle_messages:
                     buffered = self.pending_battle_messages.pop(battle_tag)
                     self.pending_battle_times.pop(battle_tag, None)
                     self.pending_battle_owners.pop(battle_tag, None)
                     for msg in buffered:
-                        self.battle_queues[battle_tag].put_nowait(msg)
+                        _put_bounded_nowait(self.battle_queues[battle_tag], msg, f"battle {battle_tag}")
                     logger.info(f"Registered battle queue: {battle_tag} (flushed {len(buffered)} buffered messages)")
                 else:
                     logger.info(f"Registered battle queue: {battle_tag}")
@@ -418,9 +505,9 @@ class PSWebsocketClient:
                 self.pending_battle_owners.pop(battle_tag, None)
 
                 # Register the battle queue immediately
-                self.battle_queues[battle_tag] = asyncio.Queue()
+                self.battle_queues[battle_tag] = asyncio.Queue(maxsize=MAX_BATTLE_QUEUE_MESSAGES)
                 for msg in messages:
-                    self.battle_queues[battle_tag].put_nowait(msg)
+                    _put_bounded_nowait(self.battle_queues[battle_tag], msg, f"battle {battle_tag}")
 
                 logger.info(f"Claimed battle {battle_tag} (flushed {len(messages)} buffered messages)")
                 return battle_tag, messages
@@ -517,6 +604,15 @@ class PSWebsocketClient:
         logger.info("Logging in...")
         client_id, challstr = await self.get_id_and_challstr()
 
+        # Local --no-security showdown server (offline eval harness): no assertion
+        # is required; sending `/trn user,0,` with an empty assertion logs in.
+        if os.getenv("FOULER_NO_SECURITY_LOGIN", "").lower() in {"1", "true", "yes", "on"}:
+            message = ["/trn " + self.username + ",0,"]
+            logger.info("Logging in via --no-security local server (no assertion)")
+            await self.send_message("", message)
+            await asyncio.sleep(3)
+            return self.username
+
         guest_login = self.password is None
 
         if guest_login:
@@ -605,16 +701,25 @@ class PSWebsocketClient:
                 msg = await asyncio.wait_for(self.receive_message(), timeout=min(remaining, 5.0))
             except asyncio.TimeoutError:
                 continue
-            split_msg = msg.split("|")
-            if (
-                len(split_msg) == 9
-                and split_msg[1] == "pm"
-                and split_msg[3].strip().replace("!", "").replace("‽", "")
-                == self.username
-                and split_msg[4].startswith("/challenge")
-                and split_msg[5] == battle_format
-            ):
-                username = split_msg[2].strip()
+            # CW-FIX 2026-06-03: dispatcher may deliver MULTI-LINE blobs; original
+            # split-whole-msg + len==9 matcher silently missed bundled/variant PMs
+            # -> accept_challenge timed out (root cause of self-play 0 battles).
+            import os as _os
+            _dbg = _os.getenv("FOULER_DEBUG_ACCEPT", "").lower() in {"1","true","yes","on"}
+            for _line in msg.split(chr(10)):
+                split_msg = _line.split("|")
+                if _dbg and ("/challenge" in _line or (len(split_msg)>1 and split_msg[1]=="pm")):
+                    logger.info("ACCEPT-DBG fields=%d line=%r" % (len(split_msg), _line[:160]))
+                if (
+                    len(split_msg) >= 6
+                    and split_msg[1] == "pm"
+                    and split_msg[3].strip().replace("!", "")
+                    == self.username
+                    and split_msg[4].startswith("/challenge")
+                    and split_msg[5] == battle_format
+                ):
+                    username = split_msg[2].strip()
+                    break
 
         message = ["/accept " + username]
         await self.send_message("", message)
