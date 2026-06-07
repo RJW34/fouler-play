@@ -661,6 +661,95 @@ async def _save_replay_json_locally(replay_id: str) -> dict | None:
         logger.debug(f"Failed to save replay JSON for {clean_id}: {e}")
     return None
 
+
+def _replay_queue_upgrade_retry_delays() -> tuple[float, ...]:
+    raw = os.getenv("REPLAY_QUEUE_UPGRADE_RETRY_DELAYS_SEC", "5,20,60,180")
+    delays: list[float] = []
+    for part in raw.split(","):
+        try:
+            delay = float(part.strip())
+        except ValueError:
+            continue
+        if delay >= 0:
+            delays.append(delay)
+    return tuple(delays)
+
+
+async def _queue_public_replay_upgrade_when_available(
+    *,
+    battle_tag: str,
+    replay_id: str,
+    result_str: str,
+    opponent_name: str,
+    team_name: str | None,
+    turn_count,
+    elo_before,
+    elo_after,
+    recent_record: str,
+    decisive_reason: str,
+    next_action: str,
+) -> bool:
+    replay_id = public_replay_id_candidate(replay_id)
+    if not battle_tag or not replay_id:
+        return False
+
+    for delay in _replay_queue_upgrade_retry_delays():
+        if delay > 0:
+            await asyncio.sleep(delay)
+        _replay_cache.pop(replay_id, None)
+        if not await _replay_exists(replay_id):
+            continue
+
+        verified_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+        handoff = replay_handoff_fields(
+            battle_tag=battle_tag,
+            replay_url=verified_url,
+            verified_replay_url=verified_url,
+        )
+        event_id = queue_event(
+            "battle_result",
+            "battles",
+            build_contract_payload(
+                "PROOF",
+                f"battle result {result_str} vs {opponent_name} public replay",
+                f"Battle {battle_tag} ended {result_str} against {opponent_name}; replay is now public.",
+                "Replay proof became public after the initial Discord queue event.",
+                (
+                    f"battle_id={battle_tag}; result={result_str}; "
+                    f"team_file={team_name or 'unknown'}; opponent={opponent_name}; "
+                    f"turns={turn_count}; replay={handoff.get('replay_url') or ''}; "
+                    f"replay_status={handoff.get('replay_status') or 'absent'}"
+                ),
+                "none",
+                source="fp.run_battle.replay_upgrade",
+                battle_id=battle_tag,
+                result=result_str,
+                team_file=team_name or "unknown",
+                opponent=opponent_name,
+                turns=turn_count,
+                replay_url=handoff.get("replay_url"),
+                replay_id=handoff.get("replay_id"),
+                replay_status=handoff.get("replay_status"),
+                replay_public_verified=handoff.get("replay_public_verified"),
+                raw_replay_url=handoff.get("raw_replay_url"),
+                elo_before=elo_before,
+                elo_after=elo_after,
+                recent_record=recent_record,
+                decisive_reason=decisive_reason,
+                next_battle_action=next_action,
+            ),
+            dedup_window_sec=0,
+        )
+        if event_id:
+            logger.info("Queued public replay upgrade for %s (%s)", battle_tag, verified_url)
+            return True
+        logger.info("Public replay upgrade for %s was already represented in the queue", battle_tag)
+        return False
+
+    logger.debug("Replay %s was not public before queue upgrade retry budget ended", replay_id)
+    return False
+
+
 async def _post_battle_to_discord(
     battle_tag: str,
     winner: str | None,
@@ -3015,6 +3104,22 @@ async def pokemon_battle(
                         ),
                         dedup_window_sec=5,
                     )
+                    if _queue_replay_status == "pending-public-upload" and _discord_replay_id:
+                        _track_replay_save_task(
+                            _queue_public_replay_upgrade_when_available(
+                                battle_tag=battle_tag,
+                                replay_id=_discord_replay_id,
+                                result_str=_result_str,
+                                opponent_name=opponent_name,
+                                team_name=_team_name_ev or "unknown",
+                                turn_count=_turn_count_ev,
+                                elo_before=_elo_before_val,
+                                elo_after=elo_after if 'elo_after' in locals() else None,
+                                recent_record=_recent_summary,
+                                decisive_reason=_decisive_reason,
+                                next_action=_next_action,
+                            )
+                        )
                 except Exception as _qe_err:
                     logger.warning(f"Failed to queue battle_result event: {_qe_err}")
 

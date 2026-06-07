@@ -215,6 +215,41 @@ def test_archive_preserves_pending_replay_summary():
     print("OK Test 6c: Pending replay archive proof PASSED")
 
 
+def _replay_payload(
+    *,
+    headline: str,
+    what_happened: str,
+    proof_note: str,
+    handoff=None,
+) -> str:
+    handoff = handoff or {}
+    replay_url = handoff.get("replay_url")
+    replay_status = handoff.get("replay_status") or "absent"
+    proof = (
+        "battle_id=battle-gen9ou-909-private; result=win; opponent=DedupeA; turns=12; "
+        f"replay={replay_url or ''}; replay_status={replay_status}; {proof_note}"
+    )
+    return build_contract_payload(
+        "PROOF",
+        headline,
+        what_happened,
+        "Replay proof must survive queue lag and semantic idempotency.",
+        proof,
+        "none",
+        source="unit-test",
+        battle_id="battle-gen9ou-909-private",
+        result="win",
+        opponent="DedupeA",
+        turns=12,
+        replay_url=replay_url,
+        replay_id=handoff.get("replay_id"),
+        replay_status=replay_status,
+        replay_public_verified=handoff.get("replay_public_verified"),
+        raw_replay_url=handoff.get("raw_replay_url"),
+        next_battle_action="none",
+    )
+
+
 def test_battle_result_idempotency_uses_battle_id_beyond_hash_window():
     _reset_test_queue()
     payload1 = build_contract_payload(
@@ -233,16 +268,15 @@ def test_battle_result_idempotency_uses_battle_id_beyond_hash_window():
     )
     payload2 = build_contract_payload(
         "PROOF",
-        "battle result win vs DedupeA replay arrived",
-        "Same battle now has a replay candidate.",
+        "battle result win vs DedupeA duplicate wording",
+        "Same battle changed wording but has no replay upgrade.",
         "Second wording should still dedupe.",
-        "replay=https://replay.pokemonshowdown.com/gen9ou-909",
+        "battle_id=battle-gen9ou-909-private; result=win",
         "none",
         source="unit-test",
         battle_id="battle-gen9ou-909-private",
         result="win",
         opponent="DedupeA",
-        replay_url="https://replay.pokemonshowdown.com/gen9ou-909",
         next_battle_action="none",
     )
 
@@ -252,6 +286,118 @@ def test_battle_result_idempotency_uses_battle_id_beyond_hash_window():
     assert eid1 is not None
     assert eid2 is None
     assert read_queue()[0]["idempotency_key"] == "battle_result:battles:gen9ou-909"
+
+
+def test_pending_battle_result_public_replay_upgrade_refreshes_stale_event():
+    _reset_test_queue()
+    pending_handoff = replay_handoff_fields(
+        battle_tag="battle-gen9ou-909-private",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-909",
+        verified_replay_url=None,
+    )
+    public_handoff = replay_handoff_fields(
+        battle_tag="battle-gen9ou-909-private",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-909",
+        verified_replay_url="https://replay.pokemonshowdown.com/gen9ou-909",
+    )
+
+    eid1 = queue_event(
+        "battle_result",
+        "battles",
+        _replay_payload(
+            headline="battle result win vs DedupeA pending replay",
+            what_happened="Battle battle-gen9ou-909-private ended win against DedupeA.",
+            proof_note="initial queue saw pending public upload",
+            handoff=pending_handoff,
+        ),
+        dedup_window_sec=0,
+    )
+    assert eid1 is not None
+
+    stale_ts = time.time() - 700
+    events = read_queue()
+    events[0]["timestamp"] = stale_ts
+    TEST_QUEUE.write_text(json.dumps(events), encoding="utf-8")
+
+    eid2 = queue_event(
+        "battle_result",
+        "battles",
+        _replay_payload(
+            headline="battle result win vs DedupeA public replay",
+            what_happened="Same battle replay is now publicly available.",
+            proof_note="late queue pass verified public upload",
+            handoff=public_handoff,
+        ),
+        dedup_window_sec=0,
+    )
+
+    assert eid2 == eid1
+    events = read_queue()
+    assert len(events) == 1
+    event = events[0]
+    assert event["timestamp"] > stale_ts
+    assert event["status"] == "pending"
+    assert event["retry_count"] == 0
+    assert event["upgrade_reason"] == "public-replay-url-available"
+    assert event["upgrade_count"] == 1
+    assert event["proof"]["replay"] == {
+        "status": "public",
+        "id": "gen9ou-909",
+        "url": "https://replay.pokemonshowdown.com/gen9ou-909",
+    }
+    assert event["proof_readiness"]["status"] == "proof-ready"
+    assert "https://replay.pokemonshowdown.com/gen9ou-909" in event["content"]
+    assert expire_old_events(600) == 0
+
+
+def test_posted_pending_battle_result_public_replay_queues_followup():
+    _reset_test_queue()
+    pending_handoff = replay_handoff_fields(
+        battle_tag="battle-gen9ou-909-private",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-909",
+        verified_replay_url=None,
+    )
+    public_handoff = replay_handoff_fields(
+        battle_tag="battle-gen9ou-909-private",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-909",
+        verified_replay_url="https://replay.pokemonshowdown.com/gen9ou-909",
+    )
+
+    eid1 = queue_event(
+        "battle_result",
+        "battles",
+        _replay_payload(
+            headline="battle result win vs DedupeA pending replay",
+            what_happened="Battle battle-gen9ou-909-private ended win against DedupeA.",
+            proof_note="initial Discord post only had pending replay proof",
+            handoff=pending_handoff,
+        ),
+        dedup_window_sec=0,
+    )
+    assert eid1 is not None
+    assert mark_posted(eid1)
+
+    eid2 = queue_event(
+        "battle_result",
+        "battles",
+        _replay_payload(
+            headline="battle result win vs DedupeA public replay",
+            what_happened="Same battle replay is now publicly available.",
+            proof_note="late queue pass verified public upload",
+            handoff=public_handoff,
+        ),
+        dedup_window_sec=0,
+    )
+
+    assert eid2 is not None
+    assert eid2 != eid1
+    events = read_queue()
+    assert len(events) == 2
+    followup = [event for event in events if event["id"] == eid2][0]
+    assert followup["status"] == "pending"
+    assert followup["replay_upgrade_followup"] is True
+    assert followup["proof"]["replay"]["status"] == "public"
+    assert followup["proof"]["replay"]["url"] == "https://replay.pokemonshowdown.com/gen9ou-909"
 
 
 def test_expiry():
@@ -287,6 +433,9 @@ if __name__ == "__main__":
     test_fifo_ordering()
     test_archive_preserves_pending_replay_summary()
     test_pending_backlog_cap_archives_oldest_without_posting()
+    test_battle_result_idempotency_uses_battle_id_beyond_hash_window()
+    test_pending_battle_result_public_replay_upgrade_refreshes_stale_event()
+    test_posted_pending_battle_result_public_replay_queues_followup()
     test_expiry()
     test_stats()
     

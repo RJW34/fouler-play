@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Optional, Callable
 
 from infrastructure.discord_reporting import (
+    canonical_replay_url,
     format_payload_or_message,
     public_replay_id_candidate,
     structured_report_fields,
@@ -120,6 +121,83 @@ def _battle_result_idempotency_key(event_type: str, channel: str, structured_fie
     if raw_battle_id:
         return f"battle_result:{channel}:{raw_battle_id.lower()}"
     return ""
+
+
+def _replay_summary_from_fields(fields: dict) -> dict:
+    proof = fields.get("proof") if isinstance(fields.get("proof"), dict) else {}
+    replay = proof.get("replay") if isinstance(proof.get("replay"), dict) else {}
+    return replay if isinstance(replay, dict) else {}
+
+
+def _replay_summary_from_event(event: dict) -> dict:
+    replay = _replay_summary_from_fields(event)
+    if replay:
+        return replay
+    try:
+        extracted = structured_report_fields(
+            str(event.get("content") or ""),
+            event_type=str(event.get("event_type") or ""),
+        )
+    except Exception:
+        extracted = {}
+    return _replay_summary_from_fields(extracted)
+
+
+def _public_replay_url_from_summary(replay: dict) -> str:
+    if not isinstance(replay, dict):
+        return ""
+    status = str(replay.get("status") or "").strip().lower()
+    url = canonical_replay_url(replay.get("url") or replay.get("raw_replay_url") or "")
+    return url if status == "public" and url else ""
+
+
+def _is_public_replay_upgrade(existing_event: dict, new_fields: dict) -> bool:
+    new_replay = _replay_summary_from_fields(new_fields)
+    new_url = _public_replay_url_from_summary(new_replay)
+    if not new_url:
+        return False
+
+    existing_replay = _replay_summary_from_event(existing_event)
+    if _public_replay_url_from_summary(existing_replay):
+        return False
+
+    existing_id = public_replay_id_candidate(
+        existing_replay.get("id")
+        or existing_replay.get("url")
+        or existing_event.get("battle_id")
+    )
+    new_id = public_replay_id_candidate(new_replay.get("id") or new_url)
+    if existing_id and new_id and existing_id != new_id:
+        return False
+
+    return True
+
+
+def _refresh_event_payload(
+    event: dict,
+    *,
+    content: str,
+    content_hash: str,
+    structured_fields: dict,
+    idempotency_key: str,
+    now: float,
+    precondition_check_fn: Optional[str],
+    suppress_embeds: bool,
+) -> None:
+    event["timestamp"] = now
+    event["content"] = content
+    event["content_hash"] = content_hash
+    event["idempotency_key"] = idempotency_key or event.get("idempotency_key")
+    event["precondition_check"] = precondition_check_fn if precondition_check_fn is not None else event.get("precondition_check")
+    event["suppress_embeds"] = bool(suppress_embeds or event.get("suppress_embeds", False))
+    event["status"] = STATUS_PENDING
+    event["retry_count"] = 0
+    event["last_error"] = None
+    event["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+    event["upgrade_reason"] = "public-replay-url-available"
+    event["upgrade_count"] = int(event.get("upgrade_count") or 0) + 1
+    for key, value in structured_fields.items():
+        event[key] = value
 
 
 def _read_queue_locked(f) -> list:
@@ -390,20 +468,52 @@ def queue_event(
     def _do_queue(f):
         events = _read_queue_locked(f)
 
+        replay_upgrade_followup = False
         # Dedup check: reject if same hash exists within window
         for ev in events:
             if (ev.get("content_hash") == content_md5
-                    and ev["status"] in (STATUS_PENDING, STATUS_POSTED)
-                    and (now - ev["timestamp"]) < dedup_window_sec):
+                    and ev.get("status") in (STATUS_PENDING, STATUS_POSTED)
+                    and (now - _event_timestamp(ev, now)) < dedup_window_sec):
                 logger.info(f"Dedup rejected: {event_type} (hash={content_md5[:8]})")
                 return None
             if (idempotency_key
-                    and ev.get("idempotency_key") == idempotency_key
-                    and ev["status"] in (STATUS_PENDING, STATUS_POSTED)):
-                logger.info(
-                    "Dedup rejected: %s (idempotency_key=%s)", event_type, idempotency_key
-                )
-                return None
+                    and ev.get("idempotency_key") == idempotency_key):
+                status = ev.get("status")
+                if _is_public_replay_upgrade(ev, structured_fields):
+                    if status in (STATUS_PENDING, STATUS_FAILED):
+                        _refresh_event_payload(
+                            ev,
+                            content=content,
+                            content_hash=content_md5,
+                            structured_fields=structured_fields,
+                            idempotency_key=idempotency_key,
+                            now=now,
+                            precondition_check_fn=precondition_check_fn,
+                            suppress_embeds=suppress_embeds,
+                        )
+                        _write_queue_locked(f, events)
+                        logger.info(
+                            "Updated queued %s id=%s with public replay URL (idempotency_key=%s)",
+                            event_type,
+                            ev.get("id"),
+                            idempotency_key,
+                        )
+                        return ev.get("id")
+                    if status == STATUS_POSTED:
+                        replay_upgrade_followup = True
+                        continue
+                if status in (STATUS_PENDING, STATUS_POSTED):
+                    logger.info(
+                        "Dedup rejected: %s (idempotency_key=%s)", event_type, idempotency_key
+                    )
+                    return None
+
+        if replay_upgrade_followup:
+            logger.info(
+                "Queueing %s replay upgrade follow-up despite posted idempotency_key=%s",
+                event_type,
+                idempotency_key,
+            )
 
         events = _archive_over_capacity_pending(events, now=now)
 
@@ -425,6 +535,8 @@ def queue_event(
             "last_error": None,
             **structured_fields,
         }
+        if replay_upgrade_followup:
+            event["replay_upgrade_followup"] = True
 
         events.append(event)
         _write_queue_locked(f, events)
