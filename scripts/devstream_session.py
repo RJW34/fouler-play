@@ -935,6 +935,24 @@ def write_supervisor_status(payload: dict[str, Any]) -> None:
     SUPERVISOR_STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     SUPERVISOR_STATUS_FILE.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
+def _readiness_from_action(action: dict[str, Any]) -> dict[str, Any]:
+    if action.get("returnCode") != 0:
+        return {"readyForOfflineIteration": False, "blockers": ["readiness command failed"]}
+    text = str(action.get("stdoutTail") or "")
+    start = text.find("{")
+    end = text.rfind("}")
+    if start < 0 or end < start:
+        return {"readyForOfflineIteration": False, "blockers": ["readiness command did not return JSON"]}
+    try:
+        parsed = json.loads(text[start:end + 1])
+    except json.JSONDecodeError as exc:
+        return {"readyForOfflineIteration": False, "blockers": [f"readiness JSON parse failed: {exc}"]}
+    if not isinstance(parsed, dict):
+        return {"readyForOfflineIteration": False, "blockers": ["readiness JSON was not an object"]}
+    return parsed
+
+
+
 
 def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str, Any]:
     active_count = read_active_battles()
@@ -991,19 +1009,31 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         "sentinel": AUTO_IMPROVE_SENTINEL,
     }
     if improve_enabled:
-        improve_command = [py, "infrastructure/improve_agent.py", "--enable-auto-improve"]
-        payload["actions"].append(
-            run_supervisor_command(
-                improve_command,
-                timeout=getattr(args, "improve_timeout_seconds", 240),
-            )
+        readiness_action = run_supervisor_command(
+            [py, "infrastructure/improve_loop.py", "--readiness", "--enable-auto-improve"],
+            timeout=getattr(args, "proof_timeout_seconds", 300),
         )
-        payload["actions"].append(
-            run_supervisor_command(
-                [py, "infrastructure/elo_watchdog.py"],
-                timeout=getattr(args, "proof_timeout_seconds", 300),
+        payload["actions"].append(readiness_action)
+        readiness = _readiness_from_action(readiness_action)
+        payload["autoImprove"]["readiness"] = readiness
+        if readiness.get("readyForOfflineIteration"):
+            improve_command = [py, "infrastructure/improve_agent.py", "--enable-auto-improve"]
+            payload["actions"].append(
+                run_supervisor_command(
+                    improve_command,
+                    timeout=getattr(args, "improve_timeout_seconds", 240),
+                )
             )
-        )
+            payload["actions"].append(
+                run_supervisor_command(
+                    [py, "infrastructure/elo_watchdog.py"],
+                    timeout=getattr(args, "proof_timeout_seconds", 300),
+                )
+            )
+        else:
+            payload["autoImprove"]["enabled"] = False
+            payload["autoImprove"]["blocked"] = True
+            payload["autoImprove"]["blockers"] = readiness.get("blockers") or ["readiness gate blocked auto-improve"]
     payload["actions"].append(
         run_supervisor_command(
             [

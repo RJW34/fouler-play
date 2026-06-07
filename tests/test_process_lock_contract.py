@@ -137,6 +137,36 @@ def test_lock_pid_file_accepts_same_repo_run_py(monkeypatch):
     assert process_lock.is_bot_process(1234) is True
 
 
+def test_acquire_lock_refuses_orphaned_same_repo_ladder_process_without_killing(monkeypatch, tmp_path):
+    repo = os.path.abspath(process_lock.LOCK_DIR)
+    killed = []
+
+    class LiveProcess(FakeProcess):
+        def kill(self):
+            killed.append(self.pid)
+
+    live = LiveProcess(
+        4242,
+        [
+            "python.exe",
+            "run.py",
+            "--websocket-uri",
+            "wss://sim3.psim.us/showdown/websocket",
+            "--bot-mode",
+            "search_ladder",
+        ],
+        repo,
+    )
+    pid_file = tmp_path / ".bot.pid"
+
+    monkeypatch.setattr(process_lock, "PID_FILE", str(pid_file))
+    monkeypatch.setattr(process_lock.psutil, "process_iter", lambda attrs: [live])
+    monkeypatch.setattr(process_lock, "_protected_process_ids", lambda: {os.getpid()})
+
+    assert process_lock.acquire_lock("npctypebeat") is False
+    assert not pid_file.exists()
+    assert killed == []
+
 def test_lock_pid_file_rejects_same_repo_local_eval_runtime(monkeypatch):
     repo = os.path.abspath(process_lock.LOCK_DIR)
 

@@ -130,6 +130,22 @@ def kill_stale_processes():
     return killed
 
 
+def _same_repo_public_ladder_pids() -> list[int]:
+    """Return live same-repo public-ladder bot PIDs outside this launch chain."""
+    our_dir = os.path.abspath(LOCK_DIR)
+    protected_pids = _protected_process_ids()
+    pids: list[int] = []
+    for proc in psutil.process_iter(["pid", "cmdline", "cwd"]):
+        try:
+            if _is_stale_bot_process(proc, our_dir, protected_pids):
+                pids.append(int(proc.pid))
+        except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+            # Ambiguous process table reads should not make us kill or adopt.
+            # The holder-PID path already fails closed on AccessDenied.
+            continue
+    return pids
+
+
 def _claim_pid_file() -> bool:
     """Atomically create the PID file and write our PID into it.
 
@@ -167,11 +183,23 @@ def acquire_lock(username: str = "unknown") -> bool:
     """
     for attempt in range(3):
         if _claim_pid_file():
-            # We won the atomic create. Clean up any orphaned bot from a prior
-            # crash (protects our own launch chain), then arm release handlers.
-            killed = kill_stale_processes()
-            if killed:
-                print(f"[LOCK] Killed {killed} stale bot process(es).", file=sys.stderr)
+            # We won the atomic create, but the PID file may have been lost
+            # while a real same-repo public ladder bot kept running. Do not
+            # seize ownership by killing that process; abort and let the
+            # operator drain/adopt it explicitly.
+            existing = _same_repo_public_ladder_pids()
+            if existing:
+                try:
+                    os.remove(PID_FILE)
+                except OSError:
+                    pass
+                joined = ", ".join(str(pid) for pid in existing)
+                print(
+                    f"[LOCK] Found existing public ladder bot(s) without lock ownership "
+                    f"(PID {joined}). Aborting instead of killing/adopting.",
+                    file=sys.stderr,
+                )
+                return False
             atexit.register(release_lock)
             signal.signal(signal.SIGTERM, lambda *_: (release_lock(), sys.exit(0)))
             print(f"[LOCK] Acquired lock (PID {os.getpid()}, user={username})", file=sys.stderr)

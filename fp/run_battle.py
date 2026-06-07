@@ -315,6 +315,12 @@ def pop_battle_elo(battle_tag: str | None) -> dict | None:
         return None
     return _last_battle_elo.pop(battle_tag, None)
 
+def _clear_pre_battle_elo_cache(battle_tag: str | None) -> None:
+    if not battle_tag:
+        return
+    _elo_before_cache.pop(battle_tag, None)
+
+
 
 def _blacklist_battle_tag(battle_tag: str) -> None:
     if not battle_tag:
@@ -3089,6 +3095,7 @@ async def pokemon_battle(
         # Clean up gameplan and strategic cache from memory (memory leak fix)
         clear_gameplan(battle_tag)
         clear_battle_strategy(battle_tag)
+        _clear_pre_battle_elo_cache(battle_tag)
         await _finalize_battle_runtime(
             ps_websocket_client,
             battle_tag,

@@ -63,6 +63,19 @@ def test_recursive_improvement_entrypoints_share_runtime_lane_lease():
     assert "RuntimeLeaseBusy" in session
 
 
+def test_run_battle_finalizer_clears_pre_battle_elo_cache_without_dropping_snapshot():
+    import fp.run_battle as run_battle
+
+    battle_tag = "battle-gen9ou-cache"
+    run_battle._elo_before_cache[battle_tag] = 1234
+    run_battle._last_battle_elo[battle_tag] = {"elo_after": 1250}
+
+    run_battle._clear_pre_battle_elo_cache(battle_tag)
+
+    assert battle_tag not in run_battle._elo_before_cache
+    assert run_battle._last_battle_elo[battle_tag] == {"elo_after": 1250}
+    run_battle._last_battle_elo.pop(battle_tag, None)
+
 def test_recursive_improvement_gate_verifies_showdown_source_lock():
     agent = read("infrastructure/improve_agent.py")
     lock = read("infrastructure/showdown.lock.json")

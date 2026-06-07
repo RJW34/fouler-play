@@ -4,6 +4,8 @@ from collections import OrderedDict, deque
 
 import pytest
 
+import bot_monitor
+from infrastructure.discord_reporting import structured_report_fields
 from bot_monitor import BotMonitor
 
 
@@ -141,6 +143,42 @@ def test_savereplay_json_attaches_public_replay_to_finished_batch_result():
     assert battle_id not in monitor.finished_battles
     assert battle_id not in monitor.finished_battle_times
     assert monitor._batch_ready_to_flush() is False
+
+
+
+def test_late_replay_after_batch_flush_queues_public_handoff(monkeypatch):
+    monitor = _monitor_without_runtime()
+    battle_id = "battle-gen9ou-2626011055-privatehash"
+    monitor._track_finished_battle(battle_id, "LateReplay", "lost")
+    queued = []
+
+    def fake_queue_event(event_type, channel, content, **kwargs):
+        queued.append(
+            {
+                "event_type": event_type,
+                "channel": channel,
+                "content": content,
+                "kwargs": kwargs,
+            }
+        )
+        return "event-1"
+
+    monkeypatch.setattr(bot_monitor, "queue_event", fake_queue_event)
+
+    assert monitor._attach_replay_to_finished_battle(
+        "gen9ou-2626011055",
+        f">{battle_id}\n|raw|https://replay.pokemonshowdown.com/gen9ou-2626011055",
+    )
+
+    assert len(queued) == 1
+    assert queued[0]["event_type"] == "battle_result"
+    assert queued[0]["kwargs"]["suppress_embeds"] is False
+    fields = structured_report_fields(queued[0]["content"], event_type="battle_result")
+    assert fields["proof"]["replay"] == {
+        "status": "public",
+        "id": "gen9ou-2626011055",
+        "url": "https://replay.pokemonshowdown.com/gen9ou-2626011055",
+    }
 
 
 def test_malformed_savereplay_json_does_not_create_replay_link():

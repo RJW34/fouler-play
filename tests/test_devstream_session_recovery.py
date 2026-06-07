@@ -549,7 +549,12 @@ def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
 
     def fake_run(command, *, timeout):
         commands.append(command)
-        return {"command": command, "returnCode": 0}
+        result = {"command": command, "returnCode": 0}
+        if "infrastructure/improve_loop.py" in command:
+            result["stdoutTail"] = json.dumps(
+                {"readyForOfflineIteration": True, "readyForRecursiveAutoImprove": False, "blockers": []}
+            )
+        return result
 
     monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
 
@@ -567,14 +572,14 @@ def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
 
     payload = devstream_session.run_supervisor_cycle(args, 1)
 
-    assert payload["autoImprove"] == {
-        "enabled": True,
-        "reason": "--enable-auto-improve",
-        "sentinel": devstream_session.AUTO_IMPROVE_SENTINEL,
-    }
-    assert commands[2] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
-    assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
-    assert commands[4][:3] == ["python", "scripts/devstream_session.py", "start"]
+    assert payload["autoImprove"]["enabled"] is True
+    assert payload["autoImprove"]["reason"] == "--enable-auto-improve"
+    assert payload["autoImprove"]["sentinel"] == devstream_session.AUTO_IMPROVE_SENTINEL
+    assert payload["autoImprove"]["readiness"]["readyForOfflineIteration"] is True
+    assert commands[2] == ["python", "infrastructure/improve_loop.py", "--readiness", "--enable-auto-improve"]
+    assert commands[3] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[4] == ["python", "infrastructure/elo_watchdog.py"]
+    assert commands[5][:3] == ["python", "scripts/devstream_session.py", "start"]
 
 
 def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag(monkeypatch):
@@ -591,7 +596,16 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
 
     def fake_run(command, *, timeout):
         commands.append(command)
-        return {"command": command, "returnCode": 0}
+        result = {"command": command, "returnCode": 0}
+        if "infrastructure/improve_loop.py" in command:
+            result["stdoutTail"] = json.dumps(
+                {
+                    "readyForOfflineIteration": True,
+                    "readyForRecursiveAutoImprove": False,
+                    "blockers": [],
+                }
+            )
+        return result
 
     monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
 
@@ -611,8 +625,53 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
 
     assert payload["autoImprove"]["enabled"] is True
     assert payload["autoImprove"]["reason"] == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
-    assert commands[2] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
-    assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
+    assert commands[2] == ["python", "infrastructure/improve_loop.py", "--readiness", "--enable-auto-improve"]
+    assert commands[3] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[4] == ["python", "infrastructure/elo_watchdog.py"]
+
+
+def test_supervisor_cycle_blocks_improve_when_readiness_gate_fails(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        result = {"command": command, "returnCode": 0}
+        if "infrastructure/improve_loop.py" in command:
+            result["stdoutTail"] = json.dumps(
+                {
+                    "readyForOfflineIteration": False,
+                    "readyForRecursiveAutoImprove": False,
+                    "blockers": ["battle evidence stream stale"],
+                }
+            )
+        return result
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=False,
+        enable_auto_improve=True,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+
+    assert payload["autoImprove"]["blocked"] is True
+    assert payload["autoImprove"]["blockers"] == ["battle evidence stream stale"]
+    assert commands[2] == ["python", "infrastructure/improve_loop.py", "--readiness", "--enable-auto-improve"]
+    assert not any("infrastructure/improve_agent.py" in command for command in commands)
+    assert not any("infrastructure/elo_watchdog.py" in command for command in commands)
+    assert commands[3][:3] == ["python", "scripts/devstream_session.py", "start"]
 
 
 def test_supervisor_auto_improve_accepts_env_sentinel():

@@ -325,6 +325,7 @@ class BotMonitor:
             return False
 
         opponent, result = self.finished_battles[battle_id]
+        updated_batch_result = False
 
         for i in range(len(self.batch_results) - 1, -1, -1):
             opp, res, url, recorded_battle_id = self._batch_result_parts(self.batch_results[i])
@@ -332,6 +333,7 @@ class BotMonitor:
             same_result = opp == opponent and res == result
             if (same_battle or same_result) and url is None:
                 self.batch_results[i] = (opp, res, replay_url, recorded_battle_id or battle_id)
+                updated_batch_result = True
                 break
 
         if result == "lost":
@@ -340,10 +342,42 @@ class BotMonitor:
                 if len(self.batch_losses) > BATCH_LOSSES_MAX:
                     self.batch_losses = self.batch_losses[-BATCH_LOSSES_MAX:]
 
+        if not updated_batch_result:
+            self._queue_late_replay_handoff(battle_id, opponent, result, replay_url)
+
         self.finished_battle_times.pop(battle_id, None)
         del self.finished_battles[battle_id]
 
         return True
+
+    @staticmethod
+    def _queue_late_replay_handoff(battle_id: str, opponent: str, result: str, replay_url: str) -> None:
+        result_word = {"won": "win", "lost": "loss", "tie": "tie"}.get(result, result or "unknown")
+        try:
+            queue_event(
+                "battle_result",
+                "battles",
+                build_contract_payload(
+                    "PROOF",
+                    f"replay available {result_word} vs {opponent}",
+                    f"Late replay proof arrived for {battle_id} after the batch summary was already queued.",
+                    "Delayed replay handoff keeps Discord proof from losing the concrete battle link when Showdown upload lags.",
+                    f"battle_id={battle_id}; result={result_word}; opponent={opponent}; replay={replay_url}; replay_status=public",
+                    "Review the replay if this battle needs policy or matchup follow-up.",
+                    source="bot_monitor.late_replay",
+                    battle_id=battle_id,
+                    result=result_word,
+                    opponent=opponent,
+                    replay_url=replay_url,
+                    replay_status="public",
+                    replay_public_verified=True,
+                    next_battle_action="Review the replay if this battle needs policy or matchup follow-up.",
+                ),
+                dedup_window_sec=5,
+                suppress_embeds=(result_word != "loss"),
+            )
+        except Exception as exc:
+            logging.warning("Failed to queue late replay handoff for %s: %s", battle_id, exc)
 
     def _pending_batch_replay_ids(self) -> list[str]:
         finished_battles = getattr(self, "finished_battles", {})
