@@ -77,6 +77,19 @@ STALE_THRESHOLD_MIN = 120
 # laddering cadence (battles arrive faster than that during play) while
 # escalating when the feed has clearly gone silent.
 BATTLE_STREAM_STALE_THRESHOLD_MIN = 60
+AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
+OFFLINE_NO_LIVE_EXCLUSIONS = ("public ladder", "live Discord transport")
+
+
+def _env_flag_enabled(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def auto_improve_enabled(cli_enabled: bool = False) -> bool:
+    return bool(cli_enabled or _env_flag_enabled(AUTO_IMPROVE_SENTINEL))
 
 
 def _utcnow() -> datetime:
@@ -732,7 +745,34 @@ def loop_status() -> dict:
     }
 
 
-def main():
+def offline_no_live_readiness(status: dict | None = None, *, cli_enabled: bool = False) -> dict:
+    status = status or loop_status()
+    enabled = auto_improve_enabled(cli_enabled)
+    blockers = []
+    if not enabled:
+        blockers.append(
+            f"auto-improvement disabled; set {AUTO_IMPROVE_SENTINEL}=1 or pass --enable-auto-improve"
+        )
+    if status.get("battle_stream_stale"):
+        age = status.get("battle_stream_age_minutes")
+        blockers.append(f"battle evidence stream stale ({age}m since newest battle)")
+
+    return {
+        "schemaVersion": "fouler-improve-loop-no-live-readiness/v1",
+        "readyForOfflineIteration": enabled and not blockers,
+        "readyForRecursiveAutoImprove": enabled and not blockers and bool(status.get("measured_gate_ever")),
+        "autoImproveEnabled": enabled,
+        "sentinel": AUTO_IMPROVE_SENTINEL,
+        "exclusions": list(OFFLINE_NO_LIVE_EXCLUSIONS),
+        "blockers": blockers,
+        "measuredGateEver": bool(status.get("measured_gate_ever")),
+        "battleStreamStale": bool(status.get("battle_stream_stale")),
+        "battleStreamAgeMinutes": status.get("battle_stream_age_minutes"),
+        "headline": status.get("headline"),
+    }
+
+
+def main() -> int:
     ap = argparse.ArgumentParser(description="fouler closed self-improvement loop")
     ap.add_argument("--iterations", type=int, default=1)
     ap.add_argument("--num-battles", type=int, default=30,
@@ -741,31 +781,49 @@ def main():
                     help="Mine + show the top issue only; do not apply or gate.")
     ap.add_argument("--smoke-battles", type=int, default=None,
                     help="Override self-play gate battle count (small => fast smoke).")
+    ap.add_argument("--enable-auto-improve", action="store_true",
+                    help=f"Allow mutating loop iterations. Alternative: {AUTO_IMPROVE_SENTINEL}=1.")
     ap.add_argument("--allow-master", action="store_true",
                     help="Permit running on master/main (default refuses).")
     ap.add_argument("--status", action="store_true",
                     help="Print the honest learn-loop status (for Discord/overlay) and exit.")
+    ap.add_argument("--readiness", action="store_true",
+                    help="Print no-live auto-improvement readiness and exit.")
     args = ap.parse_args()
 
     if args.status:
         st = loop_status()
         print(json.dumps(st, indent=2))
         print(f"[LOOP] {st['headline']}")
-        return
+        return 0
+
+    if args.readiness:
+        st = loop_status()
+        readiness = offline_no_live_readiness(st, cli_enabled=args.enable_auto_improve)
+        print(json.dumps(readiness, indent=2))
+        print(f"[LOOP] readiness readyForRecursiveAutoImprove={readiness['readyForRecursiveAutoImprove']}")
+        return 0
+
+    if not args.dry_run and not auto_improve_enabled(args.enable_auto_improve):
+        print(
+            f"[LOOP] BLOCKED: auto-improvement is disabled. Set {AUTO_IMPROVE_SENTINEL}=1 "
+            f"or pass --enable-auto-improve to allow mutating iterations."
+        )
+        return 2
 
     br = current_branch()
     if br in {"master", "main"} and not args.allow_master and not args.dry_run:
         print(f"[LOOP] REFUSING to run on '{br}'. Create a working branch first "
               f"(or pass --allow-master). The loop never pushes; it commits to the "
               f"current branch only.")
-        sys.exit(2)
+        return 2
 
     try:
         acquire_runtime_lease(holder="improve_loop")
     except RuntimeLeaseBusy as exc:
         print(f"[LOOP] BLOCKED: {exc}")
         append_ledger({"outcome": "blocked_runtime_lease", "error": str(exc), "dry_run": args.dry_run})
-        sys.exit(3)
+        return 3
 
     print(f"[LOOP] branch={br} iterations={args.iterations} "
           f"smoke_battles={args.smoke_battles} dry_run={args.dry_run}")
@@ -779,7 +837,8 @@ def main():
         except Exception as e:
             append_ledger({"outcome": "error", "error": repr(e)})
             print(f"[LOOP] iteration error: {e!r}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -51,3 +52,57 @@ def test_loop_status_surfaces_agent_failed_reason(tmp_path, monkeypatch):
     assert status["last_outcome"] == "agent_failed"
     assert status["last_agent_returncode"] == 1
     assert "agent-failed" in status["headline"]
+
+
+def test_improve_loop_auto_improve_requires_cli_flag_or_env_sentinel(monkeypatch):
+    monkeypatch.delenv(improve_loop.AUTO_IMPROVE_SENTINEL, raising=False)
+
+    assert not improve_loop.auto_improve_enabled(False)
+    assert improve_loop.auto_improve_enabled(True)
+
+    monkeypatch.setenv(improve_loop.AUTO_IMPROVE_SENTINEL, "yes")
+
+    assert improve_loop.auto_improve_enabled(False)
+
+
+def test_offline_no_live_readiness_reports_sentinel_and_measured_gate(monkeypatch):
+    status = {
+        "headline": "learn-loop idle",
+        "measured_gate_ever": False,
+        "battle_stream_stale": False,
+        "battle_stream_age_minutes": None,
+    }
+    monkeypatch.delenv(improve_loop.AUTO_IMPROVE_SENTINEL, raising=False)
+
+    blocked = improve_loop.offline_no_live_readiness(status)
+
+    assert blocked["readyForOfflineIteration"] is False
+    assert blocked["readyForRecursiveAutoImprove"] is False
+    assert improve_loop.AUTO_IMPROVE_SENTINEL in blocked["blockers"][0]
+    assert "public ladder" in blocked["exclusions"]
+
+    monkeypatch.setenv(improve_loop.AUTO_IMPROVE_SENTINEL, "1")
+
+    gated = improve_loop.offline_no_live_readiness(status)
+
+    assert gated["readyForOfflineIteration"] is True
+    assert gated["readyForRecursiveAutoImprove"] is False
+    assert gated["measuredGateEver"] is False
+
+    status["measured_gate_ever"] = True
+
+    ready = improve_loop.offline_no_live_readiness(status)
+
+    assert ready["readyForRecursiveAutoImprove"] is True
+
+
+def test_main_blocks_mutating_loop_before_runtime_lease_without_sentinel(monkeypatch):
+    monkeypatch.delenv(improve_loop.AUTO_IMPROVE_SENTINEL, raising=False)
+    monkeypatch.setattr(sys, "argv", ["improve_loop.py", "--iterations", "1"])
+    monkeypatch.setattr(
+        improve_loop,
+        "acquire_runtime_lease",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("lease should not be acquired")),
+    )
+
+    assert improve_loop.main() == 2

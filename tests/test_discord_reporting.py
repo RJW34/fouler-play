@@ -62,6 +62,46 @@ def test_event_poster_doctor_reports_redacted_transport(monkeypatch, tmp_path):
     json.dumps(payload)
 
 
+def test_event_poster_preserves_public_replay_when_discord_truncates():
+    import infrastructure.event_poster as event_poster
+
+    replay = "https://replay.pokemonshowdown.com/gen9ou-2626011055"
+    content = (
+        "x" * 2050
+        + "\nProof: battle `gen9ou-2626011055`; "
+        + replay
+    )
+    event = {
+        "id": "event-long-public-replay",
+        "event_type": "battle_result",
+        "channel": "battles",
+        "content": content,
+    }
+
+    rendered = event_poster._discord_content_for_event(event, content)
+
+    assert len(rendered) <= 2000
+    assert "[truncated for Discord" in rendered
+    assert replay in rendered
+
+
+def test_event_poster_preserves_pending_replay_id_when_discord_truncates():
+    import infrastructure.event_poster as event_poster
+
+    content = "loss report details " + ("x" * 2100)
+    event = {
+        "id": "event-long-pending-replay",
+        "event_type": "battle_result",
+        "channel": "battles",
+        "content": content,
+        "proof": {"replay": {"status": "pending-public-upload", "id": "gen9ou-2626011055", "url": ""}},
+    }
+
+    rendered = event_poster._discord_content_for_event(event, content)
+
+    assert len(rendered) <= 2000
+    assert "Replay pending public upload: gen9ou-2626011055" in rendered
+
 def test_event_poster_doctor_is_not_ready_with_pending_backlog(monkeypatch, tmp_path):
     import infrastructure.event_poster as event_poster
     import infrastructure.event_queue_lib as event_queue_lib

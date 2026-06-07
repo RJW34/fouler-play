@@ -36,7 +36,12 @@ from infrastructure.event_queue_lib import (
     queue_health_summary,
 )
 from infrastructure.gen9_validation import Gen9Validator
-from infrastructure.discord_reporting import redacted_report_summary, structured_report_fields
+from infrastructure.discord_reporting import (
+    canonical_replay_url,
+    public_replay_id_candidate,
+    redacted_report_summary,
+    structured_report_fields,
+)
 
 # Configuration
 POLL_INTERVAL = float(os.getenv("EVENT_POSTER_POLL_SEC", "2"))
@@ -50,6 +55,8 @@ DISCORD_REPORTING_PROOF = TRUTH_DIR / "discord-reporting.json"
 DISCORD_DELIVERY_PROOF = TRUTH_DIR / "discord-delivery.json"
 DISCORD_DOCTOR_PROOF = TRUTH_DIR / "discord-reporting-doctor.json"
 BATTLE_ID_RE = re.compile(r"\b(?:battle-)?gen9ou-[A-Za-z0-9-]+\b|battle `([^`]+)`")
+DISCORD_CONTENT_LIMIT = 2000
+REPLAY_URL_RE = re.compile(r"https?://replay\.pokemonshowdown\.com/[^\s<>)\]]+")
 GEN9_VALIDATED_EVENT_TYPE_MARKERS = (
     "analysis",
     "report",
@@ -501,10 +508,73 @@ def validate_event_content(event: dict) -> Tuple[bool, str]:
     return True, ""
 
 
+def _replay_line_from_summary(replay: Any) -> str:
+    if not isinstance(replay, dict):
+        return ""
+    status = str(replay.get("status") or "").strip().lower()
+    replay_id = str(replay.get("id") or "").strip()
+    replay_url = canonical_replay_url(replay.get("url") or replay.get("raw_replay_url") or "")
+    if replay_url:
+        return f"Replay: {replay_url}"
+    if status == "pending-public-upload" and replay_id:
+        return f"Replay pending public upload: {replay_id}"
+    return ""
+
+
+def _replay_line_from_event(event: dict, content: str) -> str:
+    proof = event.get("proof")
+    if isinstance(proof, dict):
+        line = _replay_line_from_summary(proof.get("replay"))
+        if line:
+            return line
+
+    try:
+        fields = structured_report_fields(content, event_type=str(event.get("event_type") or ""))
+    except Exception:
+        fields = {}
+    proof = fields.get("proof") if isinstance(fields, dict) else None
+    if isinstance(proof, dict):
+        line = _replay_line_from_summary(proof.get("replay"))
+        if line:
+            return line
+
+    for url in REPLAY_URL_RE.findall(content or ""):
+        replay_url = canonical_replay_url(url)
+        if replay_url:
+            return f"Replay: {replay_url}"
+        replay_id = public_replay_id_candidate(url)
+        if replay_id:
+            return f"Replay pending public upload: {replay_id}"
+    return ""
+
+
+def _discord_content_for_event(event: dict, content: str) -> str:
+    """Fit Discord content while keeping replay proof visible.
+
+    Discord webhook content is capped at 2000 characters. Battle reports often
+    put replay proof near the end, so a raw slice can drop the only public link.
+    Keep the front of the report, but reserve tail space for a replay line when
+    truncation is necessary.
+    """
+    text = str(content or "")
+    if len(text) <= DISCORD_CONTENT_LIMIT:
+        return text
+
+    replay_line = _replay_line_from_event(event, text)
+    suffix_parts = ["[truncated for Discord; full report remains in queue/proof artifacts]"]
+    if replay_line and replay_line not in text[:DISCORD_CONTENT_LIMIT]:
+        suffix_parts.append(replay_line)
+    suffix = "\n\n" + "\n".join(suffix_parts)
+    if len(suffix) > DISCORD_CONTENT_LIMIT:
+        return suffix[-DISCORD_CONTENT_LIMIT:]
+    head = text[: DISCORD_CONTENT_LIMIT - len(suffix)].rstrip()
+    return f"{head}{suffix}"[:DISCORD_CONTENT_LIMIT]
+
+
 def post_to_discord(event: dict) -> dict[str, Any]:
     """Post event to Discord via webhook (or OpenClaw CLI fallback)."""
     channel = event["channel"]
-    content = event["content"]
+    content = _discord_content_for_event(event, event["content"])
     suppress = event.get("suppress_embeds", False)
 
     # Validate before posting
@@ -552,7 +622,7 @@ def _post_via_webhook(event, webhook_url, content, suppress=False):
     import urllib.error
 
     try:
-        payload = {"content": content[:2000]}
+        payload = {"content": _discord_content_for_event(event, content)}
         if suppress:
             payload["flags"] = 4
 
@@ -653,6 +723,7 @@ def _post_via_webhook(event, webhook_url, content, suppress=False):
 def _post_via_cli(event, channel, content):
     """Fallback: post via OpenClaw CLI (for non-Docker environments)."""
     try:
+        content = _discord_content_for_event(event, content)
         cmd = [
             "openclaw", "message", "send",
             "--target", channel,

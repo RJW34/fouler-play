@@ -26,6 +26,12 @@ $env:IMPROVE_AGENT_EVAL_GATE = "1"
 $env:IMPROVE_AGENT_EVAL_MODE = "selfplay"
 $env:IMPROVE_AGENT_CLI_TIMEOUT = "$CliTimeoutSeconds"
 
+$autoImprove = "$env:FOULER_PLAY_ENABLE_AUTO_IMPROVE".Trim().ToLowerInvariant()
+if (@("1", "true", "yes", "on") -notcontains $autoImprove) {
+    "$(Get-Date -Format o) [lowload] STOP: FOULER_PLAY_ENABLE_AUTO_IMPROVE is not enabled; refusing mutating improve_loop." | Add-Content -LiteralPath $log
+    exit 2
+}
+
 function Get-FreeGB {
     $os = Get-CimInstance Win32_OperatingSystem
     return [math]::Round($os.FreePhysicalMemory / 1MB, 2)
@@ -71,7 +77,7 @@ for ($i = 1; $i -le $MaxIterations; $i++) {
     }
 
     "$(Get-Date -Format o) [lowload] starting improve_loop --iterations 1 (iteration=$i, battles=$Battles, cli_timeout=$CliTimeoutSeconds)" | Add-Content -LiteralPath $log
-    & $py -X utf8 (Join-Path $proj "infrastructure\improve_loop.py") --iterations 1 --num-battles $Battles 1>>$log 2>>"$log.err"
+    & $py -X utf8 (Join-Path $proj "infrastructure\improve_loop.py") --iterations 1 --num-battles $Battles --enable-auto-improve 1>>$log 2>>"$log.err"
     "$(Get-Date -Format o) [lowload] improve_loop iteration $i exited code $LASTEXITCODE" | Add-Content -LiteralPath $log
 
     if ($i -lt $MaxIterations -and $SleepSecondsBetweenIterations -gt 0) {
