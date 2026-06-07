@@ -124,3 +124,8 @@ eval_results/
 infrastructure/deploy_log.json
 replay_analysis/evidence_traces/
 replay_analysis/autoresearch_latest.json
+
+*.opus*-bak
+*.pre-locktbypass
+*.skipimprove-bak
+*.prefillbak
