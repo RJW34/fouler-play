@@ -28,6 +28,8 @@ STABILITY_REPORT_PATH = ROOT_DIR / "stability_report.json"
 STATE_STORE_WRITE_FAILURE_PATH = ROOT_DIR / "devstream" / "truth" / "state-store-write-failure.json"
 
 DEFAULT_NEXT_FIX = "Pending replay review"
+STALE_TMP_MAX_AGE_SEC = int(os.getenv("STATE_STORE_TMP_MAX_AGE_SEC", "3600"))
+STALE_TMP_CLEANUP_LIMIT = int(os.getenv("STATE_STORE_TMP_CLEANUP_LIMIT", "32"))
 
 DEFAULT_STATUS = {
     "elo": "---",
@@ -63,8 +65,39 @@ def _write_state_store_failure(path: Path, exc: BaseException, attempts: int) ->
     STATE_STORE_WRITE_FAILURE_PATH.write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
 
 
+def _cleanup_stale_tmp_files(path: Path, *, now: float | None = None) -> int:
+    """Remove abandoned temp files from interrupted atomic writes for this JSON file."""
+    if STALE_TMP_MAX_AGE_SEC <= 0:
+        return 0
+    now = time.time() if now is None else now
+    removed = 0
+    prefix = f".{path.name}."
+    try:
+        candidates = sorted(
+            path.parent.glob(f"{prefix}*.tmp"),
+            key=lambda item: item.stat().st_mtime,
+        )
+    except OSError:
+        return 0
+    for candidate in candidates:
+        if removed >= STALE_TMP_CLEANUP_LIMIT:
+            break
+        try:
+            if not candidate.name.startswith(prefix) or candidate.name == path.name:
+                continue
+            age = now - candidate.stat().st_mtime
+            if age < STALE_TMP_MAX_AGE_SEC:
+                continue
+            candidate.unlink()
+            removed += 1
+        except OSError:
+            continue
+    return removed
+
+
 def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    _cleanup_stale_tmp_files(path)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp")
     attempts = 6
     with tmp.open("w", encoding="utf-8") as handle:

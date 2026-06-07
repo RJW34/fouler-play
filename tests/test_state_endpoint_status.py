@@ -8,6 +8,8 @@ Regression test for: Status field stuck on "Searching" during active battles.
 import sys
 import asyncio
 import json
+import os
+import time
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -152,3 +154,26 @@ def test_active_battle_atomic_write_retries_windows_replace_lock(tmp_path, monke
     assert json.loads(active_path.read_text(encoding="utf-8"))["count"] == 0
     assert not (tmp_path / "active_battles.json.tmp").exists()
     assert not state_store.STATE_STORE_WRITE_FAILURE_PATH.exists()
+
+
+def test_active_battle_atomic_write_prunes_only_stale_matching_temp_files(tmp_path, monkeypatch):
+    active_path = tmp_path / "active_battles.json"
+    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", active_path)
+    monkeypatch.setattr(state_store, "STALE_TMP_MAX_AGE_SEC", 3600)
+    monkeypatch.setattr(state_store, "STALE_TMP_CLEANUP_LIMIT", 32)
+
+    stale = tmp_path / ".active_battles.json.1234.deadbeef.tmp"
+    fresh = tmp_path / ".active_battles.json.5678.live.tmp"
+    unrelated = tmp_path / ".stream_status.json.1234.deadbeef.tmp"
+    stale.write_text("stale", encoding="utf-8")
+    fresh.write_text("fresh", encoding="utf-8")
+    unrelated.write_text("other", encoding="utf-8")
+    old_time = time.time() - 7200
+    os.utime(stale, (old_time, old_time))
+    os.utime(unrelated, (old_time, old_time))
+
+    state_store.write_active_battles({"battles": [], "count": 0})
+
+    assert not stale.exists()
+    assert fresh.exists()
+    assert unrelated.exists()
