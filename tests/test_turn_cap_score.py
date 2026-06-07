@@ -7,6 +7,7 @@ cap" -- the lower-HP side forfeits, Showdown emits a real |win|, and the battle
 counts as DECISIVE (not discarded). These tests pin that decision logic without
 a live Showdown server.
 """
+import asyncio
 import importlib.util
 from pathlib import Path
 
@@ -102,3 +103,9 @@ def test_score_on_cap_exact_tie_breaks_so_exactly_one_forfeits():
     assert d1 != d2
     # by the documented rule, the later slot id (p2) is the one that forfeits
     assert d2 is True and d1 is False
+
+
+def test_stream_events_can_be_disabled_for_eval(monkeypatch):
+    monkeypatch.setenv("FOULER_DISABLE_STREAM_EVENTS", "1")
+
+    assert asyncio.run(rb.send_stream_event("BATTLE_START", {"id": "battle-test"})) is None

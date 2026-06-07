@@ -273,7 +273,32 @@ def _build_env(arm_env: dict | None, search_time_ms: int, stats_file: Path,
     env["BATTLE_STATS_FILE"] = str(stats_file)
     if arm_env:
         env.update({k: str(v) for k, v in arm_env.items()})
+    # Eval arms are not live ladder workers. Keep all state/log/event surfaces
+    # under eval_results/selfplay so a smoke/burst cannot resume stale public
+    # battles, rotate the live worker logs from two processes, or post Discord /
+    # stream-server side effects while proving gate viability.
+    isolation_root = stats_file.with_name(f"{stats_file.stem}-runtime")
+    env["FOULER_EVAL_ARM"] = "1"
+    env["FOULER_LOG_DIR"] = str(isolation_root / "logs")
+    env["FOULER_STATE_DIR"] = str(isolation_root / "state")
+    env["RESUME_ACTIVE_BATTLES"] = "0"
+    env["DISCORD_BATTLES_WEBHOOK_URL"] = ""
+    env["FOULER_DISABLE_STREAM_EVENTS"] = "1"
+    env["STREAM_EVENT_URL"] = ""
     return env
+
+
+def _process_timeout(per_battle_timeout: float, battles_for_process: int) -> float:
+    """Bound one arm process without hiding per-battle timeout defects.
+
+    The old harness added a flat 120s grace after per_battle_timeout * n, so a
+    60s smoke timeout silently became 240s for a two-battle team block. Startup
+    still needs a small login/challenge cushion, but it must remain bounded.
+    """
+    per_battle = max(1.0, float(per_battle_timeout))
+    n = max(1, int(battles_for_process))
+    grace = min(30.0, max(10.0, per_battle / 2.0))
+    return per_battle * n + grace
 
 
 def _run_arm(
@@ -411,7 +436,7 @@ def run_selfplay(
                 challenge_user=old_user,
             )
 
-            overall_timeout = per_battle_timeout * n + 120
+            overall_timeout = _process_timeout(per_battle_timeout, n)
             try:
                 new_proc.wait(timeout=overall_timeout)
             except subprocess.TimeoutExpired:
@@ -466,6 +491,7 @@ def run_selfplay(
         "new_checkout": str(new_checkout),
         "old_checkout": str(old_checkout),
         "search_time_ms": search_time_ms,
+        "per_battle_timeout": per_battle_timeout,
         "turn_cap": turn_cap,
         "per_team": per_team_results,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),

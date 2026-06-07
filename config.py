@@ -45,9 +45,8 @@ class CustomRotatingFileHandler(RotatingFileHandler):
             maxBytes: Maximum size in bytes before rotation (default 10MB)
             backupCount: Number of backup files to keep (default 3)
         """
-        self.base_dir = "logs"
-        if not os.path.exists(self.base_dir):
-            os.mkdir(self.base_dir)
+        self.base_dir = os.getenv("FOULER_LOG_DIR", "logs")
+        os.makedirs(self.base_dir, exist_ok=True)
 
         # Use UTF-8 encoding to handle Pokemon Showdown unicode chars
         # (e.g. Ã¢Ëœâ€  in usernames) without crashing on Windows cp1252

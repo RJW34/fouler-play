@@ -18,6 +18,33 @@ def test_build_env_sets_turn_cap(tmp_path):
     assert env["BATTLE_STATS_FILE"] == str(tmp_path / "stats.json")
 
 
+def test_build_env_isolates_eval_arm_from_live_state(tmp_path):
+    env = sp._build_env(
+        {
+            "DISCORD_BATTLES_WEBHOOK_URL": "https://example.invalid/webhook",
+            "STREAM_EVENT_URL": "http://example.invalid/event",
+            "RESUME_ACTIVE_BATTLES": "1",
+        },
+        1200,
+        tmp_path / "stats.json",
+        turn_cap=25,
+    )
+
+    assert env["FOULER_EVAL_ARM"] == "1"
+    assert env["RESUME_ACTIVE_BATTLES"] == "0"
+    assert env["DISCORD_BATTLES_WEBHOOK_URL"] == ""
+    assert env["FOULER_DISABLE_STREAM_EVENTS"] == "1"
+    assert env["STREAM_EVENT_URL"] == ""
+    assert Path(env["FOULER_LOG_DIR"]).parent == Path(env["FOULER_STATE_DIR"]).parent
+    assert Path(env["FOULER_LOG_DIR"]).name == "logs"
+    assert Path(env["FOULER_STATE_DIR"]).name == "state"
+
+
+def test_process_timeout_respects_configured_per_battle_timeout():
+    assert sp._process_timeout(60, 2) == 150.0
+    assert sp._process_timeout(60, 2) < 240.0
+
+
 def test_build_env_default_turn_cap_is_positive(tmp_path):
     env = sp._build_env(None, 1200, tmp_path / "s.json")
     assert int(env["FOULER_BATTLE_TURN_CAP"]) == sp.DEFAULT_TURN_CAP

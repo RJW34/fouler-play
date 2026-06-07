@@ -24,12 +24,15 @@ LOG_KEEP_TRACE_FILES = int(os.getenv("LOG_KEEP_TRACE_FILES", "500"))
 LOG_KEEP_STDOUT_FILES = int(os.getenv("LOG_KEEP_STDOUT_FILES", "3"))
 
 
-def cleanup_old_logs(log_dir: str = "logs", trace_dir: str | None = None):
+def cleanup_old_logs(log_dir: str | None = None, trace_dir: str | None = None):
     """Prune old battle logs, rotated backups, phantom logs, decision traces,
     and stdout logs on startup.  Keeps the most recent files by mtime."""
     _log = logging.getLogger(__name__)
+    log_dir = log_dir or os.getenv("FOULER_LOG_DIR", "logs")
     trace_dir = trace_dir or os.path.join(log_dir, "decision_traces")
     removed = 0
+    if not os.path.isdir(log_dir):
+        return
 
     # --- 1. Phantom _None.log files (always delete all â€” they're from dead rooms) ---
     for fname in os.listdir(log_dir):
@@ -249,7 +252,7 @@ def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
     global _shared_handler_filtered
     if worker_id in _worker_handlers:
         return _worker_handlers[worker_id]
-    log_dir = "logs"
+    log_dir = os.getenv("FOULER_LOG_DIR", "logs")
     os.makedirs(log_dir, exist_ok=True)
     handler = RotatingFileHandler(
         os.path.join(log_dir, f"worker_{worker_id}_init.log"),
@@ -1097,7 +1100,12 @@ async def update_active_battles_file():
 
 async def send_stream_event(event_type, payload):
     """Send a real-time event signal to the stream server."""
-    url = os.getenv("STREAM_EVENT_URL", "http://localhost:8777/event")
+    disabled = os.getenv("FOULER_DISABLE_STREAM_EVENTS", "").strip().lower()
+    if disabled in {"1", "true", "yes", "on"}:
+        return None
+    url = os.getenv("STREAM_EVENT_URL", "http://localhost:8777/event").strip()
+    if not url or url.lower() in {"0", "none", "off", "disabled"}:
+        return None
     for attempt in range(3):  # Try 3 times: initial + 2 retries
         try:
             timeout = aiohttp.ClientTimeout(total=5)

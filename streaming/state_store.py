@@ -20,12 +20,34 @@ from typing import Any
 from uuid import uuid4
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-ACTIVE_BATTLES_PATH = ROOT_DIR / "active_battles.json"
-STREAM_STATUS_PATH = ROOT_DIR / "stream_status.json"
-DAILY_STATS_PATH = ROOT_DIR / "daily_stats.json"
-NEXT_FIX_PATH = ROOT_DIR / "next_fix.txt"
-STABILITY_REPORT_PATH = ROOT_DIR / "stability_report.json"
-STATE_STORE_WRITE_FAILURE_PATH = ROOT_DIR / "devstream" / "truth" / "state-store-write-failure.json"
+
+
+def _configured_path(env_name: str, default: Path) -> Path:
+    raw = os.getenv(env_name)
+    if not raw:
+        return default
+    path = Path(raw).expanduser()
+    if path.is_absolute():
+        return path
+    return ROOT_DIR / path
+
+
+STATE_DIR = _configured_path("FOULER_STATE_DIR", ROOT_DIR)
+
+
+def _state_path(env_name: str, filename: str | Path) -> Path:
+    return _configured_path(env_name, STATE_DIR / filename)
+
+
+ACTIVE_BATTLES_PATH = _state_path("ACTIVE_BATTLES_PATH", "active_battles.json")
+STREAM_STATUS_PATH = _state_path("STREAM_STATUS_PATH", "stream_status.json")
+DAILY_STATS_PATH = _state_path("DAILY_STATS_PATH", "daily_stats.json")
+NEXT_FIX_PATH = _state_path("NEXT_FIX_PATH", "next_fix.txt")
+STABILITY_REPORT_PATH = _state_path("STABILITY_REPORT_PATH", "stability_report.json")
+STATE_STORE_WRITE_FAILURE_PATH = _state_path(
+    "STATE_STORE_WRITE_FAILURE_PATH",
+    Path("devstream") / "truth" / "state-store-write-failure.json",
+)
 
 DEFAULT_NEXT_FIX = "Pending replay review"
 STALE_TMP_MAX_AGE_SEC = int(os.getenv("STATE_STORE_TMP_MAX_AGE_SEC", "3600"))
