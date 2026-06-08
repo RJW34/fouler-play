@@ -106,6 +106,87 @@ def test_existing_battle_runner_start_result_reuses_any_live_runner(tmp_path, mo
     assert parsed_session_pid["adoptedExistingProcess"] is True
 
 
+def test_existing_battle_runner_start_result_rejects_conflicting_live_owners(tmp_path, monkeypatch):
+    bot_pid = tmp_path / ".bot.pid"
+    session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
+    command = ["python", "run.py", "--bot-mode", "search_ladder"]
+    session_pid.parent.mkdir(parents=True, exist_ok=True)
+    bot_pid.write_text("1111", encoding="utf-8")
+    session_payload = {"pid": 2222, "command": command, "startedAt": devstream_session.iso_now()}
+    session_pid.write_text(json.dumps(session_payload), encoding="utf-8")
+
+    monkeypatch.setattr(devstream_session, "BATTLE_PID_FILE", session_pid)
+    monkeypatch.setattr(devstream_session, "battle_pid_files", lambda: [bot_pid, session_pid])
+    monkeypatch.setattr(
+        devstream_session,
+        "pid_alive",
+        lambda path: (True, 1111) if path == bot_pid else (True, 2222),
+    )
+
+    payload = devstream_session.existing_battle_runner_start_result(command)
+
+    assert payload is not None
+    assert payload["runtimeOwnershipConflict"] is True
+    assert payload["blocked"] is True
+    assert payload["skipped"] is True
+    assert payload["duplicateBattleRunners"] is True
+    assert payload["battleRunnerCount"] == 2
+    assert payload["distinctPids"] == [1111, 2222]
+    assert payload["knownRunners"] == [
+        {"pidFile": str(bot_pid), "pid": 1111},
+        {"pidFile": str(session_pid), "pid": 2222},
+    ]
+    assert payload["adoptedPidFile"] is None
+    assert json.loads(session_pid.read_text(encoding="utf-8")) == session_payload
+
+
+def test_existing_battle_runner_start_result_accepts_same_pid_in_multiple_owner_files(tmp_path, monkeypatch):
+    bot_pid = tmp_path / ".bot.pid"
+    session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
+    command = ["python", "run.py", "--bot-mode", "search_ladder"]
+
+    monkeypatch.setattr(devstream_session, "BATTLE_PID_FILE", session_pid)
+    monkeypatch.setattr(devstream_session, "battle_pid_files", lambda: [bot_pid, session_pid])
+    monkeypatch.setattr(devstream_session, "pid_alive", lambda path: (True, 29852))
+
+    payload = devstream_session.existing_battle_runner_start_result(command)
+
+    assert payload is not None
+    assert payload.get("runtimeOwnershipConflict") is None
+    assert payload["alreadyRunning"] is True
+    assert payload["pid"] == 29852
+    assert payload["pidFile"] == str(session_pid)
+    assert payload["knownRunners"] == [
+        {"pidFile": str(bot_pid), "pid": 29852},
+        {"pidFile": str(session_pid), "pid": 29852},
+    ]
+    assert payload["adoptedPidFile"] is None
+
+
+def test_start_process_rejects_conflicting_battle_runner_owners_without_spawning(tmp_path, monkeypatch):
+    bot_pid = tmp_path / ".bot.pid"
+    session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
+    command = ["python", "run.py", "--bot-mode", "search_ladder"]
+
+    monkeypatch.setattr(devstream_session, "BATTLE_PID_FILE", session_pid)
+    monkeypatch.setattr(devstream_session, "battle_pid_files", lambda: [bot_pid, session_pid])
+    monkeypatch.setattr(
+        devstream_session,
+        "pid_alive",
+        lambda path: (True, 1111) if path == bot_pid else (True, 2222),
+    )
+
+    def fail_spawn(*args, **kwargs):
+        raise AssertionError("should not spawn when battle runner ownership conflicts")
+
+    monkeypatch.setattr(devstream_session.subprocess, "Popen", fail_spawn)
+
+    payload = devstream_session.start_process(command, session_pid, {})
+
+    assert payload["runtimeOwnershipConflict"] is True
+    assert payload["distinctPids"] == [1111, 2222]
+
+
 def test_terminate_battle_runners_covers_all_known_pid_files(tmp_path, monkeypatch):
     bot_pid = tmp_path / ".bot.pid"
     session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
@@ -215,6 +296,11 @@ def test_drain_command_writes_request_without_terminating_active_battle(tmp_path
     monkeypatch.setattr(devstream_session, "DRAIN_FILE", drain_file)
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 1)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: True)
+    monkeypatch.setattr(
+        devstream_session,
+        "live_battle_runner_owners",
+        lambda: [{"pidFile": str(tmp_path / ".bot.pid"), "pid": 1234}],
+    )
 
     assert devstream_session.cmd_drain(args) == 0
 
@@ -222,8 +308,45 @@ def test_drain_command_writes_request_without_terminating_active_battle(tmp_path
     assert payload["schemaVersion"] == "fouler-play-devstream-drain-plan/v1"
     assert payload["activeBattleCount"] == 1
     assert payload["battleRunnerAlive"] is True
+    assert payload["runtimeOwnership"]["duplicateBattleRunners"] is False
     assert payload["written"] is True
     assert "deploy refreshed legal-option trace proof" in drain_file.read_text(encoding="utf-8")
+
+
+def test_drain_command_reports_duplicate_runner_owners_without_terminating(tmp_path, monkeypatch, capsys):
+    pid_dir = tmp_path / ".pids"
+    drain_file = pid_dir / "drain.request"
+    bot_pid = tmp_path / ".bot.pid"
+    session_pid = pid_dir / "devstream_battle_session.pid"
+    args = argparse.Namespace(execute=True, reason="resolve duplicate runtime owners")
+    terminate_calls = []
+
+    monkeypatch.setattr(devstream_session, "PID_DIR", pid_dir)
+    monkeypatch.setattr(devstream_session, "DRAIN_FILE", drain_file)
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 2)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: True)
+    monkeypatch.setattr(
+        devstream_session,
+        "live_battle_runner_owners",
+        lambda: [
+            {"pidFile": str(bot_pid), "pid": 1111},
+            {"pidFile": str(session_pid), "pid": 2222},
+        ],
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "terminate_pid_file",
+        lambda *args, **kwargs: terminate_calls.append((args, kwargs)),
+    )
+
+    assert devstream_session.cmd_drain(args) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["runtimeOwnership"]["duplicateBattleRunners"] is True
+    assert payload["runtimeOwnership"]["distinctPids"] == [1111, 2222]
+    assert "drain/adopt exactly one live battle runner" in payload["runtimeOwnership"]["requiredHermesAction"]
+    assert payload["written"] is True
+    assert terminate_calls == []
 
 
 def test_env_loader_strips_unquoted_inline_comments(tmp_path, monkeypatch):
@@ -279,6 +402,33 @@ def test_clear_stale_active_battles_backs_up_and_resets_dead_runner_truth(tmp_pa
     assert Path(payload["backupPath"]).exists()
 
 
+def test_clear_stale_active_battles_refreshes_stale_empty_truth_without_runner(tmp_path, monkeypatch):
+    active = tmp_path / "active_battles.json"
+    active.write_text(json.dumps({"battles": [], "count": 0, "max_slots": 3}), encoding="utf-8")
+    old = time.time() - 300
+    os.utime(active, (old, old))
+    backup_dir = tmp_path / "backups"
+
+    monkeypatch.setattr(devstream_session, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_session, "STALE_BATTLE_BACKUP_DIR", backup_dir)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+
+    payload = devstream_session.clear_stale_active_battles(execute=True, stale_after_seconds=180)
+    parsed = json.loads(active.read_text(encoding="utf-8"))
+
+    assert payload["cleared"] is True
+    assert payload["activeBattleCount"] == 0
+    assert payload["activeBattleTruthExists"] is True
+    assert payload["stale"] is True
+    assert payload["reason"] == "stale empty active battle truth refreshed before bounded session start"
+    assert parsed["battles"] == []
+    assert parsed["count"] == 0
+    assert parsed["previousTruthWasEmpty"] is True
+    assert parsed["clearReason"] == "stale active battle truth had no live battle runner"
+    assert Path(payload["backupPath"]).exists()
+    assert active.stat().st_mtime > old
+
+
 def test_clear_stale_active_battles_preserves_live_runner_truth(tmp_path, monkeypatch):
     active = tmp_path / "active_battles.json"
     active.write_text(json.dumps({"battles": [{"id": "battle-gen9ou-1"}], "count": 1}), encoding="utf-8")
@@ -293,6 +443,67 @@ def test_clear_stale_active_battles_preserves_live_runner_truth(tmp_path, monkey
     assert payload["cleared"] is False
     assert payload["reason"] == "battle runner is alive; preserving active battle truth"
     assert json.loads(active.read_text(encoding="utf-8"))["count"] == 1
+
+
+def test_cmd_start_refreshes_stale_empty_active_truth_before_spawning(tmp_path, monkeypatch, capsys):
+    active = tmp_path / "active_battles.json"
+    active.write_text(json.dumps({"battles": [], "count": 0, "max_slots": 3}), encoding="utf-8")
+    old = time.time() - 300
+    os.utime(active, (old, old))
+    started = []
+
+    monkeypatch.setattr(devstream_session, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_session, "PID_DIR", tmp_path / ".pids")
+    monkeypatch.setattr(devstream_session, "OBS_PID_FILE", tmp_path / ".pids" / "obs.pid")
+    monkeypatch.setattr(devstream_session, "BATTLE_PID_FILE", tmp_path / ".pids" / "battle.pid")
+    monkeypatch.setattr(devstream_session, "STALE_BATTLE_BACKUP_DIR", tmp_path / "backups")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(
+        devstream_session,
+        "prepare_runtime_env",
+        lambda env: {"PS_USERNAME": "bot", "PS_PASSWORD": "secret"},
+    )
+    monkeypatch.setattr(devstream_session, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(
+        devstream_session,
+        "recover_stale_battle_runtime",
+        lambda **kwargs: {"recovered": False, "reason": "no stale live battle runner found"},
+    )
+    monkeypatch.setattr(devstream_session, "existing_battle_runner_start_result", lambda command: None)
+    monkeypatch.setattr(devstream_session, "run_json", lambda command: ({"healthy": True}, None))
+    monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
+
+    def fake_start(command, pid_file, env):
+        started.append((command, pid_file))
+        return {"pid": 1000 + len(started), "pidFile": str(pid_file), "command": command}
+
+    monkeypatch.setattr(devstream_session, "start_process", fake_start)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        max_runtime_minutes=180,
+        queue_timeout_seconds=180,
+        turn_timeout_seconds=90,
+        supervisor_sleep_seconds=15,
+        replace_stale_runner=True,
+        continuous=False,
+        execute=True,
+        enable_auto_improve=False,
+    )
+
+    assert devstream_session.cmd_start(args) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    cleanup = payload["staleActiveBattleCleanup"]
+    parsed = json.loads(active.read_text(encoding="utf-8"))
+    assert cleanup["cleared"] is True
+    assert cleanup["reason"] == "stale empty active battle truth refreshed before bounded session start"
+    assert parsed["previousTruthWasEmpty"] is True
+    assert active.stat().st_mtime > old
+    assert any(pid_file == devstream_session.BATTLE_PID_FILE for _, pid_file in started)
 
 
 def test_forced_clear_active_battles_overrides_live_runner_truth(tmp_path, monkeypatch):
@@ -499,6 +710,152 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
     assert commands[1] == ["python", "scripts/devstream_cycle_report.py", "--write"]
     assert commands[2][:3] == ["python", "scripts/devstream_session.py", "start"]
     assert "--continuous" not in commands[2]
+
+
+def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=False,
+        enable_auto_improve=False,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+
+    assert payload["autoImprove"]["enabled"] is False
+    assert devstream_session.AUTO_IMPROVE_SENTINEL in payload["autoImprove"]["reason"]
+    assert commands[0][:4] == ["python", "pipeline.py", "autoresearch", "-n"]
+    assert commands[1] == ["python", "scripts/devstream_cycle_report.py", "--write"]
+    assert commands[2][:3] == ["python", "scripts/devstream_session.py", "start"]
+    assert not any("infrastructure/improve_agent.py" in command for command in commands)
+    assert not any("infrastructure/elo_watchdog.py" in command for command in commands)
+
+
+def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=False,
+        enable_auto_improve=True,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+
+    assert payload["autoImprove"] == {
+        "enabled": True,
+        "reason": "--enable-auto-improve",
+        "sentinel": devstream_session.AUTO_IMPROVE_SENTINEL,
+    }
+    assert commands[2] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
+    assert commands[4][:3] == ["python", "scripts/devstream_session.py", "start"]
+
+
+def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "load_env_files",
+        lambda: {devstream_session.AUTO_IMPROVE_SENTINEL: "1"},
+    )
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=False,
+        enable_auto_improve=False,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+
+    assert payload["autoImprove"]["enabled"] is True
+    assert payload["autoImprove"]["reason"] == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
+    assert commands[2] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
+
+
+def test_supervisor_auto_improve_accepts_env_sentinel():
+    args = argparse.Namespace(skip_improve=False, enable_auto_improve=False)
+
+    enabled, reason = devstream_session.supervisor_auto_improve_enabled(
+        args,
+        {devstream_session.AUTO_IMPROVE_SENTINEL: "1"},
+    )
+
+    assert enabled is True
+    assert reason == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
+
+
+def test_supervisor_commands_propagate_auto_improve_to_task_installer():
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        supervisor_sleep_seconds=15,
+        enable_auto_improve=True,
+    )
+
+    supervisor_command = devstream_session.supervisor_command(
+        25,
+        3,
+        180,
+        15,
+        enable_auto_improve=True,
+    )
+    task_command = devstream_session.battle_supervisor_task_command(args)
+
+    assert supervisor_command[-1] == "--enable-auto-improve"
+    assert "-AutoImprove" in task_command
 
 
 def test_supervisor_cycle_clears_stale_active_truth_when_runner_is_dead(monkeypatch):

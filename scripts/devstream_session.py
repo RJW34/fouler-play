@@ -33,6 +33,23 @@ SUPERVISOR_STATUS_FILE = ROOT / "devstream" / "truth" / "supervisor-status.json"
 STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-backups"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
+AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
+TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+
+
+def env_flag_enabled(env: dict[str, str], name: str) -> bool:
+    return str(env.get(name, "")).strip().lower() in TRUTHY_ENV_VALUES
+
+
+def supervisor_auto_improve_enabled(args: argparse.Namespace, env: dict[str, str] | None = None) -> tuple[bool, str]:
+    if getattr(args, "skip_improve", False):
+        return False, "--skip-improve"
+    if getattr(args, "enable_auto_improve", False):
+        return True, "--enable-auto-improve"
+    env = env if env is not None else load_env_files()
+    if env_flag_enabled(env, AUTO_IMPROVE_SENTINEL):
+        return True, f"{AUTO_IMPROVE_SENTINEL}=1"
+    return False, f"missing --enable-auto-improve or {AUTO_IMPROVE_SENTINEL}=1"
 
 
 def runtime_python() -> str:
@@ -167,8 +184,15 @@ def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str
     return command
 
 
-def supervisor_command(run_count: int, max_concurrent: int, queue_timeout_seconds: int, sleep_seconds: int) -> list[str]:
-    return [
+def supervisor_command(
+    run_count: int,
+    max_concurrent: int,
+    queue_timeout_seconds: int,
+    sleep_seconds: int,
+    *,
+    enable_auto_improve: bool = False,
+) -> list[str]:
+    command = [
         runtime_python(),
         "scripts/devstream_session.py",
         "supervise",
@@ -181,6 +205,9 @@ def supervisor_command(run_count: int, max_concurrent: int, queue_timeout_second
         "--sleep-seconds",
         str(sleep_seconds),
     ]
+    if enable_auto_improve:
+        command.append("--enable-auto-improve")
+    return command
 
 
 def showdown_password_required(env: dict[str, str]) -> bool:
@@ -218,7 +245,7 @@ def battle_supervisor_task_command(args: argparse.Namespace) -> list[str]:
     powershell = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
     if not os.path.exists(powershell):
         powershell = "powershell.exe"
-    return [
+    command = [
         powershell,
         "-NoProfile",
         "-ExecutionPolicy",
@@ -236,6 +263,9 @@ def battle_supervisor_task_command(args: argparse.Namespace) -> list[str]:
         "-SleepSeconds",
         str(args.supervisor_sleep_seconds),
     ]
+    if getattr(args, "enable_auto_improve", False):
+        command.append("-AutoImprove")
+    return command
 
 
 def start_supervisor_runtime(args: argparse.Namespace, command: list[str], env: dict[str, str]) -> dict[str, Any]:
@@ -325,23 +355,34 @@ def read_pid_payload(path: Path) -> dict[str, Any] | str | None:
         return None
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp")
+    try:
+        tmp_path.write_text(text, encoding="utf-8")
+        os.replace(tmp_path, path)
+    finally:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            pass
+
+
 def write_pid_value(path: Path, pid: int, command: list[str], **extra: Any) -> None:
     PID_DIR.mkdir(parents=True, exist_ok=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(
-            {
-                "pid": pid,
-                "command": command,
-                "startedAt": iso_now(),
-                **extra,
-            },
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    payload = json.dumps(
+        {
+            "pid": pid,
+            "command": command,
+            "startedAt": iso_now(),
+            **extra,
+        },
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+    _atomic_write_text(path, payload)
 
 
 def _parse_started_at(value: object) -> float | None:
@@ -496,6 +537,10 @@ def secure_env_files(*, execute: bool) -> list[dict[str, Any]]:
 
 
 def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> dict[str, Any]:
+    if pid_file == BATTLE_PID_FILE:
+        existing_battle_runner = existing_battle_runner_start_result(command)
+        if existing_battle_runner is not None:
+            return existing_battle_runner
     alive, pid = pid_alive(pid_file)
     if alive:
         return {"pidFile": str(pid_file), "alreadyRunning": True, "pid": pid, "command": command}
@@ -567,39 +612,83 @@ def battle_pid_files() -> list[Path]:
     return [BOT_LOCK_PID_FILE, BATTLE_PID_FILE]
 
 
+def live_battle_runner_owners() -> list[dict[str, Any]]:
+    runners: list[dict[str, Any]] = []
+    seen: set[tuple[str, int]] = set()
+    for pid_file in battle_pid_files():
+        alive, pid = pid_alive(pid_file)
+        if not alive or pid is None:
+            continue
+        key = (str(pid_file), int(pid))
+        if key in seen:
+            continue
+        seen.add(key)
+        runners.append({
+            "pidFile": str(pid_file),
+            "pid": int(pid),
+        })
+    return runners
+
+
+def _distinct_battle_runner_pids(runners: list[dict[str, Any]]) -> list[int]:
+    return sorted({int(runner["pid"]) for runner in runners})
+
+
+def _battle_runtime_ownership_conflict_payload(
+    command: list[str],
+    runners: list[dict[str, Any]],
+    distinct_pids: list[int],
+) -> dict[str, Any]:
+    return {
+        "alreadyRunning": True,
+        "blocked": True,
+        "skipped": True,
+        "runtimeOwnershipConflict": True,
+        "duplicateBattleRunners": True,
+        "battleRunnerCount": len(distinct_pids),
+        "distinctPids": distinct_pids,
+        "knownRunners": runners,
+        "adoptedPidFile": None,
+        "command": command,
+        "requiredHermesAction": "drain/adopt exactly one live battle runner before starting another cycle",
+        "reason": "multiple live battle runner owner PIDs found; refusing to spawn or adopt one over another",
+    }
+
+
 def supervisor_alive() -> tuple[bool, int | None]:
     return pid_alive(SUPERVISOR_PID_FILE)
 
 
 def existing_battle_runner_start_result(command: list[str]) -> dict[str, Any] | None:
-    runners = []
-    for pid_file in battle_pid_files():
-        alive, pid = pid_alive(pid_file)
-        if alive and pid is not None:
-            runners.append({
-                "pidFile": str(pid_file),
-                "pid": pid,
-            })
+    runners = live_battle_runner_owners()
     if not runners:
         return None
+    distinct_pids = _distinct_battle_runner_pids(runners)
+    if len(distinct_pids) > 1:
+        return _battle_runtime_ownership_conflict_payload(command, runners, distinct_pids)
+
+    canonical_runner = next(
+        (runner for runner in runners if runner["pidFile"] == str(BATTLE_PID_FILE)),
+        runners[0],
+    )
     adopted = None
-    if runners[0]["pidFile"] != str(BATTLE_PID_FILE):
+    if not any(runner["pidFile"] == str(BATTLE_PID_FILE) for runner in runners):
         write_pid_value(
             BATTLE_PID_FILE,
-            int(runners[0]["pid"]),
+            int(canonical_runner["pid"]),
             command,
             adoptedExistingProcess=True,
-            adoptedFrom=runners[0]["pidFile"],
+            adoptedFrom=canonical_runner["pidFile"],
         )
         adopted = {
             "pidFile": str(BATTLE_PID_FILE),
-            "pid": runners[0]["pid"],
-            "adoptedFrom": runners[0]["pidFile"],
+            "pid": canonical_runner["pid"],
+            "adoptedFrom": canonical_runner["pidFile"],
         }
     return {
         "alreadyRunning": True,
-        "pid": runners[0]["pid"],
-        "pidFile": runners[0]["pidFile"],
+        "pid": canonical_runner["pid"],
+        "pidFile": canonical_runner["pidFile"],
         "knownRunners": runners,
         "adoptedPidFile": adopted,
         "command": command,
@@ -622,22 +711,26 @@ def clear_stale_active_battles(
     age = active_battles_age_seconds()
     runner_alive = any_battle_runner_alive()
     path = active_battles_path()
+    truth_exists = path.exists()
+    stale_truth = bool(age is not None and age >= stale_after_seconds)
     payload: dict[str, Any] = {
         "activeBattleCount": active_count,
         "ageSeconds": round(age, 3) if age is not None else None,
+        "activeBattleTruthExists": truth_exists,
+        "stale": stale_truth,
         "battleRunnerAlive": runner_alive,
         "execute": execute,
         "staleAfterSeconds": stale_after_seconds,
         "force": force,
         "cleared": False,
     }
-    if active_count <= 0:
-        payload["reason"] = "no active battle truth to clear"
-        return payload
     if runner_alive and not force:
         payload["reason"] = "battle runner is alive; preserving active battle truth"
         return payload
-    if not force and (age is None or age < stale_after_seconds):
+    if active_count <= 0 and not (force and truth_exists) and not (truth_exists and stale_truth):
+        payload["reason"] = "no stale active battle truth to clear"
+        return payload
+    if not force and not stale_truth:
         payload["reason"] = "active battle truth is not stale enough to clear"
         return payload
     if not execute:
@@ -657,15 +750,21 @@ def clear_stale_active_battles(
         "clearedBy": "HERMES devstream_session stop" if force else "HERMES devstream_session start",
         "clearReason": clear_reason,
         "previousBattleCount": active_count,
+        "previousTruthWasEmpty": active_count <= 0,
     }
     try:
-        path.write_text(json.dumps(replacement, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        _atomic_write_text(path, json.dumps(replacement, indent=2, sort_keys=True) + "\n")
     except PermissionError:
         path.chmod(0o666)
-        path.write_text(json.dumps(replacement, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        _atomic_write_text(path, json.dumps(replacement, indent=2, sort_keys=True) + "\n")
         payload["permissionRepair"] = "chmod 666 before rewrite"
     payload["cleared"] = True
-    payload["reason"] = "active battle truth cleared after forced stop" if force else "stale active battle truth cleared before bounded session start"
+    if force:
+        payload["reason"] = "active battle truth cleared after forced stop"
+    elif active_count <= 0:
+        payload["reason"] = "stale empty active battle truth refreshed before bounded session start"
+    else:
+        payload["reason"] = "stale active battle truth cleared before bounded session start"
     return payload
 
 
@@ -913,17 +1012,21 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         )
     )
 
-    # --- Self-improvement loop (Phase D wired into the live runtime) ---------
-    # After fresh autoresearch, attempt ONE bounded improvement and then let the
-    # ELO watchdog judge/revert the previous deploy. Both steps are own-gated and
-    # self-reverting; they only run between battle cycles (idle phase) so they
-    # never disrupt a live battle. improve_agent enforces deploy-spacing +
-    # offline pytest + auto-revert and records a deploy_log entry; elo_watchdog
-    # reverts a deploy whose post-deploy ELO dropped past the guardrail.
-    if not getattr(args, "skip_improve", False):
+    # --- Self-improvement loop (explicit opt-in only) ------------------------
+    # Recursive improvement is disabled by default while the architecture is
+    # corrected. It may only run when the supervisor CLI flag or env sentinel is
+    # present; --skip-improve remains an explicit override.
+    improve_enabled, improve_reason = supervisor_auto_improve_enabled(args)
+    payload["autoImprove"] = {
+        "enabled": improve_enabled,
+        "reason": improve_reason,
+        "sentinel": AUTO_IMPROVE_SENTINEL,
+    }
+    if improve_enabled:
+        improve_command = [py, "infrastructure/improve_agent.py", "--enable-auto-improve"]
         payload["actions"].append(
             run_supervisor_command(
-                [py, "infrastructure/improve_agent.py"],
+                improve_command,
                 timeout=getattr(args, "improve_timeout_seconds", 240),
             )
         )
@@ -979,7 +1082,13 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     write_pid_value(
         SUPERVISOR_PID_FILE,
         os.getpid(),
-        supervisor_command(args.run_count, args.max_concurrent_battles, args.queue_timeout_seconds, args.sleep_seconds),
+        supervisor_command(
+            args.run_count,
+            args.max_concurrent_battles,
+            args.queue_timeout_seconds,
+            args.sleep_seconds,
+            enable_auto_improve=getattr(args, "enable_auto_improve", False),
+        ),
     )
     try:
         while True:
@@ -1121,6 +1230,7 @@ def cmd_start(args: argparse.Namespace) -> int:
             args.max_concurrent_battles,
             args.queue_timeout_seconds,
             args.supervisor_sleep_seconds,
+            enable_auto_improve=getattr(args, "enable_auto_improve", False),
         ),
     }
     payload = {
@@ -1273,12 +1383,24 @@ def cmd_stop(args: argparse.Namespace) -> int:
 def cmd_drain(args: argparse.Namespace) -> int:
     active_battles = read_active_battles()
     runner_alive = any_battle_runner_alive()
+    runner_owners = live_battle_runner_owners()
+    distinct_runner_pids = _distinct_battle_runner_pids(runner_owners)
     payload = {
         "schemaVersion": "fouler-play-devstream-drain-plan/v1",
         "checkedAt": iso_now(),
         "dryRun": not args.execute,
         "activeBattleCount": active_battles,
         "battleRunnerAlive": runner_alive,
+        "runtimeOwnership": {
+            "knownRunners": runner_owners,
+            "distinctPids": distinct_runner_pids,
+            "duplicateBattleRunners": len(distinct_runner_pids) > 1,
+            "requiredHermesAction": (
+                "drain/adopt exactly one live battle runner before starting another cycle"
+                if len(distinct_runner_pids) > 1
+                else None
+            ),
+        },
         "drainFile": str(DRAIN_FILE),
         "reason": args.reason,
         "note": "Drain-only control: finish current battle, queue no new battle from the old process, and let the supervisor restart from current code.",
@@ -1305,6 +1427,11 @@ def main() -> int:
     start.add_argument("--continuous", action="store_true")
     start.add_argument("--supervisor-sleep-seconds", type=int, default=15)
     start.add_argument("--replace-stale-runner", action=argparse.BooleanOptionalAction, default=True)
+    start.add_argument(
+        "--enable-auto-improve",
+        action="store_true",
+        help=f"Allow the recursive improve_agent + elo_watchdog path. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
+    )
     start.add_argument("--execute", action="store_true")
     supervise = sub.add_parser("supervise")
     supervise.add_argument("--run-count", type=int, default=DEFAULT_RUN_COUNT)
@@ -1316,6 +1443,11 @@ def main() -> int:
     supervise.add_argument("--proof-timeout-seconds", type=int, default=300)
     supervise.add_argument("--start-timeout-seconds", type=int, default=60)
     supervise.add_argument("--improve-timeout-seconds", type=int, default=240)
+    supervise.add_argument(
+        "--enable-auto-improve",
+        action="store_true",
+        help=f"Allow the recursive improve_agent + elo_watchdog path. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
+    )
     supervise.add_argument("--skip-improve", action="store_true",
                            help="Disable the self-improvement loop (improve_agent + elo_watchdog).")
     stop = sub.add_parser("stop")
