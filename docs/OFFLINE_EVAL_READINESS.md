@@ -16,6 +16,10 @@ By default the doctor also performs a read-only TCP probe against
 baseline command launches Fouler. Use `--skip-server-check` only when producing
 static documentation/proof that should not touch the network.
 
+The doctor also verifies Node/npm/git and the configured Pokemon Showdown
+checkout by metadata only. It does not run `npm`, start Showdown, launch
+Discord, start ladder battles, or manage services.
+
 ## Provisioning
 
 On Windows:
@@ -34,9 +38,43 @@ python3 -m venv .venv-eval
 .venv-eval/bin/python -m pip install -r infrastructure/requirements-eval.txt
 ```
 
-Install or clone Pokemon Showdown separately, then start a local no-security
-server on the configured eval port. The doctor reports the exact command under
-`commands.showdownServer`; default:
+### Pokemon Showdown
+
+The default checkout location is a sibling of this repo:
+
+```text
+..\pokemon-showdown
+```
+
+Override it with `POKEMON_SHOWDOWN_DIR` when the checkout lives elsewhere. The
+readiness doctor expects that directory to contain `package.json`, the
+`pokemon-showdown` launcher file, and installed `node_modules`.
+
+Provision or repair the checkout without starting it:
+
+```powershell
+$showdown = 'C:\Users\mtoli\Documents\Code\pokemon-showdown'
+if (!(Test-Path -LiteralPath $showdown)) {
+  git clone https://github.com/smogon/pokemon-showdown.git $showdown
+}
+Push-Location -LiteralPath $showdown
+npm ci
+Pop-Location
+```
+
+On Linux:
+
+```bash
+showdown=/home/ryan/pokemon-showdown
+test -d "$showdown" || git clone https://github.com/smogon/pokemon-showdown.git "$showdown"
+cd "$showdown"
+npm ci
+```
+
+Only after provisioning, an operator can start a local no-security server on the
+configured eval port. The doctor reports the cwd under
+`commands.showdownServerCwd` and the command under `commands.showdownServer`;
+default command:
 
 ```bash
 node pokemon-showdown start --no-security 8765
@@ -69,12 +107,16 @@ Environment knobs consumed by both the doctor and improve gate:
 - `IMPROVE_AGENT_EVAL_TEAM`, default `gen9/ou/fat-team-1-stall`
 - `IMPROVE_AGENT_EVAL_BASELINE`, default `simple`
 - `EVAL_SHOWDOWN_PORT`, default `8765`
+- `POKEMON_SHOWDOWN_DIR`, default sibling `..\pokemon-showdown`
 
 ## Required Proof
 
 The readiness doctor requires:
 
 - `.venv-eval` Python exists and can import `poke_env` and `websockets`
+- `node`, `npm`, and `git` are available for reproducible Showdown provisioning
+- configured Pokemon Showdown checkout has `package.json`, `pokemon-showdown`,
+  and installed `node_modules`
 - local no-security Pokemon Showdown is reachable on `EVAL_SHOWDOWN_PORT`
 - `infrastructure/offline_eval.py` exists
 - `infrastructure/_offline_baseline.py` exists
