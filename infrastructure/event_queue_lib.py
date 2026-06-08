@@ -35,6 +35,15 @@ else:
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+
+def _positive_int_env(name: str, default: int) -> int:
+    try:
+        parsed = int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
 QUEUE_FILE = Path(os.getenv(
     "EVENT_QUEUE_FILE",
     str(PROJECT_ROOT / "events_queue.json")
@@ -45,6 +54,7 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 TRUTH_DIR = PROJECT_ROOT / "devstream" / "truth"
 BACKLOG_ARCHIVE_DIR = Path(os.getenv("EVENT_QUEUE_BACKLOG_ARCHIVE_DIR", str(LOG_DIR / "discord-events")))
 BACKLOG_ARCHIVE_LATEST = TRUTH_DIR / "discord-backlog-archive.json"
+BACKLOG_ARCHIVE_KEEP_LAST = _positive_int_env("EVENT_QUEUE_BACKLOG_ARCHIVE_KEEP_LAST", 200)
 
 logger = logging.getLogger("event_queue_lib")
 
@@ -203,6 +213,37 @@ def _archive_event_summary(event: dict, *, now: float) -> dict[str, object]:
     }
 
 
+def _prune_backlog_archives(keep_last: int | None = None, *, protected: Path | None = None) -> int:
+    """Keep only the newest timestamped backlog archives."""
+    if keep_last is None:
+        keep_last = BACKLOG_ARCHIVE_KEEP_LAST
+    keep_last = max(1, int(keep_last or 1))
+    protected_path = protected.resolve() if protected is not None else None
+    try:
+        archives = sorted(
+            (path for path in BACKLOG_ARCHIVE_DIR.glob("backlog-archive-*.json") if path.is_file()),
+            key=lambda path: (path.stat().st_mtime, path.name),
+        )
+    except OSError:
+        return 0
+    remove_count = max(0, len(archives) - keep_last)
+    stale = []
+    for path in archives:
+        if len(stale) >= remove_count:
+            break
+        if protected_path is not None and path.resolve() == protected_path:
+            continue
+        stale.append(path)
+    removed = 0
+    for path in stale:
+        try:
+            path.unlink()
+            removed += 1
+        except OSError as exc:
+            logger.warning("Failed to prune backlog archive %s: %s", path, exc)
+    return removed
+
+
 def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now: float, max_age_sec: int, reason: str) -> dict[str, object]:
     event_types: Counter[str] = Counter(str(event.get("event_type") or "unknown") for event in stale_events)
     stale_ids = {id(event) for event in stale_events}
@@ -248,6 +289,7 @@ def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now:
     BACKLOG_ARCHIVE_LATEST.write_text(archive_text, encoding="utf-8")
     payload["archivePath"] = str(archive_path)
     payload["latestPath"] = str(BACKLOG_ARCHIVE_LATEST)
+    payload["prunedArchiveCount"] = _prune_backlog_archives(protected=archive_path)
     return payload
 
 
