@@ -55,6 +55,7 @@ TRUTH_DIR = PROJECT_ROOT / "devstream" / "truth"
 BACKLOG_ARCHIVE_DIR = Path(os.getenv("EVENT_QUEUE_BACKLOG_ARCHIVE_DIR", str(LOG_DIR / "discord-events")))
 BACKLOG_ARCHIVE_LATEST = TRUTH_DIR / "discord-backlog-archive.json"
 BACKLOG_ARCHIVE_KEEP_LAST = _positive_int_env("EVENT_QUEUE_BACKLOG_ARCHIVE_KEEP_LAST", 200)
+BACKLOG_ARCHIVE_MAX_BYTES = _positive_int_env("EVENT_QUEUE_BACKLOG_ARCHIVE_MAX_BYTES", 1_000_000)
 
 logger = logging.getLogger("event_queue_lib")
 
@@ -244,6 +245,37 @@ def _prune_backlog_archives(keep_last: int | None = None, *, protected: Path | N
     return removed
 
 
+def _backlog_archive_text(payload: dict[str, object], max_bytes: int | None = None) -> str:
+    """Render a bounded archive payload, truncating only per-event summaries."""
+    max_bytes = max(4096, int(max_bytes if max_bytes is not None else BACKLOG_ARCHIVE_MAX_BYTES))
+    event_summaries = list(payload.get("events") or [])
+
+    def _render(summary_count: int, *, truncated: bool) -> str:
+        payload["events"] = event_summaries[:summary_count]
+        payload["archiveMaxBytes"] = max_bytes
+        payload["archiveByteGuard"] = "per-event-summaries-truncated" if truncated else "within-limit"
+        payload["archivedEventSummaryCount"] = summary_count
+        payload["omittedArchivedEventSummaryCount"] = max(0, len(event_summaries) - summary_count)
+        return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+    text = _render(len(event_summaries), truncated=False)
+    if len(text.encode("utf-8")) <= max_bytes:
+        return text
+
+    low = 0
+    high = len(event_summaries)
+    best_text = _render(0, truncated=True)
+    while low <= high:
+        mid = (low + high) // 2
+        candidate = _render(mid, truncated=True)
+        if len(candidate.encode("utf-8")) <= max_bytes:
+            best_text = candidate
+            low = mid + 1
+        else:
+            high = mid - 1
+    return best_text
+
+
 def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now: float, max_age_sec: int, reason: str) -> dict[str, object]:
     event_types: Counter[str] = Counter(str(event.get("event_type") or "unknown") for event in stale_events)
     stale_ids = {id(event) for event in stale_events}
@@ -284,11 +316,11 @@ def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now:
     TRUTH_DIR.mkdir(parents=True, exist_ok=True)
     BACKLOG_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
     archive_path = BACKLOG_ARCHIVE_DIR / f"backlog-archive-{_utc_stamp(now)}.json"
-    archive_text = json.dumps(payload, indent=2, sort_keys=True) + "\n"
-    archive_path.write_text(archive_text, encoding="utf-8")
-    BACKLOG_ARCHIVE_LATEST.write_text(archive_text, encoding="utf-8")
     payload["archivePath"] = str(archive_path)
     payload["latestPath"] = str(BACKLOG_ARCHIVE_LATEST)
+    archive_text = _backlog_archive_text(payload)
+    archive_path.write_text(archive_text, encoding="utf-8")
+    BACKLOG_ARCHIVE_LATEST.write_text(archive_text, encoding="utf-8")
     payload["prunedArchiveCount"] = _prune_backlog_archives(protected=archive_path)
     return payload
 
