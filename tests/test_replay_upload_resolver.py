@@ -51,6 +51,7 @@ def test_resolve_public_replay_url_stops_after_bounded_attempts(monkeypatch):
             replay_url=None,
             max_attempts=2,
             delay_seconds=0,
+            allow_battle_tag_fallback=True,
         )
     )
 
@@ -59,6 +60,41 @@ def test_resolve_public_replay_url_stops_after_bounded_attempts(monkeypatch):
         ("gen9ou-2626011055", False),
         ("gen9ou-2626011055", False),
     ]
+
+
+def test_resolve_public_replay_url_skips_unsaved_battle_ids(monkeypatch):
+    calls = []
+
+    async def fake_replay_exists(replay_id, *, use_cache=True):
+        calls.append((replay_id, use_cache))
+        return True
+
+    monkeypatch.setattr(run_battle, "_replay_exists", fake_replay_exists)
+
+    result = asyncio.run(
+        run_battle.resolve_public_replay_url(
+            battle_tag="battle-gen9ou-2626011055-privatehash",
+            replay_url=None,
+            max_attempts=2,
+            delay_seconds=0,
+        )
+    )
+
+    assert result is None
+    assert calls == []
+
+
+def test_replay_handoff_absent_without_saved_replay_url():
+    fields = run_battle.replay_handoff_fields(
+        battle_tag="battle-gen9ou-2626011055-privatehash",
+        replay_url=None,
+        verified_replay_url=None,
+    )
+
+    assert fields["replay_id"] is None
+    assert fields["replay_url"] is None
+    assert fields["replay_status"] == "absent"
+    assert fields["replay_public_verified"] is False
 
 
 def test_save_replay_retries_transient_upload_failure(monkeypatch):

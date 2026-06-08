@@ -46,3 +46,21 @@ def test_two_proportion_z_not_significant():
 def test_two_proportion_z_empty():
     z, p = offline_eval.two_proportion_z(0, 0, 0, 0)
     assert p == 1.0
+
+
+def test_resolve_fouler_python_skips_eval_venv_without_runtime_imports(monkeypatch):
+    monkeypatch.delenv("FOULER_RUNTIME_PYTHON", raising=False)
+    monkeypatch.setattr(
+        offline_eval,
+        "_runtime_python_candidates",
+        lambda: [["eval-python"], ["runtime-python"]],
+    )
+
+    def fake_probe(command):
+        if command == ["runtime-python"]:
+            return True, {"command": "runtime-python"}
+        return False, {"command": "eval-python", "stderr": "No module named aiohttp"}
+
+    monkeypatch.setattr(offline_eval, "_probe_fouler_python", fake_probe)
+
+    assert offline_eval.resolve_fouler_python() == ["runtime-python"]

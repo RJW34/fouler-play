@@ -39,6 +39,8 @@ import argparse
 import json
 import math
 import os
+import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -49,6 +51,93 @@ RESULTS_DIR = PROJECT_ROOT / "eval_results" / "offline"
 VENV_PY = PROJECT_ROOT / ".venv-eval" / "Scripts" / "python.exe"
 if not VENV_PY.exists():
     VENV_PY = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
+FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
+
+
+def _split_python_command(raw: str) -> list[str]:
+    return shlex.split(raw, posix=os.name != "nt")
+
+
+def _runtime_python_candidates() -> list[list[str]]:
+    explicit = os.getenv("FOULER_RUNTIME_PYTHON")
+    if explicit:
+        return [_split_python_command(explicit)]
+
+    candidates: list[list[str]] = [[sys.executable]]
+    local_venvs = [
+        PROJECT_ROOT / ".venv" / "Scripts" / "python.exe",
+        PROJECT_ROOT / ".venv" / "bin" / "python",
+    ]
+    for python_path in local_venvs:
+        if python_path.exists():
+            candidates.append([str(python_path)])
+
+    py_launcher = shutil.which("py")
+    if py_launcher:
+        candidates.append([py_launcher, "-3"])
+    for command in ("python", "python3"):
+        executable = shutil.which(command)
+        if executable:
+            candidates.append([executable])
+
+    unique: list[list[str]] = []
+    seen: set[tuple[str, ...]] = set()
+    for candidate in candidates:
+        key = tuple(candidate)
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
+    return unique
+
+
+def _probe_fouler_python(command: list[str]) -> tuple[bool, dict[str, object]]:
+    probe_code = (
+        "import json, sys; "
+        + "; ".join(f"import {module}" for module in FOULER_RUNTIME_IMPORTS)
+        + "; print(json.dumps({'executable': sys.executable}))"
+    )
+    try:
+        probe = subprocess.run(
+            [*command, "-c", probe_code],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+        )
+    except Exception as exc:
+        return False, {"command": subprocess.list2cmdline(command), "error": str(exc)}
+
+    detail: dict[str, object] = {
+        "command": subprocess.list2cmdline(command),
+        "returncode": probe.returncode,
+        "stdout": (probe.stdout or "").strip()[-500:],
+        "stderr": (probe.stderr or "").strip()[-500:],
+    }
+    if probe.returncode != 0:
+        return False, detail
+    try:
+        detail.update(json.loads((probe.stdout or "").strip().splitlines()[-1]))
+    except Exception:
+        pass
+    return True, detail
+
+
+def resolve_fouler_python() -> list[str]:
+    failures = []
+    for candidate in _runtime_python_candidates():
+        ok, detail = _probe_fouler_python(candidate)
+        if ok:
+            return candidate
+        failures.append(detail)
+        if os.getenv("FOULER_RUNTIME_PYTHON"):
+            break
+    raise RuntimeError(
+        "No Fouler runtime Python can import required modules "
+        f"{FOULER_RUNTIME_IMPORTS}. Set FOULER_RUNTIME_PYTHON or install "
+        f"requirements.txt into a runtime Python. Failures: {failures}"
+    )
 
 
 def wilson_lower_bound(wins: int, n: int, z: float = 1.96) -> float:
@@ -110,13 +199,23 @@ def run_eval(
     env["MIN_SEARCH_TIME_MS"] = "0"  # don't clamp; we set search time explicitly
     env["LOSS_TRIGGERED_DRAIN"] = "0"  # play all N battles regardless of losses
     env["MAX_CONCURRENT_BATTLES"] = "1"
+    env["FOULER_OFFLINE_EVAL"] = "1"
+    env["DISCORD_BATTLES_WEBHOOK_URL"] = ""
+    env["DISCORD_WEBHOOK_URL"] = ""
+    env["DISCORD_FEEDBACK_WEBHOOK_URL"] = ""
+    env["EVENT_QUEUE_FILE"] = str(RESULTS_DIR / f"{label}-events_queue.json")
+    env["EVENT_QUEUE_BACKLOG_ARCHIVE_DIR"] = str(RESULTS_DIR / "discord-events")
+    env["REPLAY_UPLOAD_RESOLVE_ATTEMPTS"] = "1"
+    env["REPLAY_UPLOAD_RESOLVE_DELAY_SEC"] = "0"
+    env["STREAM_EVENT_URL"] = f"http://127.0.0.1:{showdown_port}/offline-eval-disabled"
     if extra_env:
         env.update({k: str(v) for k, v in extra_env.items()})
+    fouler_python = resolve_fouler_python()
 
     # --- Launch fouler in accept_challenge mode (the REAL engine) ---
     fouler_log = RESULTS_DIR / f"{label}-fouler.log"
     fouler_cmd = [
-        sys.executable, "run.py",
+        *fouler_python, "run.py",
         "--websocket-uri", ws_uri,
         "--ps-username", fouler_user,
         "--bot-mode", "accept_challenge",

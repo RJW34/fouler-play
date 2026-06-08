@@ -188,3 +188,52 @@ def test_readiness_payload_reports_showdown_dependency_gap(tmp_path, monkeypatch
     assert "npm ci" in deps_check["remediation"]
     assert any("pokemon-showdown dependencies" in blocker for blocker in payload["blockers"])
     assert str(showdown) in payload["commands"]["showdownServerCwd"]
+
+
+def test_readiness_payload_reports_fouler_runtime_gap(tmp_path, monkeypatch):
+    _write_minimal_harness(tmp_path)
+    venv_python = tmp_path / ".venv-eval" / "Scripts" / "python.exe"
+    venv_python.parent.mkdir(parents=True, exist_ok=True)
+    venv_python.write_text("# fake python for path proof\n", encoding="utf-8")
+    frozen = tmp_path / "eval_results" / "offline" / "frozen.json"
+    frozen.parent.mkdir(parents=True, exist_ok=True)
+    frozen.write_text(
+        json.dumps(
+            {
+                "label": "frozen",
+                "battles": 200,
+                "fouler_wins": 120,
+                "fouler_win_rate": 0.6,
+                "fouler_wilson_lcb": 0.53,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        offline_eval_readiness,
+        "_check_imports",
+        lambda _venv_python: (True, {"poke_env": "test", "websockets": "test"}),
+    )
+    monkeypatch.setattr(
+        offline_eval_readiness,
+        "_check_fouler_runtime_imports",
+        lambda _root, _env: (
+            False,
+            {
+                "requiredImports": ["aiohttp"],
+                "failures": [{"command": "python", "stderr": "No module named aiohttp"}],
+            },
+        ),
+    )
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={},
+        run_server_check=False,
+        run_prereq_check=False,
+    )
+
+    runtime_check = next(check for check in payload["checks"] if check["name"] == "fouler runtime imports")
+    assert runtime_check["ok"] is False
+    assert any("fouler runtime imports" in blocker for blocker in payload["blockers"])

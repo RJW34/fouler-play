@@ -17,6 +17,7 @@ from typing import Mapping
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_VERSION = "fouler-play-offline-eval-readiness/v1"
+FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
 
 
 def _env_int(env: Mapping[str, str], name: str, default: int) -> int:
@@ -62,6 +63,42 @@ def eval_venv_python(root: Path) -> Path:
     if windows.exists():
         return windows
     return root / ".venv-eval" / "bin" / "python"
+
+
+def _split_python_command(raw: str) -> list[str]:
+    return shlex.split(raw, posix=sys.platform != "win32")
+
+
+def _runtime_python_candidates(root: Path, env: Mapping[str, str]) -> list[list[str]]:
+    explicit = env.get("FOULER_RUNTIME_PYTHON")
+    if explicit:
+        return [_split_python_command(explicit)]
+
+    candidates: list[list[str]] = [[sys.executable]]
+    local_venvs = [
+        root / ".venv" / "Scripts" / "python.exe",
+        root / ".venv" / "bin" / "python",
+    ]
+    for python_path in local_venvs:
+        if python_path.exists():
+            candidates.append([str(python_path)])
+
+    py_launcher = shutil.which("py")
+    if py_launcher:
+        candidates.append([py_launcher, "-3"])
+    for command in ("python", "python3"):
+        executable = shutil.which(command)
+        if executable:
+            candidates.append([executable])
+
+    unique: list[list[str]] = []
+    seen: set[tuple[str, ...]] = set()
+    for candidate in candidates:
+        key = tuple(candidate)
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
+    return unique
 
 
 def configured_eval(root: Path, env: Mapping[str, str]) -> dict[str, object]:
@@ -233,6 +270,51 @@ def _check_imports(venv_python: Path) -> tuple[bool, dict[str, object]]:
         return True, {"stdout": probe.stdout.strip()}
 
 
+def _check_fouler_runtime_imports(root: Path, env: Mapping[str, str]) -> tuple[bool, dict[str, object]]:
+    probe_code = (
+        "import json, sys; "
+        + "; ".join(f"import {module}" for module in FOULER_RUNTIME_IMPORTS)
+        + "; print(json.dumps({'executable': sys.executable}))"
+    )
+    failures = []
+    for command in _runtime_python_candidates(root, env):
+        try:
+            probe = subprocess.run(
+                [*command, "-c", probe_code],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=30,
+            )
+        except Exception as exc:
+            detail = {"command": _quote_command(command), "error": str(exc)}
+            failures.append(detail)
+            if env.get("FOULER_RUNTIME_PYTHON"):
+                break
+            continue
+        detail = {
+            "command": _quote_command(command),
+            "returncode": probe.returncode,
+            "stdout": (probe.stdout or "").strip()[-500:],
+            "stderr": (probe.stderr or "").strip()[-500:],
+        }
+        if probe.returncode == 0:
+            try:
+                detail.update(json.loads((probe.stdout or "").strip().splitlines()[-1]))
+            except Exception:
+                pass
+            return True, detail
+        failures.append(detail)
+        if env.get("FOULER_RUNTIME_PYTHON"):
+            break
+    return False, {
+        "requiredImports": list(FOULER_RUNTIME_IMPORTS),
+        "failures": failures,
+    }
+
+
 def _check_showdown_server(port: int) -> tuple[bool, dict[str, object]]:
     try:
         with socket.create_connection(("127.0.0.1", int(port)), timeout=2.0):
@@ -389,6 +471,20 @@ def build_readiness_payload(
     elif venv_python.exists():
         add_check("eval venv imports", True, {"skipped": "import check disabled"})
 
+    if run_import_check:
+        try:
+            runtime_ok, runtime_detail = _check_fouler_runtime_imports(root, env)
+        except Exception as exc:
+            runtime_ok, runtime_detail = False, {"error": str(exc)}
+        add_check(
+            "fouler runtime imports",
+            runtime_ok,
+            runtime_detail,
+            "set FOULER_RUNTIME_PYTHON to a Python that can import requirements.txt or install requirements.txt into the selected runtime",
+        )
+    else:
+        add_check("fouler runtime imports", True, {"skipped": "import check disabled"})
+
     if run_server_check:
         server_ok, server_detail = _check_showdown_server(int(config["showdownPort"]))
         add_check(
@@ -439,6 +535,7 @@ def build_readiness_payload(
             "node, npm, and git are available for Pokemon Showdown provisioning",
             "POKEMON_SHOWDOWN_DIR or the default sibling pokemon-showdown checkout has package.json, the pokemon-showdown launcher, and installed node_modules",
             ".venv-eval python can import poke_env and websockets",
+            "Fouler runtime Python can import the run.py dependencies from requirements.txt",
             "a local no-security Pokemon Showdown server is reachable on EVAL_SHOWDOWN_PORT",
             "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",
             "eval_results/offline/frozen.json exists, meets IMPROVE_AGENT_EVAL_BATTLES, and contains label, battles, fouler_wins, fouler_win_rate, and fouler_wilson_lcb",

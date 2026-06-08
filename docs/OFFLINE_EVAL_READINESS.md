@@ -30,6 +30,16 @@ py -3 -m venv .venv-eval
 .venv-eval\Scripts\python.exe -m pip install -r infrastructure\requirements-eval.txt
 ```
 
+`.venv-eval` is only the poke-env challenger environment. The Fouler side of
+the harness runs `run.py` with a separate runtime Python that can import
+`requirements.txt` dependencies such as `aiohttp` and `poke-engine`. By default
+the harness probes the current interpreter, `.venv`, and the system Python
+launcher. Override it when needed:
+
+```powershell
+$env:FOULER_RUNTIME_PYTHON = 'py -3'
+```
+
 On Linux:
 
 ```bash
@@ -114,6 +124,8 @@ Environment knobs consumed by both the doctor and improve gate:
 The readiness doctor requires:
 
 - `.venv-eval` Python exists and can import `poke_env` and `websockets`
+- Fouler runtime Python can import the `run.py` dependencies from
+  `requirements.txt`
 - `node`, `npm`, and `git` are available for reproducible Showdown provisioning
 - configured Pokemon Showdown checkout has `package.json`, `pokemon-showdown`,
   and installed `node_modules`
