@@ -21,8 +21,12 @@ if str(ROOT) not in sys.path:
 
 from streaming import state_store
 
-DEFAULT_RUN_COUNT = 1000000
+DEFAULT_RUN_COUNT = 1
 DEFAULT_MAX_CONCURRENT = 3
+RUN_COUNT_CAP_ENV = "FOULER_DEVSTREAM_RUN_COUNT_CAP"
+DEFAULT_RUN_COUNT_CAP = 30
+AUTO_IMPROVE_MAX_CYCLES_ENV = "FOULER_AUTO_IMPROVE_MAX_CYCLES"
+DEFAULT_AUTO_IMPROVE_MAX_CYCLES = 1
 PID_DIR = ROOT / ".pids"
 OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
@@ -50,6 +54,33 @@ def supervisor_auto_improve_enabled(args: argparse.Namespace, env: dict[str, str
     if env_flag_enabled(env, AUTO_IMPROVE_SENTINEL):
         return True, f"{AUTO_IMPROVE_SENTINEL}=1"
     return False, f"missing --enable-auto-improve or {AUTO_IMPROVE_SENTINEL}=1"
+
+
+def positive_int(value: object, default: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def effective_run_count(run_count: object, env: dict[str, str] | None = None) -> int:
+    env = env if env is not None else os.environ
+    requested = positive_int(run_count, DEFAULT_RUN_COUNT)
+    cap = positive_int(env.get(RUN_COUNT_CAP_ENV), DEFAULT_RUN_COUNT_CAP)
+    return max(1, min(requested, cap))
+
+
+def supervisor_cycle_limit(args: argparse.Namespace, env: dict[str, str] | None = None) -> tuple[int, str]:
+    requested = positive_int(getattr(args, "max_cycles", 0), 0)
+    if requested > 0:
+        return requested, "--max-cycles"
+    enabled, reason = supervisor_auto_improve_enabled(args, env)
+    if not enabled:
+        return 0, "unbounded supervisor without auto-improve"
+    env = env if env is not None else load_env_files()
+    limit = positive_int(env.get(AUTO_IMPROVE_MAX_CYCLES_ENV), DEFAULT_AUTO_IMPROVE_MAX_CYCLES)
+    return limit, f"auto-improve lease via {reason}"
 
 
 def runtime_python() -> str:
@@ -969,6 +1000,7 @@ def write_supervisor_status(payload: dict[str, Any]) -> None:
 
 
 def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str, Any]:
+    effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT))
     active_count = read_active_battles()
     battle_runner_alive = any_battle_runner_alive()
     payload: dict[str, Any] = {
@@ -978,6 +1010,8 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         "activeBattleCount": active_count,
         "battleRunnerAlive": battle_runner_alive,
         "actions": [],
+        "requestedRunCount": getattr(args, "run_count", DEFAULT_RUN_COUNT),
+        "effectiveRunCount": effective_count,
     }
     if active_count > 0 and not battle_runner_alive:
         stale_clear = clear_stale_active_battles(
@@ -1043,7 +1077,7 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
                 "scripts/devstream_session.py",
                 "start",
                 "--run-count",
-                str(args.run_count),
+                str(effective_count),
                 "--max-concurrent-battles",
                 str(args.max_concurrent_battles),
                 "--queue-timeout-seconds",
@@ -1063,6 +1097,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     if SUPERVISOR_STOP_FILE.exists():
         SUPERVISOR_STOP_FILE.unlink()
     cycle_index = 0
+    effective_max_cycles, max_cycles_reason = supervisor_cycle_limit(args)
     payload: dict[str, Any] = {
         "schemaVersion": "fouler-play-battle-supervisor/v1",
         "startedAt": iso_now(),
@@ -1075,6 +1110,12 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             "queueTimeoutSeconds": args.queue_timeout_seconds,
             "sleepSeconds": args.sleep_seconds,
             "maxCycles": args.max_cycles,
+            "effectiveMaxCycles": effective_max_cycles,
+        },
+        "cycleLease": {
+            "reason": max_cycles_reason,
+            "autoImproveSentinel": AUTO_IMPROVE_SENTINEL,
+            "autoImproveMaxCyclesEnv": AUTO_IMPROVE_MAX_CYCLES_ENV,
         },
         "stopFile": str(SUPERVISOR_STOP_FILE),
         "secretValuesPrinted": False,
@@ -1104,7 +1145,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             payload["lastCycle"] = cycle
             payload["cycles"] = (payload.get("cycles") or [])[-9:] + [cycle]
             write_supervisor_status(payload)
-            if args.max_cycles and cycle_index >= args.max_cycles:
+            if effective_max_cycles and cycle_index >= effective_max_cycles:
                 payload["state"] = "completed-max-cycles"
                 payload["completedAt"] = iso_now()
                 write_supervisor_status(payload)
@@ -1222,11 +1263,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 def cmd_start(args: argparse.Namespace) -> int:
     env = prepare_runtime_env(load_env_files())
+    effective_count = effective_run_count(args.run_count, env)
     commands = {
         "obsHttp": obs_server_command(),
-        "battleSession": shell_command_for_session(args.run_count, args.max_concurrent_battles, env),
+        "battleSession": shell_command_for_session(effective_count, args.max_concurrent_battles, env),
         "battleSupervisor": supervisor_command(
-            args.run_count,
+            effective_count,
             args.max_concurrent_battles,
             args.queue_timeout_seconds,
             args.supervisor_sleep_seconds,
@@ -1239,7 +1281,9 @@ def cmd_start(args: argparse.Namespace) -> int:
         "dryRun": not args.execute,
         "commands": commands,
         "bounds": {
-            "runCount": args.run_count,
+            "runCount": effective_count,
+            "requestedRunCount": args.run_count,
+            "runCountCap": positive_int(env.get(RUN_COUNT_CAP_ENV), DEFAULT_RUN_COUNT_CAP),
             "maxConcurrentBattles": args.max_concurrent_battles,
             "maxRuntimeMinutes": args.max_runtime_minutes,
             "queueTimeoutSeconds": args.queue_timeout_seconds,

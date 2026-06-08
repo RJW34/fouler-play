@@ -25,7 +25,7 @@ import uuid
 from pathlib import Path
 from typing import Optional, Callable
 
-from infrastructure.discord_reporting import format_payload_or_message, structured_report_fields
+from infrastructure.discord_reporting import format_payload_or_message, public_replay_id_candidate, structured_report_fields
 
 # Cross-platform file locking
 if sys.platform == "win32":
@@ -93,6 +93,21 @@ def _content_hash(event_type: str, channel: str, content: str) -> str:
     """MD5 hash for deduplication."""
     raw = f"{event_type}:{channel}:{content}"
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
+
+
+def _battle_result_key(fields: dict) -> str:
+    """Stable battle key for updating pending battle_result events in place."""
+    value = fields.get("battle_id")
+    if not value and isinstance(fields.get("proof"), dict):
+        battle_ids = fields["proof"].get("battleIds") or []
+        value = battle_ids[0] if battle_ids else None
+    text = str(value or "").strip().lower()
+    public_id = public_replay_id_candidate(text)
+    if public_id:
+        return public_id.lower()
+    if text.startswith("battle-"):
+        text = text.replace("battle-", "", 1)
+    return text
 
 
 def _read_queue_locked(f) -> list:
@@ -312,6 +327,35 @@ def queue_event(
                 logger.info(f"Dedup rejected: {event_type} (hash={content_md5[:8]})")
                 return None
 
+        battle_key = _battle_result_key(structured_fields) if event_type == "battle_result" else ""
+        if battle_key:
+            for ev in events:
+                if (
+                    isinstance(ev, dict)
+                    and ev.get("event_type") == "battle_result"
+                    and ev.get("status") == STATUS_PENDING
+                    and _battle_result_key(ev) == battle_key
+                ):
+                    ev.update(
+                        {
+                            "channel": channel,
+                            "content": content,
+                            "content_hash": content_md5,
+                            "precondition_check": precondition_check_fn,
+                            "suppress_embeds": suppress_embeds,
+                            "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                            "update_count": int(ev.get("update_count") or 0) + 1,
+                            **structured_fields,
+                        }
+                    )
+                    _write_queue_locked(f, events)
+                    logger.info(
+                        "Updated pending battle_result id=%s battle=%s with newer replay/proof fields",
+                        ev.get("id"),
+                        battle_key,
+                    )
+                    return ev.get("id")
+
         event_id = str(uuid.uuid4())[:12]
         event = {
             "id": event_id,
@@ -412,6 +456,7 @@ def expire_old_events(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> int:
             max_age_sec=max_age_sec,
             reason="pending-discord-event-expired-before-transport",
         )
+        stale_event_ids = {id(ev) for ev in stale_events}
         for ev in stale_events:
             if ev["status"] == STATUS_PENDING:
                 ev["status"] = STATUS_EXPIRED
@@ -423,7 +468,16 @@ def expire_old_events(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> int:
                     _event_id_hash(ev.get("id")),
                     now - _event_timestamp(ev, now),
                 )
-        _write_queue_locked(f, events)
+        compacted_events = [
+            ev
+            for ev in events
+            if not (
+                isinstance(ev, dict)
+                and id(ev) in stale_event_ids
+                and ev.get("status") == STATUS_EXPIRED
+            )
+        ]
+        _write_queue_locked(f, compacted_events)
         return len(stale_events)
 
     return _with_lock(_do_expire)

@@ -137,6 +137,102 @@ def test_event_poster_dry_run_writes_redacted_delivery_proof(monkeypatch, tmp_pa
     assert queue_after[0]["status"] == "pending"
 
 
+def test_run_battle_replay_handoff_preserves_pending_public_replay():
+    from fp.run_battle import replay_handoff_fields
+
+    fields = replay_handoff_fields(
+        battle_tag="battle-gen9ou-2626011055-privatehash",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2626011055",
+        verified_replay_url=None,
+    )
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result win vs Altdebup",
+        "Battle battle-gen9ou-2626011055-privatehash ended win against Altdebup.",
+        "battle updates should preserve replay evidence even when public upload verification lags",
+        (
+            "battle_id=battle-gen9ou-2626011055-privatehash; result=win; "
+            f"replay={fields['replay_url']}; replay_status={fields['replay_status']}"
+        ),
+        "Append ladder delta if more context lands after posting.",
+        source="fp.run_battle",
+        battle_id="battle-gen9ou-2626011055-privatehash",
+        result="win",
+        opponent="Altdebup",
+        turns=31,
+        replay_url=fields["replay_url"],
+        replay_id=fields["replay_id"],
+        replay_status=fields["replay_status"],
+        replay_public_verified=fields["replay_public_verified"],
+        raw_replay_url=fields["raw_replay_url"],
+    )
+    structured = structured_report_fields(payload, event_type="battle_result")
+
+    assert fields["replay_id"] == "gen9ou-2626011055"
+    assert fields["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2626011055"
+    assert fields["replay_status"] == "pending-public-upload"
+    assert fields["replay_public_verified"] is False
+    assert structured["proof"]["replay"]["status"] == "pending-public-upload"
+    assert structured["proof"]["replay"]["id"] == "gen9ou-2626011055"
+    assert structured["proof"]["replay"]["url"] == ""
+    assert "gen9ou-2626011055" in structured["proof"]["battleIds"]
+
+
+def test_pending_battle_result_replay_update_reuses_existing_queue_event(monkeypatch, tmp_path):
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+
+    pending_payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs SlowUpload",
+        "Battle battle-gen9ou-2626011055 ended loss against SlowUpload.",
+        "Replay upload may lag behind the battle result event.",
+        "battle_id=battle-gen9ou-2626011055-privatehash; replay_status=pending-public-upload",
+        "Append replay once public upload verifies.",
+        source="fp.run_battle",
+        battle_id="battle-gen9ou-2626011055-privatehash",
+        result="loss",
+        opponent="SlowUpload",
+        turns=41,
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2626011055",
+        replay_id="gen9ou-2626011055",
+        replay_status="pending-public-upload",
+        replay_public_verified=False,
+    )
+    public_payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs SlowUpload",
+        "Battle battle-gen9ou-2626011055-privatehash ended loss against SlowUpload.",
+        "Replay upload has verified and should update the pending queue event.",
+        "battle_id=battle-gen9ou-2626011055; replay_status=public",
+        "Review the public replay before the next improvement.",
+        source="fp.run_battle",
+        battle_id="battle-gen9ou-2626011055",
+        result="loss",
+        opponent="SlowUpload",
+        turns=41,
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2626011055",
+        replay_id="gen9ou-2626011055",
+        replay_status="public",
+        replay_public_verified=True,
+        verified_replay_url="https://replay.pokemonshowdown.com/gen9ou-2626011055",
+    )
+
+    first_id = event_queue_lib.queue_event("battle_result", "battles", pending_payload, dedup_window_sec=0)
+    second_id = event_queue_lib.queue_event("battle_result", "battles", public_payload, dedup_window_sec=0)
+    events = json.loads(queue_file.read_text(encoding="utf-8"))
+
+    assert second_id == first_id
+    assert len(events) == 1
+    assert events[0]["update_count"] == 1
+    assert events[0]["proof"]["replay"]["status"] == "public"
+    assert events[0]["proof"]["replay"]["url"] == "https://replay.pokemonshowdown.com/gen9ou-2626011055"
+    assert events[0]["proof_readiness"]["status"] == "proof-ready"
+
+
 def test_event_poster_archives_stale_backlog_before_transport(monkeypatch, tmp_path):
     import infrastructure.event_poster as event_poster
     import infrastructure.event_queue_lib as event_queue_lib
@@ -194,16 +290,16 @@ def test_event_poster_archives_stale_backlog_before_transport(monkeypatch, tmp_p
     rendered_archive = json.dumps(archive)
 
     assert calls == []
-    assert queue_after[0]["status"] == "expired"
-    assert queue_after[0]["expired_reason"] == "pending-discord-event-expired-before-transport"
-    assert queue_after[1]["status"] == "pending"
+    assert len(queue_after) == 1
+    assert queue_after[0]["id"] == "event-fresh"
+    assert queue_after[0]["status"] == "pending"
     assert delivery["status"] == "blocked"
     assert delivery["errorCode"] == "stale_backlog_archived"
     assert delivery["queue"]["pendingBacklog"] == 1
     assert delivery["queue"]["pendingBattleResults"] == 1
     assert delivery["queue"]["stalePendingBacklog"] == 0
     assert delivery["queue"]["freshPendingBacklog"] == 1
-    assert delivery["queue"]["expiredDeliveries"] == 1
+    assert delivery["queue"]["expiredDeliveries"] == 0
     assert archive["schemaVersion"] == "fouler-play-discord-backlog-archive/v1"
     assert archive["archivedEventCount"] == 1
     assert archive["archivedBattleResultCount"] == 1
@@ -254,7 +350,7 @@ def test_event_poster_once_cannot_post_stale_backlog(monkeypatch, tmp_path):
 
     assert event_poster.main() == 1
     assert calls == []
-    assert json.loads(queue_file.read_text(encoding="utf-8"))[0]["status"] == "expired"
+    assert json.loads(queue_file.read_text(encoding="utf-8")) == []
 
 
 def test_expire_old_events_archives_before_cleanup_can_drop_stale_events(monkeypatch, tmp_path):
@@ -278,7 +374,7 @@ def test_expire_old_events_archives_before_cleanup_can_drop_stale_events(monkeyp
     monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_LATEST", truth_dir / "discord-backlog-archive.json")
 
     assert event_queue_lib.expire_old_events(600) == 2
-    assert event_queue_lib.cleanup_queue(keep_last=1) == 1
+    assert event_queue_lib.cleanup_queue(keep_last=1) == 0
 
     archive = json.loads((truth_dir / "discord-backlog-archive.json").read_text(encoding="utf-8"))
     queue_after = json.loads(queue_file.read_text(encoding="utf-8"))
@@ -286,7 +382,7 @@ def test_expire_old_events_archives_before_cleanup_can_drop_stale_events(monkeyp
 
     assert archive["archivedEventCount"] == 2
     assert archive["archivedEventTypes"] == {"autoresearch_summary": 1, "battle_result": 1}
-    assert len(queue_after) == 1
+    assert queue_after == []
     assert archive_files
 
 

@@ -437,6 +437,9 @@ def _status_line(data: dict) -> str:
 def _proof_from_payload(data: dict) -> str:
     proof_bits: list[str] = []
     seen: set[str] = set()
+    replay = _replay_summary_from_payload(data)
+    replay_bit = _replay_proof_bit(replay)
+    replay_is_explicit = _explicit_replay_summary_from_payload(data) is not None
 
     def add(bit: object) -> None:
         cleaned = _clean_line(bit)
@@ -445,18 +448,22 @@ def _proof_from_payload(data: dict) -> str:
             seen.add(cleaned)
 
     raw_proof = _clean_line(data.get("proof", ""))
-    for bit in _extract_replay_bits(raw_proof):
-        add(bit)
+    if not replay_is_explicit:
+        for bit in _extract_replay_bits(raw_proof):
+            add(bit)
 
     battle_id = data.get("battle_id")
     if battle_id:
         add(f"battle {str(battle_id).replace('battle-gen9ou-', '').replace('battle-', '')}")
 
-    replay_url = _clean_line(data.get("replay_url") or data.get("replay") or "")
-    for bit in _extract_replay_bits(replay_url):
-        add(bit)
-    if replay_url and not _extract_replay_bits(replay_url):
-        add(_replay_pending_bit(replay_url))
+    if replay_bit:
+        add(replay_bit)
+    elif not replay_is_explicit:
+        replay_url = _clean_line(data.get("replay_url") or data.get("replay") or "")
+        for bit in _extract_replay_bits(replay_url):
+            add(bit)
+        if replay_url and not _extract_replay_bits(replay_url):
+            add(_replay_pending_bit(replay_url))
 
     status_line = _status_line(data)
     if status_line:
@@ -876,6 +883,80 @@ def _first_replay_summary(*values: object) -> dict[str, object]:
     return {"status": "absent", "id": "", "url": ""}
 
 
+def _bool_flag(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    text = _clean_line(value).lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off"}:
+        return False
+    return None
+
+
+def _explicit_replay_summary_from_payload(data: dict) -> dict[str, object] | None:
+    status = _clean_line(data.get("replay_status")).lower()
+    verified = _bool_flag(data.get("replay_public_verified"))
+    if not status and verified is None:
+        return None
+
+    replay_id = _clean_line(data.get("replay_id"))
+    for value in (
+        data.get("verified_replay_url"),
+        data.get("replay_url"),
+        data.get("replay"),
+        data.get("raw_replay_url"),
+        data.get("battle_id"),
+    ):
+        replay_id = replay_id or public_replay_id_candidate(value)
+        if replay_id:
+            break
+
+    if status == "public" or verified is True:
+        canonical = canonical_replay_url(data.get("verified_replay_url")) or canonical_replay_url(data.get("replay_url"))
+        if not canonical and replay_id:
+            canonical = f"https://replay.pokemonshowdown.com/{replay_id}"
+        public_id = replay_id or (canonical.rstrip("/").rsplit("/", 1)[-1] if canonical else "")
+        return {
+            "status": "public" if public_id or canonical else "absent",
+            "id": public_id,
+            "url": canonical,
+        }
+
+    if status in {"pending", "pending-public-upload"} or verified is False:
+        return {
+            "status": "pending-public-upload" if replay_id else "absent",
+            "id": replay_id,
+            "url": "",
+        }
+
+    if status == "absent":
+        return {"status": "absent", "id": "", "url": ""}
+
+    return None
+
+
+def _replay_summary_from_payload(data: dict) -> dict[str, object]:
+    explicit = _explicit_replay_summary_from_payload(data)
+    if explicit is not None:
+        return explicit
+    return _first_replay_summary(data.get("replay_url"), data.get("replay"), data.get("battle_id"))
+
+
+def _replay_proof_bit(replay: dict[str, object]) -> str:
+    replay_id = _clean_line(replay.get("id"))
+    status = _clean_line(replay.get("status"))
+    url = _clean_line(replay.get("url"))
+    if status == "public" and replay_id and url:
+        label = replay_id.replace("battle-gen9ou-", "").replace("battle-", "")
+        if len(label) > 8 and label.isdigit():
+            label = label[-8:]
+        return f"replay {label}: {url}"
+    if status == "pending-public-upload" and replay_id:
+        return f"replay pending public upload {replay_id}"
+    return ""
+
+
 def _short_battle_label(value: object) -> str:
     text = _clean_line(value)
     return text.replace("battle-gen9ou-", "").replace("battle-", "") if text else ""
@@ -1012,7 +1093,7 @@ def redacted_report_summary(content: str) -> dict[str, object]:
                 for key in ("battle_id", "replay_url", "replay", "proof", "headline")
             )
         )
-        replay = _first_replay_summary(data.get("replay_url"), data.get("replay"), data.get("battle_id"))
+        replay = _replay_summary_from_payload(data)
         ops_signal = "operational-loss" if _detect_operational_flag(data) else ("loss-review" if result == "loss" else "routine")
         why, changed = _safe_report_text(_why_from_payload(data), 240)
         secret_redacted = secret_redacted or changed
