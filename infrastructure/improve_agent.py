@@ -27,6 +27,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_runtime_lease
+
 try:
     from dotenv import load_dotenv
     load_dotenv(PROJECT_ROOT / ".env")
@@ -1103,6 +1105,11 @@ def main() -> int:
         action="store_true",
         help=f"Allow this agent to mutate files and commit. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
     )
+    parser.add_argument("--max-cycles", type=int, default=0, help="Explicit recursive-improvement cycle bound covered by the runtime lease.")
+    parser.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
     parser.add_argument(
         "--enable-git-push",
         action="store_true",
@@ -1126,6 +1133,18 @@ def main() -> int:
             f"or pass --enable-auto-improve to allow mutation."
         )
         return 2
+    if not args.dry_run:
+        lease_guard = validate_runtime_lease(
+            purpose="improve-agent",
+            lease_path=args.runtime_lease,
+            requested_max_cycles=args.max_cycles,
+            require_max_cycles=True,
+        )
+        if not lease_guard.get("ok"):
+            print("[AGENT] BLOCKED: runtime lease/proof window is required for recursive improvement.")
+            for blocker in lease_guard.get("blockers") or []:
+                print(f"[AGENT] BLOCKER: {blocker}")
+            return 2
 
     # 1. Load autoresearch report
     report = load_autoresearch()

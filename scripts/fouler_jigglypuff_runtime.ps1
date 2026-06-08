@@ -1,8 +1,10 @@
 param(
     [ValidateSet("status", "bootstrap", "start", "stop", "login-proof")]
     [string]$Command = "status",
-    [int]$RunCount = 1000000,
+    [int]$RunCount = 0,
     [int]$MaxConcurrentBattles = 3,
+    [int]$MaxCycles = 0,
+    [string]$RuntimeLease = "",
     [switch]$ObsOnly,
     [switch]$AutoImprove,
     [switch]$Execute
@@ -92,6 +94,36 @@ function Get-PythonPath {
         return $venvPython
     }
     return "python"
+}
+
+function Test-RuntimeLease {
+    param(
+        [int]$RunCount,
+        [int]$MaxConcurrentBattles,
+        [int]$MaxCycles,
+        [string]$RuntimeLease
+    )
+    $python = Get-PythonPath
+    $args = @(
+        "scripts\devstream_runtime_lease.py",
+        "--purpose", "jigglypuff-runtime-start",
+        "--run-count", "$RunCount",
+        "--max-concurrent-battles", "$MaxConcurrentBattles",
+        "--max-cycles", "$MaxCycles",
+        "--require-run-count",
+        "--require-max-cycles",
+        "--require-max-concurrent-battles",
+        "--require-replay-behavior"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {
+        $args += @("--runtime-lease", $RuntimeLease)
+    }
+    $result = Invoke-Checked -FilePath $python -ArgumentList $args -TimeoutSeconds 20
+    $payload = $null
+    if ($result.stdout) {
+        try { $payload = $result.stdout | ConvertFrom-Json } catch {}
+    }
+    return @{ ok = [bool]$result.ok; result = $result; payload = $payload }
 }
 
 function Get-GitInfo {
@@ -411,7 +443,7 @@ function Start-ObsServer {
 }
 
 function Start-BattleSession {
-    param([int]$RunCount, [int]$MaxConcurrentBattles)
+    param([int]$RunCount, [int]$MaxConcurrentBattles, [int]$MaxCycles, [string]$RuntimeLease, [switch]$AutoImprove)
     if (-not (Test-Path (Join-Path $RepoRoot ".env"))) {
         return @{ ok = $false; error = ".env is missing; refusing to queue Showdown battles" }
     }
@@ -427,9 +459,13 @@ function Start-BattleSession {
         "supervise",
         "--run-count", "$RunCount",
         "--max-concurrent-battles", "$MaxConcurrentBattles",
+        "--max-cycles", "$MaxCycles",
         "--queue-timeout-seconds", "180",
         "--sleep-seconds", "15"
     )
+    if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {
+        $supervisorArgs += @("--runtime-lease", $RuntimeLease)
+    }
     if ($AutoImprove) {
         $supervisorArgs += "--enable-auto-improve"
     }
@@ -442,13 +478,15 @@ function Start-BattleSession {
         role = "battleSupervisor"
         runCount = $RunCount
         maxConcurrentBattles = $MaxConcurrentBattles
+        maxCycles = $MaxCycles
+        runtimeLease = $RuntimeLease
         autoImprove = [bool]$AutoImprove
         startedAt = Get-IsoNow
         stdout = $stdout
         stderr = $stderr
         launch = $launch
     }
-    return @{ ok = [bool]$launch.ok; pid = $launch.pid; role = "battleSupervisor"; launch = $launch; stdout = $stdout; stderr = $stderr; autoImprove = [bool]$AutoImprove }
+    return @{ ok = [bool]$launch.ok; pid = $launch.pid; role = "battleSupervisor"; launch = $launch; stdout = $stdout; stderr = $stderr; autoImprove = [bool]$AutoImprove; maxCycles = $MaxCycles; runtimeLease = $RuntimeLease }
 }
 
 function Install-Runtime {
@@ -594,15 +632,19 @@ if ($Command -eq "bootstrap") {
     }
 } elseif ($Command -eq "start") {
     if ($Execute) {
-        $actions += @{ name = "stop-stale-processes"; result = Stop-FoulerProcesses }
-        $actions += @{ name = "start-obs-server"; result = Start-ObsServer }
-        if (-not $ObsOnly) {
-            $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -AutoImprove:$AutoImprove }
+        $lease = Test-RuntimeLease -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -RuntimeLease $RuntimeLease
+        $actions += @{ name = "runtime-lease"; result = $lease }
+        if ($lease.ok) {
+            $actions += @{ name = "stop-stale-processes"; result = Stop-FoulerProcesses }
+            $actions += @{ name = "start-obs-server"; result = Start-ObsServer }
+            if (-not $ObsOnly) {
+                $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -RuntimeLease $RuntimeLease -AutoImprove:$AutoImprove }
+            }
         }
     } else {
         $actions += @{ name = "start-obs-server"; planned = $true }
         if (-not $ObsOnly) {
-            $actions += @{ name = "start-battle-supervisor"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles; autoImprove = [bool]$AutoImprove }
+            $actions += @{ name = "start-battle-supervisor"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles; maxCycles = $MaxCycles; runtimeLease = $RuntimeLease; autoImprove = [bool]$AutoImprove }
         }
     }
 } elseif ($Command -eq "login-proof") {
@@ -620,6 +662,8 @@ $final = @{
     execute = [bool]$Execute
     obsOnly = [bool]$ObsOnly
     autoImprove = [bool]$AutoImprove
+    maxCycles = $MaxCycles
+    runtimeLease = $RuntimeLease
     actions = @($actions)
     postStatus = Get-Status
 }

@@ -1,8 +1,10 @@
 param(
-    [int]$RunCount = 1000000,
+    [int]$RunCount = 0,
     [int]$MaxConcurrentBattles = 3,
+    [int]$MaxCycles = 0,
     [int]$QueueTimeoutSeconds = 180,
     [int]$SleepSeconds = 15,
+    [string]$RuntimeLease = "",
     [switch]$AutoImprove,
     [switch]$Foreground
 )
@@ -28,6 +30,11 @@ if (-not $Foreground) {
 }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $ProjectDir ".pids") | Out-Null
+
+if ($RunCount -le 0 -or $MaxCycles -le 0) {
+    Write-Error "Fouler battle supervisor requires explicit positive -RunCount and -MaxCycles bounds."
+    exit 2
+}
 
 # --- SINGLETON GUARD ------------------------------------------------------
 # Exactly one battle supervisor may run for this repo. Before launching a new
@@ -74,9 +81,13 @@ $supervisorArgs = @(
     "supervise",
     "--run-count", "$RunCount",
     "--max-concurrent-battles", "$MaxConcurrentBattles",
+    "--max-cycles", "$MaxCycles",
     "--queue-timeout-seconds", "$QueueTimeoutSeconds",
     "--sleep-seconds", "$SleepSeconds"
 )
+if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {
+    $supervisorArgs += @("--runtime-lease", $RuntimeLease)
+}
 if ($AutoImprove) {
     $supervisorArgs += "--enable-auto-improve"
 }

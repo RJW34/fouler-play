@@ -11,6 +11,11 @@ import json
 from datetime import datetime, timezone
 import psutil
 
+try:
+    from scripts.devstream_runtime_lease import validate_runtime_lease
+except Exception:  # pragma: no cover - import failure must fail closed in the guard.
+    validate_runtime_lease = None  # type: ignore[assignment]
+
 LOCK_DIR = os.path.dirname(os.path.abspath(__file__))
 PID_FILE = os.path.join(LOCK_DIR, ".bot.pid")
 PID_CREATE_TIME_TOLERANCE_SECONDS = 2.0
@@ -45,6 +50,46 @@ def _is_devstream_supervisor_command(cmdline) -> bool:
 
 def _is_lock_owner_command(cmdline) -> bool:
     return _is_battle_runner_command(cmdline) or _is_devstream_supervisor_command(cmdline)
+
+
+def _arg_value(cmdline, name: str) -> str | None:
+    parts = _normalize_cmdline(cmdline)
+    prefix = f"{name}="
+    for index, part in enumerate(parts):
+        text = str(part)
+        if text == name and index + 1 < len(parts):
+            return str(parts[index + 1])
+        if text.startswith(prefix):
+            return text[len(prefix):]
+    return None
+
+
+def _arg_positive_int(cmdline, name: str) -> int | None:
+    value = _arg_value(cmdline, name)
+    try:
+        parsed = int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _current_runtime_lease_guard() -> dict[str, object] | None:
+    if not _is_battle_runner_command(sys.argv):
+        return None
+    if validate_runtime_lease is None:
+        return {
+            "ok": False,
+            "blockers": ["runtime lease helper could not be imported"],
+        }
+    return validate_runtime_lease(
+        purpose="run-py-battle-runner",
+        requested_run_count=_arg_positive_int(sys.argv, "--run-count"),
+        requested_max_concurrent_battles=_arg_positive_int(sys.argv, "--max-concurrent-battles"),
+        requested_account=_arg_value(sys.argv, "--ps-username") or os.environ.get("PS_USERNAME"),
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
 
 
 def _protected_process_ids() -> set[int]:
@@ -232,6 +277,14 @@ def acquire_lock(username: str = "unknown") -> bool:
     Acquire the process lock. Returns True if lock acquired.
     Kills stale processes if the PID file points to a dead/wrong process.
     """
+    lease_guard = _current_runtime_lease_guard()
+    if lease_guard is not None and not lease_guard.get("ok"):
+        print("[LOCK] Runtime lease/proof window is required for live battle runners.", file=sys.stderr)
+        blockers = lease_guard.get("blockers") if isinstance(lease_guard.get("blockers"), list) else []
+        for blocker in blockers:
+            print(f"[LOCK] BLOCKER: {blocker}", file=sys.stderr)
+        return False
+
     while True:
         try:
             _claim_pid_file_atomically()
