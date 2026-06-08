@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -165,6 +166,19 @@ def _check_imports(venv_python: Path) -> tuple[bool, dict[str, object]]:
         return True, {"stdout": probe.stdout.strip()}
 
 
+def _check_showdown_server(port: int) -> tuple[bool, dict[str, object]]:
+    try:
+        with socket.create_connection(("127.0.0.1", int(port)), timeout=2.0):
+            return True, {"host": "127.0.0.1", "port": int(port), "status": "tcp-open"}
+    except Exception as exc:
+        return False, {
+            "host": "127.0.0.1",
+            "port": int(port),
+            "status": "unreachable",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
 def _frozen_baseline_detail(path: Path, min_battles: int) -> tuple[bool, dict[str, object]]:
     if not path.exists():
         return False, {"exists": False}
@@ -197,6 +211,7 @@ def build_readiness_payload(
     root: Path = PROJECT_ROOT,
     env: Mapping[str, str] | None = None,
     run_import_check: bool = True,
+    run_server_check: bool = True,
 ) -> dict[str, object]:
     env = os.environ if env is None else env
     config = configured_eval(root, env)
@@ -260,6 +275,17 @@ def build_readiness_payload(
     elif venv_python.exists():
         add_check("eval venv imports", True, {"skipped": "import check disabled"})
 
+    if run_server_check:
+        server_ok, server_detail = _check_showdown_server(int(config["showdownPort"]))
+        add_check(
+            "local showdown eval server",
+            server_ok,
+            server_detail,
+            f"start a local no-security Pokemon Showdown server: node pokemon-showdown start --no-security {config['showdownPort']}",
+        )
+    else:
+        add_check("local showdown eval server", True, {"skipped": "server check disabled"})
+
     frozen_ok, frozen_detail = _frozen_baseline_detail(frozen_baseline, int(config["battles"]))
     add_check(
         "frozen baseline proof",
@@ -295,6 +321,7 @@ def build_readiness_payload(
         "proofRequired": [
             "offline_eval_readiness.py --require-ready exits 0 with ready=true",
             ".venv-eval python can import poke_env and websockets",
+            "a local no-security Pokemon Showdown server is reachable on EVAL_SHOWDOWN_PORT",
             "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",
             "eval_results/offline/frozen.json exists, meets IMPROVE_AGENT_EVAL_BATTLES, and contains label, battles, fouler_wins, fouler_win_rate, and fouler_wilson_lcb",
             "after an accepted candidate run, eval_results/offline/candidate.json and compare-frozen-vs-candidate.json provide the eval verdict consumed by improve_agent",
@@ -307,9 +334,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Read-only offline eval gate readiness doctor")
     parser.add_argument("--require-ready", action="store_true", help="exit non-zero unless recursiveImprovementReady is true")
     parser.add_argument("--skip-import-check", action="store_true", help="do not execute .venv-eval python import probe")
+    parser.add_argument("--skip-server-check", action="store_true", help="do not probe the local Pokemon Showdown eval server port")
     args = parser.parse_args(argv)
 
-    payload = build_readiness_payload(run_import_check=not args.skip_import_check)
+    payload = build_readiness_payload(
+        run_import_check=not args.skip_import_check,
+        run_server_check=not args.skip_server_check,
+    )
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 1 if args.require_ready and not payload["recursiveImprovementReady"] else 0
 
