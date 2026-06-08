@@ -427,6 +427,7 @@ def test_backlog_archive_retention_prunes_oldest_timestamped_archives(monkeypatc
     assert not old_archives[1].exists()
     assert old_archives[2].exists()
     assert latest["archivedEventCount"] == 1
+    assert latest["prunedArchiveCount"] == 2
 
 
 def test_backlog_archive_byte_guard_truncates_event_summaries_only(monkeypatch, tmp_path):

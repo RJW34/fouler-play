@@ -291,6 +291,7 @@ def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now:
     )
     oldest = min((_event_timestamp(event, now) for event in stale_events), default=None)
     newest = max((_event_timestamp(event, now) for event in stale_events), default=None)
+    event_summaries = [_archive_event_summary(event, now=now) for event in stale_events]
     payload: dict[str, object] = {
         "schemaVersion": "fouler-play-discord-backlog-archive/v1",
         "archivedAt": _iso_utc(now),
@@ -307,9 +308,10 @@ def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now:
         "remainingFreshBattleResultCount": remaining_pending_types.get("battle_result", 0),
         "oldestArchivedTimestamp": _iso_utc(oldest) if oldest is not None else None,
         "newestArchivedTimestamp": _iso_utc(newest) if newest is not None else None,
-        "events": [_archive_event_summary(event, now=now) for event in stale_events],
+        "events": event_summaries,
         "archivalDisposition": "stale-pending-events-expired-locally-not-sent",
         "liveDiscordMessagesSent": False,
+        "prunedArchiveCount": 0,
         "secretValuesPrinted": False,
         "nextHermesAction": "Treat this as local stale-proof archive only; transport only fresh events after the queue is clean.",
     }
@@ -322,6 +324,11 @@ def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now:
     archive_path.write_text(archive_text, encoding="utf-8")
     BACKLOG_ARCHIVE_LATEST.write_text(archive_text, encoding="utf-8")
     payload["prunedArchiveCount"] = _prune_backlog_archives(protected=archive_path)
+    if payload["prunedArchiveCount"]:
+        payload["events"] = event_summaries
+        archive_text = _backlog_archive_text(payload)
+        archive_path.write_text(archive_text, encoding="utf-8")
+        BACKLOG_ARCHIVE_LATEST.write_text(archive_text, encoding="utf-8")
     return payload
 
 
