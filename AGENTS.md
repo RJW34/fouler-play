@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # AGENTS.md — Fouler Play
 
 > Codex-and-friends orientation. **Full agent manual is `CLAUDE.md`** in this directory — read that first; this file is the quick "where do I start" pointer.
@@ -56,7 +55,6 @@ Note: `MAGNETON` mentioned in CLAUDE.md as a possible runtime hostname is RETIRE
 ## Pushing
 
 `master` branch on `origin` (github.com/RJW34/fouler-play). Pull `upstream` (pmariglia/foul-play) for upstream merges.
-=======
 # AGENTS.md — Fouler-Play Agentic Index
 
 > Zero-context onboarding for any LLM agent. Read this top-to-bottom before touching anything.
@@ -283,4 +281,3 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
   health probe, and "truth" files.
 - **autoresearch_latest.json** — LIVE research artifact (use this). **improvement_todo.json** —
   DEAD February artifact (ignore).
->>>>>>> 9d24a8bf (docs: add AGENTS.md zero-context agentic index + CLAUDE.md mission pointer)

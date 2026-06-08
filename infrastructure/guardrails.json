@@ -36,7 +36,7 @@
   ],
   "safety": {
     "max_elo_drop_before_revert": 50,
-    "min_games_between_deploys": 15,
+    "min_games_between_deploys": 30,
     "require_test_pass": true,
     "require_syntax_check": true
   }

@@ -3024,6 +3024,7 @@ async def pokemon_battle(
         raise
     finally:
         # Clean up gameplan and strategic cache from memory (memory leak fix)
+        _elo_before_cache.pop(battle_tag, None)
         clear_gameplan(battle_tag)
         clear_battle_strategy(battle_tag)
         await _finalize_battle_runtime(
