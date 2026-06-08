@@ -33,6 +33,7 @@ from infrastructure.event_queue_lib import (
     mark_posted,
     mark_failed,
     expire_old_events,
+    quarantine_stale_battle_results,
     cleanup_queue,
     queue_stats,
     queue_health_summary,
@@ -594,7 +595,6 @@ def resolve_pending_battle_result_replays_before_expiry(max_age_sec: int = EXPIR
         if upgraded == event:
             continue
         upgraded = copy.deepcopy(upgraded)
-        upgraded["timestamp"] = now
         upgraded["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
         upgraded["replay_resolved_from_stale_backlog"] = True
         upgrades[event_id] = upgraded
@@ -979,6 +979,24 @@ def process_one_event(dry_run: bool = False) -> bool:
     """Process the oldest pending event. Returns True if an event was processed."""
     if not dry_run:
         resolve_pending_battle_result_replays_before_expiry(EXPIRY_SEC)
+        quarantined = quarantine_stale_battle_results(EXPIRY_SEC)
+        if quarantined:
+            logger.warning(
+                "Archived and quarantined %s stale battle_result event(s); live transport withheld",
+                quarantined,
+            )
+            write_delivery_proof(
+                status="blocked",
+                event=None,
+                destination_alias="unknown",
+                dry_run=False,
+                blockers=[
+                    f"archived and quarantined {quarantined} stale battle_result event(s) before transport",
+                    "late live Discord posting is withheld; durable local proof was written instead",
+                ],
+                error_code="stale_battle_result_quarantined",
+            )
+            return False
         expired = expire_old_events(EXPIRY_SEC)
         if expired:
             logger.warning("Archived and expired %s stale Discord event(s); live transport withheld", expired)
