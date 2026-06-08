@@ -11,7 +11,8 @@ param(
     [int]$RunCount = 1000000,
     [int]$MaxConcurrentBattles = 3,
     [int]$QueueTimeoutSeconds = 180,
-    [int]$SleepSeconds = 15
+    [int]$SleepSeconds = 15,
+    [switch]$AutoImprove
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,7 +27,8 @@ $TaskWrapper = "scripts\start_battle_supervisor_task.ps1"
 $StdoutLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.log"
 $StderrLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.err.log"
 $TaskExecute = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -QueueTimeoutSeconds {4} -SleepSeconds {5}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $QueueTimeoutSeconds, $SleepSeconds
+$AutoImproveArg = if ($AutoImprove) { " -AutoImprove" } else { "" }
+$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -QueueTimeoutSeconds {4} -SleepSeconds {5}{6}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $QueueTimeoutSeconds, $SleepSeconds, $AutoImproveArg
 $PidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
 $StopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
 
