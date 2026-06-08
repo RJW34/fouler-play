@@ -13,17 +13,16 @@ def ignored_paths(paths: list[str]) -> set[str]:
         pytest.skip("git is required for .gitignore contract checks")
 
     result = subprocess.run(
-        ["git", "check-ignore", "--stdin", "--no-index"],
+        ["git", "check-ignore", "-z", "--stdin", "--no-index"],
         cwd=ROOT,
-        input="\n".join(paths) + "\n",
-        text=True,
+        input=("\0".join(paths) + "\0").encode("utf-8"),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
     )
     if result.returncode not in {0, 1}:
-        pytest.fail(f"git check-ignore failed: {result.stderr}")
-    return set(result.stdout.splitlines())
+        pytest.fail(f"git check-ignore failed: {result.stderr.decode('utf-8', errors='replace')}")
+    return {item.decode("utf-8", errors="surrogateescape") for item in result.stdout.split(b"\0") if item}
 
 
 def test_generated_pytest_proof_and_runtime_artifacts_are_ignored():
