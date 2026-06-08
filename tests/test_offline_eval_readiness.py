@@ -1,4 +1,5 @@
 import json
+import socket
 from pathlib import Path
 
 from infrastructure import offline_eval_readiness
@@ -57,6 +58,7 @@ def test_readiness_payload_ready_with_eval_proof(tmp_path):
         root=tmp_path,
         env={},
         run_import_check=False,
+        run_server_check=False,
     )
 
     assert payload["recursiveImprovementReady"] is True
@@ -79,6 +81,7 @@ def test_readiness_payload_honors_eval_env_overrides(tmp_path):
         root=tmp_path,
         env=env,
         run_import_check=False,
+        run_server_check=False,
     )
 
     assert payload["configuration"]["battles"] == 40
@@ -87,3 +90,41 @@ def test_readiness_payload_honors_eval_env_overrides(tmp_path):
     assert "--battles 40" in payload["commands"]["candidateEval"]
     assert "--baseline maxbp" in payload["commands"]["candidateEval"]
     assert payload["commands"]["showdownServer"].endswith("9876")
+
+
+def test_readiness_payload_reports_closed_showdown_eval_port(tmp_path):
+    _write_minimal_harness(tmp_path)
+    venv_python = tmp_path / ".venv-eval" / "Scripts" / "python.exe"
+    venv_python.parent.mkdir(parents=True, exist_ok=True)
+    venv_python.write_text("# fake python for path proof\n", encoding="utf-8")
+    frozen = tmp_path / "eval_results" / "offline" / "frozen.json"
+    frozen.parent.mkdir(parents=True, exist_ok=True)
+    frozen.write_text(
+        json.dumps(
+            {
+                "label": "frozen",
+                "battles": 200,
+                "fouler_wins": 120,
+                "fouler_win_rate": 0.6,
+                "fouler_wilson_lcb": 0.53,
+            }
+        ),
+        encoding="utf-8",
+    )
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={"EVAL_SHOWDOWN_PORT": str(port)},
+        run_import_check=False,
+    )
+
+    assert payload["recursiveImprovementReady"] is False
+    server_check = next(check for check in payload["checks"] if check["name"] == "local showdown eval server")
+    assert server_check["ok"] is False
+    assert server_check["detail"]["port"] == port
+    assert "node pokemon-showdown start --no-security" in server_check["remediation"]
+    assert any("local showdown eval server" in blocker for blocker in payload["blockers"])

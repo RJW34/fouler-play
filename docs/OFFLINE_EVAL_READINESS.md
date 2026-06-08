@@ -11,6 +11,11 @@ The command prints JSON and does not start Pokemon Showdown, Discord posting,
 ladder battles, HERMES/DEKU, or services. Recursive improvement may resume only
 when `recursiveImprovementReady` is `true`.
 
+By default the doctor also performs a read-only TCP probe against
+`EVAL_SHOWDOWN_PORT` so a missing local eval server is reported before the
+baseline command launches Fouler. Use `--skip-server-check` only when producing
+static documentation/proof that should not touch the network.
+
 ## Provisioning
 
 On Windows:
@@ -70,6 +75,7 @@ Environment knobs consumed by both the doctor and improve gate:
 The readiness doctor requires:
 
 - `.venv-eval` Python exists and can import `poke_env` and `websockets`
+- local no-security Pokemon Showdown is reachable on `EVAL_SHOWDOWN_PORT`
 - `infrastructure/offline_eval.py` exists
 - `infrastructure/_offline_baseline.py` exists
 - configured team file exists
