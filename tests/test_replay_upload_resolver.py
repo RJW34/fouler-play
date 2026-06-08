@@ -97,6 +97,29 @@ def test_replay_handoff_absent_without_saved_replay_url():
     assert fields["replay_public_verified"] is False
 
 
+def test_battle_result_queue_disabled_by_default_for_offline_eval(monkeypatch):
+    monkeypatch.setenv("FOULER_OFFLINE_EVAL", "1")
+    monkeypatch.delenv("FOULER_BATTLE_RESULT_QUEUE", raising=False)
+    monkeypatch.delenv("FOULER_OFFLINE_EVAL_QUEUE_EVENTS", raising=False)
+
+    assert run_battle.battle_result_event_queue_enabled() is False
+
+
+def test_battle_result_queue_can_be_enabled_for_offline_eval_proof(monkeypatch):
+    monkeypatch.setenv("FOULER_OFFLINE_EVAL", "1")
+    monkeypatch.delenv("FOULER_BATTLE_RESULT_QUEUE", raising=False)
+    monkeypatch.setenv("FOULER_OFFLINE_EVAL_QUEUE_EVENTS", "1")
+
+    assert run_battle.battle_result_event_queue_enabled() is True
+
+
+def test_battle_result_queue_explicit_disable_wins(monkeypatch):
+    monkeypatch.setenv("FOULER_OFFLINE_EVAL", "0")
+    monkeypatch.setenv("FOULER_BATTLE_RESULT_QUEUE", "0")
+
+    assert run_battle.battle_result_event_queue_enabled() is False
+
+
 def test_save_replay_retries_transient_upload_failure(monkeypatch):
     class Response:
         def __init__(self, status_code, text=""):

@@ -52,6 +52,7 @@ VENV_PY = PROJECT_ROOT / ".venv-eval" / "Scripts" / "python.exe"
 if not VENV_PY.exists():
     VENV_PY = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
 FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
+PROCESS_OWNER_SCHEMA = "fouler-play-offline-eval-process-owner/v1"
 
 
 def _split_python_command(raw: str) -> list[str]:
@@ -140,6 +141,205 @@ def resolve_fouler_python() -> list[str]:
     )
 
 
+def build_eval_env(
+    *,
+    label: str,
+    showdown_port: int,
+    search_time_ms: int,
+    extra_env: dict | None,
+) -> dict[str, str]:
+    """Build the child-process environment for an offline eval run."""
+    env = os.environ.copy()
+    env.setdefault("PS_PASSWORD", "")
+    # Local --no-security server: skip HTTP assertion entirely (/trn user,0,).
+    env["FOULER_NO_SECURITY_LOGIN"] = "1"
+    env["SEARCH_TIME_MS"] = str(search_time_ms)
+    env["MIN_SEARCH_TIME_MS"] = "0"  # don't clamp; we set search time explicitly
+    env["LOSS_TRIGGERED_DRAIN"] = "0"  # play all N battles regardless of losses
+    env["MAX_CONCURRENT_BATTLES"] = "1"
+    env["FOULER_OFFLINE_EVAL"] = "1"
+    # Offline eval has no Discord transport and uses --save-replay never, so
+    # battle-result queue events only create unpostable replay backlog.
+    env["FOULER_BATTLE_RESULT_QUEUE"] = "0"
+    env["FOULER_OFFLINE_EVAL_QUEUE_EVENTS"] = "0"
+    env["DISCORD_BATTLES_WEBHOOK_URL"] = ""
+    env["DISCORD_WEBHOOK_URL"] = ""
+    env["DISCORD_FEEDBACK_WEBHOOK_URL"] = ""
+    env["EVENT_QUEUE_FILE"] = str(RESULTS_DIR / f"{label}-events_queue.json")
+    env["EVENT_QUEUE_BACKLOG_ARCHIVE_DIR"] = str(RESULTS_DIR / "discord-events")
+    env["REPLAY_UPLOAD_RESOLVE_ATTEMPTS"] = "1"
+    env["REPLAY_UPLOAD_RESOLVE_DELAY_SEC"] = "0"
+    env["STREAM_EVENT_URL"] = f"http://127.0.0.1:{showdown_port}/offline-eval-disabled"
+    if extra_env:
+        env.update({k: str(v) for k, v in extra_env.items()})
+    return env
+
+
+def _utc_iso() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _git_text(args: list[str]) -> str:
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=10,
+        )
+    except Exception:
+        return ""
+    if proc.returncode != 0:
+        return ""
+    return (proc.stdout or "").strip()
+
+
+def current_git_metadata() -> dict[str, object]:
+    status = _git_text(["status", "--short"])
+    return {
+        "head": _git_text(["rev-parse", "HEAD"]),
+        "shortHead": _git_text(["rev-parse", "--short", "HEAD"]),
+        "commitTime": _git_text(["show", "-s", "--format=%cI", "HEAD"]),
+        "branch": _git_text(["branch", "--show-current"]),
+        "dirty": bool(status),
+        "statusShort": status.splitlines()[:40],
+    }
+
+
+def _process_snapshot(proc: subprocess.Popen | None, command: list[str] | None = None) -> dict[str, object] | None:
+    if proc is None:
+        return None
+    return {
+        "pid": proc.pid,
+        "returncode": proc.poll(),
+        "running": proc.poll() is None,
+        "command": subprocess.list2cmdline(command or getattr(proc, "args", []) or []),
+    }
+
+
+def _build_process_owner_payload(
+    *,
+    label: str,
+    stage: str,
+    command: list[str],
+    fouler_proc: subprocess.Popen | None = None,
+    fouler_cmd: list[str] | None = None,
+    baseline_proc: subprocess.Popen | None = None,
+    baseline_cmd: list[str] | None = None,
+    extra: dict | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "schemaVersion": PROCESS_OWNER_SCHEMA,
+        "updatedAt": _utc_iso(),
+        "label": label,
+        "stage": stage,
+        "projectRoot": str(PROJECT_ROOT),
+        "git": current_git_metadata(),
+        "processes": {
+            "offlineEval": {
+                "pid": os.getpid(),
+                "parentPid": os.getppid(),
+                "executable": sys.executable,
+                "command": subprocess.list2cmdline(command),
+            },
+            "fouler": _process_snapshot(fouler_proc, fouler_cmd),
+            "baseline": _process_snapshot(baseline_proc, baseline_cmd),
+        },
+        "secretValuesPrinted": False,
+    }
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def write_process_owner_status(**kwargs) -> Path:
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    label = str(kwargs.get("label") or "eval")
+    path = RESULTS_DIR / f"{label}-process-owner.json"
+    payload = _build_process_owner_payload(**kwargs)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
+def _terminate_process_tree(proc: subprocess.Popen, *, reason: str, timeout: float = 15.0) -> dict[str, object]:
+    """Terminate a process tree owned by this eval harness."""
+    detail: dict[str, object] = {
+        "pid": proc.pid,
+        "reason": reason,
+        "returncodeBefore": proc.poll(),
+        "method": "none",
+    }
+    if proc.poll() is not None:
+        detail["method"] = "already-exited"
+        detail["returncodeAfter"] = proc.returncode
+        return detail
+
+    try:
+        import psutil  # type: ignore
+
+        parent = psutil.Process(proc.pid)
+        process_tree = parent.children(recursive=True) + [parent]
+        detail["processTreePids"] = [p.pid for p in process_tree]
+        for child in process_tree:
+            try:
+                child.terminate()
+            except Exception:
+                pass
+        gone, alive = psutil.wait_procs(process_tree, timeout=timeout)
+        for child in alive:
+            try:
+                child.kill()
+            except Exception:
+                pass
+        if alive:
+            psutil.wait_procs(alive, timeout=5)
+        detail["method"] = "psutil-process-tree"
+        detail["terminatedPids"] = [p.pid for p in gone]
+        detail["killedPids"] = [p.pid for p in alive]
+        proc.poll()
+        detail["returncodeAfter"] = proc.returncode
+        return detail
+    except Exception as exc:
+        detail["psutilError"] = str(exc)
+
+    if os.name == "nt":
+        taskkill = subprocess.run(
+            ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=20,
+        )
+        detail["method"] = "taskkill"
+        detail["taskkillReturncode"] = taskkill.returncode
+        detail["taskkillStdout"] = (taskkill.stdout or "")[-1000:]
+        detail["taskkillStderr"] = (taskkill.stderr or "")[-1000:]
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        detail["returncodeAfter"] = proc.poll()
+        return detail
+
+    proc.terminate()
+    try:
+        proc.wait(timeout=timeout)
+        detail["method"] = "terminate"
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+        detail["method"] = "kill"
+    detail["returncodeAfter"] = proc.poll()
+    return detail
+
+
 def wilson_lower_bound(wins: int, n: int, z: float = 1.96) -> float:
     """Wilson score lower confidence bound for a binomial proportion."""
     if n == 0:
@@ -191,26 +391,29 @@ def run_eval(
     ws_uri = f"ws://localhost:{showdown_port}/showdown/websocket"
     fmt = "gen9ou"
 
-    env = os.environ.copy()
-    env.setdefault("PS_PASSWORD", "")
-    # Local --no-security server: skip HTTP assertion entirely (/trn user,0,).
-    env["FOULER_NO_SECURITY_LOGIN"] = "1"
-    env["SEARCH_TIME_MS"] = str(search_time_ms)
-    env["MIN_SEARCH_TIME_MS"] = "0"  # don't clamp; we set search time explicitly
-    env["LOSS_TRIGGERED_DRAIN"] = "0"  # play all N battles regardless of losses
-    env["MAX_CONCURRENT_BATTLES"] = "1"
-    env["FOULER_OFFLINE_EVAL"] = "1"
-    env["DISCORD_BATTLES_WEBHOOK_URL"] = ""
-    env["DISCORD_WEBHOOK_URL"] = ""
-    env["DISCORD_FEEDBACK_WEBHOOK_URL"] = ""
-    env["EVENT_QUEUE_FILE"] = str(RESULTS_DIR / f"{label}-events_queue.json")
-    env["EVENT_QUEUE_BACKLOG_ARCHIVE_DIR"] = str(RESULTS_DIR / "discord-events")
-    env["REPLAY_UPLOAD_RESOLVE_ATTEMPTS"] = "1"
-    env["REPLAY_UPLOAD_RESOLVE_DELAY_SEC"] = "0"
-    env["STREAM_EVENT_URL"] = f"http://127.0.0.1:{showdown_port}/offline-eval-disabled"
-    if extra_env:
-        env.update({k: str(v) for k, v in extra_env.items()})
+    env = build_eval_env(
+        label=label,
+        showdown_port=showdown_port,
+        search_time_ms=search_time_ms,
+        extra_env=extra_env,
+    )
     fouler_python = resolve_fouler_python()
+    owner_command = [sys.executable, *sys.argv]
+    write_process_owner_status(
+        label=label,
+        stage="starting",
+        command=owner_command,
+        extra={
+            "configuration": {
+                "battles": battles,
+                "team": team,
+                "baseline": baseline,
+                "showdownPort": showdown_port,
+                "searchTimeMs": search_time_ms,
+                "eventQueueEnabled": env.get("FOULER_BATTLE_RESULT_QUEUE") != "0",
+            }
+        },
+    )
 
     # --- Launch fouler in accept_challenge mode (the REAL engine) ---
     fouler_log = RESULTS_DIR / f"{label}-fouler.log"
@@ -233,6 +436,13 @@ def run_eval(
             fouler_cmd, cwd=str(PROJECT_ROOT), env=env,
             stdout=flog, stderr=subprocess.STDOUT,
         )
+    write_process_owner_status(
+        label=label,
+        stage="fouler-started",
+        command=owner_command,
+        fouler_proc=fouler_proc,
+        fouler_cmd=fouler_cmd,
+    )
 
     # Give fouler time to log in and join the lobby before the baseline challenges.
     time.sleep(12)
@@ -260,23 +470,49 @@ def run_eval(
             baseline_cmd, cwd=str(PROJECT_ROOT),
             stdout=blog, stderr=subprocess.STDOUT,
         )
+    write_process_owner_status(
+        label=label,
+        stage="baseline-started",
+        command=owner_command,
+        fouler_proc=fouler_proc,
+        fouler_cmd=fouler_cmd,
+        baseline_proc=baseline_proc,
+        baseline_cmd=baseline_cmd,
+    )
 
     overall_timeout = per_battle_timeout * battles + 120
+    cleanup: list[dict[str, object]] = []
     try:
         baseline_proc.wait(timeout=overall_timeout)
     except subprocess.TimeoutExpired:
         print(f"[eval:{label}] baseline timed out after {overall_timeout:.0f}s")
-        baseline_proc.kill()
+        cleanup.append(_terminate_process_tree(baseline_proc, reason="baseline-timeout"))
+    write_process_owner_status(
+        label=label,
+        stage="baseline-finished",
+        command=owner_command,
+        fouler_proc=fouler_proc,
+        fouler_cmd=fouler_cmd,
+        baseline_proc=baseline_proc,
+        baseline_cmd=baseline_cmd,
+        extra={"cleanup": cleanup},
+    )
 
     # fouler should exit on its own after run-count; give it a moment then kill.
     try:
         fouler_proc.wait(timeout=30)
     except subprocess.TimeoutExpired:
-        fouler_proc.terminate()
-        try:
-            fouler_proc.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            fouler_proc.kill()
+        cleanup.append(_terminate_process_tree(fouler_proc, reason="fouler-did-not-exit-after-eval"))
+    write_process_owner_status(
+        label=label,
+        stage="process-cleanup-complete",
+        command=owner_command,
+        fouler_proc=fouler_proc,
+        fouler_cmd=fouler_cmd,
+        baseline_proc=baseline_proc,
+        baseline_cmd=baseline_cmd,
+        extra={"cleanup": cleanup},
+    )
 
     # --- Read the baseline-reported result (baseline's perspective) ---
     if not result_file.exists():
@@ -306,6 +542,16 @@ def run_eval(
     }
     (RESULTS_DIR / f"{label}.json").write_text(
         json.dumps(out, indent=2), encoding="utf-8"
+    )
+    write_process_owner_status(
+        label=label,
+        stage="result-written",
+        command=owner_command,
+        fouler_proc=fouler_proc,
+        fouler_cmd=fouler_cmd,
+        baseline_proc=baseline_proc,
+        baseline_cmd=baseline_cmd,
+        extra={"cleanup": cleanup, "result": out},
     )
     print(f"[eval:{label}] fouler {fouler_wins}/{n} = {fouler_wr:.1%} "
           f"(Wilson LCB {lcb:.1%})")

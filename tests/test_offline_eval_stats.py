@@ -1,6 +1,7 @@
 """Unit tests for the offline-eval acceptance statistics (the real gate's math)."""
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -64,3 +65,58 @@ def test_resolve_fouler_python_skips_eval_venv_without_runtime_imports(monkeypat
     monkeypatch.setattr(offline_eval, "_probe_fouler_python", fake_probe)
 
     assert offline_eval.resolve_fouler_python() == ["runtime-python"]
+
+
+def test_build_eval_env_disables_discord_battle_result_queue(monkeypatch):
+    monkeypatch.setenv("FOULER_BATTLE_RESULT_QUEUE", "1")
+
+    env = offline_eval.build_eval_env(
+        label="frozen",
+        showdown_port=8765,
+        search_time_ms=250,
+        extra_env=None,
+    )
+
+    assert env["FOULER_OFFLINE_EVAL"] == "1"
+    assert env["FOULER_BATTLE_RESULT_QUEUE"] == "0"
+    assert env["FOULER_OFFLINE_EVAL_QUEUE_EVENTS"] == "0"
+    assert env["DISCORD_BATTLES_WEBHOOK_URL"] == ""
+    assert env["EVENT_QUEUE_FILE"].endswith("frozen-events_queue.json")
+
+
+def test_build_eval_env_allows_explicit_queue_override():
+    env = offline_eval.build_eval_env(
+        label="candidate",
+        showdown_port=8765,
+        search_time_ms=250,
+        extra_env={"FOULER_BATTLE_RESULT_QUEUE": "1"},
+    )
+
+    assert env["FOULER_BATTLE_RESULT_QUEUE"] == "1"
+
+
+def test_process_owner_payload_records_git_and_child_processes(monkeypatch):
+    monkeypatch.setattr(
+        offline_eval,
+        "current_git_metadata",
+        lambda: {
+            "head": "e4315275d6e12b126ecf0fadd433fbad5134b0b0",
+            "shortHead": "e4315275",
+            "dirty": False,
+        },
+    )
+    fake_proc = SimpleNamespace(pid=1234, poll=lambda: None, args=["py", "-3", "run.py"])
+
+    payload = offline_eval._build_process_owner_payload(
+        label="frozen",
+        stage="fouler-started",
+        command=["python", "infrastructure/offline_eval.py", "--label", "frozen"],
+        fouler_proc=fake_proc,
+        fouler_cmd=["py", "-3", "run.py"],
+    )
+
+    assert payload["schemaVersion"] == "fouler-play-offline-eval-process-owner/v1"
+    assert payload["git"]["shortHead"] == "e4315275"
+    assert payload["processes"]["offlineEval"]["command"].endswith("--label frozen")
+    assert payload["processes"]["fouler"]["pid"] == 1234
+    assert payload["processes"]["fouler"]["running"] is True
