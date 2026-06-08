@@ -48,6 +48,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = PROJECT_ROOT / "eval_results" / "offline"
+OFFLINE_RUNNER_SCRIPT = PROJECT_ROOT / "infrastructure" / "offline_eval_runner.py"
 VENV_PY = PROJECT_ROOT / ".venv-eval" / "Scripts" / "python.exe"
 if not VENV_PY.exists():
     VENV_PY = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
@@ -158,6 +159,8 @@ def build_eval_env(
     env["LOSS_TRIGGERED_DRAIN"] = "0"  # play all N battles regardless of losses
     env["MAX_CONCURRENT_BATTLES"] = "1"
     env["FOULER_OFFLINE_EVAL"] = "1"
+    env["FOULER_OFFLINE_EVAL_LABEL"] = label
+    env["FOULER_OFFLINE_BATTLE_STATS_FILE"] = str(RESULTS_DIR / f"{label}-battle_stats.json")
     # Offline eval has no Discord transport and uses --save-replay never, so
     # battle-result queue events only create unpostable replay backlog.
     env["FOULER_BATTLE_RESULT_QUEUE"] = "0"
@@ -173,6 +176,41 @@ def build_eval_env(
     if extra_env:
         env.update({k: str(v) for k, v in extra_env.items()})
     return env
+
+
+def build_fouler_command(
+    *,
+    fouler_python: list[str],
+    ws_uri: str,
+    fouler_user: str,
+    fmt: str,
+    team: str,
+    battles: int,
+    search_time_ms: int,
+) -> list[str]:
+    return [
+        *fouler_python,
+        str(OFFLINE_RUNNER_SCRIPT),
+        "run.py",
+        "--websocket-uri",
+        ws_uri,
+        "--ps-username",
+        fouler_user,
+        "--bot-mode",
+        "accept_challenge",
+        "--pokemon-format",
+        fmt,
+        "--team-name",
+        team,
+        # Keep fouler alive a few battles past the baseline's challenge count so it
+        # never exits mid-series and strands a pending challenge.
+        "--run-count",
+        str(battles + 5),
+        "--search-time-ms",
+        str(search_time_ms),
+        "--save-replay",
+        "never",
+    ]
 
 
 def _utc_iso() -> str:
@@ -417,19 +455,15 @@ def run_eval(
 
     # --- Launch fouler in accept_challenge mode (the REAL engine) ---
     fouler_log = RESULTS_DIR / f"{label}-fouler.log"
-    fouler_cmd = [
-        *fouler_python, "run.py",
-        "--websocket-uri", ws_uri,
-        "--ps-username", fouler_user,
-        "--bot-mode", "accept_challenge",
-        "--pokemon-format", fmt,
-        "--team-name", team,
-        # Keep fouler alive a few battles past the baseline's challenge count so it
-        # never exits mid-series and strands a pending challenge.
-        "--run-count", str(battles + 5),
-        "--search-time-ms", str(search_time_ms),
-        "--save-replay", "never",
-    ]
+    fouler_cmd = build_fouler_command(
+        fouler_python=fouler_python,
+        ws_uri=ws_uri,
+        fouler_user=fouler_user,
+        fmt=fmt,
+        team=team,
+        battles=battles,
+        search_time_ms=search_time_ms,
+    )
     print(f"[eval:{label}] starting fouler: {' '.join(fouler_cmd)}")
     with open(fouler_log, "w", encoding="utf-8") as flog:
         fouler_proc = subprocess.Popen(
