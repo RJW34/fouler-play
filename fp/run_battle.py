@@ -488,9 +488,11 @@ async def resolve_public_replay_url(
     replay_url: str | None,
     max_attempts: int | None = None,
     delay_seconds: float | None = None,
+    allow_battle_tag_fallback: bool = False,
 ) -> str | None:
     """Poll for a just-uploaded public replay URL without relying on later events."""
-    replay_id = public_replay_id_candidate(replay_url or battle_tag)
+    replay_source = replay_url or (battle_tag if allow_battle_tag_fallback else None)
+    replay_id = public_replay_id_candidate(replay_source)
     if not replay_id:
         return None
 
@@ -1007,11 +1009,10 @@ def replay_handoff_fields(
 ) -> dict[str, object]:
     """Preserve replay evidence even when public upload verification lags."""
 
-    replay_id = public_replay_id_candidate(verified_replay_url or replay_url or battle_tag)
+    replay_id = public_replay_id_candidate(verified_replay_url or replay_url) or None
     candidate_url = (
         verified_replay_url
         or replay_url
-        or (f"https://replay.pokemonshowdown.com/{replay_id}" if replay_id else None)
     )
     verified = bool(verified_replay_url)
     if verified:
@@ -2737,8 +2738,6 @@ async def pokemon_battle(
                 # Save replay JSON locally immediately (before PS expires it)
                 if replay_url:
                     _replay_save_id = _normalize_replay_id(replay_url.split("/")[-1])
-                elif battle_tag:
-                    _replay_save_id = _normalize_replay_id(battle_tag)
                 else:
                     _replay_save_id = None
                 if _replay_save_id:

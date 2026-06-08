@@ -69,12 +69,21 @@ async def main():
     # race where a challenge is issued before the bot is listening (which would
     # otherwise block send_challenges forever).
     sent = 0
-    for i in range(args.battles):
+    while sent < args.battles:
         # Wait until fouler has finished the previous battle and is idle again.
+        previous_finished = player.n_finished_battles
         for _ in range(int(args.per_battle_timeout)):
-            if player.n_finished_battles >= i:
+            if player.n_finished_battles >= sent:
                 break
             await asyncio.sleep(1)
+        if player.n_finished_battles < sent:
+            print(
+                f"[baseline] previous battle did not finish within "
+                f"{args.per_battle_timeout}s; finished={player.n_finished_battles} "
+                f"sent={sent}",
+                flush=True,
+            )
+            break
         try:
             await asyncio.wait_for(
                 player.send_challenges(args.opponent, n_challenges=1),
@@ -82,10 +91,18 @@ async def main():
             )
             sent += 1
         except asyncio.TimeoutError:
-            print(f"[baseline] challenge {i} timed out; bot may have exited", flush=True)
+            if player.n_finished_battles > previous_finished:
+                print(
+                    f"[baseline] battle finished while challenge {sent} was pending; "
+                    "retrying after settle",
+                    flush=True,
+                )
+                await asyncio.sleep(1.5)
+                continue
+            print(f"[baseline] challenge {sent} timed out; bot may have exited", flush=True)
             break
         except Exception as e:
-            print(f"[baseline] challenge {i} error: {e}", flush=True)
+            print(f"[baseline] challenge {sent} error: {e}", flush=True)
             break
         await asyncio.sleep(1.5)  # settle: let fouler re-enter accept state
 
