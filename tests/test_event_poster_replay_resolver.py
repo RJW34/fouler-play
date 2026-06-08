@@ -146,14 +146,27 @@ def test_event_poster_resolves_stale_pending_replay_before_quarantine(monkeypatc
     monkeypatch.setattr(event_poster, "_replay_json_is_live", fake_replay_json_is_live)
     monkeypatch.setattr(event_poster, "post_to_discord", fake_post_to_discord)
 
-    assert event_poster.process_one_event() is True
+    assert event_poster.process_one_event() is False
 
     queue_after = json.loads(queue_file.read_text(encoding="utf-8"))
-    posted = posted_events[0]
+    archive = json.loads((truth_dir / "discord-backlog-archive.json").read_text(encoding="utf-8"))
+    delivery = json.loads((truth_dir / "discord-delivery.json").read_text(encoding="utf-8"))
 
     assert probes == [REPLAY_ID]
-    assert queue_after[0]["status"] == "posted"
-    assert queue_after[0]["replay_resolved_from_stale_backlog"] is True
-    assert posted["replay_status"] == "public"
-    assert posted["proof"]["replay"]["url"] == PUBLIC_REPLAY_URL
-    assert not (truth_dir / "discord-backlog-archive.json").exists()
+    assert posted_events == []
+    assert queue_after == []
+    assert archive["reason"] == "stale-battle-result-quarantined-before-live-transport"
+    assert archive["archivedEventCount"] == 1
+    assert archive["archivedEventTypes"] == {"battle_result": 1}
+    assert archive["archivedBattleResultCount"] == 1
+    assert archive["liveDiscordMessagesSent"] is False
+    assert archive["archivalDisposition"] == "stale-pending-events-expired-locally-not-sent"
+    assert archive["events"][0]["eventType"] == "battle_result"
+    assert archive["events"][0]["statusBeforeArchive"] == "pending"
+    assert archive["events"][0]["replayStatus"] == "public"
+    assert archive["events"][0]["publicReplayId"] == REPLAY_ID
+    assert delivery["status"] == "blocked"
+    assert delivery["errorCode"] == "stale_battle_result_quarantined"
+    assert delivery["queue"]["pending"] == 0
+    assert delivery["queue"]["pendingBattleResults"] == 0
+    assert any("late live Discord posting is withheld" in blocker for blocker in delivery["blockers"])

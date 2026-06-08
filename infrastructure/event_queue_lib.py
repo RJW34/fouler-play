@@ -68,6 +68,7 @@ STATUS_EXPIRED = "expired"
 # Default expiry: 10 minutes
 DEFAULT_EXPIRY_SEC = 600
 MAX_RETRIES = 3
+BATTLE_RESULT_EVENT_TYPE = "battle_result"
 QUEUE_LOCK_RETRY_ATTEMPTS = int(os.getenv("EVENT_QUEUE_LOCK_RETRY_ATTEMPTS", "8"))
 QUEUE_LOCK_RETRY_DELAY_SEC = float(os.getenv("EVENT_QUEUE_LOCK_RETRY_DELAY_SEC", "0.05"))
 
@@ -197,6 +198,18 @@ def _battle_ids_for_archive(event: dict) -> list[str]:
 
 def _archive_event_summary(event: dict, *, now: float) -> dict[str, object]:
     content = str(event.get("content") or "")
+    proof = event.get("proof") if isinstance(event.get("proof"), dict) else {}
+    replay = proof.get("replay") if isinstance(proof.get("replay"), dict) else {}
+    replay_status = event.get("replay_status") or replay.get("status")
+    replay_id = public_replay_id_candidate(
+        event.get("replay_id")
+        or replay.get("id")
+        or replay.get("url")
+        or event.get("verified_replay_url")
+        or event.get("replay_url")
+        or event.get("raw_replay_url")
+        or event.get("battle_id")
+    )
     proof_readiness = event.get("proof_readiness") if isinstance(event.get("proof_readiness"), dict) else {}
     return {
         "eventIdHash": _event_id_hash(event.get("id")),
@@ -206,6 +219,8 @@ def _archive_event_summary(event: dict, *, now: float) -> dict[str, object]:
         "timestamp": event.get("timestamp"),
         "ageSeconds": round(max(0.0, now - _event_timestamp(event, now)), 3),
         "battleIds": _battle_ids_for_archive(event),
+        "replayStatus": str(replay_status)[:80] if replay_status else None,
+        "publicReplayId": replay_id or None,
         "proofReadinessStatus": str(proof_readiness.get("status") or "unknown"),
         "hasStructuredProof": isinstance(event.get("proof"), dict) and bool(event.get("proof")),
         "hasStructuredAnalysis": isinstance(event.get("analysis"), dict) and bool(event.get("analysis")),
@@ -516,7 +531,7 @@ def mark_failed(event_id: str, error: str = "") -> bool:
 
 
 def expire_old_events(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> int:
-    """Archive then expire pending events older than max_age_sec. Returns count expired."""
+    """Archive then expire pending non-battle events older than max_age_sec. Returns count expired."""
     now = time.time()
 
     def _do_expire(f):
@@ -526,6 +541,7 @@ def expire_old_events(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> int:
             for ev in events
             if isinstance(ev, dict)
             and ev.get("status") == STATUS_PENDING
+            and ev.get("event_type") != BATTLE_RESULT_EVENT_TYPE
             and (now - _event_timestamp(ev, now)) > max_age_sec
         ]
         if not stale_events:
@@ -562,6 +578,57 @@ def expire_old_events(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> int:
         return len(stale_events)
 
     return _with_lock(_do_expire)
+
+
+def quarantine_stale_battle_results(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> int:
+    """Archive and remove stale pending battle_result events from the live transport queue."""
+    now = time.time()
+    reason = "stale-battle-result-quarantined-before-live-transport"
+
+    def _do_quarantine(f):
+        events = _read_queue_locked(f)
+        stale_events = [
+            ev
+            for ev in events
+            if isinstance(ev, dict)
+            and ev.get("status") == STATUS_PENDING
+            and ev.get("event_type") == BATTLE_RESULT_EVENT_TYPE
+            and (now - _event_timestamp(ev, now)) > max_age_sec
+        ]
+        if not stale_events:
+            return 0
+        _write_backlog_archive(
+            events,
+            stale_events,
+            now=now,
+            max_age_sec=max_age_sec,
+            reason=reason,
+        )
+        stale_event_ids = {id(ev) for ev in stale_events}
+        for ev in stale_events:
+            if ev["status"] == STATUS_PENDING:
+                ev["status"] = STATUS_EXPIRED
+                ev["expired_at"] = _iso_utc(now)
+                ev["expired_reason"] = reason
+                ev["archival_disposition"] = "local-proof-quarantine-not-sent"
+                logger.info(
+                    "Archived and quarantined stale battle_result event: id_hash=%s (age=%.0fs)",
+                    _event_id_hash(ev.get("id")),
+                    now - _event_timestamp(ev, now),
+                )
+        compacted_events = [
+            ev
+            for ev in events
+            if not (
+                isinstance(ev, dict)
+                and id(ev) in stale_event_ids
+                and ev.get("status") == STATUS_EXPIRED
+            )
+        ]
+        _write_queue_locked(f, compacted_events)
+        return len(stale_events)
+
+    return _with_lock(_do_quarantine)
 
 
 def cleanup_queue(keep_last: int = 200) -> int:
