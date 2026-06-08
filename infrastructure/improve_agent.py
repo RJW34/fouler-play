@@ -916,9 +916,10 @@ def offline_eval_gate() -> tuple[bool, dict]:
             "venv_python_exists": venv_py.exists(),
             "eval_script": str(eval_script),
             "venv_python": str(venv_py),
+            "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
         }
         print("[AGENT] ERROR: offline eval harness/venv missing; eval gate FAIL-CLOSED "
-              "(install .venv-eval + local pokemon-showdown to enable the real gate).")
+              "(run infrastructure/offline_eval_readiness.py --require-ready for provisioning proof).")
         return False, detail
 
     try:
@@ -933,7 +934,12 @@ def offline_eval_gate() -> tuple[bool, dict]:
         )
     except Exception as exc:
         print(f"[AGENT] ERROR: eval venv python is unusable; eval gate FAIL-CLOSED: {exc}")
-        return False, {"error": "eval_python_unusable", "venv_python": str(venv_py), "detail": str(exc)}
+        return False, {
+            "error": "eval_python_unusable",
+            "venv_python": str(venv_py),
+            "detail": str(exc),
+            "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
+        }
     if probe.returncode != 0:
         print("[AGENT] ERROR: eval venv python failed --version; eval gate FAIL-CLOSED.")
         return False, {
@@ -941,6 +947,7 @@ def offline_eval_gate() -> tuple[bool, dict]:
             "venv_python": str(venv_py),
             "returncode": probe.returncode,
             "stderr": (probe.stderr or "")[-500:],
+            "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
         }
 
     # Run the candidate arm.

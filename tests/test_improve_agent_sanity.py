@@ -124,6 +124,7 @@ def test_offline_eval_gate_fails_closed_when_harness_missing(monkeypatch, tmp_pa
 
     assert accepted is False
     assert detail["error"] == "eval_harness_unavailable"
+    assert detail["readiness_command"].endswith("infrastructure/offline_eval_readiness.py --require-ready")
 
 
 def test_improve_agent_requires_battle_linked_evidence():
