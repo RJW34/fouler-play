@@ -1,6 +1,7 @@
 import importlib
 import builtins
 import json
+import os
 import socket
 import sys
 import time
@@ -384,6 +385,48 @@ def test_expire_old_events_archives_before_cleanup_can_drop_stale_events(monkeyp
     assert archive["archivedEventTypes"] == {"autoresearch_summary": 1, "battle_result": 1}
     assert queue_after == []
     assert archive_files
+
+
+def test_backlog_archive_retention_prunes_oldest_timestamped_archives(monkeypatch, tmp_path):
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text(
+        json.dumps(
+            [
+                {"id": "event-old-1", "timestamp": 1, "event_type": "battle_result", "status": "pending", "retry_count": 0},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    truth_dir = tmp_path / "devstream" / "truth"
+    archive_dir = tmp_path / "logs" / "discord-events"
+    archive_dir.mkdir(parents=True)
+    old_archives = [
+        archive_dir / "backlog-archive-20250101T000001Z.json",
+        archive_dir / "backlog-archive-20250101T000002Z.json",
+        archive_dir / "backlog-archive-20250101T000003Z.json",
+    ]
+    for index, archive_path in enumerate(old_archives, start=1):
+        archive_path.write_text("{}", encoding="utf-8")
+        os.utime(archive_path, (index, index))
+
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setattr(event_queue_lib, "TRUTH_DIR", truth_dir)
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_DIR", archive_dir)
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_LATEST", truth_dir / "discord-backlog-archive.json")
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_KEEP_LAST", 2)
+
+    assert event_queue_lib.expire_old_events(600) == 1
+
+    archive_files = sorted(archive_dir.glob("backlog-archive-*.json"))
+    latest = json.loads((truth_dir / "discord-backlog-archive.json").read_text(encoding="utf-8"))
+
+    assert len(archive_files) == 2
+    assert not old_archives[0].exists()
+    assert not old_archives[1].exists()
+    assert old_archives[2].exists()
+    assert latest["archivedEventCount"] == 1
 
 
 def test_event_poster_validates_autoresearch_events_before_discord():
