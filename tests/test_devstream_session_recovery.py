@@ -712,6 +712,39 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
     assert "--continuous" not in commands[2]
 
 
+def test_supervisor_cycle_caps_legacy_unbounded_run_count(monkeypatch):
+    commands = []
+
+    monkeypatch.setenv(devstream_session.RUN_COUNT_CAP_ENV, "7")
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=1000000,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+    start_command = commands[-1]
+
+    assert payload["requestedRunCount"] == 1000000
+    assert payload["effectiveRunCount"] == 7
+    assert start_command[start_command.index("--run-count") + 1] == "7"
+
+
 def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
     commands = []
 
@@ -834,6 +867,36 @@ def test_supervisor_auto_improve_accepts_env_sentinel():
 
     assert enabled is True
     assert reason == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
+
+
+def test_auto_improve_supervisor_gets_default_cycle_lease():
+    args = argparse.Namespace(skip_improve=False, enable_auto_improve=True, max_cycles=0)
+
+    limit, reason = devstream_session.supervisor_cycle_limit(args, {})
+
+    assert limit == devstream_session.DEFAULT_AUTO_IMPROVE_MAX_CYCLES
+    assert reason == "auto-improve lease via --enable-auto-improve"
+
+
+def test_auto_improve_supervisor_lease_allows_explicit_cycle_override():
+    args = argparse.Namespace(skip_improve=False, enable_auto_improve=True, max_cycles=0)
+
+    limit, reason = devstream_session.supervisor_cycle_limit(
+        args,
+        {devstream_session.AUTO_IMPROVE_MAX_CYCLES_ENV: "2"},
+    )
+
+    assert limit == 2
+    assert reason == "auto-improve lease via --enable-auto-improve"
+
+
+def test_supervisor_explicit_max_cycles_wins_over_auto_improve_lease():
+    args = argparse.Namespace(skip_improve=False, enable_auto_improve=True, max_cycles=4)
+
+    limit, reason = devstream_session.supervisor_cycle_limit(args, {})
+
+    assert limit == 4
+    assert reason == "--max-cycles"
 
 
 def test_supervisor_commands_propagate_auto_improve_to_task_installer():
