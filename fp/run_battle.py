@@ -144,6 +144,23 @@ from infrastructure.discord_reporting import (
 
 logger = logging.getLogger(__name__)
 
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        return default
+
+
 # Blacklist for dead battles (forcibly terminated due to timeout)
 # Prevents re-claiming the same stuck battle immediately after termination
 _dead_battle_blacklist: "OrderedDict[str, float]" = OrderedDict()
@@ -190,6 +207,8 @@ REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
+REPLAY_UPLOAD_RESOLVE_ATTEMPTS = max(1, _env_int("REPLAY_UPLOAD_RESOLVE_ATTEMPTS", 4))
+REPLAY_UPLOAD_RESOLVE_DELAY_SEC = max(0.0, _env_float("REPLAY_UPLOAD_RESOLVE_DELAY_SEC", 1.0))
 DEAD_BATTLE_BLACKLIST_MAX = max(100, int(os.getenv("DEAD_BATTLE_BLACKLIST_MAX", "2000")))
 
 # Hard battle timeout (seconds). 0 disables forced battle termination.
@@ -435,13 +454,13 @@ def _normalize_replay_id(battle_id: str) -> str:
     return tag
 
 
-async def _replay_exists(replay_id: str) -> bool:
+async def _replay_exists(replay_id: str, *, use_cache: bool = True) -> bool:
     if not replay_id:
         return False
     now = time.time()
     _prune_replay_cache(now)
     cached = _replay_cache.get(replay_id)
-    if cached and (now - float(cached.get("checked", 0.0))) < REPLAY_CHECK_TTL_SEC:
+    if use_cache and cached and (now - float(cached.get("checked", 0.0))) < REPLAY_CHECK_TTL_SEC:
         return bool(cached.get("exists", False))
     url = f"https://replay.pokemonshowdown.com/{replay_id}.json"
     timeout = aiohttp.ClientTimeout(total=REPLAY_CHECK_TIMEOUT_SEC)
@@ -461,6 +480,35 @@ async def _replay_exists(replay_id: str) -> bool:
     _replay_cache[replay_id] = {"exists": exists, "checked": now}
     _prune_replay_cache(now)
     return exists
+
+
+async def resolve_public_replay_url(
+    *,
+    battle_tag: str | None,
+    replay_url: str | None,
+    max_attempts: int | None = None,
+    delay_seconds: float | None = None,
+) -> str | None:
+    """Poll for a just-uploaded public replay URL without relying on later events."""
+    replay_id = public_replay_id_candidate(replay_url or battle_tag)
+    if not replay_id:
+        return None
+
+    attempts = max(1, REPLAY_UPLOAD_RESOLVE_ATTEMPTS if max_attempts is None else max_attempts)
+    delay = max(0.0, REPLAY_UPLOAD_RESOLVE_DELAY_SEC if delay_seconds is None else delay_seconds)
+    for attempt in range(1, attempts + 1):
+        # Force refresh so a cached 404 from the first upload check does not
+        # suppress the bounded retry window.
+        if await _replay_exists(replay_id, use_cache=False):
+            return f"https://replay.pokemonshowdown.com/{replay_id}"
+        if attempt < attempts and delay > 0:
+            await asyncio.sleep(delay)
+    logger.info(
+        "Replay public upload still pending for %s after %d resolver attempt(s)",
+        replay_id,
+        attempts,
+    )
+    return None
 
 
 async def _fetch_elo(username: str, fmt: str = "gen9ou") -> tuple:
@@ -949,6 +997,37 @@ def _log_battle_removal(battle_tag: str, reason: str):
     _concluded_battles.move_to_end(battle_tag)
     while len(_concluded_battles) > _CONCLUDED_BATTLES_MAX:
         _concluded_battles.popitem(last=False)  # FIFO: evict oldest, not arbitrary
+
+
+def replay_handoff_fields(
+    *,
+    battle_tag: str | None,
+    replay_url: str | None,
+    verified_replay_url: str | None = None,
+) -> dict[str, object]:
+    """Preserve replay evidence even when public upload verification lags."""
+
+    replay_id = public_replay_id_candidate(verified_replay_url or replay_url or battle_tag)
+    candidate_url = (
+        verified_replay_url
+        or replay_url
+        or (f"https://replay.pokemonshowdown.com/{replay_id}" if replay_id else None)
+    )
+    verified = bool(verified_replay_url)
+    if verified:
+        status = "public"
+    elif replay_id or candidate_url:
+        status = "pending-public-upload"
+    else:
+        status = "absent"
+    return {
+        "replay_id": replay_id,
+        "replay_url": candidate_url,
+        "replay_status": status,
+        "replay_public_verified": verified,
+        "raw_replay_url": replay_url,
+        "verified_replay_url": verified_replay_url,
+    }
 
 
 async def update_active_battles_file():
@@ -2669,10 +2748,19 @@ async def pokemon_battle(
 
                 # Retrieve pre-battle ELO for delta display
                 _elo_before_val = _elo_before_cache.pop(battle_tag, None)
-                _discord_replay_url = None
-                _discord_replay_id = public_replay_id_candidate(replay_url or battle_tag)
-                if _discord_replay_id and await _replay_exists(_discord_replay_id):
-                    _discord_replay_url = f"https://replay.pokemonshowdown.com/{_discord_replay_id}"
+                _discord_replay_url = await resolve_public_replay_url(
+                    battle_tag=battle_tag,
+                    replay_url=replay_url,
+                    max_attempts=None if replay_url else 1,
+                    delay_seconds=None if replay_url else 0,
+                )
+                _replay_handoff = replay_handoff_fields(
+                    battle_tag=battle_tag,
+                    replay_url=replay_url,
+                    verified_replay_url=_discord_replay_url,
+                )
+                _queue_replay_url = _replay_handoff.get("replay_url")
+                _queue_replay_status = str(_replay_handoff.get("replay_status") or "absent")
 
                 elo_after = await _post_battle_to_discord(
                     battle_tag=battle_tag,
@@ -2762,6 +2850,23 @@ async def pokemon_battle(
                 )
                 battle_end_event_sent = True
 
+                if not _replay_handoff.get("replay_public_verified"):
+                    _late_replay_url = await resolve_public_replay_url(
+                        battle_tag=battle_tag,
+                        replay_url=replay_url,
+                        max_attempts=1,
+                        delay_seconds=0,
+                    )
+                    if _late_replay_url:
+                        _discord_replay_url = _late_replay_url
+                        _replay_handoff = replay_handoff_fields(
+                            battle_tag=battle_tag,
+                            replay_url=replay_url,
+                            verified_replay_url=_discord_replay_url,
+                        )
+                        _queue_replay_url = _replay_handoff.get("replay_url")
+                        _queue_replay_status = str(_replay_handoff.get("replay_status") or "absent")
+
                 # Queue battle result event for Discord event poster
                 try:
                     _showdown_accts_ev = os.getenv(
@@ -2819,7 +2924,7 @@ async def pokemon_battle(
                             f"battle result {_result_str} vs {opponent_name}",
                             f"Battle {battle_tag} ended {_result_str} against {opponent_name}.",
                             "Operator-facing battle posts should immediately show whether the bot is climbing through repeatable play, variance, or an operational failure.",
-                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={_discord_replay_url or ''}",
+                            f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={_queue_replay_url or ''}; replay_status={_queue_replay_status}",
                             "Append replay or ladder delta if more context lands after posting.",
                             source="fp.run_battle",
                             battle_id=battle_tag,
@@ -2827,7 +2932,11 @@ async def pokemon_battle(
                             team_file=_team_name_ev or "unknown",
                             opponent=opponent_name,
                             turns=_turn_count_ev,
-                            replay_url=_discord_replay_url,
+                            replay_url=_queue_replay_url,
+                            replay_id=_replay_handoff.get("replay_id"),
+                            replay_status=_queue_replay_status,
+                            replay_public_verified=_replay_handoff.get("replay_public_verified"),
+                            raw_replay_url=_replay_handoff.get("raw_replay_url"),
                             elo_before=_elo_before_val,
                             elo_after=elo_after if 'elo_after' in locals() else None,
                             recent_record=_recent_summary,
