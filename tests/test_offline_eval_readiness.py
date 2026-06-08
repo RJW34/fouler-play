@@ -15,6 +15,41 @@ def _write_minimal_harness(root: Path) -> None:
     team.write_text("Corviknight @ Leftovers\n", encoding="utf-8")
 
 
+def _write_ready_eval_files(root: Path) -> None:
+    _write_minimal_harness(root)
+    venv_python = root / ".venv-eval" / "Scripts" / "python.exe"
+    venv_python.parent.mkdir(parents=True, exist_ok=True)
+    venv_python.write_text("# fake python for path proof\n", encoding="utf-8")
+    frozen = root / "eval_results" / "offline" / "frozen.json"
+    frozen.parent.mkdir(parents=True, exist_ok=True)
+    frozen.write_text(
+        json.dumps(
+            {
+                "label": "frozen",
+                "battles": 200,
+                "fouler_wins": 120,
+                "fouler_win_rate": 0.6,
+                "fouler_wilson_lcb": 0.53,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+class _DeadPidPsutil:
+    class NoSuchProcess(Exception):
+        pass
+
+    class AccessDenied(Exception):
+        pass
+
+    STATUS_ZOMBIE = "zombie"
+
+    @staticmethod
+    def Process(pid):
+        raise _DeadPidPsutil.NoSuchProcess(pid)
+
+
 def test_readiness_payload_reports_actionable_missing_harness(tmp_path):
     payload = offline_eval_readiness.build_readiness_payload(
         root=tmp_path,
@@ -36,24 +71,7 @@ def test_readiness_payload_reports_actionable_missing_harness(tmp_path):
 
 
 def test_readiness_payload_ready_with_eval_proof(tmp_path):
-    _write_minimal_harness(tmp_path)
-    venv_python = tmp_path / ".venv-eval" / "Scripts" / "python.exe"
-    venv_python.parent.mkdir(parents=True, exist_ok=True)
-    venv_python.write_text("# fake python for path proof\n", encoding="utf-8")
-    frozen = tmp_path / "eval_results" / "offline" / "frozen.json"
-    frozen.parent.mkdir(parents=True, exist_ok=True)
-    frozen.write_text(
-        json.dumps(
-            {
-                "label": "frozen",
-                "battles": 200,
-                "fouler_wins": 120,
-                "fouler_win_rate": 0.6,
-                "fouler_wilson_lcb": 0.53,
-            }
-        ),
-        encoding="utf-8",
-    )
+    _write_ready_eval_files(tmp_path)
 
     payload = offline_eval_readiness.build_readiness_payload(
         root=tmp_path,
@@ -68,6 +86,58 @@ def test_readiness_payload_ready_with_eval_proof(tmp_path):
     assert payload["paths"]["frozenBaseline"] == "eval_results\\offline\\frozen.json"
     assert "infrastructure\\offline_eval.py" in payload["commands"]["candidateEval"]
     assert "--battles 200" in payload["commands"]["candidateEval"]
+
+
+def test_readiness_payload_classifies_stale_bot_pid_as_cleanup_safe(tmp_path, monkeypatch):
+    _write_ready_eval_files(tmp_path)
+    (tmp_path / ".bot.pid").write_text("999999", encoding="utf-8")
+    monkeypatch.setattr(offline_eval_readiness, "psutil", _DeadPidPsutil)
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={},
+        run_import_check=False,
+        run_server_check=False,
+        run_prereq_check=False,
+    )
+
+    pid_check = next(check for check in payload["checks"] if check["name"] == "fouler bot pid lock")
+    assert payload["recursiveImprovementReady"] is True
+    assert pid_check["ok"] is True
+    assert pid_check["detail"]["state"] == "stale-dead-pid"
+    assert pid_check["detail"]["cleanupRecommended"] is True
+
+
+def test_readiness_payload_blocks_stale_running_eval_status_with_dead_server_pid(tmp_path, monkeypatch):
+    _write_ready_eval_files(tmp_path)
+    status = tmp_path / "eval_results" / "offline" / "frozen-200-status.json"
+    status.write_text(
+        json.dumps(
+            {
+                "serverPid": 29192,
+                "serverStopped": False,
+                "stage": "running-frozen-eval",
+                "updatedAt": "2026-06-08T05:18:44-04:00",
+            }
+        ),
+        encoding="utf-16",
+    )
+    monkeypatch.setattr(offline_eval_readiness, "psutil", _DeadPidPsutil)
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={},
+        run_import_check=False,
+        run_server_check=False,
+        run_prereq_check=False,
+    )
+
+    status_check = next(check for check in payload["checks"] if check["name"] == "offline eval status artifacts")
+    assert payload["recursiveImprovementReady"] is False
+    assert status_check["ok"] is False
+    assert status_check["detail"]["staleRunning"][0]["name"] == "frozen-200-status.json"
+    assert status_check["detail"]["staleRunning"][0]["serverProcess"]["status"] == "dead"
+    assert any("offline eval status artifacts" in blocker for blocker in payload["blockers"])
 
 
 def test_readiness_payload_honors_eval_env_overrides(tmp_path):

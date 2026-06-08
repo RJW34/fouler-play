@@ -14,10 +14,24 @@ import sys
 from pathlib import Path
 from typing import Mapping
 
+try:
+    import psutil  # type: ignore
+except ImportError:  # pragma: no cover - exercised on minimal environments
+    psutil = None
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_VERSION = "fouler-play-offline-eval-readiness/v1"
 FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
+RUNNING_STATUS_STAGES = {
+    "starting",
+    "starting-showdown",
+    "running-frozen-eval",
+    "running-candidate-eval",
+    "fouler-started",
+    "baseline-started",
+    "baseline-finished",
+}
 
 
 def _env_int(env: Mapping[str, str], name: str, default: int) -> int:
@@ -328,6 +342,164 @@ def _check_showdown_server(port: int) -> tuple[bool, dict[str, object]]:
         }
 
 
+def _read_json_file(path: Path) -> object | None:
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return None
+    for encoding in ("utf-8-sig", "utf-16", "utf-16-le", "utf-16-be"):
+        try:
+            return json.loads(raw.decode(encoding))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue
+    return None
+
+
+def read_pid_payload(path: Path) -> dict[str, object] | int | None:
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return None
+    if not raw:
+        return None
+    try:
+        if raw.startswith("{"):
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else None
+        return int(raw)
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def _process_state(pid: int | None) -> dict[str, object]:
+    if not pid:
+        return {"pid": pid, "running": False, "status": "missing-pid"}
+    if psutil is None:
+        return {"pid": pid, "running": None, "status": "psutil-unavailable"}
+    try:
+        proc = psutil.Process(int(pid))
+        status = proc.status() if hasattr(proc, "status") else ""
+        running = bool(proc.is_running()) and status != getattr(psutil, "STATUS_ZOMBIE", "zombie")
+        return {
+            "pid": int(pid),
+            "running": running,
+            "status": status or "running",
+            "cwd": proc.cwd(),
+            "commandSummary": " ".join(proc.cmdline()[:5]),
+        }
+    except psutil.NoSuchProcess:
+        return {"pid": int(pid), "running": False, "status": "dead"}
+    except psutil.AccessDenied:
+        return {"pid": int(pid), "running": None, "status": "access-denied"}
+    except Exception as exc:
+        return {"pid": int(pid), "running": None, "status": f"{type(exc).__name__}: {exc}"}
+
+
+def _pid_from_payload(payload: object) -> int | None:
+    if isinstance(payload, dict):
+        value = payload.get("pid")
+    else:
+        value = payload
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _check_bot_pid_lock(root: Path) -> tuple[bool, dict[str, object]]:
+    path = root / ".bot.pid"
+    detail: dict[str, object] = {
+        "pidFile": _relative(root, path),
+        "exists": path.exists(),
+    }
+    if not path.exists():
+        detail["state"] = "absent"
+        return True, detail
+
+    raw_payload = read_pid_payload(path)
+    pid = _pid_from_payload(raw_payload)
+    detail["pid"] = pid
+    if isinstance(raw_payload, dict):
+        detail["payloadStartedAt"] = raw_payload.get("startedAt") or raw_payload.get("started_at")
+        detail["payloadCommand"] = raw_payload.get("command")
+    if not pid:
+        detail["state"] = "stale-corrupt-pid-file"
+        detail["cleanupRecommended"] = True
+        return True, detail
+
+    state = _process_state(pid)
+    detail["process"] = state
+    if state.get("running") is False:
+        detail["state"] = "stale-dead-pid"
+        detail["cleanupRecommended"] = True
+        return True, detail
+    if state.get("running") is None:
+        detail["state"] = "uninspectable-pid"
+        return False, detail
+
+    command = str(state.get("commandSummary") or "").lower()
+    cwd = str(state.get("cwd") or "")
+    cwd_matches = bool(cwd) and os.path.abspath(cwd) == os.path.abspath(root)
+    is_fouler_runner = cwd_matches and (
+        "run.py" in command or "offline_eval_runner.py" in command
+    ) and (
+        "showdown" in command
+        or "search_ladder" in command
+        or "accept_challenge" in command
+        or "challenge_user" in command
+    )
+    detail["cwdMatchesRepo"] = cwd_matches
+    detail["isFoulerRunner"] = is_fouler_runner
+    if is_fouler_runner:
+        detail["state"] = "live-fouler-runner"
+        return False, detail
+
+    detail["state"] = "stale-reused-pid"
+    detail["cleanupRecommended"] = True
+    return True, detail
+
+
+def _check_offline_status_artifacts(results_dir: Path) -> tuple[bool, dict[str, object]]:
+    artifacts: list[dict[str, object]] = []
+    stale_running: list[dict[str, object]] = []
+    if not results_dir.exists():
+        return True, {"resultsDir": str(results_dir), "exists": False, "artifacts": artifacts}
+
+    for path in sorted(results_dir.glob("*-status.json")):
+        parsed = _read_json_file(path)
+        artifact: dict[str, object] = {
+            "path": str(path),
+            "name": path.name,
+            "validJson": isinstance(parsed, dict),
+        }
+        if not isinstance(parsed, dict):
+            artifacts.append(artifact)
+            continue
+        stage = str(parsed.get("stage") or "").strip()
+        server_pid = _pid_from_payload(parsed.get("serverPid") or parsed.get("server_pid"))
+        artifact.update({
+            "stage": stage,
+            "serverPid": server_pid,
+            "serverStopped": parsed.get("serverStopped"),
+            "updatedAt": parsed.get("updatedAt") or parsed.get("updated_at"),
+        })
+        running_stage = stage in RUNNING_STATUS_STAGES or stage.startswith("running-")
+        if running_stage:
+            server_state = _process_state(server_pid)
+            artifact["serverProcess"] = server_state
+            server_stopped = parsed.get("serverStopped") is True or parsed.get("server_stopped") is True
+            if not server_stopped and server_state.get("running") is False:
+                stale_running.append(artifact)
+        artifacts.append(artifact)
+
+    return not stale_running, {
+        "resultsDir": str(results_dir),
+        "exists": True,
+        "artifacts": artifacts,
+        "staleRunning": stale_running,
+    }
+
+
 def _frozen_baseline_detail(path: Path, min_battles: int) -> tuple[bool, dict[str, object]]:
     if not path.exists():
         return False, {"exists": False}
@@ -379,6 +551,7 @@ def build_readiness_payload(
     venv_python = Path(config["venvPython"])
     team_file = Path(config["teamFile"])
     frozen_baseline = Path(config["frozenBaseline"])
+    results_dir = Path(config["resultsDir"])
     showdown_dir = Path(config["showdownDir"])
     showdown_package = Path(config["showdownPackage"])
     showdown_launcher = Path(config["showdownLauncher"])
@@ -413,6 +586,20 @@ def build_readiness_payload(
         team_file.exists(),
         _relative(root, team_file),
         f"set IMPROVE_AGENT_EVAL_TEAM to an existing team or restore {_relative(root, team_file)}",
+    )
+    pid_ok, pid_detail = _check_bot_pid_lock(root)
+    add_check(
+        "fouler bot pid lock",
+        pid_ok,
+        pid_detail,
+        "stop the live Fouler runner or clear an uninspectable .bot.pid before running offline eval",
+    )
+    status_ok, status_detail = _check_offline_status_artifacts(results_dir)
+    add_check(
+        "offline eval status artifacts",
+        status_ok,
+        status_detail,
+        "clear stale running eval status artifacts or rerun the frozen/candidate eval from a fresh sidecar",
     )
 
     if run_prereq_check:
@@ -537,6 +724,8 @@ def build_readiness_payload(
             ".venv-eval python can import poke_env and websockets",
             "Fouler runtime Python can import the run.py dependencies from requirements.txt",
             "a local no-security Pokemon Showdown server is reachable on EVAL_SHOWDOWN_PORT",
+            ".bot.pid is absent, stale-cleanable, or points to no live Fouler runner",
+            "eval_results/offline/*-status.json does not claim a running eval after its server PID has exited",
             "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",
             "eval_results/offline/frozen.json exists, meets IMPROVE_AGENT_EVAL_BATTLES, and contains label, battles, fouler_wins, fouler_win_rate, and fouler_wilson_lcb",
             "after an accepted candidate run, eval_results/offline/candidate.json and compare-frozen-vs-candidate.json provide the eval verdict consumed by improve_agent",

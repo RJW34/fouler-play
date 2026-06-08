@@ -122,8 +122,23 @@ class AutoResearcher:
             return []
         data = json.loads(self.battle_stats_path.read_text(encoding="utf-8"))
         battles = data.get("battles", [])
+        battles = [battle for battle in battles if isinstance(battle, dict) and not self._is_offline_eval_battle(battle)]
         battles.sort(key=lambda b: b.get("timestamp", ""))
         return battles
+
+    def _is_offline_eval_battle(self, battle: dict[str, Any]) -> bool:
+        """Return true for synthetic local eval battles that must not feed autoresearch."""
+        if battle.get("offline_eval") is True or battle.get("offlineEval") is True:
+            return True
+        fields = [
+            battle.get("source"),
+            battle.get("battle_source"),
+            battle.get("battleSource"),
+            battle.get("eval_label"),
+            battle.get("evalLabel"),
+        ]
+        text = " ".join(str(value).lower() for value in fields if value is not None)
+        return "offline_eval" in text or "offline-eval" in text or "offline eval" in text
 
     def load_battles(self) -> list[dict[str, Any]]:
         local_battles = self.load_battle_stats_battles()

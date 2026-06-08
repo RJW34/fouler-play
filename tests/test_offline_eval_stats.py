@@ -12,6 +12,12 @@ spec = importlib.util.spec_from_file_location(
 offline_eval = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(offline_eval)
 
+runner_spec = importlib.util.spec_from_file_location(
+    "offline_eval_runner", ROOT / "infrastructure" / "offline_eval_runner.py"
+)
+offline_eval_runner = importlib.util.module_from_spec(runner_spec)
+runner_spec.loader.exec_module(offline_eval_runner)
+
 
 def test_wilson_lower_bound_basic():
     # 100% over a tiny sample is NOT confidently > 0.5
@@ -78,10 +84,14 @@ def test_build_eval_env_disables_discord_battle_result_queue(monkeypatch):
     )
 
     assert env["FOULER_OFFLINE_EVAL"] == "1"
+    assert env["FOULER_OFFLINE_EVAL_LABEL"] == "frozen"
     assert env["FOULER_BATTLE_RESULT_QUEUE"] == "0"
     assert env["FOULER_OFFLINE_EVAL_QUEUE_EVENTS"] == "0"
     assert env["DISCORD_BATTLES_WEBHOOK_URL"] == ""
     assert env["EVENT_QUEUE_FILE"].endswith("frozen-events_queue.json")
+    assert env["FOULER_OFFLINE_BATTLE_STATS_FILE"].replace("/", "\\").endswith(
+        "eval_results\\offline\\frozen-battle_stats.json"
+    )
 
 
 def test_build_eval_env_allows_explicit_queue_override():
@@ -93,6 +103,41 @@ def test_build_eval_env_allows_explicit_queue_override():
     )
 
     assert env["FOULER_BATTLE_RESULT_QUEUE"] == "1"
+
+
+def test_build_fouler_command_uses_offline_runner_with_run_py_sentinel():
+    cmd = offline_eval.build_fouler_command(
+        fouler_python=["python"],
+        ws_uri="ws://localhost:8765/showdown/websocket",
+        fouler_user="foulerEvalBot",
+        fmt="gen9ou",
+        team="gen9/ou/fat-team-1-stall",
+        battles=40,
+        search_time_ms=250,
+    )
+
+    assert cmd[:3] == ["python", str(offline_eval.OFFLINE_RUNNER_SCRIPT), "run.py"]
+    assert "--bot-mode" in cmd
+    assert "accept_challenge" in cmd
+    assert "--run-count" in cmd
+    assert cmd[cmd.index("--run-count") + 1] == "45"
+
+
+def test_offline_eval_runner_redirects_stats_file_away_from_live_battle_stats(tmp_path):
+    fake_run = SimpleNamespace(BATTLE_STATS_FILE=tmp_path / "battle_stats.json")
+
+    stats_path, run_argv = offline_eval_runner.configure_run_module(
+        fake_run,
+        ["run.py", "--bot-mode", "accept_challenge"],
+        root=tmp_path,
+        env={"FOULER_OFFLINE_BATTLE_STATS_FILE": "eval_results/offline/frozen-battle_stats.json"},
+    )
+
+    assert stats_path == tmp_path / "eval_results" / "offline" / "frozen-battle_stats.json"
+    assert fake_run.BATTLE_STATS_FILE == stats_path
+    assert stats_path != tmp_path / "battle_stats.json"
+    assert stats_path.parent.exists()
+    assert run_argv == ["run.py", "--bot-mode", "accept_challenge"]
 
 
 def test_process_owner_payload_records_git_and_child_processes(monkeypatch):
