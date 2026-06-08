@@ -27,6 +27,7 @@ Usage (inside PSWebsocketClient):
 
 import asyncio
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -43,6 +44,17 @@ PRIORITY_CHAT        = 5   # everything else
 
 # Minimum delay between consecutive sends (seconds)
 SEND_INTERVAL = 0.100  # 100 ms  →  max 10 msg/s
+
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        return default
+
+
+DEFAULT_MAX_QUEUE_SIZE = max(1, _env_int("FOULER_WS_SEND_QUEUE_MAX", 500))
 
 
 def _classify(message: str) -> int:
@@ -92,9 +104,10 @@ class WSSendQueue:
     same event loop (which is the fouler-play architecture).
     """
 
-    def __init__(self, send_interval: float = SEND_INTERVAL):
+    def __init__(self, send_interval: float = SEND_INTERVAL, max_queue_size: int | None = None):
         self._interval = send_interval
         self._pq: asyncio.PriorityQueue = asyncio.PriorityQueue()
+        self._max_queue_size = DEFAULT_MAX_QUEUE_SIZE if max_queue_size is None else max(1, max_queue_size)
         self._seq = 0
         self._task: asyncio.Task | None = None
         self._last_send_time: float = 0.0
@@ -106,7 +119,7 @@ class WSSendQueue:
             logger.info("WSSendQueue: sender task started (interval=%.0fms)", self._interval * 1000)
 
     async def stop(self):
-        """Drain remaining messages and stop the sender."""
+        """Cancel pending messages and stop the sender."""
         if self._task and not self._task.done():
             self._task.cancel()
             try:
@@ -114,6 +127,7 @@ class WSSendQueue:
             except asyncio.CancelledError:
                 pass
             self._task = None
+        self._cancel_pending_items()
         logger.info("WSSendQueue: sender task stopped")
 
     async def enqueue(self, websocket, message: str, priority: int | None = None) -> None:
@@ -134,6 +148,7 @@ class WSSendQueue:
 
         self._seq += 1
         item = _QueueItem(priority=priority, seq=self._seq, message=message, future=fut)
+        item.websocket = websocket  # type: ignore[attr-defined]
 
         queue_size = self._pq.qsize()
         if queue_size > 0:
@@ -142,54 +157,99 @@ class WSSendQueue:
                 priority, queue_size, message,
             )
 
-        await self._pq.put(item)
+        if queue_size >= self._max_queue_size:
+            self._drop_one_queued_item()
 
-        # Attach the live websocket reference so the sender can use it.
-        # We store it on the item after put() because item is immutable during
-        # the priority comparison, but we need to carry the ws reference.
-        item.websocket = websocket  # type: ignore[attr-defined]
+        await self._pq.put(item)
 
         # Wait for the sender to complete this message
         await fut
 
-    async def _sender_loop(self):
-        """Drain the priority queue, enforcing minimum inter-send delay."""
+    def _drop_one_queued_item(self) -> bool:
+        """Drop the oldest lowest-priority queued send and fail its waiter."""
+        items: list[_QueueItem] = []
         while True:
             try:
-                item: _QueueItem = await self._pq.get()
-            except asyncio.CancelledError:
-                # Cancel all pending futures so callers don't hang
-                while not self._pq.empty():
-                    try:
-                        leftover: _QueueItem = self._pq.get_nowait()
-                        if not leftover.future.done():
-                            leftover.future.cancel()
-                    except asyncio.QueueEmpty:
-                        break
-                raise
+                queued: _QueueItem = self._pq.get_nowait()
+                self._pq.task_done()
+                items.append(queued)
+            except asyncio.QueueEmpty:
+                break
 
-            # Enforce minimum delay since last send
-            now = time.monotonic()
-            gap = now - self._last_send_time
-            if gap < self._interval:
-                sleep_ms = (self._interval - gap) * 1000
-                logger.debug("WSSendQueue: throttle sleep %.1fms before send", sleep_ms)
-                await asyncio.sleep(self._interval - gap)
+        if not items:
+            return False
 
-            ws = getattr(item, "websocket", None)
+        drop_idx = max(
+            range(len(items)),
+            key=lambda idx: (items[idx].priority, -items[idx].seq),
+        )
+        dropped = items.pop(drop_idx)
+        if not dropped.future.done():
+            dropped.future.set_exception(
+                RuntimeError(
+                    f"WSSendQueue dropped queued message at capacity {self._max_queue_size}: "
+                    f"{dropped.message[:80]}"
+                )
+            )
+        for queued in items:
+            self._pq.put_nowait(queued)
+        logger.warning(
+            "WSSendQueue: dropped queued message priority=%d seq=%d at capacity=%d msg=%.80s",
+            dropped.priority,
+            dropped.seq,
+            self._max_queue_size,
+            dropped.message,
+        )
+        return True
+
+    def _cancel_pending_items(self) -> int:
+        """Cancel queued sends and balance PriorityQueue task accounting."""
+        cancelled = 0
+        while True:
             try:
-                if ws is not None:
-                    await ws.send(item.message)
-                    self._last_send_time = time.monotonic()
-                    logger.debug("WSSendQueue: sent priority=%d msg=%.80s", item.priority, item.message)
-                else:
-                    logger.warning("WSSendQueue: no websocket on item, skipping: %.80s", item.message)
-
-                if not item.future.done():
-                    item.future.set_result(None)
-            except Exception as exc:
-                logger.error("WSSendQueue: send error: %s", exc)
-                if not item.future.done():
-                    item.future.set_exception(exc)
-
+                leftover: _QueueItem = self._pq.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+            if not leftover.future.done():
+                leftover.future.cancel()
             self._pq.task_done()
+            cancelled += 1
+        return cancelled
+
+    async def _sender_loop(self):
+        """Drain the priority queue, enforcing minimum inter-send delay."""
+        try:
+            while True:
+                item: _QueueItem = await self._pq.get()
+                try:
+                    # Enforce minimum delay since last send
+                    now = time.monotonic()
+                    gap = now - self._last_send_time
+                    if gap < self._interval:
+                        sleep_ms = (self._interval - gap) * 1000
+                        logger.debug("WSSendQueue: throttle sleep %.1fms before send", sleep_ms)
+                        await asyncio.sleep(self._interval - gap)
+
+                    ws = getattr(item, "websocket", None)
+                    if ws is not None:
+                        await ws.send(item.message)
+                        self._last_send_time = time.monotonic()
+                        logger.debug("WSSendQueue: sent priority=%d msg=%.80s", item.priority, item.message)
+                    else:
+                        logger.warning("WSSendQueue: no websocket on item, skipping: %.80s", item.message)
+
+                    if not item.future.done():
+                        item.future.set_result(None)
+                except asyncio.CancelledError:
+                    if not item.future.done():
+                        item.future.cancel()
+                    raise
+                except Exception as exc:
+                    logger.error("WSSendQueue: send error: %s", exc)
+                    if not item.future.done():
+                        item.future.set_exception(exc)
+                finally:
+                    self._pq.task_done()
+        except asyncio.CancelledError:
+            self._cancel_pending_items()
+            raise
