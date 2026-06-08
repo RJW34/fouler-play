@@ -13,6 +13,62 @@ from fp.ws_rate_limiter import WSSendQueue, _classify
 logger = logging.getLogger(__name__)
 
 
+def _env_int(name, default):
+    try:
+        return int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        return default
+
+
+def _env_float(name, default):
+    try:
+        return float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        logger.warning("Invalid %s value; using default %s", name, default)
+        return default
+
+
+MAX_BATTLE_QUEUE_MESSAGES = max(1, _env_int("FOULER_BATTLE_QUEUE_MAX", 200))
+MAX_PENDING_BATTLE_MESSAGES = max(1, _env_int("FOULER_PENDING_BATTLE_MESSAGES_MAX", 80))
+MAX_GLOBAL_QUEUE_MESSAGES = max(1, _env_int("FOULER_GLOBAL_QUEUE_MAX", 500))
+REPLAY_UPLOAD_ATTEMPTS = max(1, _env_int("FOULER_REPLAY_UPLOAD_ATTEMPTS", 3))
+REPLAY_UPLOAD_RETRY_DELAY_SEC = max(0.0, _env_float("FOULER_REPLAY_UPLOAD_RETRY_DELAY_SEC", 1.0))
+
+
+def _pending_message_drop_index(messages):
+    """Prefer dropping non-request battle updates from pre-registration buffers."""
+    for idx, message in enumerate(messages):
+        if "|request|" not in message:
+            return idx
+    return 0
+
+
+def _append_bounded_pending_message(messages, message, limit=MAX_PENDING_BATTLE_MESSAGES):
+    """Append a pending battle message, evicting old low-value entries at capacity."""
+    dropped = None
+    while len(messages) >= limit:
+        drop_idx = _pending_message_drop_index(messages)
+        dropped = messages.pop(drop_idx)
+    messages.append(message)
+    return dropped
+
+
+def _put_bounded_nowait(queue, message, label):
+    """Put without allowing inactive consumers to grow queues forever."""
+    dropped = None
+    if queue.full():
+        try:
+            dropped = queue.get_nowait()
+            queue.task_done()
+        except asyncio.QueueEmpty:
+            dropped = None
+    queue.put_nowait(message)
+    if dropped is not None:
+        logger.warning("Dropped oldest %s message to keep queue bounded", label)
+    return dropped
+
+
 def _public_replay_id_from_ref(value):
     """Return the public replay id portion for a battle tag or replay URL."""
     if not value:
@@ -80,7 +136,7 @@ class PSWebsocketClient:
         self.pending_battle_messages = {}  # battle_tag -> list of msgs (pre-registration buffer)
         self.pending_battle_times = {}  # battle_tag -> first-seen timestamp
         self.pending_battle_owners = {}  # battle_tag -> worker_id that initiated search (or None)
-        self.global_queue = asyncio.Queue()  # for non-battle messages (login, search, etc.)
+        self.global_queue = asyncio.Queue(maxsize=MAX_GLOBAL_QUEUE_MESSAGES)  # for non-battle messages (login, search, etc.)
         self.dispatcher_task = None
         self._dispatcher_running = False
         self._reconnect_task = None  # Track reconnect task to prevent duplicates
@@ -260,9 +316,10 @@ class PSWebsocketClient:
                     routed = False
                     buffered_count = None
                     async with self._pending_lock:
+                        self._purge_stale_pending()
                         queue = self.battle_queues.get(battle_tag)
                         if queue is not None:
-                            queue.put_nowait(msg)
+                            _put_bounded_nowait(queue, msg, f"battle {battle_tag}")
                             routed = True
                         elif battle_tag in self._recently_finished:
                             # Stray message from a battle we just finished — discard
@@ -275,7 +332,15 @@ class PSWebsocketClient:
                                 # Capture the current search owner (if any) so the
                                 # same worker that started the search claims this battle.
                                 self.pending_battle_owners[battle_tag] = self._search_owner
-                            self.pending_battle_messages[battle_tag].append(msg)
+                            dropped = _append_bounded_pending_message(
+                                self.pending_battle_messages[battle_tag],
+                                msg,
+                            )
+                            if dropped is not None:
+                                logger.warning(
+                                    "Dropped oldest non-critical pending message for %s",
+                                    battle_tag,
+                                )
                             buffered_count = len(self.pending_battle_messages[battle_tag])
                     if routed:
                         logger.debug(f"Routed message to battle {battle_tag}")
@@ -285,7 +350,7 @@ class PSWebsocketClient:
                         )
                 else:
                     # Non-battle message (login responses, search updates, etc.)
-                    await self.global_queue.put(msg)
+                    _put_bounded_nowait(self.global_queue, msg, "global")
 
             except websockets.exceptions.ConnectionClosed:
                 logger.error("WebSocket connection closed in dispatcher")
@@ -311,14 +376,14 @@ class PSWebsocketClient:
         """
         async with self._pending_lock:
             if battle_tag not in self.battle_queues:
-                self.battle_queues[battle_tag] = asyncio.Queue()
+                self.battle_queues[battle_tag] = asyncio.Queue(maxsize=MAX_BATTLE_QUEUE_MESSAGES)
                 # Flush any messages that arrived before registration
                 if battle_tag in self.pending_battle_messages:
                     buffered = self.pending_battle_messages.pop(battle_tag)
                     self.pending_battle_times.pop(battle_tag, None)
                     self.pending_battle_owners.pop(battle_tag, None)
                     for msg in buffered:
-                        self.battle_queues[battle_tag].put_nowait(msg)
+                        _put_bounded_nowait(self.battle_queues[battle_tag], msg, f"battle {battle_tag}")
                     logger.info(f"Registered battle queue: {battle_tag} (flushed {len(buffered)} buffered messages)")
                 else:
                     logger.info(f"Registered battle queue: {battle_tag}")
@@ -427,9 +492,9 @@ class PSWebsocketClient:
                 self.pending_battle_owners.pop(battle_tag, None)
 
                 # Register the battle queue immediately
-                self.battle_queues[battle_tag] = asyncio.Queue()
+                self.battle_queues[battle_tag] = asyncio.Queue(maxsize=MAX_BATTLE_QUEUE_MESSAGES)
                 for msg in messages:
-                    self.battle_queues[battle_tag].put_nowait(msg)
+                    _put_bounded_nowait(self.battle_queues[battle_tag], msg, f"battle {battle_tag}")
 
                 logger.info(f"Claimed battle {battle_tag} (flushed {len(messages)} buffered messages)")
                 return battle_tag, messages
@@ -737,7 +802,9 @@ class PSWebsocketClient:
                             )
                             continue
 
-                        # Upload the replay to create the public URL
+                        # Upload the replay to create the public URL. Keep this
+                        # bounded because battle finalization should never loop
+                        # forever waiting on replay.pokemonshowdown.com.
                         upload_url = "https://play.pokemonshowdown.com/~~showdown/action.php"
                         post_data = {
                             "act": "uploadreplay",
@@ -745,19 +812,39 @@ class PSWebsocketClient:
                             "id": replay_id,
                         }
 
-                        resp = requests.post(upload_url, data=post_data, timeout=15)
+                        replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
+                        last_upload_error = None
+                        for attempt in range(1, REPLAY_UPLOAD_ATTEMPTS + 1):
+                            try:
+                                resp = requests.post(upload_url, data=post_data, timeout=15)
+                                if resp.status_code == 200:
+                                    logger.info(f"Replay saved: {replay_url}")
+                                    return replay_url
+                                last_upload_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                            except requests.RequestException as e:
+                                last_upload_error = str(e)
 
-                        if resp.status_code == 200:
-                            # Response should contain the replay URL or ID
-                            replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
-                            logger.info(f"Replay saved: {replay_url}")
-                            return replay_url
-                        else:
-                            logger.warning(f"Replay upload failed with status {resp.status_code}: {resp.text[:200]}")
-                            # Still return the URL - replay might exist anyway
-                            replay_url = f"https://replay.pokemonshowdown.com/{replay_id}"
-                            logger.info(f"Replay URL (upload may have failed): {replay_url}")
-                            return replay_url
+                            if attempt < REPLAY_UPLOAD_ATTEMPTS:
+                                logger.warning(
+                                    "Replay upload attempt %d/%d failed for %s: %s",
+                                    attempt,
+                                    REPLAY_UPLOAD_ATTEMPTS,
+                                    replay_id,
+                                    last_upload_error,
+                                )
+                                if REPLAY_UPLOAD_RETRY_DELAY_SEC > 0:
+                                    await asyncio.sleep(REPLAY_UPLOAD_RETRY_DELAY_SEC)
+
+                        logger.warning(
+                            "Replay upload failed after %d attempt(s) for %s: %s",
+                            REPLAY_UPLOAD_ATTEMPTS,
+                            replay_id,
+                            last_upload_error,
+                        )
+                        # Still return the candidate URL so downstream proof
+                        # keeps pending-public-upload semantics.
+                        logger.info(f"Replay URL (upload may have failed): {replay_url}")
+                        return replay_url
 
                     except (json.JSONDecodeError, KeyError, IndexError) as e:
                         logger.warning(f"Failed to parse savereplay response: {e}")
