@@ -8,7 +8,7 @@ Claude to write ONE targeted fix, applies it, runs tests, and commits
 if passing.  The ELO watchdog reverts if the fix hurts.
 
 Usage:
-    python infrastructure/improve_agent.py          # normal run
+    python infrastructure/improve_agent.py --enable-auto-improve
     python infrastructure/improve_agent.py --dry-run  # show what would change, don't apply
 """
 
@@ -96,6 +96,37 @@ LEGAL_COUNT_RE = re.compile(r"\blegal(?:Moves|Switches)=(\d+)\b")
 # watchdog has something to revert.
 BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
 DEPLOY_LOG_PATH = PROJECT_ROOT / "infrastructure" / "deploy_log.json"
+AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
+AUTO_PUSH_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_PUSH"
+PUSH_REMOTE_ENV = "IMPROVE_AGENT_PUSH_REMOTE"
+PUSH_BRANCH_ENV = "IMPROVE_AGENT_PUSH_BRANCH"
+TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+DEPLOY_WIN_RATE_SAMPLE_BATTLES = 30
+
+
+def env_flag_enabled(name: str) -> bool:
+    return str(os.getenv(name, "")).strip().lower() in TRUTHY_ENV_VALUES
+
+
+def auto_improve_enabled(cli_enabled: bool = False) -> bool:
+    return bool(cli_enabled or env_flag_enabled(AUTO_IMPROVE_SENTINEL))
+
+
+def auto_push_enabled(cli_enabled: bool = False) -> bool:
+    return bool(cli_enabled or env_flag_enabled(AUTO_PUSH_SENTINEL))
+
+
+def explicit_push_target(push_remote: str | None = None, push_branch: str | None = None) -> tuple[str, str]:
+    remote = (push_remote or os.getenv(PUSH_REMOTE_ENV) or "").strip()
+    branch = (push_branch or os.getenv(PUSH_BRANCH_ENV) or "").strip()
+    if not remote or not branch:
+        raise ValueError(
+            f"git push requires explicit --push-remote/--push-branch or "
+            f"{PUSH_REMOTE_ENV}/{PUSH_BRANCH_ENV}; no default push target is allowed"
+        )
+    if remote.lower() == "origin" and branch.lower() == "master":
+        raise ValueError("refusing unsafe push target origin master")
+    return remote, branch
 
 
 def load_guardrails() -> dict:
@@ -155,6 +186,17 @@ def games_since_last_deploy() -> int:
     return count
 
 
+def current_win_rate_snapshot(battles: list, sample_size: int = DEPLOY_WIN_RATE_SAMPLE_BATTLES) -> tuple[float | None, int]:
+    """Return a recent decisive-battle win-rate snapshot for deploy attribution."""
+    decisive = [b for b in battles if isinstance(b, dict) and b.get("result") in ("win", "loss")]
+    if sample_size > 0:
+        decisive = decisive[-sample_size:]
+    if not decisive:
+        return None, 0
+    wins = sum(1 for b in decisive if b.get("result") == "win")
+    return wins / len(decisive), len(decisive)
+
+
 def record_deploy(pre_commit: str, post_commit: str) -> None:
     """Append a deploy entry so elo_watchdog can attribute/revert and spacing is tracked."""
     try:
@@ -171,16 +213,23 @@ def record_deploy(pre_commit: str, post_commit: str) -> None:
         if battles:
             last = battles[-1]
             elo = last.get("elo", last.get("rating"))
+        win_rate_at_deploy, win_rate_sample = current_win_rate_snapshot(battles)
         log.append({
             "timestamp": datetime.now().isoformat(),
             "type": "deploy",
             "pre_commit": pre_commit or "unknown",
             "post_commit": post_commit or "unknown",
             "elo_at_deploy": elo,
+            "win_rate_at_deploy": win_rate_at_deploy,
+            "win_rate_sample_at_deploy": win_rate_sample,
             "source": "improve_agent",
         })
         DEPLOY_LOG_PATH.write_text(json.dumps(log, indent=2), encoding="utf-8")
-        print(f"[AGENT] Recorded deploy entry (post={str(post_commit)[:8]}, elo_at_deploy={elo}).")
+        wr_text = f"{win_rate_at_deploy:.1%}" if win_rate_at_deploy is not None else "unknown"
+        print(
+            f"[AGENT] Recorded deploy entry (post={str(post_commit)[:8]}, "
+            f"elo_at_deploy={elo}, win_rate_at_deploy={wr_text}, sample={win_rate_sample})."
+        )
     except Exception as e:
         print(f"[AGENT] WARN: failed to record deploy entry: {e}")
 
@@ -848,8 +897,8 @@ def offline_eval_gate() -> tuple[bool, dict]:
 
     Returns (accepted, detail). Requires a stored frozen baseline at
     eval_results/offline/frozen.json (produce it once with offline_eval.py).
-    If the eval harness is unavailable (no venv / no local server), the gate is
-    skipped with a loud warning rather than silently passing a change to live.
+    If the eval harness is unavailable or unusable, the gate fails closed rather
+    than silently passing a change to live.
     """
     import importlib.util
 
@@ -861,27 +910,70 @@ def offline_eval_gate() -> tuple[bool, dict]:
     if not venv_py.exists():
         venv_py = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
     if not eval_script.exists() or not venv_py.exists():
-        print("[AGENT] WARNING: offline eval harness/venv missing; eval gate SKIPPED "
+        detail = {
+            "error": "eval_harness_unavailable",
+            "eval_script_exists": eval_script.exists(),
+            "venv_python_exists": venv_py.exists(),
+            "eval_script": str(eval_script),
+            "venv_python": str(venv_py),
+        }
+        print("[AGENT] ERROR: offline eval harness/venv missing; eval gate FAIL-CLOSED "
               "(install .venv-eval + local pokemon-showdown to enable the real gate).")
-        return True, {"skipped": "harness/venv unavailable"}
+        return False, detail
+
+    try:
+        probe = subprocess.run(
+            [str(venv_py), "--version"],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+        )
+    except Exception as exc:
+        print(f"[AGENT] ERROR: eval venv python is unusable; eval gate FAIL-CLOSED: {exc}")
+        return False, {"error": "eval_python_unusable", "venv_python": str(venv_py), "detail": str(exc)}
+    if probe.returncode != 0:
+        print("[AGENT] ERROR: eval venv python failed --version; eval gate FAIL-CLOSED.")
+        return False, {
+            "error": "eval_python_unusable",
+            "venv_python": str(venv_py),
+            "returncode": probe.returncode,
+            "stderr": (probe.stderr or "")[-500:],
+        }
 
     # Run the candidate arm.
     print(f"[AGENT] Running offline eval gate: {EVAL_GATE_BATTLES} battles vs "
           f"{EVAL_GATE_BASELINE} on {EVAL_GATE_TEAM} ...")
-    proc = subprocess.run(
-        [
-            sys.executable, str(eval_script),
-            "--battles", str(EVAL_GATE_BATTLES),
-            "--team", EVAL_GATE_TEAM,
-            "--baseline", EVAL_GATE_BASELINE,
-            "--label", "candidate",
-        ],
-        cwd=str(PROJECT_ROOT),
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
-        timeout=EVAL_GATE_BATTLES * 220 + 300,
-    )
-    print(proc.stdout[-1500:] if proc.stdout else "(no eval stdout)")
     cand_path = PROJECT_ROOT / "eval_results" / "offline" / "candidate.json"
+    cand_path.unlink(missing_ok=True)
+    try:
+        proc = subprocess.run(
+            [
+                str(venv_py), str(eval_script),
+                "--battles", str(EVAL_GATE_BATTLES),
+                "--team", EVAL_GATE_TEAM,
+                "--baseline", EVAL_GATE_BASELINE,
+                "--label", "candidate",
+            ],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=EVAL_GATE_BATTLES * 220 + 300,
+        )
+    except subprocess.TimeoutExpired as exc:
+        print("[AGENT] Eval gate timed out; treating as FAIL.")
+        return False, {"error": "candidate eval timed out", "timeout": exc.timeout}
+    print(proc.stdout[-1500:] if proc.stdout else "(no eval stdout)")
+    if proc.returncode != 0:
+        print("[AGENT] Eval gate command failed; treating as FAIL.")
+        if proc.stderr:
+            print(proc.stderr[-1500:])
+        return False, {
+            "error": "candidate eval failed",
+            "returncode": proc.returncode,
+            "stderr": (proc.stderr or "")[-1000:],
+        }
     if not cand_path.exists():
         print("[AGENT] Eval gate produced no candidate result; treating as FAIL.")
         return False, {"error": "no candidate result"}
@@ -890,16 +982,24 @@ def offline_eval_gate() -> tuple[bool, dict]:
     # If we have a frozen reference, do the two-proportion comparison.
     if FROZEN_BASELINE_PATH.exists():
         cmp_proc = subprocess.run(
-            [sys.executable, str(eval_script), "--compare", "frozen", "candidate"],
+            [str(venv_py), str(eval_script), "--compare", "frozen", "candidate"],
             cwd=str(PROJECT_ROOT),
             capture_output=True, text=True, encoding="utf-8", errors="replace",
             timeout=60,
         )
         print(cmp_proc.stdout)
+        if cmp_proc.returncode != 0:
+            print("[AGENT] Eval comparison failed; treating as FAIL.")
+            return False, {
+                "error": "frozen comparison failed",
+                "returncode": cmp_proc.returncode,
+                "stderr": (cmp_proc.stderr or "")[-1000:],
+            }
         verdict_path = PROJECT_ROOT / "eval_results" / "offline" / "compare-frozen-vs-candidate.json"
         if verdict_path.exists():
             verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
             return bool(verdict.get("ACCEPT", False)), verdict
+        return False, {"error": "frozen comparison produced no verdict"}
 
     # No frozen reference yet: accept only if the candidate beats the baseline
     # with a Wilson lower bound > 0.50 (we are confident fouler wins >half).
@@ -933,9 +1033,17 @@ def _git_head() -> str:
         return "unknown"
 
 
-def commit_and_push(target_file: str, issue_title: str) -> bool:
-    """Commit the change and push to origin."""
+def commit_and_push(
+    target_file: str,
+    issue_title: str,
+    *,
+    push_enabled: bool = False,
+    push_remote: str | None = None,
+    push_branch: str | None = None,
+) -> bool:
+    """Commit the accepted change and optionally push to an explicit target."""
     try:
+        push_target = explicit_push_target(push_remote, push_branch) if push_enabled else None
         pre_commit = _git_head()
         subprocess.run(
             ["git", "add", target_file],
@@ -958,37 +1066,72 @@ def commit_and_push(target_file: str, issue_title: str) -> bool:
         # Record the deploy BEFORE the push: the diff is already applied to live
         # files, so the change is in play regardless of whether the push succeeds.
         record_deploy(pre_commit, post_commit)
+        if push_target is None:
+            print(
+                f"[AGENT] Committed locally. Git push disabled; set {AUTO_PUSH_SENTINEL}=1 "
+                f"or pass --enable-git-push with an explicit push target."
+            )
+            return True
+        remote, branch = push_target
         subprocess.run(
-            ["git", "push", "origin", "master"],
+            ["git", "push", remote, f"HEAD:{branch}"],
             cwd=str(PROJECT_ROOT),
             check=True,
         )
-        print("[AGENT] Committed and pushed successfully.")
+        print(f"[AGENT] Committed and pushed successfully to {remote} HEAD:{branch}.")
         return True
+    except ValueError as e:
+        print(f"[AGENT] Git push blocked: {e}")
+        return False
     except subprocess.CalledProcessError as e:
         print(f"[AGENT] Git failed: {e}")
         return False
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(description="Batch-triggered coding agent")
     parser.add_argument("--dry-run", action="store_true", help="Show diff but don't apply")
+    parser.add_argument(
+        "--enable-auto-improve",
+        action="store_true",
+        help=f"Allow this agent to mutate files and commit. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
+    )
+    parser.add_argument(
+        "--enable-git-push",
+        action="store_true",
+        help=f"Allow git push after a successful local commit. Alternative: {AUTO_PUSH_SENTINEL}=1.",
+    )
+    parser.add_argument(
+        "--push-remote",
+        help=f"Explicit git remote for push; alternatively set {PUSH_REMOTE_ENV}.",
+    )
+    parser.add_argument(
+        "--push-branch",
+        help=f"Explicit git branch for push; alternatively set {PUSH_BRANCH_ENV}.",
+    )
     args = parser.parse_args()
 
     print(f"[AGENT] {datetime.now().isoformat()} — Starting improvement cycle")
+
+    if not args.dry_run and not auto_improve_enabled(args.enable_auto_improve):
+        print(
+            f"[AGENT] BLOCKED: auto-improvement is disabled. Set {AUTO_IMPROVE_SENTINEL}=1 "
+            f"or pass --enable-auto-improve to allow mutation."
+        )
+        return 2
 
     # 1. Load autoresearch report
     report = load_autoresearch()
     if not report or not report.get("top_issue"):
         print("[AGENT] No autoresearch report or no issues found. Skipping.")
-        return
+        return 0
 
     blockers = validate_autoresearch_for_improvement(report)
     if blockers:
         print("[AGENT] Autoresearch is not promotable. Skipping.")
         for blocker in blockers:
             print(f"[AGENT] BLOCKER: {blocker}")
-        return
+        return 0
 
     # Deploy-spacing gate: don't ship another change until the previous one has had
     # enough live games to be judged by elo_watchdog. Prevents unvalidated changes
@@ -1000,7 +1143,7 @@ def main():
             f"[AGENT] Deferring: only {since}/{min_games} games since last deploy. "
             f"Letting the previous change be validated (elo_watchdog) before shipping another."
         )
-        return
+        return 0
 
     top = report["top_issue"]
     print(f"[AGENT] Top issue: {top['title']}")
@@ -1020,7 +1163,7 @@ def main():
     if args.dry_run:
         print("[AGENT] DRY RUN — would send prompt to Claude. Exiting.")
         print(f"[AGENT] Prompt preview (first 500 chars):\n{prompt[:500]}")
-        return
+        return 0
 
     response = call_claude(prompt)
     print(f"[AGENT] Got response ({len(response)} chars)")
@@ -1030,7 +1173,7 @@ def main():
     if not diff_text:
         print("[AGENT] No valid diff in response. Skipping.")
         print(f"[AGENT] Response preview: {response[:300]}")
-        return
+        return 0
 
     print(f"[AGENT] Diff extracted ({len(diff_text.splitlines())} lines)")
 
@@ -1038,19 +1181,19 @@ def main():
     original_target_text = (PROJECT_ROOT / target_file).read_text(encoding="utf-8")
     if not apply_diff(diff_text, target_file):
         print("[AGENT] Diff failed to apply. Skipping.")
-        return
+        return 1
 
     # 6. Syntax check
     if not syntax_check(target_file):
         print("[AGENT] Syntax check failed. Reverting.")
         restore_file_snapshot(target_file, original_target_text)
-        return
+        return 1
 
     # 7. Run tests — now only a CHEAP PRE-FILTER, not the acceptance gate.
     if not run_tests():
         print("[AGENT] Tests failed (pre-filter). Reverting.")
         restore_file_snapshot(target_file, original_target_text)
-        return
+        return 1
 
     # 8. REAL acceptance gate (P1): offline win-rate eval vs frozen baseline.
     accepted, detail = offline_eval_gate()
@@ -1059,14 +1202,26 @@ def main():
         print("[AGENT] Eval gate REJECTED the change (no significant win-rate gain "
               "/ regression). Reverting.")
         restore_file_snapshot(target_file, original_target_text)
-        return
+        return 1
 
     # 9. Commit and push
-    if commit_and_push(target_file, top["title"]):
-        print(f"[AGENT] Successfully deployed fix for: {top['title']}")
+    push_requested = auto_push_enabled(args.enable_git_push)
+    if commit_and_push(
+        target_file,
+        top["title"],
+        push_enabled=push_requested,
+        push_remote=args.push_remote,
+        push_branch=args.push_branch,
+    ):
+        if push_requested:
+            print(f"[AGENT] Successfully committed and pushed fix for: {top['title']}")
+        else:
+            print(f"[AGENT] Successfully committed local fix for: {top['title']}")
+        return 0
     else:
         print("[AGENT] Commit/push failed. Change is staged but not pushed.")
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
