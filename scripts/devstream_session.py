@@ -392,23 +392,34 @@ def read_pid_payload(path: Path) -> dict[str, Any] | str | None:
         return None
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp")
+    try:
+        tmp_path.write_text(text, encoding="utf-8")
+        os.replace(tmp_path, path)
+    finally:
+        try:
+            tmp_path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            pass
+
+
 def write_pid_value(path: Path, pid: int, command: list[str], **extra: Any) -> None:
     PID_DIR.mkdir(parents=True, exist_ok=True)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(
-            {
-                "pid": pid,
-                "command": command,
-                "startedAt": iso_now(),
-                **extra,
-            },
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    payload = json.dumps(
+        {
+            "pid": pid,
+            "command": command,
+            "startedAt": iso_now(),
+            **extra,
+        },
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+    _atomic_write_text(path, payload)
 
 
 def _parse_started_at(value: object) -> float | None:
@@ -563,6 +574,10 @@ def secure_env_files(*, execute: bool) -> list[dict[str, Any]]:
 
 
 def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> dict[str, Any]:
+    if pid_file == BATTLE_PID_FILE:
+        existing_battle_runner = existing_battle_runner_start_result(command)
+        if existing_battle_runner is not None:
+            return existing_battle_runner
     alive, pid = pid_alive(pid_file)
     if alive:
         return {"pidFile": str(pid_file), "alreadyRunning": True, "pid": pid, "command": command}
@@ -637,39 +652,83 @@ def battle_pid_files() -> list[Path]:
     return [BOT_LOCK_PID_FILE, BATTLE_PID_FILE]
 
 
+def live_battle_runner_owners() -> list[dict[str, Any]]:
+    runners: list[dict[str, Any]] = []
+    seen: set[tuple[str, int]] = set()
+    for pid_file in battle_pid_files():
+        alive, pid = pid_alive(pid_file)
+        if not alive or pid is None:
+            continue
+        key = (str(pid_file), int(pid))
+        if key in seen:
+            continue
+        seen.add(key)
+        runners.append({
+            "pidFile": str(pid_file),
+            "pid": int(pid),
+        })
+    return runners
+
+
+def _distinct_battle_runner_pids(runners: list[dict[str, Any]]) -> list[int]:
+    return sorted({int(runner["pid"]) for runner in runners})
+
+
+def _battle_runtime_ownership_conflict_payload(
+    command: list[str],
+    runners: list[dict[str, Any]],
+    distinct_pids: list[int],
+) -> dict[str, Any]:
+    return {
+        "alreadyRunning": True,
+        "blocked": True,
+        "skipped": True,
+        "runtimeOwnershipConflict": True,
+        "duplicateBattleRunners": True,
+        "battleRunnerCount": len(distinct_pids),
+        "distinctPids": distinct_pids,
+        "knownRunners": runners,
+        "adoptedPidFile": None,
+        "command": command,
+        "requiredHermesAction": "drain/adopt exactly one live battle runner before starting another cycle",
+        "reason": "multiple live battle runner owner PIDs found; refusing to spawn or adopt one over another",
+    }
+
+
 def supervisor_alive() -> tuple[bool, int | None]:
     return pid_alive(SUPERVISOR_PID_FILE)
 
 
 def existing_battle_runner_start_result(command: list[str]) -> dict[str, Any] | None:
-    runners = []
-    for pid_file in battle_pid_files():
-        alive, pid = pid_alive(pid_file)
-        if alive and pid is not None:
-            runners.append({
-                "pidFile": str(pid_file),
-                "pid": pid,
-            })
+    runners = live_battle_runner_owners()
     if not runners:
         return None
+    distinct_pids = _distinct_battle_runner_pids(runners)
+    if len(distinct_pids) > 1:
+        return _battle_runtime_ownership_conflict_payload(command, runners, distinct_pids)
+
+    canonical_runner = next(
+        (runner for runner in runners if runner["pidFile"] == str(BATTLE_PID_FILE)),
+        runners[0],
+    )
     adopted = None
-    if runners[0]["pidFile"] != str(BATTLE_PID_FILE):
+    if not any(runner["pidFile"] == str(BATTLE_PID_FILE) for runner in runners):
         write_pid_value(
             BATTLE_PID_FILE,
-            int(runners[0]["pid"]),
+            int(canonical_runner["pid"]),
             command,
             adoptedExistingProcess=True,
-            adoptedFrom=runners[0]["pidFile"],
+            adoptedFrom=canonical_runner["pidFile"],
         )
         adopted = {
             "pidFile": str(BATTLE_PID_FILE),
-            "pid": runners[0]["pid"],
-            "adoptedFrom": runners[0]["pidFile"],
+            "pid": canonical_runner["pid"],
+            "adoptedFrom": canonical_runner["pidFile"],
         }
     return {
         "alreadyRunning": True,
-        "pid": runners[0]["pid"],
-        "pidFile": runners[0]["pidFile"],
+        "pid": canonical_runner["pid"],
+        "pidFile": canonical_runner["pidFile"],
         "knownRunners": runners,
         "adoptedPidFile": adopted,
         "command": command,

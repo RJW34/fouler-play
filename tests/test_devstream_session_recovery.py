@@ -106,6 +106,87 @@ def test_existing_battle_runner_start_result_reuses_any_live_runner(tmp_path, mo
     assert parsed_session_pid["adoptedExistingProcess"] is True
 
 
+def test_existing_battle_runner_start_result_rejects_conflicting_live_owners(tmp_path, monkeypatch):
+    bot_pid = tmp_path / ".bot.pid"
+    session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
+    command = ["python", "run.py", "--bot-mode", "search_ladder"]
+    session_pid.parent.mkdir(parents=True, exist_ok=True)
+    bot_pid.write_text("1111", encoding="utf-8")
+    session_payload = {"pid": 2222, "command": command, "startedAt": devstream_session.iso_now()}
+    session_pid.write_text(json.dumps(session_payload), encoding="utf-8")
+
+    monkeypatch.setattr(devstream_session, "BATTLE_PID_FILE", session_pid)
+    monkeypatch.setattr(devstream_session, "battle_pid_files", lambda: [bot_pid, session_pid])
+    monkeypatch.setattr(
+        devstream_session,
+        "pid_alive",
+        lambda path: (True, 1111) if path == bot_pid else (True, 2222),
+    )
+
+    payload = devstream_session.existing_battle_runner_start_result(command)
+
+    assert payload is not None
+    assert payload["runtimeOwnershipConflict"] is True
+    assert payload["blocked"] is True
+    assert payload["skipped"] is True
+    assert payload["duplicateBattleRunners"] is True
+    assert payload["battleRunnerCount"] == 2
+    assert payload["distinctPids"] == [1111, 2222]
+    assert payload["knownRunners"] == [
+        {"pidFile": str(bot_pid), "pid": 1111},
+        {"pidFile": str(session_pid), "pid": 2222},
+    ]
+    assert payload["adoptedPidFile"] is None
+    assert json.loads(session_pid.read_text(encoding="utf-8")) == session_payload
+
+
+def test_existing_battle_runner_start_result_accepts_same_pid_in_multiple_owner_files(tmp_path, monkeypatch):
+    bot_pid = tmp_path / ".bot.pid"
+    session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
+    command = ["python", "run.py", "--bot-mode", "search_ladder"]
+
+    monkeypatch.setattr(devstream_session, "BATTLE_PID_FILE", session_pid)
+    monkeypatch.setattr(devstream_session, "battle_pid_files", lambda: [bot_pid, session_pid])
+    monkeypatch.setattr(devstream_session, "pid_alive", lambda path: (True, 29852))
+
+    payload = devstream_session.existing_battle_runner_start_result(command)
+
+    assert payload is not None
+    assert payload.get("runtimeOwnershipConflict") is None
+    assert payload["alreadyRunning"] is True
+    assert payload["pid"] == 29852
+    assert payload["pidFile"] == str(session_pid)
+    assert payload["knownRunners"] == [
+        {"pidFile": str(bot_pid), "pid": 29852},
+        {"pidFile": str(session_pid), "pid": 29852},
+    ]
+    assert payload["adoptedPidFile"] is None
+
+
+def test_start_process_rejects_conflicting_battle_runner_owners_without_spawning(tmp_path, monkeypatch):
+    bot_pid = tmp_path / ".bot.pid"
+    session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
+    command = ["python", "run.py", "--bot-mode", "search_ladder"]
+
+    monkeypatch.setattr(devstream_session, "BATTLE_PID_FILE", session_pid)
+    monkeypatch.setattr(devstream_session, "battle_pid_files", lambda: [bot_pid, session_pid])
+    monkeypatch.setattr(
+        devstream_session,
+        "pid_alive",
+        lambda path: (True, 1111) if path == bot_pid else (True, 2222),
+    )
+
+    def fail_spawn(*args, **kwargs):
+        raise AssertionError("should not spawn when battle runner ownership conflicts")
+
+    monkeypatch.setattr(devstream_session.subprocess, "Popen", fail_spawn)
+
+    payload = devstream_session.start_process(command, session_pid, {})
+
+    assert payload["runtimeOwnershipConflict"] is True
+    assert payload["distinctPids"] == [1111, 2222]
+
+
 def test_terminate_battle_runners_covers_all_known_pid_files(tmp_path, monkeypatch):
     bot_pid = tmp_path / ".bot.pid"
     session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
