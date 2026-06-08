@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
+import shutil
 import socket
 import subprocess
 import sys
@@ -28,11 +30,29 @@ def _quote_command(parts: list[str]) -> str:
     return subprocess.list2cmdline(parts)
 
 
+def _ps_quote(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _sh_quote(value: str) -> str:
+    return shlex.quote(value)
+
+
 def _relative(root: Path, path: Path) -> str:
     try:
         return str(path.relative_to(root))
     except ValueError:
         return str(path)
+
+
+def _configured_path(root: Path, env: Mapping[str, str], name: str, default: Path) -> Path:
+    raw = env.get(name)
+    if not raw:
+        return default
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = root / path
+    return path
 
 
 def eval_venv_python(root: Path) -> Path:
@@ -49,6 +69,7 @@ def configured_eval(root: Path, env: Mapping[str, str]) -> dict[str, object]:
     baseline = env.get("IMPROVE_AGENT_EVAL_BASELINE", "simple")
     team = env.get("IMPROVE_AGENT_EVAL_TEAM", "gen9/ou/fat-team-1-stall")
     showdown_port = _env_int(env, "EVAL_SHOWDOWN_PORT", 8765)
+    showdown_dir = _configured_path(root, env, "POKEMON_SHOWDOWN_DIR", root.parent / "pokemon-showdown")
     label = "candidate"
     return {
         "battles": battles,
@@ -56,6 +77,10 @@ def configured_eval(root: Path, env: Mapping[str, str]) -> dict[str, object]:
         "team": team,
         "showdownPort": showdown_port,
         "label": label,
+        "showdownDir": showdown_dir,
+        "showdownPackage": showdown_dir / "package.json",
+        "showdownLauncher": showdown_dir / "pokemon-showdown",
+        "showdownNodeModules": showdown_dir / "node_modules",
         "teamFile": root / "teams" / Path(*str(team).split("/")),
         "evalScript": root / "infrastructure" / "offline_eval.py",
         "baselineScript": root / "infrastructure" / "_offline_baseline.py",
@@ -117,13 +142,18 @@ def _display_eval_command(
 def provisioning_commands(root: Path, config: dict[str, object]) -> dict[str, list[str]]:
     req_windows = _relative(root, Path(config["requirementsEval"]))
     req_posix = req_windows.replace("\\", "/")
+    showdown_dir = Path(config["showdownDir"])
+    showdown_windows = str(showdown_dir)
+    showdown_posix = str(showdown_dir).replace("\\", "/")
+    showdown_url = "https://github.com/smogon/pokemon-showdown.git"
     return {
         "windows": [
             "py -3 -m venv .venv-eval",
             r".venv-eval\Scripts\python.exe -m pip install --upgrade pip",
             rf".venv-eval\Scripts\python.exe -m pip install -r {req_windows}",
-            "Install or clone pokemon-showdown locally, then start a no-security server on the configured port.",
-            f"node pokemon-showdown start --no-security {config['showdownPort']}",
+            rf"if (!(Test-Path -LiteralPath {_ps_quote(showdown_windows)})) {{ git clone {showdown_url} {_ps_quote(showdown_windows)} }}",
+            rf"Push-Location -LiteralPath {_ps_quote(showdown_windows)}; npm ci; Pop-Location",
+            rf"Push-Location -LiteralPath {_ps_quote(showdown_windows)}; node pokemon-showdown start --no-security {config['showdownPort']}; Pop-Location",
             _display_eval_command(r".venv-eval\Scripts\python.exe", config, label="frozen", no_setsample=True),
             "python infrastructure/offline_eval_readiness.py --require-ready",
         ],
@@ -131,11 +161,48 @@ def provisioning_commands(root: Path, config: dict[str, object]) -> dict[str, li
             "python3 -m venv .venv-eval",
             ".venv-eval/bin/python -m pip install --upgrade pip",
             f".venv-eval/bin/python -m pip install -r {req_posix}",
-            "Install or clone pokemon-showdown locally, then start a no-security server on the configured port.",
-            f"node pokemon-showdown start --no-security {config['showdownPort']}",
+            f"test -d {_sh_quote(showdown_posix)} || git clone {showdown_url} {_sh_quote(showdown_posix)}",
+            f"cd {_sh_quote(showdown_posix)} && npm ci",
+            f"cd {_sh_quote(showdown_posix)} && node pokemon-showdown start --no-security {config['showdownPort']}",
             _display_eval_command(".venv-eval/bin/python", config, label="frozen", no_setsample=True),
             "python3 infrastructure/offline_eval_readiness.py --require-ready",
         ],
+    }
+
+
+def _check_executable(command: str) -> tuple[bool, dict[str, object]]:
+    executable = shutil.which(command)
+    if not executable:
+        return False, {"command": command, "found": False}
+    probe = subprocess.run(
+        [executable, "--version"],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=10,
+    )
+    detail = {
+        "command": command,
+        "path": executable,
+        "returncode": probe.returncode,
+        "stdout": (probe.stdout or "").strip(),
+        "stderr": (probe.stderr or "").strip()[-500:],
+    }
+    return probe.returncode == 0, detail
+
+
+def _read_showdown_package(package_json: Path) -> dict[str, object]:
+    if not package_json.exists():
+        return {}
+    try:
+        data = json.loads(package_json.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"packageJsonError": str(exc)}
+    return {
+        "packageName": data.get("name"),
+        "packageVersion": data.get("version"),
+        "engines": data.get("engines"),
     }
 
 
@@ -212,6 +279,7 @@ def build_readiness_payload(
     env: Mapping[str, str] | None = None,
     run_import_check: bool = True,
     run_server_check: bool = True,
+    run_prereq_check: bool = True,
 ) -> dict[str, object]:
     env = os.environ if env is None else env
     config = configured_eval(root, env)
@@ -229,6 +297,10 @@ def build_readiness_payload(
     venv_python = Path(config["venvPython"])
     team_file = Path(config["teamFile"])
     frozen_baseline = Path(config["frozenBaseline"])
+    showdown_dir = Path(config["showdownDir"])
+    showdown_package = Path(config["showdownPackage"])
+    showdown_launcher = Path(config["showdownLauncher"])
+    showdown_node_modules = Path(config["showdownNodeModules"])
 
     add_check(
         "offline_eval.py",
@@ -260,6 +332,48 @@ def build_readiness_payload(
         _relative(root, team_file),
         f"set IMPROVE_AGENT_EVAL_TEAM to an existing team or restore {_relative(root, team_file)}",
     )
+
+    if run_prereq_check:
+        for command, remediation in [
+            ("node", "install Node.js 16+ before provisioning Pokemon Showdown"),
+            ("npm", "install npm before running npm ci in the Pokemon Showdown checkout"),
+            ("git", "install git or manually place a Pokemon Showdown checkout at POKEMON_SHOWDOWN_DIR"),
+        ]:
+            try:
+                command_ok, command_detail = _check_executable(command)
+            except Exception as exc:
+                command_ok, command_detail = False, {"command": command, "error": str(exc)}
+            add_check(f"{command} executable", command_ok, command_detail, remediation)
+
+        package_detail = _read_showdown_package(showdown_package)
+        checkout_ok = showdown_dir.exists() and showdown_package.exists() and showdown_launcher.exists()
+        add_check(
+            "pokemon-showdown checkout",
+            checkout_ok,
+            {
+                "dir": str(showdown_dir),
+                "dirExists": showdown_dir.exists(),
+                "packageJson": str(showdown_package),
+                "packageJsonExists": showdown_package.exists(),
+                "launcher": str(showdown_launcher),
+                "launcherExists": showdown_launcher.exists(),
+                **package_detail,
+            },
+            "set POKEMON_SHOWDOWN_DIR to an existing checkout or run the git clone command from provisionCommands",
+        )
+        if checkout_ok:
+            add_check(
+                "pokemon-showdown dependencies",
+                showdown_node_modules.exists(),
+                {
+                    "nodeModules": str(showdown_node_modules),
+                    "nodeModulesExists": showdown_node_modules.exists(),
+                    "installCommand": f"cd {showdown_dir} && npm ci",
+                },
+                "run npm ci in POKEMON_SHOWDOWN_DIR before starting the local no-security eval server",
+            )
+    else:
+        add_check("showdown provisioning prerequisites", True, {"skipped": "prereq check disabled"})
 
     if venv_python.exists() and run_import_check:
         try:
@@ -306,6 +420,8 @@ def build_readiness_payload(
         "frozenBaseline": _quote_command(eval_command(config, label="frozen", no_setsample=True)),
         "compareFrozenVsCandidate": _quote_command(compare_command(config)),
         "readiness": "python infrastructure/offline_eval_readiness.py --require-ready",
+        "showdownInstall": f"cd {showdown_dir} && npm ci",
+        "showdownServerCwd": str(showdown_dir),
         "showdownServer": f"node pokemon-showdown start --no-security {config['showdownPort']}",
     }
     return {
@@ -320,6 +436,8 @@ def build_readiness_payload(
         "provisionCommands": provisioning_commands(root, config),
         "proofRequired": [
             "offline_eval_readiness.py --require-ready exits 0 with ready=true",
+            "node, npm, and git are available for Pokemon Showdown provisioning",
+            "POKEMON_SHOWDOWN_DIR or the default sibling pokemon-showdown checkout has package.json, the pokemon-showdown launcher, and installed node_modules",
             ".venv-eval python can import poke_env and websockets",
             "a local no-security Pokemon Showdown server is reachable on EVAL_SHOWDOWN_PORT",
             "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",
@@ -335,11 +453,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--require-ready", action="store_true", help="exit non-zero unless recursiveImprovementReady is true")
     parser.add_argument("--skip-import-check", action="store_true", help="do not execute .venv-eval python import probe")
     parser.add_argument("--skip-server-check", action="store_true", help="do not probe the local Pokemon Showdown eval server port")
+    parser.add_argument("--skip-prereq-check", action="store_true", help="do not probe Node/npm/git or Pokemon Showdown checkout metadata")
     args = parser.parse_args(argv)
 
     payload = build_readiness_payload(
         run_import_check=not args.skip_import_check,
         run_server_check=not args.skip_server_check,
+        run_prereq_check=not args.skip_prereq_check,
     )
     print(json.dumps(payload, indent=2, sort_keys=True))
     return 1 if args.require_ready and not payload["recursiveImprovementReady"] else 0

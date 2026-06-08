@@ -20,6 +20,7 @@ def test_readiness_payload_reports_actionable_missing_harness(tmp_path):
         root=tmp_path,
         env={},
         run_import_check=False,
+        run_prereq_check=False,
     )
 
     assert payload["recursiveImprovementReady"] is False
@@ -59,6 +60,7 @@ def test_readiness_payload_ready_with_eval_proof(tmp_path):
         env={},
         run_import_check=False,
         run_server_check=False,
+        run_prereq_check=False,
     )
 
     assert payload["recursiveImprovementReady"] is True
@@ -82,6 +84,7 @@ def test_readiness_payload_honors_eval_env_overrides(tmp_path):
         env=env,
         run_import_check=False,
         run_server_check=False,
+        run_prereq_check=False,
     )
 
     assert payload["configuration"]["battles"] == 40
@@ -120,6 +123,7 @@ def test_readiness_payload_reports_closed_showdown_eval_port(tmp_path):
         root=tmp_path,
         env={"EVAL_SHOWDOWN_PORT": str(port)},
         run_import_check=False,
+        run_prereq_check=False,
     )
 
     assert payload["recursiveImprovementReady"] is False
@@ -128,3 +132,59 @@ def test_readiness_payload_reports_closed_showdown_eval_port(tmp_path):
     assert server_check["detail"]["port"] == port
     assert "node pokemon-showdown start --no-security" in server_check["remediation"]
     assert any("local showdown eval server" in blocker for blocker in payload["blockers"])
+
+
+def test_readiness_payload_reports_showdown_dependency_gap(tmp_path, monkeypatch):
+    _write_minimal_harness(tmp_path)
+    venv_python = tmp_path / ".venv-eval" / "Scripts" / "python.exe"
+    venv_python.parent.mkdir(parents=True, exist_ok=True)
+    venv_python.write_text("# fake python for path proof\n", encoding="utf-8")
+    frozen = tmp_path / "eval_results" / "offline" / "frozen.json"
+    frozen.parent.mkdir(parents=True, exist_ok=True)
+    frozen.write_text(
+        json.dumps(
+            {
+                "label": "frozen",
+                "battles": 200,
+                "fouler_wins": 120,
+                "fouler_win_rate": 0.6,
+                "fouler_wilson_lcb": 0.53,
+            }
+        ),
+        encoding="utf-8",
+    )
+    showdown = tmp_path / "pokemon-showdown"
+    showdown.mkdir()
+    (showdown / "pokemon-showdown").write_text("# launcher\n", encoding="utf-8")
+    (showdown / "package.json").write_text(
+        json.dumps({"name": "pokemon-showdown", "version": "0.0.0-test", "engines": {"node": ">=16.0.0"}}),
+        encoding="utf-8",
+    )
+
+    def fake_which(command):
+        return f"C:\\tools\\{command}.exe"
+
+    class FakeProbe:
+        returncode = 0
+        stdout = "v20.0.0\n"
+        stderr = ""
+
+    def fake_run(*args, **kwargs):
+        return FakeProbe()
+
+    monkeypatch.setattr(offline_eval_readiness.shutil, "which", fake_which)
+    monkeypatch.setattr(offline_eval_readiness.subprocess, "run", fake_run)
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={"POKEMON_SHOWDOWN_DIR": str(showdown)},
+        run_import_check=False,
+        run_server_check=False,
+    )
+
+    deps_check = next(check for check in payload["checks"] if check["name"] == "pokemon-showdown dependencies")
+    assert deps_check["ok"] is False
+    assert deps_check["detail"]["nodeModulesExists"] is False
+    assert "npm ci" in deps_check["remediation"]
+    assert any("pokemon-showdown dependencies" in blocker for blocker in payload["blockers"])
+    assert str(showdown) in payload["commands"]["showdownServerCwd"]
