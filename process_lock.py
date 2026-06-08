@@ -7,10 +7,44 @@ import os
 import sys
 import signal
 import atexit
+import json
+from datetime import datetime, timezone
 import psutil
 
 LOCK_DIR = os.path.dirname(os.path.abspath(__file__))
 PID_FILE = os.path.join(LOCK_DIR, ".bot.pid")
+PID_CREATE_TIME_TOLERANCE_SECONDS = 2.0
+
+
+def _normalize_cmdline(cmdline) -> list[str]:
+    return [str(part) for part in (cmdline or [])]
+
+
+def _command_text(cmdline) -> str:
+    return " ".join(_normalize_cmdline(cmdline)).lower()
+
+
+def _cwd_matches_repo(cwd: str | None, repo_dir: str) -> bool:
+    return bool(cwd) and os.path.abspath(str(cwd)) == os.path.abspath(repo_dir)
+
+
+def _is_battle_runner_command(cmdline) -> bool:
+    command = _command_text(cmdline)
+    return "run.py" in command and (
+        "showdown" in command
+        or "search_ladder" in command
+        or "accept_challenge" in command
+        or "challenge_user" in command
+    )
+
+
+def _is_devstream_supervisor_command(cmdline) -> bool:
+    command = _command_text(cmdline)
+    return "devstream_session.py" in command and "supervise" in command
+
+
+def _is_lock_owner_command(cmdline) -> bool:
+    return _is_battle_runner_command(cmdline) or _is_devstream_supervisor_command(cmdline)
 
 
 def _protected_process_ids() -> set[int]:
@@ -28,24 +62,89 @@ def _is_stale_bot_process(proc, our_dir: str, protected_pids: set[int]) -> bool:
     """Check whether a process is a stale fouler bot from this repo."""
     if proc.pid in protected_pids:
         return False
-    cmdline = " ".join(proc.info.get("cmdline") or []).lower()
-    if "run.py" not in cmdline or "search_ladder" not in cmdline:
+    cmdline = proc.info.get("cmdline") or []
+    if not _is_battle_runner_command(cmdline):
         return False
     cwd = proc.info.get("cwd", "")
-    if not cwd:
+    return _cwd_matches_repo(cwd, our_dir)
+
+
+def _pid_payload() -> dict[str, object]:
+    payload: dict[str, object] = {
+        "pid": os.getpid(),
+        "startedAt": datetime.now(timezone.utc).isoformat(),
+        "command": _normalize_cmdline(sys.argv),
+    }
+    try:
+        payload["createTime"] = psutil.Process(os.getpid()).create_time()
+    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+        pass
+    return payload
+
+
+def _read_pid_payload() -> dict[str, object] | int | None:
+    with open(PID_FILE, encoding="utf-8") as f:
+        raw = f.read().strip()
+    if not raw:
+        return None
+    if raw.startswith("{"):
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else None
+    return int(raw)
+
+
+def _pid_from_payload(payload: dict[str, object] | int | None) -> int | None:
+    if isinstance(payload, dict):
+        value = payload.get("pid")
+    else:
+        value = payload
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _payload_create_time(payload: dict[str, object] | int | None) -> float | None:
+    if not isinstance(payload, dict):
+        return None
+    try:
+        return float(payload.get("createTime"))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _payload_has_create_time(payload: dict[str, object] | int | None) -> bool:
+    return _payload_create_time(payload) is not None
+
+
+def _process_matches_payload_create_time(proc, payload: dict[str, object] | int | None) -> bool:
+    expected_create_time = _payload_create_time(payload)
+    if expected_create_time is None:
+        return True
+    try:
+        actual_create_time = float(proc.create_time())
+    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
         return False
-    return os.path.abspath(cwd) == our_dir
+    return abs(actual_create_time - expected_create_time) <= PID_CREATE_TIME_TOLERANCE_SECONDS
+
+
+def _is_lock_owner_process(proc, payload: dict[str, object] | int | None = None) -> bool:
+    cmdline = proc.cmdline()
+    cwd = proc.cwd()
+    if not _cwd_matches_repo(cwd, LOCK_DIR):
+        return False
+    if not _is_lock_owner_command(cmdline):
+        return False
+    return _process_matches_payload_create_time(proc, payload)
 
 
 def is_bot_process(pid: int) -> bool:
-    """Check if a PID is actually a fouler-play bot process."""
+    """Check if a PID is actually a fouler-play runner process."""
     try:
-        proc = psutil.Process(pid)
-        cmdline = " ".join(proc.cmdline()).lower()
-        cwd = proc.cwd()
-        cwd_matches = bool(cwd) and os.path.abspath(cwd) == os.path.abspath(LOCK_DIR)
-        return cwd_matches and "run.py" in cmdline and ("showdown" in cmdline or "search_ladder" in cmdline)
-    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+        return _is_lock_owner_process(psutil.Process(pid))
+    except psutil.AccessDenied:
+        return True
+    except (psutil.NoSuchProcess, OSError):
         return False
 
 
@@ -69,33 +168,85 @@ def kill_stale_processes():
     return killed
 
 
+def _claim_pid_file_atomically():
+    """Create the PID file only if no other process already owns it."""
+    fd = os.open(PID_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    try:
+        content = json.dumps(_pid_payload(), sort_keys=True) + "\n"
+        os.write(fd, content.encode("utf-8"))
+    finally:
+        os.close(fd)
+
+
+def _remove_stale_pid_file() -> bool:
+    """Remove the PID file only when it is inspectable and clearly stale."""
+    try:
+        payload = _read_pid_payload()
+        old_pid = _pid_from_payload(payload)
+    except FileNotFoundError:
+        return True
+    except (ValueError, json.JSONDecodeError):
+        old_pid = None
+    except OSError as exc:
+        print(
+            f"[LOCK] Existing PID file cannot be inspected ({exc}). Treating lock as held.",
+            file=sys.stderr,
+        )
+        return False
+
+    if old_pid is not None:
+        try:
+            if _is_lock_owner_process(psutil.Process(old_pid), payload):
+                print(f"[LOCK] Bot already running (PID {old_pid}). Aborting.", file=sys.stderr)
+                return False
+        except psutil.AccessDenied:
+            print(f"[LOCK] Existing PID {old_pid} cannot be inspected. Treating lock as held.", file=sys.stderr)
+            return False
+        except (psutil.NoSuchProcess, OSError):
+            pass
+
+    if old_pid is not None and not _payload_has_create_time(payload) and is_bot_process(old_pid):
+        print(f"[LOCK] Bot already running (PID {old_pid}). Aborting.", file=sys.stderr)
+        return False
+
+    if old_pid is None:
+        print("[LOCK] Corrupt PID file. Cleaning up.", file=sys.stderr)
+    else:
+        print(f"[LOCK] Stale PID file (PID {old_pid} not a bot). Cleaning up.", file=sys.stderr)
+
+    try:
+        os.remove(PID_FILE)
+    except FileNotFoundError:
+        return True
+    except OSError as exc:
+        print(
+            f"[LOCK] Unable to remove stale PID file ({exc}). Treating lock as held.",
+            file=sys.stderr,
+        )
+        return False
+    return True
+
+
 def acquire_lock(username: str = "unknown") -> bool:
     """
     Acquire the process lock. Returns True if lock acquired.
     Kills stale processes if the PID file points to a dead/wrong process.
     """
-    if os.path.exists(PID_FILE):
+    while True:
         try:
-            with open(PID_FILE) as f:
-                old_pid = int(f.read().strip())
-            
-            if is_bot_process(old_pid):
-                print(f"[LOCK] Bot already running (PID {old_pid}). Aborting.", file=sys.stderr)
+            _claim_pid_file_atomically()
+            break
+        except FileExistsError:
+            if not _remove_stale_pid_file():
                 return False
-            else:
-                print(f"[LOCK] Stale PID file (PID {old_pid} not a bot). Cleaning up.", file=sys.stderr)
-                os.remove(PID_FILE)
-        except (ValueError, OSError):
-            os.remove(PID_FILE)
+        except OSError as exc:
+            print(f"[LOCK] Unable to acquire PID file atomically ({exc}).", file=sys.stderr)
+            return False
     
     # Kill any stale bot processes before starting
     killed = kill_stale_processes()
     if killed:
         print(f"[LOCK] Killed {killed} stale bot process(es).", file=sys.stderr)
-    
-    # Write our PID
-    with open(PID_FILE, "w") as f:
-        f.write(str(os.getpid()))
     
     # Register cleanup
     atexit.register(release_lock)
@@ -109,10 +260,9 @@ def release_lock():
     """Release the process lock."""
     try:
         if os.path.exists(PID_FILE):
-            with open(PID_FILE) as f:
-                pid = int(f.read().strip())
+            pid = _pid_from_payload(_read_pid_payload())
             if pid == os.getpid():
                 os.remove(PID_FILE)
                 print(f"[LOCK] Released lock (PID {os.getpid()})", file=sys.stderr)
-    except (ValueError, OSError):
+    except (ValueError, json.JSONDecodeError, OSError):
         pass
