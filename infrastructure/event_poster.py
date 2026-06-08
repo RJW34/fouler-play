@@ -19,6 +19,7 @@ import subprocess
 import sys
 import time
 import argparse
+import copy
 from pathlib import Path
 from typing import Any, Tuple
 
@@ -26,6 +27,7 @@ from typing import Any, Tuple
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from infrastructure import event_queue_lib
 from infrastructure.event_queue_lib import (
     get_pending_events,
     mark_posted,
@@ -36,12 +38,20 @@ from infrastructure.event_queue_lib import (
     queue_health_summary,
 )
 from infrastructure.gen9_validation import Gen9Validator
-from infrastructure.discord_reporting import redacted_report_summary, structured_report_fields
+from infrastructure.discord_reporting import (
+    canonical_replay_url,
+    public_replay_id_candidate,
+    redacted_report_summary,
+    structured_report_fields,
+)
 
 # Configuration
 POLL_INTERVAL = float(os.getenv("EVENT_POSTER_POLL_SEC", "2"))
 EXPIRY_SEC = int(os.getenv("EVENT_POSTER_EXPIRY_SEC", "600"))  # 10 min
 CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
+REPLAY_RESOLVE_ATTEMPTS = max(1, int(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_ATTEMPTS", "1")))
+REPLAY_RESOLVE_DELAY_SEC = max(0.0, float(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_DELAY_SEC", "0")))
+REPLAY_RESOLVE_TIMEOUT_SEC = max(0.1, float(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_TIMEOUT_SEC", "3")))
 PID_DIR = PROJECT_ROOT / ".pids"
 BOT_MAIN_PID_FILE = PID_DIR / "bot_main.pid"
 BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
@@ -50,6 +60,14 @@ DISCORD_REPORTING_PROOF = TRUTH_DIR / "discord-reporting.json"
 DISCORD_DELIVERY_PROOF = TRUTH_DIR / "discord-delivery.json"
 DISCORD_DOCTOR_PROOF = TRUTH_DIR / "discord-reporting-doctor.json"
 BATTLE_ID_RE = re.compile(r"\b(?:battle-)?gen9ou-[A-Za-z0-9-]+\b|battle `([^`]+)`")
+PENDING_REPLAY_ID_RE = re.compile(
+    r"replay\s+pending\s+public\s+upload\s+`?((?:battle-)?gen9ou-[A-Za-z0-9-]+)`?",
+    re.IGNORECASE,
+)
+REPLAY_STATUS_PENDING_RE = re.compile(
+    r"replay_status\s*=\s*pending[-_\s]+public[-_\s]+upload",
+    re.IGNORECASE,
+)
 GEN9_VALIDATED_EVENT_TYPE_MARKERS = (
     "analysis",
     "report",
@@ -350,6 +368,261 @@ def _event_structured_fields(event: dict[str, Any]) -> dict[str, Any]:
         "proof": event.get("proof") or extracted.get("proof"),
         "analysis": event.get("analysis") or extracted.get("analysis"),
     }
+
+
+def _normalized_replay_status(value: object) -> str:
+    text = str(value or "").strip().lower()
+    return re.sub(r"[-_\s]+", "-", text)
+
+
+def _is_pending_replay_status(value: object) -> bool:
+    return _normalized_replay_status(value) in {"pending", "pending-public-upload"}
+
+
+def _content_has_pending_replay_status(content: str) -> bool:
+    normalized = re.sub(r"[-_\s]+", "-", str(content or "").lower())
+    return (
+        "replay-pending-public-upload" in normalized
+        or "replay-status=pending-public-upload" in normalized
+    )
+
+
+def _replay_id_from_pending_text(content: str) -> str:
+    match = PENDING_REPLAY_ID_RE.search(content or "")
+    if not match:
+        return ""
+    return public_replay_id_candidate(match.group(1))
+
+
+def _pending_battle_result_replay_id(event: dict[str, Any]) -> str:
+    """Return a replay id only when the battle_result event is explicitly pending."""
+    if str(event.get("event_type") or "") != "battle_result":
+        return ""
+
+    proof = event.get("proof") if isinstance(event.get("proof"), dict) else {}
+    replay = proof.get("replay") if isinstance(proof.get("replay"), dict) else {}
+    content = str(event.get("content") or "")
+
+    pending = any(
+        _is_pending_replay_status(value)
+        for value in (
+            event.get("replay_status"),
+            replay.get("status"),
+        )
+    ) or _content_has_pending_replay_status(content)
+    if not pending:
+        return ""
+
+    for value in (
+        event.get("replay_id"),
+        replay.get("id"),
+        replay.get("url"),
+        event.get("verified_replay_url"),
+        event.get("replay_url"),
+        event.get("raw_replay_url"),
+        _replay_id_from_pending_text(content),
+        event.get("battle_id"),
+    ):
+        replay_id = public_replay_id_candidate(value)
+        if replay_id:
+            return replay_id
+    return ""
+
+
+def _replay_json_is_live(replay_id: str) -> bool:
+    """Check Showdown's public replay JSON endpoint with a fixed timeout."""
+    if not replay_id:
+        return False
+    import urllib.error
+    import urllib.request
+
+    url = f"https://replay.pokemonshowdown.com/{replay_id}.json"
+    req = urllib.request.Request(
+        url,
+        headers={"User-Agent": "FoulerPlay/1.0"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=REPLAY_RESOLVE_TIMEOUT_SEC) as resp:
+            return getattr(resp, "status", 200) == 200
+    except urllib.error.HTTPError as exc:
+        if exc.code not in (404, 410):
+            logger.debug("Replay JSON probe returned HTTP %s for %s", exc.code, replay_id)
+        return False
+    except Exception as exc:
+        logger.debug("Replay JSON probe failed for %s: %s", replay_id, exc)
+        return False
+
+
+def _resolve_public_replay_url_from_pending_id(replay_id: str) -> str:
+    attempts = max(1, REPLAY_RESOLVE_ATTEMPTS)
+    for attempt in range(1, attempts + 1):
+        if _replay_json_is_live(replay_id):
+            return canonical_replay_url(replay_id) or f"https://replay.pokemonshowdown.com/{replay_id}"
+        if attempt < attempts and REPLAY_RESOLVE_DELAY_SEC > 0:
+            time.sleep(REPLAY_RESOLVE_DELAY_SEC)
+    logger.info(
+        "Battle result replay still pending-public-upload for %s after %d poster resolver attempt(s)",
+        replay_id,
+        attempts,
+    )
+    return ""
+
+
+def _public_replay_content_line(replay_id: str, replay_url: str) -> str:
+    return f"replay `{replay_id}`: {replay_url}"
+
+
+def _inject_public_replay_line(content: str, replay_id: str, replay_url: str) -> str:
+    public_line = f"- {_public_replay_content_line(replay_id, replay_url)}"
+    remaining_idx = content.find("**Remaining:**")
+    if remaining_idx >= 0:
+        insert_at = content.rfind("\n", 0, remaining_idx)
+        if insert_at >= 0:
+            return content[:insert_at].rstrip() + f"\n{public_line}\n\n" + content[insert_at:].lstrip("\n")
+    return content.rstrip() + f"\n{public_line}"
+
+
+def _upgrade_replay_content(content: str, replay_id: str, replay_url: str) -> str:
+    public_bit = _public_replay_content_line(replay_id, replay_url)
+    pending_pattern = re.compile(
+        rf"replay\s+pending\s+public\s+upload\s+`?{re.escape(replay_id)}`?",
+        re.IGNORECASE,
+    )
+    upgraded, replacements = pending_pattern.subn(public_bit, content or "")
+    upgraded = REPLAY_STATUS_PENDING_RE.sub("replay_status=public", upgraded)
+    upgraded = re.sub(
+        r"replay_public_verified\s*=\s*(?:false|0|no)",
+        "replay_public_verified=True",
+        upgraded,
+        flags=re.IGNORECASE,
+    )
+    if replacements == 0 and replay_url not in upgraded:
+        upgraded = _inject_public_replay_line(upgraded, replay_id, replay_url)
+    return upgraded
+
+
+def _upgrade_replay_items(items: object, replay_id: str, replay_url: str) -> list[str]:
+    public_item = f"replay {replay_id}: {replay_url}"
+    if not isinstance(items, list):
+        return [public_item]
+    upgraded: list[str] = []
+    replaced = False
+    for item in items:
+        text = str(item)
+        normalized = re.sub(r"[-_\s`]+", "-", text.lower())
+        if f"replay-pending-public-upload-{replay_id.lower()}" in normalized:
+            upgraded.append(public_item)
+            replaced = True
+        else:
+            upgraded.append(text)
+    if not replaced and public_item not in upgraded:
+        upgraded.append(public_item)
+    return upgraded
+
+
+def _replace_replay_state_text(value: object, replay_id: str) -> object:
+    if not isinstance(value, str):
+        return value
+    return value.replace(
+        f"replay pending {replay_id}",
+        f"public replay {replay_id}",
+    ).replace(
+        f"replay pending-public-upload {replay_id}",
+        f"public replay {replay_id}",
+    )
+
+
+def prepare_battle_result_replay_for_post(event: dict[str, Any]) -> dict[str, Any]:
+    """Upgrade a pending battle_result replay to a public URL if Showdown JSON is live."""
+    replay_id = _pending_battle_result_replay_id(event)
+    if not replay_id:
+        return event
+
+    replay_url = _resolve_public_replay_url_from_pending_id(replay_id)
+    if not replay_url:
+        return event
+
+    upgraded = copy.deepcopy(event)
+    upgraded["content"] = _upgrade_replay_content(str(upgraded.get("content") or ""), replay_id, replay_url)
+    upgraded["replay_id"] = replay_id
+    upgraded["replay_url"] = replay_url
+    upgraded["verified_replay_url"] = replay_url
+    upgraded["replay_status"] = "public"
+    upgraded["replay_public_verified"] = True
+
+    proof = upgraded.get("proof") if isinstance(upgraded.get("proof"), dict) else {}
+    if proof:
+        proof["items"] = _upgrade_replay_items(proof.get("items"), replay_id, replay_url)
+        proof["replay"] = {"status": "public", "id": replay_id, "url": replay_url}
+        upgraded["proof"] = proof
+
+    analysis = upgraded.get("analysis") if isinstance(upgraded.get("analysis"), dict) else {}
+    if analysis:
+        analysis["currentBattleState"] = _replace_replay_state_text(analysis.get("currentBattleState"), replay_id)
+        upgraded["analysis"] = analysis
+    upgraded["current_battle_state"] = _replace_replay_state_text(upgraded.get("current_battle_state"), replay_id)
+
+    logger.info(
+        "Upgraded pending battle_result replay before Discord post: event=%s replay=%s",
+        upgraded.get("id"),
+        replay_id,
+    )
+    return upgraded
+
+
+def _event_timestamp(event: dict[str, Any], default: float) -> float:
+    try:
+        return float(event.get("timestamp") or default)
+    except (TypeError, ValueError):
+        return default
+
+
+def resolve_pending_battle_result_replays_before_expiry(max_age_sec: int = EXPIRY_SEC) -> int:
+    """Resolve pending battle-result replays before stale backlog quarantine runs."""
+    now = time.time()
+    upgrades: dict[str, dict[str, Any]] = {}
+    for event in get_pending_events():
+        if str(event.get("event_type") or "") != "battle_result":
+            continue
+        event_id = str(event.get("id") or "")
+        if not event_id:
+            continue
+        upgraded = prepare_battle_result_replay_for_post(event)
+        if upgraded == event:
+            continue
+        upgraded = copy.deepcopy(upgraded)
+        if now - _event_timestamp(event, now) > max_age_sec:
+            upgraded["timestamp"] = now
+            upgraded["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+            upgraded["replay_resolved_from_stale_backlog"] = True
+        upgrades[event_id] = upgraded
+
+    if not upgrades:
+        return 0
+
+    def _do_update(f):
+        events = event_queue_lib._read_queue_locked(f)
+        changed = 0
+        for idx, event in enumerate(events):
+            if not isinstance(event, dict) or event.get("status") != event_queue_lib.STATUS_PENDING:
+                continue
+            upgraded = upgrades.get(str(event.get("id") or ""))
+            if not upgraded:
+                continue
+            merged = {**event, **upgraded}
+            merged["status"] = event.get("status")
+            merged["retry_count"] = event.get("retry_count", merged.get("retry_count", 0))
+            events[idx] = merged
+            changed += 1
+        if changed:
+            event_queue_lib._write_queue_locked(f, events)
+        return changed
+
+    changed = event_queue_lib._with_lock(_do_update)
+    if changed:
+        logger.info("Resolved %s pending battle_result replay(s) before stale quarantine", changed)
+    return changed
 
 
 def resolve_webhook_url(channel: str) -> tuple[str, str]:
@@ -704,6 +977,7 @@ def _post_via_cli(event, channel, content):
 def process_one_event(dry_run: bool = False) -> bool:
     """Process the oldest pending event. Returns True if an event was processed."""
     if not dry_run:
+        resolve_pending_battle_result_replays_before_expiry(EXPIRY_SEC)
         expired = expire_old_events(EXPIRY_SEC)
         if expired:
             logger.warning("Archived and expired %s stale Discord event(s); live transport withheld", expired)
@@ -764,6 +1038,7 @@ def process_one_event(dry_run: bool = False) -> bool:
         return False
 
     # Post to Discord
+    event = prepare_battle_result_replay_for_post(event)
     result = post_to_discord(event)
     write_delivery_proof(
         status=str(result.get("status") or "failed"),

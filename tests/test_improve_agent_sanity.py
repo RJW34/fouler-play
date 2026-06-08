@@ -1,7 +1,18 @@
+import pytest
+
 from infrastructure.improve_agent import (
+    AUTO_IMPROVE_SENTINEL,
+    AUTO_PUSH_SENTINEL,
+    PUSH_BRANCH_ENV,
+    PUSH_REMOTE_ENV,
+    auto_improve_enabled,
+    auto_push_enabled,
     battle_ids_from_evidence,
+    current_win_rate_snapshot,
+    explicit_push_target,
     has_replay_protocol_evidence,
     has_request_legal_option_evidence,
+    record_deploy,
     top_issue_evidence,
     validate_autoresearch_for_improvement,
     validate_diff_scope,
@@ -23,6 +34,96 @@ def _report(**overrides):
     }
     report.update(overrides)
     return report
+
+
+def test_auto_improve_requires_cli_flag_or_env_sentinel(monkeypatch):
+    monkeypatch.delenv(AUTO_IMPROVE_SENTINEL, raising=False)
+
+    assert not auto_improve_enabled(False)
+    assert auto_improve_enabled(True)
+
+    monkeypatch.setenv(AUTO_IMPROVE_SENTINEL, "1")
+
+    assert auto_improve_enabled(False)
+
+
+def test_auto_push_requires_cli_flag_or_env_sentinel(monkeypatch):
+    monkeypatch.delenv(AUTO_PUSH_SENTINEL, raising=False)
+
+    assert not auto_push_enabled(False)
+    assert auto_push_enabled(True)
+
+    monkeypatch.setenv(AUTO_PUSH_SENTINEL, "true")
+
+    assert auto_push_enabled(False)
+
+
+def test_push_target_requires_explicit_remote_and_branch(monkeypatch):
+    monkeypatch.delenv(PUSH_REMOTE_ENV, raising=False)
+    monkeypatch.delenv(PUSH_BRANCH_ENV, raising=False)
+
+    with pytest.raises(ValueError, match="explicit"):
+        explicit_push_target()
+
+
+def test_push_target_refuses_origin_master():
+    with pytest.raises(ValueError, match="origin master"):
+        explicit_push_target("origin", "master")
+
+
+def test_push_target_accepts_explicit_non_master_target():
+    assert explicit_push_target("origin", "auto-improve/proof") == ("origin", "auto-improve/proof")
+
+
+def test_deploy_record_includes_win_rate_snapshot(monkeypatch, tmp_path):
+    import json
+    import infrastructure.improve_agent as improve_agent
+
+    battle_stats_path = tmp_path / "battle_stats.json"
+    deploy_log_path = tmp_path / "deploy_log.json"
+    battle_stats_path.write_text(
+        json.dumps(
+            [
+                {"result": "win", "elo": 1201},
+                {"result": "loss", "elo": 1190},
+                {"result": "win", "elo": 1207},
+                {"result": "tie", "elo": 1207},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(improve_agent, "BATTLE_STATS_PATH", battle_stats_path)
+    monkeypatch.setattr(improve_agent, "DEPLOY_LOG_PATH", deploy_log_path)
+
+    record_deploy("pre", "post")
+
+    deploy = json.loads(deploy_log_path.read_text(encoding="utf-8"))[-1]
+    assert deploy["win_rate_at_deploy"] == pytest.approx(2 / 3)
+    assert deploy["win_rate_sample_at_deploy"] == 3
+    assert deploy["elo_at_deploy"] == 1207
+
+
+def test_current_win_rate_snapshot_uses_recent_decisive_battles():
+    battles = [
+        {"result": "loss"},
+        {"result": "win"},
+        {"result": "tie"},
+        {"result": "win"},
+    ]
+
+    assert current_win_rate_snapshot(battles, sample_size=2) == (1.0, 2)
+
+
+def test_offline_eval_gate_fails_closed_when_harness_missing(monkeypatch, tmp_path):
+    import infrastructure.improve_agent as improve_agent
+
+    monkeypatch.setattr(improve_agent, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(improve_agent, "EVAL_GATE_ENABLED", True)
+
+    accepted, detail = improve_agent.offline_eval_gate()
+
+    assert accepted is False
+    assert detail["error"] == "eval_harness_unavailable"
 
 
 def test_improve_agent_requires_battle_linked_evidence():

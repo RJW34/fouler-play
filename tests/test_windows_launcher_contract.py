@@ -27,18 +27,28 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert "set BOT_LOG_TO_FILE=1" in text
     assert "set AUTO_START_OBS_SERVER=0" in text
     assert "set LOSS_TRIGGERED_DRAIN=0" in text
+    assert "set BATTLE_STATS_MAX_ENTRIES=5000" in text
     assert '$_.CommandLine -match "streaming[\\\\/]+serve_obs_page\\.py"' in text
     assert '$_.CommandLine -match "search_ladder" -and' in text
+    assert '$_.CommandLine -match "devstream_session\\.py" -and $_.CommandLine -match "\\bsupervise\\b"' in text
     assert '$_.CommandLine -match $escapedRepo -and' in text
     assert "function Redact-CommandLine" in text
     assert "Redact-CommandLine -CommandLine $_.CommandLine" in text
     assert "function Get-LogicalProcessSummary" in text
+    assert "battleSupervisor" in text
     assert "leafCount" in text
     assert "multiple Fouler OBS HTTP servers are running" in text
+    assert "multiple Fouler battle supervisors are running" in text
     assert 'if ($Path -eq "/health")' in text
     assert '$rel -eq "battle_stats.json"' in text
     assert "battleCount = $battles.Count" in text
     assert "lastBattle = $lastBattle" in text
+    assert '"scripts\\devstream_session.py"' in text
+    assert '"supervise"' in text
+    assert '"--run-count", "$RunCount"' in text
+    assert '"--max-concurrent-battles", "$MaxConcurrentBattles"' in text
+    assert "Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -AutoImprove:$AutoImprove" in text
+    assert "call start_one_touch.bat" not in text
 
 
 def test_obs_server_task_runs_via_logged_cmd_wrapper():
@@ -99,9 +109,34 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     installer = (ROOT / "scripts" / "install_battle_supervisor_task.ps1").read_text(encoding="utf-8")
     runtime = (ROOT / "scripts" / "fouler_jigglypuff_runtime.ps1").read_text(encoding="utf-8")
 
+    assert "[switch]$AutoImprove" in wrapper
+    assert "[switch]$AutoImprove" in installer
+    assert "[switch]$AutoImprove" in runtime
+    assert "--enable-auto-improve" in wrapper
+    assert "--enable-auto-improve" in runtime
+    assert "-AutoImprove" in installer
+    assert "Rotate-LogFileIfLarge" in wrapper
+    assert "Rotate-LogFileIfLarge" in runtime
     assert "[int]$MaxConcurrentBattles = 3" in wrapper
     assert "[int]$MaxConcurrentBattles = 3" in installer
     assert "[int]$MaxConcurrentBattles = 3" in runtime
     assert '$env:LOSS_TRIGGERED_DRAIN = "0"' in wrapper
     assert '$env:BATTLE_STATS_MAX_ENTRIES = "5000"' in wrapper
     assert '$env:BOT_LOG_TO_FILE = "1"' in wrapper
+
+
+def test_legacy_player_loop_is_clearly_quarantined():
+    text = (ROOT / "infrastructure" / "windows" / "player_loop.bat").read_text(encoding="utf-8")
+
+    assert "LEGACY FALLBACK ONLY" in text
+    assert "This wrapper intentionally loops forever" in text
+    assert "devstream_session.py supervise" in text
+    assert "goto loop_start" in text
+
+
+def test_jigglypuff_control_exposes_auto_improve_start_flag():
+    text = (ROOT / "scripts" / "jigglypuff_devstream_control.py").read_text(encoding="utf-8")
+
+    assert 'start.add_argument("--enable-auto-improve", action="store_true")' in text
+    assert '"autoImprove": enable_auto_improve' in text
+    assert 'powershell_args.append("-AutoImprove")' in text
