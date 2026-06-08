@@ -69,6 +69,22 @@ def _put_bounded_nowait(queue, message, label):
     return dropped
 
 
+def _drain_queue(queue):
+    """Drain an asyncio.Queue and mark discarded items complete."""
+    drained = 0
+    while True:
+        try:
+            queue.get_nowait()
+            drained += 1
+            try:
+                queue.task_done()
+            except (AttributeError, ValueError):
+                pass
+        except asyncio.QueueEmpty:
+            break
+    return drained
+
+
 def _public_replay_id_from_ref(value):
     """Return the public replay id portion for a battle tag or replay URL."""
     if not value:
@@ -175,6 +191,15 @@ class PSWebsocketClient:
             self.dispatcher_task.cancel()
             self.dispatcher_task = None
 
+    async def _stop_dispatcher_task(self):
+        task = self.dispatcher_task
+        self.stop_dispatcher()
+        if task and task is not asyncio.current_task() and not task.done():
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
     def _is_closed(self):
         if self.websocket is None:
             return True
@@ -219,7 +244,7 @@ class PSWebsocketClient:
                 return
 
             logger.warning("WebSocket disconnected. Reconnecting...")
-            self.stop_dispatcher()
+            await self._stop_dispatcher_task()
 
             if self.websocket is not None:
                 try:
@@ -231,14 +256,14 @@ class PSWebsocketClient:
 
             # Clear any stale global messages from the old connection
             try:
-                while not self.global_queue.empty():
-                    self.global_queue.get_nowait()
+                _drain_queue(self.global_queue)
             except Exception:
                 pass
 
             # Pending battles are from the old connection; drop them
             self.pending_battle_messages.clear()
             self.pending_battle_times.clear()
+            self.pending_battle_owners.clear()
             # Clear active search state; it will repopulate from updatesearch
             self.active_searches = set()
 
@@ -254,8 +279,7 @@ class PSWebsocketClient:
                 # Clear stale queued messages
                 for queue in self.battle_queues.values():
                     try:
-                        while not queue.empty():
-                            queue.get_nowait()
+                        _drain_queue(queue)
                     except Exception:
                         pass
 
@@ -569,16 +593,33 @@ class PSWebsocketClient:
                     )
                 break
 
+    def _clear_receive_state(self):
+        global_queue = getattr(self, "global_queue", None)
+        if global_queue is not None:
+            _drain_queue(global_queue)
+
+        for queue in list(getattr(self, "battle_queues", {}).values()):
+            _drain_queue(queue)
+        getattr(self, "battle_queues", {}).clear()
+        getattr(self, "pending_battle_messages", {}).clear()
+        getattr(self, "pending_battle_times", {}).clear()
+        getattr(self, "pending_battle_owners", {}).clear()
+        getattr(self, "_recently_finished", {}).clear()
+        self.active_searches = set()
+        self._search_owner = None
+        self._search_owner_since = None
+
     async def close(self):
-        self.stop_dispatcher()
+        await self._stop_dispatcher_task()
         # Stop the rate-limited send queue (drains/cancels pending items)
         await self._send_queue.stop()
-        # Cancel any pending reconnect task
-        if self._reconnect_task and not self._reconnect_task.done():
-            self._reconnect_task.cancel()
-            self._reconnect_task = None
+        await self._cancel_reconnect_task()
         if self.websocket is not None:
-            await self.websocket.close()
+            try:
+                await self.websocket.close()
+            finally:
+                self.websocket = None
+        self._clear_receive_state()
 
     async def get_id_and_challstr(self):
         while True:
@@ -855,3 +896,13 @@ class PSWebsocketClient:
 
         logger.warning(f"No replay URL received for {battle_tag}")
         return None
+
+    async def _cancel_reconnect_task(self):
+        task = self._reconnect_task
+        if task and task is not asyncio.current_task() and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        self._reconnect_task = None
