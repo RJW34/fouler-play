@@ -44,11 +44,12 @@ Per `infrastructure/guardrails.json` and CLAUDE.md "NEVER MODIFY" lines:
 - **One improvement per cycle** — small correct changes beat ambitious broken ones
 - **Tests must pass** before every push: `python -m pytest tests/ -v`
 
-## Machine roles (active devstream as of 2026-05)
+## Machine roles (proof-gated devstream as of 2026-06)
 
 - **DEKU on ubunztu** (Linux) = brains: decision-making improvements, replay analysis, dev loop, tests, upstream merges
-- **JIGGLYPUFF** (Windows) = brawn: bot runtime, battle data collection, environment, ELO monitoring
+- **JIGGLYPUFF** (Windows) = optional remote runtime profile only after an explicit proof window and runtime lease
 - Hostname detection is **OS-based not name-based** — see CLAUDE.md "How to identify your machine"
+- No Fouler runtime is safe to autostart from onboarding docs. Treat status/dry-run commands as safe; `--execute`, scheduled tasks, Discord posting, and laddering require a current proof window plus a lease naming the machine and battle scope.
 
 Note: `MAGNETON` mentioned in CLAUDE.md as a possible runtime hostname is RETIRED as of 2026-05-13 (see the-abso-citadel/docs/hermes/HERMES-BODY-2026-05-13.md). Treat MAGNETON references in this repo as historical.
 
@@ -94,16 +95,19 @@ without redesigning the teams. ELO ~1164-1194 today; this is NOT done.
 4. `infrastructure/guardrails.json` — the hard allow/deny edit list. **Obey before editing.**
 5. `git status --short` and `git log --oneline -10` — confirm branch reality (do NOT assume `master`).
 
-**ubunztu = code/dev home. JIGGLYPUFF = live runtime.** You are almost certainly on ubunztu
-(Linux). Write code and docs here, commit here. The bot actually *plays* on JIGGLYPUFF
-(`D:\Projects\fouler-play`, Windows), driven over Tailscale SSH.
+**ubunztu = code/dev home. No default live runtime is currently assigned.** You are almost
+certainly on ubunztu (Linux). Write code and docs here, commit here, and keep runtime work
+status-only unless a proof window and runtime lease explicitly authorize a bounded Showdown batch.
+JIGGLYPUFF remains an optional Windows runtime profile, not a default place to launch laddering.
 
-### How the live runtime launches (committed path on ubunztu)
-The deploy/launch chain that the committed code implements:
+### Runtime control path (status/dry-run by default)
+The committed control path can describe or inspect a remote Windows profile, but it must not launch
+from onboarding instructions. `--execute` is allowed only when a current proof window and lease both
+name Fouler, the machine, the account, run count, concurrency, replay/Discord behavior, and expiry.
 
 ```
 devstream.yaml  runner.start
-   -> scripts/jigglypuff_devstream_control.py start --run-count 10 --max-concurrent-battles 1 --execute   (on ubunztu)
+   -> scripts/jigglypuff_devstream_control.py start --run-count 10 --max-concurrent-battles 1   (dry-run plan on ubunztu)
       -> [Tailscale SSH to JIGGLYPUFF] D:\Projects\fouler-play\scripts\fouler_jigglypuff_runtime.ps1
          -> scripts/devstream_session.py start    (bounded session planner; doctor|start|stop)
             -> python run.py --bot-mode search_ladder --pokemon-format gen9ou --max-concurrent-battles N ...
@@ -160,8 +164,8 @@ python infrastructure/improve_agent.py --dry-run   # show the fix it WOULD make,
 | `infrastructure/elo_watchdog.py` (271) | **ELO-gated revert.** Watches post-deploy ELO; `git revert`s the last deploy if ELO drops past the guardrail threshold. | `check_and_revert()` |
 | `pipeline.py` | Batch orchestrator (ubunztu): detect batch completion -> autoresearch -> Discord report. | `python pipeline.py watch\|analyze\|autoresearch` |
 | `scripts/devstream_session.py` | Bounded session planner: `doctor` / `start` / `stop`. Builds the `run.py` command line from `.env`. | `python scripts/devstream_session.py start` |
-| `scripts/jigglypuff_devstream_control.py` | ubunztu->JIGGLY control plane (start/stop/status over Tailscale SSH). | `... control.py start --execute` |
-| `scripts/fouler_jigglypuff_runtime.ps1` | JIGGLY-side PowerShell worker invoked by the control plane. | scheduled task (`-match Fouler`) |
+| `scripts/jigglypuff_devstream_control.py` | Optional ubunztu->JIGGLY control profile (status/dry-run by default; execute requires proof window + lease). | `... control.py status` |
+| `scripts/fouler_jigglypuff_runtime.ps1` | JIGGLY-side PowerShell worker invoked only by a proof-gated control plane. | status/proof-window runs only |
 | `infrastructure/guardrails.json` | Allow/deny edit list + safety thresholds. | read by improve_agent & elo_watchdog |
 
 ### Files `improve_agent` is ALLOWED to edit
@@ -245,8 +249,8 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
 - **Do not push to a public remote** unless explicitly told. `origin` is the shared repo; pushing
   auto-deploys. The ELO watchdog also pushes its own reverts.
 - **ubunztu vs JIGGLY split:** write/test/commit code on **ubunztu** (Linux, code home). The bot
-  plays on **JIGGLYPUFF** (`D:\Projects\fouler-play`, Windows runtime). Don't try to ladder from
-  ubunztu; don't develop on JIGGLY.
+  does not have a default live runtime right now. Do not ladder from any machine, including
+  JIGGLYPUFF, unless a proof window and runtime lease explicitly authorize the bounded run.
 - **Where the data lives (both machines, runtime-generated):**
   - `battle_stats.json` — rolling battle results + ELO (`rating` field per battle).
   - `replay_analysis/*.json` — saved replay logs; `gen9ou-*.json` per battle, `*_gameplan.json` per plan.

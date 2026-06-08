@@ -3,13 +3,23 @@
   "projectId": "fouler-play",
   "displayName": "fouler-play",
   "root": "/home/ryan/projects/fouler-play",
-  "role": "remote-windows-runtime",
-  "machine": "JIGGLYPUFF",
-  "mission": "Train and evaluate a high-level Gen 9 OU bot through JIGGLYPUFF-hosted bounded battle cycles, replay/decision proof, DEKU-guided analysis, and iteration toward 1700 ELO play.",
+  "role": "proof-gated-showdown-runtime",
+  "machine": "UNASSIGNED_PROOF_WINDOW_ONLY",
+  "mission": "Train and evaluate a high-level Gen 9 OU bot through proof-gated bounded battle cycles, replay/decision proof, DEKU-guided analysis, and iteration toward 1700 ELO play.",
+  "runtimeAuthority": {
+    "defaultRuntime": "none",
+    "optionalRuntimeProfile": "JIGGLYPUFF",
+    "requiresProofWindow": true,
+    "requiresRuntimeLease": true,
+    "allowExecuteWithoutProofWindow": false,
+    "allowScheduledTaskAutostart": false,
+    "normalAutostart": false,
+    "notes": "JIGGLYPUFF is an optional Windows runtime profile only. Status and dry-run commands are allowed; --execute, scheduled tasks, laddering, Discord posting, and replay uploads require a current proof window plus a runtime lease."
+  },
   "runner": {
     "safeToAutostart": false,
-    "start": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "start", "--run-count", "10", "--max-concurrent-battles", "3", "--execute"],
-    "stop": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "stop", "--execute"],
+    "start": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "start", "--run-count", "10", "--max-concurrent-battles", "3"],
+    "stop": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "stop"],
     "status": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "status"]
   },
   "health": {
@@ -31,9 +41,9 @@
       {"label": "report packetizer", "path": "scripts/devstream_packetize.py", "required": true},
       {"label": "post-packet evaluator", "path": "scripts/devstream_post_packet_eval.py", "required": true},
       {"label": "cycle report writer", "path": "scripts/devstream_cycle_report.py", "required": true},
-      {"label": "jigglypuff hub control", "path": "scripts/jigglypuff_devstream_control.py", "required": true},
-      {"label": "jigglypuff runtime control", "path": "scripts/fouler_jigglypuff_runtime.ps1", "required": true},
-      {"label": "jigglypuff runtime mirror", "path": "devstream/truth/jigglypuff-runtime.json", "required": false, "staleAfterSeconds": 900},
+      {"label": "optional remote profile control", "path": "scripts/jigglypuff_devstream_control.py", "required": true},
+      {"label": "optional remote runtime worker", "path": "scripts/fouler_jigglypuff_runtime.ps1", "required": false},
+      {"label": "optional remote runtime mirror", "path": "devstream/truth/jigglypuff-runtime.json", "required": false, "staleAfterSeconds": 900},
       {"label": "elo proof schema", "path": "devstream/truth/elo-proof.schema.json", "required": true},
       {"label": "elo proof example", "path": "devstream/truth/elo-proof.example.json", "required": true}
     ]
@@ -58,22 +68,22 @@
   },
   "autonomy": {
     "canForeground": true,
-    "canAutostartRehearsal": true,
+    "canAutostartRehearsal": false,
     "canAutostartLive": false,
     "canRunInBackground": false,
     "resourceClass": "remote-heavy",
     "minFocusMinutes": 20,
     "maxFocusMinutes": 45,
     "warmupSeconds": 30,
-    "allowDegradedStart": true,
+    "allowDegradedStart": false,
     "discordInfluence": "queued-safe-handoff",
     "rotateOn": ["batch-complete", "login-failed", "health-blocked", "report-written", "operator-suggestion"],
-    "notes": "Autopilot should lease JIGGLYPUFF through the Tailscale SSH wrapper, run a bounded Showdown batch there, then report and hand off instead of leaving it open-ended."
+    "notes": "Autopilot may run status and dry-run planning only. A bounded Showdown batch on JIGGLYPUFF or any other machine requires a current proof window and runtime lease; no rehearsal autostart is allowed from this manifest."
   },
   "certification": {
     "commands": [
       {"name": "jigglypuff-status", "command": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "status"], "timeoutSeconds": 45},
-      {"name": "showdown-login-only", "command": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "login-proof", "--execute"], "timeoutSeconds": 90},
+      {"name": "showdown-login-plan", "command": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "login-proof"], "timeoutSeconds": 90},
       {"name": "cycle-report", "command": [".venv/bin/python", "scripts/devstream_cycle_report.py", "--write"], "timeoutSeconds": 20},
       {"name": "packetizer-dry-run", "command": [".venv/bin/python", "scripts/devstream_packetize.py"], "timeoutSeconds": 30}
     ]

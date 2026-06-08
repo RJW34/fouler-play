@@ -11,7 +11,7 @@ Build an **overnight team-testing service** for a competitive Pokemon player. Th
 
 **Why 1700 ELO matters:** At 1200 (where we are now), opponents play poorly and the data is meaningless for team evaluation. The bot must reach **1700+** so that matchup data reflects how the team performs against competent opponents. 1700 is not the goal — it's the minimum quality threshold for useful test data.
 
-**Current devstream deployment:** DEKU runs on ubunztu as the control plane. The live Windows bot runtime is JIGGLYPUFF at `D:\Projects\fouler-play`, controlled through Tailscale SSH by `scripts/jigglypuff_devstream_control.py` and the remote PowerShell worker `scripts/fouler_jigglypuff_runtime.ps1`.
+**Current devstream deployment:** DEKU runs on ubunztu as the control plane. Fouler has no default live runtime while the two-PC proof gate is being rebuilt. JIGGLYPUFF at `D:\Projects\fouler-play` is only an optional remote runtime profile; any `--execute`, scheduled task, Discord posting, or laddering path requires a current proof window and runtime lease that names Fouler, the machine, the account, run count, concurrency, replay behavior, and expiry.
 
 **What the player actually consumes:**
 - Per-team win rates and trends across overnight sessions
@@ -61,33 +61,35 @@ When you have multiple independent tasks, spawn sub-agents to work in parallel:
 Use your current coding-agent runtime for headless sub-agents. The exact harness can change (Codex, Claude Code, etc.), but the repo workflow should not: read intent docs first, make one focused improvement, run validations, and push only clean, scoped changes.
 
 ### Coordinating with JIGGLYPUFF
-- Push code to `master`; the devstream control path deploys and starts JIGGLYPUFF through Tailscale SSH.
-- If JIGGLYPUFF needs something specific, write instructions in `TASKBOARD.md` under "JIGGLYPUFF Action Items" and push.
+- Push code only when explicitly asked; do not treat a push as permission to deploy or start runtime work.
+- If JIGGLYPUFF needs something specific, write instructions in `TASKBOARD.md` under "JIGGLYPUFF Action Items" and keep them status/proof-window oriented.
 - Read `battle_stats.json` and remote runtime truth for performance data.
 
 ---
 
-## JIGGLYPUFF (Windows) — Brawn
+## JIGGLYPUFF (Windows) — Optional Proof-Gated Runtime Profile
 
-**You own:** Bot operation, battle data collection, environment, poke-engine builds, ELO monitoring. Streaming is secondary.
+**You own:** Environment readiness and status proof only unless a current proof window and runtime lease authorize a bounded batch. Streaming is secondary.
 
-### Your loop: DEKU-controlled bounded sessions
-DEKU starts and stops bounded sessions through:
+### Your loop: status/dry-run first
+DEKU may inspect the remote profile through:
 ```
 python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py status
-python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py start --run-count 10 --max-concurrent-battles 1 --execute
-python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py stop --execute
+python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py start --run-count 10 --max-concurrent-battles 1
+python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py stop
 ```
+The `start` and `stop` examples above are dry-run/planning commands unless an approved proof window and lease explicitly permit `--execute`. Do not infer launch permission from this file.
 
-The direct Windows fallback is `infrastructure/windows/player_loop.bat` or `start_one_touch.bat`. The current Windows runtime is intentionally **single-worker by default** unless explicitly overridden via environment or launcher args. Install as a persistent scheduled task only if DEKU's remote runner is not being used:
+The direct Windows fallback is `infrastructure/windows/player_loop.bat` or `start_one_touch.bat`. The current Windows runtime profile is intentionally **single-worker by default** unless explicitly overridden via environment or launcher args. Install or start persistent scheduled tasks only under a proof-window/lease document; normal onboarding must leave them disabled:
 ```
-Run as Administrator: infrastructure\windows\install_task.bat
-schtasks /run /tn "FoulerPlayOneTouch"
+# Proof-window-only historical reference; do not run from onboarding:
+# Run as Administrator: infrastructure\windows\install_task.bat
+# schtasks /run /tn "FoulerPlayOneTouch"
 ```
 
 ### Your responsibilities (in priority order)
-1. **Keep the bot playing** — the player loop must be running at all times. If it crashes, diagnose why and fix. The bot should be playing games continuously so there's fresh data every morning. Check logs in the repo root.
-2. **Push battle data** — after each batch, `battle_stats.json` and `replays/` get committed and pushed to `master`. This is the raw material DEKU and the player need.
+1. **Keep readiness visible** — report status, logs, dependency health, and whether a proof-gated batch could run. Do not keep the bot playing continuously from stale docs.
+2. **Preserve battle data** — after an authorized batch, `battle_stats.json` and replays are evidence. Do not push or overwrite them without a scoped handoff.
 3. **ELO monitoring** — `infrastructure/elo_watchdog.py` runs after deploys. If ELO drops >50 from a deploy, it auto-reverts. Make sure this is working.
 4. **poke-engine builds** — if DEKU pushes code that updates poke-engine version, you need Rust toolchain installed to rebuild. `pip install -e .` or `pip install poke-engine==X.X.X`.
 5. **Streaming (low priority)** — the streaming pipeline in `streaming/` is built and functional but is NOT critical to the mission. Only work on it if everything above is running smoothly.
@@ -189,7 +191,7 @@ oracle.validate_type_claim("ghost", ["dark"], 0.0)                # (False, 0.5)
 
 1. Read this file (CLAUDE.md)
 2. Read TASKBOARD.md for current status and action items
-3. Determine which machine you're on (DEKU or JIGGLYPUFF)
+3. Determine which machine you're on (DEKU or optional Windows runtime profile)
 4. Check `git log --oneline -5` and `git status` for recent changes
 5. Act on your highest-priority responsibility
 6. Update TASKBOARD.md with what you did

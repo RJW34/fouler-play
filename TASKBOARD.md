@@ -12,7 +12,7 @@
 ## Standing Rules (check every session — fix drift immediately)
 
 1. **DECISION ENGINE WORK ONLY.** Do not write infrastructure, reporting, Discord formatting, build manifests, or pipeline orchestration code. All of that is built (see "What's Already Built" below). Every commit must improve `fp/search/` or fix a documented bug in the decision engine. If you are about to create a new file outside `fp/search/` or `tests/`, STOP and reconsider.
-2. **Do not hard-code stale concurrency targets.** Live launcher truth wins. The current devstream runner is DEKU on ubunztu controlling JIGGLYPUFF over Tailscale SSH, using `scripts/jigglypuff_devstream_control.py` -> `scripts/fouler_jigglypuff_runtime.ps1` -> `start_one_touch.bat`.
+2. **Do not hard-code stale concurrency targets or runtime hosts.** Live launcher truth plus a current proof window wins. The current devstream posture is no-autostart: DEKU on ubunztu may run status/dry-run checks, while any JIGGLYPUFF batch through `scripts/jigglypuff_devstream_control.py` -> `scripts/fouler_jigglypuff_runtime.ps1` -> `start_one_touch.bat` requires an explicit proof window and runtime lease.
 3. **One source of truth.** This file plus current launcher/process evidence. If docs disagree with the running launcher or command line, fix the docs immediately.
 4. **Bot account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=npctypebeat`.
 
@@ -57,8 +57,8 @@ conflicts with the MCTS-first selection. ubunztu now fast-forwarded to canonical
 
 **Tests:** 986 pass (1 pre-existing unrelated devstream-report flake).
 
-**DEPLOY STEP (not yet done — do not disrupt live runtime carelessly):**
-The JIGGLY runtime at `D:\Projects\fouler-play` is still on the OLD `opus48` tip
+**DEPLOY STEP (historical — do not use as launch permission):**
+The JIGGLY runtime profile at `D:\Projects\fouler-play` was last documented on the OLD `opus48` tip
 (`82dee164`), missing the docs commit + the 4 work commits. To deploy:
 1. On JIGGLY: stash/commit the dirty runtime state files (battle_stats.json etc.),
    then `git pull`/fast-forward `opus48/multisample-mcts` to `b3b314c9`.
@@ -102,7 +102,7 @@ The following systems are complete and must NOT receive further development unle
 2. Run `python -m pytest tests/ -v` after every change
 3. Do NOT create new infrastructure files, reporting pipelines, or meta-tooling
 
-**Operational prerequisite:** The bot must be running and producing `battle_stats.json` for any analysis to matter. If the bot is not running, fix that FIRST, then return to decision-engine work.
+**Operational prerequisite:** Fresh `battle_stats.json` only matters after an authorized proof-window batch. If the bot is not authorized to run, keep the runtime stopped and work on offline decision-engine proof instead.
 
 **All critical bugs are fixed.** See Decision Engine Bugs section below for details.
 
@@ -139,8 +139,8 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 - Upstream merge management
 
 ### JIGGLYPUFF (Windows) owns:
-- Bot operation for devstream runtime (`D:\Projects\fouler-play`, controlled by DEKU over Tailscale SSH)
-- Battle data collection + push (`battle_stats.json`, replays)
+- Optional runtime readiness proof (`D:\Projects\fouler-play`, controlled by DEKU over Tailscale SSH only under proof-window/lease authorization)
+- Battle data preservation after an authorized bounded batch (`battle_stats.json`, replays)
 - poke-engine builds (Rust toolchain)
 - ELO monitoring + watchdog
 - Environment/credentials setup
@@ -180,10 +180,11 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 
 ## JIGGLYPUFF Action Items
 
-### Keep the Bot Running
+### Keep Runtime Readiness Verifiable
 1. Ensure DEKU can run `python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py status` from ubunztu.
-2. After each batch, verify `battle_stats.json` has new entries and push
-3. If the bot disconnects or crashes, check logs and restart
+2. Keep scheduled tasks disabled unless a proof window and lease authorize a bounded batch.
+3. After an authorized batch, verify `battle_stats.json` has new entries and preserve replay evidence.
+4. If the bot disconnects or crashes during an authorized batch, collect logs and stop cleanly; do not install a persistent restarter from stale docs.
 
 ### Verified Setup
 - [x] Bot connects to Showdown and plays games (current live account: `npctypebeat` on 2026-03-10)
@@ -191,7 +192,7 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 - [x] Replays saved to replay_analysis/
 - [x] Player loop runs unattended / looping on Windows
 - [x] Push battle_stats.json after each batch
-- [ ] JIGGLYPUFF deployment is current, `.env` is present, `.venv` is bootstrapped, and DEKU's Tailscale control wrapper reports ready.
+- [ ] JIGGLYPUFF deployment is current, `.env` is present, `.venv` is bootstrapped, DEKU's Tailscale control wrapper reports ready, and a proof-window/lease document exists before any `--execute`.
 
 ---
 
