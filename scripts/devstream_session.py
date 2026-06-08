@@ -1371,6 +1371,14 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_start(args: argparse.Namespace) -> int:
     env = prepare_runtime_env(load_env_files())
     effective_count = effective_run_count(args.run_count, env)
+    lease_guard = runtime_lease_guard(
+        purpose="devstream-start-continuous" if getattr(args, "continuous", False) else "devstream-start",
+        args=args,
+        env=env,
+        run_count=effective_count,
+        max_cycles=positive_int(getattr(args, "max_cycles", 0), 0) if getattr(args, "continuous", False) else None,
+        require_max_cycles=bool(getattr(args, "continuous", False)),
+    )
     commands = {
         "obsHttp": obs_server_command(),
         "battleSession": shell_command_for_session(effective_count, args.max_concurrent_battles, env),
@@ -1400,23 +1408,16 @@ def cmd_start(args: argparse.Namespace) -> int:
             "maxCycles": positive_int(getattr(args, "max_cycles", 0), 0),
         },
         "envFilePermissions": secure_env_files(execute=args.execute),
+        "runtimeLease": lease_guard,
     }
-    if not args.execute:
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return 0
-    lease_guard = runtime_lease_guard(
-        purpose="devstream-start-continuous" if getattr(args, "continuous", False) else "devstream-start",
-        args=args,
-        env=env,
-        run_count=effective_count,
-        max_cycles=positive_int(getattr(args, "max_cycles", 0), 0) if getattr(args, "continuous", False) else None,
-        require_max_cycles=bool(getattr(args, "continuous", False)),
-    )
-    payload["runtimeLease"] = lease_guard
     if not lease_guard.get("ok"):
+        payload["status"] = "blocked-runtime-lease"
         payload["error"] = runtime_lease_blocked_message(lease_guard)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
+    if not args.execute:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
     if not env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID"):
         payload["error"] = "PS_USERNAME or SHOWDOWN_USER_ID is required"
         print(json.dumps(payload, indent=2, sort_keys=True))
