@@ -569,6 +569,90 @@ def test_cmd_start_execute_fails_closed_without_runtime_lease(tmp_path, monkeypa
     assert started == []
 
 
+def test_cmd_start_dry_run_reports_runtime_lease_blocker(tmp_path, monkeypatch, capsys):
+    started = []
+
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(
+        devstream_session,
+        "prepare_runtime_env",
+        lambda env: {"PS_USERNAME": "bot", "PS_PASSWORD": "secret"},
+    )
+    monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
+    monkeypatch.setattr(
+        devstream_session,
+        "start_process",
+        lambda *args, **kwargs: started.append(args) or {"pid": 1},
+    )
+
+    args = argparse.Namespace(
+        run_count=1,
+        max_concurrent_battles=1,
+        max_runtime_minutes=180,
+        queue_timeout_seconds=180,
+        turn_timeout_seconds=90,
+        supervisor_sleep_seconds=15,
+        replace_stale_runner=True,
+        continuous=False,
+        execute=False,
+        enable_auto_improve=False,
+        max_cycles=0,
+        runtime_lease=str(tmp_path / "missing-runtime-lease.json"),
+    )
+
+    assert devstream_session.cmd_start(args) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["dryRun"] is True
+    assert payload["status"] == "blocked-runtime-lease"
+    assert payload["runtimeLease"]["ok"] is False
+    assert "runtime lease file is missing" in " ".join(payload["runtimeLease"]["blockers"])
+    assert "started" not in payload
+    assert started == []
+
+
+def test_cmd_start_dry_run_includes_valid_runtime_lease_preflight(tmp_path, monkeypatch, capsys):
+    started = []
+
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(
+        devstream_session,
+        "prepare_runtime_env",
+        lambda env: {"PS_USERNAME": "bot", "PS_PASSWORD": "secret"},
+    )
+    monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
+    monkeypatch.setattr(
+        devstream_session,
+        "start_process",
+        lambda *args, **kwargs: started.append(args) or {"pid": 1},
+    )
+    runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json")
+
+    args = argparse.Namespace(
+        run_count=1,
+        max_concurrent_battles=1,
+        max_runtime_minutes=180,
+        queue_timeout_seconds=180,
+        turn_timeout_seconds=90,
+        supervisor_sleep_seconds=15,
+        replace_stale_runner=True,
+        continuous=False,
+        execute=False,
+        enable_auto_improve=False,
+        max_cycles=0,
+        runtime_lease=str(runtime_lease),
+    )
+
+    assert devstream_session.cmd_start(args) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["dryRun"] is True
+    assert payload["runtimeLease"]["ok"] is True
+    assert payload["runtimeLease"]["requested"]["runCount"] == 1
+    assert "started" not in payload
+    assert started == []
+
+
 def test_forced_clear_active_battles_overrides_live_runner_truth(tmp_path, monkeypatch):
     active = tmp_path / "active_battles.json"
     active.write_text(json.dumps({"battles": [{"id": "battle-gen9ou-1"}], "count": 1}), encoding="utf-8")
