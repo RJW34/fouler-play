@@ -5,7 +5,7 @@
   "root": "/home/ryan/projects/fouler-play",
   "role": "remote-windows-runtime",
   "machine": "JIGGLYPUFF",
-  "mission": "Train and evaluate a high-level Gen 9 OU bot through JIGGLYPUFF-hosted bounded battle cycles, replay/decision proof, DEKU-guided analysis, and iteration toward 1800+ ELO play.",
+  "mission": "Train and evaluate a high-level Gen 9 OU bot through JIGGLYPUFF-hosted bounded battle cycles, replay/decision proof, DEKU-guided analysis, and iteration toward 1700 ELO play.",
   "runner": {
     "safeToAutostart": false,
     "start": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "start", "--run-count", "10", "--max-concurrent-battles", "3", "--execute"],
@@ -54,7 +54,7 @@
   "focus": {
     "priority": 90,
     "idleRotationSeconds": 900,
-    "reasons": ["1800 ELO target", "bounded battle cycles", "live browser surfaces", "DEKU analysis loop", "report generation proof"]
+    "reasons": ["1700 ELO target", "bounded battle cycles", "live browser surfaces", "DEKU analysis loop", "report generation proof"]
   },
   "autonomy": {
     "canForeground": true,
