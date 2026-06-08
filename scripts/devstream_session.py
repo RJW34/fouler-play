@@ -1371,13 +1371,17 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_start(args: argparse.Namespace) -> int:
     env = prepare_runtime_env(load_env_files())
     effective_count = effective_run_count(args.run_count, env)
+    continuous = bool(getattr(args, "continuous", False))
+    start_purpose = "devstream-start-continuous" if continuous else "devstream-start"
+    if not args.execute:
+        start_purpose = f"{start_purpose}-dry-run"
     lease_guard = runtime_lease_guard(
-        purpose="devstream-start-continuous" if getattr(args, "continuous", False) else "devstream-start",
+        purpose=start_purpose,
         args=args,
         env=env,
         run_count=effective_count,
-        max_cycles=positive_int(getattr(args, "max_cycles", 0), 0) if getattr(args, "continuous", False) else None,
-        require_max_cycles=bool(getattr(args, "continuous", False)),
+        max_cycles=positive_int(getattr(args, "max_cycles", 0), 0) if continuous else None,
+        require_max_cycles=continuous,
     )
     commands = {
         "obsHttp": obs_server_command(),

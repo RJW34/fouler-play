@@ -12,7 +12,13 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import devstream_session
 
 
-def write_runtime_lease(path: Path, *, account: str = "bot", max_cycles: int = 2) -> Path:
+def write_runtime_lease(
+    path: Path,
+    *,
+    account: str = "bot",
+    max_cycles: int = 2,
+    allowed_purposes: list[str] | None = None,
+) -> Path:
     payload = {
         "schemaVersion": "fouler-play-runtime-lease/v1",
         "projectId": "fouler-play",
@@ -29,6 +35,8 @@ def write_runtime_lease(path: Path, *, account: str = "bot", max_cycles: int = 2
             "expiresAt": "2099-01-01T00:00:00+00:00",
         },
     }
+    if allowed_purposes is not None:
+        payload["allowedPurposes"] = allowed_purposes
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path
 
@@ -650,6 +658,56 @@ def test_cmd_start_dry_run_includes_valid_runtime_lease_preflight(tmp_path, monk
     assert payload["runtimeLease"]["ok"] is True
     assert payload["runtimeLease"]["requested"]["runCount"] == 1
     assert "started" not in payload
+    assert started == []
+
+
+def test_cmd_start_dry_run_only_lease_does_not_authorize_execute(tmp_path, monkeypatch, capsys):
+    started = []
+
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(
+        devstream_session,
+        "prepare_runtime_env",
+        lambda env: {"PS_USERNAME": "bot", "PS_PASSWORD": "secret"},
+    )
+    monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
+    monkeypatch.setattr(
+        devstream_session,
+        "start_process",
+        lambda *args, **kwargs: started.append(args) or {"pid": 1},
+    )
+    runtime_lease = write_runtime_lease(
+        tmp_path / "runtime-lease.json",
+        allowed_purposes=["devstream-start-dry-run"],
+    )
+    base_args = dict(
+        run_count=1,
+        max_concurrent_battles=1,
+        max_runtime_minutes=180,
+        queue_timeout_seconds=180,
+        turn_timeout_seconds=90,
+        supervisor_sleep_seconds=15,
+        replace_stale_runner=True,
+        continuous=False,
+        enable_auto_improve=False,
+        max_cycles=0,
+        runtime_lease=str(runtime_lease),
+    )
+
+    assert devstream_session.cmd_start(argparse.Namespace(**base_args, execute=False)) == 0
+    dry_run = json.loads(capsys.readouterr().out)
+
+    assert dry_run["dryRun"] is True
+    assert dry_run["runtimeLease"]["ok"] is True
+    assert dry_run["runtimeLease"]["purpose"] == "devstream-start-dry-run"
+
+    assert devstream_session.cmd_start(argparse.Namespace(**base_args, execute=True)) == 2
+    execute = json.loads(capsys.readouterr().out)
+
+    assert execute["dryRun"] is False
+    assert execute["status"] == "blocked-runtime-lease"
+    assert "does not allow purpose devstream-start" in " ".join(execute["runtimeLease"]["blockers"])
+    assert "started" not in execute
     assert started == []
 
 

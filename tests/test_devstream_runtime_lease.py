@@ -1,3 +1,4 @@
+import sys
 from datetime import datetime, timezone
 
 from scripts import devstream_runtime_lease as lease
@@ -123,3 +124,93 @@ def test_supervise_requires_explicit_max_cycles(tmp_path):
 
     assert payload["ok"] is False
     assert "requested max cycles" in " ".join(payload["blockers"])
+
+
+def test_generated_dry_run_runtime_lease_round_trips_without_execute_authority(tmp_path):
+    path = tmp_path / "runtime-lease.json"
+    artifact = lease.build_runtime_lease_artifact(
+        purpose="devstream-start-dry-run",
+        machine="JIGGLYPUFF",
+        account="bot",
+        run_count=1,
+        max_cycles=1,
+        max_concurrent_battles=1,
+        replay_behavior="never",
+        valid_minutes=30,
+        now=NOW,
+    )
+    lease.atomic_write_json(path, artifact)
+
+    dry_run = lease.validate_runtime_lease(
+        purpose="devstream-start-dry-run",
+        lease_path=path,
+        requested_run_count=1,
+        requested_max_cycles=1,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_cycles=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+        now=NOW,
+    )
+    execute = lease.validate_runtime_lease(
+        purpose="devstream-start",
+        lease_path=path,
+        requested_run_count=1,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+        now=NOW,
+    )
+
+    assert dry_run["ok"] is True
+    assert dry_run["lease"]["maxRunCount"] == 1
+    assert execute["ok"] is False
+    assert "does not allow purpose devstream-start" in " ".join(execute["blockers"])
+
+
+def test_cli_write_mode_writes_and_validates_finite_lease(tmp_path, monkeypatch, capsys):
+    path = tmp_path / "runtime-lease.json"
+    monkeypatch.setattr(lease, "utc_now", lambda: NOW)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "devstream_runtime_lease.py",
+            "--write",
+            "--runtime-lease",
+            str(path),
+            "--purpose",
+            "devstream-start-dry-run",
+            "--machine",
+            "JIGGLYPUFF",
+            "--account",
+            "bot",
+            "--run-count",
+            "1",
+            "--max-cycles",
+            "1",
+            "--max-concurrent-battles",
+            "1",
+            "--replay-behavior",
+            "never",
+            "--valid-minutes",
+            "30",
+            "--require-run-count",
+            "--require-max-cycles",
+            "--require-max-concurrent-battles",
+            "--require-replay-behavior",
+        ],
+    )
+
+    assert lease.main() == 0
+
+    payload = lease.json.loads(capsys.readouterr().out)
+    written = lease.json.loads(path.read_text(encoding="utf-8"))
+    assert payload["ok"] is True
+    assert payload["writtenLease"]["noRuntimeActions"] is True
+    assert payload["validation"]["ok"] is True
+    assert written["allowedPurposes"] == ["devstream-start-dry-run"]
