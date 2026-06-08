@@ -585,6 +585,8 @@ def resolve_pending_battle_result_replays_before_expiry(max_age_sec: int = EXPIR
     for event in get_pending_events():
         if str(event.get("event_type") or "") != "battle_result":
             continue
+        if now - _event_timestamp(event, now) <= max_age_sec:
+            continue
         event_id = str(event.get("id") or "")
         if not event_id:
             continue
@@ -592,10 +594,9 @@ def resolve_pending_battle_result_replays_before_expiry(max_age_sec: int = EXPIR
         if upgraded == event:
             continue
         upgraded = copy.deepcopy(upgraded)
-        if now - _event_timestamp(event, now) > max_age_sec:
-            upgraded["timestamp"] = now
-            upgraded["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
-            upgraded["replay_resolved_from_stale_backlog"] = True
+        upgraded["timestamp"] = now
+        upgraded["updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+        upgraded["replay_resolved_from_stale_backlog"] = True
         upgrades[event_id] = upgraded
 
     if not upgrades:
