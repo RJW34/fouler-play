@@ -47,7 +47,9 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert '"supervise"' in text
     assert '"--run-count", "$RunCount"' in text
     assert '"--max-concurrent-battles", "$MaxConcurrentBattles"' in text
-    assert "Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -AutoImprove:$AutoImprove" in text
+    assert '"--max-cycles", "$MaxCycles"' in text
+    assert "Test-RuntimeLease -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles" in text
+    assert "Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -RuntimeLease $RuntimeLease -AutoImprove:$AutoImprove" in text
     assert "call start_one_touch.bat" not in text
 
 
@@ -114,6 +116,9 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert "[switch]$AutoImprove" in runtime
     assert "--enable-auto-improve" in wrapper
     assert "--enable-auto-improve" in runtime
+    assert "--max-cycles" in wrapper
+    assert "--max-cycles" in runtime
+    assert "-MaxCycles" in installer
     assert "-AutoImprove" in installer
     assert "Rotate-LogFileIfLarge" in wrapper
     assert "Rotate-LogFileIfLarge" in runtime
@@ -139,4 +144,5 @@ def test_jigglypuff_control_exposes_auto_improve_start_flag():
 
     assert 'start.add_argument("--enable-auto-improve", action="store_true")' in text
     assert '"autoImprove": enable_auto_improve' in text
+    assert 'start.add_argument("--max-cycles", type=int, default=0)' in text
     assert 'powershell_args.append("-AutoImprove")' in text

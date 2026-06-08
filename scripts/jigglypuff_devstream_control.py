@@ -14,6 +14,11 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_runtime_lease
+
 TRUTH_DIR = ROOT / "devstream" / "truth"
 JIGGLYPUFF_TAILNET_HOST = "jigglypuff.tail4859dd.ts.net"
 JIGGLYPUFF_DIRECT_IP = "192.168.1.126"
@@ -230,8 +235,10 @@ def resident_command(
     action: str,
     *,
     execute: bool = False,
-    run_count: int = 1000000,
+    run_count: int = 0,
     max_concurrent_battles: int = 3,
+    max_cycles: int = 0,
+    runtime_lease: str | None = None,
     obs_only: bool = False,
     enable_auto_improve: bool = False,
     timeout: int = 90,
@@ -243,6 +250,8 @@ def resident_command(
         body.update({
             "runCount": run_count,
             "maxConcurrentBattles": max_concurrent_battles,
+            "maxCycles": max_cycles,
+            "runtimeLease": runtime_lease,
             "obsOnly": obs_only,
             "autoImprove": enable_auto_improve,
         })
@@ -259,8 +268,10 @@ def remote_command(
     action: str,
     *,
     execute: bool = False,
-    run_count: int = 1000000,
+    run_count: int = 0,
     max_concurrent_battles: int = 3,
+    max_cycles: int = 0,
+    runtime_lease: str | None = None,
     obs_only: bool = False,
     enable_auto_improve: bool = False,
     timeout: int = 90,
@@ -270,6 +281,8 @@ def remote_command(
         execute=execute,
         run_count=run_count,
         max_concurrent_battles=max_concurrent_battles,
+        max_cycles=max_cycles,
+        runtime_lease=runtime_lease,
         obs_only=obs_only,
         enable_auto_improve=enable_auto_improve,
         timeout=min(timeout, 180),
@@ -289,7 +302,16 @@ def remote_command(
         action,
     ]
     if action in {"start"}:
-        powershell_args.extend(["-RunCount", str(run_count), "-MaxConcurrentBattles", str(max_concurrent_battles)])
+        powershell_args.extend([
+            "-RunCount",
+            str(run_count),
+            "-MaxConcurrentBattles",
+            str(max_concurrent_battles),
+            "-MaxCycles",
+            str(max_cycles),
+        ])
+        if runtime_lease:
+            powershell_args.extend(["-RuntimeLease", runtime_lease])
         if enable_auto_improve:
             powershell_args.append("-AutoImprove")
     if obs_only:
@@ -533,10 +555,47 @@ def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
         payload["bounds"] = {
             "runCount": args.run_count,
             "maxConcurrentBattles": args.max_concurrent_battles,
+            "maxCycles": args.max_cycles,
             "obsOnly": bool(args.obs_only),
             "autoImprove": bool(getattr(args, "enable_auto_improve", False)),
         }
+        payload["runtimeLease"] = {
+            "requiredForExecute": True,
+            "path": str(getattr(args, "runtime_lease", "") or f"${RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json"),
+        }
     return payload
+
+
+def start_runtime_lease_guard(args: argparse.Namespace) -> dict[str, Any]:
+    return validate_runtime_lease(
+        purpose="jigglypuff-start",
+        lease_path=getattr(args, "runtime_lease", None),
+        requested_run_count=getattr(args, "run_count", None),
+        requested_max_cycles=getattr(args, "max_cycles", None),
+        requested_max_concurrent_battles=getattr(args, "max_concurrent_battles", None),
+        require_run_count=True,
+        require_max_cycles=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
+
+
+def runtime_lease_blocked_payload(action: str, args: argparse.Namespace, guard: dict[str, Any]) -> dict[str, Any]:
+    blockers = guard.get("blockers") if isinstance(guard.get("blockers"), list) else []
+    return {
+        "schemaVersion": "fouler-play-jigglypuff-control-plan/v1",
+        "checkedAt": iso_now(),
+        "machine": "JIGGLYPUFF",
+        "remote": REMOTE,
+        "remoteScript": REMOTE_SCRIPT,
+        "action": action,
+        "execute": bool(getattr(args, "execute", False)),
+        "blocked": True,
+        "status": "blocked-runtime-lease",
+        "runtimeLease": guard,
+        "blockers": blockers or ["runtime lease/proof window is required"],
+        "message": "JIGGLYPUFF start --execute requires a current proof-window runtime lease with finite run and cycle bounds.",
+    }
 
 
 def action_status(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
@@ -549,11 +608,17 @@ def action_mutating(action: str, args: argparse.Namespace) -> tuple[int, dict[st
     if not args.execute:
         payload = planned(action, args)
         return 0, payload
+    if action == "start":
+        guard = start_runtime_lease_guard(args)
+        if not guard.get("ok"):
+            return 2, runtime_lease_blocked_payload(action, args, guard)
     result = remote_command(
         action,
         execute=True,
-        run_count=getattr(args, "run_count", 10),
+        run_count=getattr(args, "run_count", 0),
         max_concurrent_battles=getattr(args, "max_concurrent_battles", 3),
+        max_cycles=getattr(args, "max_cycles", 0),
+        runtime_lease=getattr(args, "runtime_lease", None),
         obs_only=getattr(args, "obs_only", False),
         enable_auto_improve=getattr(args, "enable_auto_improve", False),
         timeout=args.timeout,
@@ -594,8 +659,13 @@ def main() -> int:
 
     start = sub.add_parser("start")
     start.add_argument("--execute", action="store_true")
-    start.add_argument("--run-count", type=int, default=1000000)
+    start.add_argument("--run-count", type=int, default=0)
     start.add_argument("--max-concurrent-battles", type=int, default=3)
+    start.add_argument("--max-cycles", type=int, default=0)
+    start.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
     start.add_argument("--obs-only", action="store_true")
     start.add_argument("--enable-auto-improve", action="store_true")
     start.add_argument("--timeout", type=int, default=180)

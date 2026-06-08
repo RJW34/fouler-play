@@ -168,6 +168,37 @@ def test_acquire_lock_claims_pid_file_atomically(monkeypatch):
         assert open_flags[0] & os.O_EXCL
 
 
+def test_acquire_lock_blocks_live_runner_without_runtime_lease(monkeypatch):
+    monkeypatch.setattr(
+        process_lock.sys,
+        "argv",
+        [
+            "python.exe",
+            "run.py",
+            "--bot-mode",
+            "search_ladder",
+            "--ps-username",
+            "bot",
+            "--run-count",
+            "1",
+            "--max-concurrent-battles",
+            "1",
+        ],
+    )
+    monkeypatch.setattr(
+        process_lock,
+        "validate_runtime_lease",
+        lambda **kwargs: {"ok": False, "blockers": ["runtime lease file is missing"]},
+    )
+    monkeypatch.setattr(
+        process_lock,
+        "_claim_pid_file_atomically",
+        lambda: (_ for _ in ()).throw(AssertionError("pid file must not be claimed")),
+    )
+
+    assert process_lock.acquire_lock(username="bot") is False
+
+
 def test_acquire_lock_retries_after_clearly_stale_pid_file(monkeypatch):
     with temporary_pid_file() as pid_file:
         pid_file.write_text("987654321")

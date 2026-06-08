@@ -8,10 +8,12 @@ param(
     [switch]$Status,
     [switch]$Uninstall,
     [string]$TaskName = "HERMES-FoulerBattleSupervisor",
-    [int]$RunCount = 1000000,
+    [int]$RunCount = 0,
     [int]$MaxConcurrentBattles = 3,
+    [int]$MaxCycles = 0,
     [int]$QueueTimeoutSeconds = 180,
     [int]$SleepSeconds = 15,
+    [string]$RuntimeLease = "",
     [switch]$AutoImprove
 )
 
@@ -28,7 +30,8 @@ $StdoutLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.log"
 $StderrLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.err.log"
 $TaskExecute = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
 $AutoImproveArg = if ($AutoImprove) { " -AutoImprove" } else { "" }
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -QueueTimeoutSeconds {4} -SleepSeconds {5}{6}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $QueueTimeoutSeconds, $SleepSeconds, $AutoImproveArg
+$RuntimeLeaseArg = if ([string]::IsNullOrWhiteSpace($RuntimeLease)) { "" } else { ' -RuntimeLease "{0}"' -f ($RuntimeLease -replace '"', '\"') }
+$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -MaxCycles {4} -QueueTimeoutSeconds {5} -SleepSeconds {6}{7}{8}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $MaxCycles, $QueueTimeoutSeconds, $SleepSeconds, $RuntimeLeaseArg, $AutoImproveArg
 $PidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
 $StopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
 
@@ -129,6 +132,17 @@ if (-not $Apply) {
         rollback = "Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"
     } | ConvertTo-Json -Depth 4
     exit 0
+}
+
+if ($Start -and ($RunCount -le 0 -or $MaxCycles -le 0)) {
+    [pscustomobject]@{
+        dryRun = $false
+        blocked = $true
+        status = "blocked-runtime-bounds"
+        blockers = @("starting the persistent battle supervisor requires explicit positive -RunCount and -MaxCycles bounds")
+        taskName = $TaskName
+    } | ConvertTo-Json -Depth 4
+    exit 2
 }
 
 $backup = Save-TaskBackup -Name $TaskName

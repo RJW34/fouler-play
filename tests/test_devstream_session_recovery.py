@@ -12,6 +12,27 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import devstream_session
 
 
+def write_runtime_lease(path: Path, *, account: str = "bot", max_cycles: int = 2) -> Path:
+    payload = {
+        "schemaVersion": "fouler-play-runtime-lease/v1",
+        "projectId": "fouler-play",
+        "leaseId": "lease-test",
+        "status": "active",
+        "machine": "JIGGLYPUFF",
+        "account": account,
+        "maxRunCount": 30,
+        "maxCycles": max_cycles,
+        "maxConcurrentBattles": 3,
+        "replayBehavior": "save",
+        "proofWindow": {
+            "startsAt": "2026-06-08T00:00:00+00:00",
+            "expiresAt": "2099-01-01T00:00:00+00:00",
+        },
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
 def test_recover_stale_battle_runtime_replaces_idle_singleton(tmp_path, monkeypatch):
     pid_dir = tmp_path / ".pids"
     bot_pid = tmp_path / ".bot.pid"
@@ -480,6 +501,7 @@ def test_cmd_start_refreshes_stale_empty_active_truth_before_spawning(tmp_path, 
         return {"pid": 1000 + len(started), "pidFile": str(pid_file), "command": command}
 
     monkeypatch.setattr(devstream_session, "start_process", fake_start)
+    runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json")
 
     args = argparse.Namespace(
         run_count=25,
@@ -492,6 +514,8 @@ def test_cmd_start_refreshes_stale_empty_active_truth_before_spawning(tmp_path, 
         continuous=False,
         execute=True,
         enable_auto_improve=False,
+        max_cycles=0,
+        runtime_lease=str(runtime_lease),
     )
 
     assert devstream_session.cmd_start(args) == 0
@@ -504,6 +528,45 @@ def test_cmd_start_refreshes_stale_empty_active_truth_before_spawning(tmp_path, 
     assert parsed["previousTruthWasEmpty"] is True
     assert active.stat().st_mtime > old
     assert any(pid_file == devstream_session.BATTLE_PID_FILE for _, pid_file in started)
+
+
+def test_cmd_start_execute_fails_closed_without_runtime_lease(tmp_path, monkeypatch, capsys):
+    started = []
+
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(
+        devstream_session,
+        "prepare_runtime_env",
+        lambda env: {"PS_USERNAME": "bot", "PS_PASSWORD": "secret"},
+    )
+    monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
+    monkeypatch.setattr(
+        devstream_session,
+        "start_process",
+        lambda *args, **kwargs: started.append(args) or {"pid": 1},
+    )
+
+    args = argparse.Namespace(
+        run_count=1,
+        max_concurrent_battles=1,
+        max_runtime_minutes=180,
+        queue_timeout_seconds=180,
+        turn_timeout_seconds=90,
+        supervisor_sleep_seconds=15,
+        replace_stale_runner=True,
+        continuous=False,
+        execute=True,
+        enable_auto_improve=False,
+        max_cycles=0,
+        runtime_lease=str(tmp_path / "missing-runtime-lease.json"),
+    )
+
+    assert devstream_session.cmd_start(args) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["runtimeLease"]["ok"] is False
+    assert "started" not in payload
+    assert started == []
 
 
 def test_forced_clear_active_battles_overrides_live_runner_truth(tmp_path, monkeypatch):
@@ -658,6 +721,7 @@ def test_continuous_start_spawns_supervisor_not_direct_battle_runner(monkeypatch
         "start_supervisor_runtime",
         lambda args, command, env: supervisor_calls.append(command) or {"ok": True, "taskStatus": {"taskPresent": True}},
     )
+    runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json")
 
     args = argparse.Namespace(
         run_count=25,
@@ -669,6 +733,9 @@ def test_continuous_start_spawns_supervisor_not_direct_battle_runner(monkeypatch
         replace_stale_runner=True,
         continuous=True,
         execute=True,
+        enable_auto_improve=False,
+        max_cycles=1,
+        runtime_lease=str(runtime_lease),
     )
 
     assert devstream_session.cmd_start(args) == 0
@@ -814,7 +881,13 @@ def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
         "reason": "--enable-auto-improve",
         "sentinel": devstream_session.AUTO_IMPROVE_SENTINEL,
     }
-    assert commands[2] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[2] == [
+        "python",
+        "infrastructure/improve_agent.py",
+        "--enable-auto-improve",
+        "--max-cycles",
+        "1",
+    ]
     assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
     assert commands[4][:3] == ["python", "scripts/devstream_session.py", "start"]
 
@@ -853,7 +926,13 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
 
     assert payload["autoImprove"]["enabled"] is True
     assert payload["autoImprove"]["reason"] == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
-    assert commands[2] == ["python", "infrastructure/improve_agent.py", "--enable-auto-improve"]
+    assert commands[2] == [
+        "python",
+        "infrastructure/improve_agent.py",
+        "--enable-auto-improve",
+        "--max-cycles",
+        "1",
+    ]
     assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
 
 
@@ -899,12 +978,47 @@ def test_supervisor_explicit_max_cycles_wins_over_auto_improve_lease():
     assert reason == "--max-cycles"
 
 
+def test_cmd_supervise_fails_closed_without_runtime_lease_or_cycle_bound(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(
+        devstream_session,
+        "write_pid_value",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("supervisor PID must not be written")),
+    )
+
+    args = argparse.Namespace(
+        run_count=1,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=0,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(tmp_path / "missing-runtime-lease.json"),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["state"] == "blocked-runtime-lease"
+    assert payload["runtimeLease"]["ok"] is False
+    assert "requested max cycles" in " ".join(payload["runtimeLease"]["blockers"])
+
+
 def test_supervisor_commands_propagate_auto_improve_to_task_installer():
     args = argparse.Namespace(
         run_count=25,
         max_concurrent_battles=3,
         queue_timeout_seconds=180,
         supervisor_sleep_seconds=15,
+        max_cycles=1,
+        runtime_lease="devstream/truth/runtime-lease.json",
         enable_auto_improve=True,
     )
 
@@ -914,10 +1028,16 @@ def test_supervisor_commands_propagate_auto_improve_to_task_installer():
         180,
         15,
         enable_auto_improve=True,
+        max_cycles=1,
+        runtime_lease="devstream/truth/runtime-lease.json",
     )
     task_command = devstream_session.battle_supervisor_task_command(args)
 
     assert supervisor_command[-1] == "--enable-auto-improve"
+    assert "--max-cycles" in supervisor_command
+    assert "--runtime-lease" in supervisor_command
+    assert "-MaxCycles" in task_command
+    assert "-RuntimeLease" in task_command
     assert "-AutoImprove" in task_command
 
 

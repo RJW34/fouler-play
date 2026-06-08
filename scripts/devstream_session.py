@@ -20,6 +20,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from streaming import state_store
+from scripts.devstream_runtime_lease import (
+    RUNTIME_LEASE_PATH_ENV,
+    validate_runtime_lease,
+)
 
 DEFAULT_RUN_COUNT = 1
 DEFAULT_MAX_CONCURRENT = 3
@@ -83,6 +87,36 @@ def supervisor_cycle_limit(args: argparse.Namespace, env: dict[str, str] | None 
     env = env if env is not None else load_env_files()
     limit = positive_int(env.get(AUTO_IMPROVE_MAX_CYCLES_ENV), DEFAULT_AUTO_IMPROVE_MAX_CYCLES)
     return limit, f"auto-improve lease via {reason}"
+
+
+def runtime_lease_guard(
+    *,
+    purpose: str,
+    args: argparse.Namespace,
+    env: dict[str, str],
+    run_count: int,
+    max_cycles: int | None = None,
+    require_max_cycles: bool = False,
+) -> dict[str, Any]:
+    return validate_runtime_lease(
+        purpose=purpose,
+        lease_path=getattr(args, "runtime_lease", None),
+        requested_run_count=run_count,
+        requested_max_cycles=max_cycles,
+        requested_max_concurrent_battles=getattr(args, "max_concurrent_battles", None),
+        requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
+        require_run_count=True,
+        require_max_cycles=require_max_cycles,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
+
+
+def runtime_lease_blocked_message(guard: dict[str, Any]) -> str:
+    blockers = guard.get("blockers") if isinstance(guard.get("blockers"), list) else []
+    if blockers:
+        return "runtime lease/proof window required: " + "; ".join(str(item) for item in blockers)
+    return "runtime lease/proof window required"
 
 
 def child_log_max_bytes(env: dict[str, str] | None = None) -> int:
@@ -229,6 +263,8 @@ def supervisor_command(
     sleep_seconds: int,
     *,
     enable_auto_improve: bool = False,
+    max_cycles: int = 0,
+    runtime_lease: str | None = None,
 ) -> list[str]:
     command = [
         runtime_python(),
@@ -243,6 +279,10 @@ def supervisor_command(
         "--sleep-seconds",
         str(sleep_seconds),
     ]
+    if max_cycles > 0:
+        command.extend(["--max-cycles", str(max_cycles)])
+    if runtime_lease:
+        command.extend(["--runtime-lease", runtime_lease])
     if enable_auto_improve:
         command.append("--enable-auto-improve")
     return command
@@ -301,6 +341,11 @@ def battle_supervisor_task_command(args: argparse.Namespace) -> list[str]:
         "-SleepSeconds",
         str(args.supervisor_sleep_seconds),
     ]
+    if positive_int(getattr(args, "max_cycles", 0), 0) > 0:
+        command.extend(["-MaxCycles", str(args.max_cycles)])
+    runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
+    if runtime_lease:
+        command.extend(["-RuntimeLease", runtime_lease])
     if getattr(args, "enable_auto_improve", False):
         command.append("-AutoImprove")
     return command
@@ -1085,7 +1130,17 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         "sentinel": AUTO_IMPROVE_SENTINEL,
     }
     if improve_enabled:
-        improve_command = [py, "infrastructure/improve_agent.py", "--enable-auto-improve"]
+        improve_cycle_limit, _ = supervisor_cycle_limit(args)
+        improve_command = [
+            py,
+            "infrastructure/improve_agent.py",
+            "--enable-auto-improve",
+            "--max-cycles",
+            str(improve_cycle_limit or DEFAULT_AUTO_IMPROVE_MAX_CYCLES),
+        ]
+        runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
+        if runtime_lease:
+            improve_command.extend(["--runtime-lease", runtime_lease])
         payload["actions"].append(
             run_supervisor_command(
                 improve_command,
@@ -1098,20 +1153,24 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
                 timeout=getattr(args, "proof_timeout_seconds", 300),
             )
         )
+    start_command = [
+        py,
+        "scripts/devstream_session.py",
+        "start",
+        "--run-count",
+        str(effective_count),
+        "--max-concurrent-battles",
+        str(args.max_concurrent_battles),
+        "--queue-timeout-seconds",
+        str(args.queue_timeout_seconds),
+        "--execute",
+    ]
+    runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
+    if runtime_lease:
+        start_command.extend(["--runtime-lease", runtime_lease])
     payload["actions"].append(
         run_supervisor_command(
-            [
-                py,
-                "scripts/devstream_session.py",
-                "start",
-                "--run-count",
-                str(effective_count),
-                "--max-concurrent-battles",
-                str(args.max_concurrent_battles),
-                "--queue-timeout-seconds",
-                str(args.queue_timeout_seconds),
-                "--execute",
-            ],
+            start_command,
             timeout=getattr(args, "start_timeout_seconds", 60),
         )
     )
@@ -1122,10 +1181,18 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
 
 
 def cmd_supervise(args: argparse.Namespace) -> int:
-    if SUPERVISOR_STOP_FILE.exists():
-        SUPERVISOR_STOP_FILE.unlink()
     cycle_index = 0
     effective_max_cycles, max_cycles_reason = supervisor_cycle_limit(args)
+    env = prepare_runtime_env(load_env_files())
+    effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT), env)
+    lease_guard = runtime_lease_guard(
+        purpose="devstream-supervise",
+        args=args,
+        env=env,
+        run_count=effective_count,
+        max_cycles=effective_max_cycles,
+        require_max_cycles=True,
+    )
     payload: dict[str, Any] = {
         "schemaVersion": "fouler-play-battle-supervisor/v1",
         "startedAt": iso_now(),
@@ -1139,15 +1206,25 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             "sleepSeconds": args.sleep_seconds,
             "maxCycles": args.max_cycles,
             "effectiveMaxCycles": effective_max_cycles,
+            "effectiveRunCount": effective_count,
         },
         "cycleLease": {
             "reason": max_cycles_reason,
             "autoImproveSentinel": AUTO_IMPROVE_SENTINEL,
             "autoImproveMaxCyclesEnv": AUTO_IMPROVE_MAX_CYCLES_ENV,
         },
+        "runtimeLease": lease_guard,
         "stopFile": str(SUPERVISOR_STOP_FILE),
         "secretValuesPrinted": False,
     }
+    if not lease_guard.get("ok"):
+        payload["state"] = "blocked-runtime-lease"
+        payload["error"] = runtime_lease_blocked_message(lease_guard)
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    if SUPERVISOR_STOP_FILE.exists():
+        SUPERVISOR_STOP_FILE.unlink()
     write_pid_value(
         SUPERVISOR_PID_FILE,
         os.getpid(),
@@ -1157,6 +1234,8 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             args.queue_timeout_seconds,
             args.sleep_seconds,
             enable_auto_improve=getattr(args, "enable_auto_improve", False),
+            max_cycles=positive_int(getattr(args, "max_cycles", 0), 0),
+            runtime_lease=getattr(args, "runtime_lease", None),
         ),
     )
     try:
@@ -1301,6 +1380,8 @@ def cmd_start(args: argparse.Namespace) -> int:
             args.queue_timeout_seconds,
             args.supervisor_sleep_seconds,
             enable_auto_improve=getattr(args, "enable_auto_improve", False),
+            max_cycles=positive_int(getattr(args, "max_cycles", 0), 0),
+            runtime_lease=getattr(args, "runtime_lease", None),
         ),
     }
     payload = {
@@ -1315,13 +1396,27 @@ def cmd_start(args: argparse.Namespace) -> int:
             "maxConcurrentBattles": args.max_concurrent_battles,
             "maxRuntimeMinutes": args.max_runtime_minutes,
             "queueTimeoutSeconds": args.queue_timeout_seconds,
-            "turnTimeoutSeconds": args.turn_timeout_seconds
+            "turnTimeoutSeconds": args.turn_timeout_seconds,
+            "maxCycles": positive_int(getattr(args, "max_cycles", 0), 0),
         },
         "envFilePermissions": secure_env_files(execute=args.execute),
     }
     if not args.execute:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
+    lease_guard = runtime_lease_guard(
+        purpose="devstream-start-continuous" if getattr(args, "continuous", False) else "devstream-start",
+        args=args,
+        env=env,
+        run_count=effective_count,
+        max_cycles=positive_int(getattr(args, "max_cycles", 0), 0) if getattr(args, "continuous", False) else None,
+        require_max_cycles=bool(getattr(args, "continuous", False)),
+    )
+    payload["runtimeLease"] = lease_guard
+    if not lease_guard.get("ok"):
+        payload["error"] = runtime_lease_blocked_message(lease_guard)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
     if not env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID"):
         payload["error"] = "PS_USERNAME or SHOWDOWN_USER_ID is required"
         print(json.dumps(payload, indent=2, sort_keys=True))
@@ -1498,6 +1593,11 @@ def main() -> int:
     start.add_argument("--turn-timeout-seconds", type=int, default=90)
     start.add_argument("--continuous", action="store_true")
     start.add_argument("--supervisor-sleep-seconds", type=int, default=15)
+    start.add_argument("--max-cycles", type=int, default=0)
+    start.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
     start.add_argument("--replace-stale-runner", action=argparse.BooleanOptionalAction, default=True)
     start.add_argument(
         "--enable-auto-improve",
@@ -1511,6 +1611,10 @@ def main() -> int:
     supervise.add_argument("--queue-timeout-seconds", type=int, default=180)
     supervise.add_argument("--sleep-seconds", type=int, default=15)
     supervise.add_argument("--max-cycles", type=int, default=0)
+    supervise.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
     supervise.add_argument("--autoresearch-count", type=int, default=30)
     supervise.add_argument("--proof-timeout-seconds", type=int, default=300)
     supervise.add_argument("--start-timeout-seconds", type=int, default=60)

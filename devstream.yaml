@@ -9,8 +9,11 @@
   "runtimeAuthority": {
     "defaultRuntime": "none",
     "optionalRuntimeProfile": "JIGGLYPUFF",
+    "runtimeLeasePath": "devstream/truth/runtime-lease.json",
     "requiresProofWindow": true,
     "requiresRuntimeLease": true,
+    "requiresFiniteRunCount": true,
+    "requiresFiniteMaxCycles": true,
     "allowExecuteWithoutProofWindow": false,
     "allowScheduledTaskAutostart": false,
     "normalAutostart": false,
@@ -18,7 +21,7 @@
   },
   "runner": {
     "safeToAutostart": false,
-    "start": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "start", "--run-count", "10", "--max-concurrent-battles", "3"],
+    "start": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "start", "--run-count", "10", "--max-concurrent-battles", "3", "--max-cycles", "1"],
     "stop": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "stop"],
     "status": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "status"]
   },
@@ -71,6 +74,9 @@
     "canAutostartRehearsal": false,
     "canAutostartLive": false,
     "canRunInBackground": false,
+    "failClosedWithoutRuntimeLease": true,
+    "runtimeLeaseRequiredFor": ["jigglypuff start --execute", "devstream_session start --execute", "devstream_session supervise", "improve_agent --enable-auto-improve", "run.py live ladder"],
+    "requiredRuntimeLeaseFields": ["projectId", "leaseId", "machine", "account", "proofWindow.startsAt", "proofWindow.expiresAt", "maxRunCount", "maxCycles", "maxConcurrentBattles", "replayBehavior"],
     "resourceClass": "remote-heavy",
     "minFocusMinutes": 20,
     "maxFocusMinutes": 45,

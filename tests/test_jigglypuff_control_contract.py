@@ -15,6 +15,27 @@ def load_module():
     return module
 
 
+def write_runtime_lease(module, path: Path) -> Path:
+    payload = {
+        "schemaVersion": "fouler-play-runtime-lease/v1",
+        "projectId": "fouler-play",
+        "leaseId": "lease-test",
+        "status": "active",
+        "machine": "JIGGLYPUFF",
+        "account": "bot",
+        "maxRunCount": 10,
+        "maxCycles": 2,
+        "maxConcurrentBattles": 3,
+        "replayBehavior": "save",
+        "proofWindow": {
+            "startsAt": "2026-06-08T00:00:00+00:00",
+            "expiresAt": "2099-01-01T00:00:00+00:00",
+        },
+    }
+    path.write_text(module.json.dumps(payload), encoding="utf-8")
+    return path
+
+
 def test_control_mirrors_jigglypuff_live_battle_state(monkeypatch, tmp_path):
     module = load_module()
     monkeypatch.setattr(module, "ROOT", tmp_path)
@@ -255,3 +276,64 @@ def test_remote_command_falls_back_to_ssh_when_resident_fouler_endpoint_is_missi
     assert captured["command"][0] == "ssh"
     assert result["json"]["status"] == "ready-idle"
     assert result["residentWorker"]["workerStatus"] == 404
+
+
+def test_start_execute_fails_closed_without_runtime_lease(monkeypatch, tmp_path):
+    module = load_module()
+    monkeypatch.setattr(
+        module,
+        "remote_command",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("remote command must not run")),
+    )
+
+    code, payload = module.action_mutating(
+        "start",
+        SimpleNamespace(
+            execute=True,
+            run_count=1,
+            max_concurrent_battles=1,
+            max_cycles=1,
+            runtime_lease=str(tmp_path / "missing-runtime-lease.json"),
+            obs_only=False,
+            enable_auto_improve=False,
+            timeout=180,
+        ),
+    )
+
+    assert code == 2
+    assert payload["status"] == "blocked-runtime-lease"
+    assert payload["runtimeLease"]["ok"] is False
+
+
+def test_start_execute_passes_max_cycles_after_runtime_lease(monkeypatch, tmp_path):
+    module = load_module()
+    lease_path = write_runtime_lease(module, tmp_path / "runtime-lease.json")
+    captured = {}
+
+    def fake_remote_command(action, **kwargs):
+        captured["action"] = action
+        captured["kwargs"] = kwargs
+        return {"returnCode": 0, "json": {"ok": True, "status": "ready-idle"}, "stderr": ""}
+
+    monkeypatch.setattr(module, "remote_command", fake_remote_command)
+    monkeypatch.setattr(module, "mirror_status", lambda payload, **kwargs: dict(payload))
+
+    code, payload = module.action_mutating(
+        "start",
+        SimpleNamespace(
+            execute=True,
+            run_count=2,
+            max_concurrent_battles=3,
+            max_cycles=1,
+            runtime_lease=str(lease_path),
+            obs_only=False,
+            enable_auto_improve=False,
+            timeout=180,
+        ),
+    )
+
+    assert code == 0
+    assert captured["action"] == "start"
+    assert captured["kwargs"]["max_cycles"] == 1
+    assert captured["kwargs"]["runtime_lease"] == str(lease_path)
+    assert payload["status"] == "ready-idle"
