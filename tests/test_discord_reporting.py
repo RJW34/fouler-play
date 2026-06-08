@@ -429,6 +429,59 @@ def test_backlog_archive_retention_prunes_oldest_timestamped_archives(monkeypatc
     assert latest["archivedEventCount"] == 1
 
 
+def test_backlog_archive_byte_guard_truncates_event_summaries_only(monkeypatch, tmp_path):
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    stale_events = []
+    for index in range(120):
+        battle_id = f"gen9ou-{2626000000 + index}"
+        stale_events.append(
+            {
+                "id": f"event-old-{index}",
+                "timestamp": 1 + index,
+                "event_type": "battle_result" if index % 2 == 0 else "autoresearch_summary",
+                "channel": "battles",
+                "content": f"[PROOF] battle `{battle_id}`; token={'x' * 1000}",
+                "battle_id": f"battle-{battle_id}",
+                "proof": {"battleIds": [battle_id], "items": ["public replay id only"]},
+                "analysis": {"nextHermesAction": "review loss"},
+                "proof_readiness": {"status": "proof-ready"},
+                "status": "pending",
+                "retry_count": 0,
+            }
+        )
+
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text(json.dumps(stale_events), encoding="utf-8")
+    truth_dir = tmp_path / "devstream" / "truth"
+    archive_dir = tmp_path / "logs" / "discord-events"
+
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setattr(event_queue_lib, "TRUTH_DIR", truth_dir)
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_DIR", archive_dir)
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_LATEST", truth_dir / "discord-backlog-archive.json")
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_MAX_BYTES", 5000)
+
+    assert event_queue_lib.expire_old_events(600) == len(stale_events)
+
+    archive_files = list(archive_dir.glob("backlog-archive-*.json"))
+    latest_text = (truth_dir / "discord-backlog-archive.json").read_text(encoding="utf-8")
+    archive = json.loads(latest_text)
+
+    assert len(latest_text.encode("utf-8")) <= 5000
+    assert len(archive_files) == 1
+    assert archive_files[0].read_text(encoding="utf-8") == latest_text
+    assert archive["archiveByteGuard"] == "per-event-summaries-truncated"
+    assert archive["archiveMaxBytes"] == 5000
+    assert archive["archivedEventCount"] == len(stale_events)
+    assert archive["archivedEventTypes"] == {"autoresearch_summary": 60, "battle_result": 60}
+    assert archive["archivedEventSummaryCount"] == len(archive["events"])
+    assert 0 <= archive["archivedEventSummaryCount"] < len(stale_events)
+    assert archive["omittedArchivedEventSummaryCount"] == len(stale_events) - len(archive["events"])
+    assert "token=" not in latest_text
+    assert json.loads(queue_file.read_text(encoding="utf-8")) == []
+
+
 def test_event_poster_validates_autoresearch_events_before_discord():
     import infrastructure.event_poster as event_poster
 
