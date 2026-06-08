@@ -1,3 +1,6 @@
+# SAFETY: This installer is not a default launcher. Register or start this persistent
+# task only with a current Fouler proof window and runtime lease; normal onboarding
+# must leave scheduled tasks disabled and use status/dry-run commands.
 param(
     [switch]$Apply,
     [switch]$Start,
