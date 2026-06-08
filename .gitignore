@@ -14,9 +14,13 @@ venv/
 .venv-eval/
 node_modules/
 
-# Offline eval harness artifacts (keep result JSONs, drop logs/processes)
-eval_results/offline/*.log
-eval_results/offline/*-result.json
+# Local pytest/Codex basetemps
+.tmp-codex*/
+.tmp-pytest*/
+.codex-pytest*/
+
+# Offline eval harness artifacts (generated local proof/runtime output)
+eval_results/offline/
 
 # Logs
 *.log
@@ -107,3 +111,11 @@ Server
 # HERMES/DEKU generated analysis runtime state
 infrastructure/linux/.last_analysis_count
 replay_analysis/team_report.json
+
+# Devstream local proof/runtime output
+devstream/backups/
+devstream/truth/discord-backlog-archive.json
+devstream/truth/discord-delivery.json
+devstream/truth/discord-reporting*.json
+devstream/truth/proof-status.json
+devstream/truth/stale-active-battles-backups/
