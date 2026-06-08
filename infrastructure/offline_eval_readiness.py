@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""Read-only readiness doctor for the offline eval acceptance gate."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Mapping
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SCHEMA_VERSION = "fouler-play-offline-eval-readiness/v1"
+
+
+def _env_int(env: Mapping[str, str], name: str, default: int) -> int:
+    try:
+        return int(env.get(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _quote_command(parts: list[str]) -> str:
+    return subprocess.list2cmdline(parts)
+
+
+def _relative(root: Path, path: Path) -> str:
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def eval_venv_python(root: Path) -> Path:
+    windows = root / ".venv-eval" / "Scripts" / "python.exe"
+    if sys.platform == "win32":
+        return windows
+    if windows.exists():
+        return windows
+    return root / ".venv-eval" / "bin" / "python"
+
+
+def configured_eval(root: Path, env: Mapping[str, str]) -> dict[str, object]:
+    battles = _env_int(env, "IMPROVE_AGENT_EVAL_BATTLES", 200)
+    baseline = env.get("IMPROVE_AGENT_EVAL_BASELINE", "simple")
+    team = env.get("IMPROVE_AGENT_EVAL_TEAM", "gen9/ou/fat-team-1-stall")
+    showdown_port = _env_int(env, "EVAL_SHOWDOWN_PORT", 8765)
+    label = "candidate"
+    return {
+        "battles": battles,
+        "baseline": baseline,
+        "team": team,
+        "showdownPort": showdown_port,
+        "label": label,
+        "teamFile": root / "teams" / Path(*str(team).split("/")),
+        "evalScript": root / "infrastructure" / "offline_eval.py",
+        "baselineScript": root / "infrastructure" / "_offline_baseline.py",
+        "requirementsEval": root / "infrastructure" / "requirements-eval.txt",
+        "venvPython": eval_venv_python(root),
+        "resultsDir": root / "eval_results" / "offline",
+        "frozenBaseline": root / "eval_results" / "offline" / "frozen.json",
+        "candidateResult": root / "eval_results" / "offline" / "candidate.json",
+        "compareResult": root / "eval_results" / "offline" / "compare-frozen-vs-candidate.json",
+    }
+
+
+def eval_command(config: dict[str, object], *, label: str = "candidate", no_setsample: bool = False) -> list[str]:
+    cmd = [
+        str(config["venvPython"]),
+        str(config["evalScript"]),
+        "--battles",
+        str(config["battles"]),
+        "--team",
+        str(config["team"]),
+        "--baseline",
+        str(config["baseline"]),
+        "--label",
+        label,
+    ]
+    if no_setsample:
+        cmd.append("--no-setsample")
+    return cmd
+
+
+def compare_command(config: dict[str, object]) -> list[str]:
+    return [str(config["venvPython"]), str(config["evalScript"]), "--compare", "frozen", "candidate"]
+
+
+def _display_eval_command(
+    venv_python: str,
+    config: dict[str, object],
+    *,
+    label: str = "candidate",
+    no_setsample: bool = False,
+) -> str:
+    cmd = [
+        venv_python,
+        "infrastructure/offline_eval.py",
+        "--battles",
+        str(config["battles"]),
+        "--team",
+        str(config["team"]),
+        "--baseline",
+        str(config["baseline"]),
+        "--label",
+        label,
+    ]
+    if no_setsample:
+        cmd.append("--no-setsample")
+    return _quote_command(cmd)
+
+
+def provisioning_commands(root: Path, config: dict[str, object]) -> dict[str, list[str]]:
+    req_windows = _relative(root, Path(config["requirementsEval"]))
+    req_posix = req_windows.replace("\\", "/")
+    return {
+        "windows": [
+            "py -3 -m venv .venv-eval",
+            r".venv-eval\Scripts\python.exe -m pip install --upgrade pip",
+            rf".venv-eval\Scripts\python.exe -m pip install -r {req_windows}",
+            "Install or clone pokemon-showdown locally, then start a no-security server on the configured port.",
+            f"node pokemon-showdown start --no-security {config['showdownPort']}",
+            _display_eval_command(r".venv-eval\Scripts\python.exe", config, label="frozen", no_setsample=True),
+            "python infrastructure/offline_eval_readiness.py --require-ready",
+        ],
+        "posix": [
+            "python3 -m venv .venv-eval",
+            ".venv-eval/bin/python -m pip install --upgrade pip",
+            f".venv-eval/bin/python -m pip install -r {req_posix}",
+            "Install or clone pokemon-showdown locally, then start a no-security server on the configured port.",
+            f"node pokemon-showdown start --no-security {config['showdownPort']}",
+            _display_eval_command(".venv-eval/bin/python", config, label="frozen", no_setsample=True),
+            "python3 infrastructure/offline_eval_readiness.py --require-ready",
+        ],
+    }
+
+
+def _check_imports(venv_python: Path) -> tuple[bool, dict[str, object]]:
+    probe = subprocess.run(
+        [
+            str(venv_python),
+            "-c",
+            "import json, poke_env, websockets; "
+            "print(json.dumps({'poke_env': getattr(poke_env, '__version__', 'unknown'), "
+            "'websockets': getattr(websockets, '__version__', 'unknown')}))",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=20,
+    )
+    if probe.returncode != 0:
+        return False, {
+            "returncode": probe.returncode,
+            "stdout": (probe.stdout or "")[-500:],
+            "stderr": (probe.stderr or "")[-500:],
+        }
+    try:
+        return True, json.loads(probe.stdout.strip().splitlines()[-1])
+    except Exception:
+        return True, {"stdout": probe.stdout.strip()}
+
+
+def _frozen_baseline_detail(path: Path, min_battles: int) -> tuple[bool, dict[str, object]]:
+    if not path.exists():
+        return False, {"exists": False}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return False, {"exists": True, "validJson": False, "error": str(exc)}
+    required = ["label", "battles", "fouler_wins", "fouler_win_rate", "fouler_wilson_lcb"]
+    missing = [key for key in required if key not in data]
+    try:
+        battles = int(data.get("battles", 0))
+    except (TypeError, ValueError):
+        battles = 0
+    enough_battles = battles >= min_battles
+    return not missing and enough_battles, {
+        "exists": True,
+        "validJson": True,
+        "missingFields": missing,
+        "label": data.get("label"),
+        "battles": battles,
+        "minBattles": min_battles,
+        "enoughBattles": enough_battles,
+        "fouler_win_rate": data.get("fouler_win_rate"),
+        "fouler_wilson_lcb": data.get("fouler_wilson_lcb"),
+    }
+
+
+def build_readiness_payload(
+    *,
+    root: Path = PROJECT_ROOT,
+    env: Mapping[str, str] | None = None,
+    run_import_check: bool = True,
+) -> dict[str, object]:
+    env = os.environ if env is None else env
+    config = configured_eval(root, env)
+    blockers: list[str] = []
+    checks: list[dict[str, object]] = []
+
+    def add_check(name: str, ok: bool, detail: object, remediation: str = "") -> None:
+        checks.append({"name": name, "ok": ok, "detail": detail, "remediation": remediation})
+        if not ok:
+            blockers.append(f"{name}: {remediation or detail}")
+
+    eval_script = Path(config["evalScript"])
+    baseline_script = Path(config["baselineScript"])
+    requirements_eval = Path(config["requirementsEval"])
+    venv_python = Path(config["venvPython"])
+    team_file = Path(config["teamFile"])
+    frozen_baseline = Path(config["frozenBaseline"])
+
+    add_check(
+        "offline_eval.py",
+        eval_script.exists(),
+        _relative(root, eval_script),
+        "restore infrastructure/offline_eval.py before enabling auto-improvement",
+    )
+    add_check(
+        "_offline_baseline.py",
+        baseline_script.exists(),
+        _relative(root, baseline_script),
+        "restore infrastructure/_offline_baseline.py before enabling auto-improvement",
+    )
+    add_check(
+        "requirements-eval.txt",
+        requirements_eval.exists(),
+        _relative(root, requirements_eval),
+        "restore infrastructure/requirements-eval.txt and install it into .venv-eval",
+    )
+    add_check(
+        "eval venv python",
+        venv_python.exists(),
+        _relative(root, venv_python),
+        "create .venv-eval and install infrastructure/requirements-eval.txt",
+    )
+    add_check(
+        "configured team file",
+        team_file.exists(),
+        _relative(root, team_file),
+        f"set IMPROVE_AGENT_EVAL_TEAM to an existing team or restore {_relative(root, team_file)}",
+    )
+
+    if venv_python.exists() and run_import_check:
+        try:
+            imports_ok, import_detail = _check_imports(venv_python)
+        except Exception as exc:
+            imports_ok, import_detail = False, {"error": str(exc)}
+        add_check(
+            "eval venv imports",
+            imports_ok,
+            import_detail,
+            "run the pip install command from provisionCommands for .venv-eval",
+        )
+    elif venv_python.exists():
+        add_check("eval venv imports", True, {"skipped": "import check disabled"})
+
+    frozen_ok, frozen_detail = _frozen_baseline_detail(frozen_baseline, int(config["battles"]))
+    add_check(
+        "frozen baseline proof",
+        frozen_ok,
+        frozen_detail,
+        "run the frozen baseline command for at least IMPROVE_AGENT_EVAL_BATTLES and verify eval_results/offline/frozen.json",
+    )
+
+    ready = not blockers
+    paths = {
+        key: _relative(root, Path(value))
+        for key, value in config.items()
+        if isinstance(value, Path)
+    }
+    command_config = {key: value for key, value in config.items() if not isinstance(value, Path)}
+    commands = {
+        "candidateEval": _quote_command(eval_command(config)),
+        "frozenBaseline": _quote_command(eval_command(config, label="frozen", no_setsample=True)),
+        "compareFrozenVsCandidate": _quote_command(compare_command(config)),
+        "readiness": "python infrastructure/offline_eval_readiness.py --require-ready",
+        "showdownServer": f"node pokemon-showdown start --no-security {config['showdownPort']}",
+    }
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "ready": ready,
+        "recursiveImprovementReady": ready,
+        "blockers": blockers,
+        "checks": checks,
+        "configuration": command_config,
+        "paths": paths,
+        "commands": commands,
+        "provisionCommands": provisioning_commands(root, config),
+        "proofRequired": [
+            "offline_eval_readiness.py --require-ready exits 0 with ready=true",
+            ".venv-eval python can import poke_env and websockets",
+            "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",
+            "eval_results/offline/frozen.json exists, meets IMPROVE_AGENT_EVAL_BATTLES, and contains label, battles, fouler_wins, fouler_win_rate, and fouler_wilson_lcb",
+            "after an accepted candidate run, eval_results/offline/candidate.json and compare-frozen-vs-candidate.json provide the eval verdict consumed by improve_agent",
+        ],
+        "note": "Read-only check. It does not start Pokemon Showdown, Discord posting, ladder battles, HERMES/DEKU, or services.",
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Read-only offline eval gate readiness doctor")
+    parser.add_argument("--require-ready", action="store_true", help="exit non-zero unless recursiveImprovementReady is true")
+    parser.add_argument("--skip-import-check", action="store_true", help="do not execute .venv-eval python import probe")
+    args = parser.parse_args(argv)
+
+    payload = build_readiness_payload(run_import_check=not args.skip_import_check)
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 1 if args.require_ready and not payload["recursiveImprovementReady"] else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
