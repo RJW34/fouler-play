@@ -27,6 +27,8 @@ RUN_COUNT_CAP_ENV = "FOULER_DEVSTREAM_RUN_COUNT_CAP"
 DEFAULT_RUN_COUNT_CAP = 30
 AUTO_IMPROVE_MAX_CYCLES_ENV = "FOULER_AUTO_IMPROVE_MAX_CYCLES"
 DEFAULT_AUTO_IMPROVE_MAX_CYCLES = 1
+CHILD_LOG_MAX_BYTES_ENV = "FOULER_DEVSTREAM_CHILD_LOG_MAX_BYTES"
+DEFAULT_CHILD_LOG_MAX_BYTES = 64 * 1024 * 1024
 PID_DIR = ROOT / ".pids"
 OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
@@ -81,6 +83,11 @@ def supervisor_cycle_limit(args: argparse.Namespace, env: dict[str, str] | None 
     env = env if env is not None else load_env_files()
     limit = positive_int(env.get(AUTO_IMPROVE_MAX_CYCLES_ENV), DEFAULT_AUTO_IMPROVE_MAX_CYCLES)
     return limit, f"auto-improve lease via {reason}"
+
+
+def child_log_max_bytes(env: dict[str, str] | None = None) -> int:
+    env = env if env is not None else os.environ
+    return positive_int(env.get(CHILD_LOG_MAX_BYTES_ENV), DEFAULT_CHILD_LOG_MAX_BYTES)
 
 
 def runtime_python() -> str:
@@ -550,6 +557,24 @@ def write_pid(path: Path, proc: subprocess.Popen[Any], command: list[str]) -> No
     write_pid_value(path, proc.pid, command)
 
 
+def rotate_child_log_before_append(log_path: Path, env: dict[str, str]) -> dict[str, Any] | None:
+    max_bytes = child_log_max_bytes(env)
+    try:
+        previous_bytes = log_path.stat().st_size
+    except FileNotFoundError:
+        return None
+    if previous_bytes < max_bytes:
+        return None
+    rotated_path = log_path.with_name(f"{log_path.name}.old")
+    os.replace(log_path, rotated_path)
+    return {
+        "path": str(log_path),
+        "rotatedTo": str(rotated_path),
+        "previousBytes": previous_bytes,
+        "maxBytes": max_bytes,
+    }
+
+
 def secure_env_files(*, execute: bool) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for path in ENV_FILES:
@@ -611,6 +636,7 @@ def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> di
     PID_DIR.mkdir(parents=True, exist_ok=True)
     log_path = ROOT / "logs" / f"{pid_file.stem}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_rotation = rotate_child_log_before_append(log_path, env)
     handle = log_path.open("a", encoding="utf-8")
     creationflags = 0
     if os.name == "nt":
@@ -625,6 +651,8 @@ def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> di
     )
     write_pid(pid_file, proc, command)
     payload = {"pidFile": str(pid_file), "pid": proc.pid, "log": str(log_path), "command": command}
+    if log_rotation is not None:
+        payload["logRotation"] = log_rotation
     if stale_existing is not None:
         payload["staleExistingProcess"] = stale_existing
     return payload
