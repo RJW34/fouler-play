@@ -18,16 +18,30 @@ from typing import Any
 import psutil
 
 from devstream_runtime_checks import recent_showdown_credential_failure
+from devstream_session import DEFAULT_MAX_CONCURRENT as DEFAULT_DEVSTREAM_BATTLE_SURFACES
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 HTTP_PORT = 8777
 OBS_WS_PORT = 4455
-EXPECTED_DEVSTREAM_BATTLE_SURFACES = 3
 IDLE_RUNNER_STALE_SECONDS = int(os.getenv("FP_IDLE_RUNNER_STALE_SECONDS", "180"))
 PROOF_STATUS_MAX_AGE_SECONDS = int(os.getenv("FP_PROOF_STATUS_MAX_AGE_SECONDS", "1800"))
 TERMINAL_BATTLE_RESULTS = {"win", "loss", "tie", "draw", "forfeit", "timeout", "ended", "error"}
+
+
+def positive_int_env(name: str, default: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return value if value > 0 else default
+
+
+EXPECTED_DEVSTREAM_BATTLE_SURFACES = positive_int_env(
+    "FP_EXPECTED_DEVSTREAM_BATTLE_SURFACES",
+    DEFAULT_DEVSTREAM_BATTLE_SURFACES,
+)
 
 SERVICES = [
     "fouler-play.service",
@@ -59,19 +73,24 @@ TRUTH_FILES = [
     },
 ]
 
-ENDPOINTS = [
+BASE_ENDPOINTS = [
     "/state",
     "/status",
     "/battles",
     "/overlay/hybrid",
     "/dashboard/hybrid",
-    "/slot/1",
-    "/slot/2",
-    "/slot/3",
-    "/slot/1/state",
-    "/slot/2/state",
-    "/slot/3/state",
 ]
+
+
+def battle_slot_endpoints(expected: int = EXPECTED_DEVSTREAM_BATTLE_SURFACES) -> list[str]:
+    return [
+        endpoint
+        for slot in range(1, expected + 1)
+        for endpoint in (f"/slot/{slot}", f"/slot/{slot}/state")
+    ]
+
+
+ENDPOINTS = [*BASE_ENDPOINTS, *battle_slot_endpoints()]
 
 BATTLE_PID_FILES = [
     ".bot.pid",
@@ -109,7 +128,7 @@ def run_command(command: list[str], *, timeout: int = 4) -> subprocess.Completed
         return None
 
 
-def read_pid_file(path: Path) -> int | None:
+def read_pid_payload(path: Path) -> dict[str, Any] | str | None:
     try:
         raw = path.read_text(encoding="utf-8", errors="replace").strip()
     except OSError:
@@ -119,9 +138,22 @@ def read_pid_file(path: Path) -> int | None:
     try:
         if raw.startswith("{"):
             parsed = json.loads(raw)
-            return int(parsed.get("pid") or 0) or None
+            return parsed if isinstance(parsed, dict) else None
         return int(raw)
     except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def read_pid_file(path: Path) -> int | None:
+    payload = read_pid_payload(path)
+    if isinstance(payload, dict):
+        try:
+            return int(payload.get("pid") or 0) or None
+        except (TypeError, ValueError):
+            return None
+    try:
+        return int(str(payload or "").strip())
+    except (TypeError, ValueError):
         return None
 
 
@@ -131,11 +163,13 @@ def runtime_processes() -> list[dict[str, Any]]:
     root = os.path.abspath(ROOT)
     for rel in BATTLE_PID_FILES:
         path = ROOT / rel
+        pid_payload = read_pid_payload(path)
         pid = read_pid_file(path)
         item: dict[str, Any] = {
             "pidFile": rel,
             "pid": pid,
             "pidFileExists": path.exists(),
+            "processRunning": False,
             "alive": False,
             "isBattleRunner": False,
         }
@@ -150,19 +184,28 @@ def runtime_processes() -> list[dict[str, Any]]:
             cmdline = proc.cmdline()
             cwd = proc.cwd()
             create_time = proc.create_time()
+            status = proc.status() if hasattr(proc, "status") else ""
         except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
             processes.append(item)
             continue
         command = " ".join(cmdline).lower()
         cwd_matches = os.path.abspath(cwd) == root if cwd else False
-        is_runner = cwd_matches and "run.py" in command and ("showdown" in command or "search_ladder" in command)
+        process_running = bool(proc.is_running()) and status != getattr(psutil, "STATUS_ZOMBIE", "zombie")
+        is_runner = process_running and cwd_matches and "run.py" in command and ("showdown" in command or "search_ladder" in command)
+        if isinstance(pid_payload, dict):
+            started_at = parse_payload_timestamp(pid_payload.get("startedAt") or pid_payload.get("started_at"))
+            if started_at is not None and create_time < started_at - 2:
+                is_runner = False
         item.update({
-            "alive": proc.is_running(),
+            "processRunning": process_running,
+            "alive": is_runner,
             "isBattleRunner": is_runner,
             "cwdMatchesRepo": cwd_matches,
             "ageSeconds": round(max(0.0, time.time() - create_time), 3),
             "commandSummary": " ".join(cmdline[:4]),
         })
+        if process_running and not is_runner:
+            item["stalePidReason"] = "pid belongs to unexpected command, cwd, or older process"
         processes.append(item)
     return processes
 
@@ -286,8 +329,7 @@ def truth_file_status(spec: dict[str, Any]) -> dict[str, Any]:
     stale = bool(stale_after and age is not None and age > int(stale_after))
     freshness_note = None
     if rel == "active_battles.json" and isinstance(summary, dict) and int(summary.get("battleCount") or 0) == 0:
-        stale = False
-        freshness_note = "empty active battle truth is valid while the runner is idle or searching"
+        freshness_note = "empty active battle truth is valid only while fresh runtime ownership exists"
     return {
         "label": spec.get("label") or rel,
         "path": str(path),
@@ -805,7 +847,13 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
             warnings.append("fouler-play OBS WebSocket source sync has authentication failures in task stderr")
     if not runner_active and battle_count == 0:
         runner_proof_missing = True
-        blockers.append("fouler-play battle runner is idle; OBS HTTP alone is not active battle proof")
+        if active_battle_truth.get("stale"):
+            blockers.append(
+                "fouler-play active_battles.json is stale and no battle runner is alive; "
+                "clear/adopt runtime state through HERMES-owned devstream_session before proof handoff"
+            )
+        else:
+            blockers.append("fouler-play battle runner is idle; OBS HTTP alone is not active battle proof")
     elif not runner_active and battle_count > 0 and active_battle_truth.get("stale"):
         runner_proof_missing = True
         blockers.append(
@@ -833,7 +881,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     if not battle_surfaces["ready"]:
         if not battle_surfaces["maxSlotsOk"]:
             blockers.append(
-                "devstream mode expects 3 concurrent battle surfaces; active_battles.json reports "
+                f"devstream mode expects {battle_surfaces['expected']} concurrent battle surfaces; active_battles.json reports "
                 f"max_slots={battle_surfaces['declaredMaxSlots']}"
             )
         failed_slots = [

@@ -27,6 +27,44 @@ def _runner(age: int = 30) -> list[dict]:
     }]
 
 
+def test_runtime_processes_does_not_mark_reused_pid_alive(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    pid_file = tmp_path / ".bot.pid"
+    pid_file.write_text(
+        json.dumps({
+            "pid": 1234,
+            "command": ["python", "run.py", "--bot-mode", "search_ladder"],
+            "startedAt": devstream_health.iso_now(),
+        }),
+        encoding="utf-8",
+    )
+
+    class ReusedPidProcess:
+        def cmdline(self):
+            return ["python", "not-fouler-runtime.py"]
+
+        def cwd(self):
+            return str(tmp_path)
+
+        def create_time(self):
+            return time.time()
+
+        def status(self):
+            return "running"
+
+        def is_running(self):
+            return True
+
+    monkeypatch.setattr(devstream_health.psutil, "Process", lambda pid: ReusedPidProcess())
+
+    process = devstream_health.runtime_processes()[0]
+
+    assert process["processRunning"] is True
+    assert process["alive"] is False
+    assert process["isBattleRunner"] is False
+    assert process["stalePidReason"] == "pid belongs to unexpected command, cwd, or older process"
+
+
 def test_optional_stale_stability_report_does_not_gate_readiness(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": port == devstream_health.HTTP_PORT)
@@ -493,6 +531,11 @@ def test_devstream_health_requires_three_public_battle_surfaces(tmp_path, monkey
     assert any("expects 3 concurrent battle surfaces" in blocker for blocker in payload["blockers"])
 
 
+def test_expected_battle_surfaces_follow_devstream_session_default():
+    assert devstream_health.EXPECTED_DEVSTREAM_BATTLE_SURFACES == devstream_health.DEFAULT_DEVSTREAM_BATTLE_SURFACES
+    assert "/slot/3/state" in devstream_health.ENDPOINTS
+
+
 def test_discord_queue_health_exposes_pending_and_failures(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     _write_json(
@@ -566,13 +609,14 @@ def test_long_running_search_with_fresh_truth_is_runtime_ready(tmp_path, monkeyp
     assert not payload["blockers"]
 
 
-def test_empty_active_battles_truth_is_not_stale_when_idle(tmp_path, monkeypatch):
+def test_stale_empty_active_battles_truth_without_runner_blocks_runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": port == devstream_health.HTTP_PORT)
     monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
     monkeypatch.setattr(devstream_health, "fetch_endpoint", lambda path: {"url": path, "ok": True, "statusCode": 200, "json": {}})
     monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
     monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: [])
 
     active = tmp_path / "active_battles.json"
     _write_json(active, {"battles": [], "count": 0})
@@ -583,9 +627,12 @@ def test_empty_active_battles_truth_is_not_stale_when_idle(tmp_path, monkeypatch
     payload = devstream_health.build_payload(check_http=True)
 
     active_truth = next(item for item in payload["truth"] if item["relativePath"] == "active_battles.json")
-    assert active_truth["stale"] is False
-    assert active_truth["freshnessNote"] == "empty active battle truth is valid while the runner is idle or searching"
-    assert "stale truth file: active_battles.json" not in payload["warnings"]
+    assert active_truth["stale"] is True
+    assert active_truth["freshnessNote"] == "empty active battle truth is valid only while fresh runtime ownership exists"
+    assert payload["healthy"] is False
+    assert payload["readiness"]["runtimeReady"] is False
+    assert any("active_battles.json is stale and no battle runner is alive" in blocker for blocker in payload["blockers"])
+    assert "stale truth file: active_battles.json" in payload["warnings"]
 
 
 def test_autoresearch_json_freshness_uses_generated_at_not_touched_mtime(tmp_path, monkeypatch):

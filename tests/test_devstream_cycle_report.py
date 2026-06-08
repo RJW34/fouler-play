@@ -1,5 +1,7 @@
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 
@@ -91,6 +93,11 @@ def test_cycle_report_completion_payload_blocks_unsupported_autoresearch_claims(
 
 def test_cycle_report_blocks_when_health_probe_is_not_ready(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_cycle_report, "ROOT", tmp_path)
+    truth_dir = tmp_path / "devstream" / "truth"
+    truth_dir.mkdir(parents=True)
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
+    (truth_dir / "discord-delivery.json").write_text('{"status":"idle","secretValuesPrinted":false}', encoding="utf-8")
     monkeypatch.setattr(
         devstream_cycle_report.devstream_health,
         "build_payload",
@@ -109,6 +116,48 @@ def test_cycle_report_blocks_when_health_probe_is_not_ready(tmp_path, monkeypatc
     assert payload["readyForHandoff"] is False
     assert payload["blockers"] == ["fouler-play battle runner has no active battle proof after 181s (limit 180s)"]
     assert payload["health"]["healthy"] is False
+
+
+def test_cycle_report_blocks_stale_empty_active_battles_without_runner(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_cycle_report, "ROOT", tmp_path)
+    truth_dir = tmp_path / "devstream" / "truth"
+    truth_dir.mkdir(parents=True)
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_JSON", truth_dir / "cycle-report.json")
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_MD", truth_dir / "cycle-report.md")
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_COMPLETION", truth_dir / "completion.json")
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_PROOF_STATUS", truth_dir / "proof-status.json")
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
+    monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
+    monkeypatch.setattr(
+        devstream_cycle_report.devstream_health,
+        "build_payload",
+        lambda check_http=True: {
+            "healthy": True,
+            "status": "ready",
+            "running": False,
+            "readyForLiveFocus": False,
+            "activeBattleCount": 0,
+            "readiness": {"runtimeReady": False, "streamReady": True, "analyticsFresh": False},
+            "runtimeOwnership": {"battleRunnerCount": 0, "duplicateBattleRunners": False},
+            "blockers": [],
+        },
+    )
+
+    active = tmp_path / "active_battles.json"
+    active.write_text('{"battles":[],"count":0}', encoding="utf-8")
+    old = time.time() - 3600
+    os.utime(active, (old, old))
+    (tmp_path / "battle_stats.json").write_text('{"battles":[]}', encoding="utf-8")
+    (tmp_path / "stream_status.json").write_text('{"status":"Ready"}', encoding="utf-8")
+    (tmp_path / "daily_stats.json").write_text('{"wins":0,"losses":0}', encoding="utf-8")
+    (truth_dir / "discord-delivery.json").write_text('{"status":"idle","secretValuesPrinted":false}', encoding="utf-8")
+    (truth_dir / "discord-reporting.json").write_text('{"status":"idle","secretValuesPrinted":false}', encoding="utf-8")
+
+    payload = devstream_cycle_report.build_payload()
+
+    assert payload["readyForHandoff"] is False
+    assert payload["activeBattles"]["stale"] is True
+    assert any("active_battles.json is stale and no battle runner owns the runtime" in blocker for blocker in payload["blockers"])
 
 
 def test_cycle_report_allows_completed_cycle_with_classified_local_discord_proof(tmp_path, monkeypatch):

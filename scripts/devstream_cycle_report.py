@@ -109,6 +109,28 @@ def file_meta(path: Path) -> dict[str, Any]:
     }
 
 
+def active_battle_stale_after_seconds() -> int | None:
+    for spec in devstream_health.TRUTH_FILES:
+        if spec.get("path") == "active_battles.json":
+            try:
+                return int(spec.get("staleAfterSeconds") or 0) or None
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def active_battle_telemetry_status(path: Path) -> dict[str, Any]:
+    meta = file_meta(path)
+    stale_after = active_battle_stale_after_seconds()
+    age = meta.get("ageSeconds")
+    stale = bool(meta["exists"] and stale_after and age is not None and float(age) > stale_after)
+    return {
+        **meta,
+        "staleAfterSeconds": stale_after,
+        "stale": stale,
+    }
+
+
 def summarize_active_battles(payload: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {
@@ -540,9 +562,11 @@ def summarize_health(payload: Any) -> dict[str, Any]:
         "healthy": bool(payload.get("healthy")),
         "status": payload.get("status"),
         "readyForLiveFocus": bool(payload.get("readyForLiveFocus")),
+        "running": bool(payload.get("running")),
         "activeBattleCount": payload.get("activeBattleCount"),
         "readiness": payload.get("readiness") if isinstance(payload.get("readiness"), dict) else {},
         "devstreamReporting": payload.get("devstreamReporting") if isinstance(payload.get("devstreamReporting"), dict) else {},
+        "runtimeOwnership": payload.get("runtimeOwnership") if isinstance(payload.get("runtimeOwnership"), dict) else {},
         "blockers": [str(item) for item in payload.get("blockers") or []],
     }
 
@@ -840,7 +864,13 @@ def build_payload() -> dict[str, Any]:
     delivery = summarize_discord_delivery(discord_delivery)
     unconsumed = summarize_unconsumed_battles(stats, read_json(autoresearch_json))
     report_exists = autoresearch_md.exists()
+    active_telemetry = active_battle_telemetry_status(active_path)
     active_summary = reconcile_active_battles(summarize_active_battles(active), stats)
+    active_summary.update({
+        "stale": active_telemetry["stale"],
+        "ageSeconds": active_telemetry["ageSeconds"],
+        "staleAfterSeconds": active_telemetry["staleAfterSeconds"],
+    })
     completed_cycle_available = completed_cycle_evidence_available(
         active=active_summary,
         unconsumed=unconsumed,
@@ -862,6 +892,15 @@ def build_payload() -> dict[str, Any]:
         )
     if active_summary["battleCount"]:
         warnings.append("active battles are still present; cycle report is not a final handoff yet")
+    runtime_ownership = health.get("runtimeOwnership") if isinstance(health.get("runtimeOwnership"), dict) else {}
+    battle_runner_count = int(runtime_ownership.get("battleRunnerCount") or 0)
+    if active_summary.get("stale") and battle_runner_count == 0:
+        stale_msg = (
+            "active_battles.json is stale and no battle runner owns the runtime; "
+            "clear/adopt runtime state before proof handoff"
+        )
+        if not any("active_battles.json is stale" in str(item) for item in blockers):
+            blockers.append(stale_msg)
     if queue_backlog["blockers"] and not discord_backlog_classified:
         blockers.extend(queue_backlog["blockers"])
     elif queue_backlog["blockers"] and discord_backlog_classified:
@@ -901,7 +940,7 @@ def build_payload() -> dict[str, Any]:
                 warnings.append(
                     "runtime is idle after completed cycle proof; plan restoration only after readiness gate allows project starts"
                 )
-            else:
+            elif blocker not in blockers:
                 blockers.append(blocker)
     if not stream_path.exists() and not daily_path.exists() and not stats_path.exists():
         warnings.append("no battle/stat truth files exist yet; run a bounded session before treating this as performance proof")

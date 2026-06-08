@@ -3,6 +3,7 @@ param(
     [int]$MaxConcurrentBattles = 3,
     [int]$QueueTimeoutSeconds = 180,
     [int]$SleepSeconds = 15,
+    [switch]$AutoImprove,
     [switch]$Foreground
 )
 
@@ -42,7 +43,7 @@ foreach ($p in @(Get-CimInstance Win32_Process -Filter "name like 'python%'" -Er
     $cl = $p.CommandLine
     if (-not $cl) { continue }
     $clLower = $cl.ToLower()
-    if ($clLower -match 'devstream_session\.py' -and $clLower -match 'supervise' -and $clLower.Contains($repoNeedle)) {
+    if ($clLower -match 'devstream_session\.py' -and $clLower -match '\bsupervise\b' -and $clLower.Contains($repoNeedle)) {
         if ($p.ProcessId -ne $selfPid) {
             try {
                 Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
@@ -76,6 +77,9 @@ $supervisorArgs = @(
     "--queue-timeout-seconds", "$QueueTimeoutSeconds",
     "--sleep-seconds", "$SleepSeconds"
 )
+if ($AutoImprove) {
+    $supervisorArgs += "--enable-auto-improve"
+}
 
 if ($Foreground) {
     & $Py @supervisorArgs
@@ -86,6 +90,29 @@ $logDir = Join-Path $ProjectDir "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $stdoutLog = Join-Path $logDir "jigglypuff-battle-supervisor.log"
 $stderrLog = Join-Path $logDir "jigglypuff-battle-supervisor.err.log"
+
+function Rotate-LogFileIfLarge {
+    param(
+        [string]$Path,
+        [int64]$MaxBytes = 10485760,
+        [int]$Keep = 6
+    )
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    $item = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $item -or $item.Length -lt $MaxBytes) { return }
+    $archive = Join-Path (Split-Path -Parent $Path) "archive"
+    New-Item -ItemType Directory -Force -Path $archive | Out-Null
+    $stamp = Get-Date -Format "yyyyMMddTHHmmss"
+    $name = [IO.Path]::GetFileName($Path)
+    Move-Item -LiteralPath $Path -Destination (Join-Path $archive "$stamp-$name") -Force
+    Get-ChildItem -LiteralPath $archive -Filter "*-$name" |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -Skip $Keep |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+}
+
+Rotate-LogFileIfLarge -Path $stdoutLog
+Rotate-LogFileIfLarge -Path $stderrLog
 
 function Quote-BatchArg {
     param([string]$Value)
