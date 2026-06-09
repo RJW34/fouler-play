@@ -32,6 +32,12 @@ RUNNING_STATUS_STAGES = {
     "baseline-started",
     "baseline-finished",
 }
+OFFLINE_STATUS_FINITE_PRECONDITIONS = [
+    "an offline eval sidecar is started only with an explicit positive --battles bound",
+    "the status artifact can be adopted only while its serverPid is still alive and inspectable",
+    "a dead or uninspectable running status must be archived/replaced before recursive improvement starts",
+    "the readiness probe is read-only and never deletes eval_results/offline status artifacts",
+]
 
 
 def _env_int(env: Mapping[str, str], name: str, default: int) -> int:
@@ -406,6 +412,46 @@ def _pid_from_payload(payload: object) -> int | None:
         return None
 
 
+def _offline_status_preconditions() -> list[str]:
+    return list(OFFLINE_STATUS_FINITE_PRECONDITIONS)
+
+
+def _offline_status_disposition(
+    *,
+    stage: str,
+    running_stage: bool,
+    server_stopped: bool,
+    server_state: dict[str, object] | None,
+) -> dict[str, object]:
+    if running_stage and not server_stopped:
+        if server_state and server_state.get("running") is True:
+            return {
+                "state": "adopted",
+                "classification": "adopted-running-offline-eval",
+                "proofUse": "in-progress-offline-eval-owner",
+                "finiteLeasePreconditions": _offline_status_preconditions(),
+            }
+        if server_state and server_state.get("running") is False:
+            return {
+                "state": "blocked",
+                "classification": "blocked-stale-running-offline-eval-status",
+                "proofUse": "not-active-eval-proof",
+                "finiteLeasePreconditions": _offline_status_preconditions(),
+            }
+        return {
+            "state": "blocked",
+            "classification": "blocked-uninspectable-running-offline-eval-status",
+            "proofUse": "not-active-eval-proof",
+            "finiteLeasePreconditions": _offline_status_preconditions(),
+        }
+    return {
+        "state": "archived" if stage else "idle",
+        "classification": "archived-offline-eval-status" if stage else "missing-offline-eval-status",
+        "proofUse": "not-active-eval-proof",
+        "finiteLeasePreconditions": _offline_status_preconditions(),
+    }
+
+
 def _check_bot_pid_lock(root: Path) -> tuple[bool, dict[str, object]]:
     path = root / ".bot.pid"
     detail: dict[str, object] = {
@@ -462,8 +508,15 @@ def _check_bot_pid_lock(root: Path) -> tuple[bool, dict[str, object]]:
 def _check_offline_status_artifacts(results_dir: Path) -> tuple[bool, dict[str, object]]:
     artifacts: list[dict[str, object]] = []
     stale_running: list[dict[str, object]] = []
+    adopted_running: list[dict[str, object]] = []
+    blocked_running: list[dict[str, object]] = []
     if not results_dir.exists():
-        return True, {"resultsDir": str(results_dir), "exists": False, "artifacts": artifacts}
+        return True, {
+            "resultsDir": str(results_dir),
+            "exists": False,
+            "artifacts": artifacts,
+            "finiteLeasePreconditions": _offline_status_preconditions(),
+        }
 
     for path in sorted(results_dir.glob("*-status.json")):
         parsed = _read_json_file(path)
@@ -484,19 +537,39 @@ def _check_offline_status_artifacts(results_dir: Path) -> tuple[bool, dict[str, 
             "updatedAt": parsed.get("updatedAt") or parsed.get("updated_at"),
         })
         running_stage = stage in RUNNING_STATUS_STAGES or stage.startswith("running-")
+        server_state = None
+        server_stopped = parsed.get("serverStopped") is True or parsed.get("server_stopped") is True
         if running_stage:
             server_state = _process_state(server_pid)
             artifact["serverProcess"] = server_state
-            server_stopped = parsed.get("serverStopped") is True or parsed.get("server_stopped") is True
-            if not server_stopped and server_state.get("running") is False:
+            if not server_stopped and server_state.get("running") is True:
+                adopted_running.append(artifact)
+            elif not server_stopped and server_state.get("running") is False:
                 stale_running.append(artifact)
+            elif not server_stopped:
+                blocked_running.append(artifact)
+        artifact["disposition"] = _offline_status_disposition(
+            stage=stage,
+            running_stage=running_stage,
+            server_stopped=server_stopped,
+            server_state=server_state,
+        )
+        if artifact["disposition"].get("state") == "blocked":
+            blocked_running.append(artifact)
         artifacts.append(artifact)
 
-    return not stale_running, {
+    blocking = []
+    for item in [*stale_running, *adopted_running, *blocked_running]:
+        if item not in blocking:
+            blocking.append(item)
+    return not blocking, {
         "resultsDir": str(results_dir),
         "exists": True,
         "artifacts": artifacts,
         "staleRunning": stale_running,
+        "adoptedRunning": adopted_running,
+        "blockingRunning": blocking,
+        "finiteLeasePreconditions": _offline_status_preconditions(),
     }
 
 
@@ -599,7 +672,7 @@ def build_readiness_payload(
         "offline eval status artifacts",
         status_ok,
         status_detail,
-        "clear stale running eval status artifacts or rerun the frozen/candidate eval from a fresh sidecar",
+        "wait for adopted eval status to finish, or archive/replace stale running status from a fresh finite offline eval sidecar",
     )
 
     if run_prereq_check:
@@ -725,7 +798,7 @@ def build_readiness_payload(
             "Fouler runtime Python can import the run.py dependencies from requirements.txt",
             "a local no-security Pokemon Showdown server is reachable on EVAL_SHOWDOWN_PORT",
             ".bot.pid is absent, stale-cleanable, or points to no live Fouler runner",
-            "eval_results/offline/*-status.json does not claim a running eval after its server PID has exited",
+            "eval_results/offline/*-status.json is archived, adopted by a live finite sidecar, or blocked before a new eval starts",
             "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",
             "eval_results/offline/frozen.json exists, meets IMPROVE_AGENT_EVAL_BATTLES, and contains label, battles, fouler_wins, fouler_win_rate, and fouler_wilson_lcb",
             "after an accepted candidate run, eval_results/offline/candidate.json and compare-frozen-vs-candidate.json provide the eval verdict consumed by improve_agent",

@@ -46,7 +46,14 @@ ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
 STREAM_STATUS_FILE = ROOT / "stream_status.json"
 STALE_ACTIVE_TRUTH_SECONDS = 1800
+STALE_STREAM_TRUTH_SECONDS = 21600
 ACTIVE_STREAM_STATUSES = {"active", "battling", "running", "searching"}
+FINITE_RUNTIME_LEASE_PRECONDITIONS = [
+    "a current proof-window runtime lease validates for the requested HERMES action",
+    "the lease names projectId=fouler-play, runtime machine, Showdown account, replay behavior, and expiry",
+    "requested --run-count and --max-concurrent-battles are positive finite bounds within the lease",
+    "archive/adopt/clear actions run only through devstream_session.py start/stop --execute after lease validation",
+]
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 ACCOUNT_AUTHORITY_FILES = [ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / "TASKBOARD.md"]
@@ -590,9 +597,122 @@ def read_json_object(path: Path) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
+def finite_runtime_lease_preconditions() -> list[str]:
+    return list(FINITE_RUNTIME_LEASE_PRECONDITIONS)
+
+
+def archived_active_battle_truth(payload: dict[str, Any], active_count: int) -> bool:
+    if active_count != 0:
+        return False
+    return bool(payload.get("clearedBy") or payload.get("clearReason") or payload.get("runtime_blocked"))
+
+
+def public_truth_artifact_disposition(
+    *,
+    active_payload: dict[str, Any],
+    stream_payload: dict[str, Any],
+    active_count: int,
+    active_stale: bool,
+    stream_stale: bool,
+    runner_alive: bool,
+) -> dict[str, Any]:
+    status = str(stream_payload.get("status") or "").strip()
+    stream_claims_runtime = (
+        status.lower() in ACTIVE_STREAM_STATUSES
+        or bool(stream_payload.get("streaming"))
+        or bool(stream_payload.get("stream_pid"))
+    )
+    if archived_active_battle_truth(active_payload, active_count):
+        active_state = {
+            "state": "archived",
+            "classification": "archived-active-battle-truth",
+            "proofUse": "not-live-runtime-proof",
+            "reason": active_payload.get("clearReason") or active_payload.get("blocker_summary"),
+            "clearedBy": active_payload.get("clearedBy"),
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif runner_alive and active_count > 0:
+        active_state = {
+            "state": "adopted",
+            "classification": "adopted-active-battle-truth",
+            "proofUse": "live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif active_stale:
+        active_state = {
+            "state": "blocked",
+            "classification": "blocked-stale-active-battle-truth",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    else:
+        active_state = {
+            "state": "idle",
+            "classification": "empty-active-battle-truth",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+
+    if runner_alive and stream_claims_runtime:
+        stream_state = {
+            "state": "adopted",
+            "classification": "adopted-stream-status",
+            "proofUse": "live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif stream_payload.get("runtime_blocked"):
+        stream_state = {
+            "state": "blocked",
+            "classification": "runtime-blocked-stream-status",
+            "proofUse": "not-live-runtime-proof",
+            "reason": stream_payload.get("blocker_summary") or status or "runtime blocked",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif stream_claims_runtime and stream_stale:
+        stream_state = {
+            "state": "blocked",
+            "classification": "blocked-stale-stream-status",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif stream_claims_runtime:
+        stream_state = {
+            "state": "candidate-active",
+            "classification": "active-stream-status",
+            "proofUse": "requires-live-runner-adoption",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    else:
+        stream_state = {
+            "state": "idle-stale" if stream_stale else "idle",
+            "classification": "stream-status",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+
+    states = [active_state["state"], stream_state["state"]]
+    if "blocked" in states:
+        overall = "blocked"
+    elif "adopted" in states:
+        overall = "adopted"
+    elif "archived" in states:
+        overall = "archived"
+    else:
+        overall = "idle"
+    return {
+        "state": overall,
+        "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        "artifacts": {
+            "activeBattles": active_state,
+            "streamStatus": stream_state,
+        },
+    }
+
+
 def public_runtime_truth_check(stale_after_seconds: int = STALE_ACTIVE_TRUTH_SECONDS) -> dict[str, Any]:
     active_count = read_active_battles()
     active_path = active_battles_path()
+    active_payload = read_json_object(active_path)
     active_age = active_battles_age_seconds()
     stream_payload = read_json_object(STREAM_STATUS_FILE)
     stream_age = file_age_seconds(STREAM_STATUS_FILE)
@@ -600,16 +720,36 @@ def public_runtime_truth_check(stale_after_seconds: int = STALE_ACTIVE_TRUTH_SEC
     status_normalized = status.lower()
     runner_alive = any_battle_runner_alive()
     stale_truth = bool(active_age is not None and active_age >= stale_after_seconds)
+    stream_stale = bool(stream_age is not None and stream_age >= STALE_STREAM_TRUTH_SECONDS)
+    disposition = public_truth_artifact_disposition(
+        active_payload=active_payload,
+        stream_payload=stream_payload,
+        active_count=active_count,
+        active_stale=stale_truth,
+        stream_stale=stream_stale,
+        runner_alive=runner_alive,
+    )
     active_status_without_runner = (
         bool(status_normalized in ACTIVE_STREAM_STATUSES or stream_payload.get("streaming"))
         and not runner_alive
+        and stream_stale
     )
-    stale_active_truth_without_runner = stale_truth and not runner_alive
+    stale_active_truth_without_runner = (
+        stale_truth
+        and not runner_alive
+        and disposition["artifacts"]["activeBattles"].get("state") != "archived"
+    )
     blockers: list[str] = []
     if stale_active_truth_without_runner:
-        blockers.append("active_battles.json is stale and no expected Fouler battle runner owns it")
+        blockers.append(
+            "active_battles.json is stale and no expected Fouler battle runner owns it; "
+            "archive/adopt/clear requires a finite proof-window runtime lease"
+        )
     if active_status_without_runner:
-        blockers.append(f"stream_status.json reports {status or 'active runtime'} without an expected Fouler battle runner")
+        blockers.append(
+            f"stream_status.json reports stale {status or 'active runtime'} without an expected Fouler battle runner; "
+            "archive/adopt/clear requires a finite proof-window runtime lease"
+        )
     return {
         "name": "public_runtime_truth",
         "ok": not blockers,
@@ -620,6 +760,7 @@ def public_runtime_truth_check(stale_after_seconds: int = STALE_ACTIVE_TRUTH_SEC
             "ageSeconds": round(active_age, 3) if active_age is not None else None,
             "staleAfterSeconds": stale_after_seconds,
             "stale": stale_truth,
+            "disposition": disposition["artifacts"]["activeBattles"],
         },
         "streamStatus": {
             "path": str(STREAM_STATUS_FILE),
@@ -628,10 +769,14 @@ def public_runtime_truth_check(stale_after_seconds: int = STALE_ACTIVE_TRUTH_SEC
             "streaming": stream_payload.get("streaming"),
             "streamPid": stream_payload.get("stream_pid"),
             "ageSeconds": round(stream_age, 3) if stream_age is not None else None,
+            "staleAfterSeconds": STALE_STREAM_TRUTH_SECONDS,
+            "stale": stream_stale,
+            "disposition": disposition["artifacts"]["streamStatus"],
         },
+        "disposition": disposition,
         "battleRunnerAlive": runner_alive,
         "blockers": blockers,
-        "note": "Doctor fails closed when public runtime truth claims activity without a live expected Fouler runner.",
+        "note": "Doctor fails closed when public runtime truth claims activity without a live expected Fouler runner and finite lease.",
     }
 
 
