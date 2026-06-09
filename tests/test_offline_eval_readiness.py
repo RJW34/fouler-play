@@ -50,6 +50,36 @@ class _DeadPidPsutil:
         raise _DeadPidPsutil.NoSuchProcess(pid)
 
 
+class _RunningPidPsutil:
+    class NoSuchProcess(Exception):
+        pass
+
+    class AccessDenied(Exception):
+        pass
+
+    STATUS_ZOMBIE = "zombie"
+
+    class _Process:
+        def __init__(self, pid):
+            self.pid = pid
+
+        def status(self):
+            return "running"
+
+        def is_running(self):
+            return True
+
+        def cwd(self):
+            return "C:\\Users\\mtoli\\Documents\\Code\\fouler-play"
+
+        def cmdline(self):
+            return [".venv-eval\\Scripts\\python.exe", "infrastructure\\offline_eval.py", "--battles", "200"]
+
+    @staticmethod
+    def Process(pid):
+        return _RunningPidPsutil._Process(pid)
+
+
 def test_readiness_payload_reports_actionable_missing_harness(tmp_path):
     payload = offline_eval_readiness.build_readiness_payload(
         root=tmp_path,
@@ -137,7 +167,43 @@ def test_readiness_payload_blocks_stale_running_eval_status_with_dead_server_pid
     assert status_check["ok"] is False
     assert status_check["detail"]["staleRunning"][0]["name"] == "frozen-200-status.json"
     assert status_check["detail"]["staleRunning"][0]["serverProcess"]["status"] == "dead"
+    assert status_check["detail"]["staleRunning"][0]["disposition"]["state"] == "blocked"
+    assert status_check["detail"]["staleRunning"][0]["disposition"]["classification"] == "blocked-stale-running-offline-eval-status"
+    assert "explicit positive --battles bound" in status_check["detail"]["finiteLeasePreconditions"][0]
     assert any("offline eval status artifacts" in blocker for blocker in payload["blockers"])
+
+
+def test_readiness_payload_adopts_live_running_eval_status_without_starting_another(tmp_path, monkeypatch):
+    _write_ready_eval_files(tmp_path)
+    status = tmp_path / "eval_results" / "offline" / "candidate-status.json"
+    status.write_text(
+        json.dumps(
+            {
+                "serverPid": 29192,
+                "serverStopped": False,
+                "stage": "running-candidate-eval",
+                "updatedAt": "2026-06-08T05:18:44-04:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(offline_eval_readiness, "psutil", _RunningPidPsutil)
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={},
+        run_import_check=False,
+        run_server_check=False,
+        run_prereq_check=False,
+    )
+
+    status_check = next(check for check in payload["checks"] if check["name"] == "offline eval status artifacts")
+    assert payload["recursiveImprovementReady"] is False
+    assert status_check["ok"] is False
+    assert status_check["detail"]["adoptedRunning"][0]["name"] == "candidate-status.json"
+    assert status_check["detail"]["adoptedRunning"][0]["disposition"]["state"] == "adopted"
+    assert status_check["detail"]["adoptedRunning"][0]["disposition"]["classification"] == "adopted-running-offline-eval"
+    assert "read-only" in status_check["detail"]["finiteLeasePreconditions"][-1]
 
 
 def test_readiness_payload_honors_eval_env_overrides(tmp_path):

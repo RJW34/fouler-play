@@ -649,7 +649,7 @@ def test_stale_empty_active_battles_truth_without_runner_blocks_runtime(tmp_path
     active = tmp_path / "active_battles.json"
     _write_json(active, {"battles": [], "count": 0})
     _write_json(tmp_path / "stream_status.json", {"status": "Searching", "runtime_blocked": False})
-    old = time.time() - 7200
+    old = time.time() - 90000
     os.utime(active, (old, old))
 
     payload = devstream_health.build_payload(check_http=True)
@@ -660,7 +660,47 @@ def test_stale_empty_active_battles_truth_without_runner_blocks_runtime(tmp_path
     assert payload["healthy"] is False
     assert payload["readiness"]["runtimeReady"] is False
     assert any("active_battles.json is stale and no battle runner is alive" in blocker for blocker in payload["blockers"])
+    assert payload["runtimeTruthDisposition"]["artifacts"]["activeBattles"]["state"] == "blocked"
     assert "stale truth file: active_battles.json" in payload["warnings"]
+
+
+def test_archived_stale_active_battles_truth_is_not_live_runtime_blocker(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
+    monkeypatch.setattr(devstream_health, "obs_surface_task_status", lambda: {"available": False, "reason": "not-windows"})
+    monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: [])
+
+    active = tmp_path / "active_battles.json"
+    stream = tmp_path / "stream_status.json"
+    _write_json(
+        active,
+        {
+            "battles": [],
+            "count": 0,
+            "max_slots": 3,
+            "clearedBy": "HERMES devstream_session start",
+            "clearReason": "stale empty active battle truth had no live battle runner",
+        },
+    )
+    _write_json(stream, {"status": "Searching", "runtime_blocked": False})
+    old = time.time() - 90000
+    os.utime(active, (old, old))
+    os.utime(stream, (old, old))
+
+    payload = devstream_health.build_payload(check_http=False)
+
+    active_truth = next(item for item in payload["truth"] if item["relativePath"] == "active_battles.json")
+    assert active_truth["stale"] is True
+    assert active_truth["blocksAnalyticsFresh"] is False
+    assert active_truth["disposition"]["state"] == "archived"
+    assert payload["runtimeTruthDisposition"]["artifacts"]["activeBattles"]["state"] == "archived"
+    assert payload["runtimeTruthDisposition"]["artifacts"]["streamStatus"]["state"] == "blocked"
+    assert any("stream_status.json is stale" in blocker for blocker in payload["blockers"])
+    assert not any("active_battles.json is stale" in blocker for blocker in payload["blockers"])
+    assert "finite proof-window runtime lease" in payload["blockers"][0]
 
 
 def test_autoresearch_json_freshness_uses_generated_at_not_touched_mtime(tmp_path, monkeypatch):

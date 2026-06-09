@@ -31,6 +31,13 @@ OBS_WS_PORT = 4455
 IDLE_RUNNER_STALE_SECONDS = int(os.getenv("FP_IDLE_RUNNER_STALE_SECONDS", "180"))
 PROOF_STATUS_MAX_AGE_SECONDS = int(os.getenv("FP_PROOF_STATUS_MAX_AGE_SECONDS", "1800"))
 TERMINAL_BATTLE_RESULTS = {"win", "loss", "tie", "draw", "forfeit", "timeout", "ended", "error"}
+ACTIVE_STREAM_STATUSES = {"active", "battling", "running", "searching"}
+FINITE_RUNTIME_LEASE_PRECONDITIONS = [
+    "a current proof-window runtime lease validates for the requested HERMES action",
+    "the lease names projectId=fouler-play, runtime machine, Showdown account, replay behavior, and expiry",
+    "requested --run-count and --max-concurrent-battles are positive finite bounds within the lease",
+    "archive/adopt/clear actions run only through devstream_session.py start/stop --execute after lease validation",
+]
 
 
 def positive_int_env(name: str, default: int) -> int:
@@ -347,6 +354,10 @@ def truth_file_status(spec: dict[str, Any]) -> dict[str, Any]:
     stale_after = spec.get("staleAfterSeconds")
     summary = summarize_truth(rel, parsed)
     stale = bool(stale_after and age is not None and age > int(stale_after))
+    disposition = truth_artifact_disposition(rel, parsed, summary, stale)
+    blocks_analytics_fresh = bool(spec.get("blocksAnalyticsFresh", True))
+    if disposition.get("state") == "archived":
+        blocks_analytics_fresh = False
     freshness_note = None
     if rel == "active_battles.json" and isinstance(summary, dict) and int(summary.get("battleCount") or 0) == 0:
         freshness_note = "empty active battle truth is valid only while fresh runtime ownership exists"
@@ -361,8 +372,9 @@ def truth_file_status(spec: dict[str, Any]) -> dict[str, Any]:
         "ageSeconds": round(age, 3) if age is not None else None,
         "staleAfterSeconds": stale_after,
         "stale": stale,
-        "blocksAnalyticsFresh": bool(spec.get("blocksAnalyticsFresh", True)),
+        "blocksAnalyticsFresh": blocks_analytics_fresh,
         "summary": summary,
+        "disposition": disposition,
         **({"freshnessNote": freshness_note} if freshness_note else {}),
     }
 
@@ -381,6 +393,13 @@ def summarize_truth(rel: str, parsed: Any) -> dict[str, Any] | None:
             "battleCount": len(battles),
             "maxSlots": max_slots,
             "updated": parsed.get("updated") or parsed.get("updated_at"),
+            "clearedBy": parsed.get("clearedBy"),
+            "clearReason": parsed.get("clearReason"),
+            "runtimeBlocked": bool(parsed.get("runtime_blocked")),
+            "blockerCode": parsed.get("blocker_code"),
+            "blockerSummary": parsed.get("blocker_summary"),
+            "previousBattleCount": parsed.get("previousBattleCount"),
+            "previousTruthWasEmpty": parsed.get("previousTruthWasEmpty"),
         }
     if rel == "daily_stats.json":
         return {"wins": parsed.get("wins"), "losses": parsed.get("losses")}
@@ -389,12 +408,144 @@ def summarize_truth(rel: str, parsed: Any) -> dict[str, Any] | None:
             "status": parsed.get("status"),
             "elo": parsed.get("elo"),
             "updated": parsed.get("updated") or parsed.get("updated_at"),
+            "streaming": parsed.get("streaming"),
+            "streamPid": parsed.get("stream_pid"),
             "runtimeBlocked": bool(parsed.get("runtime_blocked")),
             "blockerCode": parsed.get("blocker_code"),
             "blockerSummary": parsed.get("blocker_summary"),
             "nextFix": parsed.get("next_fix"),
         }
     return None
+
+
+def finite_runtime_lease_preconditions() -> list[str]:
+    return list(FINITE_RUNTIME_LEASE_PRECONDITIONS)
+
+
+def active_truth_is_archived(summary: dict[str, Any] | None) -> bool:
+    if not isinstance(summary, dict):
+        return False
+    if int(summary.get("battleCount") or 0) != 0:
+        return False
+    return bool(summary.get("clearedBy") or summary.get("clearReason") or summary.get("runtimeBlocked"))
+
+
+def truth_artifact_disposition(
+    rel: str,
+    parsed: Any,
+    summary: dict[str, Any] | None,
+    stale: bool,
+) -> dict[str, Any]:
+    if rel == "active_battles.json":
+        battle_count = int((summary or {}).get("battleCount") or 0)
+        if active_truth_is_archived(summary):
+            return {
+                "state": "archived",
+                "classification": "archived-active-battle-truth",
+                "proofUse": "not-live-runtime-proof",
+                "reason": (summary or {}).get("clearReason") or (summary or {}).get("blockerSummary"),
+                "clearedBy": (summary or {}).get("clearedBy"),
+                "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+            }
+        if battle_count > 0:
+            return {
+                "state": "candidate-active",
+                "classification": "active-battle-telemetry",
+                "proofUse": "requires-live-runner-adoption",
+                "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+            }
+        return {
+            "state": "idle-stale" if stale else "idle",
+            "classification": "empty-active-battle-truth",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    if rel == "stream_status.json":
+        status = str((summary or {}).get("status") or "").strip()
+        normalized = status.lower()
+        if (summary or {}).get("runtimeBlocked"):
+            return {
+                "state": "blocked",
+                "classification": "runtime-blocked-stream-status",
+                "proofUse": "not-live-runtime-proof",
+                "reason": (summary or {}).get("blockerSummary") or status or "runtime blocked",
+                "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+            }
+        if normalized in ACTIVE_STREAM_STATUSES or (summary or {}).get("streaming"):
+            return {
+                "state": "candidate-active-stale" if stale else "candidate-active",
+                "classification": "active-stream-status",
+                "proofUse": "requires-live-runner-adoption",
+                "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+            }
+        return {
+            "state": "idle-stale" if stale else "idle",
+            "classification": "stream-status",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    return {
+        "state": "stale" if stale else "fresh",
+        "classification": "generated-truth-file",
+    }
+
+
+def runtime_truth_disposition(
+    *,
+    active_truth: dict[str, Any],
+    stream_truth: dict[str, Any],
+    runner_active: bool,
+    battle_count: int,
+) -> dict[str, Any]:
+    active = dict(active_truth.get("disposition") if isinstance(active_truth.get("disposition"), dict) else {})
+    stream = dict(stream_truth.get("disposition") if isinstance(stream_truth.get("disposition"), dict) else {})
+    stream_summary = stream_truth.get("summary") if isinstance(stream_truth.get("summary"), dict) else {}
+    blockers: list[str] = []
+
+    if runner_active:
+        if active.get("state") in {"candidate-active", "candidate-active-stale"}:
+            active["state"] = "adopted"
+            active["classification"] = "adopted-active-battle-truth"
+        if stream.get("state") in {"candidate-active", "candidate-active-stale"}:
+            stream["state"] = "adopted"
+            stream["classification"] = "adopted-stream-status"
+    else:
+        active_is_archived = active.get("state") == "archived"
+        if battle_count > 0 or (active_truth.get("stale") and not active_is_archived):
+            active["state"] = "blocked"
+            active["classification"] = "blocked-stale-active-battle-truth"
+            active["proofUse"] = "not-live-runtime-proof"
+            blockers.append(
+                "active_battles.json is stale/unowned runtime truth; archive or adopt only through a finite proof-window runtime lease"
+            )
+        stream_active = str(stream_summary.get("status") or "").strip().lower() in ACTIVE_STREAM_STATUSES
+        stream_claims_runtime = stream_active or bool(stream_summary.get("streaming")) or bool(stream_summary.get("streamPid"))
+        if stream_claims_runtime and stream_truth.get("stale"):
+            stream["state"] = "blocked"
+            stream["classification"] = "blocked-stale-stream-status"
+            stream["proofUse"] = "not-live-runtime-proof"
+            blockers.append(
+                "stream_status.json is stale/unowned active runtime truth; archive or adopt only through a finite proof-window runtime lease"
+            )
+
+    artifact_states = [active.get("state"), stream.get("state")]
+    if any(state == "blocked" for state in artifact_states):
+        state = "blocked"
+    elif any(state == "adopted" for state in artifact_states):
+        state = "adopted"
+    elif any(state == "archived" for state in artifact_states):
+        state = "archived"
+    else:
+        state = "idle"
+    return {
+        "state": state,
+        "blockers": blockers,
+        "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        "artifacts": {
+            "activeBattles": active,
+            "streamStatus": stream,
+        },
+    }
 
 
 def active_battle_entries() -> list[dict[str, Any]]:
@@ -818,6 +969,12 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         and not bool(stream_truth.get("stale"))
         and str(stream_summary.get("status") or "").lower() in {"active", "battling", "ready", "searching"}
     )
+    runtime_truth = runtime_truth_disposition(
+        active_truth=active_battle_truth,
+        stream_truth=stream_truth,
+        runner_active=runner_active,
+        battle_count=battle_count,
+    )
     discord_queue = discord_queue_health()
     local_discord_proof = local_discord_proof_classified(discord_queue)
     completed_proof = completed_cycle_proof_status()
@@ -872,18 +1029,24 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
             warnings.append("fouler-play OBS WebSocket source sync has authentication failures in task stderr")
     if not runner_active and battle_count == 0:
         runner_proof_missing = True
-        if active_battle_truth.get("stale"):
+        if runtime_truth["artifacts"]["activeBattles"].get("state") == "blocked":
             blockers.append(
                 "fouler-play active_battles.json is stale and no battle runner is alive; "
-                "clear/adopt runtime state through HERMES-owned devstream_session before proof handoff"
+                "archive/adopt runtime state only through HERMES-owned devstream_session with a finite proof-window runtime lease"
+            )
+        elif runtime_truth["artifacts"]["streamStatus"].get("state") == "blocked":
+            blockers.append(
+                "fouler-play stream_status.json is stale and no battle runner is alive; "
+                "archive/adopt runtime state only through HERMES-owned devstream_session with a finite proof-window runtime lease"
             )
         else:
-            blockers.append("fouler-play battle runner is idle; OBS HTTP alone is not active battle proof")
+            if obs_surface_ready:
+                blockers.append("fouler-play battle runner is idle; OBS HTTP alone is not active battle proof")
     elif not runner_active and battle_count > 0 and active_battle_truth.get("stale"):
         runner_proof_missing = True
         blockers.append(
             "fouler-play active battle truth is stale and no battle runner is alive; "
-            "clear stale battle state through HERMES devstream_session start"
+            "archive/adopt stale battle state through HERMES devstream_session start with a finite proof-window runtime lease"
         )
     elif battle_count == 0 and battle_runners:
         oldest_runner_age = max(float(proc.get("ageSeconds") or 0) for proc in battle_runners)
@@ -965,6 +1128,8 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         status = "ready" if ready_for_live_focus and battle_count == 0 else "running"
     elif runtime_blocked or duplicate_battle_runner_blocked:
         status = "blocked"
+    elif runtime_truth.get("state") == "blocked":
+        status = "blocked"
     elif running:
         status = "degraded"
     else:
@@ -1016,6 +1181,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
                 else None
             ),
         },
+        "runtimeTruthDisposition": runtime_truth,
         "discordQueue": discord_queue,
         "endpoints": endpoints,
         "activeBattleCount": battle_count,

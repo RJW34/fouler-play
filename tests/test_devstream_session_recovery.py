@@ -179,6 +179,38 @@ def test_doctor_blocks_stale_public_runtime_truth(monkeypatch):
     assert "expected Fouler battle runner" in truth_check["blockers"][0]
 
 
+def test_public_runtime_truth_classifies_archived_active_and_blocked_stream(tmp_path, monkeypatch):
+    active = tmp_path / "active_battles.json"
+    stream = tmp_path / "stream_status.json"
+    active.write_text(
+        json.dumps(
+            {
+                "battles": [],
+                "count": 0,
+                "clearedBy": "HERMES devstream_session start",
+                "clearReason": "stale empty active battle truth had no live battle runner",
+            }
+        ),
+        encoding="utf-8",
+    )
+    stream.write_text(json.dumps({"status": "Searching", "streaming": False}), encoding="utf-8")
+    old = time.time() - 90000
+    os.utime(active, (old, old))
+    os.utime(stream, (old, old))
+
+    monkeypatch.setattr(devstream_session, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_session, "STREAM_STATUS_FILE", stream)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+
+    payload = devstream_session.public_runtime_truth_check(stale_after_seconds=180)
+
+    assert payload["ok"] is False
+    assert payload["activeBattles"]["disposition"]["state"] == "archived"
+    assert payload["streamStatus"]["disposition"]["state"] == "blocked"
+    assert "finite proof-window runtime lease" in payload["blockers"][0]
+    assert not any("active_battles.json is stale" in blocker for blocker in payload["blockers"])
+
+
 def test_python_module_available_reports_missing_runtime_dependency(monkeypatch):
     monkeypatch.setattr(
         devstream_session.subprocess,
