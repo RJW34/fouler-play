@@ -160,7 +160,7 @@ def test_runtime_pid_file_check_reports_stale_dead_pid(tmp_path, monkeypatch):
     assert all("not a live expected Fouler process" in item["reason"] for item in check["details"] if item["stale"])
 
 
-def test_showdown_account_authority_check_reports_env_doc_mismatch(tmp_path, monkeypatch):
+def test_showdown_account_authority_check_reports_current_env_doc_mismatch(tmp_path, monkeypatch):
     agents = tmp_path / "AGENTS.md"
     taskboard = tmp_path / "TASKBOARD.md"
     agents.write_text("account is **LEBOTJAMESXD00N**\n", encoding="utf-8")
@@ -172,7 +172,33 @@ def test_showdown_account_authority_check_reports_env_doc_mismatch(tmp_path, mon
 
     assert check["ok"] is False
     assert check["runtimeAccount"] == "claudechamp"
-    assert check["distinctAccounts"] == ["claudechamp", "LEBOTJAMESXD00N", "npctypebeat"]
+    assert check["distinctAccounts"] == ["claudechamp", "npctypebeat"]
+    assert [item["account"] for item in check["documentedAccounts"]] == ["npctypebeat"]
+
+
+def test_showdown_account_authority_check_ignores_historical_mission_prose(tmp_path, monkeypatch):
+    agents = tmp_path / "AGENTS.md"
+    taskboard = tmp_path / "TASKBOARD.md"
+    agents.write_text("account is **LEBOTJAMESXD00N**\naccount naming LEBOTJAMESXD00N\n", encoding="utf-8")
+    taskboard.write_text("Historical account `npctypebeat` appears in archived notes.\n", encoding="utf-8")
+
+    monkeypatch.setattr(devstream_session, "ACCOUNT_AUTHORITY_FILES", [agents, taskboard])
+
+    check = devstream_session.showdown_account_authority_check({"PS_USERNAME": "claudechamp"})
+
+    assert check["ok"] is True
+    assert check["runtimeAccount"] == "claudechamp"
+    assert check["documentedAccounts"] == []
+    assert check["distinctAccounts"] == ["claudechamp"]
+
+
+def test_battle_supervisor_contract_is_no_start_ready():
+    contract = devstream_session.battle_supervisor_contract()
+
+    assert contract["ok"] is True
+    assert contract["statusPath"].endswith("supervisor-status.json")
+    assert all(item["ok"] for item in contract["requirements"])
+    assert all(item["ok"] for item in contract["checks"])
 
 
 def test_existing_battle_runner_start_result_reuses_any_live_runner(tmp_path, monkeypatch):
