@@ -110,6 +110,11 @@ def test_doctor_accepts_completed_proof_handoff_without_runtime_ready(monkeypatc
         "runtime_pid_file_check",
         lambda: {"name": "runtime_pid_files", "ok": True},
     )
+    monkeypatch.setattr(
+        devstream_session,
+        "public_runtime_truth_check",
+        lambda: {"name": "public_runtime_truth", "ok": True},
+    )
 
     payload = devstream_session.build_doctor()
     health_check = next(check for check in payload["checks"] if check["name"] == "health_probe")
@@ -118,6 +123,60 @@ def test_doctor_accepts_completed_proof_handoff_without_runtime_ready(monkeypatc
     assert health_check["ok"] is True
     assert health_check["acceptedMode"] == "proof-handoff"
     assert "readiness gate" in health_check["runtimeRestoration"]
+
+
+def test_doctor_blocks_stale_public_runtime_truth(monkeypatch):
+    health = {
+        "healthy": True,
+        "readiness": {
+            "runtimeReady": True,
+            "proofHandoffReady": True,
+        },
+        "blockers": [],
+    }
+    stale_truth = {
+        "name": "public_runtime_truth",
+        "ok": False,
+        "activeBattles": {"count": 0, "stale": True},
+        "streamStatus": {"status": "Searching"},
+        "battleRunnerAlive": False,
+        "blockers": ["stream_status.json reports Searching without an expected Fouler battle runner"],
+    }
+    monkeypatch.setattr(devstream_session, "run_json", lambda command: (health, None))
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(
+        devstream_session,
+        "prepare_runtime_env",
+        lambda env: {"PS_USERNAME": "bot", "PS_PASSWORD": "secret"},
+    )
+    monkeypatch.setattr(devstream_session, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
+    monkeypatch.setattr(devstream_session, "shell_command_for_session", lambda *args, **kwargs: ["python", "run.py"])
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "supervisor_alive", lambda: (True, 4321))
+    monkeypatch.setattr(
+        devstream_session,
+        "python_module_available",
+        lambda python, module: {"name": f"runtime_dependency_{module}", "ok": True},
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "showdown_account_authority_check",
+        lambda env: {"name": "showdown_account_authority", "ok": True},
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_pid_file_check",
+        lambda: {"name": "runtime_pid_files", "ok": True},
+    )
+    monkeypatch.setattr(devstream_session, "public_runtime_truth_check", lambda: stale_truth)
+
+    payload = devstream_session.build_doctor()
+    truth_check = next(check for check in payload["checks"] if check["name"] == "public_runtime_truth")
+
+    assert payload["ready"] is False
+    assert truth_check["ok"] is False
+    assert "expected Fouler battle runner" in truth_check["blockers"][0]
 
 
 def test_python_module_available_reports_missing_runtime_dependency(monkeypatch):
