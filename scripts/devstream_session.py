@@ -44,6 +44,9 @@ SUPERVISOR_STATUS_FILE = ROOT / "devstream" / "truth" / "supervisor-status.json"
 STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-backups"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
+STREAM_STATUS_FILE = ROOT / "stream_status.json"
+STALE_ACTIVE_TRUTH_SECONDS = 1800
+ACTIVE_STREAM_STATUSES = {"active", "battling", "running", "searching"}
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 ACCOUNT_AUTHORITY_FILES = [ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / "TASKBOARD.md"]
@@ -570,6 +573,66 @@ def active_battles_age_seconds() -> float | None:
         return max(0.0, time.time() - path.stat().st_mtime)
     except OSError:
         return None
+
+
+def file_age_seconds(path: Path) -> float | None:
+    try:
+        return max(0.0, time.time() - path.stat().st_mtime)
+    except OSError:
+        return None
+
+
+def read_json_object(path: Path) -> dict[str, Any]:
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def public_runtime_truth_check(stale_after_seconds: int = STALE_ACTIVE_TRUTH_SECONDS) -> dict[str, Any]:
+    active_count = read_active_battles()
+    active_path = active_battles_path()
+    active_age = active_battles_age_seconds()
+    stream_payload = read_json_object(STREAM_STATUS_FILE)
+    stream_age = file_age_seconds(STREAM_STATUS_FILE)
+    status = str(stream_payload.get("status") or "").strip()
+    status_normalized = status.lower()
+    runner_alive = any_battle_runner_alive()
+    stale_truth = bool(active_age is not None and active_age >= stale_after_seconds)
+    active_status_without_runner = (
+        bool(status_normalized in ACTIVE_STREAM_STATUSES or stream_payload.get("streaming"))
+        and not runner_alive
+    )
+    stale_active_truth_without_runner = stale_truth and not runner_alive
+    blockers: list[str] = []
+    if stale_active_truth_without_runner:
+        blockers.append("active_battles.json is stale and no expected Fouler battle runner owns it")
+    if active_status_without_runner:
+        blockers.append(f"stream_status.json reports {status or 'active runtime'} without an expected Fouler battle runner")
+    return {
+        "name": "public_runtime_truth",
+        "ok": not blockers,
+        "activeBattles": {
+            "path": str(active_path),
+            "exists": active_path.exists(),
+            "count": active_count,
+            "ageSeconds": round(active_age, 3) if active_age is not None else None,
+            "staleAfterSeconds": stale_after_seconds,
+            "stale": stale_truth,
+        },
+        "streamStatus": {
+            "path": str(STREAM_STATUS_FILE),
+            "exists": STREAM_STATUS_FILE.exists(),
+            "status": status or None,
+            "streaming": stream_payload.get("streaming"),
+            "streamPid": stream_payload.get("stream_pid"),
+            "ageSeconds": round(stream_age, 3) if stream_age is not None else None,
+        },
+        "battleRunnerAlive": runner_alive,
+        "blockers": blockers,
+        "note": "Doctor fails closed when public runtime truth claims activity without a live expected Fouler runner.",
+    }
 
 
 def read_pid(path: Path) -> int | None:
@@ -1502,6 +1565,7 @@ def build_doctor() -> dict[str, Any]:
         python_module_available(runtime_py, "psutil"),
         showdown_account_authority_check(env),
         runtime_pid_file_check(),
+        public_runtime_truth_check(),
     ]
     health, error = run_json([runtime_py, "scripts/devstream_health.py"])
     if error:
