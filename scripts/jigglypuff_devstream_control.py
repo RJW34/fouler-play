@@ -20,6 +20,8 @@ if str(ROOT) not in sys.path:
 from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_runtime_lease
 
 TRUTH_DIR = ROOT / "devstream" / "truth"
+ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
+JIGGLYPUFF_RUNTIME_START_PURPOSE = "jigglypuff-runtime-start"
 JIGGLYPUFF_TAILNET_HOST = "jigglypuff.tail4859dd.ts.net"
 JIGGLYPUFF_DIRECT_IP = "192.168.1.126"
 DEFAULT_OBS_HTTP = f"http://{JIGGLYPUFF_DIRECT_IP}:8777"
@@ -93,6 +95,53 @@ def parse_json_object(text: str) -> dict[str, Any] | None:
         except json.JSONDecodeError:
             return None
     return None
+
+
+def strip_env_inline_comment(value: str) -> str:
+    in_single = False
+    in_double = False
+    for index, char in enumerate(value):
+        if char == "'" and not in_double:
+            in_single = not in_single
+            continue
+        if char == '"' and not in_single:
+            in_double = not in_double
+            continue
+        if char == "#" and not in_single and not in_double and (index == 0 or value[index - 1].isspace()):
+            return value[:index].rstrip()
+    return value.strip()
+
+
+def unquote_env_value(value: str) -> str:
+    value = strip_env_inline_comment(value)
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        return value[1:-1]
+    return value
+
+
+def load_env_files() -> dict[str, str]:
+    env = dict(os.environ)
+    for path in ENV_FILES:
+        if not path.exists():
+            continue
+        for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = unquote_env_value(value.strip())
+            if key and key not in env:
+                env[key] = value
+    return env
+
+
+def env_value(env: dict[str, str], *names: str, default: str = "") -> str:
+    for name in names:
+        value = str(env.get(name) or "").strip()
+        if value:
+            return value
+    return default
 
 
 def redact_text(value: Any, *, limit: int = 2000) -> str:
@@ -567,12 +616,14 @@ def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
 
 
 def start_runtime_lease_guard(args: argparse.Namespace) -> dict[str, Any]:
+    env = load_env_files()
     return validate_runtime_lease(
-        purpose="jigglypuff-start",
+        purpose=JIGGLYPUFF_RUNTIME_START_PURPOSE,
         lease_path=getattr(args, "runtime_lease", None),
         requested_run_count=getattr(args, "run_count", None),
         requested_max_cycles=getattr(args, "max_cycles", None),
         requested_max_concurrent_battles=getattr(args, "max_concurrent_battles", None),
+        requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
         require_run_count=True,
         require_max_cycles=True,
         require_max_concurrent_battles=True,

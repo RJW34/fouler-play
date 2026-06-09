@@ -15,14 +15,21 @@ def load_module():
     return module
 
 
-def write_runtime_lease(module, path: Path) -> Path:
+def write_runtime_lease(
+    module,
+    path: Path,
+    *,
+    account: str = "bot",
+    allowed_purposes: list[str] | None = None,
+) -> Path:
     payload = {
         "schemaVersion": "fouler-play-runtime-lease/v1",
         "projectId": "fouler-play",
         "leaseId": "lease-test",
         "status": "active",
         "machine": "JIGGLYPUFF",
-        "account": "bot",
+        "account": account,
+        "allowedPurposes": allowed_purposes or [module.JIGGLYPUFF_RUNTIME_START_PURPOSE],
         "maxRunCount": 10,
         "maxCycles": 2,
         "maxConcurrentBattles": 3,
@@ -278,8 +285,39 @@ def test_remote_command_falls_back_to_ssh_when_resident_fouler_endpoint_is_missi
     assert result["residentWorker"]["workerStatus"] == 404
 
 
+def test_start_runtime_lease_guard_uses_jiggly_runtime_purpose_and_account(monkeypatch, tmp_path):
+    module = load_module()
+    captured = {}
+
+    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "claudechamp"})
+
+    def fake_validate_runtime_lease(**kwargs):
+        captured.update(kwargs)
+        return {"ok": True, "purpose": kwargs["purpose"], "requested": {"account": kwargs["requested_account"]}}
+
+    monkeypatch.setattr(module, "validate_runtime_lease", fake_validate_runtime_lease)
+
+    guard = module.start_runtime_lease_guard(
+        SimpleNamespace(
+            run_count=1,
+            max_concurrent_battles=1,
+            max_cycles=1,
+            runtime_lease=str(tmp_path / "runtime-lease.json"),
+        )
+    )
+
+    assert guard["purpose"] == "jigglypuff-runtime-start"
+    assert captured["purpose"] == module.JIGGLYPUFF_RUNTIME_START_PURPOSE
+    assert captured["requested_account"] == "claudechamp"
+    assert captured["require_run_count"] is True
+    assert captured["require_max_cycles"] is True
+    assert captured["require_max_concurrent_battles"] is True
+    assert captured["require_replay_behavior"] is True
+
+
 def test_start_execute_fails_closed_without_runtime_lease(monkeypatch, tmp_path):
     module = load_module()
+    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "bot"})
     monkeypatch.setattr(
         module,
         "remote_command",
@@ -305,6 +343,37 @@ def test_start_execute_fails_closed_without_runtime_lease(monkeypatch, tmp_path)
     assert payload["runtimeLease"]["ok"] is False
 
 
+def test_start_execute_blocks_runtime_lease_account_mismatch(monkeypatch, tmp_path):
+    module = load_module()
+    lease_path = write_runtime_lease(module, tmp_path / "runtime-lease.json", account="wrongbot")
+
+    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "claudechamp"})
+    monkeypatch.setattr(
+        module,
+        "remote_command",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("remote command must not run")),
+    )
+
+    code, payload = module.action_mutating(
+        "start",
+        SimpleNamespace(
+            execute=True,
+            run_count=1,
+            max_concurrent_battles=1,
+            max_cycles=1,
+            runtime_lease=str(lease_path),
+            obs_only=False,
+            enable_auto_improve=False,
+            timeout=180,
+        ),
+    )
+
+    assert code == 2
+    assert payload["status"] == "blocked-runtime-lease"
+    assert payload["runtimeLease"]["requested"]["account"] == "claudechamp"
+    assert "does not match requested account claudechamp" in " ".join(payload["blockers"])
+
+
 def test_start_execute_passes_max_cycles_after_runtime_lease(monkeypatch, tmp_path):
     module = load_module()
     lease_path = write_runtime_lease(module, tmp_path / "runtime-lease.json")
@@ -317,6 +386,7 @@ def test_start_execute_passes_max_cycles_after_runtime_lease(monkeypatch, tmp_pa
 
     monkeypatch.setattr(module, "remote_command", fake_remote_command)
     monkeypatch.setattr(module, "mirror_status", lambda payload, **kwargs: dict(payload))
+    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "bot"})
 
     code, payload = module.action_mutating(
         "start",
@@ -337,3 +407,10 @@ def test_start_execute_passes_max_cycles_after_runtime_lease(monkeypatch, tmp_pa
     assert captured["kwargs"]["max_cycles"] == 1
     assert captured["kwargs"]["runtime_lease"] == str(lease_path)
     assert payload["status"] == "ready-idle"
+
+
+def test_gitignore_excludes_generated_runtime_lease_artifacts():
+    ignored = (ROOT / ".gitignore").read_text(encoding="utf-8")
+
+    assert "devstream/truth/stale-runtime-artifact-backups/" in ignored
+    assert "devstream/truth/runtime-lease*.json" in ignored

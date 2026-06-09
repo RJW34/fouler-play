@@ -119,3 +119,5 @@ devstream/truth/discord-delivery.json
 devstream/truth/discord-reporting*.json
 devstream/truth/proof-status.json
 devstream/truth/stale-active-battles-backups/
+devstream/truth/stale-runtime-artifact-backups/
+devstream/truth/runtime-lease*.json
