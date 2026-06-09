@@ -48,10 +48,8 @@ AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 ACCOUNT_AUTHORITY_FILES = [ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / "TASKBOARD.md"]
 ACCOUNT_AUTHORITY_PATTERNS = (
-    ("mission account", re.compile(r"account\s+is\s+\*\*`?\"?([A-Za-z0-9_.-]+)\"?`?\*\*", re.IGNORECASE)),
-    ("mission account naming", re.compile(r"account\s+naming\s+`?([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
-    ("account", re.compile(r"Account\s+`([A-Za-z0-9_.-]+)`", re.IGNORECASE)),
-    ("PS_USERNAME", re.compile(r"PS_USERNAME=([A-Za-z0-9_.-]+)", re.IGNORECASE)),
+    ("current PS_USERNAME", re.compile(r"Current:\s*`?PS_USERNAME=([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
+    ("current SHOWDOWN_USER_ID", re.compile(r"Current:\s*`?SHOWDOWN_USER_ID=([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
 )
 
 
@@ -306,9 +304,78 @@ def showdown_account_authority_check(env: dict[str, str]) -> dict[str, Any]:
         "documentedAccounts": documented_accounts,
         "distinctAccounts": sorted(distinct.values(), key=str.lower),
         "note": (
-            "PS_USERNAME/SHOWDOWN_USER_ID, mission docs, and runtime lease account must agree before execute; "
-            "doctor does not choose an account authority."
+            "PS_USERNAME/SHOWDOWN_USER_ID, current account docs, and runtime lease account must agree before execute; "
+            "historical mission prose is not treated as live account authority."
         ),
+    }
+
+
+def battle_supervisor_contract() -> dict[str, Any]:
+    wrapper = ROOT / "scripts" / "start_battle_supervisor_task.ps1"
+    installer = ROOT / "scripts" / "install_battle_supervisor_task.ps1"
+    runtime = ROOT / "scripts" / "fouler_jigglypuff_runtime.ps1"
+    session = ROOT / "scripts" / "devstream_session.py"
+    required = [
+        {
+            "name": "start_battle_supervisor_task.ps1",
+            "path": str(wrapper),
+            "ok": wrapper.exists(),
+        },
+        {
+            "name": "install_battle_supervisor_task.ps1",
+            "path": str(installer),
+            "ok": installer.exists(),
+        },
+        {
+            "name": "fouler_jigglypuff_runtime.ps1",
+            "path": str(runtime),
+            "ok": runtime.exists(),
+        },
+        {
+            "name": "devstream_session.py",
+            "path": str(session),
+            "ok": session.exists(),
+        },
+    ]
+    try:
+        wrapper_text = wrapper.read_text(encoding="utf-8", errors="replace") if wrapper.exists() else ""
+        runtime_text = runtime.read_text(encoding="utf-8", errors="replace") if runtime.exists() else ""
+        installer_text = installer.read_text(encoding="utf-8", errors="replace") if installer.exists() else ""
+    except OSError as exc:
+        return {
+            "ok": False,
+            "requirements": required,
+            "error": str(exc),
+        }
+    checks = [
+        {
+            "name": "supervise_subcommand",
+            "ok": '"supervise"' in wrapper_text and '"supervise"' in runtime_text,
+        },
+        {
+            "name": "bounded_cycles",
+            "ok": "--max-cycles" in wrapper_text and "--max-cycles" in runtime_text and "-MaxCycles" in installer_text,
+        },
+        {
+            "name": "runtime_lease_forwarded",
+            "ok": "--runtime-lease" in wrapper_text and "Test-RuntimeLease" in runtime_text,
+        },
+        {
+            "name": "auto_improve_explicit_opt_in",
+            "ok": "--enable-auto-improve" in wrapper_text and "--enable-auto-improve" in runtime_text,
+        },
+        {
+            "name": "supervisor_status_path",
+            "ok": str(SUPERVISOR_STATUS_FILE.name) == "supervisor-status.json",
+            "path": str(SUPERVISOR_STATUS_FILE),
+        },
+    ]
+    return {
+        "ok": all(item.get("ok") for item in required + checks),
+        "requirements": required,
+        "checks": checks,
+        "statusPath": str(SUPERVISOR_STATUS_FILE),
+        "note": "No-start readiness verifies the HERMES battle supervisor contract without starting it.",
     }
 
 
@@ -1487,12 +1554,18 @@ def build_doctor() -> dict[str, Any]:
     active_battles = read_active_battles()
     checks.append({"name": "active_battle_drain", "ok": active_battles == 0, "activeBattleCount": active_battles})
     supervisor_running, supervisor_pid = supervisor_alive()
+    supervisor_contract = battle_supervisor_contract()
     checks.append({
         "name": "battle_supervisor",
-        "ok": supervisor_running,
+        "ok": bool(supervisor_contract.get("ok")),
         "pid": supervisor_pid,
+        "running": supervisor_running,
         "statusPath": str(SUPERVISOR_STATUS_FILE),
-        "note": "HERMES persistent battle supervisor must be alive for unattended devstream operation.",
+        "contract": supervisor_contract,
+        "note": (
+            "No-start doctor verifies the HERMES persistent battle supervisor contract; "
+            "execute-time readiness still requires a live supervisor or bounded start lease."
+        ),
     })
     return {
         "schemaVersion": "fouler-play-devstream-doctor/v1",

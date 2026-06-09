@@ -4,7 +4,7 @@
 
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
 **Branch:** `master` is the live deployment/base branch and now contains the latest Codex-readiness/doc cleanup merged on 2026-03-09 (`a8b2d31`). Treat older branch-specific notes as historical unless a newer branch is explicitly called out here.
-**Bot Account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=npctypebeat`. Windows machine hostname may vary (MAGNETON, MIRAIDON, etc.) — use OS detection.
+**Bot Account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=claudechamp`. Windows machine hostname may vary (MAGNETON, MIRAIDON, etc.) — use OS detection.
 **Updated:** 2026-05-02
 
 ---
@@ -14,7 +14,7 @@
 1. **DECISION ENGINE WORK ONLY.** Do not write infrastructure, reporting, Discord formatting, build manifests, or pipeline orchestration code. All of that is built (see "What's Already Built" below). Every commit must improve `fp/search/` or fix a documented bug in the decision engine. If you are about to create a new file outside `fp/search/` or `tests/`, STOP and reconsider.
 2. **Do not hard-code stale concurrency targets or runtime hosts.** Live launcher truth plus a current proof window wins. The current devstream posture is no-autostart: DEKU on ubunztu may run status/dry-run checks, while any JIGGLYPUFF batch through `scripts/jigglypuff_devstream_control.py` -> `scripts/fouler_jigglypuff_runtime.ps1` -> `start_one_touch.bat` requires an explicit proof window and runtime lease.
 3. **One source of truth.** This file plus current launcher/process evidence. If docs disagree with the running launcher or command line, fix the docs immediately.
-4. **Bot account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=npctypebeat`.
+4. **Bot account:** Use live `.env` / process truth, not hard-coded names. Current: `PS_USERNAME=claudechamp`.
 
 ---
 
