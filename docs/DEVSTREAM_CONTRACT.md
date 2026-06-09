@@ -83,6 +83,16 @@ cd /home/ryan/projects/fouler-play
 
 When the OBS server is running, `/health` returns the same structured payload via `streaming/serve_obs_page.py`.
 
+`scripts/devstream_session.py doctor --require-ready` is also read-only. It must be able to import
+`psutil` from the selected Python so PID files can be verified against real process command lines and
+start times. If `psutil` is missing, stale `.bot.pid` or `.pids/*.pid` artifacts are treated as
+untrusted blockers, not live runtime proof.
+
+The doctor also fails closed when account authorities disagree. `.env` / `SHOWDOWN_USER_ID`, mission
+docs, and any runtime lease must name the same Showdown account before an execute path is considered
+ready. A dry-run lease authorizes only its dry-run purpose, and an expired proof window never authorizes
+execute.
+
 ## Next Work Packets
 
 1. Generate live ELO proof files that conform to `devstream/truth/elo-proof.schema.json`.
