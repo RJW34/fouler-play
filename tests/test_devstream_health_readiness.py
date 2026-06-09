@@ -55,7 +55,13 @@ def test_runtime_processes_does_not_mark_reused_pid_alive(tmp_path, monkeypatch)
         def is_running(self):
             return True
 
-    monkeypatch.setattr(devstream_health.psutil, "Process", lambda pid: ReusedPidProcess())
+    fake_psutil = SimpleNamespace(
+        Process=lambda pid: ReusedPidProcess(),
+        NoSuchProcess=Exception,
+        AccessDenied=Exception,
+        STATUS_ZOMBIE="zombie",
+    )
+    monkeypatch.setattr(devstream_health, "psutil", fake_psutil)
 
     process = devstream_health.runtime_processes()[0]
 
@@ -63,6 +69,28 @@ def test_runtime_processes_does_not_mark_reused_pid_alive(tmp_path, monkeypatch)
     assert process["alive"] is False
     assert process["isBattleRunner"] is False
     assert process["stalePidReason"] == "pid belongs to unexpected command, cwd, or older process"
+
+
+def test_missing_psutil_blocks_runtime_and_marks_pid_files_unverified(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_health, "psutil", None)
+    monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
+    monkeypatch.setattr(devstream_health, "obs_surface_task_status", lambda: {"available": False, "reason": "not-windows"})
+    monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+
+    (tmp_path / ".bot.pid").write_text("42024", encoding="utf-8")
+    _write_json(tmp_path / "active_battles.json", {"battles": [], "count": 0})
+    _write_json(tmp_path / "stream_status.json", {"status": "Searching", "runtime_blocked": False})
+
+    payload = devstream_health.build_payload(check_http=False)
+
+    assert payload["readiness"]["runtimeReady"] is False
+    assert payload["runtimeOwnership"]["processInspectionReady"] is False
+    assert any("psutil is missing" in blocker for blocker in payload["blockers"])
+    assert payload["runtimeProcesses"][0]["processInspectionAvailable"] is False
+    assert payload["runtimeProcesses"][0]["stalePidReason"] == "psutil is not installed; PID ownership cannot be verified"
 
 
 def test_optional_stale_stability_report_does_not_gate_readiness(tmp_path, monkeypatch):
@@ -660,6 +688,7 @@ def test_active_slot_readiness_uses_local_state_contract(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
     monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
     monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: _runner(age=30))
     monkeypatch.setattr(
         devstream_health,
         "fetch_endpoint",

@@ -15,7 +15,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import psutil
+try:
+    import psutil  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - exercised by doctor subprocess checks.
+    psutil = None  # type: ignore[assignment]
 
 from devstream_runtime_checks import recent_showdown_credential_failure
 from devstream_session import DEFAULT_MAX_CONCURRENT as DEFAULT_DEVSTREAM_BATTLE_SURFACES
@@ -161,6 +164,23 @@ def runtime_processes() -> list[dict[str, Any]]:
     processes: list[dict[str, Any]] = []
     seen: set[int] = set()
     root = os.path.abspath(ROOT)
+    if psutil is None:
+        for rel in BATTLE_PID_FILES:
+            path = ROOT / rel
+            pid = read_pid_file(path)
+            item: dict[str, Any] = {
+                "pidFile": rel,
+                "pid": pid,
+                "pidFileExists": path.exists(),
+                "processRunning": False,
+                "alive": False,
+                "isBattleRunner": False,
+                "processInspectionAvailable": False,
+            }
+            if pid:
+                item["stalePidReason"] = "psutil is not installed; PID ownership cannot be verified"
+            processes.append(item)
+        return processes
     for rel in BATTLE_PID_FILES:
         path = ROOT / rel
         pid_payload = read_pid_payload(path)
@@ -786,6 +806,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     runtime_blocked = bool(stream_summary.get("runtimeBlocked"))
     credential_failure = recent_showdown_credential_failure(ROOT)
     processes = runtime_processes()
+    process_inspection_ready = all(bool(proc.get("processInspectionAvailable", True)) for proc in processes)
     battle_runners = [proc for proc in processes if proc.get("alive") and proc.get("isBattleRunner")]
     duplicate_battle_runner_blocked = len(battle_runners) > 1
     runner_active = bool(active_services or battle_runners)
@@ -836,6 +857,10 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         blockers.append(
             "duplicate fouler-play battle runners are alive; HERMES must drain/adopt one runtime owner "
             f"before claiming ready (pids: {pids})"
+        )
+    if not process_inspection_ready:
+        blockers.append(
+            "python dependency psutil is missing; cannot verify Fouler PID files or prove runtime ownership"
         )
     if obs_surface.get("available"):
         stderr_tail_class = obs_surface.get("stderrTailClass") if isinstance(obs_surface.get("stderrTailClass"), dict) else {}
@@ -982,6 +1007,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "obsSurface": obs_surface,
         "runtimeProcesses": processes,
         "runtimeOwnership": {
+            "processInspectionReady": process_inspection_ready,
             "battleRunnerCount": len(battle_runners),
             "duplicateBattleRunners": duplicate_battle_runner_blocked,
             "requiredHermesAction": (

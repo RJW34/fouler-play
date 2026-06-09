@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -94,6 +95,21 @@ def test_doctor_accepts_completed_proof_handoff_without_runtime_ready(monkeypatc
     monkeypatch.setattr(devstream_session, "shell_command_for_session", lambda *args, **kwargs: ["python", "run.py"])
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "supervisor_alive", lambda: (True, 4321))
+    monkeypatch.setattr(
+        devstream_session,
+        "python_module_available",
+        lambda python, module: {"name": f"runtime_dependency_{module}", "ok": True},
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "showdown_account_authority_check",
+        lambda env: {"name": "showdown_account_authority", "ok": True},
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_pid_file_check",
+        lambda: {"name": "runtime_pid_files", "ok": True},
+    )
 
     payload = devstream_session.build_doctor()
     health_check = next(check for check in payload["checks"] if check["name"] == "health_probe")
@@ -102,6 +118,61 @@ def test_doctor_accepts_completed_proof_handoff_without_runtime_ready(monkeypatc
     assert health_check["ok"] is True
     assert health_check["acceptedMode"] == "proof-handoff"
     assert "readiness gate" in health_check["runtimeRestoration"]
+
+
+def test_python_module_available_reports_missing_runtime_dependency(monkeypatch):
+    monkeypatch.setattr(
+        devstream_session.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=3, stderr="", stdout=""),
+    )
+
+    check = devstream_session.python_module_available("python", "psutil")
+
+    assert check["name"] == "runtime_dependency_psutil"
+    assert check["ok"] is False
+    assert check["returnCode"] == 3
+    assert "pip install" in check["installHint"]
+
+
+def test_runtime_pid_file_check_reports_stale_dead_pid(tmp_path, monkeypatch):
+    bot_pid = tmp_path / ".bot.pid"
+    session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
+    supervisor_pid = tmp_path / ".pids" / "devstream_battle_supervisor.pid"
+    bot_pid.write_text("42024", encoding="utf-8")
+    session_pid.parent.mkdir(parents=True)
+    session_pid.write_text(
+        json.dumps({"pid": 36676, "command": ["python", "run.py"], "startedAt": devstream_session.iso_now()}),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(devstream_session, "BOT_LOCK_PID_FILE", bot_pid)
+    monkeypatch.setattr(devstream_session, "BATTLE_PID_FILE", session_pid)
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_PID_FILE", supervisor_pid)
+    monkeypatch.setattr(devstream_session.os, "kill", lambda pid, sig: (_ for _ in ()).throw(OSError("dead pid")))
+    monkeypatch.setattr(devstream_session, "_process_snapshot", lambda pid: None)
+
+    check = devstream_session.runtime_pid_file_check()
+
+    assert check["ok"] is False
+    assert check["staleCount"] == 2
+    assert [item["pid"] for item in check["details"] if item["stale"]] == [42024, 36676]
+    assert all("not a live expected Fouler process" in item["reason"] for item in check["details"] if item["stale"])
+
+
+def test_showdown_account_authority_check_reports_env_doc_mismatch(tmp_path, monkeypatch):
+    agents = tmp_path / "AGENTS.md"
+    taskboard = tmp_path / "TASKBOARD.md"
+    agents.write_text("account is **LEBOTJAMESXD00N**\n", encoding="utf-8")
+    taskboard.write_text("Current: `PS_USERNAME=npctypebeat`.\n", encoding="utf-8")
+
+    monkeypatch.setattr(devstream_session, "ACCOUNT_AUTHORITY_FILES", [agents, taskboard])
+
+    check = devstream_session.showdown_account_authority_check({"PS_USERNAME": "claudechamp"})
+
+    assert check["ok"] is False
+    assert check["runtimeAccount"] == "claudechamp"
+    assert check["distinctAccounts"] == ["claudechamp", "LEBOTJAMESXD00N", "npctypebeat"]
 
 
 def test_existing_battle_runner_start_result_reuses_any_live_runner(tmp_path, monkeypatch):

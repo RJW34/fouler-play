@@ -5,6 +5,7 @@ import argparse
 import shutil
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -45,6 +46,13 @@ ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+ACCOUNT_AUTHORITY_FILES = [ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / "TASKBOARD.md"]
+ACCOUNT_AUTHORITY_PATTERNS = (
+    ("mission account", re.compile(r"account\s+is\s+\*\*`?\"?([A-Za-z0-9_.-]+)\"?`?\*\*", re.IGNORECASE)),
+    ("mission account naming", re.compile(r"account\s+naming\s+`?([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
+    ("account", re.compile(r"Account\s+`([A-Za-z0-9_.-]+)`", re.IGNORECASE)),
+    ("PS_USERNAME", re.compile(r"PS_USERNAME=([A-Za-z0-9_.-]+)", re.IGNORECASE)),
+)
 
 
 def env_flag_enabled(env: dict[str, str], name: str) -> bool:
@@ -162,6 +170,39 @@ def run_json(command: list[str]) -> tuple[dict[str, Any] | None, str | None]:
         return None, f"invalid JSON from {command}: {exc}"
 
 
+def python_module_available(python: str, module_name: str) -> dict[str, Any]:
+    command = [
+        python,
+        "-c",
+        "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec(sys.argv[1]) else 3)",
+        module_name,
+    ]
+    try:
+        result = subprocess.run(command, cwd=str(ROOT), capture_output=True, text=True, timeout=8, check=False)
+    except Exception as exc:
+        return {
+            "name": f"runtime_dependency_{module_name}",
+            "ok": False,
+            "python": python,
+            "module": module_name,
+            "error": str(exc),
+        }
+    requirements = (
+        "infrastructure\\requirements-eval.txt"
+        if ".venv-eval" in Path(python).parts
+        else "requirements.txt"
+    )
+    return {
+        "name": f"runtime_dependency_{module_name}",
+        "ok": result.returncode == 0,
+        "python": python,
+        "module": module_name,
+        "returnCode": result.returncode,
+        "installHint": f"{python} -m pip install -r {requirements}",
+        **({"stderr": result.stderr.strip()} if result.stderr.strip() else {}),
+    }
+
+
 def strip_env_inline_comment(value: str) -> str:
     in_single = False
     in_double = False
@@ -214,6 +255,61 @@ def env_value(env: dict[str, str], *names: str, default: str = "") -> str:
         if value:
             return value
     return default
+
+
+def normalize_account_name(value: object) -> str:
+    return str(value or "").strip().strip("\"'`").lower()
+
+
+def documented_showdown_accounts() -> list[dict[str, Any]]:
+    accounts: list[dict[str, Any]] = []
+    seen: set[tuple[str, int, str, str]] = set()
+    for path in ACCOUNT_AUTHORITY_FILES:
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line_number, line in enumerate(lines, start=1):
+            for kind, pattern in ACCOUNT_AUTHORITY_PATTERNS:
+                for match in pattern.finditer(line):
+                    account = str(match.group(1) or "").strip().strip("\"'`")
+                    if not account or account.upper().startswith("YOUR_"):
+                        continue
+                    key = (str(path), line_number, kind, account.lower())
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    accounts.append({
+                        "account": account,
+                        "source": str(path),
+                        "line": line_number,
+                        "kind": kind,
+                    })
+    return accounts
+
+
+def showdown_account_authority_check(env: dict[str, str]) -> dict[str, Any]:
+    runtime_account = env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID")
+    documented_accounts = documented_showdown_accounts()
+    distinct: dict[str, str] = {}
+    if runtime_account:
+        distinct[normalize_account_name(runtime_account)] = runtime_account
+    for item in documented_accounts:
+        account = str(item.get("account") or "").strip()
+        normalized = normalize_account_name(account)
+        if normalized:
+            distinct.setdefault(normalized, account)
+    return {
+        "name": "showdown_account_authority",
+        "ok": len(distinct) <= 1,
+        "runtimeAccount": runtime_account or None,
+        "documentedAccounts": documented_accounts,
+        "distinctAccounts": sorted(distinct.values(), key=str.lower),
+        "note": (
+            "PS_USERNAME/SHOWDOWN_USER_ID, mission docs, and runtime lease account must agree before execute; "
+            "doctor does not choose an account authority."
+        ),
+    }
 
 
 def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str, str] | None = None) -> list[str]:
@@ -596,6 +692,46 @@ def pid_alive(path: Path) -> tuple[bool, int | None]:
         # valid process. Prefer the richer process snapshot before treating the
         # pid file as stale, otherwise legacy bare PID files can spawn duplicates.
         return _pid_matches_expected_process(path, pid, payload), pid
+
+
+def pid_file_status(path: Path) -> dict[str, Any]:
+    payload = read_pid_payload(path)
+    pid = read_pid(path)
+    alive, observed_pid = pid_alive(path)
+    item: dict[str, Any] = {
+        "pidFile": str(path),
+        "exists": path.exists(),
+        "pid": observed_pid if observed_pid is not None else pid,
+        "alive": alive,
+        "stale": False,
+    }
+    if isinstance(payload, dict):
+        item["command"] = payload.get("command")
+        item["startedAt"] = payload.get("startedAt") or payload.get("started_at")
+    if not path.exists():
+        item["reason"] = "missing"
+        return item
+    if pid is None:
+        item["stale"] = True
+        item["reason"] = "pid file exists but does not contain a valid positive PID"
+    elif not alive:
+        item["stale"] = True
+        item["reason"] = "pid file exists but PID is not a live expected Fouler process"
+    else:
+        item["reason"] = "live expected Fouler process"
+    return item
+
+
+def runtime_pid_file_check() -> dict[str, Any]:
+    details = [pid_file_status(path) for path in [BOT_LOCK_PID_FILE, BATTLE_PID_FILE, SUPERVISOR_PID_FILE]]
+    stale = [item for item in details if item.get("stale")]
+    return {
+        "name": "runtime_pid_files",
+        "ok": not stale,
+        "details": details,
+        "staleCount": len(stale),
+        "note": "Stale PID files are blockers until cleared, replaced, or adopted by a no-start readiness flow.",
+    }
 
 
 def write_pid(path: Path, proc: subprocess.Popen[Any], command: list[str]) -> None:
@@ -1294,8 +1430,13 @@ def wait_for_drain(max_wait_seconds: int) -> dict[str, Any]:
 
 def build_doctor() -> dict[str, Any]:
     env = prepare_runtime_env(load_env_files())
-    health, error = run_json([runtime_python(), "scripts/devstream_health.py"])
-    checks = []
+    runtime_py = runtime_python()
+    checks = [
+        python_module_available(runtime_py, "psutil"),
+        showdown_account_authority_check(env),
+        runtime_pid_file_check(),
+    ]
+    health, error = run_json([runtime_py, "scripts/devstream_health.py"])
     if error:
         checks.append({"name": "health_probe", "ok": False, "error": error})
     else:
