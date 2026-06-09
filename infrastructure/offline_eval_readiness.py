@@ -11,6 +11,7 @@ import shutil
 import socket
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
 
@@ -21,6 +22,11 @@ except ImportError:  # pragma: no cover - exercised on minimal environments
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_runtime_lease
+
 SCHEMA_VERSION = "fouler-play-offline-eval-readiness/v1"
 FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
 RUNNING_STATUS_STAGES = {
@@ -36,8 +42,11 @@ OFFLINE_STATUS_FINITE_PRECONDITIONS = [
     "an offline eval sidecar is started only with an explicit positive --battles bound",
     "the status artifact can be adopted only while its serverPid is still alive and inspectable",
     "a dead or uninspectable running status must be archived/replaced before recursive improvement starts",
-    "the readiness probe is read-only and never deletes eval_results/offline status artifacts",
+    "the readiness probe is read-only; cleanup archive mode only moves dead status artifacts after finite proof-window lease validation",
 ]
+OFFLINE_STATUS_CLEANUP_PURPOSE = "offline-eval-status-cleanup"
+OFFLINE_STATUS_CLEANUP_DRY_RUN_PURPOSE = f"{OFFLINE_STATUS_CLEANUP_PURPOSE}-dry-run"
+OFFLINE_STATUS_ARCHIVE_DIRNAME = "status-archive"
 
 
 def _env_int(env: Mapping[str, str], name: str, default: int) -> int:
@@ -573,6 +582,122 @@ def _check_offline_status_artifacts(results_dir: Path) -> tuple[bool, dict[str, 
     }
 
 
+def _runtime_lease_blocked_message(guard: dict[str, object]) -> str:
+    blockers = guard.get("blockers") if isinstance(guard.get("blockers"), list) else []
+    if blockers:
+        return "runtime lease/proof window required: " + "; ".join(str(item) for item in blockers)
+    return "runtime lease/proof window required"
+
+
+def _status_cleanup_lease_guard(*, purpose: str, runtime_lease: str | os.PathLike[str] | None) -> dict[str, object]:
+    return validate_runtime_lease(
+        purpose=purpose,
+        lease_path=runtime_lease,
+        requested_run_count=1,
+        requested_max_concurrent_battles=1,
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
+
+
+def _dedupe_status_artifacts(items: object) -> list[dict[str, object]]:
+    deduped: list[dict[str, object]] = []
+    seen: set[str] = set()
+    if not isinstance(items, list):
+        return deduped
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("path") or item.get("name") or "")
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def _status_archive_destination(archive_dir: Path, source: Path) -> Path:
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    candidate = archive_dir / f"{source.stem}-{timestamp}{source.suffix}"
+    if not candidate.exists():
+        return candidate
+    return archive_dir / f"{source.stem}-{timestamp}-{os.getpid()}-{datetime.now(timezone.utc).strftime('%f')}{source.suffix}"
+
+
+def archive_dead_offline_eval_status_artifacts(
+    *,
+    root: Path = PROJECT_ROOT,
+    env: Mapping[str, str] | None = None,
+    execute: bool = False,
+    runtime_lease: str | os.PathLike[str] | None = None,
+) -> dict[str, object]:
+    env = os.environ if env is None else env
+    config = configured_eval(root, env)
+    results_dir = Path(config["resultsDir"])
+    purpose = OFFLINE_STATUS_CLEANUP_PURPOSE if execute else OFFLINE_STATUS_CLEANUP_DRY_RUN_PURPOSE
+    lease_guard = _status_cleanup_lease_guard(purpose=purpose, runtime_lease=runtime_lease)
+    status_ok, status_detail = _check_offline_status_artifacts(results_dir)
+    stale_running = _dedupe_status_artifacts(status_detail.get("staleRunning") if isinstance(status_detail, dict) else [])
+    stale_paths = {str(item.get("path") or "") for item in stale_running}
+    blocked = [
+        item
+        for item in _dedupe_status_artifacts(status_detail.get("blockingRunning") if isinstance(status_detail, dict) else [])
+        if str(item.get("path") or "") not in stale_paths
+    ]
+    payload: dict[str, object] = {
+        "schemaVersion": "fouler-play-offline-eval-status-cleanup/v1",
+        "checkedAt": datetime.now(timezone.utc).isoformat(),
+        "dryRun": not execute,
+        "purpose": purpose,
+        "runtimeLease": lease_guard,
+        "resultsDir": str(results_dir),
+        "statusOkBeforeCleanup": status_ok,
+        "deadStatusArtifacts": stale_running,
+        "blockedStatusArtifacts": blocked,
+        "finiteLeasePreconditions": _offline_status_preconditions(),
+        "archived": [],
+        "archivedCount": 0,
+        "noRuntimeActions": True,
+        "note": "No-start cleanup path; it does not start Pokemon Showdown, eval battles, bots, Discord, Twitch, services, or scheduled tasks.",
+    }
+    if not lease_guard.get("ok"):
+        payload["status"] = "blocked-runtime-lease"
+        payload["error"] = _runtime_lease_blocked_message(lease_guard)
+        return payload
+    if not stale_running:
+        payload["reason"] = "no dead running offline eval status artifacts to archive"
+        return payload
+    if not execute:
+        payload["reason"] = "dry run; dead offline eval status cleanup planned only"
+        payload["plannedAction"] = f"move dead *-status.json files into {OFFLINE_STATUS_ARCHIVE_DIRNAME}"
+        return payload
+
+    archive_dir = results_dir / OFFLINE_STATUS_ARCHIVE_DIRNAME
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    archived: list[dict[str, object]] = []
+    for item in stale_running:
+        source = Path(str(item.get("path") or ""))
+        if not source.exists():
+            archived.append({"source": str(source), "archived": False, "reason": "source disappeared before archive"})
+            continue
+        destination = _status_archive_destination(archive_dir, source)
+        shutil.move(str(source), str(destination))
+        archived.append(
+            {
+                "source": str(source),
+                "archivePath": str(destination),
+                "archived": True,
+                "stage": item.get("stage"),
+                "serverPid": item.get("serverPid"),
+            }
+        )
+    payload["archived"] = archived
+    payload["archivedCount"] = sum(1 for item in archived if item.get("archived"))
+    payload["reason"] = "dead offline eval status artifacts archived"
+    return payload
+
+
 def _frozen_baseline_detail(path: Path, min_battles: int) -> tuple[bool, dict[str, object]]:
     if not path.exists():
         return False, {"exists": False}
@@ -776,6 +901,10 @@ def build_readiness_payload(
         "frozenBaseline": _quote_command(eval_command(config, label="frozen", no_setsample=True)),
         "compareFrozenVsCandidate": _quote_command(compare_command(config)),
         "readiness": "python infrastructure/offline_eval_readiness.py --require-ready",
+        "deadStatusCleanupDryRun": (
+            "python infrastructure/offline_eval_readiness.py --cleanup-dead-status-artifacts "
+            "--runtime-lease devstream/truth/runtime-lease.json"
+        ),
         "showdownInstall": f"cd {showdown_dir} && npm ci",
         "showdownServerCwd": str(showdown_dir),
         "showdownServer": f"node pokemon-showdown start --no-security {config['showdownPort']}",
@@ -813,14 +942,37 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--skip-import-check", action="store_true", help="do not execute .venv-eval python import probe")
     parser.add_argument("--skip-server-check", action="store_true", help="do not probe the local Pokemon Showdown eval server port")
     parser.add_argument("--skip-prereq-check", action="store_true", help="do not probe Node/npm/git or Pokemon Showdown checkout metadata")
+    parser.add_argument(
+        "--cleanup-dead-status-artifacts",
+        action="store_true",
+        help="plan or archive dead eval_results/offline/*-status.json files after finite lease validation",
+    )
+    parser.add_argument("--execute-cleanup", action="store_true", help="move dead status artifacts to status-archive")
+    parser.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
     args = parser.parse_args(argv)
+    if args.execute_cleanup and not args.cleanup_dead_status_artifacts:
+        parser.error("--execute-cleanup requires --cleanup-dead-status-artifacts")
+
+    cleanup_payload = None
+    if args.cleanup_dead_status_artifacts:
+        cleanup_payload = archive_dead_offline_eval_status_artifacts(
+            execute=args.execute_cleanup,
+            runtime_lease=args.runtime_lease,
+        )
 
     payload = build_readiness_payload(
         run_import_check=not args.skip_import_check,
         run_server_check=not args.skip_server_check,
         run_prereq_check=not args.skip_prereq_check,
     )
+    if cleanup_payload is not None:
+        payload["deadStatusCleanup"] = cleanup_payload
     print(json.dumps(payload, indent=2, sort_keys=True))
+    if cleanup_payload is not None and not cleanup_payload.get("runtimeLease", {}).get("ok"):
+        return 2
     return 1 if args.require_ready and not payload["recursiveImprovementReady"] else 0
 
 

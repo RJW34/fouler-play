@@ -36,6 +36,29 @@ def _write_ready_eval_files(root: Path) -> None:
     )
 
 
+def _write_cleanup_lease(path: Path, purpose: str) -> Path:
+    payload = {
+        "schemaVersion": "fouler-play-runtime-lease/v1",
+        "projectId": "fouler-play",
+        "leaseId": "offline-cleanup-test",
+        "status": "active",
+        "approved": True,
+        "machine": "MIRAIDON",
+        "account": "bot",
+        "allowedPurposes": [purpose],
+        "maxRunCount": 1,
+        "maxCycles": 1,
+        "maxConcurrentBattles": 1,
+        "replayBehavior": "never",
+        "proofWindow": {
+            "startsAt": "2026-06-08T00:00:00+00:00",
+            "expiresAt": "2099-01-01T00:00:00+00:00",
+        },
+    }
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
 class _DeadPidPsutil:
     class NoSuchProcess(Exception):
         pass
@@ -171,6 +194,94 @@ def test_readiness_payload_blocks_stale_running_eval_status_with_dead_server_pid
     assert status_check["detail"]["staleRunning"][0]["disposition"]["classification"] == "blocked-stale-running-offline-eval-status"
     assert "explicit positive --battles bound" in status_check["detail"]["finiteLeasePreconditions"][0]
     assert any("offline eval status artifacts" in blocker for blocker in payload["blockers"])
+
+
+def test_dead_offline_eval_status_cleanup_fails_closed_without_runtime_lease(tmp_path, monkeypatch):
+    _write_ready_eval_files(tmp_path)
+    status = tmp_path / "eval_results" / "offline" / "candidate-status.json"
+    status.write_text(
+        json.dumps({"serverPid": 29192, "serverStopped": False, "stage": "running-candidate-eval"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(offline_eval_readiness, "psutil", _DeadPidPsutil)
+
+    payload = offline_eval_readiness.archive_dead_offline_eval_status_artifacts(
+        root=tmp_path,
+        env={},
+        execute=True,
+        runtime_lease=tmp_path / "missing-runtime-lease.json",
+    )
+
+    assert payload["status"] == "blocked-runtime-lease"
+    assert "runtime lease file is missing" in " ".join(payload["runtimeLease"]["blockers"])
+    assert status.exists()
+    assert payload["archivedCount"] == 0
+
+
+def test_dead_offline_eval_status_cleanup_dry_run_keeps_status_file(tmp_path, monkeypatch):
+    _write_ready_eval_files(tmp_path)
+    status = tmp_path / "eval_results" / "offline" / "candidate-status.json"
+    status.write_text(
+        json.dumps({"serverPid": 29192, "serverStopped": False, "stage": "running-candidate-eval"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(offline_eval_readiness, "psutil", _DeadPidPsutil)
+    runtime_lease = _write_cleanup_lease(
+        tmp_path / "runtime-lease.json",
+        offline_eval_readiness.OFFLINE_STATUS_CLEANUP_DRY_RUN_PURPOSE,
+    )
+
+    payload = offline_eval_readiness.archive_dead_offline_eval_status_artifacts(
+        root=tmp_path,
+        env={},
+        execute=False,
+        runtime_lease=runtime_lease,
+    )
+
+    assert payload["dryRun"] is True
+    assert payload["runtimeLease"]["ok"] is True
+    assert payload["reason"] == "dry run; dead offline eval status cleanup planned only"
+    assert payload["deadStatusArtifacts"][0]["name"] == "candidate-status.json"
+    assert status.exists()
+    assert payload["archivedCount"] == 0
+
+
+def test_dead_offline_eval_status_cleanup_archives_after_valid_lease(tmp_path, monkeypatch):
+    _write_ready_eval_files(tmp_path)
+    status = tmp_path / "eval_results" / "offline" / "candidate-status.json"
+    status.write_text(
+        json.dumps({"serverPid": 29192, "serverStopped": False, "stage": "running-candidate-eval"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(offline_eval_readiness, "psutil", _DeadPidPsutil)
+    runtime_lease = _write_cleanup_lease(
+        tmp_path / "runtime-lease.json",
+        offline_eval_readiness.OFFLINE_STATUS_CLEANUP_PURPOSE,
+    )
+
+    payload = offline_eval_readiness.archive_dead_offline_eval_status_artifacts(
+        root=tmp_path,
+        env={},
+        execute=True,
+        runtime_lease=runtime_lease,
+    )
+
+    archived = payload["archived"][0]
+    assert payload["runtimeLease"]["ok"] is True
+    assert payload["archivedCount"] == 1
+    assert archived["archived"] is True
+    assert not status.exists()
+    assert Path(archived["archivePath"]).exists()
+
+    readiness = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={},
+        run_import_check=False,
+        run_server_check=False,
+        run_prereq_check=False,
+    )
+    status_check = next(check for check in readiness["checks"] if check["name"] == "offline eval status artifacts")
+    assert status_check["ok"] is True
 
 
 def test_readiness_payload_adopts_live_running_eval_status_without_starting_another(tmp_path, monkeypatch):

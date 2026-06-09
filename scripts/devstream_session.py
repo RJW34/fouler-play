@@ -42,17 +42,20 @@ SUPERVISOR_PID_FILE = PID_DIR / "devstream_battle_supervisor.pid"
 SUPERVISOR_STOP_FILE = PID_DIR / "supervisor.stop"
 SUPERVISOR_STATUS_FILE = ROOT / "devstream" / "truth" / "supervisor-status.json"
 STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-backups"
+STALE_STREAM_STATUS_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-stream-status-backups"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
 STREAM_STATUS_FILE = ROOT / "stream_status.json"
 STALE_ACTIVE_TRUTH_SECONDS = 1800
 STALE_STREAM_TRUTH_SECONDS = 21600
 ACTIVE_STREAM_STATUSES = {"active", "battling", "running", "searching"}
+STALE_TRUTH_CLEANUP_PURPOSE = "devstream-stale-truth-cleanup"
+STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE = f"{STALE_TRUTH_CLEANUP_PURPOSE}-dry-run"
 FINITE_RUNTIME_LEASE_PRECONDITIONS = [
     "a current proof-window runtime lease validates for the requested HERMES action",
     "the lease names projectId=fouler-play, runtime machine, Showdown account, replay behavior, and expiry",
     "requested --run-count and --max-concurrent-battles are positive finite bounds within the lease",
-    "archive/adopt/clear actions run only through devstream_session.py start/stop --execute after lease validation",
+    "archive/adopt/clear actions run only through devstream_session.py cleanup-stale-truth/start/stop --execute after lease validation",
 ]
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
@@ -123,6 +126,19 @@ def runtime_lease_guard(
         requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
         require_run_count=True,
         require_max_cycles=require_max_cycles,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
+
+
+def cleanup_runtime_lease_guard(*, purpose: str, args: argparse.Namespace, env: dict[str, str]) -> dict[str, Any]:
+    return validate_runtime_lease(
+        purpose=purpose,
+        lease_path=getattr(args, "runtime_lease", None),
+        requested_run_count=1,
+        requested_max_concurrent_battles=1,
+        requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
+        require_run_count=True,
         require_max_concurrent_battles=True,
         require_replay_behavior=True,
     )
@@ -607,6 +623,11 @@ def archived_active_battle_truth(payload: dict[str, Any], active_count: int) -> 
     return bool(payload.get("clearedBy") or payload.get("clearReason") or payload.get("runtime_blocked"))
 
 
+def stream_status_claims_runtime(payload: dict[str, Any]) -> bool:
+    status = str(payload.get("status") or "").strip().lower()
+    return status in ACTIVE_STREAM_STATUSES or bool(payload.get("streaming")) or bool(payload.get("stream_pid"))
+
+
 def public_truth_artifact_disposition(
     *,
     active_payload: dict[str, Any],
@@ -617,11 +638,7 @@ def public_truth_artifact_disposition(
     runner_alive: bool,
 ) -> dict[str, Any]:
     status = str(stream_payload.get("status") or "").strip()
-    stream_claims_runtime = (
-        status.lower() in ACTIVE_STREAM_STATUSES
-        or bool(stream_payload.get("streaming"))
-        or bool(stream_payload.get("stream_pid"))
-    )
+    stream_claims_runtime = stream_status_claims_runtime(stream_payload)
     if archived_active_battle_truth(active_payload, active_count):
         active_state = {
             "state": "archived",
@@ -730,7 +747,7 @@ def public_runtime_truth_check(stale_after_seconds: int = STALE_ACTIVE_TRUTH_SEC
         runner_alive=runner_alive,
     )
     active_status_without_runner = (
-        bool(status_normalized in ACTIVE_STREAM_STATUSES or stream_payload.get("streaming"))
+        bool(status_normalized in ACTIVE_STREAM_STATUSES or stream_payload.get("streaming") or stream_payload.get("stream_pid"))
         and not runner_alive
         and stream_stale
     )
@@ -1283,6 +1300,90 @@ def clear_stale_active_battles(
     return payload
 
 
+def archive_stale_stream_status(
+    *,
+    execute: bool,
+    stale_after_seconds: int = STALE_STREAM_TRUTH_SECONDS,
+    force: bool = False,
+    clear_reason: str = "stale stream status had no live battle runner",
+) -> dict[str, Any]:
+    path = STREAM_STATUS_FILE
+    stream_payload = read_json_object(path)
+    age = file_age_seconds(path)
+    runner_alive = any_battle_runner_alive()
+    truth_exists = path.exists()
+    stale_truth = bool(age is not None and age >= stale_after_seconds)
+    claims_runtime = stream_status_claims_runtime(stream_payload)
+    status = str(stream_payload.get("status") or "").strip()
+    payload: dict[str, Any] = {
+        "path": str(path),
+        "exists": truth_exists,
+        "status": status or None,
+        "streaming": stream_payload.get("streaming"),
+        "streamPid": stream_payload.get("stream_pid"),
+        "claimsRuntime": claims_runtime,
+        "ageSeconds": round(age, 3) if age is not None else None,
+        "staleAfterSeconds": stale_after_seconds,
+        "stale": stale_truth,
+        "battleRunnerAlive": runner_alive,
+        "execute": execute,
+        "force": force,
+        "archived": False,
+        "blocked": False,
+    }
+    if runner_alive and not force:
+        payload["reason"] = "battle runner is alive; preserving stream status truth"
+        return payload
+    if not truth_exists:
+        payload["reason"] = "stream status truth does not exist"
+        return payload
+    if not force and not claims_runtime:
+        payload["reason"] = "stream status does not claim active runtime"
+        return payload
+    if not force and not stale_truth:
+        payload["reason"] = "stream status truth is not stale enough to archive"
+        return payload
+    if not execute:
+        payload["reason"] = "dry run; stale stream status cleanup planned only"
+        payload["plannedAction"] = "archive stale stream_status.json and publish runtime_blocked status"
+        return payload
+
+    STALE_STREAM_STATUS_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup = STALE_STREAM_STATUS_BACKUP_DIR / f"stream_status-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+    shutil.copy2(path, backup)
+    now = iso_now()
+    replacement = dict(state_store.DEFAULT_STATUS)
+    replacement.update(
+        {
+            "status": "Runtime blocked",
+            "battle_info": clear_reason,
+            "streaming": False,
+            "stream_pid": None,
+            "updated": now,
+            "runtime_blocked": True,
+            "blocker_code": "stale_stream_status_archived",
+            "blocker_summary": clear_reason,
+            "archivedBy": "HERMES devstream_session cleanup-stale-truth",
+            "archivedAt": now,
+            "archivePath": str(backup),
+            "previousStatus": status or None,
+            "previousStreaming": stream_payload.get("streaming"),
+            "previousStreamPid": stream_payload.get("stream_pid"),
+        }
+    )
+    try:
+        _atomic_write_text(path, json.dumps(replacement, indent=2, sort_keys=True) + "\n")
+    except PermissionError:
+        path.chmod(0o666)
+        _atomic_write_text(path, json.dumps(replacement, indent=2, sort_keys=True) + "\n")
+        payload["permissionRepair"] = "chmod 666 before rewrite"
+    payload["backupPath"] = str(backup)
+    payload["archived"] = True
+    payload["blocked"] = True
+    payload["reason"] = "stale stream status archived and replaced with runtime blocked truth"
+    return payload
+
+
 def recover_stale_battle_runtime(*, execute: bool, stale_after_seconds: int) -> dict[str, Any]:
     """Replace only idle, stale battle runners through the HERMES start path.
 
@@ -1791,6 +1892,45 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 1 if args.require_ready and not payload["ready"] else 0
 
 
+def cmd_cleanup_stale_truth(args: argparse.Namespace) -> int:
+    env = prepare_runtime_env(load_env_files())
+    purpose = STALE_TRUTH_CLEANUP_PURPOSE if args.execute else STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE
+    lease_guard = cleanup_runtime_lease_guard(purpose=purpose, args=args, env=env)
+    payload: dict[str, Any] = {
+        "schemaVersion": "fouler-play-stale-truth-cleanup/v1",
+        "checkedAt": iso_now(),
+        "dryRun": not args.execute,
+        "purpose": purpose,
+        "runtimeLease": lease_guard,
+        "bounds": {
+            "activeBattlesStaleAfterSeconds": args.stale_after_seconds,
+            "streamStatusStaleAfterSeconds": args.stream_stale_after_seconds,
+            "cleanupOperationCount": 1,
+        },
+        "noRuntimeActions": True,
+        "note": "No-start cleanup path; it does not start Showdown, eval, bots, Discord, Twitch, services, or scheduled tasks.",
+    }
+    if not lease_guard.get("ok"):
+        payload["status"] = "blocked-runtime-lease"
+        payload["error"] = runtime_lease_blocked_message(lease_guard)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+
+    payload["publicRuntimeTruthBefore"] = public_runtime_truth_check(stale_after_seconds=args.stale_after_seconds)
+    payload["activeBattleCleanup"] = clear_stale_active_battles(
+        execute=args.execute,
+        stale_after_seconds=args.stale_after_seconds,
+    )
+    payload["streamStatusCleanup"] = archive_stale_stream_status(
+        execute=args.execute,
+        stale_after_seconds=args.stream_stale_after_seconds,
+    )
+    if args.execute:
+        payload["publicRuntimeTruthAfter"] = public_runtime_truth_check(stale_after_seconds=args.stale_after_seconds)
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0
+
+
 def cmd_start(args: argparse.Namespace) -> int:
     env = prepare_runtime_env(load_env_files())
     effective_count = effective_run_count(args.run_count, env)
@@ -2013,6 +2153,14 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     doctor = sub.add_parser("doctor")
     doctor.add_argument("--require-ready", action="store_true")
+    cleanup = sub.add_parser("cleanup-stale-truth")
+    cleanup.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
+    cleanup.add_argument("--stale-after-seconds", type=int, default=STALE_ACTIVE_TRUTH_SECONDS)
+    cleanup.add_argument("--stream-stale-after-seconds", type=int, default=STALE_STREAM_TRUTH_SECONDS)
+    cleanup.add_argument("--execute", action="store_true")
     start = sub.add_parser("start")
     start.add_argument("--run-count", type=int, default=DEFAULT_RUN_COUNT)
     start.add_argument("--max-concurrent-battles", type=int, default=DEFAULT_MAX_CONCURRENT)
@@ -2064,6 +2212,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.command == "doctor":
         return cmd_doctor(args)
+    if args.command == "cleanup-stale-truth":
+        return cmd_cleanup_stale_truth(args)
     if args.command == "start":
         return cmd_start(args)
     if args.command == "supervise":
