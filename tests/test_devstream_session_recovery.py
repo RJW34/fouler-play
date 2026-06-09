@@ -211,6 +211,116 @@ def test_public_runtime_truth_classifies_archived_active_and_blocked_stream(tmp_
     assert not any("active_battles.json is stale" in blocker for blocker in payload["blockers"])
 
 
+def test_cmd_cleanup_stale_truth_fails_closed_without_runtime_lease(tmp_path, monkeypatch, capsys):
+    stream = tmp_path / "stream_status.json"
+    stream.write_text(json.dumps({"status": "Searching", "streaming": False}), encoding="utf-8")
+    old = time.time() - 90000
+    os.utime(stream, (old, old))
+    started = []
+
+    monkeypatch.setattr(devstream_session, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_session, "STREAM_STATUS_FILE", stream)
+    monkeypatch.setattr(devstream_session, "STALE_STREAM_STATUS_BACKUP_DIR", tmp_path / "devstream" / "truth" / "stream-backups")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "start_process", lambda *args, **kwargs: started.append(args) or {"pid": 1})
+
+    args = argparse.Namespace(
+        runtime_lease=str(tmp_path / "missing-runtime-lease.json"),
+        stale_after_seconds=180,
+        stream_stale_after_seconds=180,
+        execute=True,
+    )
+
+    assert devstream_session.cmd_cleanup_stale_truth(args) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "blocked-runtime-lease"
+    assert "runtime lease file is missing" in " ".join(payload["runtimeLease"]["blockers"])
+    assert "streamStatusCleanup" not in payload
+    assert started == []
+    assert json.loads(stream.read_text(encoding="utf-8"))["status"] == "Searching"
+
+
+def test_cmd_cleanup_stale_truth_archives_stale_stream_status_without_starting(tmp_path, monkeypatch, capsys):
+    stream = tmp_path / "stream_status.json"
+    stream.write_text(json.dumps({"status": "Searching", "streaming": False, "stream_pid": None}), encoding="utf-8")
+    old = time.time() - 90000
+    os.utime(stream, (old, old))
+    started = []
+
+    monkeypatch.setattr(devstream_session, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_session, "STREAM_STATUS_FILE", stream)
+    monkeypatch.setattr(devstream_session, "STALE_STREAM_STATUS_BACKUP_DIR", tmp_path / "devstream" / "truth" / "stream-backups")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "start_process", lambda *args, **kwargs: started.append(args) or {"pid": 1})
+    runtime_lease = write_runtime_lease(
+        tmp_path / "runtime-lease.json",
+        allowed_purposes=[devstream_session.STALE_TRUTH_CLEANUP_PURPOSE],
+    )
+
+    args = argparse.Namespace(
+        runtime_lease=str(runtime_lease),
+        stale_after_seconds=180,
+        stream_stale_after_seconds=180,
+        execute=True,
+    )
+
+    assert devstream_session.cmd_cleanup_stale_truth(args) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    cleanup = payload["streamStatusCleanup"]
+    parsed = json.loads(stream.read_text(encoding="utf-8"))
+    assert cleanup["archived"] is True
+    assert cleanup["blocked"] is True
+    assert Path(cleanup["backupPath"]).exists()
+    assert parsed["runtime_blocked"] is True
+    assert parsed["blocker_code"] == "stale_stream_status_archived"
+    assert parsed["previousStatus"] == "Searching"
+    assert payload["publicRuntimeTruthAfter"]["streamStatus"]["disposition"]["state"] == "blocked"
+    assert started == []
+
+
+def test_cmd_cleanup_stale_truth_dry_run_reports_stream_plan_without_mutation(tmp_path, monkeypatch, capsys):
+    stream = tmp_path / "stream_status.json"
+    original = {"status": "Searching", "streaming": False, "stream_pid": None}
+    stream.write_text(json.dumps(original), encoding="utf-8")
+    old = time.time() - 90000
+    os.utime(stream, (old, old))
+    backup_dir = tmp_path / "devstream" / "truth" / "stream-backups"
+
+    monkeypatch.setattr(devstream_session, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_session, "STREAM_STATUS_FILE", stream)
+    monkeypatch.setattr(devstream_session, "STALE_STREAM_STATUS_BACKUP_DIR", backup_dir)
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    runtime_lease = write_runtime_lease(
+        tmp_path / "runtime-lease.json",
+        allowed_purposes=[devstream_session.STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE],
+    )
+
+    args = argparse.Namespace(
+        runtime_lease=str(runtime_lease),
+        stale_after_seconds=180,
+        stream_stale_after_seconds=180,
+        execute=False,
+    )
+
+    assert devstream_session.cmd_cleanup_stale_truth(args) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    cleanup = payload["streamStatusCleanup"]
+    assert payload["dryRun"] is True
+    assert cleanup["reason"] == "dry run; stale stream status cleanup planned only"
+    assert cleanup["plannedAction"] == "archive stale stream_status.json and publish runtime_blocked status"
+    assert json.loads(stream.read_text(encoding="utf-8")) == original
+    assert not backup_dir.exists()
+
+
 def test_python_module_available_reports_missing_runtime_dependency(monkeypatch):
     monkeypatch.setattr(
         devstream_session.subprocess,
