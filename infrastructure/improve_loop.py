@@ -235,8 +235,14 @@ def propose_and_gate(dry_run: bool, smoke_battles: int | None) -> dict:
     # after fuzz -- a benign "no usable patch this cycle", NOT a gate rejection
     # and NOT an agent crash. Surface it so the loop records `no_patch` instead
     # of mislabelling it `reverted` (gate rejected a candidate) or `agent_failed`
-    # (the loop itself broke).
-    no_patch_applied = "OUTCOME: no_patch_applied" in out
+    # (the loop itself broke). Match either the explicit marker or the human
+    # line (belt-and-suspenders: a stray encoding-replace near the marker must
+    # not silently demote the outcome back to `reverted`).
+    no_patch_applied = (
+        "OUTCOME: no_patch_applied" in out
+        or "no usable patch this cycle" in out
+        or "No valid diff in response" in out
+    )
     # The skipped-field value lives in the verdict detail JSON; pull it now so
     # one_iteration can record WHY the gate couldn't run and loop_status can
     # render a distinct headline. Only meaningful when gate_skipped=True.

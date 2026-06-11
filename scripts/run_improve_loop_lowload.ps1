@@ -25,6 +25,18 @@ $env:IMPROVE_AGENT_SELFPLAY_BATTLES = "$Battles"
 $env:IMPROVE_AGENT_EVAL_GATE = "1"
 $env:IMPROVE_AGENT_EVAL_MODE = "selfplay"
 $env:IMPROVE_AGENT_CLI_TIMEOUT = "$CliTimeoutSeconds"
+# Make the loop's OWN internal self-play gate REACHABLE inside the window.
+# Without these the internal gate ran at turn-cap 60 / search 1200ms
+# (~0.3 decisive/min) and could never gather MIN_DECISIVE=30 before the task
+# time limit, so the loop never landed its own verdict and always deferred to
+# the slower fallback. Match the measured-fast proof config (turn-cap 18 /
+# search 700ms ~0.41 decisive/min). The statistical gate is UNCHANGED:
+# SELFPLAY_MIN_DECISIVE stays at the production 30; we only lower per-battle
+# cost so 30 decisives fit the window.
+$env:IMPROVE_AGENT_SELFPLAY_SEARCH_MS = "700"
+$env:IMPROVE_AGENT_SELFPLAY_TURN_CAP = "18"
+$env:IMPROVE_AGENT_SELFPLAY_BATTLE_TIMEOUT = "150"
+$env:SELFPLAY_MIN_DECISIVE = "30"
 
 $autoImprove = "$env:FOULER_PLAY_ENABLE_AUTO_IMPROVE".Trim().ToLowerInvariant()
 if (@("1", "true", "yes", "on") -notcontains $autoImprove) {
