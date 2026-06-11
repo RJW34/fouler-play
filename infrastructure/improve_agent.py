@@ -839,8 +839,103 @@ def validate_diff_scope(diff_text: str, target_file: str) -> list[str]:
     return blockers
 
 
+def _git_apply_check(diff_path: Path, flags: list[str]) -> bool:
+    """True iff `git apply --check <flags>` succeeds for this patch."""
+    result = subprocess.run(
+        ["git", "apply", "--check", *flags, str(diff_path)],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    return result.returncode == 0
+
+
+def _find_patch_exe() -> str | None:
+    """Locate the POSIX `patch` binary. On the Windows devstream host it is NOT
+    on PATH but ships with Git for Windows under <git>/usr/bin/patch.exe, so
+    fall back to that (and the standard Linux locations on DEKU). An explicit
+    IMPROVE_AGENT_PATCH_EXE override wins."""
+    override = os.getenv("IMPROVE_AGENT_PATCH_EXE")
+    if override and Path(override).exists():
+        return override
+    from shutil import which
+    found = which("patch")
+    if found:
+        return found
+    candidates = [
+        Path(r"C:/Program Files/Git/usr/bin/patch.exe"),
+        Path(r"C:/Program Files (x86)/Git/usr/bin/patch.exe"),
+        Path("/usr/bin/patch"),
+        Path("/bin/patch"),
+    ]
+    # Derive from the resolved git location too (handles non-default installs).
+    git = which("git")
+    if git:
+        git_root = Path(git).resolve().parent.parent
+        candidates.insert(0, git_root / "usr" / "bin" / "patch.exe")
+    for c in candidates:
+        try:
+            if c.exists():
+                return str(c)
+        except OSError:
+            continue
+    return None
+
+
+def _try_patch_fuzz(diff_path: Path, target_file: str) -> bool:
+    """Last-resort apply via POSIX `patch` with fuzz, when git apply (which is
+    context-exact even with --recount) rejects an otherwise-correct edit whose
+    context lines drifted (the model edits a large file like the 6.6k-line
+    fp/search/main.py and its hunk context is a few lines off). `patch
+    --fuzz=3` tolerates that drift while still landing the change in the right
+    function. Returns True iff the file was actually modified.
+
+    Guarded: only the target file may be touched (validate_diff_scope already
+    bounded the diff to target_file, and we pass an explicit target path so a
+    malformed header can't escape). Falls back to False (caller treats as a
+    benign no-apply skip) if `patch` is unavailable.
+    """
+    patch_exe = _find_patch_exe()
+    if not patch_exe:
+        print("[AGENT] patch executable not found (PATH or Git usr/bin); "
+              "skipping fuzz fallback.")
+        return False
+    before = (PROJECT_ROOT / target_file).read_text(encoding="utf-8")
+    proc = subprocess.run(
+        [patch_exe, "-p1", "--fuzz=3", "--no-backup-if-mismatch",
+         "--force", str(PROJECT_ROOT / target_file)],
+        cwd=str(PROJECT_ROOT),
+        input=diff_path.read_text(encoding="utf-8"),
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    after = (PROJECT_ROOT / target_file).read_text(encoding="utf-8")
+    if proc.returncode == 0 and after != before:
+        print("[AGENT] Diff applied via `patch --fuzz=3` (git apply was "
+              "context-strict; fuzz absorbed the offset).")
+        return True
+    # If patch half-applied or rejected, restore the pre-patch text so the
+    # working tree is never left in a partially-patched state.
+    if after != before:
+        (PROJECT_ROOT / target_file).write_text(before, encoding="utf-8")
+    if proc.stderr.strip():
+        print(f"[AGENT] patch --fuzz fallback failed: {proc.stderr.strip()[:300]}")
+    return False
+
+
 def apply_diff(diff_text: str, target_file: str) -> bool:
-    """Apply a unified diff to the target file. Returns True on success."""
+    """Apply a unified diff to the target file. Returns True on success.
+
+    Robust to context drift: a model editing a 6.6k-line file frequently emits
+    a hunk whose @@ line number / surrounding context is a little off, which
+    git apply rejects even with --recount ("patch does not apply"). That was the
+    #1 cause of the loop's `agent_failed` outcome -- the agent crashed at apply
+    BEFORE ever reaching the self-play gate, so no verdict was ever produced.
+    We now escalate through progressively looser strategies and only give up
+    when every one fails:
+      1. git apply --recount               (exact context)
+      2. git apply --recount -C1           (reduced context lines)
+      3. git apply --3way --recount        (merge-base resolve)
+      4. patch -p1 --fuzz=3                 (POSIX fuzz; absorbs offset drift)
+    """
     scope_blockers = validate_diff_scope(diff_text, target_file)
     if scope_blockers:
         print("[AGENT] Diff scope validation failed:")
@@ -848,36 +943,38 @@ def apply_diff(diff_text: str, target_file: str) -> bool:
             print(f"[AGENT] BLOCKER: {blocker}")
         return False
     diff_path = PROJECT_ROOT / ".agent_diff.patch"
+    if not diff_text.endswith("\n"):
+        diff_text += "\n"
     diff_path.write_text(diff_text, encoding="utf-8")
     try:
-        apply_flags = ["--recount", "--whitespace=nowarn"]
-        result = subprocess.run(
-            ["git", "apply", "--check", *apply_flags, str(diff_path)],
-            cwd=str(PROJECT_ROOT),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        if result.returncode != 0:
-            result = subprocess.run(
-                ["git", "apply", "--check", *apply_flags, "-C1", str(diff_path)],
-                cwd=str(PROJECT_ROOT),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            if result.returncode != 0:
-                print(f"[AGENT] Diff doesn't apply cleanly: {result.stderr}")
-                return False
-            apply_flags = [*apply_flags, "-C1"]
-        subprocess.run(
-            ["git", "apply", *apply_flags, str(diff_path)],
-            cwd=str(PROJECT_ROOT),
-            check=True,
-        )
-        return True
+        base = ["--recount", "--whitespace=nowarn"]
+        strategies = [
+            base,
+            [*base, "-C1"],
+            [*base, "--3way"],
+        ]
+        for flags in strategies:
+            if not _git_apply_check(diff_path, flags):
+                continue
+            try:
+                subprocess.run(
+                    ["git", "apply", *flags, str(diff_path)],
+                    cwd=str(PROJECT_ROOT), check=True,
+                    capture_output=True, text=True, encoding="utf-8", errors="replace",
+                )
+                if flags is not base:
+                    print(f"[AGENT] Diff applied via git apply {' '.join(flags)}.")
+                return True
+            except subprocess.CalledProcessError as e:
+                print(f"[AGENT] git apply {' '.join(flags)} check passed but "
+                      f"apply failed: {(e.stderr or '').strip()[:200]}")
+                continue
+        # All git apply strategies rejected the patch -> try fuzzy POSIX patch.
+        if _try_patch_fuzz(diff_path, target_file):
+            return True
+        print("[AGENT] Diff does not apply under any strategy "
+              "(recount / -C1 / 3way / patch --fuzz=3).")
+        return False
     except Exception as e:
         print(f"[AGENT] Failed to apply diff: {e}")
         return False
@@ -1400,8 +1497,14 @@ def main() -> int:
     # 5. Apply diff
     original_target_text = (PROJECT_ROOT / target_file).read_text(encoding="utf-8")
     if not apply_diff(diff_text, target_file):
-        print("[AGENT] Diff failed to apply. Skipping.")
-        return 1
+        # A model-produced diff that won't apply (even after fuzz) is NOT an
+        # agent crash -- it just means this cycle produced no usable patch. Exit
+        # 0 with a distinct marker so the loop records a benign "no_patch" skip
+        # instead of `agent_failed` (which falsely reads as the loop being
+        # broken). The loop classifier keys on this exact line.
+        print("[AGENT] Diff failed to apply (no usable patch this cycle). Skipping.")
+        print("[AGENT] OUTCOME: no_patch_applied")
+        return 0
 
     # 6. Syntax check
     if not syntax_check(target_file):

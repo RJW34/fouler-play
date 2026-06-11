@@ -26,7 +26,18 @@ param(
     [string]$Repo = "D:\Projects\fouler-play",
     [string]$Showdown = "D:\Projects\pokemon-showdown",
     [switch]$GateProofFallback = $true,
-    [int]$GateProofBattles = 36
+    # Sized so the production decisive floor is REACHABLE inside the task's
+    # ExecutionTimeLimit. Measured throughput at TurnCap=18 / SearchMs=700 is
+    # ~0.41 decisive/min; 44 battles -> ~38 decisives in ~92 min, which clears
+    # MIN_DECISIVE=30 with margin under a PT1H45M task limit. The old defaults
+    # (TurnCap 60, SearchMs 700, 36 battles) needed ~107 min and were KILLED by
+    # the PT1H limit before writing any verdict -- that was the throughput
+    # blocker, not the gate logic.
+    [int]$GateProofBattles = 44,
+    [int]$GateProofMinDecisive = 30,
+    [int]$GateProofTurnCap = 18,
+    [int]$GateProofSearchMs = 700,
+    [int]$GateProofPerBattleTimeout = 150
 )
 
 $ErrorActionPreference = "Stop"
@@ -163,13 +174,17 @@ try {
             }
         }
         if (-not $reachedGate) {
-            Log "improve_loop did NOT land a self-play verdict; running direct selfplay_eval gate-proof (battles=$GateProofBattles) ..."
+            Log "improve_loop did NOT land a self-play verdict; running direct selfplay_eval gate-proof (battles=$GateProofBattles turn_cap=$GateProofTurnCap search_ms=$GateProofSearchMs min_decisive=$GateProofMinDecisive) ..."
             $env:PYTHONUTF8 = "1"
             $env:PYTHONIOENCODING = "utf-8"
+            # Reachable production decisive floor for THIS run (env-scoped; does
+            # NOT mutate the source default of 30 in selfplay_eval.py).
+            $env:SELFPLAY_MIN_DECISIVE = "$GateProofMinDecisive"
             $proofLabel = "window-gateproof-$(Get-Date -Format yyyyMMdd-HHmmss)"
             & $py -X utf8 (Join-Path $proj "infrastructure\selfplay_eval.py") `
-                --battles $GateProofBattles --turn-cap 60 --showdown-port $EvalPort `
-                --search-time-ms 700 --teams-from "teams/eval-fast-teams.list" `
+                --battles $GateProofBattles --turn-cap $GateProofTurnCap --showdown-port $EvalPort `
+                --search-time-ms $GateProofSearchMs --per-battle-timeout $GateProofPerBattleTimeout `
+                --teams-from "teams/eval-fast-teams.list" `
                 --label $proofLabel `
                 --new-env MCTS_BLEND_MAX_SAMPLES=8 --old-env MCTS_BLEND_MAX_SAMPLES=1
             Log "gate-proof selfplay_eval exit=$LASTEXITCODE"
@@ -177,6 +192,46 @@ try {
             if (Test-Path $proofPath) {
                 Log "gate-proof VERDICT file: $proofPath"
                 Get-Content $proofPath -Raw | Add-Content -LiteralPath $log
+                # Record a durable ledger entry from the REAL verdict so the
+                # window run shows a completed accept/revert outcome (the loop's
+                # own path already records when it reaches the gate; the fallback
+                # did not, which is why window runs left no ledger verdict).
+                try {
+                    $v = Get-Content $proofPath -Raw | ConvertFrom-Json
+                    $decisive = [int]$v.decisive_battles
+                    $accept = [bool]$v.ACCEPT
+                    $minD = [int]$v.min_decisive
+                    $outcome = if ($accept) { "accepted_merged" } else { "reverted" }
+                    if ($v.gate_failed_to_run) { $outcome = "gate_failed_to_run" }
+                    $head = (& git -C $proj rev-parse HEAD).Trim()
+                    $entry = [ordered]@{
+                        timestamp        = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ")
+                        issue            = "window gate-proof env-arm A/B (MCTS_BLEND_MAX_SAMPLES 8 vs 1)"
+                        outcome          = $outcome
+                        head_before      = $head.Substring(0, 12)
+                        head_after       = $head.Substring(0, 12)
+                        verdict_line     = "[WINDOW-PROOF] selfplay verdict: ACCEPT=$accept NEW $($v.new_wins)/$decisive LCB $($v.new_wilson_lcb)"
+                        selfplay_verdict = [ordered]@{
+                            label            = $v.label
+                            new_wins         = $v.new_wins
+                            old_wins         = $v.old_wins
+                            decisive_battles = $decisive
+                            new_win_rate     = $v.new_win_rate
+                            new_wilson_lcb   = $v.new_wilson_lcb
+                            ACCEPT           = $accept
+                        }
+                        decision_source  = "selfplay_lcb_gt_0.50"
+                        proving_run      = $true
+                        committed        = $false
+                        min_decisive     = $minD
+                        smoke_battles    = $null
+                    }
+                    $ledger = Join-Path $proj "eval_results\improve_ledger.jsonl"
+                    ($entry | ConvertTo-Json -Compress -Depth 6) | Add-Content -LiteralPath $ledger -Encoding utf8
+                    Log "ledger += $outcome (decisive=$decisive accept=$accept min_decisive=$minD)"
+                } catch {
+                    Log "WARN: failed to append window gate-proof ledger entry: $($_.Exception.Message)"
+                }
             } else {
                 Log "gate-proof produced NO verdict file ($proofPath)."
             }

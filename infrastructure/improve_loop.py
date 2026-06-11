@@ -231,6 +231,12 @@ def propose_and_gate(dry_run: bool, smoke_battles: int | None) -> dict:
         # No verdict printed at all => gate never ran (agent crashed early, or
         # short-circuited before reaching it). Fall back to head movement.
         accepted = committed
+    # The agent prints this marker when the model's diff would not apply even
+    # after fuzz -- a benign "no usable patch this cycle", NOT a gate rejection
+    # and NOT an agent crash. Surface it so the loop records `no_patch` instead
+    # of mislabelling it `reverted` (gate rejected a candidate) or `agent_failed`
+    # (the loop itself broke).
+    no_patch_applied = "OUTCOME: no_patch_applied" in out
     # The skipped-field value lives in the verdict detail JSON; pull it now so
     # one_iteration can record WHY the gate couldn't run and loop_status can
     # render a distinct headline. Only meaningful when gate_skipped=True.
@@ -240,6 +246,7 @@ def propose_and_gate(dry_run: bool, smoke_battles: int | None) -> dict:
         "accepted": accepted,
         "gate_skipped": gate_skipped,
         "gate_skip_reason": gate_skip_reason,
+        "no_patch_applied": no_patch_applied,
         "head_before": head_before,
         "head_after": head_after,
         "verdict_line": verdict_blob,
@@ -504,9 +511,23 @@ def _classify_outcome(result: dict) -> str:
       accepted_but_commit_failed  gate accepted but the commit step did not
                                   move HEAD (e.g. nothing actually changed).
       reverted                 gate ran and REJECTED the candidate.
+      no_patch                 the model produced no applicable diff this cycle
+                               (even after fuzz). Benign -- the loop ran end to
+                               end with nothing to gate. NOT a gate rejection
+                               and NOT a crash; keeps `agent_failed` meaning
+                               "the loop itself broke".
     """
     if result.get("gate_skipped"):
         return "ship_on_skip_unmeasured" if result["committed"] else "gate_skipped"
+    if (
+        result.get("no_patch_applied")
+        and not result.get("verdict_line")
+        and not result.get("committed")
+    ):
+        # The model produced no applicable diff this cycle. Benign: the loop ran
+        # end-to-end and simply had nothing to gate. Distinct from `reverted`
+        # (the gate rejected a measured candidate) and `agent_failed` (crash).
+        return "no_patch"
     if (
         result.get("agent_returncode") not in (0, None)
         and not result.get("verdict_line")
