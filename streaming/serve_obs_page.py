@@ -1625,9 +1625,14 @@ color:rgba(8,217,214,0.4)}}
 
   function showBattle(bid, battleUrl){{
     var url=(battleUrl||('https://play.pokemonshowdown.com/'+bid))+'?r='+Date.now();
-    // Pokemon Showdown intentionally refuses battle display inside an iframe.
-    // OBS browser sources should leave this local polling page and load the
-    // battle URL as the top-level page.
+    // Pokemon Showdown only renders a live battle as a TOP-LEVEL page; it does
+    // not join the battle room inside an iframe (the client stalls at
+    // "Loading client..."). Navigating the whole browser-source page to the
+    // battle destroys this poller, so recovery (next battle / back to idle)
+    // happens when OBS reloads the configured /slot/N URL (server OBS-WS
+    // re-pin, scene activation, or manual refresh). We persist the battle we
+    // jumped to so a reload lands on the current live game with no idle flash.
+    try {{ localStorage.setItem('fp_slot'+SLOT+'_bid', bid); }} catch(e){{}}
     window.location.replace(url);
   }}
 
@@ -1635,6 +1640,7 @@ color:rgba(8,217,214,0.4)}}
     frame.classList.add('hidden');
     frame.src='about:blank';
     scanning.classList.remove('hidden');
+    try {{ localStorage.removeItem('fp_slot'+SLOT+'_bid'); }} catch(e){{}}
   }}
 
   function poll(){{
@@ -1657,8 +1663,25 @@ color:rgba(8,217,214,0.4)}}
       }})
       .catch(function(){{}});
   }}
-  poll();
-  setInterval(poll,POLL_MS);
+  // On (re)load: if a live battle already exists for this slot, jump to it
+  // immediately so OBS recovers to the current game with no SCANNING flash.
+  // Otherwise show scanning and poll for the next battle.
+  function bootstrap(){{
+    fetch(STATE_URL+'?t='+Date.now())
+      .then(function(r){{return r.json();}})
+      .then(function(d){{
+        var battleId=d.battle_id||null;
+        var battleUrl=d.url||null;
+        if(battleId){{
+          activeBid=battleId;
+          showBattle(battleId,battleUrl);
+          return;
+        }}
+        setInterval(poll,POLL_MS);
+      }})
+      .catch(function(){{ setInterval(poll,POLL_MS); }});
+  }}
+  bootstrap();
 }})();
 </script>
 </body></html>"""
