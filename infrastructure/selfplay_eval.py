@@ -266,7 +266,17 @@ def _build_env(arm_env: dict | None, search_time_ms: int, stats_file: Path,
     # decisive within per_battle_timeout (the keystone of gate viability).
     env["FOULER_BATTLE_TURN_CAP"] = str(int(turn_cap))
     env["LOSS_TRIGGERED_DRAIN"] = "0"  # play all battles regardless of losses
-    env["MAX_CONCURRENT_BATTLES"] = "1"
+    # Concurrency per arm. Configurable (don't hardcode) but DEFAULT 1 to
+    # preserve the audited production behaviour. NOTE: the self-play gate runs
+    # both arms in challenge_user / accept_challenge mode, and run.py pins
+    # num_workers=1 for every non-ladder bot_mode (it can only hold one pending
+    # challenge at a time), so this knob has NO effect on the current gate's
+    # throughput -- it exists for a future ladder-mode eval and to keep the
+    # value out of the source. The real wall-clock levers for the gate are the
+    # decisive-N floor (SELFPLAY_MIN_DECISIVE), the turn cap, and search-time-ms.
+    env["MAX_CONCURRENT_BATTLES"] = str(
+        int(os.getenv("SELFPLAY_MAX_CONCURRENT_BATTLES", "1"))
+    )
     # CRITICAL: redirect each eval engine's battle stats to a throwaway file so
     # the eval NEVER pollutes the live ladder battle_stats.json (which feeds
     # autoresearch + elo_watchdog). run.py honours BATTLE_STATS_FILE.
