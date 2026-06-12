@@ -219,7 +219,11 @@ from .standard_battles import prepare_battles
 from .random_battles import prepare_random_battles
 
 from poke_engine import monte_carlo_tree_search
-from fp.search.eval import evaluate_position, _opponent_best_damage as _eval_opponent_best_damage
+from fp.search.eval import (
+    evaluate_position,
+    find_ko_moves as _eval_find_ko_moves,
+    _opponent_best_damage as _eval_opponent_best_damage,
+)
 from fp.search.forced_lines import detect_forced_line
 from fp.search.poke_engine_helpers import battle_to_poke_engine_state
 from fp.search.speed_order import assess_speed_order
@@ -377,6 +381,28 @@ MCTS_BLEND_ANCHOR_LOW_RATIO = max(
 MCTS_BLEND_ANCHOR_THREAT_RATIO = max(
     MCTS_BLEND_ANCHOR_LOW_RATIO,
     min(0.995, float(os.getenv("MCTS_BLEND_ANCHOR_THREAT_RATIO", "0.88"))),
+)
+
+# === EVAL BLEND (always-on blend of the sharpened Python static eval into the
+# MCTS visit policy) ===
+# Distinct from the legacy, conditional MCTS_BLEND_* machinery above (which is
+# not wired into the live find_best_move path). The compiled Rust MCTS returns a
+# near-flat leaf value, so its visit policy cannot separate a winning move from a
+# losing one. The Python evaluate_position produces a real spread; this blend
+# gives that signal weight in EVERY MCTS decision so the eval can override the
+# flat Rust policy. MCTS_EVAL_BLEND_ALPHA is the MCTS weight (1.0 = MCTS only,
+# 0.0 = eval only). Default 0.35 => 65% eval / 35% MCTS: the eval's KO/threat
+# signal wins where the Rust is flat, while strong Rust search still moves the
+# blend on genuine ties.
+MCTS_EVAL_BLEND_ENABLED = str(os.getenv("MCTS_EVAL_BLEND_ENABLED", "1")).lower() not in {
+    "0",
+    "false",
+    "no",
+    "off",
+}
+MCTS_EVAL_BLEND_ALPHA = max(
+    0.0,
+    min(1.0, float(os.getenv("MCTS_EVAL_BLEND_ALPHA", "0.35"))),
 )
 
 
@@ -8963,8 +8989,57 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 mcts_policy, battle, trace=trace
             )
 
+            # === EVAL BLEND (wire the sharpened Python static eval into the
+            # MCTS decision) ===
+            # The compiled Rust MCTS returns a near-FLAT leaf value (mean Q
+            # ~0.49-0.50 for essentially every move, incl. a free KO) -- more
+            # rollouts only sharpen an already-flat distribution, so the visit
+            # policy cannot tell a winning move from a losing one. The Python
+            # evaluate_position IS a real static eval that produces a clear
+            # spread (KO moves >> non-KO actions), but it was previously only a
+            # FALLBACK and never consulted when MCTS produced a policy. Here we
+            # blend the eval policy into the (flat) MCTS visit policy so the
+            # eval's KO/threat/matchup signal can override the flat Rust policy
+            # in the final decision. alpha is the MCTS weight: 1.0 = MCTS only
+            # (old behavior), 0.0 = eval only. Default gives the eval the
+            # majority weight so its real signal wins where the Rust is flat,
+            # while still letting deep Rust search break genuine eval ties.
+            decision_policy = mcts_policy
+            if MCTS_EVAL_BLEND_ENABLED:
+                try:
+                    eval_blend_scores = evaluate_position(battle)
+                except Exception as _eb_exc:
+                    eval_blend_scores = {}
+                    logger.warning("Eval blend: evaluate_position failed: %s", _eb_exc)
+                if eval_blend_scores:
+                    blended = _blend_eval_mcts_policy(
+                        eval_blend_scores,
+                        mcts_policy,
+                        alpha=MCTS_EVAL_BLEND_ALPHA,
+                    )
+                    if blended:
+                        decision_policy = blended
+                        trace["eval_blend"] = {
+                            "alpha_mcts": MCTS_EVAL_BLEND_ALPHA,
+                            "eval_top": _top_policy_entries(
+                                _normalize_policy_weights(eval_blend_scores)
+                            ),
+                            "mcts_top": _top_policy_entries(
+                                _normalize_policy_weights(mcts_policy)
+                            ),
+                            "blended_top": _top_policy_entries(decision_policy),
+                        }
+                        logger.info(
+                            "Eval blend active (alpha_mcts=%.2f): eval_top=%s "
+                            "mcts_top=%s blended_top=%s",
+                            MCTS_EVAL_BLEND_ALPHA,
+                            trace["eval_blend"]["eval_top"][:1],
+                            trace["eval_blend"]["mcts_top"][:1],
+                            trace["eval_blend"]["blended_top"][:1],
+                        )
+
             choice = select_move_from_eval_scores(
-                mcts_policy,
+                decision_policy,
                 ability_state=ability_state,
                 battle=battle,
                 playstyle=playstyle,
@@ -8974,9 +9049,50 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 forced_line_bias=trace.get("forced_line_bias"),
             )
 
+            # === KO GUARD ===
+            # A linear eval/MCTS blend can be overwhelmed by a pathologically
+            # peaked (and, per the diagnosis, FLAT-rollout-driven) Rust visit
+            # policy -- e.g. the Rust piling visits on a non-KO pivot. When the
+            # static eval has identified a move that removes the opponent THIS
+            # turn, never let the blend choose a non-KO action over it: that is
+            # always a strict win-equity error. Override to the best available
+            # KO move (prefer guaranteed KOs that the opponent cannot outspeed),
+            # ranked by the blended decision policy so we keep the best kill.
+            if MCTS_EVAL_BLEND_ENABLED and not getattr(battle, "force_switch", False):
+                try:
+                    ko_moves, guaranteed_ko_moves = _eval_find_ko_moves(battle)
+                except Exception as _ko_exc:
+                    ko_moves, guaranteed_ko_moves = set(), set()
+                    logger.warning("KO guard: find_ko_moves failed: %s", _ko_exc)
+                if ko_moves and choice not in ko_moves:
+                    preferred = guaranteed_ko_moves or ko_moves
+                    # Rank candidate KO moves by the blended policy weight so we
+                    # keep the strongest kill (e.g. most damage to the next-in).
+                    ranked_ko = sorted(
+                        preferred,
+                        key=lambda m: float(decision_policy.get(m, 0.0)),
+                        reverse=True,
+                    )
+                    if ranked_ko:
+                        ko_choice = ranked_ko[0]
+                        logger.info(
+                            "KO guard: overriding %s -> %s (KO available; "
+                            "guaranteed=%s)",
+                            choice, ko_choice, ko_choice in guaranteed_ko_moves,
+                        )
+                        trace["ko_guard"] = {
+                            "original_choice": choice,
+                            "ko_choice": ko_choice,
+                            "ko_moves": sorted(ko_moves),
+                            "guaranteed": sorted(guaranteed_ko_moves),
+                        }
+                        choice = ko_choice
+
             elapsed_total = time.time() - start_time
             logger.info(f"Choice: {choice} (decided in {elapsed_total:.1f}s)")
-            trace["decision_mode"] = "mcts"
+            trace["decision_mode"] = "mcts_eval_blend" if (
+                MCTS_EVAL_BLEND_ENABLED and decision_policy is not mcts_policy
+            ) else "mcts"
             trace["choice"] = choice
             oddities = detect_odd_move(battle, choice, ability_state)
             trace["oddities"] = oddities
