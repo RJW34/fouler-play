@@ -1,4 +1,4 @@
-# run_improve_loop_lowload.ps1 -- fire bounded improve_loop iterations ONLY in a
+﻿# run_improve_loop_lowload.ps1 -- fire bounded improve_loop iterations ONLY in a
 # genuine low-load window. Gated on RAM headroom so it never competes with the
 # live ladder bot / Cobblemon / MC world for memory (the claude propose step +
 # self-play gate are heavy and time out under load). Deployed 2026-06-04 with
@@ -88,6 +88,19 @@ for ($i = 1; $i -le $MaxIterations; $i++) {
         "$(Get-Date -Format o) [lowload] status: $($status.headline)" | Add-Content -LiteralPath $log
     }
 
+    # PRIMARY LEARN CHANNEL (env-arm A/B). The freeform-diff path below never
+    # landed an accepted improvement (0/14 ledger): claude-sonnet's diffs target
+    # fp/search/main.py (7000+ lines) and `git apply` rejected EVERY one even with
+    # 4-strategy fuzzy apply -- the model hallucinates context that does not exist.
+    # env_arm_improve.py instead A/B-tests ENGINE ENV ARMS that apply by
+    # construction (NEW vs OLD self-play differing only by one engine env var) and,
+    # on a MEASURED self-play ACCEPT (Wilson LCB>0.50 at a REACHABLE confidence),
+    # COMMITS the winning value as the new SOURCE default. This is the channel that
+    # can actually say YES. It runs FIRST each iteration; the freeform path stays as
+    # a best-effort secondary.
+    "$(Get-Date -Format o) [lowload] PRIMARY env-arm A/B sweep (battles=$Battles min_decisive=$env:SELFPLAY_MIN_DECISIVE confidence=0.85)" | Add-Content -LiteralPath $log
+    & $py -X utf8 (Join-Path $proj "infrastructure\env_arm_improve.py") --battles $Battles --min-decisive $env:SELFPLAY_MIN_DECISIVE --confidence 0.85 --search-ms 700 --turn-cap 18 --per-battle-timeout 150 --max-accept 1 1>>$log 2>>"$log.err"
+    "$(Get-Date -Format o) [lowload] env-arm A/B sweep exited code $LASTEXITCODE" | Add-Content -LiteralPath $log
     "$(Get-Date -Format o) [lowload] starting improve_loop --iterations 1 (iteration=$i, battles=$Battles, cli_timeout=$CliTimeoutSeconds)" | Add-Content -LiteralPath $log
     & $py -X utf8 (Join-Path $proj "infrastructure\improve_loop.py") --iterations 1 --num-battles $Battles --enable-auto-improve 1>>$log 2>>"$log.err"
     "$(Get-Date -Format o) [lowload] improve_loop iteration $i exited code $LASTEXITCODE" | Add-Content -LiteralPath $log
