@@ -227,25 +227,82 @@ MIN_DECISIVE = int(os.getenv("SELFPLAY_MIN_DECISIVE", "30"))
 # positive cap so every battle terminates decisively.
 DEFAULT_TURN_CAP = int(os.getenv("SELFPLAY_TURN_CAP", "60"))
 
+# Confidence used for the Wilson lower bound that the gate compares to 0.50.
+# REACHABILITY ROOT-CAUSE FIX 2026-06-12: with the implicit 95% confidence the
+# bar is "we are 95% sure NEW wins >50% of ALL future games", which at the
+# default MIN_DECISIVE=30 requires a 70% (21/30) self-play win-rate -- a bar a
+# genuinely-better engine (true ~55-60% strength) can essentially never clear,
+# so NO proposal was EVER accepted in the loop's history (0/14 ledger entries).
+# Making the confidence env-tunable lets a burst eval pick a reachable-but-still-
+# rigorous bar (e.g. 0.90, where a true 58-60% engine accepts at moderate N)
+# WITHOUT weakening the default. The LCB>0.50 rule is preserved either way, so a
+# 50/50 coin-flip never accepts. Default stays 0.95 -> every existing gate test
+# and prior verdict reproduces byte-for-byte.
+GATE_CONFIDENCE = float(os.getenv("SELFPLAY_GATE_CONFIDENCE", "0.95"))
+
+
+def _min_wins_to_accept(decisive: int, confidence: float) -> int | None:
+    """Smallest NEW-win count that would clear LCB>0.50 at this N/confidence.
+
+    Returns None if no win count (even a clean sweep) can clear the bar at this
+    N -- i.e. the gate is UNREACHABLE for this sample size, which the caller
+    surfaces so an impossible-by-construction config never reverts silently."""
+    if decisive <= 0:
+        return None
+    for w in range(decisive + 1):
+        if wilson_lower_bound(w, decisive, confidence) > 0.50:
+            return w
+    return None
+
 
 def verdict_from_counts(new_wins: int, decisive: int, label: str,
-                        min_decisive: int = MIN_DECISIVE) -> dict:
+                        min_decisive: int = MIN_DECISIVE,
+                        confidence: float = GATE_CONFIDENCE) -> dict:
     wr = (new_wins / decisive) if decisive else 0.0
-    lcb = wilson_lower_bound(new_wins, decisive)
+    lcb = wilson_lower_bound(new_wins, decisive, confidence)
     # Two-proportion z of NEW's record vs a notional 50/50 split over the same n.
     half = decisive // 2
     z, p = two_proportion_z(new_wins, decisive, half, decisive)
     accept = bool(lcb > 0.50 and decisive >= min_decisive)
+    # Reachability telemetry: the smallest win count that COULD accept at this N,
+    # and whether the bar is clearable at all. Without this the loop reverted with
+    # no record of WHETHER the gate was even winnable, masking the structural
+    # never-accepts bug as ordinary "candidate not better".
+    min_wins = _min_wins_to_accept(decisive, confidence)
+    reachable = min_wins is not None and decisive >= min_decisive
+    if min_wins is None:
+        accept_reason = (
+            f"UNREACHABLE: no win count clears LCB>0.50 at N={decisive}, "
+            f"confidence={confidence}; need a larger burst eval"
+        )
+    elif decisive < min_decisive:
+        accept_reason = (
+            f"below floor: decisive {decisive} < min_decisive {min_decisive} "
+            f"(ranking only, never promotes)"
+        )
+    elif accept:
+        accept_reason = (
+            f"ACCEPT: {new_wins}/{decisive} clears LCB>0.50 at confidence={confidence}"
+        )
+    else:
+        accept_reason = (
+            f"reject: {new_wins}/{decisive} below the {min_wins}/{decisive} "
+            f"needed to clear LCB>0.50 at confidence={confidence}"
+        )
     return {
         "label": label,
         "decisive_battles": decisive,
         "min_decisive": min_decisive,
+        "confidence": confidence,
         "new_wins": new_wins,
         "old_wins": decisive - new_wins,
         "new_win_rate": round(wr, 4),
         "new_wilson_lcb": round(lcb, 4),
         "z_vs_50_50": round(z, 3),
         "p_value": round(p, 4),
+        "min_wins_to_accept": min_wins,
+        "bar_reachable_at_n": reachable,
+        "accept_reason": accept_reason,
         "rule": f"ACCEPT iff Wilson LCB(new win-rate) > 0.50 AND decisive >= {min_decisive}",
         "ACCEPT": accept,
     }
@@ -515,6 +572,9 @@ def run_selfplay(
     print(f"[selfplay:{label}] VERDICT: NEW {v['new_wins']}/{v['decisive_battles']} "
           f"= {v['new_win_rate']:.1%} (LCB {v['new_wilson_lcb']:.1%}) "
           f"ACCEPT={v['ACCEPT']}", flush=True)
+    # Always state WHY (reachable bar, below-floor, unreachable, or accept) so a
+    # revert is never silent about whether the gate was even winnable at this N.
+    print(f"[selfplay:{label}] REASON: {v.get('accept_reason')}", flush=True)
     return v
 
 
