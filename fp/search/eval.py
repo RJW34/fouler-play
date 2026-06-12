@@ -1005,6 +1005,41 @@ def _score_hazard_move(battle: Battle, move_name: str) -> float:
     return 0.1 * early_multiplier
 
 
+def find_ko_moves(battle: Battle) -> tuple[set[str], set[str]]:
+    """Return (ko_move_names, guaranteed_ko_move_names) for our active.
+
+    A "KO move" is a legal damaging move whose estimated damage ratio is at
+    least the opponent's current HP ratio (it removes the opponent this turn).
+    A "guaranteed" KO additionally requires that we move first (or the move has
+    priority), so the opponent cannot act before fainting.
+
+    This mirrors the in-loop KO detection in evaluate_position and is exposed so
+    the decision layer (the MCTS/eval blend) can enforce a hard guard: never let
+    a non-KO action be chosen over an available KO. Pure read-only; no mutation.
+    """
+    ko: set[str] = set()
+    guaranteed: set[str] = set()
+    our = battle.user.active
+    opp = battle.opponent.active
+    if our is None or opp is None or getattr(battle, "force_switch", False):
+        return ko, guaranteed
+    try:
+        speed_assessment = assess_speed_order(battle)
+        move_first = bool(getattr(speed_assessment, "guaranteed_move_first", False))
+    except Exception:
+        move_first = False
+    opp_hp_ratio = opp.hp / max(opp.max_hp, 1)
+    for move_name, move_data in _get_our_moves(battle):
+        if not _is_damaging_move(move_name, move_data):
+            continue
+        dmg_ratio = _estimate_damage_ratio(our, opp, move_name)
+        if dmg_ratio >= opp_hp_ratio and opp_hp_ratio > 0:
+            ko.add(move_name)
+            if move_first or _has_priority(move_name):
+                guaranteed.add(move_name)
+    return ko, guaranteed
+
+
 def evaluate_position(battle: Battle) -> dict[str, float]:
     """
     Evaluate all legal moves for the current position.
@@ -1102,6 +1137,16 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
     our_spa_boost = int(our_boosts.get("special-attack", 0) or 0)
     unaware_wasted = opp_has_unaware and (our_atk_boost > 0 or our_spa_boost > 0)
 
+    # === KO MOVE TRACKING (sharpening) ===
+    # Record which legal damaging moves achieve a KO this turn so a final
+    # dominance pass can lift them clearly above every non-KO action. The
+    # per-move +0.5/+0.3 bonuses get diluted by end normalization across 4-6
+    # actions; this set lets us re-assert the KO as the decisive line so the
+    # blended policy (and the eval fallback) never prefers a non-KO move when a
+    # free/guaranteed KO is on the board.
+    ko_move_names: set[str] = set()
+    guaranteed_ko_move_names: set[str] = set()
+
     # === MAGIC BOUNCE RESERVE DETECTION (Fix 5) ===
     mb_reserve_mon = None
     if opp is not None:
@@ -1148,8 +1193,10 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
                                 and (guaranteed_move_first or _has_priority(move_name)))
             if dmg_ratio >= opp_hp_ratio:
                 score += 0.5  # can KO
+                ko_move_names.add(move_name)
                 if is_guaranteed_ko:
                     score += 0.3  # guaranteed KO
+                    guaranteed_ko_move_names.add(move_name)
 
             # Minimax: opponent's best response (blended with switch prediction)
             if not is_guaranteed_ko:
@@ -1655,6 +1702,45 @@ def evaluate_position(battle: Battle) -> dict[str, float]:
             bad_matchup=bad_matchup,
             can_slow_pivot_now=can_slow_pivot_now,
             wrong_wall=wrong_wall,
+        )
+
+    # === KO DOMINANCE PASS (sharpening) ===
+    # A move that KOs the opponent this turn must clearly outrank every non-KO
+    # action. Without this, end-normalization across 4-6 actions compresses the
+    # +0.5/+0.3 KO bonus and a non-KO line (e.g. a hard switch, or recovery)
+    # can tie or beat the KO move. We re-assert the KO as the decisive line by
+    # giving every KO move a clear ADDITIVE margin over the best non-KO action.
+    # Using an additive lift (not a clamp/floor) preserves the pre-existing
+    # spread AMONG the KO moves themselves -- so a higher-damage / better
+    # follow-up KO move still ranks above a weaker one, while every KO move
+    # still sits clearly above the best non-KO line. Guaranteed KOs (we move
+    # first / priority) get a larger margin than mere "can-KO" moves so the
+    # safe, certain kill is preferred.
+    if ko_move_names and not battle.force_switch:
+        # Best non-KO action score (any move or switch that does NOT KO).
+        non_ko_scores = [
+            v for m, v in scores.items() if m not in ko_move_names
+        ]
+        best_non_ko = max(non_ko_scores) if non_ko_scores else 0.0
+        # Additive margins above the best non-KO line. These are pre-normalization
+        # raw-score units (typical move scores ~0.1-1.0), so a ~0.4-0.7 margin
+        # translates into a decisive post-normalization lead.
+        can_ko_margin = 0.40
+        guaranteed_ko_margin = 0.70
+        for move_name in list(scores.keys()):
+            if move_name in guaranteed_ko_move_names:
+                target = best_non_ko + guaranteed_ko_margin
+            elif move_name in ko_move_names:
+                target = best_non_ko + can_ko_margin
+            else:
+                continue
+            # Only lift (never lower): keep any already-larger spread intact.
+            if scores[move_name] < target:
+                scores[move_name] = target
+        logger.info(
+            "KO dominance: %d KO move(s) (%d guaranteed) lifted above best "
+            "non-KO line (%.3f)",
+            len(ko_move_names), len(guaranteed_ko_move_names), best_non_ko,
         )
 
     # Normalize scores so they sum to ~1.0 (makes them compatible with penalty pipeline)
