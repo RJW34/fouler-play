@@ -16,8 +16,71 @@ $statusPath = Join-Path $proj 'devstream\truth\clean-supervisor-status.json'
 # Eval port used by the improve-window's throwaway local showdown server.
 $evalPort = '18765'
 
+# HUNG-DETECTION (ladder-flap safety net) 2026-06-12 ---------------------------
+# The ladder bot occasionally HANGS while its run.py process stays ALIVE: it
+# stops registering/joining battles, init.log stops being written, and it stops
+# completing rated games (ELO goes flat). The pre-existing supervisor only
+# restarted DEAD procs, so a hung-but-alive client could sit dead for hours and
+# only a manual restart recovered it. This adds a LIVENESS-BY-ACTIVITY check:
+# init.log mtime is the authoritative heartbeat. During healthy laddering --
+# INCLUDING long gen9ou stall games (20min+) -- the dispatcher logs every
+# received message (|inactive| pings, routed battle msgs) and the MCTS logs
+# every move sample, so init.log advances every few seconds. A stale init.log
+# is therefore a reliable hang signal that does NOT false-positive on a long
+# single battle (verified live: init.log mtime advanced within 12s mid-battle).
+$initLog = Join-Path $proj 'logs\init.log'
+$hangLog = Join-Path $proj 'logs\clean-supervisor-hang.log'
+# Stale threshold (seconds of no init.log write while a client is supposed to
+# be laddering) before we declare the client hung and restart it. Tunable.
+$hangStaleSec = if ($env:FOULER_HANG_STALE_SEC) { [int]$env:FOULER_HANG_STALE_SEC } else { 600 }
+$hangStaleSec = [Math]::Max(120, $hangStaleSec)  # floor: never below 2 min
+# After (re)starting a client, give run.py time to import/connect/begin writing
+# init.log before its activity is judged. Avoids killing a healthy fresh client.
+$hangStartupGraceSec = if ($env:FOULER_HANG_STARTUP_GRACE_SEC) { [int]$env:FOULER_HANG_STARTUP_GRACE_SEC } else { 180 }
+$hangStartupGraceSec = [Math]::Max(60, $hangStartupGraceSec)
+
 New-Item -ItemType Directory -Force -Path (Join-Path $proj '.pids') | Out-Null
 New-Item -ItemType Directory -Force -Path (Split-Path $statusPath -Parent) | Out-Null
+
+function Write-HangLog {
+  param([string]$Message)
+  $line = ('{0}  {1}' -f (Get-Date).ToUniversalTime().ToString('o'), $Message)
+  try { Add-Content -LiteralPath $hangLog -Value $line -Encoding UTF8 } catch {}
+}
+
+function Get-InitLogAgeSeconds {
+  # Age (in seconds) of the newest write to init.log. Returns $null if the log
+  # does not exist yet (fresh client that hasn't written anything).
+  if (-not (Test-Path -LiteralPath $initLog)) { return $null }
+  try {
+    $fi = Get-Item -LiteralPath $initLog -ErrorAction Stop
+    return [int]((Get-Date) - $fi.LastWriteTime).TotalSeconds
+  } catch {
+    return $null
+  }
+}
+
+function Stop-LadderClient {
+  # Cleanly tear down the live .venv ladder client AND its worker children so the
+  # main supervisor loop respawns a fresh one on the next tick. Kills children
+  # first (bottom-up) so the launcher does not re-fork during teardown.
+  param([array]$VenvClients, [array]$AllClients)
+  $killed = 0
+  $parentPids = @{}
+  foreach ($v in $VenvClients) { $parentPids[[int]$v.ProcessId] = $true }
+  # children of the venv launcher(s) (the system-python multiprocessing workers)
+  foreach ($c in $AllClients) {
+    if (-not $parentPids.ContainsKey([int]$c.ProcessId) -and $parentPids.ContainsKey([int]$c.ParentProcessId)) {
+      Stop-Process -Id $c.ProcessId -Force -ErrorAction SilentlyContinue
+      $killed++
+    }
+  }
+  foreach ($v in $VenvClients) {
+    Stop-Process -Id $v.ProcessId -Force -ErrorAction SilentlyContinue
+    $killed++
+  }
+  return $killed
+}
 
 function Clear-StaleDebris {
   # FLAP ROOT-CAUSE FIX 2026-06-11: stale sentinel/lease/lock files left behind by
@@ -108,7 +171,8 @@ function Write-CleanSupervisorStatus {
   param(
     [array]$Clients,
     [array]$Actions,
-    [string]$State
+    [string]$State,
+    $InitLogAgeSeconds = $null
   )
   $payload = [ordered]@{
     schemaVersion = 'fouler-play-clean-supervisor/v1'
@@ -117,6 +181,11 @@ function Write-CleanSupervisorStatus {
     state = $State
     runtimeLease = $runtimeLease
     runtimeLeaseToken = $leaseToken
+    # Liveness heartbeat: seconds since init.log was last written. $null => log
+    # missing. The hang-detector restarts the client when this exceeds the stale
+    # threshold while a single .venv client is supposed to be laddering.
+    initLogAgeSeconds = $InitLogAgeSeconds
+    hangStaleThresholdSeconds = $hangStaleSec
     actions = $Actions
     clients = @($Clients | ForEach-Object {
       [ordered]@{
@@ -175,6 +244,12 @@ $argsList = @('run.py','--websocket-uri','wss://sim3.psim.us/showdown/websocket'
   '--run-count','999999','--max-concurrent-battles','3','--save-replay','always',
   '--log-to-file','--team-names','gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo')
 
+# Baseline for hang-detection startup grace: when the supervisor first comes up it
+# may ADOPT an already-running client (e.g. after a supervisor-only restart). Give
+# that adopted client the same grace as a freshly-launched one before judging its
+# init.log activity, so a momentary stale log at supervisor boot is not a false hang.
+$script:SupervisorStart = Get-Date
+
 try {
   while ($true) {
     $actions = @()
@@ -231,7 +306,42 @@ try {
         $actions += "killed extra .venv duplicate pid=$($_.ProcessId)"
       }
     }
-    Write-CleanSupervisorStatus -Clients $clients -Actions $actions -State 'running'
+
+    # 3) HUNG-DETECTION (ladder-flap safety net) 2026-06-12 ---------------------
+    # Only judge activity when exactly one .venv client is laddering (the normal
+    # steady state). When count is 0 or >1 the start/dedup logic above is already
+    # acting and we let it settle before applying a liveness verdict.
+    $state = 'running'
+    $initAge = Get-InitLogAgeSeconds
+    if ($venv.Count -eq 1) {
+      # Grace: skip the verdict if we (re)launched recently OR the supervisor just
+      # came up and may have adopted a mid-startup client.
+      $sinceLaunch = if ($script:LastLaunch) { ((Get-Date) - $script:LastLaunch).TotalSeconds } else { 99999 }
+      $sinceSupStart = ((Get-Date) - $script:SupervisorStart).TotalSeconds
+      $inGrace = ($sinceLaunch -lt $hangStartupGraceSec) -or ($sinceSupStart -lt $hangStartupGraceSec)
+      if (-not $inGrace) {
+        # $initAge -eq $null => init.log missing well past startup grace: also a hang
+        # (a healthy client always has a written init.log). Treat null as "very stale".
+        $effectiveAge = if ($null -eq $initAge) { $hangStaleSec + 1 } else { $initAge }
+        if ($effectiveAge -ge $hangStaleSec) {
+          $hungPid = [int]$venv[0].ProcessId
+          $msg = "HANG DETECTED: .venv client pid=$hungPid alive but init.log stale ${effectiveAge}s >= ${hangStaleSec}s threshold; restarting client cleanly"
+          Write-HangLog $msg
+          $actions += $msg
+          $killed = Stop-LadderClient -VenvClients $venv -AllClients $clients
+          # Arm the cooldown + grace so the next tick relaunches once and does not
+          # immediately re-judge the fresh client.
+          $script:LastLaunch = Get-Date
+          $actions += "hung-restart: killed $killed proc(s); supervisor will respawn next tick"
+          Write-HangLog "killed $killed proc(s) for hung client pid=$hungPid"
+          $state = 'hung-restart'
+        }
+      } else {
+        $actions += ("hang-check skipped (startup grace: sinceLaunch=$([int]$sinceLaunch)s, sinceSupStart=$([int]$sinceSupStart)s)")
+      }
+    }
+
+    Write-CleanSupervisorStatus -Clients $clients -Actions $actions -State $state -InitLogAgeSeconds $initAge
     Start-Sleep 15
   }
 } finally {
