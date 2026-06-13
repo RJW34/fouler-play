@@ -20,6 +20,39 @@ The doctor also verifies Node/npm/git and the configured Pokemon Showdown
 checkout by metadata only. It does not run `npm`, start Showdown, launch
 Discord, start ladder battles, or manage services.
 
+## HERMES No-Runtime Useful-Work Proof
+
+When no live battle runner is leased, HERMES should prove whether Fouler is
+still producing useful work through offline analysis instead of treating stale
+runtime truth as progress.
+
+Use this no-start status command for handoff reports:
+
+```powershell
+python scripts/devstream_health.py --skip-http
+```
+
+The health payload includes:
+
+- `offlineEvalReadiness`: summarized output from the offline eval doctor in
+  no-start mode.
+- `readiness.offlineEvalReady`: whether the offline recursive-improvement gate
+  is ready without considering a live Showdown server probe.
+- `usefulWorkProof`: one combined HERMES signal that is ready only if a live
+  bounded battle runtime, completed cycle proof, or offline eval harness can
+  prove current work.
+
+For completion-level proof, run the stricter gate:
+
+```powershell
+python infrastructure/offline_eval_readiness.py --require-ready
+```
+
+Do not archive stale runtime truth, clean dead offline status files with
+`--execute-cleanup`, start Showdown, run ladder battles, post to Discord, or
+touch JIGGLYPUFF scheduled tasks unless a current finite HERMES proof-window
+lease authorizes that action.
+
 ## Provisioning
 
 On Windows:

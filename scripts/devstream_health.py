@@ -40,6 +40,59 @@ FINITE_RUNTIME_LEASE_PRECONDITIONS = [
 ]
 
 
+def offline_eval_readiness_snapshot() -> dict[str, Any]:
+    """Expose no-start offline-eval usefulness proof without launching Showdown."""
+    try:
+        from infrastructure import offline_eval_readiness
+
+        payload = offline_eval_readiness.build_readiness_payload(
+            root=ROOT,
+            run_import_check=False,
+            run_server_check=False,
+            run_prereq_check=True,
+        )
+    except Exception as exc:
+        return {
+            "available": False,
+            "ready": False,
+            "recursiveImprovementReady": False,
+            "blockers": [f"offline eval readiness probe failed: {exc}"],
+            "checks": [],
+            "commands": {},
+            "note": "Read-only summary. The health probe did not start Pokemon Showdown, ladder battles, Discord, HERMES/DEKU, or services.",
+        }
+
+    checks = payload.get("checks") if isinstance(payload.get("checks"), list) else []
+    failed_checks = [
+        check for check in checks
+        if isinstance(check, dict) and not bool(check.get("ok"))
+    ]
+    check_by_name = {
+        str(check.get("name")): check
+        for check in checks
+        if isinstance(check, dict)
+    }
+    commands = payload.get("commands") if isinstance(payload.get("commands"), dict) else {}
+    return {
+        "available": True,
+        "schemaVersion": payload.get("schemaVersion"),
+        "ready": bool(payload.get("ready")),
+        "recursiveImprovementReady": bool(payload.get("recursiveImprovementReady")),
+        "blockers": payload.get("blockers") if isinstance(payload.get("blockers"), list) else [],
+        "failedCheckCount": len(failed_checks),
+        "failedChecks": failed_checks[:8],
+        "frozenBaseline": check_by_name.get("frozen baseline proof"),
+        "offlineEvalStatusArtifacts": check_by_name.get("offline eval status artifacts"),
+        "commands": {
+            "readiness": commands.get("readiness"),
+            "frozenBaseline": commands.get("frozenBaseline"),
+            "compareFrozenVsCandidate": commands.get("compareFrozenVsCandidate"),
+            "deadStatusCleanupDryRun": commands.get("deadStatusCleanupDryRun"),
+        },
+        "note": "Read-only summary. The health probe skipped import and eval-server checks and did not start Pokemon Showdown, ladder battles, Discord, HERMES/DEKU, or services.",
+    }
+
+
 def positive_int_env(name: str, default: int) -> int:
     try:
         value = int(os.getenv(name, str(default)))
@@ -978,6 +1031,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     discord_queue = discord_queue_health()
     local_discord_proof = local_discord_proof_classified(discord_queue)
     completed_proof = completed_cycle_proof_status()
+    offline_eval_readiness = offline_eval_readiness_snapshot()
     discord_reporting_ready = bool(discord_queue.get("ready", True) or local_discord_proof)
     proof_blockers = [] if local_discord_proof else [str(item) for item in discord_queue.get("blockers") or []]
     if battle_count:
@@ -1123,6 +1177,32 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
             or battle_count > 0
         )
     )
+    useful_work_proof_blockers = []
+    if not runtime_ready:
+        useful_work_proof_blockers.append("live battle runtime is not ready")
+    if not completed_proof["readyForProofHandoff"]:
+        useful_work_proof_blockers.append("completed cycle proof is not ready for handoff")
+    if not offline_eval_readiness["recursiveImprovementReady"]:
+        useful_work_proof_blockers.extend(str(item) for item in offline_eval_readiness["blockers"][:6])
+    useful_work_proof_ready = (
+        runtime_ready
+        or completed_proof["readyForProofHandoff"]
+        or offline_eval_readiness["recursiveImprovementReady"]
+    )
+    useful_work_proof = {
+        "ready": useful_work_proof_ready,
+        "status": (
+            "live-runtime-ready" if runtime_ready else
+            "completed-cycle-proof-ready" if completed_proof["readyForProofHandoff"] else
+            "offline-eval-ready" if offline_eval_readiness["recursiveImprovementReady"] else
+            "blocked"
+        ),
+        "runtimeReady": runtime_ready,
+        "completedCycleProofReady": completed_proof["readyForProofHandoff"],
+        "offlineEvalReady": offline_eval_readiness["recursiveImprovementReady"],
+        "blockers": [] if useful_work_proof_ready else useful_work_proof_blockers,
+        "note": "HERMES-useful work can be proven by a live bounded battle runtime, a completed cycle proof, or a ready offline eval harness; this health probe does not start any of them.",
+    }
     healthy = runtime_ready
     if healthy:
         status = "ready" if ready_for_live_focus and battle_count == 0 else "running"
@@ -1148,7 +1228,11 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
             "analyticsFresh": analytics_fresh,
             "discordReportingReady": discord_reporting_ready,
             "proofHandoffReady": proof_handoff_ready,
+            "offlineEvalReady": offline_eval_readiness["recursiveImprovementReady"],
+            "usefulWorkProofReady": useful_work_proof_ready,
         },
+        "usefulWorkProof": useful_work_proof,
+        "offlineEvalReadiness": offline_eval_readiness,
         "battleSurfaceReadiness": battle_surfaces,
         "slotReadiness": slots,
         "devstreamReporting": reporting_action,
