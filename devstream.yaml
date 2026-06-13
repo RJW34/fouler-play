@@ -47,6 +47,8 @@
       {"label": "optional remote profile control", "path": "scripts/jigglypuff_devstream_control.py", "required": true},
       {"label": "optional remote runtime worker", "path": "scripts/fouler_jigglypuff_runtime.ps1", "required": false},
       {"label": "optional remote runtime mirror", "path": "devstream/truth/jigglypuff-runtime.json", "required": false, "staleAfterSeconds": 900},
+      {"label": "offline eval readiness doctor", "path": "infrastructure/offline_eval_readiness.py", "required": true},
+      {"label": "offline eval readiness docs", "path": "docs/OFFLINE_EVAL_READINESS.md", "required": true},
       {"label": "elo proof schema", "path": "devstream/truth/elo-proof.schema.json", "required": true},
       {"label": "elo proof example", "path": "devstream/truth/elo-proof.example.json", "required": true}
     ]
@@ -91,6 +93,7 @@
       {"name": "jigglypuff-status", "command": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "status"], "timeoutSeconds": 45},
       {"name": "showdown-login-plan", "command": [".venv/bin/python", "scripts/jigglypuff_devstream_control.py", "login-proof"], "timeoutSeconds": 90},
       {"name": "cycle-report", "command": [".venv/bin/python", "scripts/devstream_cycle_report.py", "--write"], "timeoutSeconds": 20},
+      {"name": "offline-eval-readiness-no-start", "command": [".venv/bin/python", "infrastructure/offline_eval_readiness.py", "--skip-server-check"], "timeoutSeconds": 30},
       {"name": "packetizer-dry-run", "command": [".venv/bin/python", "scripts/devstream_packetize.py"], "timeoutSeconds": 30}
     ]
   },
@@ -114,7 +117,9 @@
       ".venv/bin/python scripts/jigglypuff_devstream_control.py status",
       ".venv/bin/python scripts/devstream_session.py doctor",
       ".venv/bin/python scripts/devstream_cycle_report.py --write",
+      ".venv/bin/python infrastructure/offline_eval_readiness.py --skip-server-check",
       ".venv/bin/python scripts/showdown_login_check.py",
+      ".venv/bin/python -m pytest tests/test_offline_eval_readiness.py tests/test_devstream_health_readiness.py -q",
       ".venv/bin/python -m pytest tests/test_autoresearch.py tests/test_loss_learning_guardrails.py tests/test_pokedex_oracle.py tests/test_threat_bias.py -q",
       ".venv/bin/python -m pytest tests/test_hybrid_dashboard.py tests/test_state_endpoint_status.py"
     ]

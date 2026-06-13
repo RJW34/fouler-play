@@ -140,6 +140,74 @@ def test_obs_http_without_battle_runner_is_not_runtime_ready(tmp_path, monkeypat
     assert payload["blockers"] == ["fouler-play battle runner is idle; OBS HTTP alone is not active battle proof"]
 
 
+def test_health_payload_exposes_offline_eval_useful_work_proof(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
+    monkeypatch.setattr(devstream_health, "obs_surface_task_status", lambda: {"available": False, "reason": "not-windows"})
+    monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: [])
+    monkeypatch.setattr(
+        devstream_health,
+        "offline_eval_readiness_snapshot",
+        lambda: {
+            "available": True,
+            "ready": True,
+            "recursiveImprovementReady": True,
+            "blockers": [],
+            "failedChecks": [],
+            "commands": {"readiness": "python infrastructure/offline_eval_readiness.py --require-ready"},
+            "note": "fixture",
+        },
+    )
+
+    _write_json(tmp_path / "active_battles.json", {"battles": [], "count": 0})
+    _write_json(tmp_path / "stream_status.json", {"status": "Searching", "runtime_blocked": False})
+
+    payload = devstream_health.build_payload(check_http=False)
+
+    assert payload["readiness"]["runtimeReady"] is False
+    assert payload["readiness"]["offlineEvalReady"] is True
+    assert payload["readiness"]["usefulWorkProofReady"] is True
+    assert payload["usefulWorkProof"]["status"] == "offline-eval-ready"
+    assert payload["usefulWorkProof"]["ready"] is True
+    assert payload["offlineEvalReadiness"]["commands"]["readiness"].endswith("--require-ready")
+
+
+def test_health_payload_blocks_useful_work_when_runtime_and_offline_proof_are_absent(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
+    monkeypatch.setattr(devstream_health, "obs_surface_task_status", lambda: {"available": False, "reason": "not-windows"})
+    monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: [])
+    monkeypatch.setattr(
+        devstream_health,
+        "offline_eval_readiness_snapshot",
+        lambda: {
+            "available": True,
+            "ready": False,
+            "recursiveImprovementReady": False,
+            "blockers": ["frozen baseline proof: run the frozen baseline command"],
+            "failedChecks": [{"name": "frozen baseline proof", "ok": False}],
+            "commands": {},
+            "note": "fixture",
+        },
+    )
+
+    _write_json(tmp_path / "active_battles.json", {"battles": [], "count": 0})
+    _write_json(tmp_path / "stream_status.json", {"status": "Searching", "runtime_blocked": False})
+
+    payload = devstream_health.build_payload(check_http=False)
+
+    assert payload["readiness"]["usefulWorkProofReady"] is False
+    assert payload["usefulWorkProof"]["status"] == "blocked"
+    assert "live battle runtime is not ready" in payload["usefulWorkProof"]["blockers"]
+    assert any("frozen baseline proof" in item for item in payload["usefulWorkProof"]["blockers"])
+
+
 def test_windows_obs_surface_task_status_classifies_stderr(tmp_path, monkeypatch):
     script = tmp_path / "scripts" / "install_obs_server_task.ps1"
     script.parent.mkdir(parents=True)
