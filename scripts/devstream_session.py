@@ -5,6 +5,7 @@ import argparse
 import shutil
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -19,12 +20,20 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from infrastructure.runtime_lease import RuntimeLeaseBusy, acquire_runtime_lease
 from streaming import state_store
+from scripts.devstream_runtime_lease import (
+    RUNTIME_LEASE_PATH_ENV,
+    validate_runtime_lease,
+)
 
-DEFAULT_RUN_COUNT = 10
+DEFAULT_RUN_COUNT = 1
 DEFAULT_MAX_CONCURRENT = 3
-DEFAULT_SUPERVISOR_MAX_CYCLES = 1
+RUN_COUNT_CAP_ENV = "FOULER_DEVSTREAM_RUN_COUNT_CAP"
+DEFAULT_RUN_COUNT_CAP = 30
+AUTO_IMPROVE_MAX_CYCLES_ENV = "FOULER_AUTO_IMPROVE_MAX_CYCLES"
+DEFAULT_AUTO_IMPROVE_MAX_CYCLES = 1
+CHILD_LOG_MAX_BYTES_ENV = "FOULER_DEVSTREAM_CHILD_LOG_MAX_BYTES"
+DEFAULT_CHILD_LOG_MAX_BYTES = 64 * 1024 * 1024
 PID_DIR = ROOT / ".pids"
 OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
@@ -33,11 +42,32 @@ SUPERVISOR_PID_FILE = PID_DIR / "devstream_battle_supervisor.pid"
 SUPERVISOR_STOP_FILE = PID_DIR / "supervisor.stop"
 SUPERVISOR_STATUS_FILE = ROOT / "devstream" / "truth" / "supervisor-status.json"
 STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-backups"
+STALE_STREAM_STATUS_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-stream-status-backups"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
+STREAM_STATUS_FILE = ROOT / "stream_status.json"
+STALE_ACTIVE_TRUTH_SECONDS = 1800
+STALE_STREAM_TRUTH_SECONDS = 21600
+ACTIVE_STREAM_STATUSES = {"active", "battling", "running", "searching"}
+STALE_TRUTH_CLEANUP_PURPOSE = "devstream-stale-truth-cleanup"
+STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE = f"{STALE_TRUTH_CLEANUP_PURPOSE}-dry-run"
+FINITE_RUNTIME_LEASE_PRECONDITIONS = [
+    "a current proof-window runtime lease validates for the requested HERMES action",
+    "the lease names projectId=fouler-play, runtime machine, Showdown account, replay behavior, and expiry",
+    "requested --run-count and --max-concurrent-battles are positive finite bounds within the lease",
+    "archive/adopt/clear actions run only through devstream_session.py cleanup-stale-truth/start/stop --execute after lease validation",
+]
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
-UNBOUNDED_SUPERVISOR_SENTINEL = "FOULER_PLAY_ALLOW_UNBOUNDED_SUPERVISOR"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+ACCOUNT_AUTHORITY_FILES = [ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / "TASKBOARD.md"]
+ACCOUNT_AUTHORITY_PATTERNS = (
+    ("current PS_USERNAME", re.compile(r"Current:\s*`?PS_USERNAME=([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
+    ("current SHOWDOWN_USER_ID", re.compile(r"Current:\s*`?SHOWDOWN_USER_ID=([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
+    (
+        "current live bot account prose",
+        re.compile(r"\blive\s+bot\s+account\b.*?\bcurrently\s+\**[\"']?([A-Za-z0-9_.-]+)[\"']?\**", re.IGNORECASE),
+    ),
+)
 
 
 def env_flag_enabled(env: dict[str, str], name: str) -> bool:
@@ -55,28 +85,79 @@ def supervisor_auto_improve_enabled(args: argparse.Namespace, env: dict[str, str
     return False, f"missing --enable-auto-improve or {AUTO_IMPROVE_SENTINEL}=1"
 
 
-def supervisor_unbounded_enabled(args: argparse.Namespace, env: dict[str, str] | None = None) -> tuple[bool, str]:
-    if getattr(args, "allow_unbounded_supervisor", False):
-        return True, "--allow-unbounded-supervisor"
+def positive_int(value: object, default: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
+def effective_run_count(run_count: object, env: dict[str, str] | None = None) -> int:
+    env = env if env is not None else os.environ
+    requested = positive_int(run_count, DEFAULT_RUN_COUNT)
+    cap = positive_int(env.get(RUN_COUNT_CAP_ENV), DEFAULT_RUN_COUNT_CAP)
+    return max(1, min(requested, cap))
+
+
+def supervisor_cycle_limit(args: argparse.Namespace, env: dict[str, str] | None = None) -> tuple[int, str]:
+    requested = positive_int(getattr(args, "max_cycles", 0), 0)
+    if requested > 0:
+        return requested, "--max-cycles"
+    enabled, reason = supervisor_auto_improve_enabled(args, env)
+    if not enabled:
+        return 0, "unbounded supervisor without auto-improve"
     env = env if env is not None else load_env_files()
-    if env_flag_enabled(env, UNBOUNDED_SUPERVISOR_SENTINEL):
-        return True, f"{UNBOUNDED_SUPERVISOR_SENTINEL}=1"
-    return False, f"missing --allow-unbounded-supervisor or {UNBOUNDED_SUPERVISOR_SENTINEL}=1"
+    limit = positive_int(env.get(AUTO_IMPROVE_MAX_CYCLES_ENV), DEFAULT_AUTO_IMPROVE_MAX_CYCLES)
+    return limit, f"auto-improve lease via {reason}"
 
 
-def supervisor_iteration_guard(args: argparse.Namespace, env: dict[str, str] | None = None) -> dict[str, Any]:
-    max_cycles = int(getattr(args, "max_cycles", DEFAULT_SUPERVISOR_MAX_CYCLES))
-    if max_cycles < 0:
-        return {
-            "maxCycles": max_cycles,
-            "unbounded": False,
-            "blocked": True,
-            "reason": "--max-cycles must be >= 0",
-        }
-    if max_cycles != 0:
-        return {"maxCycles": max_cycles, "unbounded": False, "blocked": False, "reason": "bounded cycle count"}
-    enabled, reason = supervisor_unbounded_enabled(args, env)
-    return {"maxCycles": max_cycles, "unbounded": True, "blocked": not enabled, "reason": reason}
+def runtime_lease_guard(
+    *,
+    purpose: str,
+    args: argparse.Namespace,
+    env: dict[str, str],
+    run_count: int,
+    max_cycles: int | None = None,
+    require_max_cycles: bool = False,
+) -> dict[str, Any]:
+    return validate_runtime_lease(
+        purpose=purpose,
+        lease_path=getattr(args, "runtime_lease", None),
+        requested_run_count=run_count,
+        requested_max_cycles=max_cycles,
+        requested_max_concurrent_battles=getattr(args, "max_concurrent_battles", None),
+        requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
+        require_run_count=True,
+        require_max_cycles=require_max_cycles,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
+
+
+def cleanup_runtime_lease_guard(*, purpose: str, args: argparse.Namespace, env: dict[str, str]) -> dict[str, Any]:
+    return validate_runtime_lease(
+        purpose=purpose,
+        lease_path=getattr(args, "runtime_lease", None),
+        requested_run_count=1,
+        requested_max_concurrent_battles=1,
+        requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
+
+
+def runtime_lease_blocked_message(guard: dict[str, Any]) -> str:
+    blockers = guard.get("blockers") if isinstance(guard.get("blockers"), list) else []
+    if blockers:
+        return "runtime lease/proof window required: " + "; ".join(str(item) for item in blockers)
+    return "runtime lease/proof window required"
+
+
+def child_log_max_bytes(env: dict[str, str] | None = None) -> int:
+    env = env if env is not None else os.environ
+    return positive_int(env.get(CHILD_LOG_MAX_BYTES_ENV), DEFAULT_CHILD_LOG_MAX_BYTES)
 
 
 def runtime_python() -> str:
@@ -115,6 +196,39 @@ def run_json(command: list[str]) -> tuple[dict[str, Any] | None, str | None]:
         return json.loads(result.stdout), None
     except json.JSONDecodeError as exc:
         return None, f"invalid JSON from {command}: {exc}"
+
+
+def python_module_available(python: str, module_name: str) -> dict[str, Any]:
+    command = [
+        python,
+        "-c",
+        "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec(sys.argv[1]) else 3)",
+        module_name,
+    ]
+    try:
+        result = subprocess.run(command, cwd=str(ROOT), capture_output=True, text=True, timeout=8, check=False)
+    except Exception as exc:
+        return {
+            "name": f"runtime_dependency_{module_name}",
+            "ok": False,
+            "python": python,
+            "module": module_name,
+            "error": str(exc),
+        }
+    requirements = (
+        "infrastructure\\requirements-eval.txt"
+        if ".venv-eval" in Path(python).parts
+        else "requirements.txt"
+    )
+    return {
+        "name": f"runtime_dependency_{module_name}",
+        "ok": result.returncode == 0,
+        "python": python,
+        "module": module_name,
+        "returnCode": result.returncode,
+        "installHint": f"{python} -m pip install -r {requirements}",
+        **({"stderr": result.stderr.strip()} if result.stderr.strip() else {}),
+    }
 
 
 def strip_env_inline_comment(value: str) -> str:
@@ -171,6 +285,130 @@ def env_value(env: dict[str, str], *names: str, default: str = "") -> str:
     return default
 
 
+def normalize_account_name(value: object) -> str:
+    return str(value or "").strip().strip("\"'`").lower()
+
+
+def documented_showdown_accounts() -> list[dict[str, Any]]:
+    accounts: list[dict[str, Any]] = []
+    seen: set[tuple[str, int, str, str]] = set()
+    for path in ACCOUNT_AUTHORITY_FILES:
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        for line_number, line in enumerate(lines, start=1):
+            for kind, pattern in ACCOUNT_AUTHORITY_PATTERNS:
+                for match in pattern.finditer(line):
+                    account = str(match.group(1) or "").strip().strip("\"'`")
+                    if not account or account.upper().startswith("YOUR_"):
+                        continue
+                    key = (str(path), line_number, kind, account.lower())
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    accounts.append({
+                        "account": account,
+                        "source": str(path),
+                        "line": line_number,
+                        "kind": kind,
+                    })
+    return accounts
+
+
+def showdown_account_authority_check(env: dict[str, str]) -> dict[str, Any]:
+    runtime_account = env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID")
+    documented_accounts = documented_showdown_accounts()
+    distinct: dict[str, str] = {}
+    if runtime_account:
+        distinct[normalize_account_name(runtime_account)] = runtime_account
+    for item in documented_accounts:
+        account = str(item.get("account") or "").strip()
+        normalized = normalize_account_name(account)
+        if normalized:
+            distinct.setdefault(normalized, account)
+    return {
+        "name": "showdown_account_authority",
+        "ok": len(distinct) <= 1,
+        "runtimeAccount": runtime_account or None,
+        "documentedAccounts": documented_accounts,
+        "distinctAccounts": sorted(distinct.values(), key=str.lower),
+        "note": (
+            "PS_USERNAME/SHOWDOWN_USER_ID, current account docs, and runtime lease account must agree before execute; "
+            "historical mission prose is not treated as live account authority."
+        ),
+    }
+
+
+def battle_supervisor_contract() -> dict[str, Any]:
+    wrapper = ROOT / "scripts" / "start_battle_supervisor_task.ps1"
+    installer = ROOT / "scripts" / "install_battle_supervisor_task.ps1"
+    runtime = ROOT / "scripts" / "fouler_jigglypuff_runtime.ps1"
+    session = ROOT / "scripts" / "devstream_session.py"
+    required = [
+        {
+            "name": "start_battle_supervisor_task.ps1",
+            "path": str(wrapper),
+            "ok": wrapper.exists(),
+        },
+        {
+            "name": "install_battle_supervisor_task.ps1",
+            "path": str(installer),
+            "ok": installer.exists(),
+        },
+        {
+            "name": "fouler_jigglypuff_runtime.ps1",
+            "path": str(runtime),
+            "ok": runtime.exists(),
+        },
+        {
+            "name": "devstream_session.py",
+            "path": str(session),
+            "ok": session.exists(),
+        },
+    ]
+    try:
+        wrapper_text = wrapper.read_text(encoding="utf-8", errors="replace") if wrapper.exists() else ""
+        runtime_text = runtime.read_text(encoding="utf-8", errors="replace") if runtime.exists() else ""
+        installer_text = installer.read_text(encoding="utf-8", errors="replace") if installer.exists() else ""
+    except OSError as exc:
+        return {
+            "ok": False,
+            "requirements": required,
+            "error": str(exc),
+        }
+    checks = [
+        {
+            "name": "supervise_subcommand",
+            "ok": '"supervise"' in wrapper_text and '"supervise"' in runtime_text,
+        },
+        {
+            "name": "bounded_cycles",
+            "ok": "--max-cycles" in wrapper_text and "--max-cycles" in runtime_text and "-MaxCycles" in installer_text,
+        },
+        {
+            "name": "runtime_lease_forwarded",
+            "ok": "--runtime-lease" in wrapper_text and "Test-RuntimeLease" in runtime_text,
+        },
+        {
+            "name": "auto_improve_explicit_opt_in",
+            "ok": "--enable-auto-improve" in wrapper_text and "--enable-auto-improve" in runtime_text,
+        },
+        {
+            "name": "supervisor_status_path",
+            "ok": str(SUPERVISOR_STATUS_FILE.name) == "supervisor-status.json",
+            "path": str(SUPERVISOR_STATUS_FILE),
+        },
+    ]
+    return {
+        "ok": all(item.get("ok") for item in required + checks),
+        "requirements": required,
+        "checks": checks,
+        "statusPath": str(SUPERVISOR_STATUS_FILE),
+        "note": "No-start readiness verifies the HERMES battle supervisor contract without starting it.",
+    }
+
+
 def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str, str] | None = None) -> list[str]:
     env = env or load_env_files()
     username = env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID")
@@ -218,8 +456,8 @@ def supervisor_command(
     sleep_seconds: int,
     *,
     enable_auto_improve: bool = False,
-    max_cycles: int = DEFAULT_SUPERVISOR_MAX_CYCLES,
-    allow_unbounded_supervisor: bool = False,
+    max_cycles: int = 0,
+    runtime_lease: str | None = None,
 ) -> list[str]:
     command = [
         runtime_python(),
@@ -233,13 +471,13 @@ def supervisor_command(
         str(queue_timeout_seconds),
         "--sleep-seconds",
         str(sleep_seconds),
-        "--max-cycles",
-        str(max_cycles),
     ]
+    if max_cycles > 0:
+        command.extend(["--max-cycles", str(max_cycles)])
+    if runtime_lease:
+        command.extend(["--runtime-lease", runtime_lease])
     if enable_auto_improve:
         command.append("--enable-auto-improve")
-    if allow_unbounded_supervisor:
-        command.append("--allow-unbounded-supervisor")
     return command
 
 
@@ -295,13 +533,14 @@ def battle_supervisor_task_command(args: argparse.Namespace) -> list[str]:
         str(args.queue_timeout_seconds),
         "-SleepSeconds",
         str(args.supervisor_sleep_seconds),
-        "-MaxCycles",
-        str(getattr(args, "supervisor_max_cycles", getattr(args, "max_cycles", DEFAULT_SUPERVISOR_MAX_CYCLES))),
     ]
+    if positive_int(getattr(args, "max_cycles", 0), 0) > 0:
+        command.extend(["-MaxCycles", str(args.max_cycles)])
+    runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
+    if runtime_lease:
+        command.extend(["-RuntimeLease", runtime_lease])
     if getattr(args, "enable_auto_improve", False):
         command.append("-AutoImprove")
-    if getattr(args, "allow_unbounded_supervisor", False):
-        command.append("-AllowUnboundedSupervisor")
     return command
 
 
@@ -361,6 +600,205 @@ def active_battles_age_seconds() -> float | None:
         return max(0.0, time.time() - path.stat().st_mtime)
     except OSError:
         return None
+
+
+def file_age_seconds(path: Path) -> float | None:
+    try:
+        return max(0.0, time.time() - path.stat().st_mtime)
+    except OSError:
+        return None
+
+
+def read_json_object(path: Path) -> dict[str, Any]:
+    try:
+        parsed = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def finite_runtime_lease_preconditions() -> list[str]:
+    return list(FINITE_RUNTIME_LEASE_PRECONDITIONS)
+
+
+def archived_active_battle_truth(payload: dict[str, Any], active_count: int) -> bool:
+    if active_count != 0:
+        return False
+    return bool(payload.get("clearedBy") or payload.get("clearReason") or payload.get("runtime_blocked"))
+
+
+def stream_status_claims_runtime(payload: dict[str, Any]) -> bool:
+    status = str(payload.get("status") or "").strip().lower()
+    return status in ACTIVE_STREAM_STATUSES or bool(payload.get("streaming")) or bool(payload.get("stream_pid"))
+
+
+def public_truth_artifact_disposition(
+    *,
+    active_payload: dict[str, Any],
+    stream_payload: dict[str, Any],
+    active_count: int,
+    active_stale: bool,
+    stream_stale: bool,
+    runner_alive: bool,
+) -> dict[str, Any]:
+    status = str(stream_payload.get("status") or "").strip()
+    stream_claims_runtime = stream_status_claims_runtime(stream_payload)
+    if archived_active_battle_truth(active_payload, active_count):
+        active_state = {
+            "state": "archived",
+            "classification": "archived-active-battle-truth",
+            "proofUse": "not-live-runtime-proof",
+            "reason": active_payload.get("clearReason") or active_payload.get("blocker_summary"),
+            "clearedBy": active_payload.get("clearedBy"),
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif runner_alive and active_count > 0:
+        active_state = {
+            "state": "adopted",
+            "classification": "adopted-active-battle-truth",
+            "proofUse": "live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif active_stale:
+        active_state = {
+            "state": "blocked",
+            "classification": "blocked-stale-active-battle-truth",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    else:
+        active_state = {
+            "state": "idle",
+            "classification": "empty-active-battle-truth",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+
+    if runner_alive and stream_claims_runtime:
+        stream_state = {
+            "state": "adopted",
+            "classification": "adopted-stream-status",
+            "proofUse": "live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif stream_payload.get("runtime_blocked"):
+        stream_state = {
+            "state": "blocked",
+            "classification": "runtime-blocked-stream-status",
+            "proofUse": "not-live-runtime-proof",
+            "reason": stream_payload.get("blocker_summary") or status or "runtime blocked",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif stream_claims_runtime and stream_stale:
+        stream_state = {
+            "state": "blocked",
+            "classification": "blocked-stale-stream-status",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    elif stream_claims_runtime:
+        stream_state = {
+            "state": "candidate-active",
+            "classification": "active-stream-status",
+            "proofUse": "requires-live-runner-adoption",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+    else:
+        stream_state = {
+            "state": "idle-stale" if stream_stale else "idle",
+            "classification": "stream-status",
+            "proofUse": "not-live-runtime-proof",
+            "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        }
+
+    states = [active_state["state"], stream_state["state"]]
+    if "blocked" in states:
+        overall = "blocked"
+    elif "adopted" in states:
+        overall = "adopted"
+    elif "archived" in states:
+        overall = "archived"
+    else:
+        overall = "idle"
+    return {
+        "state": overall,
+        "finiteLeasePreconditions": finite_runtime_lease_preconditions(),
+        "artifacts": {
+            "activeBattles": active_state,
+            "streamStatus": stream_state,
+        },
+    }
+
+
+def public_runtime_truth_check(stale_after_seconds: int = STALE_ACTIVE_TRUTH_SECONDS) -> dict[str, Any]:
+    active_count = read_active_battles()
+    active_path = active_battles_path()
+    active_payload = read_json_object(active_path)
+    active_age = active_battles_age_seconds()
+    stream_payload = read_json_object(STREAM_STATUS_FILE)
+    stream_age = file_age_seconds(STREAM_STATUS_FILE)
+    status = str(stream_payload.get("status") or "").strip()
+    status_normalized = status.lower()
+    runner_alive = any_battle_runner_alive()
+    stale_truth = bool(active_age is not None and active_age >= stale_after_seconds)
+    stream_stale = bool(stream_age is not None and stream_age >= STALE_STREAM_TRUTH_SECONDS)
+    disposition = public_truth_artifact_disposition(
+        active_payload=active_payload,
+        stream_payload=stream_payload,
+        active_count=active_count,
+        active_stale=stale_truth,
+        stream_stale=stream_stale,
+        runner_alive=runner_alive,
+    )
+    active_status_without_runner = (
+        bool(status_normalized in ACTIVE_STREAM_STATUSES or stream_payload.get("streaming") or stream_payload.get("stream_pid"))
+        and not runner_alive
+        and stream_stale
+    )
+    stale_active_truth_without_runner = (
+        stale_truth
+        and not runner_alive
+        and disposition["artifacts"]["activeBattles"].get("state") != "archived"
+    )
+    blockers: list[str] = []
+    if stale_active_truth_without_runner:
+        blockers.append(
+            "active_battles.json is stale and no expected Fouler battle runner owns it; "
+            "archive/adopt/clear requires a finite proof-window runtime lease"
+        )
+    if active_status_without_runner:
+        blockers.append(
+            f"stream_status.json reports stale {status or 'active runtime'} without an expected Fouler battle runner; "
+            "archive/adopt/clear requires a finite proof-window runtime lease"
+        )
+    return {
+        "name": "public_runtime_truth",
+        "ok": not blockers,
+        "activeBattles": {
+            "path": str(active_path),
+            "exists": active_path.exists(),
+            "count": active_count,
+            "ageSeconds": round(active_age, 3) if active_age is not None else None,
+            "staleAfterSeconds": stale_after_seconds,
+            "stale": stale_truth,
+            "disposition": disposition["artifacts"]["activeBattles"],
+        },
+        "streamStatus": {
+            "path": str(STREAM_STATUS_FILE),
+            "exists": STREAM_STATUS_FILE.exists(),
+            "status": status or None,
+            "streaming": stream_payload.get("streaming"),
+            "streamPid": stream_payload.get("stream_pid"),
+            "ageSeconds": round(stream_age, 3) if stream_age is not None else None,
+            "staleAfterSeconds": STALE_STREAM_TRUTH_SECONDS,
+            "stale": stream_stale,
+            "disposition": disposition["artifacts"]["streamStatus"],
+        },
+        "disposition": disposition,
+        "battleRunnerAlive": runner_alive,
+        "blockers": blockers,
+        "note": "Doctor fails closed when public runtime truth claims activity without a live expected Fouler runner and finite lease.",
+    }
 
 
 def read_pid(path: Path) -> int | None:
@@ -552,8 +990,66 @@ def pid_alive(path: Path) -> tuple[bool, int | None]:
         return _pid_matches_expected_process(path, pid, payload), pid
 
 
+def pid_file_status(path: Path) -> dict[str, Any]:
+    payload = read_pid_payload(path)
+    pid = read_pid(path)
+    alive, observed_pid = pid_alive(path)
+    item: dict[str, Any] = {
+        "pidFile": str(path),
+        "exists": path.exists(),
+        "pid": observed_pid if observed_pid is not None else pid,
+        "alive": alive,
+        "stale": False,
+    }
+    if isinstance(payload, dict):
+        item["command"] = payload.get("command")
+        item["startedAt"] = payload.get("startedAt") or payload.get("started_at")
+    if not path.exists():
+        item["reason"] = "missing"
+        return item
+    if pid is None:
+        item["stale"] = True
+        item["reason"] = "pid file exists but does not contain a valid positive PID"
+    elif not alive:
+        item["stale"] = True
+        item["reason"] = "pid file exists but PID is not a live expected Fouler process"
+    else:
+        item["reason"] = "live expected Fouler process"
+    return item
+
+
+def runtime_pid_file_check() -> dict[str, Any]:
+    details = [pid_file_status(path) for path in [BOT_LOCK_PID_FILE, BATTLE_PID_FILE, SUPERVISOR_PID_FILE]]
+    stale = [item for item in details if item.get("stale")]
+    return {
+        "name": "runtime_pid_files",
+        "ok": not stale,
+        "details": details,
+        "staleCount": len(stale),
+        "note": "Stale PID files are blockers until cleared, replaced, or adopted by a no-start readiness flow.",
+    }
+
+
 def write_pid(path: Path, proc: subprocess.Popen[Any], command: list[str]) -> None:
     write_pid_value(path, proc.pid, command)
+
+
+def rotate_child_log_before_append(log_path: Path, env: dict[str, str]) -> dict[str, Any] | None:
+    max_bytes = child_log_max_bytes(env)
+    try:
+        previous_bytes = log_path.stat().st_size
+    except FileNotFoundError:
+        return None
+    if previous_bytes < max_bytes:
+        return None
+    rotated_path = log_path.with_name(f"{log_path.name}.old")
+    os.replace(log_path, rotated_path)
+    return {
+        "path": str(log_path),
+        "rotatedTo": str(rotated_path),
+        "previousBytes": previous_bytes,
+        "maxBytes": max_bytes,
+    }
 
 
 def secure_env_files(*, execute: bool) -> list[dict[str, Any]]:
@@ -617,23 +1113,23 @@ def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> di
     PID_DIR.mkdir(parents=True, exist_ok=True)
     log_path = ROOT / "logs" / f"{pid_file.stem}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_rotation = rotate_child_log_before_append(log_path, env)
     handle = log_path.open("a", encoding="utf-8")
     creationflags = 0
     if os.name == "nt":
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
-    try:
-        proc = subprocess.Popen(
-            command,
-            cwd=str(ROOT),
-            env=env,
-            stdout=handle,
-            stderr=subprocess.STDOUT,
-            creationflags=creationflags,
-        )
-    finally:
-        handle.close()
+    proc = subprocess.Popen(
+        command,
+        cwd=str(ROOT),
+        env=env,
+        stdout=handle,
+        stderr=subprocess.STDOUT,
+        creationflags=creationflags,
+    )
     write_pid(pid_file, proc, command)
     payload = {"pidFile": str(pid_file), "pid": proc.pid, "log": str(log_path), "command": command}
+    if log_rotation is not None:
+        payload["logRotation"] = log_rotation
     if stale_existing is not None:
         payload["staleExistingProcess"] = stale_existing
     return payload
@@ -751,22 +1247,26 @@ def clear_stale_active_battles(
     age = active_battles_age_seconds()
     runner_alive = any_battle_runner_alive()
     path = active_battles_path()
+    truth_exists = path.exists()
+    stale_truth = bool(age is not None and age >= stale_after_seconds)
     payload: dict[str, Any] = {
         "activeBattleCount": active_count,
         "ageSeconds": round(age, 3) if age is not None else None,
+        "activeBattleTruthExists": truth_exists,
+        "stale": stale_truth,
         "battleRunnerAlive": runner_alive,
         "execute": execute,
         "staleAfterSeconds": stale_after_seconds,
         "force": force,
         "cleared": False,
     }
-    if active_count <= 0:
-        payload["reason"] = "no active battle truth to clear"
-        return payload
     if runner_alive and not force:
         payload["reason"] = "battle runner is alive; preserving active battle truth"
         return payload
-    if not force and (age is None or age < stale_after_seconds):
+    if active_count <= 0 and not (force and truth_exists) and not (truth_exists and stale_truth):
+        payload["reason"] = "no stale active battle truth to clear"
+        return payload
+    if not force and not stale_truth:
         payload["reason"] = "active battle truth is not stale enough to clear"
         return payload
     if not execute:
@@ -786,15 +1286,105 @@ def clear_stale_active_battles(
         "clearedBy": "HERMES devstream_session stop" if force else "HERMES devstream_session start",
         "clearReason": clear_reason,
         "previousBattleCount": active_count,
+        "previousTruthWasEmpty": active_count <= 0,
     }
     try:
-        path.write_text(json.dumps(replacement, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        _atomic_write_text(path, json.dumps(replacement, indent=2, sort_keys=True) + "\n")
     except PermissionError:
         path.chmod(0o666)
-        path.write_text(json.dumps(replacement, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        _atomic_write_text(path, json.dumps(replacement, indent=2, sort_keys=True) + "\n")
         payload["permissionRepair"] = "chmod 666 before rewrite"
     payload["cleared"] = True
-    payload["reason"] = "active battle truth cleared after forced stop" if force else "stale active battle truth cleared before bounded session start"
+    if force:
+        payload["reason"] = "active battle truth cleared after forced stop"
+    elif active_count <= 0:
+        payload["reason"] = "stale empty active battle truth refreshed before bounded session start"
+    else:
+        payload["reason"] = "stale active battle truth cleared before bounded session start"
+    return payload
+
+
+def archive_stale_stream_status(
+    *,
+    execute: bool,
+    stale_after_seconds: int = STALE_STREAM_TRUTH_SECONDS,
+    force: bool = False,
+    clear_reason: str = "stale stream status had no live battle runner",
+) -> dict[str, Any]:
+    path = STREAM_STATUS_FILE
+    stream_payload = read_json_object(path)
+    age = file_age_seconds(path)
+    runner_alive = any_battle_runner_alive()
+    truth_exists = path.exists()
+    stale_truth = bool(age is not None and age >= stale_after_seconds)
+    claims_runtime = stream_status_claims_runtime(stream_payload)
+    status = str(stream_payload.get("status") or "").strip()
+    payload: dict[str, Any] = {
+        "path": str(path),
+        "exists": truth_exists,
+        "status": status or None,
+        "streaming": stream_payload.get("streaming"),
+        "streamPid": stream_payload.get("stream_pid"),
+        "claimsRuntime": claims_runtime,
+        "ageSeconds": round(age, 3) if age is not None else None,
+        "staleAfterSeconds": stale_after_seconds,
+        "stale": stale_truth,
+        "battleRunnerAlive": runner_alive,
+        "execute": execute,
+        "force": force,
+        "archived": False,
+        "blocked": False,
+    }
+    if runner_alive and not force:
+        payload["reason"] = "battle runner is alive; preserving stream status truth"
+        return payload
+    if not truth_exists:
+        payload["reason"] = "stream status truth does not exist"
+        return payload
+    if not force and not claims_runtime:
+        payload["reason"] = "stream status does not claim active runtime"
+        return payload
+    if not force and not stale_truth:
+        payload["reason"] = "stream status truth is not stale enough to archive"
+        return payload
+    if not execute:
+        payload["reason"] = "dry run; stale stream status cleanup planned only"
+        payload["plannedAction"] = "archive stale stream_status.json and publish runtime_blocked status"
+        return payload
+
+    STALE_STREAM_STATUS_BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup = STALE_STREAM_STATUS_BACKUP_DIR / f"stream_status-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+    shutil.copy2(path, backup)
+    now = iso_now()
+    replacement = dict(state_store.DEFAULT_STATUS)
+    replacement.update(
+        {
+            "status": "Runtime blocked",
+            "battle_info": clear_reason,
+            "streaming": False,
+            "stream_pid": None,
+            "updated": now,
+            "runtime_blocked": True,
+            "blocker_code": "stale_stream_status_archived",
+            "blocker_summary": clear_reason,
+            "archivedBy": "HERMES devstream_session cleanup-stale-truth",
+            "archivedAt": now,
+            "archivePath": str(backup),
+            "previousStatus": status or None,
+            "previousStreaming": stream_payload.get("streaming"),
+            "previousStreamPid": stream_payload.get("stream_pid"),
+        }
+    )
+    try:
+        _atomic_write_text(path, json.dumps(replacement, indent=2, sort_keys=True) + "\n")
+    except PermissionError:
+        path.chmod(0o666)
+        _atomic_write_text(path, json.dumps(replacement, indent=2, sort_keys=True) + "\n")
+        payload["permissionRepair"] = "chmod 666 before rewrite"
+    payload["backupPath"] = str(backup)
+    payload["archived"] = True
+    payload["blocked"] = True
+    payload["reason"] = "stale stream status archived and replaced with runtime blocked truth"
     return payload
 
 
@@ -997,26 +1587,9 @@ def write_supervisor_status(payload: dict[str, Any]) -> None:
     SUPERVISOR_STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     SUPERVISOR_STATUS_FILE.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-def _readiness_from_action(action: dict[str, Any]) -> dict[str, Any]:
-    if action.get("returnCode") != 0:
-        return {"readyForOfflineIteration": False, "blockers": ["readiness command failed"]}
-    text = str(action.get("stdoutTail") or "")
-    start = text.find("{")
-    end = text.rfind("}")
-    if start < 0 or end < start:
-        return {"readyForOfflineIteration": False, "blockers": ["readiness command did not return JSON"]}
-    try:
-        parsed = json.loads(text[start:end + 1])
-    except json.JSONDecodeError as exc:
-        return {"readyForOfflineIteration": False, "blockers": [f"readiness JSON parse failed: {exc}"]}
-    if not isinstance(parsed, dict):
-        return {"readyForOfflineIteration": False, "blockers": ["readiness JSON was not an object"]}
-    return parsed
-
-
-
 
 def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str, Any]:
+    effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT))
     active_count = read_active_battles()
     battle_runner_alive = any_battle_runner_alive()
     payload: dict[str, Any] = {
@@ -1026,6 +1599,8 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         "activeBattleCount": active_count,
         "battleRunnerAlive": battle_runner_alive,
         "actions": [],
+        "requestedRunCount": getattr(args, "run_count", DEFAULT_RUN_COUNT),
+        "effectiveRunCount": effective_count,
     }
     if active_count > 0 and not battle_runner_alive:
         stale_clear = clear_stale_active_battles(
@@ -1071,62 +1646,47 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         "sentinel": AUTO_IMPROVE_SENTINEL,
     }
     if improve_enabled:
-        readiness_action = run_supervisor_command(
-            [py, "infrastructure/improve_loop.py", "--readiness", "--enable-auto-improve"],
-            timeout=getattr(args, "proof_timeout_seconds", 300),
-        )
-        payload["actions"].append(readiness_action)
-        readiness = _readiness_from_action(readiness_action)
-        payload["autoImprove"]["readiness"] = readiness
-        if readiness.get("readyForRecursiveAutoImprove"):
-            improve_command = [
-                py,
-                "infrastructure/improve_loop.py",
-                "--iterations",
-                "1",
-                "--num-battles",
-                str(getattr(args, "autoresearch_count", 30)),
-                "--enable-auto-improve",
-            ]
-            improve_action = run_supervisor_command(
+        improve_cycle_limit, _ = supervisor_cycle_limit(args)
+        improve_command = [
+            py,
+            "infrastructure/improve_agent.py",
+            "--enable-auto-improve",
+            "--max-cycles",
+            str(improve_cycle_limit or DEFAULT_AUTO_IMPROVE_MAX_CYCLES),
+        ]
+        runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
+        if runtime_lease:
+            improve_command.extend(["--runtime-lease", runtime_lease])
+        payload["actions"].append(
+            run_supervisor_command(
                 improve_command,
                 timeout=getattr(args, "improve_timeout_seconds", 240),
             )
-            payload["actions"].append(improve_action)
-            if improve_action.get("returnCode") == 0 and not improve_action.get("timedOut"):
-                payload["actions"].append(
-                    run_supervisor_command(
-                        [py, "infrastructure/elo_watchdog.py"],
-                        timeout=getattr(args, "proof_timeout_seconds", 300),
-                    )
-                )
-            else:
-                payload["autoImprove"]["watchdogSkipped"] = "improve_loop did not complete cleanly"
-        else:
-            payload["autoImprove"]["enabled"] = False
-            payload["autoImprove"]["blocked"] = True
-            blockers = list(readiness.get("recursiveBlockers") or readiness.get("blockers") or [])
-            if (
-                readiness.get("readyForOfflineIteration")
-                and not readiness.get("readyForRecursiveAutoImprove")
-                and not any("measured self-play gate" in str(blocker) for blocker in blockers)
-            ):
-                blockers.append("recursive readiness gate not true; measured self-play gate has not completed")
-            payload["autoImprove"]["blockers"] = blockers or ["readiness gate blocked auto-improve"]
+        )
+        payload["actions"].append(
+            run_supervisor_command(
+                [py, "infrastructure/elo_watchdog.py"],
+                timeout=getattr(args, "proof_timeout_seconds", 300),
+            )
+        )
+    start_command = [
+        py,
+        "scripts/devstream_session.py",
+        "start",
+        "--run-count",
+        str(effective_count),
+        "--max-concurrent-battles",
+        str(args.max_concurrent_battles),
+        "--queue-timeout-seconds",
+        str(args.queue_timeout_seconds),
+        "--execute",
+    ]
+    runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
+    if runtime_lease:
+        start_command.extend(["--runtime-lease", runtime_lease])
     payload["actions"].append(
         run_supervisor_command(
-            [
-                py,
-                "scripts/devstream_session.py",
-                "start",
-                "--run-count",
-                str(args.run_count),
-                "--max-concurrent-battles",
-                str(args.max_concurrent_battles),
-                "--queue-timeout-seconds",
-                str(args.queue_timeout_seconds),
-                "--execute",
-            ],
+            start_command,
             timeout=getattr(args, "start_timeout_seconds", 60),
         )
     )
@@ -1137,45 +1697,18 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
 
 
 def cmd_supervise(args: argparse.Namespace) -> int:
-    if SUPERVISOR_STOP_FILE.exists():
-        SUPERVISOR_STOP_FILE.unlink()
-    iteration_guard = supervisor_iteration_guard(args)
-    if iteration_guard.get("blocked"):
-        payload = {
-            "schemaVersion": "fouler-play-battle-supervisor/v1",
-            "startedAt": iso_now(),
-            "pid": os.getpid(),
-            "state": "blocked-unbounded-supervisor",
-            "iterationGuard": iteration_guard,
-            "bounds": {
-                "runCount": args.run_count,
-                "maxConcurrentBattles": args.max_concurrent_battles,
-                "queueTimeoutSeconds": args.queue_timeout_seconds,
-                "sleepSeconds": args.sleep_seconds,
-                "maxCycles": args.max_cycles,
-                "unboundedSupervisorSentinel": UNBOUNDED_SUPERVISOR_SENTINEL,
-            },
-            "secretValuesPrinted": False,
-        }
-        write_supervisor_status(payload)
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return 2
-    lease = None
-    try:
-        lease = acquire_runtime_lease(holder="devstream_session supervise")
-    except RuntimeLeaseBusy as exc:
-        payload = {
-            "schemaVersion": "fouler-play-battle-supervisor/v1",
-            "startedAt": iso_now(),
-            "pid": os.getpid(),
-            "state": "blocked-runtime-lease",
-            "runtimeLease": str(exc),
-            "secretValuesPrinted": False,
-        }
-        write_supervisor_status(payload)
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return 3
     cycle_index = 0
+    effective_max_cycles, max_cycles_reason = supervisor_cycle_limit(args)
+    env = prepare_runtime_env(load_env_files())
+    effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT), env)
+    lease_guard = runtime_lease_guard(
+        purpose="devstream-supervise",
+        args=args,
+        env=env,
+        run_count=effective_count,
+        max_cycles=effective_max_cycles,
+        require_max_cycles=True,
+    )
     payload: dict[str, Any] = {
         "schemaVersion": "fouler-play-battle-supervisor/v1",
         "startedAt": iso_now(),
@@ -1188,13 +1721,26 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             "queueTimeoutSeconds": args.queue_timeout_seconds,
             "sleepSeconds": args.sleep_seconds,
             "maxCycles": args.max_cycles,
-            "unbounded": bool(iteration_guard.get("unbounded")),
-            "unboundedSupervisorSentinel": UNBOUNDED_SUPERVISOR_SENTINEL,
+            "effectiveMaxCycles": effective_max_cycles,
+            "effectiveRunCount": effective_count,
         },
+        "cycleLease": {
+            "reason": max_cycles_reason,
+            "autoImproveSentinel": AUTO_IMPROVE_SENTINEL,
+            "autoImproveMaxCyclesEnv": AUTO_IMPROVE_MAX_CYCLES_ENV,
+        },
+        "runtimeLease": lease_guard,
         "stopFile": str(SUPERVISOR_STOP_FILE),
-        "iterationGuard": iteration_guard,
         "secretValuesPrinted": False,
     }
+    if not lease_guard.get("ok"):
+        payload["state"] = "blocked-runtime-lease"
+        payload["error"] = runtime_lease_blocked_message(lease_guard)
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    if SUPERVISOR_STOP_FILE.exists():
+        SUPERVISOR_STOP_FILE.unlink()
     write_pid_value(
         SUPERVISOR_PID_FILE,
         os.getpid(),
@@ -1204,8 +1750,8 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             args.queue_timeout_seconds,
             args.sleep_seconds,
             enable_auto_improve=getattr(args, "enable_auto_improve", False),
-            max_cycles=args.max_cycles,
-            allow_unbounded_supervisor=getattr(args, "allow_unbounded_supervisor", False),
+            max_cycles=positive_int(getattr(args, "max_cycles", 0), 0),
+            runtime_lease=getattr(args, "runtime_lease", None),
         ),
     )
     try:
@@ -1222,7 +1768,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             payload["lastCycle"] = cycle
             payload["cycles"] = (payload.get("cycles") or [])[-9:] + [cycle]
             write_supervisor_status(payload)
-            if args.max_cycles and cycle_index >= args.max_cycles:
+            if effective_max_cycles and cycle_index >= effective_max_cycles:
                 payload["state"] = "completed-max-cycles"
                 payload["completedAt"] = iso_now()
                 write_supervisor_status(payload)
@@ -1247,9 +1793,6 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             except OSError:
                 pass
 
-        if lease is not None:
-            lease.release()
-
 
 def wait_for_drain(max_wait_seconds: int) -> dict[str, Any]:
     started = time.time()
@@ -1267,8 +1810,14 @@ def wait_for_drain(max_wait_seconds: int) -> dict[str, Any]:
 
 def build_doctor() -> dict[str, Any]:
     env = prepare_runtime_env(load_env_files())
-    health, error = run_json([runtime_python(), "scripts/devstream_health.py"])
-    checks = []
+    runtime_py = runtime_python()
+    checks = [
+        python_module_available(runtime_py, "psutil"),
+        showdown_account_authority_check(env),
+        runtime_pid_file_check(),
+        public_runtime_truth_check(),
+    ]
+    health, error = run_json([runtime_py, "scripts/devstream_health.py"])
     if error:
         checks.append({"name": "health_probe", "ok": False, "error": error})
     else:
@@ -1319,14 +1868,18 @@ def build_doctor() -> dict[str, Any]:
     active_battles = read_active_battles()
     checks.append({"name": "active_battle_drain", "ok": active_battles == 0, "activeBattleCount": active_battles})
     supervisor_running, supervisor_pid = supervisor_alive()
+    supervisor_contract = battle_supervisor_contract()
     checks.append({
         "name": "battle_supervisor",
-        "ok": supervisor_running,
+        "ok": bool(supervisor_contract.get("ok")),
         "pid": supervisor_pid,
+        "running": supervisor_running,
         "statusPath": str(SUPERVISOR_STATUS_FILE),
-        "defaultMaxCycles": DEFAULT_SUPERVISOR_MAX_CYCLES,
-        "unboundedSentinel": UNBOUNDED_SUPERVISOR_SENTINEL,
-        "note": "HERMES battle supervisor is bounded by default; persistent operation requires the explicit unbounded sentinel or flag.",
+        "contract": supervisor_contract,
+        "note": (
+            "No-start doctor verifies the HERMES persistent battle supervisor contract; "
+            "execute-time readiness still requires a live supervisor or bounded start lease."
+        ),
     })
     return {
         "schemaVersion": "fouler-play-devstream-doctor/v1",
@@ -1343,19 +1896,71 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 1 if args.require_ready and not payload["ready"] else 0
 
 
+def cmd_cleanup_stale_truth(args: argparse.Namespace) -> int:
+    env = prepare_runtime_env(load_env_files())
+    purpose = STALE_TRUTH_CLEANUP_PURPOSE if args.execute else STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE
+    lease_guard = cleanup_runtime_lease_guard(purpose=purpose, args=args, env=env)
+    payload: dict[str, Any] = {
+        "schemaVersion": "fouler-play-stale-truth-cleanup/v1",
+        "checkedAt": iso_now(),
+        "dryRun": not args.execute,
+        "purpose": purpose,
+        "runtimeLease": lease_guard,
+        "bounds": {
+            "activeBattlesStaleAfterSeconds": args.stale_after_seconds,
+            "streamStatusStaleAfterSeconds": args.stream_stale_after_seconds,
+            "cleanupOperationCount": 1,
+        },
+        "noRuntimeActions": True,
+        "note": "No-start cleanup path; it does not start Showdown, eval, bots, Discord, Twitch, services, or scheduled tasks.",
+    }
+    if not lease_guard.get("ok"):
+        payload["status"] = "blocked-runtime-lease"
+        payload["error"] = runtime_lease_blocked_message(lease_guard)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+
+    payload["publicRuntimeTruthBefore"] = public_runtime_truth_check(stale_after_seconds=args.stale_after_seconds)
+    payload["activeBattleCleanup"] = clear_stale_active_battles(
+        execute=args.execute,
+        stale_after_seconds=args.stale_after_seconds,
+    )
+    payload["streamStatusCleanup"] = archive_stale_stream_status(
+        execute=args.execute,
+        stale_after_seconds=args.stream_stale_after_seconds,
+    )
+    if args.execute:
+        payload["publicRuntimeTruthAfter"] = public_runtime_truth_check(stale_after_seconds=args.stale_after_seconds)
+    print(json.dumps(payload, indent=2, sort_keys=True))
+    return 0
+
+
 def cmd_start(args: argparse.Namespace) -> int:
     env = prepare_runtime_env(load_env_files())
+    effective_count = effective_run_count(args.run_count, env)
+    continuous = bool(getattr(args, "continuous", False))
+    start_purpose = "devstream-start-continuous" if continuous else "devstream-start"
+    if not args.execute:
+        start_purpose = f"{start_purpose}-dry-run"
+    lease_guard = runtime_lease_guard(
+        purpose=start_purpose,
+        args=args,
+        env=env,
+        run_count=effective_count,
+        max_cycles=positive_int(getattr(args, "max_cycles", 0), 0) if continuous else None,
+        require_max_cycles=continuous,
+    )
     commands = {
         "obsHttp": obs_server_command(),
-        "battleSession": shell_command_for_session(args.run_count, args.max_concurrent_battles, env),
+        "battleSession": shell_command_for_session(effective_count, args.max_concurrent_battles, env),
         "battleSupervisor": supervisor_command(
-            args.run_count,
+            effective_count,
             args.max_concurrent_battles,
             args.queue_timeout_seconds,
             args.supervisor_sleep_seconds,
-            max_cycles=args.supervisor_max_cycles,
-            allow_unbounded_supervisor=args.allow_unbounded_supervisor,
             enable_auto_improve=getattr(args, "enable_auto_improve", False),
+            max_cycles=positive_int(getattr(args, "max_cycles", 0), 0),
+            runtime_lease=getattr(args, "runtime_lease", None),
         ),
     }
     payload = {
@@ -1364,16 +1969,23 @@ def cmd_start(args: argparse.Namespace) -> int:
         "dryRun": not args.execute,
         "commands": commands,
         "bounds": {
-            "runCount": args.run_count,
+            "runCount": effective_count,
+            "requestedRunCount": args.run_count,
+            "runCountCap": positive_int(env.get(RUN_COUNT_CAP_ENV), DEFAULT_RUN_COUNT_CAP),
             "maxConcurrentBattles": args.max_concurrent_battles,
             "maxRuntimeMinutes": args.max_runtime_minutes,
             "queueTimeoutSeconds": args.queue_timeout_seconds,
             "turnTimeoutSeconds": args.turn_timeout_seconds,
-            "supervisorMaxCycles": args.supervisor_max_cycles,
-            "allowUnboundedSupervisor": bool(args.allow_unbounded_supervisor),
+            "maxCycles": positive_int(getattr(args, "max_cycles", 0), 0),
         },
         "envFilePermissions": secure_env_files(execute=args.execute),
+        "runtimeLease": lease_guard,
     }
+    if not lease_guard.get("ok"):
+        payload["status"] = "blocked-runtime-lease"
+        payload["error"] = runtime_lease_blocked_message(lease_guard)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
     if not args.execute:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
@@ -1510,12 +2122,24 @@ def cmd_stop(args: argparse.Namespace) -> int:
 def cmd_drain(args: argparse.Namespace) -> int:
     active_battles = read_active_battles()
     runner_alive = any_battle_runner_alive()
+    runner_owners = live_battle_runner_owners()
+    distinct_runner_pids = _distinct_battle_runner_pids(runner_owners)
     payload = {
         "schemaVersion": "fouler-play-devstream-drain-plan/v1",
         "checkedAt": iso_now(),
         "dryRun": not args.execute,
         "activeBattleCount": active_battles,
         "battleRunnerAlive": runner_alive,
+        "runtimeOwnership": {
+            "knownRunners": runner_owners,
+            "distinctPids": distinct_runner_pids,
+            "duplicateBattleRunners": len(distinct_runner_pids) > 1,
+            "requiredHermesAction": (
+                "drain/adopt exactly one live battle runner before starting another cycle"
+                if len(distinct_runner_pids) > 1
+                else None
+            ),
+        },
         "drainFile": str(DRAIN_FILE),
         "reason": args.reason,
         "note": "Drain-only control: finish current battle, queue no new battle from the old process, and let the supervisor restart from current code.",
@@ -1533,6 +2157,14 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     doctor = sub.add_parser("doctor")
     doctor.add_argument("--require-ready", action="store_true")
+    cleanup = sub.add_parser("cleanup-stale-truth")
+    cleanup.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
+    cleanup.add_argument("--stale-after-seconds", type=int, default=STALE_ACTIVE_TRUTH_SECONDS)
+    cleanup.add_argument("--stream-stale-after-seconds", type=int, default=STALE_STREAM_TRUTH_SECONDS)
+    cleanup.add_argument("--execute", action="store_true")
     start = sub.add_parser("start")
     start.add_argument("--run-count", type=int, default=DEFAULT_RUN_COUNT)
     start.add_argument("--max-concurrent-battles", type=int, default=DEFAULT_MAX_CONCURRENT)
@@ -1541,8 +2173,11 @@ def main() -> int:
     start.add_argument("--turn-timeout-seconds", type=int, default=90)
     start.add_argument("--continuous", action="store_true")
     start.add_argument("--supervisor-sleep-seconds", type=int, default=15)
-    start.add_argument("--supervisor-max-cycles", type=int, default=DEFAULT_SUPERVISOR_MAX_CYCLES)
-    start.add_argument("--allow-unbounded-supervisor", action="store_true")
+    start.add_argument("--max-cycles", type=int, default=0)
+    start.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
     start.add_argument("--replace-stale-runner", action=argparse.BooleanOptionalAction, default=True)
     start.add_argument(
         "--enable-auto-improve",
@@ -1555,8 +2190,11 @@ def main() -> int:
     supervise.add_argument("--max-concurrent-battles", type=int, default=DEFAULT_MAX_CONCURRENT)
     supervise.add_argument("--queue-timeout-seconds", type=int, default=180)
     supervise.add_argument("--sleep-seconds", type=int, default=15)
-    supervise.add_argument("--max-cycles", type=int, default=DEFAULT_SUPERVISOR_MAX_CYCLES)
-    supervise.add_argument("--allow-unbounded-supervisor", action="store_true")
+    supervise.add_argument("--max-cycles", type=int, default=0)
+    supervise.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
     supervise.add_argument("--autoresearch-count", type=int, default=30)
     supervise.add_argument("--proof-timeout-seconds", type=int, default=300)
     supervise.add_argument("--start-timeout-seconds", type=int, default=60)
@@ -1578,6 +2216,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.command == "doctor":
         return cmd_doctor(args)
+    if args.command == "cleanup-stale-truth":
+        return cmd_cleanup_stale_truth(args)
     if args.command == "start":
         return cmd_start(args)
     if args.command == "supervise":
