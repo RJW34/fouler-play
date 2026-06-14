@@ -191,10 +191,45 @@ py -3 scripts\jigglypuff_devstream_control.py start --run-count 1 --max-concurre
 
 - Emergency fallback is intentionally small; it is not a second full decision engine.
 - Autoresearch is working but the latest 30-battle window lacks linked replay/trace evidence for losses, so no new policy issue should be promoted from that window.
-- The live JIGGLYPUFF state is now proven reachable from `MIRAIDON`, but the currently running process will not pick up local code changes until a lease-authorized drain/restart.
-- The deployed runtime branch already has replay-status fields, local replay JSON writes, request-backed legal-option traces, and the request-backed emergency fallback patch committed. The existing running Python process started before that commit, so runtime effect is unproven until restart.
+- The live JIGGLYPUFF state is proven reachable from `MIRAIDON`, and the current battle session was started after the runtime-code head that includes the fallback fix.
+- The deployed runtime branch now has replay-status fields, local replay JSON writes, request-backed legal-option traces, and the request-backed emergency fallback patch committed and loaded by a fresh battle session.
 
 Next decision-engine-only tasks after runtime proof:
 
-1. After an authorized one-battle proof run, verify the new battle has `battle_stats.json`, `replay_analysis/<id>.json`, and `logs/decision_traces/<battle>_turn*.json` evidence before promoting a policy issue.
+1. After the active 30-battle proof batch completes, verify the new battle IDs have `battle_stats.json`, `replay_analysis/<id>.json`, and `logs/decision_traces/<battle>_turn*.json` evidence before promoting a policy issue.
 2. Continue PP/revealed-set/recovery/hazard tuning only from replay-backed issues or focused failing tests.
+
+## Operator-Authorized Activation - 2026-06-14
+
+The operator explicitly authorized killing the stale run and starting the proper patched system.
+
+Remote JIGGLY fixes applied after authorization:
+
+- `d35a055b Add runtime lease validator to JIGGLY branch`
+- `4f9bef77 Forward runtime lease to JIGGLY supervisor`
+- `d414157a Accept runtime lease in JIGGLY wrapper`
+- `04c9d533 Update JIGGLY devstream session lease support`
+
+Runtime ownership actions:
+
+- Generated finite local stop/start lease artifacts under `devstream/truth/runtime-lease-*.json`; account value was read from `.env` and not printed.
+- Generated matching remote start lease at `devstream/truth/runtime-lease-start.json` on JIGGLY; account value was read from remote `.env` and not printed.
+- Backed up the old unbounded scheduled task to `devstream/truth/stale-runtime-artifact-backups/Claude-FoulerPlayer-20260614T220521Z.xml`.
+- Disabled `Claude-FoulerPlayer` so it cannot respawn the old direct `run.py --run-count 999999` path.
+- Stopped the stale/direct processes through `scripts/jigglypuff_devstream_control.py stop --runtime-lease devstream\truth\runtime-lease-stop.json --execute`.
+- Started the patched supervisor through `scripts/jigglypuff_devstream_control.py start --run-count 30 --max-concurrent-battles 3 --max-cycles 1 --runtime-lease devstream\truth\runtime-lease-start.json --execute`.
+
+Activation proof:
+
+- Remote status: `ok=true`, `status=running`, repo head `04c9d533`, runtime-code head `04c9d533`.
+- Process proof: one `battleSession` leaf and one `obsServer` leaf; zero stale processes; zero blockers.
+- Scheduled task proof: `Claude-FoulerPlayer=Disabled`; other Fouler tasks unchanged except existing disabled/ready states.
+- Active battle proof: `active_battles.json` reported `count=3`.
+- Evidence proof: latest decision trace `battle-gen9ou-2632096320_turn4_1781475658838.json` contained `showdownRequest` with legal move/switch fields, `legalOptionsCount=1`, `choicePresent=true`, and `decision_mode=mcts_eval_blend`.
+- Battle data proof at activation: `battle_stats.json` existed with `4134` battles; replay JSON directory contained `2986` `gen9ou-*.json` files. New replay/battle-stat rows will appear as the active 30-battle batch completes.
+
+Current go/no-go:
+
+- **GO** for patched JIGGLY runtime in progress.
+- The previous blocker, stale battle processes predating runtime-code head, is resolved.
+- Remaining watch item: confirm the active batch completes and replay JSON rows land for the new battle IDs before using autoresearch to promote the next policy fix.
