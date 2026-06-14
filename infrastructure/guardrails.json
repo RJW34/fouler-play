@@ -19,6 +19,7 @@
     "fp/decision_trace.py",
     "fp/battle.py",
     "fp/battle_modifier.py",
+    "fp/run_battle.py",
     "constants.py",
     "constants_pkg/*.py",
     "replay_analysis/*.py",
