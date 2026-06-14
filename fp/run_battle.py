@@ -12,6 +12,7 @@ from pathlib import Path
 import aiohttp
 from datetime import datetime
 
+from data import all_move_json
 from data.pkmn_sets import RandomBattleTeamDatasets, TeamDatasets
 from data.pkmn_sets import SmogonSets
 
@@ -132,7 +133,7 @@ from fp.devstream_chat import POST_BATTLE_MESSAGES, post_battle_messages
 from fp.websocket_client import PSWebsocketClient
 from streaming.state_store import write_active_battles, read_active_battles, write_status, update_daily_stats
 from fp.team_analysis import analyze_team
-from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_MOVES
+from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_MOVES, RECOVERY_MOVES
 from fp.gameplan_integration import generate_and_store_gameplan, get_gameplan, clear_gameplan
 from constants_pkg.strategy import SETUP_MOVES
 from infrastructure.event_queue_lib import queue_event
@@ -1465,6 +1466,16 @@ async def async_pick_move(battle):
     if TRACE_DECISIONS and trace is None:
         trace = build_trace_base(battle_copy, reason=trace_reason or "fallback")
         trace["choice"] = best_move
+    if TRACE_DECISIONS and trace is not None and trace_reason in {"timeout", "error", "fallback"}:
+        trace["fallback"] = {
+            "policy": "request_legal_emergency_score",
+            "reason": trace_reason,
+            "truth_source": (
+                "showdown_request_legal_options"
+                if _request_legal_move_ids(battle_copy)
+                else "battle_state_last_resort"
+            ),
+        }
 
     _action_str = best_move.removesuffix("-tera").removesuffix("-mega")
     battle.user.last_selected_move = LastUsedMove(
@@ -1485,9 +1496,17 @@ async def async_pick_move(battle):
     return formatted
 
 
-def _get_best_switch(battle):
+def _get_best_switch(battle, legal_switch_slots: set[int] | None = None):
     """Pick the best available switch-in when forced to switch."""
-    alive_reserves = [p for p in battle.user.reserve if p.hp > 0]
+    alive_reserves = [
+        p
+        for p in battle.user.reserve
+        if p.hp > 0
+        and (
+            not legal_switch_slots
+            or getattr(p, "index", None) in legal_switch_slots
+        )
+    ]
     if alive_reserves:
         opponent = battle.opponent.active
         threat_category = None
@@ -1537,32 +1556,36 @@ def _get_best_switch(battle):
 
 
 def _fallback_decision(battle):
-    """Pick a safe fallback decision if MCTS fails or returns no move."""
+    """Pick a cheap legal emergency decision if the normal engine fails."""
     try:
         if battle.force_switch:
-            return _get_best_switch(battle)
+            return _get_best_switch(battle, _request_legal_switch_slots(battle))
 
-        request = battle.request_json or {}
-        active = request.get(constants.ACTIVE, [])
-        if active:
-            moves = active[0].get(constants.MOVES, [])
-            for move in moves:
-                if move.get(constants.DISABLED, False):
-                    continue
-                move_id = move.get(constants.ID) or normalize_name(move.get("move", ""))
-                if not move_id:
-                    continue
-                if move_id == constants.HIDDEN_POWER:
-                    move_id = normalize_name(move.get("move", move_id))
-                return move_id
+        legal_moves = _request_legal_move_ids(battle)
+        if legal_moves:
+            scored = [
+                (_score_fallback_move(battle, move_id), index, move_id)
+                for index, move_id in enumerate(legal_moves)
+            ]
+            scored.sort(key=lambda item: (item[0], -item[1]), reverse=True)
+            return scored[0][2]
 
         if battle.user and battle.user.active:
-            for mv in battle.user.active.moves:
-                if not mv.disabled:
-                    return mv.name
+            available_moves = [
+                mv.name
+                for mv in battle.user.active.moves
+                if not getattr(mv, "disabled", False) and getattr(mv, "current_pp", 1) > 0
+            ]
+            if available_moves:
+                scored = [
+                    (_score_fallback_move(battle, move_name), index, move_name)
+                    for index, move_name in enumerate(available_moves)
+                ]
+                scored.sort(key=lambda item: (item[0], -item[1]), reverse=True)
+                return scored[0][2]
             alive_reserves = [p for p in battle.user.reserve if p.hp > 0]
             if alive_reserves:
-                return "{} {}".format(constants.SWITCH_STRING, alive_reserves[0].name)
+                return _get_best_switch(battle)
     except Exception as e:
         logger.warning(f"Fallback decision failed: {e}")
 
@@ -1570,14 +1593,14 @@ def _fallback_decision(battle):
     return constants.DO_NOTHING_MOVE
 
 
-def _choose_first_request_move_id(battle) -> str | None:
+def _request_legal_move_ids(battle) -> list[str]:
     request = getattr(battle, "request_json", None) or {}
     active = request.get(constants.ACTIVE, [])
     if not active:
-        return None
+        return []
 
-    moves = active[0].get(constants.MOVES, [])
-    for move in moves:
+    legal: list[str] = []
+    for move in active[0].get(constants.MOVES, []):
         if move.get(constants.DISABLED, False):
             continue
         if move.get(constants.PP, 1) == 0:
@@ -1587,22 +1610,98 @@ def _choose_first_request_move_id(battle) -> str | None:
             continue
         if move_id == constants.HIDDEN_POWER:
             move_id = normalize_name(move.get("move", move_id))
-        return move_id
-    return None
+        legal.append(move_id)
+    return legal
 
 
-def _choose_first_request_switch_slot(battle) -> int | None:
+def _request_legal_switch_slots(battle) -> set[int]:
     request = getattr(battle, "request_json", None) or {}
     side = request.get(constants.SIDE, {})
     side_pokemon = side.get(constants.POKEMON, [])
+    legal: set[int] = set()
     for index, pkmn in enumerate(side_pokemon, start=1):
         if pkmn.get(constants.ACTIVE, False):
             continue
         condition = str(pkmn.get(constants.CONDITION, "")).lower()
         if "fnt" in condition:
             continue
-        return index
-    return None
+        legal.add(index)
+    return legal
+
+
+def _pokemon_has_type(pokemon, move_type: str) -> bool:
+    if not pokemon or not move_type:
+        return False
+    try:
+        return bool(pokemon.has_type(move_type))
+    except AttributeError:
+        return normalize_name(move_type) in {
+            normalize_name(t) for t in (getattr(pokemon, "types", []) or [])
+        }
+
+
+def _pokemon_hp_ratio(pokemon) -> float:
+    if pokemon is None:
+        return 1.0
+    try:
+        return max(0.0, min(1.0, float(pokemon.hp) / max(float(pokemon.max_hp), 1.0)))
+    except (TypeError, ValueError):
+        return 1.0
+
+
+def _score_fallback_move(battle, move_id: str) -> float:
+    move_norm = normalize_name(move_id)
+    move_data = all_move_json.get(move_norm, {})
+    score = 1.0
+    user_active = getattr(getattr(battle, "user", None), "active", None)
+    opponent = getattr(getattr(battle, "opponent", None), "active", None)
+
+    category = move_data.get(constants.CATEGORY)
+    base_power = float(move_data.get(constants.BASE_POWER) or 0)
+    move_type = normalize_name(move_data.get(constants.TYPE, ""))
+    if category in {constants.PHYSICAL, constants.SPECIAL} and base_power > 0:
+        effectiveness = 1.0
+        if opponent is not None and getattr(opponent, "types", None):
+            effectiveness = type_effectiveness_modifier(move_type, opponent.types)
+        if effectiveness <= 0:
+            return 0.01
+        stab = 1.5 if _pokemon_has_type(user_active, move_type) else 1.0
+        score += (base_power * effectiveness * stab) / 100.0
+        if effectiveness < 1:
+            score *= 0.6
+        elif effectiveness > 1:
+            score *= 1.25
+    else:
+        recovery_moves = {normalize_name(m) for m in RECOVERY_MOVES}
+        hazard_moves = {normalize_name(m) for m in HAZARD_MOVES}
+        pivot_moves = {normalize_name(m) for m in PIVOT_MOVES}
+        setup_moves = {normalize_name(m) for m in SETUP_MOVES}
+
+        if move_norm in recovery_moves:
+            hp_missing = 1.0 - _pokemon_hp_ratio(user_active)
+            score += max(0.0, hp_missing) * 1.4
+        elif move_norm in hazard_moves:
+            score += 0.35
+        elif move_norm in pivot_moves:
+            score += 0.45
+        elif move_norm in setup_moves:
+            score += 0.15
+        else:
+            score += 0.2
+
+    if move_norm in {normalize_name(m) for m in PIVOT_MOVES}:
+        score += 0.35
+    return score
+
+
+def _choose_first_request_move_id(battle) -> str | None:
+    legal_moves = _request_legal_move_ids(battle)
+    return legal_moves[0] if legal_moves else None
+
+
+def _choose_first_request_switch_slot(battle) -> int | None:
+    legal_slots = sorted(_request_legal_switch_slots(battle))
+    return legal_slots[0] if legal_slots else None
 
 
 def _request_indicates_trapped(battle) -> bool:
