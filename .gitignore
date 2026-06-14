@@ -132,3 +132,5 @@ replay_analysis/autoresearch_latest.json
 
 battle_stats.json
 fp/data/movepool_data.json
+devstream/truth/stale-runtime-artifact-backups/
+devstream/truth/runtime-lease*.json
