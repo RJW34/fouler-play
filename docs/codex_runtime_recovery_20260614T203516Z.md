@@ -209,6 +209,7 @@ Remote JIGGLY fixes applied after authorization:
 - `4f9bef77 Forward runtime lease to JIGGLY supervisor`
 - `d414157a Accept runtime lease in JIGGLY wrapper`
 - `04c9d533 Update JIGGLY devstream session lease support`
+- `642f62a9 Ignore JIGGLY runtime lease artifacts`
 
 Runtime ownership actions:
 
@@ -221,9 +222,10 @@ Runtime ownership actions:
 
 Activation proof:
 
-- Remote status: `ok=true`, `status=running`, repo head `04c9d533`, runtime-code head `04c9d533`.
+- Remote status: `ok=true`, `status=running`, repo head `642f62a9`, runtime-code head `04c9d533`.
 - Process proof: one `battleSession` leaf and one `obsServer` leaf; zero stale processes; zero blockers.
 - Scheduled task proof: `Claude-FoulerPlayer=Disabled`; other Fouler tasks unchanged except existing disabled/ready states.
+- Source hygiene proof: generated runtime lease JSON and scheduled-task backup artifacts are ignored on JIGGLY; remaining untracked files are pre-existing runtime helper scripts.
 - Active battle proof: `active_battles.json` reported `count=3`.
 - Evidence proof: latest decision trace `battle-gen9ou-2632096320_turn4_1781475658838.json` contained `showdownRequest` with legal move/switch fields, `legalOptionsCount=1`, `choicePresent=true`, and `decision_mode=mcts_eval_blend`.
 - Battle data proof at activation: `battle_stats.json` existed with `4134` battles; replay JSON directory contained `2986` `gen9ou-*.json` files. New replay/battle-stat rows will appear as the active 30-battle batch completes.
