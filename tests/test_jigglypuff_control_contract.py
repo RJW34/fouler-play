@@ -369,6 +369,109 @@ def test_read_only_remote_status_uses_ssh_no_write_and_skips_resident_worker(mon
     assert result["residentWorker"]["skippedNoWrite"] is True
 
 
+def test_status_flags_battle_process_started_before_git_head():
+    module = load_module()
+
+    mirrored = module.mirror_status(
+        {
+            "ok": True,
+            "healthy": True,
+            "status": "running",
+            "running": True,
+            "git": {
+                "head": "b7ab8ebc",
+                "commitTime": "2026-06-14T17:15:19-04:00",
+            },
+            "processes": [
+                {
+                    "pid": 123,
+                    "name": "python.exe",
+                    "role": "battleSession",
+                    "creationDate": "6/14/2026 6:39:27 AM",
+                }
+            ],
+            "blockers": [],
+        },
+        action="status",
+        raw={"remote": "Ryanj@JIGGLYPUFF", "remoteStatusWriteSkipped": True},
+        write_mirror=False,
+    )
+
+    assert mirrored["ok"] is False
+    assert mirrored["healthy"] is False
+    assert mirrored["status"] == "blocked"
+    assert mirrored["runtimeCodeFreshness"]["processStartPredatesGitHead"] is True
+    assert mirrored["runtimeCodeFreshness"]["staleProcessCount"] == 1
+    assert "runtime-lease restart" in " ".join(mirrored["blockers"])
+
+
+def test_status_flags_dotnet_json_process_timestamp_before_git_head():
+    module = load_module()
+
+    mirrored = module.mirror_status(
+        {
+            "ok": True,
+            "healthy": True,
+            "status": "running",
+            "running": True,
+            "git": {
+                "head": "b7ab8ebc",
+                "commitTime": "2026-06-14T17:15:19-04:00",
+            },
+            "processes": [
+                {
+                    "pid": 123,
+                    "name": "python.exe",
+                    "role": "battleSession",
+                    "creationDate": "/Date(1781419167600)/",
+                }
+            ],
+            "blockers": [],
+        },
+        action="status",
+        raw={"remote": "Ryanj@JIGGLYPUFF", "remoteStatusWriteSkipped": True},
+        write_mirror=False,
+    )
+
+    assert mirrored["runtimeCodeFreshness"]["processStartPredatesGitHead"] is True
+    assert mirrored["runtimeCodeFreshness"]["staleProcesses"][0]["creationDate"] == "/Date(1781419167600)/"
+
+
+def test_status_keeps_fresh_battle_process_running():
+    module = load_module()
+
+    mirrored = module.mirror_status(
+        {
+            "ok": True,
+            "healthy": True,
+            "status": "running",
+            "running": True,
+            "git": {
+                "head": "b7ab8ebc",
+                "commitTime": "2026-06-14T17:15:19-04:00",
+            },
+            "processes": [
+                {
+                    "pid": 123,
+                    "name": "python.exe",
+                    "role": "battleSession",
+                    "creationDate": "2026-06-14T17:16:00-04:00",
+                }
+            ],
+            "blockers": [],
+        },
+        action="status",
+        raw={"remote": "Ryanj@JIGGLYPUFF", "remoteStatusWriteSkipped": True},
+        write_mirror=False,
+    )
+
+    assert mirrored["ok"] is True
+    assert mirrored["healthy"] is True
+    assert mirrored["status"] == "running"
+    assert mirrored["runtimeCodeFreshness"]["processStartPredatesGitHead"] is False
+    assert mirrored["runtimeCodeFreshness"]["staleProcessCount"] == 0
+
+
 def test_start_runtime_lease_guard_uses_jiggly_runtime_purpose_and_account(monkeypatch, tmp_path):
     module = load_module()
     captured = {}
