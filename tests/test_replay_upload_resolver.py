@@ -84,6 +84,78 @@ def test_resolve_public_replay_url_skips_unsaved_battle_ids(monkeypatch):
     assert calls == []
 
 
+def test_save_replay_json_for_evidence_awaits_local_save(monkeypatch):
+    calls = []
+
+    async def fake_save(replay_id):
+        calls.append(replay_id)
+        return {"id": replay_id}
+
+    monkeypatch.setattr(run_battle, "_save_replay_json_locally", fake_save)
+
+    result = asyncio.run(
+        run_battle._save_replay_json_for_evidence(
+            "gen9ou-2626011055",
+            attempts=2,
+            delay_seconds=0,
+            timeout_seconds=1,
+        )
+    )
+
+    assert result is True
+    assert calls == ["gen9ou-2626011055"]
+
+
+def test_save_replay_json_for_evidence_retries_missing_json(monkeypatch):
+    calls = []
+    sleeps = []
+
+    async def fake_save(replay_id):
+        calls.append(replay_id)
+        return None if len(calls) == 1 else {"id": replay_id}
+
+    async def fake_sleep(delay):
+        sleeps.append(delay)
+
+    monkeypatch.setattr(run_battle, "_save_replay_json_locally", fake_save)
+    monkeypatch.setattr(run_battle.asyncio, "sleep", fake_sleep)
+
+    result = asyncio.run(
+        run_battle._save_replay_json_for_evidence(
+            "gen9ou-2626011055",
+            attempts=2,
+            delay_seconds=0.25,
+            timeout_seconds=1,
+        )
+    )
+
+    assert result is True
+    assert calls == ["gen9ou-2626011055", "gen9ou-2626011055"]
+    assert sleeps == [0.25]
+
+
+def test_save_replay_json_for_evidence_returns_false_after_timeout(monkeypatch):
+    calls = []
+
+    async def fake_save(replay_id):
+        calls.append(replay_id)
+        raise asyncio.TimeoutError
+
+    monkeypatch.setattr(run_battle, "_save_replay_json_locally", fake_save)
+
+    result = asyncio.run(
+        run_battle._save_replay_json_for_evidence(
+            "gen9ou-2626011055",
+            attempts=1,
+            delay_seconds=0,
+            timeout_seconds=1,
+        )
+    )
+
+    assert result is False
+    assert calls == ["gen9ou-2626011055"]
+
+
 def test_replay_handoff_absent_without_saved_replay_url():
     fields = run_battle.replay_handoff_fields(
         battle_tag="battle-gen9ou-2626011055-privatehash",
