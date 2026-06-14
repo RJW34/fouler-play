@@ -84,6 +84,114 @@ ALLOWED_TARGETS = (
 MAX_CODE_LINES = 500
 
 MODEL = os.getenv("IMPROVE_AGENT_MODEL", "claude-sonnet-4-20250514")
+
+# PHASE 1a: AST-anchored whole-function replacement. Asking the model for a
+# unified DIFF against the 7.5k-line fp/search/main.py failed to apply ~100% of
+# the time ("patch does not apply") because the model's hunk context drifts in a
+# file that large -- the dominant `agent_failed` outcome that kept the loop from
+# EVER reaching its acceptance gate. Instead we send the model the ENTIRE target
+# function and have it return a complete REPLACEMENT function, then splice it in
+# by AST node span. No hunk matching => apply rate ~0% -> ~100%.
+WHOLE_FUNC_EDIT = str(os.getenv("FOULER_WHOLE_FUNC_EDIT", "1")).lower() not in {
+    "0", "false", "no", "off"
+}
+# Default functions to target per file when the report implicates none. These
+# are the decision-surface functions whose override behavior is Root #1.
+DEFAULT_TARGET_FUNCS = {
+    "fp/search/main.py": ["select_move_from_eval_scores"],
+    "fp/search/eval.py": ["evaluate_position", "_estimate_damage_ratio"],
+}
+
+try:
+    from infrastructure.whole_function_edit import (
+        find_function_span as _wfe_find_span,
+        splice_function as _wfe_splice,
+        list_function_names as _wfe_list,
+    )
+except Exception:  # pragma: no cover
+    _wfe_find_span = _wfe_splice = _wfe_list = None
+
+
+def pick_target_function(report: dict, target_file: str, source: str) -> str | None:
+    """Choose ONE function in target_file to replace. Prefer a report-implicated
+    symbol that actually exists in the file; else the file's configured default."""
+    if _wfe_list is None:
+        return None
+    present = set(_wfe_list(source))
+    for sym in _implicated_symbols(report):
+        if sym in present:
+            return sym
+    for cand in DEFAULT_TARGET_FUNCS.get(target_file, []):
+        if cand in present:
+            return cand
+    return None
+
+
+def build_whole_function_prompt(report: dict, target_file: str, func_name: str,
+                                func_source: str) -> str:
+    """Prompt the model to return ONE complete replacement function (no diff)."""
+    top = report.get("top_issue", {})
+    return textwrap.dedent(f"""    You are improving a competitive Pokemon gen9ou battle bot that plays
+    fat/stall teams on the Pokemon Showdown ladder.
+    {_ladder_line()}
+
+    ## Top issue to fix
+    {top.get('title', 'none')}
+    {top.get('summary', '')}
+    Recommendation: {top.get('recommendation', '')}
+    Evidence:
+    {chr(10).join('- ' + p for p in top_issue_evidence(top)[:5])}
+
+    ## Engine context (IMPORTANT)
+    The bot runs a Rust MCTS search. On turns where MCTS produces a DECISIVE
+    visit policy, the homegrown eval/penalty layers sometimes OVERRIDE the
+    search's best move -- a strict win-equity error. Prefer fixes that make the
+    final decision RESPECT a decisive MCTS policy and only diverge when MCTS is
+    genuinely flat. Use penalties (down-weights), never hard blocks.
+
+    ## Function to rewrite: {func_name}  (in {target_file})
+    Return the COMPLETE replacement for THIS function only -- same name, same
+    signature, full body. Do NOT return a diff. Do NOT include any other
+    function or any prose. Output ONLY a single ```python code block containing
+    the entire function.
+
+    Current implementation:
+    ```python
+    {func_source}
+    ```
+    """)
+
+
+def generate_whole_function_replacement(report: dict, target_file: str):
+    """Returns (func_name, new_source_text) or (None, None) on failure.
+    new_source_text is the ENTIRE patched file content ready to write."""
+    if not WHOLE_FUNC_EDIT or _wfe_splice is None:
+        return None, None
+    full_path = PROJECT_ROOT / target_file
+    if not full_path.exists():
+        return None, None
+    source = full_path.read_text(encoding="utf-8")
+    func_name = pick_target_function(report, target_file, source)
+    if not func_name:
+        print("[AGENT] whole-func: no target function resolved; falling back to diff path.")
+        return None, None
+    span = _wfe_find_span(source, func_name)
+    if span is None:
+        print(f"[AGENT] whole-func: function '{func_name}' not unique/found; fallback.")
+        return None, None
+    prompt = build_whole_function_prompt(report, target_file, func_name, span.source)
+    print(f"[AGENT] whole-func: targeting {func_name} "
+          f"(lines {span.start_line}-{span.end_line}); prompt {len(prompt)} chars. "
+          f"Calling {MODEL}...")
+    response = call_claude(prompt)
+    print(f"[AGENT] whole-func: got response ({len(response)} chars)")
+    new_source, msg = _wfe_splice(source, func_name, response)
+    if new_source is None:
+        print(f"[AGENT] whole-func: splice rejected: {msg}; fallback to diff path.")
+        return None, None
+    print(f"[AGENT] whole-func: {msg}")
+    return func_name, new_source
+
 BATTLE_ID_RE = re.compile(r"\b(?:battle-)?gen\d+[a-z0-9]*-\d+(?:-[a-z0-9]+)?\b", re.IGNORECASE)
 MECHANICS_TERMS_RE = re.compile(
     r"\b(type|types|ability|abilities|move|moves|damage|weak|resist|immune|immunity|speed|hazard|terrain|weather)\b",
