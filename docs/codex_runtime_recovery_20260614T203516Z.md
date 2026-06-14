@@ -93,6 +93,14 @@ Remote/public probes:
   - `py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 60` succeeded with no env override after `scripts/jigglypuff_devstream_control.py` learned LAN SSH fallback.
   - Result: JIGGLYPUFF status `running`, repo root `D:\Projects\fouler-play`, branch `feat/learn-and-climb-20260613`, head `508d5dd5`, dirty only with untracked runtime/ops helper scripts, one logical battle-session leaf runner, fresh battle stats and decision traces. The command line includes the configured Showdown account; this report intentionally omits it.
   - `devstream/truth/runtime-lease.json` was missing on JIGGLYPUFF.
+- Deployment-prep proof:
+  - Applied the request-backed emergency fallback patch to JIGGLYPUFF's live branch without stopping or restarting the existing process.
+  - Remote commit: `b7ab8ebc Fix request-backed emergency fallback` on `feat/learn-and-climb-20260613`.
+  - Remote validation:
+    - `.\.venv\Scripts\python.exe -m pytest tests\test_invalid_choice_recovery.py -q` -> `6 passed`
+    - `.\.venv\Scripts\python.exe -m py_compile fp\run_battle.py` -> passed
+    - `.\.venv\Scripts\python.exe -c "from fp.run_battle import _fallback_decision; print('fallback import OK')"` -> passed
+  - Read-only status after remote commit: `py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 60` returned `ok=true`, `status=running`, remote head `b7ab8ebc`.
 
 Local evidence paths:
 
@@ -126,9 +134,9 @@ Generated runtime artifacts from validation were treated as proof inputs, not so
    - Verification: lease validator returns `ok=true` for the requested run count, max cycles, max concurrent battles, account, replay behavior, and proof window.
 
 3. **RELIABILITY BLOCKER: deployed JIGGLY runtime is live on a different branch**
-   - Evidence: read-only status reports branch `feat/learn-and-climb-20260613`, head `508d5dd5`, active battle-session runner, and untracked runtime/ops helper scripts. Local repo branch is `opus48/multisample-mcts`.
+   - Evidence: read-only status reports branch `feat/learn-and-climb-20260613`, head `b7ab8ebc`, active battle-session runner, and untracked runtime/ops helper scripts. Local repo branch is `opus48/multisample-mcts`.
    - Owner: operator/Codex with runtime lease.
-   - Verification: after active battles are drained or an explicit runtime lease authorizes a bounded restart, deploy only the needed fallback fix to the live branch, run focused tests, and restart through the lease-gated control path.
+   - Verification: after active battles are drained or an explicit runtime lease authorizes a bounded restart, restart through the lease-gated control path and confirm the running process command/status reflects the refreshed code.
 
 ## Exact Next Commands
 
@@ -146,10 +154,11 @@ py -3 scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth
 py -3 scripts\jigglypuff_devstream_control.py stop --runtime-lease devstream\truth\runtime-lease-stop.json --execute
 ```
 
-Then deploy the fallback patch to the live `feat/learn-and-climb-20260613` branch, run focused tests, and restart through a separate start lease:
+The fallback patch is already committed on JIGGLYPUFF. To restart so the running Python process loads it, create a separate start lease locally and on JIGGLYPUFF, then use the lease-gated start:
 
 ```powershell
 py -3 scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth\runtime-lease-start.json --purpose jigglypuff-runtime-start --machine JIGGLYPUFF --account $Account --run-count 1 --max-cycles 1 --max-concurrent-battles 1 --replay-behavior always --valid-minutes 45 --require-run-count --require-max-cycles --require-max-concurrent-battles --require-replay-behavior
+ssh -o BatchMode=yes Ryanj@JIGGLYPUFF 'Set-Location "D:\Projects\fouler-play"; $Account = (Get-Content .env | Where-Object { $_ -match "^PS_USERNAME=" } | Select-Object -First 1) -replace "^PS_USERNAME=",""; .\.venv\Scripts\python.exe scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth\runtime-lease-start.json --purpose jigglypuff-runtime-start --machine JIGGLYPUFF --account $Account --run-count 1 --max-cycles 1 --max-concurrent-battles 1 --replay-behavior always --valid-minutes 45 --require-run-count --require-max-cycles --require-max-concurrent-battles --require-replay-behavior | Out-Null'
 py -3 scripts\jigglypuff_devstream_control.py start --run-count 1 --max-concurrent-battles 1 --max-cycles 1 --runtime-lease devstream\truth\runtime-lease-start.json --execute
 ```
 
@@ -158,7 +167,7 @@ py -3 scripts\jigglypuff_devstream_control.py start --run-count 1 --max-concurre
 - Emergency fallback is intentionally small; it is not a second full decision engine.
 - Autoresearch is working but the latest 30-battle window lacks linked replay/trace evidence for losses, so no new policy issue should be promoted from that window.
 - The live JIGGLYPUFF state is now proven reachable from `MIRAIDON`, but the currently running process will not pick up local code changes until a lease-authorized drain/restart.
-- The deployed runtime branch already has replay-status fields, local replay JSON writes, and request-backed legal-option traces. Its emergency fallback still returns the first request-legal move on timeout/error unless the request recovery path catches an invalid choice afterward.
+- The deployed runtime branch already has replay-status fields, local replay JSON writes, request-backed legal-option traces, and the request-backed emergency fallback patch committed. The existing running Python process started before that commit, so runtime effect is unproven until restart.
 
 Next decision-engine-only tasks after runtime proof:
 
