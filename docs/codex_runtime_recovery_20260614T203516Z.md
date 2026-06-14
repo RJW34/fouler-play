@@ -57,6 +57,12 @@ Commands run:
   - Result: `autoresearch import OK`
 - `py -3 -m json.tool infrastructure\guardrails.json`
   - Result: valid JSON
+- `py -3 -m pytest tests\test_jigglypuff_control_contract.py -q` with writable temp/cache root
+  - Result: `22 passed`
+- `py -3 -m py_compile scripts\jigglypuff_devstream_control.py`
+  - Result: passed
+- `powershell -NoProfile -Command '$null = [scriptblock]::Create((Get-Content -LiteralPath "scripts\fouler_jigglypuff_runtime.ps1" -Raw)); "ps parse OK"'`
+  - Result: `ps parse OK`
 - `git diff --check`
   - Result: no whitespace errors; Git warned only that LF may be rewritten to CRLF on touched files.
 
