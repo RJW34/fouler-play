@@ -22,15 +22,20 @@ from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_run
 TRUTH_DIR = ROOT / "devstream" / "truth"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 JIGGLYPUFF_RUNTIME_START_PURPOSE = "jigglypuff-runtime-start"
+JIGGLYPUFF_RUNTIME_STOP_PURPOSE = "jigglypuff-runtime-stop"
 JIGGLYPUFF_TAILNET_HOST = "jigglypuff.tail4859dd.ts.net"
+JIGGLYPUFF_LAN_HOST = "JIGGLYPUFF"
 JIGGLYPUFF_DIRECT_IP = "192.168.1.126"
 DEFAULT_OBS_HTTP = f"http://{JIGGLYPUFF_DIRECT_IP}:8777"
 DEFAULT_WORKER_HTTP = f"http://{JIGGLYPUFF_DIRECT_IP}:8791"
 TAILNET_OBS_HTTP = f"http://{JIGGLYPUFF_TAILNET_HOST}:8777"
 TAILNET_WORKER_HTTP = f"http://{JIGGLYPUFF_TAILNET_HOST}:8791"
 STATUS_WORKER_TIMEOUT_SECONDS = int(os.environ.get("FOULER_JIGGLYPUFF_STATUS_WORKER_TIMEOUT_SECONDS", "6"))
-STATUS_SSH_TIMEOUT_SECONDS = int(os.environ.get("FOULER_JIGGLYPUFF_STATUS_SSH_TIMEOUT_SECONDS", "12"))
-REMOTE = os.environ.get("FOULER_JIGGLYPUFF_SSH", "Ryanj@jigglypuff.tail4859dd.ts.net")
+STATUS_SSH_TIMEOUT_SECONDS = int(os.environ.get("FOULER_JIGGLYPUFF_STATUS_SSH_TIMEOUT_SECONDS", "45"))
+TAILNET_REMOTE = f"Ryanj@{JIGGLYPUFF_TAILNET_HOST}"
+LAN_REMOTE = f"Ryanj@{JIGGLYPUFF_LAN_HOST}"
+DIRECT_REMOTE = f"Ryanj@{JIGGLYPUFF_DIRECT_IP}"
+REMOTE = os.environ.get("FOULER_JIGGLYPUFF_SSH", TAILNET_REMOTE)
 REMOTE_SCRIPT = os.environ.get(
     "FOULER_JIGGLYPUFF_SCRIPT",
     r"D:\Projects\fouler-play\scripts\fouler_jigglypuff_runtime.ps1",
@@ -53,6 +58,19 @@ def endpoint_candidates(primary: str, fallback_env: str, defaults: list[str]) ->
     return candidates
 
 
+def remote_candidates(primary: str, fallback_env: str, defaults: list[str]) -> list[str]:
+    raw = [primary, *fallback_env.replace(";", ",").split(","), *defaults]
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        remote = str(item or "").strip()
+        if not remote or remote in seen:
+            continue
+        seen.add(remote)
+        candidates.append(remote)
+    return candidates
+
+
 OBS_HTTP_CANDIDATES = endpoint_candidates(
     OBS_HTTP,
     os.environ.get("FOULER_JIGGLYPUFF_OBS_HTTP_FALLBACKS", ""),
@@ -62,6 +80,11 @@ WORKER_HTTP_CANDIDATES = endpoint_candidates(
     WORKER_HTTP,
     os.environ.get("FOULER_JIGGLYPUFF_WORKER_HTTP_FALLBACKS", ""),
     [DEFAULT_WORKER_HTTP, TAILNET_WORKER_HTTP],
+)
+SSH_REMOTE_CANDIDATES = remote_candidates(
+    REMOTE,
+    os.environ.get("FOULER_JIGGLYPUFF_SSH_FALLBACKS", ""),
+    [] if os.environ.get("FOULER_JIGGLYPUFF_SSH") else [LAN_REMOTE, DIRECT_REMOTE],
 )
 
 _LAST_LIVE_STATE_URL: str | None = None
@@ -198,6 +221,53 @@ def run(command: list[str], *, timeout: int = 60) -> dict[str, Any]:
         "stderr": result.stderr.strip(),
         "ok": result.returncode == 0,
     }
+
+
+def ssh_candidates_for(action: str, *, execute: bool = False) -> list[str]:
+    if action == "status" and not execute:
+        return SSH_REMOTE_CANDIDATES
+    return [REMOTE]
+
+
+def run_ssh_with_fallbacks(
+    *,
+    action: str,
+    execute: bool,
+    powershell_args: list[str],
+    timeout: int,
+) -> dict[str, Any]:
+    attempts: list[dict[str, Any]] = []
+    last_result: dict[str, Any] | None = None
+    for remote in ssh_candidates_for(action, execute=execute):
+        result = run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", remote, *powershell_args],
+            timeout=timeout,
+        )
+        result["remote"] = remote
+        parsed = parse_json_object(result.get("stdout", ""))
+        result["json"] = parsed
+        attempts.append({
+            "remote": remote,
+            "returnCode": result.get("returnCode"),
+            "ok": bool(result.get("ok")),
+            "stderrTail": redact_text(result.get("stderr"), limit=1000),
+            "stdoutTail": redact_text(result.get("stdout"), limit=1000) if parsed is None else "",
+        })
+        last_result = result
+        if parsed is not None or result.get("returnCode") == 0:
+            break
+    if last_result is None:
+        last_result = {
+            "command": [],
+            "returnCode": None,
+            "stdout": "",
+            "stderr": "no SSH candidates configured",
+            "ok": False,
+            "remote": REMOTE,
+            "json": None,
+        }
+    last_result["sshAttempts"] = attempts
+    return last_result
 
 
 def worker_request(
@@ -381,8 +451,10 @@ def remote_command(
     if execute:
         powershell_args.append("-Execute")
     ssh_timeout = min(timeout, STATUS_SSH_TIMEOUT_SECONDS) if action == "status" else timeout
-    result = run(
-        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", REMOTE, *powershell_args],
+    result = run_ssh_with_fallbacks(
+        action=action,
+        execute=execute,
+        powershell_args=powershell_args,
         timeout=ssh_timeout,
     )
     result["remoteStatusWriteSkipped"] = bool(action == "status" and no_remote_write)
@@ -394,9 +466,7 @@ def remote_command(
         "workerAttempts": resident.get("workerAttempts") if isinstance(resident.get("workerAttempts"), list) else [],
         "stderrTail": redact_text(resident.get("stderr"), limit=1000),
     }
-    parsed = parse_json_object(result.get("stdout", ""))
-    result["json"] = parsed
-    if parsed is None:
+    if result.get("json") is None:
         result["stdoutTail"] = redact_text(result.get("stdout"), limit=3000)
     return result
 
@@ -490,7 +560,7 @@ def synthesize_public_runtime_status(
         "readyForLiveFocus": False,
         "status": "degraded-live",
         "action": action,
-        "remote": REMOTE,
+        "remote": raw.get("remote") or REMOTE,
         "activeBattleCount": live["activeBattleCount"],
         "liveBattles": live["battles"],
         "readiness": {
@@ -543,7 +613,7 @@ def mirror_status(
                 "status": "blocked",
                 "action": action,
                 "blockers": ["JIGGLYPUFF fouler runtime did not return JSON"],
-                "remote": REMOTE,
+                "remote": raw.get("remote") or REMOTE,
                 "raw": {
                     "returnCode": raw.get("returnCode"),
                     "stderrTail": redact_text(raw.get("stderr")),
@@ -554,7 +624,7 @@ def mirror_status(
     else:
         mirrored = dict(payload)
         mirrored["mirroredAt"] = iso_now()
-        mirrored["remote"] = REMOTE
+        mirrored["remote"] = raw.get("remote") or REMOTE
         mirrored["action"] = action
     if not write_mirror:
         mirrored["mirrorSkipped"] = True
@@ -610,6 +680,7 @@ def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
         "checkedAt": iso_now(),
         "machine": "JIGGLYPUFF",
         "remote": REMOTE,
+        "remoteCandidates": SSH_REMOTE_CANDIDATES,
         "remoteScript": REMOTE_SCRIPT,
         "action": action,
         "execute": False,
@@ -628,23 +699,34 @@ def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
             "requiredForExecute": True,
             "path": str(getattr(args, "runtime_lease", "") or f"${RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json"),
         }
+    elif action == "stop":
+        payload["runtimeLease"] = {
+            "requiredForExecute": True,
+            "purpose": JIGGLYPUFF_RUNTIME_STOP_PURPOSE,
+            "path": str(getattr(args, "runtime_lease", "") or f"${RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json"),
+        }
     return payload
 
 
-def start_runtime_lease_guard(args: argparse.Namespace) -> dict[str, Any]:
+def runtime_lease_guard_for_action(action: str, args: argparse.Namespace) -> dict[str, Any]:
     env = load_env_files()
+    purpose = JIGGLYPUFF_RUNTIME_STOP_PURPOSE if action == "stop" else JIGGLYPUFF_RUNTIME_START_PURPOSE
     return validate_runtime_lease(
-        purpose=JIGGLYPUFF_RUNTIME_START_PURPOSE,
+        purpose=purpose,
         lease_path=getattr(args, "runtime_lease", None),
-        requested_run_count=getattr(args, "run_count", None),
-        requested_max_cycles=getattr(args, "max_cycles", None),
-        requested_max_concurrent_battles=getattr(args, "max_concurrent_battles", None),
+        requested_run_count=getattr(args, "run_count", 1),
+        requested_max_cycles=getattr(args, "max_cycles", 1),
+        requested_max_concurrent_battles=getattr(args, "max_concurrent_battles", 1),
         requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
         require_run_count=True,
         require_max_cycles=True,
         require_max_concurrent_battles=True,
         require_replay_behavior=True,
     )
+
+
+def start_runtime_lease_guard(args: argparse.Namespace) -> dict[str, Any]:
+    return runtime_lease_guard_for_action("start", args)
 
 
 def runtime_lease_blocked_payload(action: str, args: argparse.Namespace, guard: dict[str, Any]) -> dict[str, Any]:
@@ -654,6 +736,7 @@ def runtime_lease_blocked_payload(action: str, args: argparse.Namespace, guard: 
         "checkedAt": iso_now(),
         "machine": "JIGGLYPUFF",
         "remote": REMOTE,
+        "remoteCandidates": SSH_REMOTE_CANDIDATES,
         "remoteScript": REMOTE_SCRIPT,
         "action": action,
         "execute": bool(getattr(args, "execute", False)),
@@ -661,7 +744,7 @@ def runtime_lease_blocked_payload(action: str, args: argparse.Namespace, guard: 
         "status": "blocked-runtime-lease",
         "runtimeLease": guard,
         "blockers": blockers or ["runtime lease/proof window is required"],
-        "message": "JIGGLYPUFF start --execute requires a current proof-window runtime lease with finite run and cycle bounds.",
+        "message": f"JIGGLYPUFF {action} --execute requires a current proof-window runtime lease with finite run and cycle bounds.",
     }
 
 
@@ -679,8 +762,8 @@ def action_mutating(action: str, args: argparse.Namespace) -> tuple[int, dict[st
     if not args.execute:
         payload = planned(action, args)
         return 0, payload
-    if action == "start":
-        guard = start_runtime_lease_guard(args)
+    if action in {"start", "stop"}:
+        guard = runtime_lease_guard_for_action(action, args)
         if not guard.get("ok"):
             return 2, runtime_lease_blocked_payload(action, args, guard)
     result = remote_command(
@@ -743,6 +826,10 @@ def main() -> int:
 
     stop = sub.add_parser("stop")
     stop.add_argument("--execute", action="store_true")
+    stop.add_argument(
+        "--runtime-lease",
+        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+    )
     stop.add_argument("--timeout", type=int, default=120)
 
     login = sub.add_parser("login-proof")
