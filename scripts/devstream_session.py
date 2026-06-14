@@ -63,6 +63,10 @@ ACCOUNT_AUTHORITY_FILES = [ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / "TASKB
 ACCOUNT_AUTHORITY_PATTERNS = (
     ("current PS_USERNAME", re.compile(r"Current:\s*`?PS_USERNAME=([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
     ("current SHOWDOWN_USER_ID", re.compile(r"Current:\s*`?SHOWDOWN_USER_ID=([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
+    (
+        "current live bot account prose",
+        re.compile(r"\blive\s+bot\s+account\b.*?\bcurrently\s+\**[\"']?([A-Za-z0-9_.-]+)[\"']?\**", re.IGNORECASE),
+    ),
 )
 
 

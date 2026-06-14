@@ -1,15 +1,16 @@
 # fouler-play Devstream Contract
 
-fouler-play is a bounded-cycle competitive Pokemon Showdown improvement lab. The project started from `foul-play`, but the devstream goal is much sharper: tune it for high-level Gen 9 OU until the bot can reach 1800+ ELO and play credible games against players in that band.
+fouler-play is a bounded-cycle competitive Pokemon Showdown improvement lab. The project started from `foul-play`, but the devstream goal is much sharper: tune it for high-level Gen 9 OU until the bot can reach 1700+ ELO and play credible games against players in that band.
 
 Live battles are not just content. They are the training and evaluation loop: collect decision traces, replay evidence, matchup failures, ladder rating movement, and DEKU-authored improvement notes, then feed those findings back into the bot.
 
 ## Runtime Boundaries
 
-- Runs on `ubunztu` only.
-- Uses the repo-local `.venv` on ubunztu so `poke-engine` and the Showdown runtime dependencies are present without modifying system Python.
+- `ubunztu` is the control-plane and development home for status, dry-run, analysis, and HERMES proof work.
+- `JIGGLYPUFF` is an optional Windows runtime profile only after a current proof-window runtime lease names Fouler, the machine, account, run count, concurrency, replay behavior, and expiry.
+- Uses repo-local virtualenvs so `poke-engine` and Showdown runtime dependencies are present without modifying system Python.
 - Does not autostart from the contract exporter.
-- The canonical OBS server is `streaming/serve_obs_page.py` on `127.0.0.1:8777`.
+- The canonical OBS HTTP surface is `streaming/serve_obs_page.py` on `127.0.0.1:8777` of the active runtime host.
 - The health probe is read-only by default and does not start games, restart services, or mutate battle state.
 - Existing developer-loop and pipeline services are not treated as the same thing as the devstream runner.
 
