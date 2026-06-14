@@ -401,6 +401,7 @@ def test_status_flags_battle_process_started_before_git_head():
     assert mirrored["healthy"] is False
     assert mirrored["status"] == "blocked"
     assert mirrored["runtimeCodeFreshness"]["processStartPredatesGitHead"] is True
+    assert mirrored["runtimeCodeFreshness"]["processStartPredatesRuntimeCode"] is True
     assert mirrored["runtimeCodeFreshness"]["staleProcessCount"] == 1
     assert "runtime-lease restart" in " ".join(mirrored["blockers"])
 
@@ -469,7 +470,47 @@ def test_status_keeps_fresh_battle_process_running():
     assert mirrored["healthy"] is True
     assert mirrored["status"] == "running"
     assert mirrored["runtimeCodeFreshness"]["processStartPredatesGitHead"] is False
+    assert mirrored["runtimeCodeFreshness"]["processStartPredatesRuntimeCode"] is False
     assert mirrored["runtimeCodeFreshness"]["staleProcessCount"] == 0
+
+
+def test_status_compares_process_start_to_runtime_code_commit_not_repo_head():
+    module = load_module()
+
+    mirrored = module.mirror_status(
+        {
+            "ok": True,
+            "healthy": True,
+            "status": "running",
+            "running": True,
+            "git": {
+                "head": "status999",
+                "commitTime": "2026-06-14T18:00:00-04:00",
+                "runtimeCodeHead": "runtime123",
+                "runtimeCodeCommitTime": "2026-06-14T17:00:00-04:00",
+            },
+            "processes": [
+                {
+                    "pid": 123,
+                    "name": "python.exe",
+                    "role": "battleSession",
+                    "creationDate": "2026-06-14T17:30:00-04:00",
+                }
+            ],
+            "blockers": [],
+        },
+        action="status",
+        raw={"remote": "Ryanj@JIGGLYPUFF", "remoteStatusWriteSkipped": True},
+        write_mirror=False,
+    )
+
+    assert mirrored["ok"] is True
+    assert mirrored["status"] == "running"
+    assert mirrored["runtimeCodeFreshness"]["gitHead"] == "status999"
+    assert mirrored["runtimeCodeFreshness"]["runtimeCodeHead"] == "runtime123"
+    assert mirrored["runtimeCodeFreshness"]["runtimeCodeCommitTime"] == "2026-06-14T17:00:00-04:00"
+    assert mirrored["runtimeCodeFreshness"]["processStartPredatesGitHead"] is False
+    assert mirrored["runtimeCodeFreshness"]["processStartPredatesRuntimeCode"] is False
 
 
 def test_start_runtime_lease_guard_uses_jiggly_runtime_purpose_and_account(monkeypatch, tmp_path):

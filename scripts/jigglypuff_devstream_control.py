@@ -131,7 +131,8 @@ def parse_runtime_timestamp(value: Any) -> datetime | None:
 def runtime_code_freshness(payload: dict[str, Any]) -> dict[str, Any]:
     git = payload.get("git") if isinstance(payload.get("git"), dict) else {}
     head = str(git.get("head") or "").strip()
-    commit_time_text = str(git.get("commitTime") or "").strip()
+    runtime_head = str(git.get("runtimeCodeHead") or head).strip()
+    commit_time_text = str(git.get("runtimeCodeCommitTime") or git.get("commitTime") or "").strip()
     commit_time = parse_runtime_timestamp(commit_time_text)
     processes = payload.get("processes") if isinstance(payload.get("processes"), list) else []
     checked: list[dict[str, Any]] = []
@@ -157,9 +158,11 @@ def runtime_code_freshness(payload: dict[str, Any]) -> dict[str, Any]:
         "ok": not stale,
         "evaluable": bool(commit_time is not None and checked),
         "gitHead": head,
-        "gitCommitTime": commit_time_text,
+        "runtimeCodeHead": runtime_head,
+        "runtimeCodeCommitTime": commit_time_text,
         "checkedProcessCount": len(checked),
         "staleProcessCount": len(stale),
+        "processStartPredatesRuntimeCode": bool(stale),
         "processStartPredatesGitHead": bool(stale),
         "staleProcesses": stale,
     }
@@ -174,7 +177,7 @@ def annotate_runtime_code_freshness(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(blockers, list):
         blockers = []
     blocker = (
-        "active Fouler battle process started before current git head; "
+        "active Fouler battle process started before current runtime code commit; "
         "use a runtime-lease restart before claiming the deployed code is live"
     )
     if blocker not in blockers:

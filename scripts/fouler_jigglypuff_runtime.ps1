@@ -149,14 +149,31 @@ function Get-GitInfo {
     if (-not (Test-Path (Join-Path $RepoRoot ".git"))) {
         return @{ present = $false }
     }
+    $runtimeCodePaths = @(
+        "run.py",
+        "config.py",
+        "process_lock.py",
+        "constants.py",
+        "constants_pkg",
+        "data",
+        "fp",
+        "scripts/devstream_session.py",
+        "start_one_touch.bat",
+        "teams"
+    )
     $head = Invoke-Checked -FilePath "git" -ArgumentList @("rev-parse", "--short", "HEAD") -TimeoutSeconds 10
     $branch = Invoke-Checked -FilePath "git" -ArgumentList @("branch", "--show-current") -TimeoutSeconds 10
     $commitTime = Invoke-Checked -FilePath "git" -ArgumentList @("show", "-s", "--format=%cI", "HEAD") -TimeoutSeconds 10
+    $runtimeCodeHead = Invoke-Checked -FilePath "git" -ArgumentList (@("log", "-1", "--format=%h", "--") + $runtimeCodePaths) -TimeoutSeconds 10
+    $runtimeCodeCommitTime = Invoke-Checked -FilePath "git" -ArgumentList (@("log", "-1", "--format=%cI", "--") + $runtimeCodePaths) -TimeoutSeconds 10
     $status = Invoke-Checked -FilePath "git" -ArgumentList @("status", "--short") -TimeoutSeconds 10
     return @{
         present = $true
         head = $head.stdout
         commitTime = $commitTime.stdout
+        runtimeCodeHead = $runtimeCodeHead.stdout
+        runtimeCodeCommitTime = $runtimeCodeCommitTime.stdout
+        runtimeCodePaths = $runtimeCodePaths
         branch = $branch.stdout
         dirty = -not [string]::IsNullOrWhiteSpace($status.stdout)
         statusShort = $status.stdout
