@@ -151,10 +151,12 @@ function Get-GitInfo {
     }
     $head = Invoke-Checked -FilePath "git" -ArgumentList @("rev-parse", "--short", "HEAD") -TimeoutSeconds 10
     $branch = Invoke-Checked -FilePath "git" -ArgumentList @("branch", "--show-current") -TimeoutSeconds 10
+    $commitTime = Invoke-Checked -FilePath "git" -ArgumentList @("show", "-s", "--format=%cI", "HEAD") -TimeoutSeconds 10
     $status = Invoke-Checked -FilePath "git" -ArgumentList @("status", "--short") -TimeoutSeconds 10
     return @{
         present = $true
         head = $head.stdout
+        commitTime = $commitTime.stdout
         branch = $branch.stdout
         dirty = -not [string]::IsNullOrWhiteSpace($status.stdout)
         statusShort = $status.stdout

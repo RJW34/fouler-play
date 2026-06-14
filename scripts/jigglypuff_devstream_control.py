@@ -9,7 +9,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -89,10 +89,102 @@ SSH_REMOTE_CANDIDATES = remote_candidates(
 
 _LAST_LIVE_STATE_URL: str | None = None
 _LAST_LIVE_HEALTH_URL: str | None = None
+RUNTIME_CODE_PROCESS_ROLES = {"battleSession", "battleSupervisor"}
 
 
 def iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def parse_runtime_timestamp(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    normalized = text.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=datetime.now().astimezone().tzinfo)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        pass
+    dotnet_json = re.match(r"^/Date\((-?\d+)([+-]\d{4})?\)/$", text)
+    if dotnet_json:
+        milliseconds = int(dotnet_json.group(1))
+        return datetime.fromtimestamp(milliseconds / 1000, tz=timezone.utc)
+    dmtf = re.match(r"^(\d{14})\.(\d{6})([+-]\d{3})$", text)
+    if dmtf:
+        base = datetime.strptime(dmtf.group(1) + dmtf.group(2), "%Y%m%d%H%M%S%f")
+        offset_minutes = int(dmtf.group(3))
+        tz = timezone.utc if offset_minutes == 0 else timezone(timedelta(minutes=offset_minutes))
+        return base.replace(tzinfo=tz).astimezone(timezone.utc)
+    for fmt in ("%m/%d/%Y %I:%M:%S %p", "%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S"):
+        try:
+            parsed = datetime.strptime(text, fmt)
+            parsed = parsed.replace(tzinfo=datetime.now().astimezone().tzinfo)
+            return parsed.astimezone(timezone.utc)
+        except ValueError:
+            continue
+    return None
+
+
+def runtime_code_freshness(payload: dict[str, Any]) -> dict[str, Any]:
+    git = payload.get("git") if isinstance(payload.get("git"), dict) else {}
+    head = str(git.get("head") or "").strip()
+    commit_time_text = str(git.get("commitTime") or "").strip()
+    commit_time = parse_runtime_timestamp(commit_time_text)
+    processes = payload.get("processes") if isinstance(payload.get("processes"), list) else []
+    checked: list[dict[str, Any]] = []
+    stale: list[dict[str, Any]] = []
+    for process in processes:
+        if not isinstance(process, dict):
+            continue
+        role = str(process.get("role") or "")
+        if role not in RUNTIME_CODE_PROCESS_ROLES:
+            continue
+        creation_text = str(process.get("creationDate") or "").strip()
+        creation_time = parse_runtime_timestamp(creation_text)
+        summary = {
+            "pid": process.get("pid"),
+            "role": role,
+            "name": process.get("name"),
+            "creationDate": creation_text,
+        }
+        checked.append(summary)
+        if commit_time is not None and creation_time is not None and creation_time < commit_time:
+            stale.append(summary)
+    return {
+        "ok": not stale,
+        "evaluable": bool(commit_time is not None and checked),
+        "gitHead": head,
+        "gitCommitTime": commit_time_text,
+        "checkedProcessCount": len(checked),
+        "staleProcessCount": len(stale),
+        "processStartPredatesGitHead": bool(stale),
+        "staleProcesses": stale,
+    }
+
+
+def annotate_runtime_code_freshness(payload: dict[str, Any]) -> dict[str, Any]:
+    freshness = runtime_code_freshness(payload)
+    payload["runtimeCodeFreshness"] = freshness
+    if not freshness["processStartPredatesGitHead"]:
+        return payload
+    blockers = payload.get("blockers")
+    if not isinstance(blockers, list):
+        blockers = []
+    blocker = (
+        "active Fouler battle process started before current git head; "
+        "use a runtime-lease restart before claiming the deployed code is live"
+    )
+    if blocker not in blockers:
+        blockers.append(blocker)
+    payload["blockers"] = blockers
+    payload["ok"] = False
+    payload["healthy"] = False
+    if payload.get("status") == "running":
+        payload["status"] = "blocked"
+    return payload
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -626,6 +718,7 @@ def mirror_status(
         mirrored["mirroredAt"] = iso_now()
         mirrored["remote"] = raw.get("remote") or REMOTE
         mirrored["action"] = action
+        mirrored = annotate_runtime_code_freshness(mirrored)
     if not write_mirror:
         mirrored["mirrorSkipped"] = True
         mirrored["remoteStatusWriteSkipped"] = bool(raw.get("remoteStatusWriteSkipped"))

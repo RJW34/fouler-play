@@ -96,11 +96,17 @@ Remote/public probes:
 - Deployment-prep proof:
   - Applied the request-backed emergency fallback patch to JIGGLYPUFF's live branch without stopping or restarting the existing process.
   - Remote commit: `b7ab8ebc Fix request-backed emergency fallback` on `feat/learn-and-climb-20260613`.
+  - Remote status-producer commit: `74ece9a9 Expose runtime git commit time` on `feat/learn-and-climb-20260613`.
   - Remote validation:
     - `.\.venv\Scripts\python.exe -m pytest tests\test_invalid_choice_recovery.py -q` -> `6 passed`
     - `.\.venv\Scripts\python.exe -m py_compile fp\run_battle.py` -> passed
     - `.\.venv\Scripts\python.exe -c "from fp.run_battle import _fallback_decision; print('fallback import OK')"` -> passed
-  - Read-only status after remote commit: `py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 60` returned `ok=true`, `status=running`, remote head `b7ab8ebc`.
+  - Initial read-only status after remote commit showed remote head `b7ab8ebc` while a battle process was already running.
+- Runtime-code freshness proof:
+  - `scripts/fouler_jigglypuff_runtime.ps1` now reports `git.commitTime`.
+  - `scripts/jigglypuff_devstream_control.py status --read-only --timeout 60` now compares active battle/supervisor process start timestamps with the current git commit timestamp.
+  - Result after JIGGLY producer update: `status=blocked`, `ok=false`, `runtimeCodeFreshness.processStartPredatesGitHead=true`, `staleProcessCount=2`, head `74ece9a9`, commit time `2026-06-14T17:32:12-04:00`.
+  - Interpretation: the fallback patch is committed on JIGGLY, but both live battle Python processes started before that commit. A finite runtime-lease drain/restart is still required before claiming the live process loaded the patch.
 
 Local evidence paths:
 
@@ -134,9 +140,14 @@ Generated runtime artifacts from validation were treated as proof inputs, not so
    - Verification: lease validator returns `ok=true` for the requested run count, max cycles, max concurrent battles, account, replay behavior, and proof window.
 
 3. **RELIABILITY BLOCKER: deployed JIGGLY runtime is live on a different branch**
-   - Evidence: read-only status reports branch `feat/learn-and-climb-20260613`, head `b7ab8ebc`, active battle-session runner, and untracked runtime/ops helper scripts. Local repo branch is `opus48/multisample-mcts`.
+   - Evidence: read-only status reports branch `feat/learn-and-climb-20260613`, head `74ece9a9`, active battle-session runner, and untracked runtime/ops helper scripts. Local repo branch is `opus48/multisample-mcts`.
    - Owner: operator/Codex with runtime lease.
    - Verification: after active battles are drained or an explicit runtime lease authorizes a bounded restart, restart through the lease-gated control path and confirm the running process command/status reflects the refreshed code.
+
+4. **RELIABILITY BLOCKER: live battle processes predate the patched commit**
+   - Evidence: read-only status reports `runtimeCodeFreshness.processStartPredatesGitHead=true`, `staleProcessCount=2`, and the current head `74ece9a9`.
+   - Owner: operator/Codex with runtime lease.
+   - Verification: after a lease-gated stop/start, `py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 60` must return `runtimeCodeFreshness.ok=true` with zero stale battle/supervisor processes.
 
 ## Exact Next Commands
 
