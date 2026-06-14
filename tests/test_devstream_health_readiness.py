@@ -175,6 +175,52 @@ def test_health_payload_exposes_offline_eval_useful_work_proof(tmp_path, monkeyp
     assert payload["offlineEvalReadiness"]["commands"]["readiness"].endswith("--require-ready")
 
 
+def test_health_payload_exposes_offline_eval_result_proof_without_live_runtime(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": False)
+    monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
+    monkeypatch.setattr(devstream_health, "obs_surface_task_status", lambda: {"available": False, "reason": "not-windows"})
+    monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: [])
+    monkeypatch.setattr(
+        devstream_health,
+        "offline_eval_readiness_snapshot",
+        lambda: {
+            "available": True,
+            "ready": False,
+            "recursiveImprovementReady": False,
+            "blockers": ["frozen baseline proof: run the frozen baseline command"],
+            "failedChecks": [{"name": "frozen baseline proof", "ok": False}],
+            "commands": {"readiness": "python infrastructure/offline_eval_readiness.py --require-ready"},
+            "resultProof": {
+                "ready": True,
+                "accepted": True,
+                "status": "accepted",
+                "verdict": "accepted",
+                "candidateBattles": 200,
+                "requiredBattles": 200,
+                "missingPaths": [],
+                "reasons": ["compare verdict accepted candidate"],
+            },
+            "note": "fixture",
+        },
+    )
+
+    _write_json(tmp_path / "active_battles.json", {"battles": [], "count": 0})
+    _write_json(tmp_path / "stream_status.json", {"status": "Searching", "runtime_blocked": False})
+
+    payload = devstream_health.build_payload(check_http=False)
+
+    result_proof = payload["usefulWorkProof"]["offlineEvalResultProof"]
+    assert payload["readiness"]["runtimeReady"] is False
+    assert payload["readiness"]["usefulWorkProofReady"] is True
+    assert payload["usefulWorkProof"]["status"] == "offline-eval-result-accepted"
+    assert payload["usefulWorkProof"]["offlineEvalResultProofReady"] is True
+    assert result_proof["status"] == "accepted"
+    assert result_proof["candidateBattles"] == 200
+
+
 def test_health_payload_blocks_useful_work_when_runtime_and_offline_proof_are_absent(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": False)

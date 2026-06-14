@@ -41,6 +41,25 @@ The health payload includes:
 - `usefulWorkProof`: one combined HERMES signal that is ready only if a live
   bounded battle runtime, completed cycle proof, or offline eval harness can
   prove current work.
+- `usefulWorkProof.offlineEvalResultProof`: read-only summary of existing
+  `eval_results/offline/candidate.json` and
+  `eval_results/offline/compare-frozen-vs-candidate.json` result artifacts.
+  It does not run evals, start Showdown, or create artifacts.
+
+`offlineEvalResultProof` fields are intentionally structured for no-start
+handoff:
+
+- `status`: `missing`, `malformed`, `insufficient`, `stale`, `accepted`, or
+  `rejected`.
+- `ready`: `true` only when the candidate result has enough battles and the
+  compare verdict accepts it.
+- `accepted`: `true` only when the compare proof accepted the candidate after
+  battle-count and freshness validation.
+- `candidateBattles` and `requiredBattles`: battle-count proof for the
+  candidate artifact.
+- `verdict`: normalized compare verdict when available.
+- `missingPaths`, `malformedPaths`, `staleReasons`, and `reasons`: explicit
+  blockers or evidence strings for handoff reports.
 
 For completion-level proof, run the stricter gate:
 
@@ -174,3 +193,8 @@ After a candidate run, improvement acceptance proof is:
 
 - `eval_results/offline/candidate.json`
 - `eval_results/offline/compare-frozen-vs-candidate.json`
+
+The no-start result proof validates the candidate battle count against
+`IMPROVE_AGENT_EVAL_BATTLES`, normalizes the compare verdict from fields such
+as `ACCEPT`, `accepted`, `ready`, or `verdict`, and marks the compare artifact
+`stale` if its nested candidate summary no longer matches `candidate.json`.
