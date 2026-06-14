@@ -3,7 +3,7 @@
 ## Verdict
 
 - Repo-side fix status: **GO**. The JIGGLYPUFF emergency fallback bug was fixed and replay JSON evidence capture was hardened.
-- Live JIGGLYPUFF launch status: **NO-GO from this machine**. This shell is on `MIRAIDON`, not JIGGLYPUFF; the JIGGLYPUFF control endpoint is unreachable from here; and no finite runtime lease exists.
+- Live JIGGLYPUFF launch status: **NO-GO for starting or restarting from this machine**. This shell is on `MIRAIDON`, not JIGGLYPUFF; a read-only LAN SSH control path now proves JIGGLYPUFF is reachable and already running; no finite runtime lease exists for start/stop/restart actions.
 - No live laddering, scheduled task start, Discord posting, or `--execute` control action was run.
 
 ## Source Truth
@@ -87,6 +87,12 @@ Remote/public probes:
   - Result: blocked; SSH status command timed out.
 - Public endpoints checked: `http://192.168.1.126:8777/health`, `http://192.168.1.126:8777/state`, tailnet `/health`, tailnet `/state`
   - Result: direct-IP HTTP timed out; tailnet hostname did not resolve.
+- Corrected access proof after controller SSH fallback fix:
+  - `Test-NetConnection -ComputerName JIGGLYPUFF -Port 22` succeeded and resolved `JIGGLYPUFF` to LAN IP.
+  - `ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=accept-new Ryanj@JIGGLYPUFF hostname` returned `JIGGLYPUFF`.
+  - `py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 60` succeeded with no env override after `scripts/jigglypuff_devstream_control.py` learned LAN SSH fallback.
+  - Result: JIGGLYPUFF status `running`, repo root `D:\Projects\fouler-play`, branch `feat/learn-and-climb-20260613`, head `508d5dd5`, dirty only with untracked runtime/ops helper scripts, one logical battle-session leaf runner, fresh battle stats and decision traces. The command line includes the configured Showdown account; this report intentionally omits it.
+  - `devstream/truth/runtime-lease.json` was missing on JIGGLYPUFF.
 
 Local evidence paths:
 
@@ -109,45 +115,50 @@ Generated runtime artifacts from validation were treated as proof inputs, not so
 
 ## Blockers
 
-1. **HARD BLOCKER: JIGGLYPUFF unreachable from this shell**
-   - Evidence: tailnet DNS failed and direct-IP SSH status timed out; direct-IP HTTP endpoints timed out.
-   - Owner: operator with network/Tailscale/JIGGLY access.
-   - Verification: `py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 45` returns JSON with `ok=true` or `status=ready-idle|running`.
+1. **RESOLVED: JIGGLYPUFF reachability from this shell**
+   - Evidence: LAN name `JIGGLYPUFF` resolves locally, SSH as the runtime user returns `hostname=JIGGLYPUFF`, and `py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 60` now returns JSON with `ok=true`, `healthy=true`, and `status=running`.
+   - Fix: `scripts/jigglypuff_devstream_control.py` now uses status-only SSH fallback candidates: tailnet, LAN hostname, then direct IP. Mutating execute paths still use one explicit remote.
+   - Verification: `tests/test_jigglypuff_control_contract.py` covers the fallback path.
 
 2. **HARD BLOCKER: no finite runtime lease**
    - Evidence: `devstream/truth/runtime-lease.json` missing; lease validator returned blocked for `jigglypuff-runtime-start`.
    - Owner: HERMES/operator.
    - Verification: lease validator returns `ok=true` for the requested run count, max cycles, max concurrent battles, account, replay behavior, and proof window.
 
-3. **RELIABILITY BLOCKER: stale runtime truth**
-   - Evidence: `devstream_session.py doctor` reports stale `stream_status.json` without a live expected runner; cleanup/adoption is lease-gated.
-   - Owner: HERMES/operator.
-   - Verification: after lease, run cleanup/adoption/start through `devstream_session.py` or `jigglypuff_devstream_control.py` and confirm doctor no longer blocks on stale runtime truth.
+3. **RELIABILITY BLOCKER: deployed JIGGLY runtime is live on a different branch**
+   - Evidence: read-only status reports branch `feat/learn-and-climb-20260613`, head `508d5dd5`, active battle-session runner, and untracked runtime/ops helper scripts. Local repo branch is `opus48/multisample-mcts`.
+   - Owner: operator/Codex with runtime lease.
+   - Verification: after active battles are drained or an explicit runtime lease authorizes a bounded restart, deploy only the needed fallback fix to the live branch, run focused tests, and restart through the lease-gated control path.
 
 ## Exact Next Commands
 
-From this repo on the control machine with JIGGLYPUFF reachable, create a finite proof-window lease without printing secrets:
+From this repo on the control machine, first verify current live state without writing mirrors:
+
+```powershell
+py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 60
+```
+
+If JIGGLYPUFF is still running, do not run `start --execute`. Create a finite stop lease before any interruption:
 
 ```powershell
 $Account = (Get-Content .env | Where-Object { $_ -match '^PS_USERNAME=' } | Select-Object -First 1) -replace '^PS_USERNAME=',''
-py -3 scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth\runtime-lease.json --purpose jigglypuff-runtime-start --machine JIGGLYPUFF --account $Account --run-count 1 --max-cycles 1 --max-concurrent-battles 1 --replay-behavior always --valid-minutes 45 --require-run-count --require-max-cycles --require-max-concurrent-battles --require-replay-behavior
-py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 45
-py -3 scripts\jigglypuff_devstream_control.py start --run-count 1 --max-concurrent-battles 1 --max-cycles 1 --runtime-lease devstream\truth\runtime-lease.json --execute
+py -3 scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth\runtime-lease-stop.json --purpose jigglypuff-runtime-stop --machine JIGGLYPUFF --account $Account --run-count 1 --max-cycles 1 --max-concurrent-battles 1 --replay-behavior always --valid-minutes 45 --require-run-count --require-max-cycles --require-max-concurrent-battles --require-replay-behavior
+py -3 scripts\jigglypuff_devstream_control.py stop --runtime-lease devstream\truth\runtime-lease-stop.json --execute
 ```
 
-If running directly on JIGGLYPUFF after the lease exists:
+Then deploy the fallback patch to the live `feat/learn-and-climb-20260613` branch, run focused tests, and restart through a separate start lease:
 
 ```powershell
-py -3 scripts\devstream_session.py doctor
-py -3 scripts\devstream_session.py start --run-count 1 --max-concurrent-battles 1 --max-cycles 1 --runtime-lease devstream\truth\runtime-lease.json --execute
+py -3 scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth\runtime-lease-start.json --purpose jigglypuff-runtime-start --machine JIGGLYPUFF --account $Account --run-count 1 --max-cycles 1 --max-concurrent-battles 1 --replay-behavior always --valid-minutes 45 --require-run-count --require-max-cycles --require-max-concurrent-battles --require-replay-behavior
+py -3 scripts\jigglypuff_devstream_control.py start --run-count 1 --max-concurrent-battles 1 --max-cycles 1 --runtime-lease devstream\truth\runtime-lease-start.json --execute
 ```
 
 ## Remaining Risks
 
 - Emergency fallback is intentionally small; it is not a second full decision engine.
 - Autoresearch is working but the latest 30-battle window lacks linked replay/trace evidence for losses, so no new policy issue should be promoted from that window.
-- Replay JSON capture is now awaited, but it still needs proof from an authorized JIGGLYPUFF batch because this machine cannot reach the runtime profile.
-- The live JIGGLYPUFF state could not be proven from `MIRAIDON`; current runtime status remains external until the control path responds.
+- The live JIGGLYPUFF state is now proven reachable from `MIRAIDON`, but the currently running process will not pick up local code changes until a lease-authorized drain/restart.
+- The deployed runtime branch already has replay-status fields, local replay JSON writes, and request-backed legal-option traces. Its emergency fallback still returns the first request-legal move on timeout/error unless the request recovery path catches an invalid choice afterward.
 
 Next decision-engine-only tasks after runtime proof:
 

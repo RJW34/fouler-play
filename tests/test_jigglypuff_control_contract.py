@@ -111,11 +111,14 @@ def test_control_supports_direct_ip_env_overrides(monkeypatch):
     module = load_module()
 
     assert module.REMOTE == "Ryanj@192.168.1.40"
+    assert module.SSH_REMOTE_CANDIDATES == ["Ryanj@192.168.1.40"]
     assert module.OBS_HTTP == "http://192.168.1.40:8777"
     assert module.WORKER_HTTP == "http://192.168.1.40:8791"
 
 
 def test_control_defaults_to_jigglypuff_direct_ip_with_tailnet_fallback(monkeypatch):
+    monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH", raising=False)
+    monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH_FALLBACKS", raising=False)
     monkeypatch.delenv("FOULER_JIGGLYPUFF_OBS_HTTP", raising=False)
     monkeypatch.delenv("FOULER_JIGGLYPUFF_WORKER_HTTP", raising=False)
     monkeypatch.delenv("FOULER_JIGGLYPUFF_OBS_HTTP_FALLBACKS", raising=False)
@@ -125,6 +128,11 @@ def test_control_defaults_to_jigglypuff_direct_ip_with_tailnet_fallback(monkeypa
 
     assert module.OBS_HTTP == "http://192.168.1.126:8777"
     assert module.WORKER_HTTP == "http://192.168.1.126:8791"
+    assert module.SSH_REMOTE_CANDIDATES == [
+        "Ryanj@jigglypuff.tail4859dd.ts.net",
+        "Ryanj@JIGGLYPUFF",
+        "Ryanj@192.168.1.126",
+    ]
     assert module.OBS_HTTP_CANDIDATES == [
         "http://192.168.1.126:8777",
         "http://jigglypuff.tail4859dd.ts.net:8777",
@@ -291,6 +299,45 @@ def test_remote_command_falls_back_to_ssh_when_resident_fouler_endpoint_is_missi
     assert result["residentWorker"]["workerStatus"] == 404
 
 
+def test_status_tries_lan_ssh_when_tailnet_remote_does_not_return_json(monkeypatch):
+    monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH", raising=False)
+    monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH_FALLBACKS", raising=False)
+    module = load_module()
+    calls = []
+
+    monkeypatch.setattr(
+        module,
+        "resident_command",
+        lambda action, **kwargs: {
+            "ok": False,
+            "returnCode": None,
+            "workerStatus": 404,
+            "workerUrl": "http://jigglypuff.tail4859dd.ts.net:8791/fouler/status",
+            "json": {"ok": False, "error": "unknown endpoint"},
+            "stderr": "",
+        },
+    )
+
+    def fake_run(command, *, timeout=60):
+        calls.append(command)
+        remote = command[5]
+        if remote == "Ryanj@jigglypuff.tail4859dd.ts.net":
+            return {"ok": False, "returnCode": 255, "stdout": "", "stderr": "dns failed"}
+        return {"ok": True, "returnCode": 0, "stdout": '{"ok":true,"status":"running"}', "stderr": ""}
+
+    monkeypatch.setattr(module, "run", fake_run)
+
+    result = module.remote_command("status")
+
+    assert [call[5] for call in calls] == [
+        "Ryanj@jigglypuff.tail4859dd.ts.net",
+        "Ryanj@JIGGLYPUFF",
+    ]
+    assert result["remote"] == "Ryanj@JIGGLYPUFF"
+    assert result["json"]["status"] == "running"
+    assert len(result["sshAttempts"]) == 2
+
+
 def test_read_only_remote_status_uses_ssh_no_write_and_skips_resident_worker(monkeypatch):
     module = load_module()
     captured = {}
@@ -350,6 +397,61 @@ def test_start_runtime_lease_guard_uses_jiggly_runtime_purpose_and_account(monke
     assert captured["require_max_cycles"] is True
     assert captured["require_max_concurrent_battles"] is True
     assert captured["require_replay_behavior"] is True
+
+
+def test_stop_runtime_lease_guard_uses_stop_purpose(monkeypatch):
+    module = load_module()
+    captured = {}
+
+    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "runtimebot"})
+
+    def fake_validate_runtime_lease(**kwargs):
+        captured.update(kwargs)
+        return {"ok": True, "purpose": kwargs["purpose"]}
+
+    monkeypatch.setattr(module, "validate_runtime_lease", fake_validate_runtime_lease)
+
+    guard = module.runtime_lease_guard_for_action(
+        "stop",
+        SimpleNamespace(runtime_lease="lease.json"),
+    )
+
+    assert guard["purpose"] == module.JIGGLYPUFF_RUNTIME_STOP_PURPOSE
+    assert captured["purpose"] == module.JIGGLYPUFF_RUNTIME_STOP_PURPOSE
+    assert captured["requested_run_count"] == 1
+    assert captured["requested_max_cycles"] == 1
+    assert captured["requested_max_concurrent_battles"] == 1
+    assert captured["requested_account"] == "runtimebot"
+    assert captured["require_replay_behavior"] is True
+
+
+def test_stop_execute_is_blocked_without_runtime_lease(monkeypatch):
+    module = load_module()
+    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "runtimebot"})
+    monkeypatch.setattr(
+        module,
+        "validate_runtime_lease",
+        lambda **kwargs: {
+            "ok": False,
+            "purpose": kwargs["purpose"],
+            "blockers": ["missing lease"],
+        },
+    )
+    monkeypatch.setattr(
+        module,
+        "remote_command",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("stop must not execute without lease")),
+    )
+
+    code, payload = module.action_mutating(
+        "stop",
+        SimpleNamespace(execute=True, runtime_lease=None, timeout=120),
+    )
+
+    assert code == 2
+    assert payload["status"] == "blocked-runtime-lease"
+    assert payload["runtimeLease"]["purpose"] == module.JIGGLYPUFF_RUNTIME_STOP_PURPOSE
+    assert payload["blockers"] == ["missing lease"]
 
 
 def test_start_execute_fails_closed_without_runtime_lease(monkeypatch, tmp_path):
