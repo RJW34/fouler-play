@@ -4,6 +4,7 @@ param(
     [int]$RunCount = 10,
     [int]$MaxConcurrentBattles = 3,
     [int]$MaxCycles = 1,
+    [string]$RuntimeLease = "",
     [switch]$ObsOnly,
     [switch]$AutoImprove,
     [switch]$AllowUnboundedSupervisor,
