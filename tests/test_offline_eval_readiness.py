@@ -36,6 +36,48 @@ def _write_ready_eval_files(root: Path) -> None:
     )
 
 
+def _write_result_artifacts(
+    root: Path,
+    *,
+    battles: int = 200,
+    accepted: bool = True,
+    compare_battles: int | None = None,
+) -> None:
+    results = root / "eval_results" / "offline"
+    results.mkdir(parents=True, exist_ok=True)
+    candidate = {
+        "label": "candidate",
+        "team": "gen9/ou/fat-team-1-stall",
+        "baseline": "simple",
+        "battles": battles,
+        "fouler_wins": 126,
+        "baseline_wins": max(0, battles - 126),
+        "fouler_win_rate": 0.63,
+        "fouler_wilson_lcb": 0.56,
+        "timestamp": "2026-06-14T00:00:00",
+    }
+    compare_candidate_battles = battles if compare_battles is None else compare_battles
+    compare = {
+        "frozen": {
+            "label": "frozen",
+            "fouler_wins": 100,
+            "battles": 200,
+            "fouler_win_rate": 0.5,
+        },
+        "candidate": {
+            "label": "candidate",
+            "fouler_wins": 126,
+            "battles": compare_candidate_battles,
+            "fouler_win_rate": 0.63,
+        },
+        "delta_win_rate": 0.13,
+        "p_value": 0.02,
+        "ACCEPT": accepted,
+    }
+    (results / "candidate.json").write_text(json.dumps(candidate), encoding="utf-8")
+    (results / "compare-frozen-vs-candidate.json").write_text(json.dumps(compare), encoding="utf-8")
+
+
 def _write_cleanup_lease(path: Path, purpose: str) -> Path:
     payload = {
         "schemaVersion": "fouler-play-runtime-lease/v1",
@@ -139,6 +181,69 @@ def test_readiness_payload_ready_with_eval_proof(tmp_path):
     assert payload["paths"]["frozenBaseline"] == "eval_results\\offline\\frozen.json"
     assert "infrastructure\\offline_eval.py" in payload["commands"]["candidateEval"]
     assert "--battles 200" in payload["commands"]["candidateEval"]
+
+
+def test_offline_eval_result_proof_reports_accepted_artifacts(tmp_path):
+    _write_result_artifacts(tmp_path, accepted=True)
+
+    payload = offline_eval_readiness.offline_eval_result_proof(root=tmp_path, env={})
+
+    assert payload["status"] == "accepted"
+    assert payload["ready"] is True
+    assert payload["accepted"] is True
+    assert payload["verdict"] == "accepted"
+    assert payload["candidateBattles"] == 200
+    assert payload["requiredBattles"] == 200
+    assert payload["missingPaths"] == []
+    assert payload["artifacts"]["compare"]["accepted"] is True
+
+
+def test_offline_eval_result_proof_reports_rejected_artifacts(tmp_path):
+    _write_result_artifacts(tmp_path, accepted=False)
+
+    payload = offline_eval_readiness.offline_eval_result_proof(root=tmp_path, env={})
+
+    assert payload["status"] == "rejected"
+    assert payload["ready"] is False
+    assert payload["accepted"] is False
+    assert payload["verdict"] == "rejected"
+    assert "compare verdict rejected candidate" in payload["reasons"]
+
+
+def test_offline_eval_result_proof_reports_missing_artifacts(tmp_path):
+    payload = offline_eval_readiness.offline_eval_result_proof(root=tmp_path, env={})
+
+    assert payload["status"] == "missing"
+    assert payload["ready"] is False
+    assert payload["accepted"] is False
+    missing_paths = [path.replace("\\", "/") for path in payload["missingPaths"]]
+    assert "eval_results/offline/candidate.json" in missing_paths
+    assert "eval_results/offline/compare-frozen-vs-candidate.json" in missing_paths
+
+
+def test_offline_eval_result_proof_reports_insufficient_candidate_battles(tmp_path):
+    _write_result_artifacts(tmp_path, battles=20, accepted=True)
+
+    payload = offline_eval_readiness.offline_eval_result_proof(root=tmp_path, env={})
+
+    assert payload["status"] == "insufficient"
+    assert payload["ready"] is False
+    assert payload["accepted"] is False
+    assert payload["candidateBattles"] == 20
+    assert payload["requiredBattles"] == 200
+    assert any("below required 200" in reason for reason in payload["reasons"])
+
+
+def test_offline_eval_result_proof_reports_stale_compare_artifact(tmp_path):
+    _write_result_artifacts(tmp_path, battles=200, accepted=True, compare_battles=199)
+
+    payload = offline_eval_readiness.offline_eval_result_proof(root=tmp_path, env={})
+
+    assert payload["status"] == "stale"
+    assert payload["ready"] is False
+    assert payload["accepted"] is False
+    assert payload["candidateBattles"] == 200
+    assert any("does not match candidate.json" in reason for reason in payload["staleReasons"])
 
 
 def test_readiness_payload_classifies_stale_bot_pid_as_cleanup_safe(tmp_path, monkeypatch):

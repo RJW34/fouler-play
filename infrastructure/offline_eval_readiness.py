@@ -28,6 +28,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_runtime_lease
 
 SCHEMA_VERSION = "fouler-play-offline-eval-readiness/v1"
+RESULT_PROOF_SCHEMA_VERSION = "fouler-play-offline-eval-result-proof/v1"
 FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
 RUNNING_STATUS_STAGES = {
     "starting",
@@ -725,6 +726,217 @@ def _frozen_baseline_detail(path: Path, min_battles: int) -> tuple[bool, dict[st
     }
 
 
+def _first_present(data: Mapping[str, object], keys: tuple[str, ...]) -> object | None:
+    for key in keys:
+        if key in data:
+            return data[key]
+    return None
+
+
+def _as_int(value: object) -> int | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_float(value: object) -> float | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_bool(value: object) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on", "accept", "accepted", "pass", "passed"}:
+            return True
+        if normalized in {"0", "false", "no", "off", "reject", "rejected", "fail", "failed"}:
+            return False
+    return None
+
+
+def _compare_verdict(compare: Mapping[str, object]) -> tuple[bool | None, str]:
+    raw_verdict = _first_present(compare, ("verdict", "status"))
+    if isinstance(raw_verdict, str):
+        normalized = raw_verdict.strip().lower().replace("_", "-")
+        if normalized in {"accept", "accepted", "pass", "passed", "ready"}:
+            return True, "accepted"
+        if normalized in {"reject", "rejected", "fail", "failed", "blocked"}:
+            return False, "rejected"
+        if normalized:
+            verdict_bool = _as_bool(normalized)
+            if verdict_bool is not None:
+                return verdict_bool, "accepted" if verdict_bool else "rejected"
+            return None, normalized
+
+    for key in ("accepted", "ACCEPT", "ready"):
+        if key in compare:
+            accepted = _as_bool(compare[key])
+            if accepted is not None:
+                return accepted, "accepted" if accepted else "rejected"
+    return None, "missing"
+
+
+def _result_values_match(left: object, right: object) -> bool:
+    left_number = _as_float(left)
+    right_number = _as_float(right)
+    if left_number is not None and right_number is not None:
+        return abs(left_number - right_number) <= 0.0001
+    return str(left) == str(right)
+
+
+def _artifact_payload(root: Path, path: Path) -> tuple[dict[str, object] | None, dict[str, object]]:
+    detail: dict[str, object] = {
+        "path": _relative(root, path),
+        "exists": path.exists(),
+    }
+    if not path.exists():
+        return None, detail
+    parsed = _read_json_file(path)
+    detail["validJson"] = isinstance(parsed, dict)
+    if not isinstance(parsed, dict):
+        detail["error"] = "artifact is not valid JSON object"
+        return None, detail
+    return parsed, detail
+
+
+def offline_eval_result_proof(
+    *,
+    root: Path = PROJECT_ROOT,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, object]:
+    """Summarize candidate/compare offline eval result artifacts without writing or running evals."""
+    env = os.environ if env is None else env
+    config = configured_eval(root, env)
+    required_battles = int(config["battles"])
+    candidate_path = Path(config["candidateResult"])
+    compare_path = Path(config["compareResult"])
+    candidate, candidate_artifact = _artifact_payload(root, candidate_path)
+    compare, compare_artifact = _artifact_payload(root, compare_path)
+
+    missing_paths = [
+        _relative(root, path)
+        for path in (candidate_path, compare_path)
+        if not path.exists()
+    ]
+    malformed_paths = [
+        str(artifact["path"])
+        for artifact in (candidate_artifact, compare_artifact)
+        if artifact.get("exists") and not artifact.get("validJson")
+    ]
+    reasons = [f"missing result artifact: {path}" for path in missing_paths]
+    reasons.extend(f"malformed result artifact: {path}" for path in malformed_paths)
+
+    candidate_battles = _as_int(_first_present(candidate, ("candidateBattles", "battles"))) if candidate else None
+    compare_candidate: dict[str, object] | None = None
+    if isinstance(compare, dict) and isinstance(compare.get("candidate"), dict):
+        compare_candidate = compare["candidate"]  # type: ignore[assignment]
+    compare_candidate_battles = None
+    if compare:
+        compare_candidate_battles = _as_int(_first_present(compare, ("candidateBattles", "battles")))
+    if compare_candidate and compare_candidate_battles is None:
+        compare_candidate_battles = _as_int(_first_present(compare_candidate, ("candidateBattles", "battles")))
+
+    compare_accepted, compare_verdict = _compare_verdict(compare) if compare else (None, "missing")
+    stale_reasons: list[str] = []
+    if candidate and compare_candidate:
+        for candidate_key, compare_key in [
+            ("label", "label"),
+            ("battles", "battles"),
+            ("fouler_wins", "fouler_wins"),
+            ("fouler_win_rate", "fouler_win_rate"),
+        ]:
+            if candidate_key in candidate and compare_key in compare_candidate:
+                if not _result_values_match(candidate[candidate_key], compare_candidate[compare_key]):
+                    stale_reasons.append(
+                        f"compare candidate {compare_key} does not match candidate.json {candidate_key}"
+                    )
+    if compare_candidate_battles is not None and candidate_battles is not None:
+        if compare_candidate_battles != candidate_battles:
+            reason = "compare candidateBattles does not match candidate.json battles"
+            if reason not in stale_reasons:
+                stale_reasons.append(reason)
+
+    missing_fields: dict[str, list[str]] = {"candidate": [], "compare": []}
+    if candidate and candidate_battles is None:
+        missing_fields["candidate"].append("battles")
+        reasons.append("candidate battle count is missing")
+    if compare and compare_accepted is None:
+        missing_fields["compare"].append("ACCEPT|accepted|verdict")
+        reasons.append("compare verdict is missing")
+    if candidate_battles is not None and candidate_battles < required_battles:
+        reasons.append(f"candidate battle count {candidate_battles} is below required {required_battles}")
+    reasons.extend(stale_reasons)
+
+    if missing_paths:
+        status = "missing"
+    elif malformed_paths:
+        status = "malformed"
+    elif candidate_battles is None or candidate_battles < required_battles:
+        status = "insufficient"
+    elif compare_accepted is None:
+        status = "malformed"
+    elif stale_reasons:
+        status = "stale"
+    elif compare_accepted:
+        status = "accepted"
+        reasons.append("compare verdict accepted candidate")
+    else:
+        status = "rejected"
+        reasons.append("compare verdict rejected candidate")
+
+    accepted = status == "accepted"
+    candidate_artifact.update({
+        "label": candidate.get("label") if candidate else None,
+        "candidateBattles": candidate_battles,
+        "requiredBattles": required_battles,
+        "enoughBattles": bool(candidate_battles is not None and candidate_battles >= required_battles),
+        "foulerWins": candidate.get("fouler_wins") if candidate else None,
+        "foulerWinRate": candidate.get("fouler_win_rate") if candidate else None,
+        "foulerWilsonLcb": candidate.get("fouler_wilson_lcb") if candidate else None,
+        "timestamp": candidate.get("timestamp") if candidate else None,
+    })
+    compare_artifact.update({
+        "verdict": compare_verdict,
+        "accepted": compare_accepted,
+        "candidateBattles": compare_candidate_battles,
+        "deltaWinRate": compare.get("delta_win_rate") if compare else None,
+        "pValue": compare.get("p_value") if compare else None,
+        "statisticallySignificantImprovement": compare.get("statistically_significant_improvement") if compare else None,
+    })
+    return {
+        "schemaVersion": RESULT_PROOF_SCHEMA_VERSION,
+        "ready": accepted,
+        "accepted": accepted,
+        "status": status,
+        "verdict": "accepted" if accepted else "rejected" if status == "rejected" else compare_verdict,
+        "candidateBattles": candidate_battles,
+        "compareCandidateBattles": compare_candidate_battles,
+        "requiredBattles": required_battles,
+        "missingPaths": missing_paths,
+        "malformedPaths": malformed_paths,
+        "missingFields": {key: value for key, value in missing_fields.items() if value},
+        "staleReasons": stale_reasons,
+        "reasons": reasons,
+        "artifacts": {
+            "candidate": candidate_artifact,
+            "compare": compare_artifact,
+        },
+        "noRuntimeActions": True,
+        "note": "Read-only result proof. It only reads eval_results/offline/candidate.json and compare-frozen-vs-candidate.json.",
+    }
+
+
 def build_readiness_payload(
     *,
     root: Path = PROJECT_ROOT,
@@ -735,6 +947,7 @@ def build_readiness_payload(
 ) -> dict[str, object]:
     env = os.environ if env is None else env
     config = configured_eval(root, env)
+    result_proof = offline_eval_result_proof(root=root, env=env)
     blockers: list[str] = []
     checks: list[dict[str, object]] = []
 
@@ -918,6 +1131,7 @@ def build_readiness_payload(
         "configuration": command_config,
         "paths": paths,
         "commands": commands,
+        "resultProof": result_proof,
         "provisionCommands": provisioning_commands(root, config),
         "proofRequired": [
             "offline_eval_readiness.py --require-ready exits 0 with ready=true",
@@ -930,7 +1144,7 @@ def build_readiness_payload(
             "eval_results/offline/*-status.json is archived, adopted by a live finite sidecar, or blocked before a new eval starts",
             "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",
             "eval_results/offline/frozen.json exists, meets IMPROVE_AGENT_EVAL_BATTLES, and contains label, battles, fouler_wins, fouler_win_rate, and fouler_wilson_lcb",
-            "after an accepted candidate run, eval_results/offline/candidate.json and compare-frozen-vs-candidate.json provide the eval verdict consumed by improve_agent",
+            "after an accepted candidate run, resultProof.status is accepted using eval_results/offline/candidate.json and compare-frozen-vs-candidate.json",
         ],
         "note": "Read-only check. It does not start Pokemon Showdown, Discord posting, ladder battles, HERMES/DEKU, or services.",
     }
