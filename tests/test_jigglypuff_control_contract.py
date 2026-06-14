@@ -70,17 +70,20 @@ def test_control_mirrors_jigglypuff_live_battle_state(monkeypatch, tmp_path):
 
 def test_status_read_only_skips_mirror_writes(monkeypatch, tmp_path):
     module = load_module()
+    captured = {}
     monkeypatch.setattr(module, "ROOT", tmp_path)
     monkeypatch.setattr(module, "TRUTH_DIR", tmp_path / "devstream" / "truth")
-    monkeypatch.setattr(
-        module,
-        "remote_command",
-        lambda action, **kwargs: {
+    def fake_remote_command(action, **kwargs):
+        captured["action"] = action
+        captured["kwargs"] = kwargs
+        return {
             "ok": True,
             "returnCode": 0,
+            "remoteStatusWriteSkipped": bool(kwargs.get("no_remote_write")),
             "json": {"ok": True, "status": "ready-idle"},
-        },
-    )
+        }
+
+    monkeypatch.setattr(module, "remote_command", fake_remote_command)
     monkeypatch.setattr(
         module,
         "mirror_live_state",
@@ -92,7 +95,10 @@ def test_status_read_only_skips_mirror_writes(monkeypatch, tmp_path):
     assert code == 0
     assert payload["status"] == "ready-idle"
     assert payload["mirrorSkipped"] is True
+    assert payload["remoteStatusWriteSkipped"] is True
     assert payload["liveStateMirror"]["skipped"] is True
+    assert captured["action"] == "status"
+    assert captured["kwargs"]["no_remote_write"] is True
     assert not (tmp_path / "active_battles.json").exists()
     assert not (tmp_path / "devstream" / "truth" / "jigglypuff-runtime.json").exists()
 
@@ -283,6 +289,37 @@ def test_remote_command_falls_back_to_ssh_when_resident_fouler_endpoint_is_missi
     assert captured["command"][0] == "ssh"
     assert result["json"]["status"] == "ready-idle"
     assert result["residentWorker"]["workerStatus"] == 404
+
+
+def test_read_only_remote_status_uses_ssh_no_write_and_skips_resident_worker(monkeypatch):
+    module = load_module()
+    captured = {}
+
+    monkeypatch.setattr(
+        module,
+        "resident_command",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("no-write status must not use the resident worker")),
+    )
+
+    def fake_run(command, *, timeout=60):
+        captured["command"] = command
+        return {
+            "ok": True,
+            "returnCode": 0,
+            "stdout": '{"ok":true,"status":"ready-idle","proofArtifact":{"written":false}}',
+            "stderr": "",
+        }
+
+    monkeypatch.setattr(module, "run", fake_run)
+
+    result = module.remote_command("status", no_remote_write=True)
+
+    assert captured["command"][0] == "ssh"
+    assert "-NoWrite" in captured["command"]
+    assert result["json"]["proofArtifact"]["written"] is False
+    assert result["remoteStatusWriteSkipped"] is True
+    assert result["residentWorker"]["attempted"] is False
+    assert result["residentWorker"]["skippedNoWrite"] is True
 
 
 def test_start_runtime_lease_guard_uses_jiggly_runtime_purpose_and_account(monkeypatch, tmp_path):

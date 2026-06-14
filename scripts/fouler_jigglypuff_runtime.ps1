@@ -7,7 +7,8 @@ param(
     [string]$RuntimeLease = "",
     [switch]$ObsOnly,
     [switch]$AutoImprove,
-    [switch]$Execute
+    [switch]$Execute,
+    [switch]$NoWrite
 )
 
 $ErrorActionPreference = "Stop"
@@ -19,6 +20,24 @@ $RemoteTruthPath = Join-Path $TruthDir "jigglypuff-runtime.json"
 
 function Get-IsoNow {
     return [DateTimeOffset]::UtcNow.ToString("o")
+}
+
+function Get-ProducerEvidence {
+    $hostName = $env:COMPUTERNAME
+    if ([string]::IsNullOrWhiteSpace($hostName)) {
+        try {
+            $hostName = [System.Net.Dns]::GetHostName()
+        } catch {
+            $hostName = "unknown"
+        }
+    }
+    $expected = "JIGGLYPUFF"
+    return @{
+        schemaVersion = "fouler-play-runtime-producer/v1"
+        host = $hostName
+        expectedHost = $expected
+        expectedHostMatched = $hostName.Equals($expected, [StringComparison]::OrdinalIgnoreCase)
+    }
 }
 
 function Write-JsonFile {
@@ -524,6 +543,7 @@ function Invoke-LoginProof {
 }
 
 function Get-Status {
+    param([switch]$NoWrite)
     $repoExists = Test-Path $RepoRoot
     $envPresent = Test-Path (Join-Path $RepoRoot ".env")
     $venvPresent = Test-Path (Join-Path $RepoRoot ".venv\Scripts\python.exe")
@@ -538,8 +558,12 @@ function Get-Status {
     $processCount = @($processes).Count
     $obsOpen = Test-LocalPort -Port 8777
     $truth = Get-TruthStatus
+    $producer = Get-ProducerEvidence
     $blockers = @()
     $warnings = @()
+    if (-not [bool]$producer.expectedHostMatched) {
+        $blockers += "JIGGLYPUFF runtime status was produced on unexpected host: $($producer.host)"
+    }
     if (-not $repoExists) { $blockers += "repo root is missing: $RepoRoot" }
     if (-not $envPresent) { $blockers += ".env is missing on JIGGLYPUFF" }
     if (-not $scriptsPresent.devstreamHealth) { $blockers += "scripts/devstream_health.py is missing; checkout is stale" }
@@ -586,6 +610,12 @@ function Get-Status {
         deployReady = $deployReady
         blockers = @($blockers)
         warnings = @($warnings)
+        producer = $producer
+        proofArtifact = @{
+            path = $RemoteTruthPath
+            written = -not [bool]$NoWrite
+            noWrite = [bool]$NoWrite
+        }
         git = Get-GitInfo
         envPresent = $envPresent
         venvPresent = $venvPresent
@@ -604,7 +634,9 @@ function Get-Status {
         }
         truth = @($truth)
     }
-    Write-JsonFile -Path $RemoteTruthPath -Payload $payload
+    if (-not $NoWrite) {
+        Write-JsonFile -Path $RemoteTruthPath -Payload $payload
+    }
     return $payload
 }
 
@@ -618,7 +650,7 @@ if ($Command -eq "bootstrap") {
             execute = $false
             planned = $true
             message = "Pass -Execute to create .venv and install requirements."
-            postStatus = Get-Status
+            postStatus = Get-Status -NoWrite:$NoWrite
         }
         $payload | ConvertTo-Json -Depth 10
         exit 0
@@ -665,11 +697,11 @@ $final = @{
     maxCycles = $MaxCycles
     runtimeLease = $RuntimeLease
     actions = @($actions)
-    postStatus = Get-Status
+    postStatus = Get-Status -NoWrite:$NoWrite
 }
 
 if ($Command -eq "status") {
-    $final = Get-Status
+    $final = Get-Status -NoWrite:$NoWrite
 }
 
 $final | ConvertTo-Json -Depth 12
