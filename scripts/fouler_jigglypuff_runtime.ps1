@@ -432,7 +432,7 @@ function Start-ObsServer {
 }
 
 function Start-BattleSession {
-    param([int]$RunCount, [int]$MaxConcurrentBattles, [int]$MaxCycles, [switch]$AllowUnboundedSupervisor)
+    param([int]$RunCount, [int]$MaxConcurrentBattles, [int]$MaxCycles, [string]$RuntimeLease, [switch]$AllowUnboundedSupervisor)
     if (-not (Test-Path (Join-Path $RepoRoot ".env"))) {
         return @{ ok = $false; error = ".env is missing; refusing to queue Showdown battles" }
     }
@@ -452,6 +452,9 @@ function Start-BattleSession {
         "--sleep-seconds", "15",
         "--max-cycles", "$MaxCycles"
     )
+    if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {
+        $supervisorArgs += @("--runtime-lease", $RuntimeLease)
+    }
     if ($AutoImprove) {
         $supervisorArgs += "--enable-auto-improve"
     }
@@ -468,6 +471,7 @@ function Start-BattleSession {
         runCount = $RunCount
         maxConcurrentBattles = $MaxConcurrentBattles
         maxCycles = $MaxCycles
+        runtimeLease = $RuntimeLease
         autoImprove = [bool]$AutoImprove
         allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor
         startedAt = Get-IsoNow
@@ -475,7 +479,7 @@ function Start-BattleSession {
         stderr = $stderr
         launch = $launch
     }
-    return @{ ok = [bool]$launch.ok; pid = $launch.pid; role = "battleSupervisor"; launch = $launch; stdout = $stdout; stderr = $stderr; autoImprove = [bool]$AutoImprove; maxCycles = $MaxCycles; allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor }
+    return @{ ok = [bool]$launch.ok; pid = $launch.pid; role = "battleSupervisor"; launch = $launch; stdout = $stdout; stderr = $stderr; autoImprove = [bool]$AutoImprove; maxCycles = $MaxCycles; runtimeLease = $RuntimeLease; allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor }
 }
 
 function Install-Runtime {
@@ -624,12 +628,12 @@ if ($Command -eq "bootstrap") {
         $actions += @{ name = "stop-stale-processes"; result = Stop-FoulerProcesses }
         $actions += @{ name = "start-obs-server"; result = Start-ObsServer }
         if (-not $ObsOnly) {
-            $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -AllowUnboundedSupervisor:$AllowUnboundedSupervisor -AutoImprove:$AutoImprove }
+            $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -RuntimeLease $RuntimeLease -AllowUnboundedSupervisor:$AllowUnboundedSupervisor -AutoImprove:$AutoImprove }
         }
     } else {
         $actions += @{ name = "start-obs-server"; planned = $true }
         if (-not $ObsOnly) {
-            $actions += @{ name = "start-battle-supervisor"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles; maxCycles = $MaxCycles; autoImprove = [bool]$AutoImprove; allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor }
+            $actions += @{ name = "start-battle-supervisor"; planned = $true; runCount = $RunCount; maxConcurrentBattles = $MaxConcurrentBattles; maxCycles = $MaxCycles; runtimeLease = $RuntimeLease; autoImprove = [bool]$AutoImprove; allowUnboundedSupervisor = [bool]$AllowUnboundedSupervisor }
         }
     }
 } elseif ($Command -eq "login-proof") {
