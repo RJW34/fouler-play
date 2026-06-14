@@ -372,6 +372,18 @@ MCTS_EVAL_BLEND_ALPHA = max(
     min(1.0, float(os.getenv("MCTS_EVAL_BLEND_ALPHA", "0.35"))),
 )
 
+# PHASE 0 (flatness-gated blend): when enabled, the MCTS weight is chosen
+# per-turn from the MCTS visit-policy flatness instead of a fixed 0.35. MCTS
+# leads when its search is decisive; the eval only takes over when MCTS is
+# genuinely flat. Env-gated so it is an instant, reversible A/B.
+FOULER_FLATNESS_GATED_BLEND = str(
+    os.getenv("FOULER_FLATNESS_GATED_BLEND", "1")
+).lower() not in {"0", "false", "no", "off"}
+try:
+    from fp.search.flatness import flatness_gated_alpha as _flatness_gated_alpha
+except Exception:  # pragma: no cover - defensive
+    _flatness_gated_alpha = None
+
 
 def _stability_blend_policy(
     pre_policy: dict[str, float],
@@ -7351,15 +7363,24 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                     eval_blend_scores = {}
                     logger.warning("Eval blend: evaluate_position failed: %s", _eb_exc)
                 if eval_blend_scores:
+                    _alpha_mcts = MCTS_EVAL_BLEND_ALPHA
+                    _flat_meta = None
+                    if FOULER_FLATNESS_GATED_BLEND and _flatness_gated_alpha is not None:
+                        try:
+                            _alpha_mcts, _flat_meta = _flatness_gated_alpha(mcts_policy)
+                        except Exception as _fl_exc:  # pragma: no cover
+                            logger.warning("Flatness gate failed, using fixed alpha: %s", _fl_exc)
+                            _alpha_mcts = MCTS_EVAL_BLEND_ALPHA
                     blended = _blend_eval_mcts_policy(
                         eval_blend_scores,
                         mcts_policy,
-                        alpha=MCTS_EVAL_BLEND_ALPHA,
+                        alpha=_alpha_mcts,
                     )
                     if blended:
                         decision_policy = blended
                         trace["eval_blend"] = {
-                            "alpha_mcts": MCTS_EVAL_BLEND_ALPHA,
+                            "alpha_mcts": _alpha_mcts,
+                            "flatness": _flat_meta,
                             "eval_top": _top_policy_entries(
                                 _normalize_policy_weights(eval_blend_scores)
                             ),
