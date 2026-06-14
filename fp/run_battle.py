@@ -210,6 +210,9 @@ REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
 REPLAY_UPLOAD_RESOLVE_ATTEMPTS = max(1, _env_int("REPLAY_UPLOAD_RESOLVE_ATTEMPTS", 4))
 REPLAY_UPLOAD_RESOLVE_DELAY_SEC = max(0.0, _env_float("REPLAY_UPLOAD_RESOLVE_DELAY_SEC", 1.0))
+REPLAY_JSON_SAVE_ATTEMPTS = max(1, _env_int("REPLAY_JSON_SAVE_ATTEMPTS", 2))
+REPLAY_JSON_SAVE_DELAY_SEC = max(0.0, _env_float("REPLAY_JSON_SAVE_DELAY_SEC", 1.0))
+REPLAY_JSON_SAVE_TIMEOUT_SEC = max(1.0, _env_float("REPLAY_JSON_SAVE_TIMEOUT_SEC", 12.0))
 DEAD_BATTLE_BLACKLIST_MAX = max(100, int(os.getenv("DEAD_BATTLE_BLACKLIST_MAX", "2000")))
 
 # Hard battle timeout (seconds). 0 disables forced battle termination.
@@ -610,6 +613,37 @@ async def _save_replay_json_locally(replay_id: str) -> dict | None:
     except Exception as e:
         logger.debug(f"Failed to save replay JSON for {clean_id}: {e}")
     return None
+
+
+async def _save_replay_json_for_evidence(
+    replay_id: str | None,
+    *,
+    attempts: int | None = None,
+    delay_seconds: float | None = None,
+    timeout_seconds: float | None = None,
+) -> bool:
+    """Persist replay JSON before battle teardown so autoresearch has proof."""
+    if not replay_id:
+        return False
+    max_attempts = max(1, attempts or REPLAY_JSON_SAVE_ATTEMPTS)
+    delay = REPLAY_JSON_SAVE_DELAY_SEC if delay_seconds is None else max(0.0, delay_seconds)
+    timeout = REPLAY_JSON_SAVE_TIMEOUT_SEC if timeout_seconds is None else max(0.1, timeout_seconds)
+    for attempt in range(max_attempts):
+        try:
+            data = await asyncio.wait_for(
+                _save_replay_json_locally(replay_id),
+                timeout=timeout,
+            )
+            if data:
+                return True
+        except asyncio.TimeoutError:
+            logger.debug("Timed out saving replay JSON evidence: %s", replay_id)
+        except Exception as exc:
+            logger.debug("Failed replay JSON evidence save for %s: %s", replay_id, exc)
+        if attempt + 1 < max_attempts and delay:
+            await asyncio.sleep(delay)
+    logger.warning("Replay JSON evidence was not saved locally: %s", replay_id)
+    return False
 
 async def _post_battle_to_discord(
     battle_tag: str,
@@ -2859,9 +2893,7 @@ async def pokemon_battle(
                 else:
                     _replay_save_id = None
                 if _replay_save_id:
-                    asyncio.ensure_future(
-                        _save_replay_json_locally(_replay_save_id)
-                    )
+                    await _save_replay_json_for_evidence(_replay_save_id)
 
                 # Retrieve pre-battle ELO for delta display
                 _elo_before_val = _elo_before_cache.pop(battle_tag, None)
