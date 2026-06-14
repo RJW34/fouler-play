@@ -35,6 +35,13 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert "function Redact-CommandLine" in text
     assert "Redact-CommandLine -CommandLine $_.CommandLine" in text
     assert "function Get-LogicalProcessSummary" in text
+    assert "[switch]$NoWrite" in text
+    assert "function Get-ProducerEvidence" in text
+    assert "fouler-play-runtime-producer/v1" in text
+    assert "expectedHostMatched" in text
+    assert "JIGGLYPUFF runtime status was produced on unexpected host" in text
+    assert "proofArtifact" in text
+    assert "Get-Status -NoWrite:$NoWrite" in text
     assert "battleSupervisor" in text
     assert "leafCount" in text
     assert "multiple Fouler OBS HTTP servers are running" in text
@@ -146,3 +153,13 @@ def test_jigglypuff_control_exposes_auto_improve_start_flag():
     assert '"autoImprove": enable_auto_improve' in text
     assert 'start.add_argument("--max-cycles", type=int, default=0)' in text
     assert 'powershell_args.append("-AutoImprove")' in text
+
+
+def test_jigglypuff_control_read_only_status_is_remote_no_write():
+    text = (ROOT / "scripts" / "jigglypuff_devstream_control.py").read_text(encoding="utf-8")
+
+    assert "no_remote_write: bool = False" in text
+    assert 'if no_remote_write and action == "status"' in text
+    assert 'powershell_args.append("-NoWrite")' in text
+    assert "remoteStatusWriteSkipped" in text
+    assert "skippedNoWrite" in text

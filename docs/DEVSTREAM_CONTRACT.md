@@ -13,6 +13,7 @@ Live battles are not just content. They are the training and evaluation loop: co
 - The canonical OBS HTTP surface is `streaming/serve_obs_page.py` on `127.0.0.1:8777` of the active runtime host.
 - The health probe is read-only by default and does not start games, restart services, or mutate battle state.
 - Existing developer-loop and pipeline services are not treated as the same thing as the devstream runner.
+- Controller probes that use `scripts/jigglypuff_devstream_control.py status --read-only` must not write local mirror files or remote `devstream\truth\jigglypuff-runtime.json`; scheduled/resident proof production uses the normal status path so the artifact is produced on JIGGLYPUFF with `producer.expectedHostMatched=true`.
 
 ## OBS Surfaces
 
@@ -83,6 +84,15 @@ cd /home/ryan/projects/fouler-play
 ```
 
 When the OBS server is running, `/health` returns the same structured payload via `streaming/serve_obs_page.py`.
+
+For controller-side inspection, prefer:
+
+```bash
+cd /home/ryan/projects/fouler-play
+.venv/bin/python scripts/jigglypuff_devstream_control.py status --read-only
+```
+
+This is a no-write probe. It reports JIGGLYPUFF status without creating a controller-produced mirror or refreshing the remote runtime proof file. A proof artifact refreshed by the normal status path must include `proofArtifact.written=true` and `producer.expectedHostMatched=true`.
 
 `scripts/devstream_session.py doctor --require-ready` is also read-only. It must be able to import
 `psutil` from the selected Python so PID files can be verified against real process command lines and

@@ -323,22 +323,33 @@ def remote_command(
     runtime_lease: str | None = None,
     obs_only: bool = False,
     enable_auto_improve: bool = False,
+    no_remote_write: bool = False,
     timeout: int = 90,
 ) -> dict[str, Any]:
-    resident = resident_command(
-        action,
-        execute=execute,
-        run_count=run_count,
-        max_concurrent_battles=max_concurrent_battles,
-        max_cycles=max_cycles,
-        runtime_lease=runtime_lease,
-        obs_only=obs_only,
-        enable_auto_improve=enable_auto_improve,
-        timeout=min(timeout, 180),
-    )
-    if resident.get("json") and resident.get("workerStatus") != 404:
-        resident["transport"] = "resident-worker-http"
-        return resident
+    if no_remote_write and action == "status":
+        resident = {
+            "attempted": False,
+            "skippedNoWrite": True,
+            "workerStatus": None,
+            "workerUrl": "",
+            "workerAttempts": [],
+            "stderr": "",
+        }
+    else:
+        resident = resident_command(
+            action,
+            execute=execute,
+            run_count=run_count,
+            max_concurrent_battles=max_concurrent_battles,
+            max_cycles=max_cycles,
+            runtime_lease=runtime_lease,
+            obs_only=obs_only,
+            enable_auto_improve=enable_auto_improve,
+            timeout=min(timeout, 180),
+        )
+        if resident.get("json") and resident.get("workerStatus") != 404:
+            resident["transport"] = "resident-worker-http"
+            return resident
 
     powershell_args = [
         "powershell",
@@ -350,6 +361,8 @@ def remote_command(
         "-Command",
         action,
     ]
+    if action == "status" and no_remote_write:
+        powershell_args.append("-NoWrite")
     if action in {"start"}:
         powershell_args.extend([
             "-RunCount",
@@ -372,8 +385,10 @@ def remote_command(
         ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", REMOTE, *powershell_args],
         timeout=ssh_timeout,
     )
+    result["remoteStatusWriteSkipped"] = bool(action == "status" and no_remote_write)
     result["residentWorker"] = {
-        "attempted": True,
+        "attempted": not bool(resident.get("skippedNoWrite")),
+        "skippedNoWrite": bool(resident.get("skippedNoWrite")),
         "workerStatus": resident.get("workerStatus"),
         "workerUrl": resident.get("workerUrl"),
         "workerAttempts": resident.get("workerAttempts") if isinstance(resident.get("workerAttempts"), list) else [],
@@ -543,6 +558,7 @@ def mirror_status(
         mirrored["action"] = action
     if not write_mirror:
         mirrored["mirrorSkipped"] = True
+        mirrored["remoteStatusWriteSkipped"] = bool(raw.get("remoteStatusWriteSkipped"))
         mirrored["liveStateMirror"] = {
             "ok": True,
             "url": _LAST_LIVE_STATE_URL or f"{OBS_HTTP}/state",
@@ -650,7 +666,11 @@ def runtime_lease_blocked_payload(action: str, args: argparse.Namespace, guard: 
 
 
 def action_status(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
-    result = remote_command("status", timeout=args.timeout)
+    result = remote_command(
+        "status",
+        timeout=args.timeout,
+        no_remote_write=not bool(getattr(args, "mirror", True)),
+    )
     payload = mirror_status(result.get("json"), action="status", raw=result, write_mirror=getattr(args, "mirror", True))
     return (0 if payload.get("ok") or payload.get("status") in {"ready-idle", "running"} else 1, payload)
 
