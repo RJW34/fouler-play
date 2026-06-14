@@ -12,6 +12,9 @@
 - OS/host: Windows `MIRAIDON`
 - Branch: `opus48/multisample-mcts`
 - Starting commit: `70050479`
+- Remotes: `origin` -> `https://github.com/RJW34/fouler-play.git`; `upstream` -> `https://github.com/pmariglia/foul-play.git`
+- Python: `py -3 --version` -> `Python 3.13.13`
+- Environment probe: Windows 11; relevant live Showdown/runtime variables were unset in this shell (`PS_USERNAME`, `PS_PASSWORD`, `SHOWDOWN_ACCOUNTS`, `DECISION_POLICY`, `MAX_CONCURRENT_BATTLES`, `PS_RUN_COUNT`, `FOULER_BATCH_SIZE`). Remote JIGGLY `.env` presence was checked by status only; secret values were not printed.
 - Source files read: `README.md`, `CLAUDE.md`, `TASKBOARD.md`, `infrastructure/guardrails.json`, `.env.example`, `devstream.yaml`, `start_one_touch.bat`, `infrastructure/windows/player_loop.bat`, `scripts/jigglypuff_devstream_control.py`, `scripts/devstream_session.py`, `scripts/devstream_runtime_lease.py`, `scripts/fouler_jigglypuff_runtime.ps1`
 
 ## Changes Made
@@ -37,6 +40,10 @@ Protected files were not edited: `run.py`, `config.py`, `.env`, credentials, and
 
 Commands run:
 
+- `git rev-parse --show-toplevel`
+  - Result: repo root discovered successfully; absolute local path intentionally omitted from this tracked report.
+- `git status --short`, `git branch --show-current`, `git log --oneline -8`, `git remote -v`, and `py -3 --version`
+  - Result: recorded source truth above.
 - `py -3 -m pytest tests/test_invalid_choice_recovery.py -q --basetemp <external-temp-root>\fallback-basetemp -o cache_dir=<external-temp-root>\fallback-cache`
   - Result: `6 passed`
 - `py -3 -m pytest tests/ -q --basetemp <external-temp-root>\basetemp -o cache_dir=<external-temp-root>\cache`
