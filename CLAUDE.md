@@ -7,7 +7,7 @@
 
 ## Mission
 
-Build an **overnight team-testing service** for a competitive Pokemon player. The player loads fat/stall teams, the bot plays them on ladder while they sleep, and in the morning they get a report: which matchups were hard, which Pokemon underperformed, which replays to study. The live bot account on this machine is the `.env`-configured `PS_USERNAME` (currently **"claudechamp"**), playing **gen9ou**. The Windows bot machine hostname may be MAGNETON, MIRAIDON, or similar — use OS detection, not hostname.
+Build an **overnight team-testing service** for a competitive Pokemon player. The player loads fat/stall teams, the bot plays them on ladder and gets a report: which matchups were hard, which Pokemon underperformed, which replays to study. The live Showdown account is resolved at execution from `.env` / `.env.deku` (`PS_USERNAME` or `SHOWDOWN_USER_ID`) and must match the active runtime lease; this document must not name a current account. The Windows bot machine hostname may vary; use OS detection and the current HERMES runtime lease, not hostname assumptions.
 
 **Why 1700 ELO matters:** At 1200 (where we are now), opponents play poorly and the data is meaningless for team evaluation. The bot must reach **1700+** so that matchup data reflects how the team performs against competent opponents. 1700 is not the goal — it's the minimum quality threshold for useful test data.
 

@@ -377,6 +377,24 @@ def test_showdown_account_authority_check_reports_current_env_doc_mismatch(tmp_p
     assert [item["account"] for item in check["documentedAccounts"]] == ["npctypebeat"]
 
 
+def test_showdown_account_authority_check_reports_current_live_account_prose(tmp_path, monkeypatch):
+    claude = tmp_path / "CLAUDE.md"
+    claude.write_text(
+        'The live bot account on this machine is the `.env`-configured `PS_USERNAME` '
+        '(currently **"claudechamp"**), playing gen9ou.\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(devstream_session, "ACCOUNT_AUTHORITY_FILES", [claude])
+
+    check = devstream_session.showdown_account_authority_check({"PS_USERNAME": "LEBOTJAMESXD00N"})
+
+    assert check["ok"] is False
+    assert check["runtimeAccount"] == "LEBOTJAMESXD00N"
+    assert [item["account"] for item in check["documentedAccounts"]] == ["claudechamp"]
+    assert check["distinctAccounts"] == ["claudechamp", "LEBOTJAMESXD00N"]
+
+
 def test_showdown_account_authority_check_ignores_historical_mission_prose(tmp_path, monkeypatch):
     agents = tmp_path / "AGENTS.md"
     taskboard = tmp_path / "TASKBOARD.md"
@@ -391,6 +409,10 @@ def test_showdown_account_authority_check_ignores_historical_mission_prose(tmp_p
     assert check["runtimeAccount"] == "claudechamp"
     assert check["documentedAccounts"] == []
     assert check["distinctAccounts"] == ["claudechamp"]
+
+
+def test_current_repo_docs_do_not_publish_fixed_live_account():
+    assert devstream_session.documented_showdown_accounts() == []
 
 
 def test_battle_supervisor_contract_is_no_start_ready():
