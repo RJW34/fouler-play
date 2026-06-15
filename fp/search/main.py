@@ -6254,6 +6254,49 @@ def _apply_hard_legality_and_safety(
                     }
                 )
 
+    our_hp_percent = None
+    if ability_state is not None:
+        try:
+            our_hp_percent = float(getattr(ability_state, "our_hp_percent", 0.0) or 0.0)
+        except Exception:
+            our_hp_percent = None
+    if our_hp_percent is None and battle is not None:
+        active = getattr(getattr(battle, "user", None), "active", None)
+        if active is not None:
+            try:
+                our_hp_percent = float(getattr(active, "hp", 0) or 0) / max(
+                    float(getattr(active, "max_hp", 1) or 1), 1.0
+                )
+            except Exception:
+                our_hp_percent = None
+
+    if our_hp_percent is not None and our_hp_percent >= 0.95:
+        has_non_recovery_alternative = any(
+            weight > 0
+            and normalize_name(move.split(":")[-1] if ":" in move else move)
+            not in RECOVERY_MOVES_NORM
+            for move, weight in working.items()
+        )
+        if has_non_recovery_alternative:
+            for move, weight in list(working.items()):
+                move_name = move.split(":")[-1] if ":" in move else move
+                move_norm = normalize_name(move_name)
+                if move_norm not in RECOVERY_MOVES_NORM or weight <= 0:
+                    continue
+                new_weight = float(weight) * ABILITY_PENALTY_SEVERE
+                working[move] = new_weight
+                if trace_events is not None:
+                    trace_events.append(
+                        {
+                            "type": "penalty",
+                            "source": "mcts_hard_safety",
+                            "move": move,
+                            "reason": "full_hp_recovery_fails",
+                            "before": weight,
+                            "after": new_weight,
+                        }
+                    )
+
     sorted_policy = sorted(working.items(), key=lambda x: x[1], reverse=True)
 
     # Hard loop-breaker: demote a move repeated too many times recently.
