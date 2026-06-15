@@ -259,7 +259,7 @@ def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
     global _shared_handler_filtered
     if worker_id in _worker_handlers:
         return _worker_handlers[worker_id]
-    log_dir = "logs"
+    log_dir = os.getenv("FOULER_LOG_DIR", "logs")
     os.makedirs(log_dir, exist_ok=True)
     handler = RotatingFileHandler(
         os.path.join(log_dir, f"worker_{worker_id}_init.log"),
@@ -298,7 +298,8 @@ def _safe_log_filename_part(value: object, *, fallback: str = "unknown", max_len
 def _worker_battle_log_path(worker_id: int, battle_tag: str, opponent_name: str) -> str:
     safe_battle_tag = _safe_log_filename_part(battle_tag, fallback=f"worker_{worker_id}")
     safe_opponent_name = _safe_log_filename_part(opponent_name)
-    return os.path.join("logs", f"{safe_battle_tag}_{safe_opponent_name}.log")
+    log_dir = os.getenv("FOULER_LOG_DIR", "logs")
+    return os.path.join(log_dir, f"{safe_battle_tag}_{safe_opponent_name}.log")
 
 
 def _rollover_worker_handler(worker_id: int, battle_tag: str, opponent_name: str):

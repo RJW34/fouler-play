@@ -25,3 +25,11 @@ def test_worker_battle_log_path_uses_fallbacks_for_blank_parts():
     path = _worker_battle_log_path(2, "", "...???")
 
     assert os.path.basename(path) == "worker_2_unknown.log"
+
+
+def test_worker_battle_log_path_honors_configured_log_dir(monkeypatch):
+    monkeypatch.setenv("FOULER_LOG_DIR", "custom-logs")
+
+    path = _worker_battle_log_path(3, "battle-gen9ou-1", "opponent")
+
+    assert os.path.dirname(path) == "custom-logs"
