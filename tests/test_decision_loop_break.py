@@ -6,9 +6,11 @@ alternative so the bot cannot relive the same loss-driving action loop.
 """
 
 from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
 
 from fp.search.main import (
     DecisionProfile,
+    _apply_hard_legality_and_safety,
     break_repeated_decision,
     select_move_from_eval_scores,
     _recent_action_history,
@@ -110,3 +112,42 @@ class TestMctsBackedSelection:
         soft_pipeline.assert_not_called()
         assert trace["mcts_backed"]["penalty_pipeline_enabled"] is False
         assert trace["decision_mode_detail"] == "mcts_backed_hard_safety"
+
+    def test_last_pokemon_pivot_is_demoted_below_real_attack(self):
+        battle = _battle([])
+        battle.force_switch = False
+        battle.request_json = {"active": [{}]}
+        battle.user.trapped = False
+        ability_state = SimpleNamespace(our_alive_count=1)
+        trace_events = []
+
+        result = _apply_hard_legality_and_safety(
+            {"uturn": 0.824, "ivycudgel": 0.114, "knockoff": 0.046, "encore": 0.016},
+            battle=battle,
+            ability_state=ability_state,
+            trace_events=trace_events,
+        )
+
+        assert result[0][0] == "ivycudgel"
+        assert dict(result)["uturn"] < dict(result)["ivycudgel"]
+        assert any(
+            event["source"] == "pivot_safety"
+            and event["reason"] == "pivot_last_pokemon_no_switch_target"
+            for event in trace_events
+        )
+
+    def test_pivot_is_not_demoted_when_teammates_remain(self):
+        battle = _battle([])
+        battle.force_switch = False
+        battle.request_json = {"active": [{}]}
+        battle.user.trapped = False
+        ability_state = SimpleNamespace(our_alive_count=3)
+
+        result = _apply_hard_legality_and_safety(
+            {"uturn": 0.824, "ivycudgel": 0.114},
+            battle=battle,
+            ability_state=ability_state,
+            trace_events=[],
+        )
+
+        assert result[0][0] == "uturn"

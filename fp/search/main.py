@@ -6120,6 +6120,82 @@ def break_repeated_decision(
     return rebuilt
 
 
+def _our_alive_count_for_safety(
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+) -> int | None:
+    raw_count = getattr(ability_state, "our_alive_count", None) if ability_state is not None else None
+    try:
+        if raw_count is not None:
+            return int(raw_count)
+    except (TypeError, ValueError):
+        pass
+
+    user = getattr(battle, "user", None) if battle is not None else None
+    if user is None:
+        return None
+
+    def alive(pokemon) -> bool:
+        if pokemon is None or bool(getattr(pokemon, "fainted", False)):
+            return False
+        hp = getattr(pokemon, "hp", None)
+        try:
+            return float(hp) > 0
+        except (TypeError, ValueError):
+            return True
+
+    count = 0
+    if alive(getattr(user, "active", None)):
+        count += 1
+    for pokemon in getattr(user, "reserve", []) or []:
+        if alive(pokemon):
+            count += 1
+    return count
+
+
+def _demote_last_pokemon_pivots(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list[dict] | None,
+) -> dict[str, float]:
+    """Demote pivot moves when no teammate exists to receive the pivot."""
+    if _our_alive_count_for_safety(battle, ability_state) != 1:
+        return policy
+
+    best_non_pivot = max(
+        (
+            weight
+            for move, weight in policy.items()
+            if normalize_name(move) not in PIVOT_MOVES_NORM
+            and not str(move).startswith("switch ")
+            and weight > 0
+        ),
+        default=None,
+    )
+    if best_non_pivot is None:
+        return policy
+
+    cap = best_non_pivot * 0.5
+    adjusted = dict(policy)
+    for move, weight in policy.items():
+        if normalize_name(move) in PIVOT_MOVES_NORM and weight > cap:
+            adjusted[move] = cap
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "penalty",
+                        "source": "pivot_safety",
+                        "move": move,
+                        "reason": "pivot_last_pokemon_no_switch_target",
+                        "before": weight,
+                        "after": cap,
+                    }
+                )
+    return adjusted
+
+
 def _apply_hard_legality_and_safety(
     policy: dict[str, float],
     *,
@@ -6159,6 +6235,13 @@ def _apply_hard_legality_and_safety(
                             "after": 0,
                         }
                     )
+
+    working = _demote_last_pokemon_pivots(
+        working,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
 
     sorted_policy = sorted(working.items(), key=lambda x: x[1], reverse=True)
     return break_repeated_decision(
