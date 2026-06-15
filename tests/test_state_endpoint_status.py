@@ -116,6 +116,7 @@ def test_status_endpoint_clears_stale_battle_info_when_searching(tmp_path, monke
     monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
     monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
     monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+    monkeypatch.setattr(serve_obs_page, "BATTLE_STATS_PATH", tmp_path / "battle_stats.json")
 
     state_store.write_status({"status": "Searching", "battle_info": "vs stale-opponent"})
     state_store.update_daily_stats(0, 0)
@@ -133,6 +134,7 @@ def test_state_payload_filters_ladder_cache_to_active_account(tmp_path, monkeypa
     monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
     monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
     monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+    monkeypatch.setattr(serve_obs_page, "BATTLE_STATS_PATH", tmp_path / "battle_stats.json")
     monkeypatch.setattr(
         serve_obs_page,
         "recent_showdown_credential_failure",
@@ -214,6 +216,61 @@ def test_state_payload_suppresses_stale_elo_when_active_account_not_cached(tmp_p
     assert "elo_source" not in payload["status"]
     assert payload["accounts_elo"] == {}
     assert payload["status"]["accounts_elo"] == {}
+
+
+def test_state_payload_uses_battle_stats_rating_for_active_account(tmp_path, monkeypatch):
+    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
+    monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
+    monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+    stats_path = tmp_path / "battle_stats.json"
+    monkeypatch.setattr(serve_obs_page, "BATTLE_STATS_PATH", stats_path)
+    monkeypatch.setattr(
+        serve_obs_page,
+        "recent_showdown_credential_failure",
+        lambda _root: {"found": False},
+    )
+    monkeypatch.setitem(serve_obs_page._ladder_cache, "accounts", {"npctypebeat": 1029})
+    monkeypatch.setitem(serve_obs_page._ladder_cache, "updated", 123.0)
+
+    stats_path.write_text(
+        json.dumps({
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-2632465830",
+                    "result": "win",
+                    "rating": 1248.0,
+                    "rating_source": "showdown_raw",
+                    "timestamp": "2026-06-15T13:27:46+00:00",
+                }
+            ]
+        }),
+        encoding="utf-8",
+    )
+    state_store.write_status({
+        "status": "Searching",
+        "battle_info": "Searching...",
+        "elo": 1029,
+        "accounts_elo": {"npctypebeat": 1029},
+    })
+    state_store.update_daily_stats(0, 0)
+    state_store.write_active_battles({
+        "battles": [
+            {
+                "id": "battle-gen9ou-2632470005",
+                "opponent": "Beij7",
+                "players": ["LEBOTJAMESXD00N", "Beij7"],
+                "status": "active",
+                "slot": 1,
+            }
+        ],
+        "count": 1,
+    })
+
+    payload = serve_obs_page.build_state_payload()
+
+    assert payload["status"]["elo"] == 1248
+    assert payload["status"]["elo_source"] == "battle_stats"
+    assert payload["accounts_elo"] == {"LEBOTJAMESXD00N": 1248}
 
 
 def test_active_battle_atomic_write_retries_windows_replace_lock(tmp_path, monkeypatch):

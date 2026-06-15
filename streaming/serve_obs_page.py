@@ -175,6 +175,7 @@ _elo_retry_task = None
 _replay_cache: dict[str, dict[str, float | bool]] = {}
 _emerald_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Emerald ROM", "status_text": "INITIALIZING"}
 _firered_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Fire Red ROM", "status_text": "INITIALIZING"}
+BATTLE_STATS_PATH = ROOT_DIR / "battle_stats.json"
 
 PID_FILE = ROOT_DIR / ".pids" / "obs_server.pid"
 PROCESS_SCAN_TIMEOUT_SEC = float(os.getenv("FOULER_OBS_PROCESS_SCAN_TIMEOUT_SEC", "4") or "4")
@@ -474,7 +475,7 @@ def build_state_payload() -> dict:
         status["battle_info"] = "Searching..."
     
     # Add accounts_elo to status (so overlay.html receives it via payload.status)
-    accounts_elo = _ladder_accounts_for(current_accounts)
+    accounts_elo, _accounts_source, _accounts_updated = _visible_ladder_accounts(current_accounts)
     status["accounts_elo"] = accounts_elo
     
     return {
@@ -590,6 +591,8 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
             if _obs_client:
                 state = await _merge_deku_battles(state)
                 await maybe_update_obs_sources(state)
+            elif OBS_WS_DISABLED:
+                print(f"[EVENT] HTTP-only mode: OBS WebSocket source update skipped for {event_type}")
             else:
                 print(f"[EVENT] FAIL: No OBS client available for {event_type} update")
     except Exception as e:
@@ -709,6 +712,38 @@ def _ladder_accounts_for(accounts: list[str] | None = None) -> dict:
         for account, elo in cached.items()
         if _normalize_showdown_id(str(account)) in wanted
     }
+
+
+def _latest_battle_stats_rating() -> tuple[int | None, object]:
+    try:
+        raw = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return None, None
+    battles = raw.get("battles") if isinstance(raw, dict) else raw
+    if not isinstance(battles, list):
+        return None, None
+    for entry in reversed(battles):
+        if not isinstance(entry, dict):
+            continue
+        if entry.get("rating_source") != "showdown_raw":
+            continue
+        try:
+            return int(round(float(entry.get("rating")))), entry.get("timestamp")
+        except (TypeError, ValueError):
+            continue
+    return None, None
+
+
+def _visible_ladder_accounts(accounts: list[str] | None = None) -> tuple[dict, str | None, object]:
+    visible = _ladder_accounts_for(accounts)
+    if visible:
+        return visible, "showdown", _ladder_cache.get("updated")
+    requested = _dedupe_showdown_accounts(accounts or [])
+    if requested:
+        rating, timestamp = _latest_battle_stats_rating()
+        if rating is not None:
+            return {requested[0]: rating}, "battle_stats", timestamp
+    return {}, None, None
 
 
 def _normalize_replay_id(battle_id: str) -> str:
@@ -1049,7 +1084,7 @@ async def maybe_refresh_elo_from_event(event_type: str, payload: dict) -> None:
 
 def _apply_ladder_status(status: dict, *, current_accounts: list[str] | None = None) -> dict:
     merged = dict(status)
-    accounts = _ladder_accounts_for(current_accounts)
+    accounts, source, updated = _visible_ladder_accounts(current_accounts)
     
     # Backward compat: if only one account, set top-level "elo" field
     if accounts:
@@ -1073,8 +1108,8 @@ def _apply_ladder_status(status: dict, *, current_accounts: list[str] | None = N
                     break
         # Fallback: use first matching account's ELO.
         merged["elo"] = selected if selected is not None else list(accounts.values())[0]
-        merged["elo_source"] = "showdown"
-        merged["elo_updated"] = _ladder_cache.get("updated")
+        merged["elo_source"] = source or "showdown"
+        merged["elo_updated"] = updated
     elif current_accounts:
         # Active battles prove the live account. Avoid leaking stale status-file
         # ELO for a different account while the fresh account is still loading.
@@ -1384,7 +1419,8 @@ async def handle_status(request: web.Request) -> web.Response:
         state_store.read_status(),
         current_accounts=current_accounts,
     )
-    status["accounts_elo"] = _ladder_accounts_for(current_accounts)
+    accounts_elo, _accounts_source, _accounts_updated = _visible_ladder_accounts(current_accounts)
+    status["accounts_elo"] = accounts_elo
     status["active_battles"] = [b.get("id") for b in battles]
     # Build battle_info from actual battles (more reliable than stale status file)
     if battles:
