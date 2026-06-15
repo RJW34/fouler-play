@@ -66,6 +66,39 @@ def _mk_ability_state(boost: int = 2):
 
 
 class TestThreatSwitchBias(unittest.TestCase):
+    def test_mcts_only_demotes_magic_bounce_reflected_hazard(self):
+        battle = _mk_battle(
+            active_hp=300,
+            active_max_hp=334,
+            move_names=["spikes", "earthquake", "protect"],
+        )
+        ability_state = OpponentAbilityState(has_magic_bounce=True)
+        trace = {}
+        policy = {
+            "spikes": 1.0,
+            "earthquake": 0.20,
+            "protect": 0.05,
+        }
+
+        choice = select_move_from_eval_scores(
+            policy,
+            ability_state=ability_state,
+            battle=battle,
+            decision_profile=DecisionProfile.LOW,
+            trace=trace,
+            policy_source="mcts",
+        )
+
+        self.assertEqual(choice, "earthquake")
+        events = trace.get("mcts_only", {}).get("events", [])
+        self.assertTrue(
+            any(
+                event.get("reason") == "magic_bounce_reflects_status"
+                and event.get("move") == "spikes"
+                for event in events
+            )
+        )
+
     def test_prefers_reset_over_switch_loop_when_healthy(self):
         battle = _mk_battle(active_hp=300, active_max_hp=334)
         ability_state = _mk_ability_state(boost=2)
