@@ -1090,12 +1090,12 @@ def test_payload_formatter_omits_boolean_placeholder_turns():
     assert "battle finished loss vs Placeholder" in formatted
 
 
-def test_payload_formatter_corrects_result_from_rating_movement():
+def test_payload_formatter_keeps_result_when_cached_elo_contradicts():
     payload = build_contract_payload(
         "PROOF",
         "battle result loss vs MatronJames",
         "Battle battle-gen9ou-2555107042 ended loss against MatronJames.",
-        "Operator-facing battle posts should trust the ladder movement over a stale parsed result.",
+        "Operator-facing battle posts should not relabel results from cached ladder movement.",
         "battle_id=battle-gen9ou-2555107042; result=loss",
         "review the replay",
         source="unit-test",
@@ -1108,13 +1108,12 @@ def test_payload_formatter_corrects_result_from_rating_movement():
     formatted = format_payload_or_message(payload)
     fields = structured_report_fields(payload, event_type="battle_result")
 
-    assert formatted.startswith("[PROOF] **battle win vs MatronJames**")
-    assert "battle finished win vs MatronJames" in formatted
-    assert "- ELO `gained 19 (1117 → 1136, +19)`" in formatted
-    assert "check needed" not in formatted
-    assert fields["winner"] == "fouler-play"
-    assert fields["loser"] == "MatronJames"
-    assert fields["analysis"]["result"] == "win"
+    assert formatted.startswith("[PROOF] **battle result loss vs MatronJames**")
+    assert "battle finished loss vs MatronJames" in formatted
+    assert "- ELO `check needed (cached 1117, fetched 1136, +19 contradicts loss)`" in formatted
+    assert fields["winner"] == "MatronJames"
+    assert fields["loser"] == "fouler-play"
+    assert fields["analysis"]["result"] == "loss"
 
 
 def test_payload_formatter_uses_authoritative_rating_delta_when_present():
