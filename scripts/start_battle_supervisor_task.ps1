@@ -70,31 +70,36 @@ if (-not [string]::IsNullOrWhiteSpace($RuntimeLeaseAccount)) {
     $env:SHOWDOWN_ACCOUNTS = $RuntimeLeaseAccount
 }
 
-# --- SINGLETON GUARD ------------------------------------------------------
-# Exactly one battle supervisor may run for this repo. Before launching a new
-# one, terminate any pre-existing devstream_session.py "supervise" process that
-# belongs to THIS project directory. This prevents two supervisors (each of
-# which spawns its own bounded run.py batch) from laddering the same Showdown
-# account at once -- the duplicate-runner failure mode that abandons battles
-# and pins ELO. We match on the repo path so we never touch a supervisor from
-# another install, and we exclude our own PID/ancestry.
-$selfPid = $PID
-$repoNeedle = $ProjectDir.ToLower()
-foreach ($p in @(Get-CimInstance Win32_Process -Filter "name like 'python%'" -ErrorAction SilentlyContinue)) {
-    $cl = $p.CommandLine
-    if (-not $cl) { continue }
-    $clLower = $cl.ToLower()
-    if ($clLower -match 'devstream_session\.py' -and $clLower -match '\bsupervise\b' -and $clLower.Contains($repoNeedle)) {
-        if ($p.ProcessId -ne $selfPid) {
-            try {
-                Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
-                Write-Output "[singleton-guard] terminated pre-existing supervisor PID $($p.ProcessId)"
-            } catch {}
+$supPidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
+
+function Read-PidFilePid {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try {
+        $raw = (Get-Content -Raw -LiteralPath $Path).Trim()
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        if ($raw.StartsWith("{")) {
+            $parsed = $raw | ConvertFrom-Json
+            return [int]$parsed.pid
         }
+        return [int]$raw
+    } catch {
+        return $null
     }
 }
-# Also clear a stale supervisor PID file so the new supervisor owns it cleanly.
-$supPidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
+
+# Exactly one battle supervisor may run for this repo. Use the supervisor PID
+# file instead of broad Win32_Process enumeration; WMI has proven unreliable on
+# the Windows runtime and can block the launcher before logs are created.
+$existingSupervisorPid = Read-PidFilePid -Path $supPidFile
+if ($existingSupervisorPid -and $existingSupervisorPid -ne $PID) {
+    $existing = Get-Process -Id $existingSupervisorPid -ErrorAction SilentlyContinue
+    if ($existing) {
+        Stop-Process -Id $existingSupervisorPid -Force -ErrorAction SilentlyContinue
+        Write-Output "[singleton-guard] terminated supervisor PID $existingSupervisorPid from pid file"
+        Start-Sleep -Seconds 1
+    }
+}
 if (Test-Path -LiteralPath $supPidFile) {
     try { Remove-Item -LiteralPath $supPidFile -Force -ErrorAction SilentlyContinue } catch {}
 }
@@ -188,12 +193,10 @@ $cmdLines += "set ""FOULER_PLAY_ENABLE_AUTO_IMPROVE=$AutoImproveFlag"""
 $cmdLines += (($commandLine -join " ") + " 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)")
 $cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
 
-$launch = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-    CommandLine = "cmd.exe /d /c $(Quote-BatchArg $cmdFile)"
-    CurrentDirectory = $ProjectDir
-}
-if ($launch.ReturnValue -ne 0) {
-    Write-Error "Win32_Process.Create failed with return value $($launch.ReturnValue)"
+$cmdExe = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
+$launch = Start-Process -FilePath $cmdExe -ArgumentList @("/d", "/c", $cmdFile) -WorkingDirectory $ProjectDir -WindowStyle Hidden -PassThru
+if (-not $launch -or -not $launch.Id) {
+    Write-Error "Start-Process failed to launch battle supervisor wrapper"
     exit 1
 }
 Start-Sleep -Seconds 3

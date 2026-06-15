@@ -150,6 +150,11 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert '$env:FOULER_PLAY_ENABLE_AUTO_IMPROVE = $AutoImproveFlag' in wrapper
     assert 'set ""FOULER_PLAY_ENABLE_AUTO_IMPROVE=$AutoImproveFlag""' in wrapper
     assert "set FOULER_PLAY_ENABLE_AUTO_IMPROVE=$autoImproveFlag" in runtime
+    assert "Start-Process" in wrapper
+    assert "-WindowStyle Hidden" in wrapper
+    assert "Invoke-CimMethod -ClassName Win32_Process" not in wrapper
+    assert "Get-CimInstance Win32_Process" not in wrapper
+    assert "Get-CimInstance Win32_Process" not in installer
     assert "pythonw.exe" not in wrapper
 
 

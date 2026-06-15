@@ -60,13 +60,33 @@ function Rotate-LogFile {
     return $dest
 }
 
+function Read-PidFilePid {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+    try {
+        $raw = (Get-Content -Raw -LiteralPath $Path).Trim()
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        if ($raw.StartsWith("{")) {
+            $parsed = $raw | ConvertFrom-Json
+            return [int]$parsed.pid
+        }
+        return [int]$raw
+    } catch {
+        return $null
+    }
+}
+
 function Get-BattleSupervisorProcesses {
-    Get-CimInstance Win32_Process | Where-Object {
-        $_.CommandLine -and
-        $_.CommandLine -match "devstream_session\.py" -and
-        $_.CommandLine -match "\bsupervise\b" -and
-        $_.Name -match "python|py"
-    } | Select-Object ProcessId,ParentProcessId,Name,CommandLine
+    $pid = Read-PidFilePid -Path $PidFile
+    if (-not $pid) { return @() }
+    $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    if (-not $process) { return @() }
+    return @([pscustomobject]@{
+        ProcessId = $process.Id
+        ParentProcessId = $null
+        Name = $process.ProcessName
+        CommandLine = "pid-file:$PidFile"
+    })
 }
 
 function Stop-BattleSupervisorProcesses {
