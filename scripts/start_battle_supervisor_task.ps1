@@ -23,13 +23,6 @@ if (-not (Test-Path -LiteralPath $Py -PathType Leaf)) {
         $Py = "python.exe"
     }
 }
-if (-not $Foreground) {
-    $Pythonw = Join-Path $ProjectDir ".venv\Scripts\pythonw.exe"
-    if (Test-Path -LiteralPath $Pythonw -PathType Leaf) {
-        $Py = $Pythonw
-    }
-}
-
 New-Item -ItemType Directory -Force -Path (Join-Path $ProjectDir ".pids") | Out-Null
 
 function Resolve-RuntimeLeasePath {

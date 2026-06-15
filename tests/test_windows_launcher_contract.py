@@ -147,6 +147,7 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert '$env:LOSS_TRIGGERED_DRAIN = "0"' in wrapper
     assert '$env:BATTLE_STATS_MAX_ENTRIES = "5000"' in wrapper
     assert '$env:BOT_LOG_TO_FILE = "1"' in wrapper
+    assert "pythonw.exe" not in wrapper
 
 
 def test_jigglypuff_control_exposes_auto_improve_start_flag():
