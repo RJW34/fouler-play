@@ -435,12 +435,16 @@ except Exception as e:
 
 
 def build_state_payload() -> dict:
-    status = _apply_ladder_status(state_store.read_status())
     daily = state_store.read_daily_stats()
-    status["today_wins"] = daily.get("wins", 0)
-    status["today_losses"] = daily.get("losses", 0)
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
+    current_accounts = _current_showdown_accounts(battles)
+    status = _apply_ladder_status(
+        state_store.read_status(),
+        current_accounts=current_accounts,
+    )
+    status["today_wins"] = daily.get("wins", 0)
+    status["today_losses"] = daily.get("losses", 0)
     credential_failure = recent_showdown_credential_failure(ROOT_DIR)
     
     # Update status field based on active battles
@@ -462,9 +466,7 @@ def build_state_payload() -> dict:
         status["battle_info"] = "Searching..."
     
     # Add accounts_elo to status (so overlay.html receives it via payload.status)
-    accounts_elo = {}
-    if _ladder_cache.get("accounts"):
-        accounts_elo = dict(_ladder_cache["accounts"])
+    accounts_elo = _ladder_accounts_for(current_accounts)
     status["accounts_elo"] = accounts_elo
     
     return {
@@ -642,6 +644,65 @@ def _normalize_showdown_id(username: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", username.lower())
 
 
+def _dedupe_showdown_accounts(accounts: list[str]) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for account in accounts:
+        text = str(account or "").strip()
+        normalized = _normalize_showdown_id(text)
+        if not normalized or normalized in seen:
+            continue
+        deduped.append(text)
+        seen.add(normalized)
+    return deduped
+
+
+def _active_accounts_from_battles(battles: list[dict]) -> list[str]:
+    accounts: list[str] = []
+    for battle in battles:
+        if not isinstance(battle, dict):
+            continue
+        opponent = _normalize_showdown_id(str(battle.get("opponent") or ""))
+        players = battle.get("players")
+        if not isinstance(players, list):
+            continue
+        for player in players:
+            text = str(player or "").strip()
+            normalized = _normalize_showdown_id(text)
+            if normalized and normalized != opponent:
+                accounts.append(text)
+    return _dedupe_showdown_accounts(accounts)
+
+
+def _configured_showdown_accounts() -> list[str]:
+    if SHOWDOWN_ACCOUNTS:
+        return _dedupe_showdown_accounts(SHOWDOWN_ACCOUNTS)
+    user_id = _resolve_showdown_user_id()
+    return _dedupe_showdown_accounts([user_id] if user_id else [])
+
+
+def _current_showdown_accounts(battles: list[dict] | None = None) -> list[str]:
+    active_accounts = _active_accounts_from_battles(battles or [])
+    if active_accounts:
+        return active_accounts
+    return _configured_showdown_accounts()
+
+
+def _ladder_accounts_for(accounts: list[str] | None = None) -> dict:
+    cached = _ladder_cache.get("accounts", {})
+    if not isinstance(cached, dict) or not cached:
+        return {}
+    requested = _dedupe_showdown_accounts(accounts or [])
+    if not requested:
+        return dict(cached)
+    wanted = {_normalize_showdown_id(account) for account in requested}
+    return {
+        account: elo
+        for account, elo in cached.items()
+        if _normalize_showdown_id(str(account)) in wanted
+    }
+
+
 def _normalize_replay_id(battle_id: str) -> str:
     if not battle_id:
         return ""
@@ -812,8 +873,8 @@ async def _replay_exists(replay_id: str) -> bool:
 
 async def _init_elo_cache() -> None:
     try:
-        accounts = SHOWDOWN_ACCOUNTS if SHOWDOWN_ACCOUNTS else [_resolve_showdown_user_id()]
-        accounts = [acc for acc in accounts if acc]
+        battles_data = state_store.read_active_battles()
+        accounts = _current_showdown_accounts(battles_data.get("battles", []))
         if not accounts:
             return
         
@@ -835,8 +896,8 @@ async def _refresh_elo(force: bool = False) -> bool:
         return False
 
     _last_elo_refresh_ts = now
-    accounts = SHOWDOWN_ACCOUNTS if SHOWDOWN_ACCOUNTS else [_resolve_showdown_user_id()]
-    accounts = [acc for acc in accounts if acc]
+    battles_data = state_store.read_active_battles()
+    accounts = _current_showdown_accounts(battles_data.get("battles", []))
     if not accounts:
         return False
     
@@ -978,21 +1039,40 @@ async def maybe_refresh_elo_from_event(event_type: str, payload: dict) -> None:
         _schedule_elo_refresh(force=True, delay=ELO_EVENT_RETRY_SEC)
 
 
-def _apply_ladder_status(status: dict) -> dict:
+def _apply_ladder_status(status: dict, *, current_accounts: list[str] | None = None) -> dict:
     merged = dict(status)
-    accounts = _ladder_cache.get("accounts", {})
+    accounts = _ladder_accounts_for(current_accounts)
     
     # Backward compat: if only one account, set top-level "elo" field
     if accounts:
         # Prefer SHOWDOWN_USER_ID if set, else use first account
         primary_user = _resolve_showdown_user_id()
-        if primary_user and primary_user in accounts:
-            merged["elo"] = accounts[primary_user]
-        else:
-            # Fallback: use first account's ELO
-            merged["elo"] = list(accounts.values())[0]
+        primary_norm = _normalize_showdown_id(primary_user)
+        selected = None
+        if primary_norm:
+            for account, elo in accounts.items():
+                if _normalize_showdown_id(str(account)) == primary_norm:
+                    selected = elo
+                    break
+        if selected is None and current_accounts:
+            wanted = [_normalize_showdown_id(account) for account in current_accounts]
+            for wanted_norm in wanted:
+                for account, elo in accounts.items():
+                    if _normalize_showdown_id(str(account)) == wanted_norm:
+                        selected = elo
+                        break
+                if selected is not None:
+                    break
+        # Fallback: use first matching account's ELO.
+        merged["elo"] = selected if selected is not None else list(accounts.values())[0]
         merged["elo_source"] = "showdown"
         merged["elo_updated"] = _ladder_cache.get("updated")
+    elif current_accounts:
+        # Active battles prove the live account. Avoid leaking stale status-file
+        # ELO for a different account while the fresh account is still loading.
+        merged["elo"] = "---"
+        merged.pop("elo_source", None)
+        merged.pop("elo_updated", None)
     
     return merged
 
@@ -1289,9 +1369,14 @@ async def handle_health(request: web.Request) -> web.Response:
 
 
 async def handle_status(request: web.Request) -> web.Response:
-    status = _apply_ladder_status(state_store.read_status())
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
+    current_accounts = _current_showdown_accounts(battles)
+    status = _apply_ladder_status(
+        state_store.read_status(),
+        current_accounts=current_accounts,
+    )
+    status["accounts_elo"] = _ladder_accounts_for(current_accounts)
     status["active_battles"] = [b.get("id") for b in battles]
     # Build battle_info from actual battles (more reliable than stale status file)
     if battles:
