@@ -251,6 +251,7 @@ class _InitOnlyFilter(logging.Filter):
 
 
 _shared_handler_filtered = False
+_WINDOWS_UNSAFE_LOG_FILENAME_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]+')
 
 
 def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
@@ -281,11 +282,29 @@ def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
     return handler
 
 
+def _safe_log_filename_part(value: object, *, fallback: str = "unknown", max_length: int = 120) -> str:
+    text = str(value or "").strip()
+    if not text:
+        text = fallback
+    safe = _WINDOWS_UNSAFE_LOG_FILENAME_RE.sub("_", text)
+    safe = re.sub(r"_+", "_", safe).strip(" ._")
+    if not safe:
+        safe = fallback
+    if len(safe) > max_length:
+        safe = safe[:max_length].rstrip(" ._") or fallback
+    return safe
+
+
+def _worker_battle_log_path(worker_id: int, battle_tag: str, opponent_name: str) -> str:
+    safe_battle_tag = _safe_log_filename_part(battle_tag, fallback=f"worker_{worker_id}")
+    safe_opponent_name = _safe_log_filename_part(opponent_name)
+    return os.path.join("logs", f"{safe_battle_tag}_{safe_opponent_name}.log")
+
+
 def _rollover_worker_handler(worker_id: int, battle_tag: str, opponent_name: str):
     """Switch worker's log handler to a new battle-specific file."""
     handler = _get_or_create_worker_handler(worker_id)
-    new_name = f"{battle_tag}_{opponent_name}.log".replace("/", "_")
-    handler.baseFilename = os.path.join("logs", new_name)
+    handler.baseFilename = _worker_battle_log_path(worker_id, battle_tag, opponent_name)
     # doRollover() renames the current file to .1 and opens a fresh file
     # with the new baseFilename — exactly like the original do_rollover().
     handler.doRollover()
