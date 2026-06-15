@@ -8,7 +8,7 @@ def test_runtime_lease_validator_accepts_utf8_bom_json(tmp_path):
     lease = build_runtime_lease_artifact(
         purpose="devstream-supervise",
         machine="JIGGLYPUFF",
-        account="LEBOTJAMESXD00N",
+        account="examplebot",
         run_count=30,
         max_cycles=500,
         max_concurrent_battles=3,
@@ -25,7 +25,7 @@ def test_runtime_lease_validator_accepts_utf8_bom_json(tmp_path):
         requested_run_count=30,
         requested_max_cycles=500,
         requested_max_concurrent_battles=3,
-        requested_account="LEBOTJAMESXD00N",
+        requested_account="examplebot",
         require_run_count=True,
         require_max_cycles=True,
         require_max_concurrent_battles=True,

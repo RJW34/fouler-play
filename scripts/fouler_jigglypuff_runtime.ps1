@@ -50,30 +50,6 @@ function Resolve-RuntimeLeasePath {
     return (Join-Path $RepoRoot $Path)
 }
 
-function Get-RuntimeLeaseAccount {
-    param([string]$Path)
-    $resolved = Resolve-RuntimeLeasePath -Path $Path
-    if ([string]::IsNullOrWhiteSpace($resolved) -or -not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
-        return ""
-    }
-    $lease = Read-JsonFile -Path $resolved
-    if (-not $lease) { return "" }
-    $candidates = @(
-        $lease.account,
-        $lease.psUsername,
-        $lease.showdownAccount,
-        $lease.battleScope.account,
-        $lease.battleScope.psUsername
-    )
-    foreach ($candidate in $candidates) {
-        $value = [string]$candidate
-        if (-not [string]::IsNullOrWhiteSpace($value)) {
-            return $value.Trim()
-        }
-    }
-    return ""
-}
-
 function Invoke-Checked {
     param(
         [string]$FilePath,
@@ -495,7 +471,6 @@ function Start-BattleSession {
     }
     $command = ($supervisorArgs | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join " "
     $resolvedRuntimeLease = Resolve-RuntimeLeasePath -Path $RuntimeLease
-    $runtimeLeaseAccount = Get-RuntimeLeaseAccount -Path $RuntimeLease
     $autoImproveFlag = if ($AutoImprove) { "1" } else { "0" }
     $envSetters = @(
         "set PYTHONUTF8=1",
@@ -510,11 +485,8 @@ function Start-BattleSession {
     if (-not [string]::IsNullOrWhiteSpace($resolvedRuntimeLease)) {
         $envSetters += "set FOULER_RUNTIME_LEASE_PATH=$resolvedRuntimeLease"
     }
-    if (-not [string]::IsNullOrWhiteSpace($runtimeLeaseAccount)) {
-        $envSetters += "set PS_USERNAME=$runtimeLeaseAccount"
-        $envSetters += "set SHOWDOWN_USER_ID=$runtimeLeaseAccount"
-        $envSetters += "set SHOWDOWN_ACCOUNTS=$runtimeLeaseAccount"
-    }
+    # The lease is an authorization artifact. The configured bot identity stays
+    # in .env; devstream_session rejects mismatched leases before starting.
     $commandLine = 'cmd.exe /d /c "{0}&& {1} 1>>"{2}" 2>>"{3}""' -f ($envSetters -join "&& "), $command, $stdout, $stderr
     $launch = Start-DetachedCommand -CommandLine $commandLine -WorkingDirectory $RepoRoot
     if (-not (Test-Path $PidDir)) { New-Item -ItemType Directory -Path $PidDir -Force | Out-Null }

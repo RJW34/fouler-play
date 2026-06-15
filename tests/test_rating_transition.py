@@ -125,7 +125,7 @@ async def test_discord_result_uses_active_account_when_showdown_accounts_is_stal
     async def replay_missing(*args, **kwargs):
         return False
 
-    monkeypatch.setattr(run_battle.FoulPlayConfig, "username", "LEBOTJAMESXD00N", raising=False)
+    monkeypatch.setattr(run_battle.FoulPlayConfig, "username", "currentbot", raising=False)
     monkeypatch.setenv("SHOWDOWN_ACCOUNTS", "npctypebeat")
     monkeypatch.setenv("DISCORD_BATTLES_WEBHOOK_URL", "https://discord.com/api/webhooks/test/token")
     monkeypatch.setattr(run_battle, "_replay_exists", replay_missing)
@@ -133,9 +133,9 @@ async def test_discord_result_uses_active_account_when_showdown_accounts_is_stal
 
     await run_battle._post_battle_to_discord(
         battle_tag="battle-gen9ou-2632180642",
-        winner="LEBOTJAMESXD00N",
+        winner="currentbot",
         opponent_name="murdockfejao",
-        our_player_name="LEBOTJAMESXD00N",
+        our_player_name="currentbot",
         turn_count=21,
         rating_delta=(1000, 1043, 43),
     )

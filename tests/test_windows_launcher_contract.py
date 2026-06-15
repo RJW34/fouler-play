@@ -136,8 +136,16 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert "-AutoImprove" in installer
     assert "-MaxCycles" in installer
     assert "-AllowUnboundedSupervisor" in installer
-    assert 'set ""PS_USERNAME=$RuntimeLeaseAccount""' in wrapper
-    assert "set PS_USERNAME=$runtimeLeaseAccount" in runtime
+    assert "FOULER_RUNTIME_LEASE_PATH" in wrapper
+    assert "FOULER_RUNTIME_LEASE_PATH" in runtime
+    assert "RuntimeLeaseAccount" not in wrapper
+    assert "runtimeLeaseAccount" not in runtime
+    assert 'set ""PS_USERNAME=' not in wrapper
+    assert "set PS_USERNAME=" not in runtime
+    assert 'set ""SHOWDOWN_USER_ID=' not in wrapper
+    assert "set SHOWDOWN_USER_ID=" not in runtime
+    assert 'set ""SHOWDOWN_ACCOUNTS=' not in wrapper
+    assert "set SHOWDOWN_ACCOUNTS=" not in runtime
     assert "[switch]$AutoImprove" in runtime.split("function Start-BattleSession", 1)[1].split(")", 1)[0]
     assert "Rotate-LogFileIfLarge" in wrapper
     assert "Rotate-LogFileIfLarge" in runtime

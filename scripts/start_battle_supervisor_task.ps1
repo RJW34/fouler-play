@@ -32,42 +32,9 @@ function Resolve-RuntimeLeasePath {
     return (Join-Path $ProjectDir $Path)
 }
 
-function Get-RuntimeLeaseAccount {
-    param([string]$Path)
-    $resolved = Resolve-RuntimeLeasePath -Path $Path
-    if ([string]::IsNullOrWhiteSpace($resolved) -or -not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
-        return ""
-    }
-    try {
-        $lease = Get-Content -Raw -LiteralPath $resolved | ConvertFrom-Json
-    } catch {
-        return ""
-    }
-    $candidates = @(
-        $lease.account,
-        $lease.psUsername,
-        $lease.showdownAccount,
-        $lease.battleScope.account,
-        $lease.battleScope.psUsername
-    )
-    foreach ($candidate in $candidates) {
-        $value = [string]$candidate
-        if (-not [string]::IsNullOrWhiteSpace($value)) {
-            return $value.Trim()
-        }
-    }
-    return ""
-}
-
 $ResolvedRuntimeLease = Resolve-RuntimeLeasePath -Path $RuntimeLease
-$RuntimeLeaseAccount = Get-RuntimeLeaseAccount -Path $RuntimeLease
 if (-not [string]::IsNullOrWhiteSpace($ResolvedRuntimeLease)) {
     $env:FOULER_RUNTIME_LEASE_PATH = $ResolvedRuntimeLease
-}
-if (-not [string]::IsNullOrWhiteSpace($RuntimeLeaseAccount)) {
-    $env:PS_USERNAME = $RuntimeLeaseAccount
-    $env:SHOWDOWN_USER_ID = $RuntimeLeaseAccount
-    $env:SHOWDOWN_ACCOUNTS = $RuntimeLeaseAccount
 }
 
 $supPidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
@@ -184,11 +151,8 @@ $cmdLines = @(
 if (-not [string]::IsNullOrWhiteSpace($ResolvedRuntimeLease)) {
     $cmdLines += "set ""FOULER_RUNTIME_LEASE_PATH=$ResolvedRuntimeLease"""
 }
-if (-not [string]::IsNullOrWhiteSpace($RuntimeLeaseAccount)) {
-    $cmdLines += "set ""PS_USERNAME=$RuntimeLeaseAccount"""
-    $cmdLines += "set ""SHOWDOWN_USER_ID=$RuntimeLeaseAccount"""
-    $cmdLines += "set ""SHOWDOWN_ACCOUNTS=$RuntimeLeaseAccount"""
-}
+# The runtime lease proves authorization, not identity authority. devstream_session
+# loads .env and rejects a lease whose account disagrees with the configured bot.
 $cmdLines += "set ""FOULER_PLAY_ENABLE_AUTO_IMPROVE=$AutoImproveFlag"""
 $cmdLines += (($commandLine -join " ") + " 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)")
 $cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
