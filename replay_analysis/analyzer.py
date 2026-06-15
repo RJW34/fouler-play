@@ -7,11 +7,18 @@ Automatically analyzes lost battles to identify improvement opportunities
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 import requests
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from replay_analysis.account_identity import resolve_bot_username
 
 
 @dataclass
@@ -109,7 +116,7 @@ class ReplayAnalyzer:
         """Parse the replay log into structured turns"""
         turns = []
         current_turn = None
-        bot_name = os.getenv("PS_USERNAME", "npctypebeat")
+        bot_name = resolve_bot_username()
         
         for line in log_lines:
             line = line.strip()
@@ -150,7 +157,7 @@ class ReplayAnalyzer:
         mistakes = []
         log_lines = replay_data.get("log", "").split("\n")
         
-        bot_name = os.getenv("PS_USERNAME", "npctypebeat")
+        bot_name = resolve_bot_username()
         current_turn = 0
         
         # Tracking state

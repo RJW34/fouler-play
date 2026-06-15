@@ -19,6 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from replay_analysis.turn_review import TurnReviewer
 from replay_analysis.loss_learning import aggregate_loss_lessons, build_loss_artifact
+from replay_analysis.account_identity import resolve_bot_username
 from fp.theknower_competitive import build_competitive_meta_context
 from infrastructure.gen9_validation import Gen9Validator
 
@@ -37,7 +38,7 @@ class BatchAnalyzer:
     """Analyzes batches of battles and generates improvement reports."""
 
     def __init__(self):
-        self.bot_username = os.getenv("PS_USERNAME", "npctypebeat")
+        self.bot_username = resolve_bot_username()
         self.reviewer = TurnReviewer(bot_username=self.bot_username)
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 

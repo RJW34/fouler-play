@@ -32,6 +32,11 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from replay_analysis.account_identity import resolve_bot_username
+
 BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
 TEAMS_DIR = PROJECT_ROOT / "teams" / "teams"
 REPLAY_ANALYSIS_DIR = PROJECT_ROOT / "replay_analysis"
@@ -39,9 +44,9 @@ LOSSES_DIR = REPLAY_ANALYSIS_DIR / "losses"
 REPORT_OUTPUT_PATH = REPLAY_ANALYSIS_DIR / "team_report.json"
 
 # The bot's username on Showdown (used when parsing replay logs to determine
-# which side is "ours").  Read from .env so reports work with whichever
-# account is currently live.
-BOT_USERNAME = os.getenv("PS_USERNAME", "npctypebeat")
+# which side is "ours"). Read from runtime identity env so reports work with
+# whichever account is currently live.
+BOT_USERNAME = resolve_bot_username()
 
 
 # ---------------------------------------------------------------------------

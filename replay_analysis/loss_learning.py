@@ -22,6 +22,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from replay_analysis.account_identity import resolve_bot_username
+
 from data import all_move_json, pokedex
 from fp.helpers import type_effectiveness_modifier
 
@@ -311,8 +313,8 @@ class LocalMechanics:
 
 
 class LossLogIngestor:
-    def __init__(self, bot_username: str = "npctypebeat"):
-        self.bot_username = bot_username
+    def __init__(self, bot_username: str | None = None):
+        self.bot_username = bot_username or resolve_bot_username()
 
     def ingest(self, replay_data: dict[str, Any], team_file: str | None = None) -> LossEvidence:
         log_lines = str(replay_data.get("log", "")).splitlines()
@@ -564,7 +566,11 @@ class LossLogIngestor:
         return claims
 
 
-def build_loss_artifact(replay_data: dict[str, Any], bot_username: str = "npctypebeat", team_file: str | None = None) -> dict[str, Any]:
+def build_loss_artifact(
+    replay_data: dict[str, Any],
+    bot_username: str | None = None,
+    team_file: str | None = None,
+) -> dict[str, Any]:
     ingestor = LossLogIngestor(bot_username=bot_username)
     return asdict(ingestor.ingest(replay_data, team_file=team_file))
 
@@ -672,7 +678,7 @@ def load_replay(path: Path) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Build mechanics-backed loss-learning artifacts from local replay JSON files.")
     parser.add_argument("replay_json", nargs="+", type=Path)
-    parser.add_argument("--bot-username", default="npctypebeat")
+    parser.add_argument("--bot-username", default=resolve_bot_username())
     parser.add_argument("--team-file", default=None)
     parser.add_argument("--min-repeats", type=int, default=2)
     parser.add_argument("--output", type=Path, default=None, help="Optional JSON output path for aggregate learning summary.")

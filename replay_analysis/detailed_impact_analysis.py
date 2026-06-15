@@ -10,6 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.turn_review import TurnReviewer
+from replay_analysis.account_identity import resolve_bot_username
 
 def analyze_replay_for_issues(replay_file: Path, reviewer) -> dict:
     """Analyze a single replay for specific issue patterns."""
@@ -24,7 +25,8 @@ def analyze_replay_for_issues(replay_file: Path, reviewer) -> dict:
         # Extract result
         if "log" in replay_data:
             log = replay_data["log"]
-            if "BugInTheCode won" in log or "|win|BugInTheCode" in log:
+            bot_username = getattr(reviewer, "bot_username", resolve_bot_username())
+            if f"{bot_username} won" in log or f"|win|{bot_username}" in log:
                 result = "win"
             elif "won the battle!" in log:
                 result = "loss"
@@ -98,7 +100,7 @@ def analyze_replay_for_issues(replay_file: Path, reviewer) -> dict:
         return None
 
 def main():
-    reviewer = TurnReviewer(bot_username="BugInTheCode")
+    reviewer = TurnReviewer(bot_username=resolve_bot_username())
     replay_dir = Path(__file__).parent
     replay_files = sorted(replay_dir.glob("gen9ou-*.json"))[-30:]  # Last 30 battles
     

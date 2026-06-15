@@ -24,9 +24,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from data import pokedex
 from fp.helpers import type_effectiveness_modifier
+from replay_analysis.account_identity import resolve_bot_username
 
 
-DEFAULT_BOT_USERNAME = os.getenv("PS_USERNAME", "npctypebeat")
+DEFAULT_BOT_USERNAME = resolve_bot_username()
 SETUP_MOVES = {
     "calmmind",
     "curse",
