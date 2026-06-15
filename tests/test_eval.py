@@ -305,6 +305,55 @@ class TestEvaluatePosition(unittest.TestCase):
         self.assertIn("switch gliscor", scores)
         self.assertIn("switch gholdengo", scores)
 
+    def test_force_switch_avoids_hazard_lethal_switch_target(self):
+        """Do not route forced switches into Pokemon that faint on known hazards."""
+        from fp.search.eval import evaluate_position
+
+        our = _make_pokemon(
+            name="corviknight",
+            types=["flying", "steel"],
+            moves=["bodypress", "thief", "uturn", "roost"],
+            hp=371,
+            max_hp=371,
+            item="heavydutyboots",
+        )
+        hazard_dead_gliscor = _make_pokemon(
+            name="gliscor",
+            types=["ground", "flying"],
+            hp=22,
+            max_hp=354,
+            item="toxicorb",
+            ability="poisonheal",
+        )
+        healthy_boots_ogerpon = _make_pokemon(
+            name="ogerpon",
+            types=["grass"],
+            hp=301,
+            max_hp=301,
+            item="heavydutyboots",
+        )
+        opp = _make_pokemon(
+            name="bastiodon",
+            types=["rock", "steel"],
+            moves=["bodypress"],
+        )
+        battle = _make_battle(
+            user_active=our,
+            user_reserve=[hazard_dead_gliscor, healthy_boots_ogerpon],
+            opp_active=opp,
+            user_side_conditions={
+                constants.STEALTH_ROCK: 1,
+                constants.SPIKES: 1,
+            },
+            force_switch=True,
+        )
+
+        scores = evaluate_position(battle)
+
+        self.assertIn("switch gliscor", scores)
+        self.assertIn("switch ogerpon", scores)
+        self.assertGreater(scores["switch ogerpon"], scores["switch gliscor"] * 5)
+
     def test_empty_moves_handled(self):
         """Should handle pokemon with no usable moves."""
         from fp.search.eval import evaluate_position
