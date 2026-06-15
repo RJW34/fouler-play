@@ -8,6 +8,9 @@ reported delta to ~+/-1. The fix parses Showdown's authoritative end-of-battle
 player, so the opponent's line must not be picked up).
 """
 
+import pytest
+
+import fp.run_battle as run_battle
 from fp.run_battle import parse_rating_transition
 
 OUR = "npctypebeat"
@@ -93,3 +96,50 @@ def test_delta_in_plausible_per_battle_range_not_one():
     old, new, delta = parse_rating_transition(msg, OUR)
     assert delta == 18
     assert abs(delta) > 1
+
+
+@pytest.mark.asyncio
+async def test_discord_result_uses_active_account_when_showdown_accounts_is_stale(monkeypatch):
+    sent_payloads: list[dict] = []
+
+    class FakeResponse:
+        status = 204
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def post(self, url, json, timeout):
+            sent_payloads.append(json)
+            return FakeResponse()
+
+    async def replay_missing(*args, **kwargs):
+        return False
+
+    monkeypatch.setattr(run_battle.FoulPlayConfig, "username", "LEBOTJAMESXD00N", raising=False)
+    monkeypatch.setenv("SHOWDOWN_ACCOUNTS", "npctypebeat")
+    monkeypatch.setenv("DISCORD_BATTLES_WEBHOOK_URL", "https://discord.com/api/webhooks/test/token")
+    monkeypatch.setattr(run_battle, "_replay_exists", replay_missing)
+    monkeypatch.setattr(run_battle.aiohttp, "ClientSession", lambda: FakeSession())
+
+    await run_battle._post_battle_to_discord(
+        battle_tag="battle-gen9ou-2632180642",
+        winner="LEBOTJAMESXD00N",
+        opponent_name="murdockfejao",
+        our_player_name="LEBOTJAMESXD00N",
+        turn_count=21,
+        rating_delta=(1000, 1043, 43),
+    )
+
+    assert sent_payloads
+    assert "**WIN** vs murdockfejao" in sent_payloads[0]["content"]
+    assert "ELO gained 43 (1000 \u2192 1043, +43)" in sent_payloads[0]["content"]
