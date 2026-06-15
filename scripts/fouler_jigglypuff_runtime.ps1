@@ -552,12 +552,14 @@ function Start-BattleSession {
         $supervisorArgs += "--enable-auto-improve"
     }
     $command = ($supervisorArgs | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join " "
+    $autoImproveEnv = if ($AutoImprove) { "1" } else { "0" }
     $envAssignments = @(
         "set PYTHONUTF8=1",
         "set PYTHONIOENCODING=utf-8",
         "set BOT_LOG_TO_FILE=1",
         "set AUTO_START_OBS_SERVER=0",
         "set LOSS_TRIGGERED_DRAIN=0",
+        "set FOULER_PLAY_ENABLE_AUTO_IMPROVE=$autoImproveEnv",
         "set BATTLE_STATS_MAX_ENTRIES=5000",
         "set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json"
     )
