@@ -357,6 +357,50 @@ def _normalize_username(name: str) -> str:
     return re.sub(r'[^a-z0-9]', '', name.lower()) if name else ""
 
 
+def _showdown_account_identities(*extra_names: object) -> set[str]:
+    """Return account names that should be treated as our bot in this process."""
+    accounts: set[str] = set()
+    raw_values: list[object] = [getattr(FoulPlayConfig, "username", None)]
+    raw_values.extend(extra_names)
+    raw_values.append(os.getenv("SHOWDOWN_ACCOUNTS", ""))
+
+    for raw in raw_values:
+        if raw is None:
+            continue
+        for part in str(raw).split(","):
+            normalized = _normalize_username(part.strip())
+            if normalized:
+                accounts.add(normalized)
+    return accounts
+
+
+def _is_our_showdown_account(name: object, *extra_names: object) -> bool:
+    normalized = _normalize_username(str(name) if name is not None else "")
+    return bool(normalized and normalized in _showdown_account_identities(*extra_names))
+
+
+def _battle_result_from_evidence(
+    winner: object,
+    our_player_name: object = None,
+    *,
+    elo_delta: object = None,
+) -> str:
+    """Return win/loss/tie, preferring the authoritative rating sign when present."""
+    if elo_delta is not None:
+        try:
+            delta = float(elo_delta)
+        except (TypeError, ValueError):
+            delta = 0.0
+        if delta > 0:
+            return "win"
+        if delta < 0:
+            return "loss"
+
+    if winner is None or str(winner).lower() == "tie":
+        return "tie"
+    return "win" if _is_our_showdown_account(winner, our_player_name) else "loss"
+
+
 # Authoritative per-battle rating transition emitted by Showdown to the battle
 # room at the end of a RATED game. The live wire format wraps both the player
 # name and the new rating in HTML, e.g.
@@ -676,16 +720,15 @@ async def _post_battle_to_discord(
             Showdown's end-of-battle |raw| rating line. When present this is
             the TRUE rating change and overrides the lagging ladder-API value.
     """
-    # Determine if we won
-    showdown_accounts = os.getenv("SHOWDOWN_ACCOUNTS", FoulPlayConfig.username).strip().lower().split(",")
-    showdown_accounts = [_normalize_username(acc) for acc in showdown_accounts if acc.strip()]
-    is_win = winner and _normalize_username(winner) in showdown_accounts
-    is_tie = winner is None or winner == "tie"
+    # Determine if we won. SHOWDOWN_ACCOUNTS is only an alias list; the active
+    # runtime account from CLI/config must remain authoritative.
+    parsed_is_win = _is_our_showdown_account(winner, our_player_name)
 
     if not our_player_name:
-        our_player_name = winner if is_win else FoulPlayConfig.username
+        our_player_name = winner if parsed_is_win else FoulPlayConfig.username
 
     ps_username = our_player_name or FoulPlayConfig.username
+    authoritative_elo_delta: int | None = None
 
     # --- AUTHORITATIVE per-battle rating (preferred) ---
     # If Showdown sent us the end-of-battle |raw| rating transition for this
@@ -696,6 +739,7 @@ async def _post_battle_to_discord(
         rd_old, rd_new, rd_delta = rating_delta
         elo_before = float(rd_old)
         elo_after = float(rd_new)
+        authoritative_elo_delta = int(rd_delta)
         gxe = None
         logger.info(
             "Using authoritative |raw| rating for %s: %d -> %d (%+d)",
@@ -741,10 +785,27 @@ async def _post_battle_to_discord(
                 elo_after = None
 
     # --- Line 1: Result header ---
-    if is_tie:
+    if authoritative_elo_delta is None and elo_after is not None and elo_before is not None:
+        authoritative_elo_delta = int(round(float(elo_after) - float(elo_before)))
+    result_key = _battle_result_from_evidence(
+        winner,
+        our_player_name,
+        elo_delta=authoritative_elo_delta,
+    )
+    parsed_result_key = "tie" if winner is None or winner == "tie" else ("win" if parsed_is_win else "loss")
+    if result_key != parsed_result_key and authoritative_elo_delta:
+        logger.warning(
+            "Discord result corrected by rating transition for %s: parsed=%s delta=%+d corrected=%s",
+            battle_tag,
+            parsed_result_key,
+            authoritative_elo_delta,
+            result_key,
+        )
+
+    if result_key == "tie":
         result_word = "TIE"
         emoji = "🤝"
-    elif is_win:
+    elif result_key == "win":
         result_word = "WIN"
         emoji = "⚔️"
     else:
@@ -2923,6 +2984,20 @@ async def pokemon_battle(
                     rating_delta=_rating_delta,
                 )
 
+                _elo_before_final = None
+                _elo_after_final = None
+                _elo_delta_final = None
+                if _rating_delta is not None:
+                    _elo_before_final = float(_rating_delta[0])
+                    _elo_after_final = float(_rating_delta[1])
+                    _elo_delta_final = int(_rating_delta[2])
+                else:
+                    _elo_after_final = elo_after
+                    if _elo_before_val is not None:
+                        _elo_before_final = float(_elo_before_val)
+                    if _elo_after_final is not None and _elo_before_final is not None:
+                        _elo_delta_final = int(round(float(_elo_after_final) - float(_elo_before_final)))
+
                 # Cleanup battle queue to prevent buildup over time.
                 timeout = 5
                 start = time.time()
@@ -2952,17 +3027,14 @@ async def pokemon_battle(
 
                 # Update stream overlay stats
                 try:
-                    showdown_accounts_stats = os.getenv(
-                        "SHOWDOWN_ACCOUNTS", FoulPlayConfig.username
-                    ).strip().lower().split(",")
-                    showdown_accounts_stats = [
-                        _normalize_username(acc)
-                        for acc in showdown_accounts_stats
-                        if acc.strip()
-                    ]
-                    is_win = winner and _normalize_username(winner) in showdown_accounts_stats
+                    _result_key_stats = _battle_result_from_evidence(
+                        winner,
+                        getattr(getattr(battle, "user", None), "account_name", None),
+                        elo_delta=_elo_delta_final,
+                    )
+                    is_win = _result_key_stats == "win"
 
-                    if winner and winner != "None":
+                    if _result_key_stats in {"win", "loss"}:
                         update_daily_stats(
                             wins_delta=1 if is_win else 0,
                             losses_delta=0 if is_win else 1,
@@ -2980,8 +3052,8 @@ async def pokemon_battle(
                             "today_losses": daily.get("losses", 0),
                             "status": "Searching" if battle_count == 0 else "Battling",
                             "battle_info": (
-                                f"vs {winner}"
-                                if not is_win and winner
+                                f"vs {opponent_name}"
+                                if not is_win and opponent_name
                                 else "Searching..."
                             ),
                         }
@@ -3023,14 +3095,11 @@ async def pokemon_battle(
                     logger.info("Skipping battle_result queue event for %s: queue disabled", battle_tag)
                 else:
                     try:
-                        _showdown_accts_ev = os.getenv(
-                            "SHOWDOWN_ACCOUNTS", FoulPlayConfig.username
-                        ).strip().lower().split(",")
-                        _showdown_accts_ev = [
-                            _normalize_username(a) for a in _showdown_accts_ev if a.strip()
-                        ]
-                        _we_won_ev = winner and _normalize_username(winner) in _showdown_accts_ev
-                        _result_str = "win" if _we_won_ev else ("tie" if (winner is None or winner == "tie") else "loss")
+                        _result_str = _battle_result_from_evidence(
+                            winner,
+                            getattr(getattr(battle, "user", None), "account_name", None),
+                            elo_delta=_elo_delta_final,
+                        )
                         _team_name_ev = (
                             FoulPlayConfig.team_name
                             if hasattr(FoulPlayConfig, "team_name")
@@ -3091,8 +3160,8 @@ async def pokemon_battle(
                                 replay_status=_queue_replay_status,
                                 replay_public_verified=_replay_handoff.get("replay_public_verified"),
                                 raw_replay_url=_replay_handoff.get("raw_replay_url"),
-                                elo_before=_elo_before_val,
-                                elo_after=elo_after if 'elo_after' in locals() else None,
+                                elo_before=_elo_before_final,
+                                elo_after=_elo_after_final,
                                 recent_record=_recent_summary,
                                 decisive_reason=_decisive_reason,
                                 next_battle_action=_next_action,
