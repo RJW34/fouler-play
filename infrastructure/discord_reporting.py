@@ -106,13 +106,28 @@ def _short_team_name(team: object) -> str:
     return text.replace("-", " ")
 
 
-def format_elo_delta(before: object, after: object, result: object = "", label: str = "ELO") -> str:
+def _safe_rating_delta(value: object) -> int | None:
+    try:
+        return int(round(float(value)))
+    except Exception:
+        return None
+
+
+def format_elo_delta(
+    before: object,
+    after: object,
+    result: object = "",
+    label: str = "ELO",
+    rating_delta: object = None,
+) -> str:
     try:
         before_num = int(round(float(before)))
         after_num = int(round(float(after)))
     except Exception:
         return ""
-    delta = after_num - before_num
+    delta = _safe_rating_delta(rating_delta)
+    if delta is None:
+        delta = after_num - before_num
     result_norm = _normalize_result(result)
     sign = "+" if delta > 0 else ""
 
@@ -505,7 +520,12 @@ def _proof_from_payload(data: dict) -> str:
 
     elo_before = data.get("elo_before")
     elo_after = data.get("elo_after")
-    elo_delta = format_elo_delta(elo_before, elo_after, data.get("result", ""))
+    elo_delta = format_elo_delta(
+        elo_before,
+        elo_after,
+        data.get("result", ""),
+        rating_delta=data.get("rating_delta"),
+    )
     if elo_delta:
         add(elo_delta)
 

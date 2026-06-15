@@ -1111,9 +1111,32 @@ def test_payload_formatter_does_not_render_contradictory_elo_delta():
     assert "1117 → 1136 ELO" not in formatted
 
 
+def test_payload_formatter_uses_authoritative_rating_delta_when_present():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs MatronJames",
+        "Battle battle-gen9ou-2555107042 ended loss against MatronJames.",
+        "Operator-facing battle posts should trust the signed Showdown rating delta.",
+        "battle_id=battle-gen9ou-2555107042; result=loss",
+        "review the replay",
+        source="unit-test",
+        battle_id="battle-gen9ou-2555107042",
+        result="loss",
+        opponent="MatronJames",
+        elo_before=1065,
+        elo_after=1048,
+        rating_delta=-17,
+    )
+    formatted = format_payload_or_message(payload)
+
+    assert "- ELO `lost 17 (1065 → 1048, -17)`" in formatted
+    assert "check needed" not in formatted
+
+
 def test_elo_delta_labels_match_result_direction():
     assert format_elo_delta(1136, 1117, "loss") == "ELO lost 19 (1136 → 1117, -19)"
     assert format_elo_delta(1117, 1136, "win") == "ELO gained 19 (1117 → 1136, +19)"
+    assert format_elo_delta(1065, 1048, "loss", rating_delta=-17) == "ELO lost 17 (1065 → 1048, -17)"
     assert "contradicts win" in format_elo_delta(1136, 1117, "win")
     assert "contradicts loss" in format_elo_delta(1117, 1136, "loss")
 
