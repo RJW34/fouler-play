@@ -99,6 +99,61 @@ class TestThreatSwitchBias(unittest.TestCase):
             )
         )
 
+    def test_mcts_only_demotes_full_hp_recovery_when_alternative_exists(self):
+        battle = _mk_battle(
+            active_hp=334,
+            active_max_hp=334,
+            move_names=["recover", "shadowball", "partingshot"],
+        )
+        ability_state = OpponentAbilityState(our_hp_percent=1.0)
+        trace = {}
+        policy = {
+            "recover": 1.0,
+            "shadowball": 0.20,
+            "partingshot": 0.05,
+        }
+
+        choice = select_move_from_eval_scores(
+            policy,
+            ability_state=ability_state,
+            battle=battle,
+            decision_profile=DecisionProfile.LOW,
+            trace=trace,
+            policy_source="mcts",
+        )
+
+        self.assertEqual(choice, "shadowball")
+        events = trace.get("mcts_only", {}).get("events", [])
+        self.assertTrue(
+            any(
+                event.get("reason") == "full_hp_recovery_fails"
+                and event.get("move") == "recover"
+                for event in events
+            )
+        )
+
+    def test_mcts_only_keeps_full_hp_recovery_when_only_positive_option(self):
+        battle = _mk_battle(
+            active_hp=334,
+            active_max_hp=334,
+            move_names=["recover", "shadowball"],
+        )
+        ability_state = OpponentAbilityState(our_hp_percent=1.0)
+        policy = {
+            "recover": 1.0,
+            "shadowball": 0.0,
+        }
+
+        choice = select_move_from_eval_scores(
+            policy,
+            ability_state=ability_state,
+            battle=battle,
+            decision_profile=DecisionProfile.LOW,
+            policy_source="mcts",
+        )
+
+        self.assertEqual(choice, "recover")
+
     def test_prefers_reset_over_switch_loop_when_healthy(self):
         battle = _mk_battle(active_hp=300, active_max_hp=334)
         ability_state = _mk_ability_state(boost=2)
