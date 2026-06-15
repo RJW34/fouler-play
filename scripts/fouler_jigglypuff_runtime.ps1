@@ -61,6 +61,50 @@ function Read-JsonFile {
     }
 }
 
+function Resolve-RuntimeLeasePath {
+    param([string]$RuntimeLease)
+    if ([string]::IsNullOrWhiteSpace($RuntimeLease)) {
+        return (Join-Path $RepoRoot "devstream\truth\runtime-lease.json")
+    }
+    if ([System.IO.Path]::IsPathRooted($RuntimeLease)) {
+        return $RuntimeLease
+    }
+    return (Join-Path $RepoRoot $RuntimeLease)
+}
+
+function Get-RuntimeLeaseAccount {
+    param([string]$RuntimeLease)
+    $lease = Read-JsonFile -Path (Resolve-RuntimeLeasePath -RuntimeLease $RuntimeLease)
+    if ($null -eq $lease) {
+        return ""
+    }
+    $candidates = @(
+        $lease.account,
+        $lease.psUsername,
+        $lease.showdownAccount,
+        $lease.battleScope.account,
+        $lease.battleScope.psUsername
+    )
+    foreach ($candidate in $candidates) {
+        $value = "$candidate".Trim()
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            return $value
+        }
+    }
+    return ""
+}
+
+function ConvertTo-CmdSetAssignment {
+    param([string]$Name, [string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Name) -or [string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+    if ($Value -notmatch '^[A-Za-z0-9_.-]+$') {
+        return $null
+    }
+    return "set $Name=$Value"
+}
+
 function Invoke-Checked {
     param(
         [string]$FilePath,
@@ -508,7 +552,26 @@ function Start-BattleSession {
         $supervisorArgs += "--enable-auto-improve"
     }
     $command = ($supervisorArgs | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join " "
-    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set BOT_LOG_TO_FILE=1&& set AUTO_START_OBS_SERVER=0&& set LOSS_TRIGGERED_DRAIN=0&& set BATTLE_STATS_MAX_ENTRIES=5000&& set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json&& {0} 1>>"{1}" 2>>"{2}""' -f $command, $stdout, $stderr
+    $envAssignments = @(
+        "set PYTHONUTF8=1",
+        "set PYTHONIOENCODING=utf-8",
+        "set BOT_LOG_TO_FILE=1",
+        "set AUTO_START_OBS_SERVER=0",
+        "set LOSS_TRIGGERED_DRAIN=0",
+        "set BATTLE_STATS_MAX_ENTRIES=5000",
+        "set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json"
+    )
+    $leaseAccount = Get-RuntimeLeaseAccount -RuntimeLease $RuntimeLease
+    if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
+        $envAssignments += @(
+            ConvertTo-CmdSetAssignment -Name "PS_USERNAME" -Value $leaseAccount,
+            ConvertTo-CmdSetAssignment -Name "SHOWDOWN_USER_ID" -Value $leaseAccount,
+            ConvertTo-CmdSetAssignment -Name "SHOWDOWN_ACCOUNTS" -Value $leaseAccount,
+            ConvertTo-CmdSetAssignment -Name "FOULER_ACTIVE_ACCOUNT" -Value $leaseAccount
+        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    }
+    $envPrefix = ($envAssignments -join "&& ") + "&& "
+    $commandLine = 'cmd.exe /d /c "{0}{1} 1>>"{2}" 2>>"{3}""' -f $envPrefix, $command, $stdout, $stderr
     $launch = Start-DetachedCommand -CommandLine $commandLine -WorkingDirectory $RepoRoot
     if (-not (Test-Path $PidDir)) { New-Item -ItemType Directory -Path $PidDir -Force | Out-Null }
     Write-JsonFile -Path (Join-Path $PidDir "jigglypuff-battle-session.json") -Payload @{
