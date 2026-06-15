@@ -99,6 +99,60 @@ def test_delta_in_plausible_per_battle_range_not_one():
 
 
 @pytest.mark.asyncio
+async def test_discord_result_uses_non_opponent_winner_when_account_alias_is_stale(monkeypatch):
+    sent_payloads: list[dict] = []
+    fetched_users: list[str] = []
+
+    class FakeResponse:
+        status = 204
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def post(self, url, json, timeout):
+            sent_payloads.append(json)
+            return FakeResponse()
+
+    async def replay_missing(*args, **kwargs):
+        return False
+
+    async def fake_fetch_elo(username, fmt="gen9ou"):
+        fetched_users.append(username)
+        return (1043, None)
+
+    monkeypatch.setattr(run_battle.FoulPlayConfig, "username", "LEBOTJAMESXD004", raising=False)
+    monkeypatch.setenv("SHOWDOWN_ACCOUNTS", "LEBOTJAMESXD004")
+    monkeypatch.setenv("DISCORD_BATTLES_WEBHOOK_URL", "https://discord.com/api/webhooks/test/token")
+    monkeypatch.setattr(run_battle, "_fetch_elo", fake_fetch_elo)
+    monkeypatch.setattr(run_battle, "_replay_exists", replay_missing)
+    monkeypatch.setattr(run_battle.aiohttp, "ClientSession", lambda: FakeSession())
+
+    await run_battle._post_battle_to_discord(
+        battle_tag="battle-gen9ou-2632180642",
+        winner="LEBOTJAMESXD00N",
+        opponent_name="murdockfejao",
+        our_player_name="LEBOTJAMESXD004",
+        elo_before=1000,
+        turn_count=21,
+    )
+
+    assert fetched_users == ["LEBOTJAMESXD00N"]
+    assert sent_payloads
+    assert "**WIN** vs murdockfejao" in sent_payloads[0]["content"]
+    assert "ELO gained 43 (1000 \u2192 1043, +43)" in sent_payloads[0]["content"]
+
+
+@pytest.mark.asyncio
 async def test_discord_result_keeps_winner_parse_when_rating_delta_contradicts_gain(monkeypatch):
     sent_payloads: list[dict] = []
 
