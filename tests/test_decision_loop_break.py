@@ -5,9 +5,14 @@ selection chokepoint and demotes a repeated best move below a distinct legal
 alternative so the bot cannot relive the same loss-driving action loop.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from fp.search.main import break_repeated_decision, _recent_action_history
+from fp.search.main import (
+    DecisionProfile,
+    break_repeated_decision,
+    select_move_from_eval_scores,
+    _recent_action_history,
+)
 
 
 def _battle(history, last_selected_move=None):
@@ -83,3 +88,25 @@ class TestBreakRepeatedDecision:
     def test_empty_policy_returns_unchanged(self):
         battle = _battle(["surf", "surf", "surf"])
         assert break_repeated_decision([], battle) == []
+
+
+class TestMctsBackedSelection:
+    def test_mcts_policy_bypasses_soft_heuristic_pipeline_by_default(self):
+        trace = {}
+        policy = {"roost": 100.0, "bodypress": 50.0}
+
+        with patch(
+            "fp.search.main.apply_heuristic_bias",
+            side_effect=AssertionError("soft heuristic pipeline should be gated"),
+        ) as soft_pipeline:
+            choice = select_move_from_eval_scores(
+                policy,
+                decision_profile=DecisionProfile.LOW,
+                trace=trace,
+                policy_source="mcts",
+            )
+
+        assert choice == "roost"
+        soft_pipeline.assert_not_called()
+        assert trace["mcts_backed"]["penalty_pipeline_enabled"] is False
+        assert trace["decision_mode_detail"] == "mcts_backed_hard_safety"

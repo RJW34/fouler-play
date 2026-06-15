@@ -384,6 +384,14 @@ try:
 except Exception:  # pragma: no cover - defensive
     _flatness_gated_alpha = None
 
+# The MCTS/eval-blend policy is already the main decision signal.  The full
+# heuristic penalty stack is useful for A/B experiments, but recent JIGGLY
+# evidence showed it frequently overriding that signal into recovery/switch
+# loops.  Keep it opt-in for MCTS-backed policies.
+PENALTY_PIPELINE_ENABLED = str(
+    os.getenv("FOULER_PENALTY_PIPELINE", "0")
+).lower() in {"1", "true", "yes", "on"}
+
 
 def _stability_blend_policy(
     pre_policy: dict[str, float],
@@ -6112,6 +6120,141 @@ def break_repeated_decision(
     return rebuilt
 
 
+def _apply_hard_legality_and_safety(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list[dict] | None,
+) -> list[tuple[str, float]]:
+    """Apply only hard legality and loop safety to an MCTS-backed policy."""
+    working = dict(policy)
+
+    if battle is not None and not getattr(battle, "force_switch", False):
+        trapped = bool(getattr(getattr(battle, "user", None), "trapped", False))
+        request = getattr(battle, "request_json", None) or {}
+        active = request.get(constants.ACTIVE, []) if isinstance(request, dict) else []
+        if active:
+            trapped = trapped or bool(
+                active[0].get(constants.TRAPPED, False)
+                or active[0].get(constants.MAYBE_TRAPPED, False)
+            )
+        if trapped:
+            filtered = {
+                move: weight
+                for move, weight in working.items()
+                if not move.startswith("switch ")
+            }
+            if filtered:
+                removed = len(working) - len(filtered)
+                working = filtered
+                if removed and trace_events is not None:
+                    trace_events.append(
+                        {
+                            "type": "override",
+                            "source": "legality_filter",
+                            "move": "switch *",
+                            "reason": "trapped_state",
+                            "before": removed,
+                            "after": 0,
+                        }
+                    )
+
+    sorted_policy = sorted(working.items(), key=lambda x: x[1], reverse=True)
+    return break_repeated_decision(
+        sorted_policy,
+        battle,
+        trace_events=trace_events,
+    )
+
+
+def _choose_mcts_backed_policy(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    decision_profile: DecisionProfile,
+    trace: dict | None,
+) -> str:
+    """Choose from an MCTS/eval-blend policy without soft heuristic overrides."""
+    trace_events: list[dict] = []
+    sorted_policy = _apply_hard_legality_and_safety(
+        policy,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+    if not sorted_policy:
+        ranked = sorted((policy or {}).items(), key=lambda x: x[1], reverse=True)
+        return ranked[0][0] if ranked else ""
+
+    if (
+        battle is not None
+        and not getattr(battle, "force_switch", False)
+        and not sorted_policy[0][0].startswith("switch ")
+    ):
+        try:
+            survival = _assess_immediate_survival_risk(battle)
+        except Exception:
+            survival = {"risk": False}
+        if bool(survival.get("risk", False)):
+            top_move, top_weight = sorted_policy[0]
+            try:
+                incoming_pressure = float(survival.get("incoming", 0.0))
+            except Exception:
+                incoming_pressure = None
+            if not _is_non_switch_stall_survival_line(
+                top_move,
+                battle,
+                incoming_pressure=incoming_pressure,
+            ):
+                best_switch = next(
+                    ((m, w) for m, w in sorted_policy if m.startswith("switch ") and w > 0),
+                    None,
+                )
+                if best_switch is not None and best_switch[1] >= top_weight * 0.62:
+                    if trace_events is not None:
+                        trace_events.append(
+                            {
+                                "type": "override",
+                                "source": "survival_preserve",
+                                "move": best_switch[0],
+                                "reason": "immediate_ko_risk_prefer_switch",
+                                "before": top_weight,
+                                "after": best_switch[1],
+                            }
+                        )
+                    if trace is not None:
+                        trace["decision_mode_detail"] = "mcts_backed:survival_switch"
+                        trace["mcts_backed"] = {
+                            "top_moves": [
+                                {"move": m, "weight": round(float(w), 6)}
+                                for m, w in sorted_policy[:5]
+                            ],
+                            "events": trace_events,
+                        }
+                    return best_switch[0]
+
+    choice = _choose_from_weighted_policy(
+        dict(sorted_policy),
+        decision_profile=decision_profile,
+    )
+    if trace is not None:
+        trace["mcts_backed"] = {
+            "top_moves": [
+                {"move": m, "weight": round(float(w), 6)}
+                for m, w in sorted_policy[:5]
+            ],
+            "events": trace_events,
+            "penalty_pipeline_enabled": False,
+        }
+        trace["decision_mode_detail"] = trace.get(
+            "decision_mode_detail",
+            "mcts_backed_hard_safety",
+        )
+    return choice or sorted_policy[0][0]
+
+
 # ──────────────────────────────────────────────────────────────────────────
 # WIN-CONDITION PLAN EXECUTION  (STRATEGIST → EXECUTOR wiring)
 #
@@ -6334,8 +6477,18 @@ def select_move_from_eval_scores(
     playstyle: Playstyle | None = None,
     decision_profile: DecisionProfile = DecisionProfile.DEFAULT,
     trace: dict | None = None,
+    policy_source: str = "eval",
 ) -> str:
     """Select a move from a policy (MCTS or eval), applying penalty layers."""
+    if policy_source == "mcts" and not PENALTY_PIPELINE_ENABLED:
+        return _choose_mcts_backed_policy(
+            eval_scores,
+            battle=battle,
+            ability_state=ability_state,
+            decision_profile=decision_profile,
+            trace=trace,
+        )
+
     trace_events = []
     pre_penalty_scores = dict(eval_scores)
 
@@ -7392,7 +7545,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                         logger.info(
                             "Eval blend active (alpha_mcts=%.2f): eval_top=%s "
                             "mcts_top=%s blended_top=%s",
-                            MCTS_EVAL_BLEND_ALPHA,
+                            _alpha_mcts,
                             trace["eval_blend"]["eval_top"][:1],
                             trace["eval_blend"]["mcts_top"][:1],
                             trace["eval_blend"]["blended_top"][:1],
@@ -7405,6 +7558,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 playstyle=playstyle,
                 decision_profile=decision_profile,
                 trace=trace,
+                policy_source="mcts",
             )
 
             # === KO GUARD ===
