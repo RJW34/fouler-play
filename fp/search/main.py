@@ -6230,6 +6230,30 @@ def _apply_hard_legality_and_safety(
             if filtered:
                 working = filtered
 
+    # Always-on safety: reflected status/hazard moves are legal but often
+    # actively harmful. Keep them as last-resort options instead of letting the
+    # MCTS-only path repeat a Magic Bounce hazard into our own side.
+    if ability_state is not None and getattr(ability_state, "has_magic_bounce", False):
+        reflected = {normalize_name(m) for m in MAGIC_BOUNCE_REFLECTED_MOVES}
+        for move, weight in list(working.items()):
+            move_name = move.split(":")[-1] if ":" in move else move
+            move_norm = normalize_name(move_name)
+            if move_norm not in reflected or weight <= 0:
+                continue
+            new_weight = float(weight) * ABILITY_PENALTY_SEVERE
+            working[move] = new_weight
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "penalty",
+                        "source": "mcts_hard_safety",
+                        "move": move,
+                        "reason": "magic_bounce_reflects_status",
+                        "before": weight,
+                        "after": new_weight,
+                    }
+                )
+
     sorted_policy = sorted(working.items(), key=lambda x: x[1], reverse=True)
 
     # Hard loop-breaker: demote a move repeated too many times recently.
