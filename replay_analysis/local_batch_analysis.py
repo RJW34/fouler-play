@@ -11,6 +11,7 @@ from typing import Dict, List
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+from replay_analysis.account_identity import resolve_bot_username
 from replay_analysis.turn_review import TurnReviewer
 
 MAGNETON_HOST = os.getenv("MAGNETON_HOST", "Ryanj@jigglypuff.tail4859dd.ts.net")
@@ -20,7 +21,7 @@ REPORTS_DIR = REPLAY_DIR / "reports"
 
 def analyze_local_replays(max_count: int = 20):
     """Analyze local replay JSONs."""
-    reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "npctypebeat"))
+    reviewer = TurnReviewer(bot_username=resolve_bot_username())
     replay_files = sorted(REPLAY_DIR.glob("gen9ou-*.json"))[-max_count:]
     
     print(f"Found {len(replay_files)} replay files to analyze")
@@ -47,7 +48,7 @@ def analyze_local_replays(max_count: int = 20):
             result = "unknown"
             if "log" in replay_data:
                 log = replay_data["log"]
-                bot_username = os.getenv("PS_USERNAME", "npctypebeat")
+                bot_username = resolve_bot_username()
                 if f"{bot_username} won the battle!" in log or f"|win|{bot_username}" in log:
                     result = "win"
                     stats["wins"] += 1
@@ -83,7 +84,7 @@ def build_prompt(reviews: List[str], stats: Dict) -> str:
     """Build analysis prompt for Ollama."""
     winrate = stats["wins"] / stats["total"] if stats["total"] > 0 else 0
     
-    bot_username = os.getenv("PS_USERNAME", "npctypebeat")
+    bot_username = resolve_bot_username()
     prompt = f"""You are analyzing Pokemon Showdown Gen 9 OU battle replays for a competitive bot named {bot_username}.
 
 BATCH STATISTICS:

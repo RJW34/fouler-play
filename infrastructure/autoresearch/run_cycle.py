@@ -31,6 +31,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from infrastructure.autoresearch.performance_analyzer import analyze_loss_patterns, get_improvement_brief
 from infrastructure.autoresearch.research_protocol import generate_research_task
 from infrastructure.autoresearch.research_log import log_research, get_recent_research, ensure_log_dir
+from replay_analysis.account_identity import resolve_bot_username
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ def show_status():
     print(f"  Total battles:     {total}")
     print(f"  Last 30 record:    {wins}W - {losses}L ({wr:.1f}%)")
     print(f"  Batch size:        {BATCH_SIZE}")
-    print(f"  Bot account:       {os.getenv('PS_USERNAME', 'npctypebeat')}")
+    print(f"  Bot account:       {resolve_bot_username()}")
 
     # Pipeline state
     if PIPELINE_STATE_FILE.exists():

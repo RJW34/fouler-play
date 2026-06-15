@@ -17,6 +17,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from data.pokedex_oracle import oracle as _oracle
 from infrastructure.discord_reporting import build_contract_payload
 from infrastructure.event_queue_lib import queue_event
+from replay_analysis.account_identity import resolve_bot_username
 
 BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
 REPLAY_DIR = PROJECT_ROOT / "replay_analysis"
@@ -28,7 +29,7 @@ BATCH_HISTORY_DIR = REPLAY_DIR / "batches"
 
 ROUTINE_CHANNEL = os.getenv("FOULER_ROUTINE_CHANNEL", "1466691161363054840")
 RESEARCH_CHANNEL = os.getenv("FOULER_RESEARCH_CHANNEL", "1466869808200028264")
-BOT_USERNAME = os.getenv("PS_USERNAME", "npctypebeat")
+BOT_USERNAME = resolve_bot_username()
 
 
 @dataclass

@@ -12,12 +12,17 @@ import requests
 from pathlib import Path
 from datetime import datetime
 
-PROJECT_ROOT = Path("/home/ryan/projects/fouler-play")
+PROJECT_ROOT = Path(os.getenv("FOULER_PROJECT_ROOT", Path(__file__).resolve().parent.parent))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 REPORT_JSON = PROJECT_ROOT / "replay_analysis" / "team_report.json"
 LAST_POSTED_FILE = PROJECT_ROOT / ".last_analysis_posted"
 
 # Webhooks from .env
 from dotenv import load_dotenv
+from replay_analysis.account_identity import resolve_bot_username
+
 load_dotenv(PROJECT_ROOT / ".env")
 FEEDBACK_WEBHOOK = os.getenv("DISCORD_FEEDBACK_WEBHOOK_URL", "")
 MAIN_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL", "")
@@ -105,7 +110,7 @@ def build_embeds(report: dict) -> list:
         "title": "📊 Fouler Play — Team Performance Report",
         "description": "\n".join(desc_lines),
         "color": 0x7289da,
-        "footer": {"text": "fouler-play autoresearch · npctypebeat"},
+        "footer": {"text": f"fouler-play autoresearch · {resolve_bot_username()}"},
     })
 
     # Per-team recommendation embeds

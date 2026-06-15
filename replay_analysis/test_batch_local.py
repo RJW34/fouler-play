@@ -14,6 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.batch_analyzer import BatchAnalyzer
 from replay_analysis.turn_review import TurnReviewer
+from replay_analysis.account_identity import resolve_bot_username
 
 REPLAY_DIR = PROJECT_ROOT / "replay_analysis"
 
@@ -47,7 +48,7 @@ def analyze_local_replays(num_replays: int = 5):
     print(f"Loaded {len(replays)} replays\n")
     
     # Create analyzer components
-    reviewer = TurnReviewer(bot_username=os.getenv("PS_USERNAME", "npctypebeat"))
+    reviewer = TurnReviewer(bot_username=resolve_bot_username())
     analyzer = BatchAnalyzer()
     
     # Extract turn reviews
@@ -69,7 +70,7 @@ def analyze_local_replays(num_replays: int = 5):
             result = "unknown"
             if "winner" in replay_data:
                 winner = replay_data["winner"]
-                bot_username = os.getenv("PS_USERNAME", "npctypebeat")
+                bot_username = resolve_bot_username()
                 if bot_username.lower() in winner.lower():
                     result = "win"
                     stats["wins"] += 1
