@@ -77,9 +77,9 @@ function Read-PidFilePid {
 }
 
 function Get-BattleSupervisorProcesses {
-    $pid = Read-PidFilePid -Path $PidFile
-    if (-not $pid) { return @() }
-    $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+    $supervisorPid = Read-PidFilePid -Path $PidFile
+    if (-not $supervisorPid) { return @() }
+    $process = Get-Process -Id $supervisorPid -ErrorAction SilentlyContinue
     if (-not $process) { return @() }
     return @([pscustomobject]@{
         ProcessId = $process.Id
