@@ -27,6 +27,7 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert "set BOT_LOG_TO_FILE=1" in text
     assert "set AUTO_START_OBS_SERVER=0" in text
     assert "set LOSS_TRIGGERED_DRAIN=0" in text
+    assert "set FOULER_PLAY_ENABLE_AUTO_IMPROVE=$autoImproveEnv" in text
     assert "set BATTLE_STATS_MAX_ENTRIES=5000" in text
     assert '$_.CommandLine -match "streaming[\\\\/]+serve_obs_page\\.py"' in text
     assert '$_.CommandLine -match "search_ladder" -and' in text
@@ -143,6 +144,7 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert '$env:LOSS_TRIGGERED_DRAIN = "0"' in wrapper
     assert '$env:BATTLE_STATS_MAX_ENTRIES = "5000"' in wrapper
     assert '$env:BOT_LOG_TO_FILE = "1"' in wrapper
+    assert '$env:FOULER_PLAY_ENABLE_AUTO_IMPROVE = if ($AutoImprove) { "1" } else { "0" }' in wrapper
 
 
 def test_legacy_player_loop_is_clearly_quarantined():

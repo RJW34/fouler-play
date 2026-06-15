@@ -75,6 +75,7 @@ if (Test-Path -LiteralPath $stopFile -PathType Leaf) {
 $env:LOSS_TRIGGERED_DRAIN = "0"
 $env:BATTLE_STATS_MAX_ENTRIES = "5000"
 $env:BOT_LOG_TO_FILE = "1"
+$env:FOULER_PLAY_ENABLE_AUTO_IMPROVE = if ($AutoImprove) { "1" } else { "0" }
 
 $supervisorArgs = @(
     (Join-Path $ProjectDir "scripts\devstream_session.py"),
