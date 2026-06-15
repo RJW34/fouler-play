@@ -344,24 +344,8 @@ def _normalize_result(value: object) -> str:
     return text
 
 
-def _rating_result_from_payload(data: dict) -> str:
-    delta = _safe_rating_delta(data.get("rating_delta"))
-    if delta is None:
-        try:
-            before_num = int(round(float(data.get("elo_before"))))
-            after_num = int(round(float(data.get("elo_after"))))
-        except Exception:
-            return ""
-        delta = after_num - before_num
-    if delta > 0:
-        return "win"
-    if delta < 0:
-        return "loss"
-    return ""
-
-
 def _result_from_payload(data: dict) -> str:
-    return _rating_result_from_payload(data) or _normalize_result(data.get("result", ""))
+    return _normalize_result(data.get("result", ""))
 
 
 def _normalize_batch_outcome(item: object) -> str:
