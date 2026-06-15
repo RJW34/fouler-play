@@ -4686,6 +4686,66 @@ def _is_meaningful_progress_move(
     return False
 
 
+def _is_burn_progress_against_physical_threat(
+    move_norm: str,
+    move_data: dict,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+) -> bool:
+    """Treat immediate burn as progress against an unstatused physical wincon."""
+    if battle is None or ability_state is None:
+        return False
+    if move_data.get(constants.CATEGORY) != constants.STATUS:
+        return False
+    if move_data.get(constants.STATUS) != BURN and move_norm != "willowisp":
+        return False
+    if any(
+        bool(getattr(ability_state, attr, False))
+        for attr in (
+            "has_status",
+            "has_guts_like",
+            "has_poison_heal",
+            "has_purifying_salt",
+            "has_magic_bounce",
+            "has_good_as_gold",
+            "has_substitute",
+        )
+    ):
+        return False
+
+    opponent_active = getattr(getattr(battle, "opponent", None), "active", None)
+    if opponent_active is None:
+        return False
+    if getattr(opponent_active, "status", None):
+        return False
+    opponent_types = {
+        normalize_name(t)
+        for t in (getattr(opponent_active, "types", []) or [])
+        if t
+    }
+    if "fire" in opponent_types:
+        return False
+
+    attack_boost = int(getattr(ability_state, "opponent_attack_boost", 0) or 0)
+    if attack_boost > 0:
+        return True
+
+    try:
+        threat_category = get_threat_category(normalize_name(getattr(opponent_active, "name", "")))
+    except Exception:
+        threat_category = ThreatCategory.UNKNOWN
+    if threat_category == ThreatCategory.PHYSICAL_ONLY:
+        return True
+
+    stats = getattr(opponent_active, "stats", None) or getattr(opponent_active, "base_stats", None) or {}
+    try:
+        attack = float(stats.get(constants.ATTACK, 0) or 0)
+        special_attack = float(stats.get(constants.SPECIAL_ATTACK, 0) or 0)
+    except Exception:
+        return False
+    return attack >= 100 and attack >= special_attack * 1.20
+
+
 def apply_hazard_maintenance_bias(
     policy: dict[str, float],
     battle: Battle | None,
@@ -4860,6 +4920,7 @@ def apply_threat_switch_bias(
     best_attack_weight = 0.0
     best_strong_attack_weight = 0.0
     best_reset_weight = 0.0
+    best_burn_progress_weight = 0.0
     for move, weight in policy.items():
         if weight <= 0:
             continue
@@ -4881,6 +4942,13 @@ def apply_threat_switch_bias(
                 or _is_fixed_damage_attack(move_norm, move_data)
             ):
                 best_strong_attack_weight = max(best_strong_attack_weight, weight)
+        elif _is_burn_progress_against_physical_threat(
+            move_norm,
+            move_data,
+            battle,
+            ability_state,
+        ):
+            best_burn_progress_weight = max(best_burn_progress_weight, weight)
 
     anchor_weight = max(best_switch_weight, best_attack_weight, best_reset_weight)
     if anchor_weight <= 0:
@@ -4891,7 +4959,11 @@ def apply_threat_switch_bias(
     if our_active is not None:
         our_hp_ratio = getattr(our_active, "hp", 1) / max(getattr(our_active, "max_hp", 1), 1)
 
-    best_progress_weight = max(best_reset_weight, best_strong_attack_weight)
+    best_progress_weight = max(
+        best_reset_weight,
+        best_strong_attack_weight,
+        best_burn_progress_weight,
+    )
     if boost_level >= 3 or our_hp_ratio <= 0.35:
         # In emergency boosted-threat states, even a weaker positive-damage
         # attack is real progress compared with non-stabilizing recovery.
@@ -4944,6 +5016,12 @@ def apply_threat_switch_bias(
         is_strong_attack = is_damaging and (
             base_power >= 75 or move_norm in PRIORITY_MOVES or is_fixed_damage
         )
+        is_burn_progress = _is_burn_progress_against_physical_threat(
+            move_norm,
+            move_data,
+            battle,
+            ability_state,
+        )
         new_weight = weight
         reason = None
 
@@ -4966,7 +5044,15 @@ def apply_threat_switch_bias(
             # Passive moves are usually bad while a boosted threat is active.
             # EXCEPTION: when we have no offensive answer (all attacks type-immune),
             # status moves like Toxic are our only way to make progress.
-            if no_offensive_answer and move_norm in {"toxic", "willowisp", "thunderwave", "toxicspikes"}:
+            if is_burn_progress:
+                status_cap = float("inf")
+                floor = max(best_switch_weight * 1.04, best_progress_weight * 1.08)
+                if switched_last_turn:
+                    floor = max(floor, best_switch_weight * 1.08)
+                if floor > new_weight:
+                    new_weight = floor
+                    reason = "physical_threat_burn_progress"
+            elif no_offensive_answer and move_norm in {"toxic", "willowisp", "thunderwave", "toxicspikes"}:
                 reason = "no_offensive_answer_status_exempt"
                 status_cap = float("inf")  # skip capping — this is our only progress
             elif move_norm == "partingshot":
@@ -4990,7 +5076,7 @@ def apply_threat_switch_bias(
                     status_cap = anchor_weight * (0.40 if best_switch_weight > 0 else 0.28)
             else:
                 status_cap = anchor_weight * (0.45 if best_switch_weight > 0 else 0.30)
-            if has_viable_progress_line:
+            if has_viable_progress_line and not is_burn_progress:
                 # Keep hazards/recovery below direct progress options under pressure.
                 if move_norm in recovery_moves_norm:
                     stabilizing_recovery = _is_stabilizing_recovery_line(

@@ -204,6 +204,94 @@ class TestThreatSwitchBias(unittest.TestCase):
         self.assertLessEqual(adjusted["switch corviknight"], adjusted["earthquake"] * 1.02 + 1e-6)
         self.assertLess(adjusted["spikes"], adjusted["earthquake"])
 
+    def test_burns_unstatused_physical_wincon_before_pivoting(self):
+        """Replay gen9ou-2632524750: burn Ogerpon before it snowballs."""
+        battle = _mk_battle(
+            active_hp=262,
+            active_max_hp=331,
+            move_names=["willowisp", "uturn", "pyroball"],
+        )
+        battle.user.active.name = "cinderace"
+        battle.user.active.base_name = "cinderace"
+        battle.user.active.types = ["fire"]
+        battle.user.active.stats = {
+            constants.ATTACK: 116,
+            constants.DEFENSE: 75,
+            constants.SPECIAL_ATTACK: 65,
+            constants.SPECIAL_DEFENSE: 75,
+            constants.SPEED: 119,
+            constants.HITPOINTS: 331,
+        }
+        battle.opponent.active = SimpleNamespace(
+            name="ogerponwellspring",
+            hp=282,
+            max_hp=282,
+            moves=[_mk_move("swordsdance"), _mk_move("ivycudgel"), _mk_move("hornleech")],
+            boosts={constants.ATTACK: 0},
+            types=["grass", "water"],
+            stats={
+                constants.ATTACK: 120,
+                constants.DEFENSE: 84,
+                constants.SPECIAL_ATTACK: 60,
+                constants.SPECIAL_DEFENSE: 96,
+                constants.SPEED: 110,
+                constants.HITPOINTS: 282,
+            },
+            status=None,
+        )
+        ability_state = _mk_ability_state(boost=0)
+        ability_state.opponent_has_offensive_boost = False
+        policy = {
+            "willowisp": 0.20,
+            "uturn": 0.45,
+            "pyroball": 0.25,
+            "switch slowkinggalar": 0.90,
+            "switch dondozo": 0.55,
+        }
+
+        adjusted = apply_threat_switch_bias(policy, battle, ability_state)
+
+        self.assertGreater(adjusted["willowisp"], adjusted["switch slowkinggalar"])
+        self.assertGreater(adjusted["willowisp"], policy["switch slowkinggalar"])
+        self.assertLess(adjusted["switch slowkinggalar"], policy["switch slowkinggalar"])
+        self.assertLess(adjusted["switch dondozo"], adjusted["willowisp"])
+
+    def test_does_not_boost_burn_progress_when_status_backfires(self):
+        battle = _mk_battle(
+            active_hp=262,
+            active_max_hp=331,
+            move_names=["willowisp", "uturn", "pyroball"],
+        )
+        battle.opponent.active = SimpleNamespace(
+            name="conkeldurr",
+            hp=414,
+            max_hp=414,
+            moves=[_mk_move("bulkup"), _mk_move("drainpunch")],
+            boosts={constants.ATTACK: 1},
+            types=["fighting"],
+            stats={
+                constants.ATTACK: 140,
+                constants.DEFENSE: 95,
+                constants.SPECIAL_ATTACK: 55,
+                constants.SPECIAL_DEFENSE: 65,
+                constants.SPEED: 45,
+                constants.HITPOINTS: 414,
+            },
+            status=None,
+        )
+        ability_state = _mk_ability_state(boost=1)
+        ability_state.has_guts_like = True
+        policy = {
+            "willowisp": 0.20,
+            "uturn": 0.45,
+            "switch dondozo": 0.90,
+        }
+
+        adjusted = apply_threat_switch_bias(policy, battle, ability_state)
+
+        self.assertLessEqual(adjusted["willowisp"], policy["willowisp"])
+        self.assertGreater(adjusted["switch dondozo"], adjusted["willowisp"])
+
     def test_breaks_back_to_back_switch_chain_when_progress_exists(self):
         battle = _mk_battle(
             active_hp=290,
