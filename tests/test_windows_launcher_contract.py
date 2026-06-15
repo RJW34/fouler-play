@@ -57,6 +57,11 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert '"--max-cycles", "$MaxCycles"' in text
     assert "Test-RuntimeLease -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles" in text
     assert "Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -RuntimeLease $RuntimeLease -AutoImprove:$AutoImprove" in text
+    assert "function Get-RuntimeLeaseAccount" in text
+    assert 'ConvertTo-CmdSetAssignment -Name "PS_USERNAME" -Value $leaseAccount' in text
+    assert 'ConvertTo-CmdSetAssignment -Name "SHOWDOWN_USER_ID" -Value $leaseAccount' in text
+    assert 'ConvertTo-CmdSetAssignment -Name "SHOWDOWN_ACCOUNTS" -Value $leaseAccount' in text
+    assert 'ConvertTo-CmdSetAssignment -Name "FOULER_ACTIVE_ACCOUNT" -Value $leaseAccount' in text
     assert "call start_one_touch.bat" not in text
 
 
