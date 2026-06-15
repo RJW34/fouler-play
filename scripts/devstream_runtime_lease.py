@@ -36,7 +36,7 @@ def runtime_lease_path(path: str | os.PathLike[str] | None = None, env: dict[str
 
 def read_json(path: Path) -> dict[str, Any]:
     try:
-        parsed = json.loads(path.read_text(encoding="utf-8"))
+        parsed = json.loads(path.read_text(encoding="utf-8-sig"))
     except Exception:
         return {}
     return parsed if isinstance(parsed, dict) else {}

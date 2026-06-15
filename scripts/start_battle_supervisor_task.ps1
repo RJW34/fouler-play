@@ -109,6 +109,8 @@ if (Test-Path -LiteralPath $stopFile -PathType Leaf) {
 $env:LOSS_TRIGGERED_DRAIN = "0"
 $env:BATTLE_STATS_MAX_ENTRIES = "5000"
 $env:BOT_LOG_TO_FILE = "1"
+$AutoImproveFlag = if ($AutoImprove) { "1" } else { "0" }
+$env:FOULER_PLAY_ENABLE_AUTO_IMPROVE = $AutoImproveFlag
 
 $supervisorArgs = @(
     (Join-Path $ProjectDir "scripts\devstream_session.py"),
@@ -182,6 +184,7 @@ if (-not [string]::IsNullOrWhiteSpace($RuntimeLeaseAccount)) {
     $cmdLines += "set ""SHOWDOWN_USER_ID=$RuntimeLeaseAccount"""
     $cmdLines += "set ""SHOWDOWN_ACCOUNTS=$RuntimeLeaseAccount"""
 }
+$cmdLines += "set ""FOULER_PLAY_ENABLE_AUTO_IMPROVE=$AutoImproveFlag"""
 $cmdLines += (($commandLine -join " ") + " 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)")
 $cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
 

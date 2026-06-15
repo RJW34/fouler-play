@@ -496,6 +496,7 @@ function Start-BattleSession {
     $command = ($supervisorArgs | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join " "
     $resolvedRuntimeLease = Resolve-RuntimeLeasePath -Path $RuntimeLease
     $runtimeLeaseAccount = Get-RuntimeLeaseAccount -Path $RuntimeLease
+    $autoImproveFlag = if ($AutoImprove) { "1" } else { "0" }
     $envSetters = @(
         "set PYTHONUTF8=1",
         "set PYTHONIOENCODING=utf-8",
@@ -503,6 +504,7 @@ function Start-BattleSession {
         "set AUTO_START_OBS_SERVER=0",
         "set LOSS_TRIGGERED_DRAIN=0",
         "set BATTLE_STATS_MAX_ENTRIES=5000",
+        "set FOULER_PLAY_ENABLE_AUTO_IMPROVE=$autoImproveFlag",
         "set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json"
     )
     if (-not [string]::IsNullOrWhiteSpace($resolvedRuntimeLease)) {
