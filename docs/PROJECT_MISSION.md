@@ -4,7 +4,7 @@ fouler-play is not just a forked Pokemon Showdown bot. Its devstream purpose is 
 
 The human goal is:
 
-- play bounded, real ladder batches on the `npctypebeat` account
+- play bounded, real ladder batches on the account named by the active runtime lease and live process truth
 - collect replay IDs, rating movement, decision traces, team choice, and failure classes
 - turn battle evidence into concrete patches or tests
 - repeat until the bot can credibly approach 1800+ ELO and play competitive games at that level
