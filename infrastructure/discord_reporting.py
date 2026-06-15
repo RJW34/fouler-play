@@ -106,7 +106,20 @@ def _short_team_name(team: object) -> str:
     return text.replace("-", " ")
 
 
-def format_elo_delta(before: object, after: object, result: object = "", label: str = "ELO") -> str:
+def _safe_rating_delta(value: object) -> int | None:
+    try:
+        return int(round(float(value)))
+    except Exception:
+        return None
+
+
+def format_elo_delta(
+    before: object,
+    after: object,
+    result: object = "",
+    label: str = "ELO",
+    rating_delta: object = None,
+) -> str:
     try:
         after_num_only = int(round(float(after)))
     except Exception:
@@ -118,7 +131,9 @@ def format_elo_delta(before: object, after: object, result: object = "", label: 
         if after_num_only is not None:
             return f"{label} now {after_num_only}"
         return ""
-    delta = after_num - before_num
+    delta = _safe_rating_delta(rating_delta)
+    if delta is None:
+        delta = after_num - before_num
     result_norm = _normalize_result(result)
     sign = "+" if delta > 0 else ""
 
@@ -406,6 +421,10 @@ def _normalize_result(value: object) -> str:
     if text in {"tie", "draw"}:
         return "tie"
     return text
+
+
+def _result_from_payload(data: dict) -> str:
+    return _normalize_result(data.get("result", ""))
 
 
 def _normalize_batch_outcome(item: object) -> str:

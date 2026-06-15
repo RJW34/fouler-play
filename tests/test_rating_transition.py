@@ -99,7 +99,7 @@ def test_delta_in_plausible_per_battle_range_not_one():
 
 
 @pytest.mark.asyncio
-async def test_discord_result_uses_rating_delta_when_winner_parse_contradicts_gain(monkeypatch):
+async def test_discord_result_keeps_winner_parse_when_rating_delta_contradicts_gain(monkeypatch):
     sent_payloads: list[dict] = []
 
     class FakeResponse:
@@ -141,12 +141,12 @@ async def test_discord_result_uses_rating_delta_when_winner_parse_contradicts_ga
     )
 
     assert sent_payloads
-    assert "**WIN** vs murdockfejao" in sent_payloads[0]["content"]
-    assert "ELO gained 43 (1000 \u2192 1043, +43)" in sent_payloads[0]["content"]
+    assert "**LOSS** vs murdockfejao" in sent_payloads[0]["content"]
+    assert "ELO check needed (cached 1000, fetched 1043, +43 contradicts loss)" in sent_payloads[0]["content"]
 
 
 @pytest.mark.asyncio
-async def test_discord_result_uses_rating_delta_when_winner_parse_contradicts_drop(monkeypatch):
+async def test_discord_result_keeps_winner_parse_when_rating_delta_contradicts_drop(monkeypatch):
     sent_payloads: list[dict] = []
 
     class FakeResponse:
@@ -187,5 +187,5 @@ async def test_discord_result_uses_rating_delta_when_winner_parse_contradicts_dr
     )
 
     assert sent_payloads
-    assert "**LOSS** vs slyddvicious" in sent_payloads[0]["content"]
-    assert "ELO lost 28 (1084 \u2192 1056, -28)" in sent_payloads[0]["content"]
+    assert "**WIN** vs slyddvicious" in sent_payloads[0]["content"]
+    assert "ELO check needed (cached 1084, fetched 1056, -28 contradicts win)" in sent_payloads[0]["content"]

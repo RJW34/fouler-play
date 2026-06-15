@@ -1100,12 +1100,12 @@ def test_payload_formatter_omits_boolean_placeholder_turns():
     assert "battle finished loss vs Placeholder" in formatted
 
 
-def test_payload_formatter_does_not_render_contradictory_elo_delta():
+def test_payload_formatter_keeps_result_when_cached_elo_contradicts():
     payload = build_contract_payload(
         "PROOF",
         "battle result loss vs MatronJames",
         "Battle battle-gen9ou-2555107042 ended loss against MatronJames.",
-        "Operator-facing battle posts must not imply a loss improved ladder rating.",
+        "Operator-facing battle posts should not relabel results from cached ladder movement.",
         "battle_id=battle-gen9ou-2555107042; result=loss",
         "verify the account/rating source before claiming a ladder delta",
         source="unit-test",
@@ -1116,9 +1116,37 @@ def test_payload_formatter_does_not_render_contradictory_elo_delta():
         elo_after=1136,
     )
     formatted = format_payload_or_message(payload)
+    fields = structured_report_fields(payload, event_type="battle_result")
 
+    assert formatted.startswith("[PROOF] **battle result loss vs MatronJames**")
+    assert "battle finished loss vs MatronJames" in formatted
     assert "- ELO `check needed (cached 1117, fetched 1136, +19 contradicts loss)`" in formatted
     assert "1117 → 1136 ELO" not in formatted
+    assert fields["winner"] == "MatronJames"
+    assert fields["loser"] == "fouler-play"
+    assert fields["analysis"]["result"] == "loss"
+
+
+def test_payload_formatter_uses_authoritative_rating_delta_when_present():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs MatronJames",
+        "Battle battle-gen9ou-2555107042 ended loss against MatronJames.",
+        "Operator-facing battle posts should trust the signed Showdown rating delta.",
+        "battle_id=battle-gen9ou-2555107042; result=loss",
+        "review the replay",
+        source="unit-test",
+        battle_id="battle-gen9ou-2555107042",
+        result="loss",
+        opponent="MatronJames",
+        elo_before=1065,
+        elo_after=1048,
+        rating_delta=-17,
+    )
+    formatted = format_payload_or_message(payload)
+
+    assert "- ELO `lost 17 (1065 → 1048, -17)`" in formatted
+    assert "check needed" not in formatted
 
 
 def test_elo_delta_labels_match_result_direction():

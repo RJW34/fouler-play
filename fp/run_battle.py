@@ -464,17 +464,13 @@ def _battle_result_from_evidence(
     *,
     elo_delta: object = None,
 ) -> str:
-    """Return win/loss/tie, preferring the authoritative rating sign when present."""
-    if elo_delta is not None:
-        try:
-            delta = float(elo_delta)
-        except (TypeError, ValueError):
-            delta = 0.0
-        if delta > 0:
-            return "win"
-        if delta < 0:
-            return "loss"
+    """Return win/loss/tie from the battle winner.
 
+    ELO movement is display/proof context only. A ladder fetch can reflect a
+    stale cache or another concurrent battle, and even a parsed rating line is
+    not a safer result source than Showdown's terminal winner field.
+    """
+    _ = elo_delta
     if winner is None or str(winner).lower() == "tie":
         return "tie"
     return "win" if _is_our_showdown_account(winner, our_player_name) else "loss"
@@ -896,12 +892,11 @@ async def _post_battle_to_discord(
     result_key = _battle_result_from_evidence(
         winner,
         our_player_name,
-        elo_delta=authoritative_elo_delta,
     )
     parsed_result_key = "tie" if winner is None or winner == "tie" else ("win" if parsed_is_win else "loss")
     if result_key != parsed_result_key and authoritative_elo_delta:
         logger.warning(
-            "Discord result corrected by rating transition for %s: parsed=%s delta=%+d corrected=%s",
+            "Discord result parse disagreed for %s: parsed=%s delta=%+d result=%s",
             battle_tag,
             parsed_result_key,
             authoritative_elo_delta,
@@ -920,7 +915,12 @@ async def _post_battle_to_discord(
 
     # ELO delta
     if elo_after is not None and elo_before is not None:
-        elo_str = format_elo_delta(elo_before, elo_after, result_word.lower())
+        elo_str = format_elo_delta(
+            elo_before,
+            elo_after,
+            result_word.lower(),
+            rating_delta=authoritative_elo_delta,
+        )
     elif elo_after is not None:
         elo_str = f"ELO now {elo_after:.0f}"
     else:
