@@ -311,7 +311,7 @@ async def test_discord_result_uses_non_opponent_winner_when_account_alias_is_sta
 
 
 @pytest.mark.asyncio
-async def test_discord_result_uses_authoritative_rating_gain_when_winner_parse_contradicts(monkeypatch):
+async def test_discord_result_preserves_terminal_loss_when_rating_gain_contradicts(monkeypatch):
     sent_payloads: list[dict] = []
 
     class FakeResponse:
@@ -353,12 +353,13 @@ async def test_discord_result_uses_authoritative_rating_gain_when_winner_parse_c
     )
 
     assert sent_payloads
-    assert "**WIN** vs murdockfejao" in sent_payloads[0]["content"]
-    assert "ELO gained 43 (1000 \u2192 1043, +43)" in sent_payloads[0]["content"]
+    assert "**LOSS** vs murdockfejao" in sent_payloads[0]["content"]
+    assert "ELO unverified (cached 1000, fetched 1043)" in sent_payloads[0]["content"]
+    assert "ELO gained" not in sent_payloads[0]["content"]
 
 
 @pytest.mark.asyncio
-async def test_discord_result_uses_authoritative_rating_drop_when_winner_parse_contradicts(monkeypatch):
+async def test_discord_result_preserves_terminal_win_when_rating_drop_contradicts(monkeypatch):
     sent_payloads: list[dict] = []
 
     class FakeResponse:
@@ -399,5 +400,27 @@ async def test_discord_result_uses_authoritative_rating_drop_when_winner_parse_c
     )
 
     assert sent_payloads
-    assert "**LOSS** vs slyddvicious" in sent_payloads[0]["content"]
-    assert "ELO lost 28 (1084 \u2192 1056, -28)" in sent_payloads[0]["content"]
+    assert "**WIN** vs slyddvicious" in sent_payloads[0]["content"]
+    assert "ELO unverified (cached 1084, fetched 1056)" in sent_payloads[0]["content"]
+    assert "ELO lost" not in sent_payloads[0]["content"]
+
+
+def test_battle_result_does_not_relabel_explicit_winner_from_rating_delta():
+    assert (
+        run_battle._battle_result_from_evidence(
+            "murdockfejao",
+            "LEBOTJAMESXD00N",
+            opponent_name="murdockfejao",
+            elo_delta=43,
+        )
+        == "loss"
+    )
+    assert (
+        run_battle._battle_result_from_evidence(
+            "LEBOTJAMESXD00N",
+            "LEBOTJAMESXD00N",
+            opponent_name="murdockfejao",
+            elo_delta=-28,
+        )
+        == "win"
+    )
