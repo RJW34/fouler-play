@@ -3182,6 +3182,7 @@ async def pokemon_battle(
                                 raw_replay_url=_replay_handoff.get("raw_replay_url"),
                                 elo_before=_elo_before_final,
                                 elo_after=_elo_after_final,
+                                rating_delta=_elo_delta_final,
                                 recent_record=_recent_summary,
                                 decisive_reason=_decisive_reason,
                                 next_battle_action=_next_action,
