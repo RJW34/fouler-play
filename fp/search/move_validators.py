@@ -69,13 +69,23 @@ def can_move_hit(move_choice: str, ability_state) -> tuple[bool, str | None]:
 
     move_data = all_move_json.get(move_name, {})
     category = move_data.get(constants.CATEGORY)
+    move_type = normalize_name(move_data.get(constants.TYPE, ""))
     priority = move_data.get(constants.PRIORITY, 0)
+    target = normalize_name(move_data.get("target", ""))
 
     # Hard blocks and reflections
     if ability_state.has_good_as_gold and is_status_move_blocked_by_good_as_gold(move_name, move_data):
         return False, "good_as_gold_blocks_status"
     if ability_state.has_magic_bounce and move_name in constants.MAGIC_BOUNCE_REFLECTED_MOVES:
         return False, "magic_bounce_reflects"
+    if (
+        category == constants.STATUS
+        and move_type == "poison"
+        and target not in GOOD_AS_GOLD_NONBLOCKED_TARGETS
+        and normalize_name(getattr(ability_state, "ability_name", "") or "")
+        in constants.IMMUNE_TO_POISON_ABILITIES
+    ):
+        return False, "poison_ability_immunity"
 
     # Sound/Bullet/Powder immunities
     if ability_state.has_soundproof and move_name in constants.SOUND_MOVES:
