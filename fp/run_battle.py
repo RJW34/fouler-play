@@ -416,13 +416,21 @@ def _battle_result_from_evidence(
 ) -> str:
     """Return win/loss/tie from the battle winner.
 
-    ELO movement is display/proof context only. A ladder fetch can reflect a
-    stale cache or another concurrent battle, and even a parsed rating line is
-    not a safer result source than Showdown's terminal winner field. When the
-    configured account name is stale, a terminal winner that is not the known
-    opponent is still our win in a two-player battle.
+    Ladder/profile ELO movement is display/proof context only because it can
+    reflect a stale cache or another concurrent battle. The ``elo_delta`` value
+    is reserved for Showdown's per-battle ``|raw|`` rating line after it has
+    already been scoped to our account; that line is authoritative for the
+    rated result and resolves stale winner/config contradictions.
     """
-    _ = elo_delta
+    try:
+        raw_delta = int(round(float(elo_delta))) if elo_delta is not None else None
+    except (TypeError, ValueError):
+        raw_delta = None
+    if raw_delta is not None:
+        if raw_delta > 0:
+            return "win"
+        if raw_delta < 0:
+            return "loss"
     if winner is None or str(winner).lower() == "tie":
         return "tie"
     if _is_our_showdown_account(winner, our_player_name):
@@ -759,12 +767,19 @@ async def _post_battle_to_discord(
     # runtime account from CLI/config must remain authoritative, but a terminal
     # winner that is not the known opponent is also our account when config is
     # stale.
+    raw_rating_result_delta = rating_delta[2] if rating_delta is not None else None
     parsed_result_key = _battle_result_from_evidence(
         winner,
         our_player_name,
         opponent_name=opponent_name,
     )
-    parsed_is_win = parsed_result_key == "win"
+    result_from_evidence = _battle_result_from_evidence(
+        winner,
+        our_player_name,
+        opponent_name=opponent_name,
+        elo_delta=raw_rating_result_delta,
+    )
+    parsed_is_win = result_from_evidence == "win"
 
     winner_norm = _normalize_username(str(winner) if winner is not None else "")
     opponent_norm = _normalize_username(str(opponent_name) if opponent_name is not None else "")
@@ -842,6 +857,7 @@ async def _post_battle_to_discord(
         winner,
         our_player_name,
         opponent_name=opponent_name,
+        elo_delta=raw_rating_result_delta,
     )
     if result_key != parsed_result_key and authoritative_elo_delta:
         logger.warning(
@@ -3110,6 +3126,7 @@ async def pokemon_battle(
                         "falling back to ladder-API ELO.",
                         battle_tag,
                     )
+                _result_evidence_delta = _rating_delta[2] if _rating_delta is not None else None
 
                 await _send_battle_chat(ps_websocket_client, battle_tag, post_battle_messages())
 
@@ -3122,6 +3139,7 @@ async def pokemon_battle(
                     winner,
                     battle.user.account_name if battle.user else None,
                     opponent_name=opponent_name,
+                    elo_delta=_result_evidence_delta,
                 ) == "win"
 
                 if (
@@ -3235,7 +3253,7 @@ async def pokemon_battle(
                         winner,
                         getattr(getattr(battle, "user", None), "account_name", None),
                         opponent_name=opponent_name,
-                        elo_delta=_elo_delta_final,
+                        elo_delta=_result_evidence_delta,
                     )
                     is_win = _result_key_stats == "win"
 
@@ -3304,7 +3322,7 @@ async def pokemon_battle(
                             winner,
                             getattr(getattr(battle, "user", None), "account_name", None),
                             opponent_name=opponent_name,
-                            elo_delta=_elo_delta_final,
+                            elo_delta=_result_evidence_delta,
                         )
                         _team_name_ev = (
                             FoulPlayConfig.team_name
@@ -3387,7 +3405,7 @@ async def pokemon_battle(
                         winner,
                         getattr(getattr(battle, "user", None), "account_name", None),
                         opponent_name=opponent_name,
-                        elo_delta=_elo_delta_final,
+                        elo_delta=_result_evidence_delta,
                     ),
                 )
 
