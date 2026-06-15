@@ -38,6 +38,7 @@ from infrastructure.event_queue_lib import (
 from infrastructure.gen9_validation import Gen9Validator
 from infrastructure.discord_reporting import (
     canonical_replay_url,
+    format_elo_delta,
     public_replay_id_candidate,
     redacted_report_summary,
     structured_report_fields,
@@ -556,7 +557,7 @@ def _discord_content_for_event(event: dict, content: str) -> str:
     Keep the front of the report, but reserve tail space for a replay line when
     truncation is necessary.
     """
-    text = str(content or "")
+    text = _content_with_authoritative_elo(event, str(content or ""))
     if len(text) <= DISCORD_CONTENT_LIMIT:
         return text
 
@@ -569,6 +570,51 @@ def _discord_content_for_event(event: dict, content: str) -> str:
         return suffix[-DISCORD_CONTENT_LIMIT:]
     head = text[: DISCORD_CONTENT_LIMIT - len(suffix)].rstrip()
     return f"{head}{suffix}"[:DISCORD_CONTENT_LIMIT]
+
+
+def _content_with_authoritative_elo(event: dict, content: str) -> str:
+    """Backfill queued battle reports with the authoritative battle_stats ELO."""
+    if "ELO `" in content or str(event.get("event_type") or "") != "battle_result":
+        return content
+
+    battle_id = str(event.get("battle_id") or "")
+    if not battle_id:
+        return content
+
+    try:
+        stats = json.loads(BATTLE_STATS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return content
+
+    battle = next(
+        (
+            item
+            for item in stats.get("battles", [])
+            if isinstance(item, dict) and str(item.get("battle_id") or "") == battle_id
+        ),
+        None,
+    )
+    if not battle:
+        return content
+
+    event_result = str(((event.get("analysis") or {}).get("result") or "")).lower()
+    stats_result = str(battle.get("result") or "").lower()
+    if event_result and stats_result and event_result != stats_result:
+        return content
+
+    elo_line = format_elo_delta(
+        battle.get("elo_before"),
+        battle.get("elo_after"),
+        stats_result or event_result,
+    )
+    if not elo_line:
+        return content
+
+    proof_line = f"- ELO `{elo_line[4:] if elo_line.startswith('ELO ') else elo_line}`"
+    marker = "\n- source `"
+    if marker in content:
+        return content.replace(marker, f"\n{proof_line}{marker}", 1)
+    return f"{content.rstrip()}\n{proof_line}"
 
 
 def post_to_discord(event: dict) -> dict[str, Any]:

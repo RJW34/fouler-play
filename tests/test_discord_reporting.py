@@ -102,6 +102,42 @@ def test_event_poster_preserves_pending_replay_id_when_discord_truncates():
     assert len(rendered) <= 2000
     assert "Replay pending public upload: gen9ou-2626011055" in rendered
 
+
+def test_event_poster_backfills_elo_from_battle_stats(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+
+    stats_file = tmp_path / "battle_stats.json"
+    stats_file.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-2632237093",
+                        "result": "win",
+                        "elo_before": 1088,
+                        "elo_after": 1108,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(event_poster, "BATTLE_STATS_FILE", stats_file)
+
+    content = "[PROOF] **battle result win vs haunticious**\n\n**Proof:**\n- source `fp.run_battle`"
+    event = {
+        "id": "event-missing-elo",
+        "event_type": "battle_result",
+        "channel": "battles",
+        "battle_id": "battle-gen9ou-2632237093",
+        "analysis": {"result": "win"},
+    }
+
+    rendered = event_poster._discord_content_for_event(event, content)
+
+    assert "- ELO `gained 20 (1088 → 1108, +20)`" in rendered
+
+
 def test_event_poster_doctor_is_not_ready_with_pending_backlog(monkeypatch, tmp_path):
     import infrastructure.event_poster as event_poster
     import infrastructure.event_queue_lib as event_queue_lib
