@@ -99,7 +99,7 @@ def test_delta_in_plausible_per_battle_range_not_one():
 
 
 @pytest.mark.asyncio
-async def test_discord_result_uses_active_account_when_showdown_accounts_is_stale(monkeypatch):
+async def test_discord_result_uses_rating_delta_when_winner_parse_contradicts_gain(monkeypatch):
     sent_payloads: list[dict] = []
 
     class FakeResponse:
@@ -133,7 +133,7 @@ async def test_discord_result_uses_active_account_when_showdown_accounts_is_stal
 
     await run_battle._post_battle_to_discord(
         battle_tag="battle-gen9ou-2632180642",
-        winner="currentbot",
+        winner="murdockfejao",
         opponent_name="murdockfejao",
         our_player_name="currentbot",
         turn_count=21,
@@ -143,3 +143,49 @@ async def test_discord_result_uses_active_account_when_showdown_accounts_is_stal
     assert sent_payloads
     assert "**WIN** vs murdockfejao" in sent_payloads[0]["content"]
     assert "ELO gained 43 (1000 \u2192 1043, +43)" in sent_payloads[0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_discord_result_uses_rating_delta_when_winner_parse_contradicts_drop(monkeypatch):
+    sent_payloads: list[dict] = []
+
+    class FakeResponse:
+        status = 204
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+    class FakeSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def post(self, url, json, timeout):
+            sent_payloads.append(json)
+            return FakeResponse()
+
+    async def replay_missing(*args, **kwargs):
+        return False
+
+    monkeypatch.setattr(run_battle.FoulPlayConfig, "username", "currentbot", raising=False)
+    monkeypatch.setenv("DISCORD_BATTLES_WEBHOOK_URL", "https://discord.com/api/webhooks/test/token")
+    monkeypatch.setattr(run_battle, "_replay_exists", replay_missing)
+    monkeypatch.setattr(run_battle.aiohttp, "ClientSession", lambda: FakeSession())
+
+    await run_battle._post_battle_to_discord(
+        battle_tag="battle-gen9ou-2632180947",
+        winner="currentbot",
+        opponent_name="slyddvicious",
+        our_player_name="currentbot",
+        turn_count=21,
+        rating_delta=(1084, 1056, -28),
+    )
+
+    assert sent_payloads
+    assert "**LOSS** vs slyddvicious" in sent_payloads[0]["content"]
+    assert "ELO lost 28 (1084 \u2192 1056, -28)" in sent_payloads[0]["content"]
