@@ -816,6 +816,7 @@ def _apply_mcts_eval_anchor_choice_guard(
     proposed_is_status = (
         proposed_move_data.get(constants.CATEGORY) == constants.STATUS and not proposed_is_setup
     )
+    proposed_is_recovery = proposed_move_norm in RECOVERY_MOVES_NORM
     proposed_is_nonprogress = (not proposed_is_progress) or proposed_is_status
 
     user_active = getattr(getattr(battle, "user", None), "active", None)
@@ -828,6 +829,32 @@ def _apply_mcts_eval_anchor_choice_guard(
         metadata["applied"] = True
         metadata["reason"] = "boosted_threat_block_setup_override"
         return eval_choice, metadata
+
+    proposed_is_passive = (
+        proposed_is_setup
+        or proposed_is_recovery
+        or (proposed_is_status and not proposed_is_progress)
+    )
+    if active_threat and eval_choice.startswith("switch ") and proposed_is_passive:
+        proposed_oddities: list[str] = []
+        try:
+            proposed_oddities = detect_odd_move(battle, proposed_choice, ability_state)
+        except Exception:
+            try:
+                proposed_oddities = detect_odd_move(battle, proposed_choice, None)
+            except Exception:
+                proposed_oddities = []
+        proposed_is_waste = any(str(item).startswith("waste_turn:") for item in proposed_oddities)
+        if (
+            proposed_is_waste
+            or (proposed_is_setup and (boost_level >= 1 or eval_ratio >= 1.02))
+            or ((not proposed_is_progress) and eval_ratio >= 1.08)
+        ):
+            metadata["applied"] = True
+            metadata["reason"] = "active_threat_block_passive_override"
+            if proposed_oddities:
+                metadata["proposed_oddities"] = proposed_oddities
+            return eval_choice, metadata
 
     if (
         active_threat

@@ -930,6 +930,85 @@ class TestConversionAndMCTSBlend(unittest.TestCase):
         self.assertTrue(metadata.get("applied"))
         self.assertEqual("boosted_threat_block_setup_override", metadata.get("reason"))
 
+    def test_mcts_anchor_guard_blocks_waste_setup_over_eval_switch_vs_active_threat(self):
+        battle = _mk_battle(
+            active_hp=420,
+            active_max_hp=652,
+            move_names=["calmmind", "seismictoss", "softboiled"],
+        )
+        battle.user.active.name = "blissey"
+        battle.user.active.base_name = "blissey"
+        ability_state = _mk_ability_state(boost=0)
+        ability_state.opponent_active_is_threat = True
+        ability_state.opponent_has_offensive_boost = False
+        ability_state.our_hp_percent = 0.64
+        ability_state.has_good_as_gold = False
+        ability_state.has_magic_bounce = False
+        ability_state.has_poison_heal = False
+        ability_state.has_purifying_salt = False
+
+        guarded_choice, metadata = _apply_mcts_eval_anchor_choice_guard(
+            battle=battle,
+            ability_state=ability_state,
+            eval_policy={
+                "switch gliscor": 0.42,
+                "softboiled": 0.33,
+                "calmmind": 0.25,
+            },
+            final_policy={
+                "calmmind": 0.62,
+                "switch gliscor": 0.22,
+                "softboiled": 0.16,
+            },
+            eval_choice="switch gliscor",
+            proposed_choice="calmmind",
+            decision_profile=DecisionProfile.LOW,
+        )
+
+        self.assertEqual("switch gliscor", guarded_choice)
+        self.assertTrue(metadata.get("applied"))
+        self.assertEqual("active_threat_block_passive_override", metadata.get("reason"))
+        self.assertIn("waste_turn:setup_no_stat_attack", metadata.get("proposed_oddities", []))
+
+    @patch("fp.search.main._eval_opponent_best_damage", return_value=0.20)
+    def test_mcts_anchor_guard_allows_clean_stabilizing_recovery(self, _mock_damage):
+        battle = _mk_battle(
+            active_hp=210,
+            active_max_hp=652,
+            move_names=["softboiled", "seismictoss", "thunderwave"],
+        )
+        battle.user.active.name = "blissey"
+        battle.user.active.base_name = "blissey"
+        ability_state = _mk_ability_state(boost=0)
+        ability_state.opponent_active_is_threat = True
+        ability_state.opponent_has_offensive_boost = False
+        ability_state.our_hp_percent = 0.32
+        ability_state.has_good_as_gold = False
+        ability_state.has_magic_bounce = False
+        ability_state.has_poison_heal = False
+        ability_state.has_purifying_salt = False
+
+        guarded_choice, metadata = _apply_mcts_eval_anchor_choice_guard(
+            battle=battle,
+            ability_state=ability_state,
+            eval_policy={
+                "switch gliscor": 0.38,
+                "softboiled": 0.34,
+                "seismictoss": 0.28,
+            },
+            final_policy={
+                "softboiled": 0.55,
+                "switch gliscor": 0.28,
+                "seismictoss": 0.17,
+            },
+            eval_choice="switch gliscor",
+            proposed_choice="softboiled",
+            decision_profile=DecisionProfile.LOW,
+        )
+
+        self.assertEqual("softboiled", guarded_choice)
+        self.assertFalse(metadata.get("applied"))
+
     def test_mcts_anchor_guard_does_not_force_hazard_eval_under_threat(self):
         battle = _mk_battle(
             active_hp=300,
