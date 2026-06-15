@@ -4885,13 +4885,21 @@ def apply_threat_switch_bias(
     anchor_weight = max(best_switch_weight, best_attack_weight, best_reset_weight)
     if anchor_weight <= 0:
         return policy
-    best_progress_weight = max(best_reset_weight, best_strong_attack_weight)
-    has_viable_progress_line = best_progress_weight >= anchor_weight * 0.15
 
     our_active = getattr(getattr(battle, "user", None), "active", None)
     our_hp_ratio = 1.0
     if our_active is not None:
         our_hp_ratio = getattr(our_active, "hp", 1) / max(getattr(our_active, "max_hp", 1), 1)
+
+    best_progress_weight = max(best_reset_weight, best_strong_attack_weight)
+    if boost_level >= 3 or our_hp_ratio <= 0.35:
+        # In emergency boosted-threat states, even a weaker positive-damage
+        # attack is real progress compared with non-stabilizing recovery.
+        # Replay gen9ou-2632520308: Tera Ghost Kingambit made Body Press
+        # immune, leaving Corviknight's Thief as the only usable hit.
+        best_progress_weight = max(best_progress_weight, best_attack_weight)
+    has_viable_progress_line = best_progress_weight >= anchor_weight * 0.15
+
     our_is_unaware = _is_unaware_like(our_active)
     healthy_enough_for_reset = our_hp_ratio >= 0.35
     incoming_pressure = None

@@ -75,7 +75,7 @@ is still required to confirm the 1700 trajectory.
 
 **2026-03-25 — Bot running, all critical bugs fixed, focus on Phase 2-3**
 
-- **Bot is live** on `npctypebeat`, playing gen9ou with 3 concurrent battles across all 3 teams.
+- **Historical March runtime:** bot was live under the then-current `.env` account, playing gen9ou with 3 concurrent battles across all 3 teams. Do not reuse the archived account name from this note; current account authority is the active runtime lease plus live process truth.
 - **3413 battles played.** 1735W-1671L (50.9% WR overall, ~48% last 100).
 - **All 3 critical bugs fixed** (#3 resisted move spam, #5 recovery loops, #7 switch oscillation) — see Decision Engine Bugs section below.
 - **Recent engine commits** (March 23-25): stagnation switch boost for resisted moves, recovery loop detection, switch oscillation detection, out-healing pattern detection, passive penalty tuning, hazard suppression at critical HP, type-disadvantage switch penalties.
@@ -187,7 +187,7 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 4. If the bot disconnects or crashes during an authorized batch, collect logs and stop cleanly; do not install a persistent restarter from stale docs.
 
 ### Verified Setup
-- [x] Bot connects to Showdown and plays games (current live account: `npctypebeat` on 2026-03-10)
+- [x] Bot connects to Showdown and plays games (verified historically on 2026-03-10; current account is resolved from the active runtime lease plus live process truth)
 - [x] battle_stats.json is being written (check file for current count)
 - [x] Replays saved to replay_analysis/
 - [x] Player loop runs unattended / looping on Windows

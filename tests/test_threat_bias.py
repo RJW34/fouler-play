@@ -247,6 +247,55 @@ class TestThreatSwitchBias(unittest.TestCase):
         self.assertLess(adjusted["switch corviknight"], adjusted["foulplay"])
         self.assertLess(adjusted["switch gliscor"], adjusted["foulplay"])
 
+    def test_caps_low_hp_recovery_when_only_weak_attack_progresses_vs_boosted_threat(self):
+        """Replay gen9ou-2632520308: do not Roost-loop into +4/+6 Kingambit."""
+        battle = _mk_battle(
+            active_hp=77,
+            active_max_hp=334,
+            move_names=["roost", "thief", "bodypress"],
+        )
+        battle.user.active.name = "corviknight"
+        battle.user.active.base_name = "corviknight"
+        battle.user.active.types = ["flying", "steel"]
+        battle.user.active.stats = {
+            constants.ATTACK: 87,
+            constants.DEFENSE: 105,
+            constants.SPECIAL_ATTACK: 53,
+            constants.SPECIAL_DEFENSE: 85,
+            constants.SPEED: 67,
+            constants.HITPOINTS: 334,
+        }
+        battle.opponent.active = SimpleNamespace(
+            name="kingambit",
+            hp=315,
+            max_hp=404,
+            moves=[_mk_move("kowtowcleave"), _mk_move("suckerpunch")],
+            boosts={constants.ATTACK: 4},
+            types=["dark", "steel"],
+            tera_type="ghost",
+            terastallized=True,
+            stats={
+                constants.ATTACK: 135,
+                constants.DEFENSE: 120,
+                constants.SPECIAL_ATTACK: 60,
+                constants.SPECIAL_DEFENSE: 85,
+                constants.SPEED: 50,
+                constants.HITPOINTS: 404,
+            },
+        )
+        ability_state = _mk_ability_state(boost=4)
+        policy = {
+            "roost": 0.90,
+            "thief": 0.22,
+            "bodypress": 0.0,  # Tera Ghost Kingambit made Body Press immune.
+            "switch walkingwake": 0.35,
+        }
+
+        adjusted = apply_threat_switch_bias(policy, battle, ability_state)
+
+        self.assertLess(adjusted["roost"], adjusted["thief"])
+        self.assertEqual(adjusted["bodypress"], 0.0)
+
     def test_keeps_stabilizing_recovery_live_vs_boosted_threat(self):
         battle = _mk_battle(
             active_hp=324,

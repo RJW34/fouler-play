@@ -27,7 +27,7 @@ From `D:\Projects\fouler-play` on JIGGLYPUFF:
 ```powershell
 .venv\Scripts\python.exe -m replay_analysis.loss_learning `
   replay_analysis\gen9ou-2613806724.json `
-  --bot-username npctypebeat `
+  --bot-username <runtime-account> `
   --output replay_analysis\loss_learning_latest.json
 ```
 
@@ -37,7 +37,7 @@ Multiple local losses can be reviewed together:
 .venv\Scripts\python.exe -m replay_analysis.loss_learning `
   replay_analysis\gen9ou-2613782584.json `
   replay_analysis\gen9ou-2613805929.json `
-  --bot-username npctypebeat `
+  --bot-username <runtime-account> `
   --min-repeats 2 `
   --output replay_analysis\loss_learning_latest.json
 ```
