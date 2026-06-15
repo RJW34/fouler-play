@@ -1293,7 +1293,10 @@ async def _attempt_resume_battle(
             return battle_tag, opponent_name, "closed"
 
         if not opponent_name:
-            opponent_name = _extract_opponent_from_message(msg)
+            opponent_name = _extract_opponent_from_message(
+                msg,
+                getattr(ps_websocket_client, "username", None),
+            )
 
         if _resume_message_indicates_active(msg):
             queue = ps_websocket_client.battle_queues.get(battle_tag)
@@ -2338,7 +2341,10 @@ async def get_battle_tag_and_opponent(
             _release_search("battle claimed")
             # Battle already claimed and registered - extract opponent name
             for msg in pending_msgs:
-                opponent_name = _extract_opponent_from_message(msg)
+                opponent_name = _extract_opponent_from_message(
+                    msg,
+                    getattr(ps_websocket_client, "username", None),
+                )
                 if opponent_name:
                     logger.info("Claimed pending battle {} against: {}".format(battle_tag, opponent_name))
                     return battle_tag, opponent_name, False, None
@@ -2369,7 +2375,10 @@ async def get_battle_tag_and_opponent(
             await ps_websocket_client.register_battle(battle_tag)
             _release_search("battle claimed")
 
-            opponent_name = _extract_opponent_from_message(msg)
+            opponent_name = _extract_opponent_from_message(
+                msg,
+                getattr(ps_websocket_client, "username", None),
+            )
             if opponent_name:
                 logger.info("Initialized {} against: {}".format(battle_tag, opponent_name))
                 return battle_tag, opponent_name, False, None
@@ -2378,8 +2387,11 @@ async def get_battle_tag_and_opponent(
             return battle_tag, None, False, None
 
 
-def _extract_opponent_from_message(msg):
+def _extract_opponent_from_message(msg, *our_names):
     """Extract opponent name from a battle message. Returns None if not found."""
+    def _is_ours(player_name: str) -> bool:
+        return _is_our_showdown_account(player_name, *our_names)
+
     # Try |title| format first (comes earliest in battle init)
     for line in msg.split("\n"):
         if "|title|" in line:
@@ -2391,7 +2403,7 @@ def _extract_opponent_from_message(msg):
                     players = title.split(" vs. ")
                     for player in players:
                         player = player.strip()
-                        if player.lower() != FoulPlayConfig.username.lower():
+                        if player and not _is_ours(player):
                             return player
     
     # Try |player| format
@@ -2400,14 +2412,20 @@ def _extract_opponent_from_message(msg):
             parts = line.split("|")
             if len(parts) >= 4:
                 player_name = parts[3]
-                if player_name.lower() != FoulPlayConfig.username.lower():
+                if player_name and not _is_ours(player_name):
                     return player_name
 
     # Fallback: vs. format anywhere in message
-    if "vs." in msg:
-        opponent_name = msg.split("vs.")[1].split("|")[0].strip()
-        if opponent_name.lower() != FoulPlayConfig.username.lower():
-            return opponent_name
+    for line in msg.split("\n"):
+        if " vs. " not in line:
+            continue
+        text = line.split("|")[-1].strip() if "|" in line else line.strip()
+        if " vs. " not in text:
+            continue
+        for player in text.split(" vs. "):
+            player = player.strip()
+            if player and not _is_ours(player):
+                return player
 
     return None
 
@@ -2521,7 +2539,10 @@ async def start_battle_common(
 
         # If we don't know the opponent yet, try to infer from player lines.
         if not battle.opponent.account_name:
-            inferred = _extract_opponent_from_message(msg)
+            inferred = _extract_opponent_from_message(
+                msg,
+                getattr(ps_websocket_client, "username", None),
+            )
             if inferred:
                 battle.opponent.account_name = inferred
 

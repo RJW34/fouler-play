@@ -91,6 +91,35 @@ def test_no_rating_line_returns_none():
     assert parse_rating_transition(None, OUR) is None
 
 
+def test_extract_opponent_uses_showdown_account_aliases(monkeypatch):
+    monkeypatch.setattr(run_battle.FoulPlayConfig, "username", "LEBOTJAMESXD004", raising=False)
+    monkeypatch.setenv("SHOWDOWN_ACCOUNTS", "LEBOTJAMESXD00N")
+    msg = (
+        ">battle-gen9ou-2632180642\n"
+        "|title|LEBOTJAMESXD00N vs. murdockfejao\n"
+        "|player|p1|LEBOTJAMESXD00N|avatar|1000\n"
+        "|player|p2|murdockfejao|avatar|1000"
+    )
+
+    assert run_battle._extract_opponent_from_message(msg) == "murdockfejao"
+
+
+def test_extract_opponent_uses_websocket_username_when_config_is_stale(monkeypatch):
+    monkeypatch.setattr(run_battle.FoulPlayConfig, "username", "LEBOTJAMESXD004", raising=False)
+    monkeypatch.delenv("SHOWDOWN_ACCOUNTS", raising=False)
+    msg = (
+        ">battle-gen9ou-2632180642\n"
+        "|title|murdockfejao vs. LEBOTJAMESXD00N\n"
+        "|player|p1|murdockfejao|avatar|1000\n"
+        "|player|p2|LEBOTJAMESXD00N|avatar|1000"
+    )
+
+    assert (
+        run_battle._extract_opponent_from_message(msg, "LEBOTJAMESXD00N")
+        == "murdockfejao"
+    )
+
+
 def test_delta_in_plausible_per_battle_range_not_one():
     # The whole point of the fix: a real win is +8..+30, never the +/-1 the
     # lagging ladder-API produced under concurrency.
