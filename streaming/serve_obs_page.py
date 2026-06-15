@@ -124,6 +124,12 @@ OBS_IDLE_URL = os.getenv("OBS_IDLE_URL", f"http://localhost:{PORT}/idle")
 OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in ("0", "false", "no", "off")
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
+OBS_WS_DISABLED = os.getenv("FOULER_OBS_WS_DISABLED", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
 OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
 HEALTH_PROBE_TIMEOUT_SEC = float(os.getenv("FOULER_HEALTH_PROBE_TIMEOUT_SEC", "20") or "20")
 DEEP_HEALTH_DEFAULT = os.getenv("FOULER_OBS_DEEP_HEALTH_DEFAULT", "").strip().lower() in (
@@ -423,6 +429,8 @@ def _acquire_singleton_or_exit() -> None:
     _write_pid_file()
 
 try:
+    if OBS_WS_DISABLED:
+        raise RuntimeError("disabled by FOULER_OBS_WS_DISABLED")
     from streaming.obs_websocket import ObsWebsocketClient
     _obs_client = ObsWebsocketClient(
         OBS_WS_HOST,
