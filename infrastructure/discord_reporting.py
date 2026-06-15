@@ -344,6 +344,26 @@ def _normalize_result(value: object) -> str:
     return text
 
 
+def _rating_result_from_payload(data: dict) -> str:
+    delta = _safe_rating_delta(data.get("rating_delta"))
+    if delta is None:
+        try:
+            before_num = int(round(float(data.get("elo_before"))))
+            after_num = int(round(float(data.get("elo_after"))))
+        except Exception:
+            return ""
+        delta = after_num - before_num
+    if delta > 0:
+        return "win"
+    if delta < 0:
+        return "loss"
+    return ""
+
+
+def _result_from_payload(data: dict) -> str:
+    return _rating_result_from_payload(data) or _normalize_result(data.get("result", ""))
+
+
 def _normalize_batch_outcome(item: object) -> str:
     if isinstance(item, (list, tuple)) and len(item) > 1:
         return _normalize_result(item[1])
@@ -436,7 +456,7 @@ def _detect_operational_flag(data: dict) -> str:
 
 
 def _status_line(data: dict) -> str:
-    result = _normalize_result(data.get("result", ""))
+    result = _result_from_payload(data)
     opponent = _clean_line(data.get("opponent", ""))
     turns = _positive_turn_count(data.get("turns"))
     details: list[str] = []
@@ -523,7 +543,7 @@ def _proof_from_payload(data: dict) -> str:
     elo_delta = format_elo_delta(
         elo_before,
         elo_after,
-        data.get("result", ""),
+        _result_from_payload(data),
         rating_delta=data.get("rating_delta"),
     )
     if elo_delta:
@@ -564,11 +584,14 @@ def _remaining_from_payload(data: dict) -> str:
 
 def _headline_from_payload(data: dict) -> str:
     headline = _clean_line(data.get("headline", ""))
+    result = _result_from_payload(data)
+    opponent = _clean_line(data.get("opponent", ""))
     if headline:
+        headline_result, headline_opponent = _result_and_opponent_from_text(headline)
+        if result in {"win", "loss"} and headline_result in {"win", "loss"} and headline_result != result:
+            return _truncate(f"battle {result} vs {opponent or headline_opponent or 'opponent'}", _MAX_HEADLINE_LEN)
         return _truncate(headline, _MAX_HEADLINE_LEN)
 
-    result = _normalize_result(data.get("result", ""))
-    opponent = _clean_line(data.get("opponent", ""))
     if result:
         return _truncate(f"battle {result} vs {opponent or 'opponent'}", _MAX_HEADLINE_LEN)
 
@@ -646,7 +669,7 @@ def _what_from_payload(data: dict) -> str:
     trend = _trend_summary(data)
     actionability = _actionability_line(data)
 
-    result = _normalize_result(data.get("result", ""))
+    result = _result_from_payload(data)
     opponent = _clean_line(data.get("opponent", ""))
     turns = _positive_turn_count(data.get("turns"))
     team_file = data.get("team_file")
@@ -735,7 +758,7 @@ def _why_from_payload(data: dict) -> str:
     if flag == "operational":
         return "operator reports should flag ladder-invisible runtime failures immediately so losses caused by disconnects or inactivity are not mistaken for team or policy problems"
 
-    result = _normalize_result(data.get("result", ""))
+    result = _result_from_payload(data)
     if result:
         if result == "loss":
             return "battle updates should tell us whether this was a real matchup/policy miss or just variance, and what the next ladder-relevant adjustment is"
@@ -1104,7 +1127,7 @@ def redacted_report_summary(content: str) -> dict[str, object]:
         next_action_source = data.get("next_battle_action") or _remaining_from_payload(data)
         next_action, changed = _safe_report_text(next_action_source, 220)
         secret_redacted = secret_redacted or changed
-        result = _normalize_result(data.get("result", ""))
+        result = _result_from_payload(data)
         opponent, changed = _safe_report_text(data.get("opponent", ""), 120)
         secret_redacted = secret_redacted or changed
         battle_ids = _battle_ids_from_report_text(
@@ -1245,7 +1268,7 @@ def structured_report_fields(content: str, *, event_type: str = "") -> dict[str,
         data = {}
 
     summary = redacted_report_summary(raw)
-    result = _normalize_result(data.get("result") if data else summary.get("result"))
+    result = _result_from_payload(data) if data else _normalize_result(summary.get("result"))
     opponent = _clean_line((data.get("opponent") if data else summary.get("opponent")) or "")
     battle_id = _first_battle_id(
         data.get("battle_id") if data else None,
