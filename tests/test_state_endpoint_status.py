@@ -181,6 +181,7 @@ def test_state_payload_suppresses_stale_elo_when_active_account_not_cached(tmp_p
     monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
     monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
     monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+    monkeypatch.setattr(serve_obs_page, "BATTLE_STATS_PATH", tmp_path / "battle_stats.json")
     monkeypatch.setattr(
         serve_obs_page,
         "recent_showdown_credential_failure",
