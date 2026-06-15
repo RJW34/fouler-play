@@ -47,7 +47,7 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert '"supervise"' in text
     assert '"--run-count", "$RunCount"' in text
     assert '"--max-concurrent-battles", "$MaxConcurrentBattles"' in text
-    assert "Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -AllowUnboundedSupervisor:$AllowUnboundedSupervisor -AutoImprove:$AutoImprove" in text
+    assert "Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -RuntimeLease $RuntimeLease -AllowUnboundedSupervisor:$AllowUnboundedSupervisor -AutoImprove:$AutoImprove" in text
     assert "call start_one_touch.bat" not in text
 
 
@@ -136,7 +136,7 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert "-AutoImprove" in installer
     assert "-MaxCycles" in installer
     assert "-AllowUnboundedSupervisor" in installer
-    assert "set \"PS_USERNAME=$RuntimeLeaseAccount\"" in wrapper
+    assert 'set ""PS_USERNAME=$RuntimeLeaseAccount""' in wrapper
     assert "set PS_USERNAME=$runtimeLeaseAccount" in runtime
     assert "[switch]$AutoImprove" in runtime.split("function Start-BattleSession", 1)[1].split(")", 1)[0]
     assert "Rotate-LogFileIfLarge" in wrapper
@@ -148,7 +148,7 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert '$env:BATTLE_STATS_MAX_ENTRIES = "5000"' in wrapper
     assert '$env:BOT_LOG_TO_FILE = "1"' in wrapper
     assert '$env:FOULER_PLAY_ENABLE_AUTO_IMPROVE = $AutoImproveFlag' in wrapper
-    assert 'set "FOULER_PLAY_ENABLE_AUTO_IMPROVE=$AutoImproveFlag"' in wrapper
+    assert 'set ""FOULER_PLAY_ENABLE_AUTO_IMPROVE=$AutoImproveFlag""' in wrapper
     assert "set FOULER_PLAY_ENABLE_AUTO_IMPROVE=$autoImproveFlag" in runtime
     assert "pythonw.exe" not in wrapper
 
