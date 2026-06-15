@@ -112,6 +112,9 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert "[switch]$AutoImprove" in wrapper
     assert "[switch]$AutoImprove" in installer
     assert "[switch]$AutoImprove" in runtime
+    assert "[string]$RuntimeLease" in wrapper
+    assert "[string]$RuntimeLease" in installer
+    assert "[string]$RuntimeLease" in runtime
     assert "[switch]$AllowUnboundedSupervisor" in wrapper
     assert "[switch]$AllowUnboundedSupervisor" in installer
     assert "[switch]$AllowUnboundedSupervisor" in runtime
@@ -123,13 +126,19 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert "[int]$MaxCycles = 1" in runtime
     assert "--enable-auto-improve" in wrapper
     assert "--enable-auto-improve" in runtime
+    assert "--runtime-lease" in wrapper
+    assert "--runtime-lease" in runtime
     assert "--max-cycles" in wrapper
     assert "--max-cycles" in runtime
     assert "--allow-unbounded-supervisor" in wrapper
     assert "--allow-unbounded-supervisor" in runtime
+    assert "-RuntimeLease" in installer
     assert "-AutoImprove" in installer
     assert "-MaxCycles" in installer
     assert "-AllowUnboundedSupervisor" in installer
+    assert "set \"PS_USERNAME=$RuntimeLeaseAccount\"" in wrapper
+    assert "set PS_USERNAME=$runtimeLeaseAccount" in runtime
+    assert "[switch]$AutoImprove" in runtime.split("function Start-BattleSession", 1)[1].split(")", 1)[0]
     assert "Rotate-LogFileIfLarge" in wrapper
     assert "Rotate-LogFileIfLarge" in runtime
     assert "[int]$MaxConcurrentBattles = 3" in wrapper

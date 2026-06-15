@@ -10,6 +10,7 @@ param(
     [int]$QueueTimeoutSeconds = 180,
     [int]$SleepSeconds = 15,
     [int]$MaxCycles = 1,
+    [string]$RuntimeLease = "",
     [switch]$AutoImprove,
     [switch]$AllowUnboundedSupervisor
 )
@@ -28,7 +29,8 @@ $StderrLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.err.log"
 $TaskExecute = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
 $AutoImproveArg = if ($AutoImprove) { " -AutoImprove" } else { "" }
 $AllowUnboundedArg = if ($AllowUnboundedSupervisor) { " -AllowUnboundedSupervisor" } else { "" }
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -QueueTimeoutSeconds {4} -SleepSeconds {5} -MaxCycles {6}{7}{8}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $QueueTimeoutSeconds, $SleepSeconds, $MaxCycles, $AutoImproveArg, $AllowUnboundedArg
+$RuntimeLeaseArg = if ([string]::IsNullOrWhiteSpace($RuntimeLease)) { "" } else { ' -RuntimeLease "{0}"' -f ($RuntimeLease -replace '"', '\"') }
+$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -QueueTimeoutSeconds {4} -SleepSeconds {5} -MaxCycles {6}{7}{8}{9}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $QueueTimeoutSeconds, $SleepSeconds, $MaxCycles, $RuntimeLeaseArg, $AutoImproveArg, $AllowUnboundedArg
 $PidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
 $StopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
 

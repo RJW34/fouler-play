@@ -43,6 +43,37 @@ function Read-JsonFile {
     }
 }
 
+function Resolve-RuntimeLeasePath {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return "" }
+    if ([IO.Path]::IsPathRooted($Path)) { return $Path }
+    return (Join-Path $RepoRoot $Path)
+}
+
+function Get-RuntimeLeaseAccount {
+    param([string]$Path)
+    $resolved = Resolve-RuntimeLeasePath -Path $Path
+    if ([string]::IsNullOrWhiteSpace($resolved) -or -not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
+        return ""
+    }
+    $lease = Read-JsonFile -Path $resolved
+    if (-not $lease) { return "" }
+    $candidates = @(
+        $lease.account,
+        $lease.psUsername,
+        $lease.showdownAccount,
+        $lease.battleScope.account,
+        $lease.battleScope.psUsername
+    )
+    foreach ($candidate in $candidates) {
+        $value = [string]$candidate
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            return $value.Trim()
+        }
+    }
+    return ""
+}
+
 function Invoke-Checked {
     param(
         [string]$FilePath,
@@ -433,7 +464,7 @@ function Start-ObsServer {
 }
 
 function Start-BattleSession {
-    param([int]$RunCount, [int]$MaxConcurrentBattles, [int]$MaxCycles, [string]$RuntimeLease, [switch]$AllowUnboundedSupervisor)
+    param([int]$RunCount, [int]$MaxConcurrentBattles, [int]$MaxCycles, [string]$RuntimeLease, [switch]$AllowUnboundedSupervisor, [switch]$AutoImprove)
     if (-not (Test-Path (Join-Path $RepoRoot ".env"))) {
         return @{ ok = $false; error = ".env is missing; refusing to queue Showdown battles" }
     }
@@ -463,7 +494,26 @@ function Start-BattleSession {
         $supervisorArgs += "--allow-unbounded-supervisor"
     }
     $command = ($supervisorArgs | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join " "
-    $commandLine = 'cmd.exe /d /c "set PYTHONUTF8=1&& set PYTHONIOENCODING=utf-8&& set BOT_LOG_TO_FILE=1&& set AUTO_START_OBS_SERVER=0&& set LOSS_TRIGGERED_DRAIN=0&& set BATTLE_STATS_MAX_ENTRIES=5000&& set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json&& {0} 1>>"{1}" 2>>"{2}""' -f $command, $stdout, $stderr
+    $resolvedRuntimeLease = Resolve-RuntimeLeasePath -Path $RuntimeLease
+    $runtimeLeaseAccount = Get-RuntimeLeaseAccount -Path $RuntimeLease
+    $envSetters = @(
+        "set PYTHONUTF8=1",
+        "set PYTHONIOENCODING=utf-8",
+        "set BOT_LOG_TO_FILE=1",
+        "set AUTO_START_OBS_SERVER=0",
+        "set LOSS_TRIGGERED_DRAIN=0",
+        "set BATTLE_STATS_MAX_ENTRIES=5000",
+        "set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($resolvedRuntimeLease)) {
+        $envSetters += "set FOULER_RUNTIME_LEASE_PATH=$resolvedRuntimeLease"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($runtimeLeaseAccount)) {
+        $envSetters += "set PS_USERNAME=$runtimeLeaseAccount"
+        $envSetters += "set SHOWDOWN_USER_ID=$runtimeLeaseAccount"
+        $envSetters += "set SHOWDOWN_ACCOUNTS=$runtimeLeaseAccount"
+    }
+    $commandLine = 'cmd.exe /d /c "{0}&& {1} 1>>"{2}" 2>>"{3}""' -f ($envSetters -join "&& "), $command, $stdout, $stderr
     $launch = Start-DetachedCommand -CommandLine $commandLine -WorkingDirectory $RepoRoot
     if (-not (Test-Path $PidDir)) { New-Item -ItemType Directory -Path $PidDir -Force | Out-Null }
     Write-JsonFile -Path (Join-Path $PidDir "jigglypuff-battle-session.json") -Payload @{

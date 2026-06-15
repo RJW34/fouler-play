@@ -4,6 +4,7 @@ param(
     [int]$QueueTimeoutSeconds = 180,
     [int]$SleepSeconds = 15,
     [int]$MaxCycles = 1,
+    [string]$RuntimeLease = "",
     [switch]$AutoImprove,
     [switch]$AllowUnboundedSupervisor,
     [switch]$Foreground
@@ -30,6 +31,51 @@ if (-not $Foreground) {
 }
 
 New-Item -ItemType Directory -Force -Path (Join-Path $ProjectDir ".pids") | Out-Null
+
+function Resolve-RuntimeLeasePath {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return "" }
+    if ([IO.Path]::IsPathRooted($Path)) { return $Path }
+    return (Join-Path $ProjectDir $Path)
+}
+
+function Get-RuntimeLeaseAccount {
+    param([string]$Path)
+    $resolved = Resolve-RuntimeLeasePath -Path $Path
+    if ([string]::IsNullOrWhiteSpace($resolved) -or -not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
+        return ""
+    }
+    try {
+        $lease = Get-Content -Raw -LiteralPath $resolved | ConvertFrom-Json
+    } catch {
+        return ""
+    }
+    $candidates = @(
+        $lease.account,
+        $lease.psUsername,
+        $lease.showdownAccount,
+        $lease.battleScope.account,
+        $lease.battleScope.psUsername
+    )
+    foreach ($candidate in $candidates) {
+        $value = [string]$candidate
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            return $value.Trim()
+        }
+    }
+    return ""
+}
+
+$ResolvedRuntimeLease = Resolve-RuntimeLeasePath -Path $RuntimeLease
+$RuntimeLeaseAccount = Get-RuntimeLeaseAccount -Path $RuntimeLease
+if (-not [string]::IsNullOrWhiteSpace($ResolvedRuntimeLease)) {
+    $env:FOULER_RUNTIME_LEASE_PATH = $ResolvedRuntimeLease
+}
+if (-not [string]::IsNullOrWhiteSpace($RuntimeLeaseAccount)) {
+    $env:PS_USERNAME = $RuntimeLeaseAccount
+    $env:SHOWDOWN_USER_ID = $RuntimeLeaseAccount
+    $env:SHOWDOWN_ACCOUNTS = $RuntimeLeaseAccount
+}
 
 # --- SINGLETON GUARD ------------------------------------------------------
 # Exactly one battle supervisor may run for this repo. Before launching a new
@@ -86,6 +132,9 @@ if ($AutoImprove) {
 if ($AllowUnboundedSupervisor) {
     $supervisorArgs += "--allow-unbounded-supervisor"
 }
+if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {
+    $supervisorArgs += @("--runtime-lease", $RuntimeLease)
+}
 
 
 if ($Foreground) {
@@ -130,9 +179,17 @@ $cmdFile = Join-Path $ProjectDir ".pids\start_battle_supervisor.cmd"
 $commandLine = @((Quote-BatchArg $Py)) + ($supervisorArgs | ForEach-Object { Quote-BatchArg $_ })
 $cmdLines = @(
     "@echo off",
-    "cd /d $(Quote-BatchArg $ProjectDir)",
-    (($commandLine -join " ") + " 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)")
+    "cd /d $(Quote-BatchArg $ProjectDir)"
 )
+if (-not [string]::IsNullOrWhiteSpace($ResolvedRuntimeLease)) {
+    $cmdLines += "set ""FOULER_RUNTIME_LEASE_PATH=$ResolvedRuntimeLease"""
+}
+if (-not [string]::IsNullOrWhiteSpace($RuntimeLeaseAccount)) {
+    $cmdLines += "set ""PS_USERNAME=$RuntimeLeaseAccount"""
+    $cmdLines += "set ""SHOWDOWN_USER_ID=$RuntimeLeaseAccount"""
+    $cmdLines += "set ""SHOWDOWN_ACCOUNTS=$RuntimeLeaseAccount"""
+}
+$cmdLines += (($commandLine -join " ") + " 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)")
 $cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
 
 $launch = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
