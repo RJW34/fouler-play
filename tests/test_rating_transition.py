@@ -125,13 +125,20 @@ async def test_battle_stats_enrichment_records_authoritative_rating(tmp_path):
         elo_after=1156,
         rating_delta=28,
         result_key="win",
+        winner="LEBOTJAMESXD00N",
+        opponent_name="murdockfejao",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2632356554",
         path=stats_path,
     )
 
     saved = json.loads(stats_path.read_text(encoding="utf-8"))
     entry = saved["battles"][0]
     assert enriched is True
+    assert entry["battle_tag"] == "battle-gen9ou-2632356554"
     assert entry["result"] == "win"
+    assert entry["winner"] == "LEBOTJAMESXD00N"
+    assert entry["opponent"] == "murdockfejao"
+    assert entry["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2632356554"
     assert entry["rating"] == 1156.0
     assert entry["elo_before"] == 1128.0
     assert entry["elo_after"] == 1156.0
@@ -164,6 +171,9 @@ async def test_battle_stats_enrichment_reapplies_previous_authoritative_facts(tm
         elo_after=1030,
         rating_delta=30,
         result_key="win",
+        winner="LEBOTJAMESXD00N",
+        opponent_name="first-opponent",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-a",
         path=stats_path,
     )
 
@@ -195,15 +205,24 @@ async def test_battle_stats_enrichment_reapplies_previous_authoritative_facts(tm
         elo_after=1048,
         rating_delta=18,
         result_key="win",
+        winner="LEBOTJAMESXD00N",
+        opponent_name="second-opponent",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-b",
         path=stats_path,
     )
 
     saved = json.loads(stats_path.read_text(encoding="utf-8"))
     first, second = saved["battles"]
     assert first["result"] == "win"
+    assert first["winner"] == "LEBOTJAMESXD00N"
+    assert first["opponent"] == "first-opponent"
+    assert first["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-a"
     assert first["rating"] == 1030.0
     assert first["rating_delta"] == 30
     assert second["result"] == "win"
+    assert second["winner"] == "LEBOTJAMESXD00N"
+    assert second["opponent"] == "second-opponent"
+    assert second["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-b"
     assert second["rating"] == 1048.0
     assert second["rating_delta"] == 18
 

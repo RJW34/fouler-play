@@ -953,9 +953,12 @@ async def _enrich_battle_stats_rating_once(
     elo_after: float | None,
     rating_delta: int | None,
     result_key: str | None = None,
+    winner: str | None = None,
+    opponent_name: str | None = None,
+    replay_url: str | None = None,
     path: Path | None = None,
 ) -> bool:
-    """Fill battle_stats rows with authoritative result/ELO data.
+    """Fill battle_stats rows with authoritative result/ELO/reporting data.
 
     run.py owns the append path and keeps an in-memory battle list. Its next
     save can overwrite fields this async helper previously added to disk, so
@@ -995,6 +998,12 @@ async def _enrich_battle_stats_rating_once(
             fact["rating_source"] = "showdown_raw"
         elif elo_after is not None:
             fact.setdefault("rating_source", "ladder_api")
+        if winner:
+            fact["winner"] = str(winner)
+        if opponent_name and opponent_name != "Unknown":
+            fact["opponent"] = str(opponent_name)
+        if replay_url:
+            fact["replay_url"] = str(replay_url)
 
         target = None
         known_ids = set(_battle_stats_authoritative_facts)
@@ -1019,6 +1028,14 @@ async def _enrich_battle_stats_rating_once(
                     entry["rating_source"] = str(entry_fact.get("rating_source") or "showdown_raw")
                 elif entry_fact.get("rating_source") and entry.get("rating_source") is None:
                     entry["rating_source"] = str(entry_fact["rating_source"])
+                if entry.get("battle_tag") is None:
+                    entry["battle_tag"] = matched_id
+                if entry_fact.get("winner"):
+                    entry["winner"] = str(entry_fact["winner"])
+                if entry_fact.get("opponent"):
+                    entry["opponent"] = str(entry_fact["opponent"])
+                if entry_fact.get("replay_url"):
+                    entry["replay_url"] = str(entry_fact["replay_url"])
             if entry_id == battle_tag or entry_replay == battle_tag:
                 target = entry
         if target is None:
@@ -1033,7 +1050,7 @@ async def _enrich_battle_stats_rating_once(
             logger.debug("Could not write enriched battle_stats rating: %s", exc)
             return False
     logger.info(
-        "Enriched battle_stats result/rating for %s: result=%s after=%s delta=%s",
+        "Enriched battle_stats result/rating/reporting for %s: result=%s after=%s delta=%s",
         battle_tag,
         result_key,
         elo_after,
@@ -1049,10 +1066,13 @@ async def _enrich_battle_stats_rating_after_record(
     elo_after: float | None,
     rating_delta: int | None,
     result_key: str | None = None,
+    winner: str | None = None,
+    opponent_name: str | None = None,
+    replay_url: str | None = None,
     attempts: int = 30,
     delay_seconds: float = 0.5,
 ) -> bool:
-    """Wait for run.py to append the stats row, then add exact ELO fields."""
+    """Wait for run.py to append the stats row, then add exact reporting fields."""
     for attempt in range(max(1, attempts)):
         if await _enrich_battle_stats_rating_once(
             battle_tag,
@@ -1060,6 +1080,9 @@ async def _enrich_battle_stats_rating_after_record(
             elo_after=elo_after,
             rating_delta=rating_delta,
             result_key=result_key,
+            winner=winner,
+            opponent_name=opponent_name,
+            replay_url=replay_url,
         ):
             return True
         if attempt + 1 < attempts:
@@ -1075,6 +1098,9 @@ def _schedule_battle_stats_rating_enrichment(
     elo_after: float | None,
     rating_delta: int | None,
     result_key: str | None = None,
+    winner: str | None = None,
+    opponent_name: str | None = None,
+    replay_url: str | None = None,
 ) -> None:
     if not battle_tag or (elo_after is None and not result_key):
         return
@@ -1086,6 +1112,9 @@ def _schedule_battle_stats_rating_enrichment(
                 elo_after=elo_after,
                 rating_delta=rating_delta,
                 result_key=result_key,
+                winner=winner,
+                opponent_name=opponent_name,
+                replay_url=replay_url,
             )
         )
     except RuntimeError:
@@ -3407,6 +3436,9 @@ async def pokemon_battle(
                         opponent_name=opponent_name,
                         elo_delta=_result_evidence_delta,
                     ),
+                    winner=winner,
+                    opponent_name=opponent_name,
+                    replay_url=_queue_replay_url or _discord_replay_url or replay_url,
                 )
 
                 return winner, battle_tag
