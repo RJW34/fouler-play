@@ -132,7 +132,7 @@ def format_elo_delta(
     sign = "+" if delta > 0 else ""
 
     if (result_norm == "loss" and delta > 0) or (result_norm == "win" and delta < 0):
-        return f"{label} check needed (cached {before_num}, fetched {after_num}, {sign}{delta} contradicts {result_norm})"
+        return f"{label} unverified (cached {before_num}, fetched {after_num})"
 
     if delta > 0:
         return f"{label} gained {delta} ({before_num} → {after_num}, +{delta})"

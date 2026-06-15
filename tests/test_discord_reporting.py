@@ -1090,7 +1090,7 @@ def test_payload_formatter_omits_boolean_placeholder_turns():
     assert "battle finished loss vs Placeholder" in formatted
 
 
-def test_payload_formatter_keeps_result_when_cached_elo_contradicts():
+def test_payload_formatter_marks_cached_elo_unverified_when_it_contradicts_result():
     payload = build_contract_payload(
         "PROOF",
         "battle result loss vs MatronJames",
@@ -1110,7 +1110,8 @@ def test_payload_formatter_keeps_result_when_cached_elo_contradicts():
 
     assert formatted.startswith("[PROOF] **battle result loss vs MatronJames**")
     assert "battle finished loss vs MatronJames" in formatted
-    assert "- ELO `check needed (cached 1117, fetched 1136, +19 contradicts loss)`" in formatted
+    assert "- ELO `unverified (cached 1117, fetched 1136)`" in formatted
+    assert "contradicts loss" not in formatted
     assert fields["winner"] == "MatronJames"
     assert fields["loser"] == "fouler-play"
     assert fields["analysis"]["result"] == "loss"
@@ -1142,8 +1143,8 @@ def test_elo_delta_labels_match_result_direction():
     assert format_elo_delta(1136, 1117, "loss") == "ELO lost 19 (1136 → 1117, -19)"
     assert format_elo_delta(1117, 1136, "win") == "ELO gained 19 (1117 → 1136, +19)"
     assert format_elo_delta(1065, 1048, "loss", rating_delta=-17) == "ELO lost 17 (1065 → 1048, -17)"
-    assert "contradicts win" in format_elo_delta(1136, 1117, "win")
-    assert "contradicts loss" in format_elo_delta(1117, 1136, "loss")
+    assert format_elo_delta(1136, 1117, "win") == "ELO unverified (cached 1136, fetched 1117)"
+    assert format_elo_delta(1117, 1136, "loss") == "ELO unverified (cached 1117, fetched 1136)"
 
 
 def test_replay_url_canonicalization_rejects_private_unresolved_links():
