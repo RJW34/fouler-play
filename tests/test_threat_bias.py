@@ -2134,5 +2134,36 @@ class TestPivotLastPokemonAlive(unittest.TestCase):
                          "U-turn should keep full weight when teammates are alive")
 
 
+class TestMoveValidatorStatusImmunity(unittest.TestCase):
+    def test_toxic_blocked_by_revealed_immunity_ability(self):
+        ability_state = OpponentAbilityState(
+            ability_known=True,
+            ability_name="immunity",
+        )
+        policy = {
+            "toxic": 1.0,
+            "earthquake": 0.25,
+        }
+
+        adjusted = filter_blocked_moves(policy, ability_state)
+
+        self.assertLess(adjusted["toxic"], 0.01)
+        self.assertEqual(adjusted["earthquake"], 0.25)
+
+    def test_toxic_spikes_not_blocked_by_active_immunity_ability(self):
+        ability_state = OpponentAbilityState(
+            ability_known=True,
+            ability_name="immunity",
+        )
+        policy = {
+            "toxicspikes": 1.0,
+            "earthquake": 0.25,
+        }
+
+        adjusted = filter_blocked_moves(policy, ability_state)
+
+        self.assertEqual(adjusted["toxicspikes"], 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()
