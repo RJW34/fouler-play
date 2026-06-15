@@ -23,6 +23,8 @@ from data.pkmn_sets import SmogonSets
 LOG_KEEP_BATTLE_FILES = int(os.getenv("LOG_KEEP_BATTLE_FILES", "60"))
 LOG_KEEP_TRACE_FILES = int(os.getenv("LOG_KEEP_TRACE_FILES", "500"))
 LOG_KEEP_STDOUT_FILES = int(os.getenv("LOG_KEEP_STDOUT_FILES", "3"))
+BATTLE_STATS_PATH = Path(__file__).resolve().parent.parent / "battle_stats.json"
+_battle_stats_enrichment_lock = asyncio.Lock()
 
 
 def cleanup_old_logs(log_dir: str = "logs", trace_dir: str | None = None):
@@ -920,6 +922,122 @@ async def _post_battle_to_discord(
     except Exception as e:
         logger.warning(f"Failed to post to Discord webhook: {e}")
     return elo_after
+
+
+async def _enrich_battle_stats_rating_once(
+    battle_tag: str,
+    *,
+    elo_before: float | None,
+    elo_after: float | None,
+    rating_delta: int | None,
+    path: Path | None = None,
+) -> bool:
+    """Fill the just-recorded battle_stats row with authoritative ELO data."""
+    if not battle_tag or elo_after is None:
+        return False
+    stats_path = path or BATTLE_STATS_PATH
+    async with _battle_stats_enrichment_lock:
+        if not stats_path.exists():
+            return False
+        try:
+            data = json.loads(stats_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            logger.debug("Could not read battle_stats for rating enrichment: %s", exc)
+            return False
+
+        if isinstance(data, dict):
+            battles = data.get("battles")
+        elif isinstance(data, list):
+            battles = data
+        else:
+            battles = None
+        if not isinstance(battles, list):
+            return False
+
+        target = None
+        for entry in reversed(battles):
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("battle_id") == battle_tag or entry.get("replay_id") == battle_tag:
+                target = entry
+                break
+        if target is None:
+            return False
+
+        authoritative = rating_delta is not None and elo_before is not None
+        if authoritative or target.get("rating") is None:
+            target["rating"] = float(elo_after)
+        if elo_before is not None:
+            target["elo_before"] = float(elo_before)
+        target["elo_after"] = float(elo_after)
+        if rating_delta is not None:
+            target["rating_delta"] = int(rating_delta)
+            target["rating_source"] = "showdown_raw"
+        elif target.get("rating_source") is None:
+            target["rating_source"] = "ladder_api"
+
+        try:
+            stats_path.write_text(
+                json.dumps(data, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            logger.debug("Could not write enriched battle_stats rating: %s", exc)
+            return False
+    logger.info(
+        "Enriched battle_stats rating for %s: after=%s delta=%s",
+        battle_tag,
+        elo_after,
+        rating_delta,
+    )
+    return True
+
+
+async def _enrich_battle_stats_rating_after_record(
+    battle_tag: str,
+    *,
+    elo_before: float | None,
+    elo_after: float | None,
+    rating_delta: int | None,
+    attempts: int = 30,
+    delay_seconds: float = 0.5,
+) -> bool:
+    """Wait for run.py to append the stats row, then add exact ELO fields."""
+    for attempt in range(max(1, attempts)):
+        if await _enrich_battle_stats_rating_once(
+            battle_tag,
+            elo_before=elo_before,
+            elo_after=elo_after,
+            rating_delta=rating_delta,
+        ):
+            return True
+        if attempt + 1 < attempts:
+            await asyncio.sleep(delay_seconds)
+    logger.info("battle_stats row not found for ELO enrichment: %s", battle_tag)
+    return False
+
+
+def _schedule_battle_stats_rating_enrichment(
+    battle_tag: str,
+    *,
+    elo_before: float | None,
+    elo_after: float | None,
+    rating_delta: int | None,
+) -> None:
+    if not battle_tag or elo_after is None:
+        return
+    try:
+        asyncio.create_task(
+            _enrich_battle_stats_rating_after_record(
+                battle_tag,
+                elo_before=elo_before,
+                elo_after=elo_after,
+                rating_delta=rating_delta,
+            )
+        )
+    except RuntimeError:
+        logger.debug("No running loop for battle_stats ELO enrichment: %s", battle_tag)
+
 
 async def prime_resume_battles() -> int:
     """Load in-progress battles from active_battles.json so workers can resume them."""
@@ -3222,6 +3340,13 @@ async def pokemon_battle(
                         )
                     except Exception as _qe_err:
                         logger.warning(f"Failed to queue battle_result event: {_qe_err}")
+
+                _schedule_battle_stats_rating_enrichment(
+                    battle_tag,
+                    elo_before=_elo_before_final,
+                    elo_after=_elo_after_final,
+                    rating_delta=_elo_delta_final,
+                )
 
                 return winner, battle_tag
 

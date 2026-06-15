@@ -8,6 +8,8 @@ reported delta to ~+/-1. The fix parses Showdown's authoritative end-of-battle
 player, so the opponent's line must not be picked up).
 """
 
+import json
+
 import pytest
 
 import fp.run_battle as run_battle
@@ -96,6 +98,42 @@ def test_delta_in_plausible_per_battle_range_not_one():
     old, new, delta = parse_rating_transition(msg, OUR)
     assert delta == 18
     assert abs(delta) > 1
+
+
+@pytest.mark.asyncio
+async def test_battle_stats_enrichment_records_authoritative_rating(tmp_path):
+    stats_path = tmp_path / "battle_stats.json"
+    stats_path.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-2632356554",
+                        "result": "win",
+                        "rating": None,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    enriched = await run_battle._enrich_battle_stats_rating_once(
+        "battle-gen9ou-2632356554",
+        elo_before=1128,
+        elo_after=1156,
+        rating_delta=28,
+        path=stats_path,
+    )
+
+    saved = json.loads(stats_path.read_text(encoding="utf-8"))
+    entry = saved["battles"][0]
+    assert enriched is True
+    assert entry["rating"] == 1156.0
+    assert entry["elo_before"] == 1128.0
+    assert entry["elo_after"] == 1156.0
+    assert entry["rating_delta"] == 28
+    assert entry["rating_source"] == "showdown_raw"
 
 
 @pytest.mark.asyncio
