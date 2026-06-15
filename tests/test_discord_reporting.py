@@ -1076,6 +1076,7 @@ def test_elo_delta_labels_match_result_direction():
     assert format_elo_delta(1117, 1136, "win") == "ELO gained 19 (1117 → 1136, +19)"
     assert "contradicts win" in format_elo_delta(1136, 1117, "win")
     assert "contradicts loss" in format_elo_delta(1117, 1136, "loss")
+    assert format_elo_delta(None, 1088, "win") == "ELO now 1088"
 
 
 def test_replay_url_canonicalization_rejects_private_unresolved_links():

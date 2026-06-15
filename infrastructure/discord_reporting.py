@@ -108,9 +108,15 @@ def _short_team_name(team: object) -> str:
 
 def format_elo_delta(before: object, after: object, result: object = "", label: str = "ELO") -> str:
     try:
+        after_num_only = int(round(float(after)))
+    except Exception:
+        after_num_only = None
+    try:
         before_num = int(round(float(before)))
         after_num = int(round(float(after)))
     except Exception:
+        if after_num_only is not None:
+            return f"{label} now {after_num_only}"
         return ""
     delta = after_num - before_num
     result_norm = _normalize_result(result)

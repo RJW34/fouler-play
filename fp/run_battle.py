@@ -3206,8 +3206,11 @@ async def pokemon_battle(
                             replay_status=_queue_replay_status,
                             replay_public_verified=_replay_handoff.get("replay_public_verified"),
                             raw_replay_url=_replay_handoff.get("raw_replay_url"),
-                            elo_before=_elo_before_val,
-                            elo_after=elo_after if 'elo_after' in locals() else None,
+                            # Queue proof should use the same finalized rating
+                            # transition that battle_stats receives, not the
+                            # pre-battle cache value that may be absent.
+                            elo_before=_elo_before_final,
+                            elo_after=_elo_after_final,
                             recent_record=_recent_summary,
                             decisive_reason=_decisive_reason,
                             next_battle_action=_next_action,
@@ -3223,8 +3226,8 @@ async def pokemon_battle(
                                 opponent_name=opponent_name,
                                 team_name=_team_name_ev or "unknown",
                                 turn_count=_turn_count_ev,
-                                elo_before=_elo_before_val,
-                                elo_after=elo_after if 'elo_after' in locals() else None,
+                                elo_before=_elo_before_final,
+                                elo_after=_elo_after_final,
                                 recent_record=_recent_summary,
                                 decisive_reason=_decisive_reason,
                                 next_action=_next_action,
