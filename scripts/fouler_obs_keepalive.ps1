@@ -40,6 +40,18 @@ function Get-TaskState {
     }
 }
 
+function Stop-ObsServerProcesses {
+    Get-CimInstance Win32_Process | Where-Object {
+        $_.CommandLine -and
+        $_.CommandLine -match "streaming[\\/]serve_obs_page\.py" -and
+        $_.CommandLine -match [regex]::Escape($ProjectDir) -and
+        $_.Name -match "python|py"
+    } | ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    Remove-Item -LiteralPath (Join-Path $ProjectDir ".pids\obs_server.pid") -Force -ErrorAction SilentlyContinue
+}
+
 $statusPath = Join-Path $ProjectDir "devstream\truth\obs-server-keepalive.json"
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $statusPath) | Out-Null
 
@@ -48,6 +60,7 @@ $beforeState = if ($beforePort) { Test-StateEndpoint -Port $Port } else { $false
 $beforeTaskState = Get-TaskState -TaskName $TaskName
 $started = $false
 $stoppedStuckTask = $false
+$stoppedStuckProcess = $false
 $startError = $null
 
 if (-not ($beforePort -and $beforeState)) {
@@ -57,9 +70,11 @@ if (-not ($beforePort -and $beforeState)) {
             $stoppedStuckTask = $true
             Start-Sleep -Seconds 2
         }
+        Stop-ObsServerProcesses
+        $stoppedStuckProcess = $true
         Start-ScheduledTask -TaskName $TaskName
         $started = $true
-        Start-Sleep -Seconds 8
+        Start-Sleep -Seconds 15
     } catch {
         $startError = $_.Exception.Message
     }
@@ -81,6 +96,7 @@ $payload = [ordered]@{
     action = @{
         startedTask = $started
         stoppedStuckTask = $stoppedStuckTask
+        stoppedStuckProcess = $stoppedStuckProcess
         error = $startError
     }
     after = @{

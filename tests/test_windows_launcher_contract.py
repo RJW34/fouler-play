@@ -86,10 +86,13 @@ def test_obs_server_task_wrapper_loads_obs_secret_without_printing_it():
     assert "OBS_WS_PASSWORD" in text
     assert "OBS_WEBSOCKET_PASSWORD" in text
     assert "HERMES_OBS_WEBSOCKET_PASSWORD" in text
+    assert "FOULER_OBS_WS_DISABLED" in text
+    assert "LEBOTJAMESXD00N" in text
+    assert 'Test-StateEndpoint -Port 8777' in text
     assert "FP_PARENT_PID" in text
     assert "[switch]$Foreground" in text
     assert "Start-Process" in text
-    assert "Win32_Process" not in text
+    assert "Win32_Process" in text
     assert "-WindowStyle Hidden" in text
     assert "RedirectStandardOutput" in text
     assert "SetEnvironmentVariable($_.Target, $value, \"Process\")" in text
@@ -106,7 +109,9 @@ def test_obs_server_keepalive_task_restarts_only_public_surface():
     assert "Start-ScheduledTask -TaskName $TaskName" in keepalive
     assert "Stop-ScheduledTask -TaskName $TaskName" in keepalive
     assert "stoppedStuckTask" in keepalive
-    assert "Stop-Process" not in keepalive
+    assert "stoppedStuckProcess" in keepalive
+    assert "streaming[\\\\/]serve_obs_page\\.py" in keepalive
+    assert "Stop-Process -Id $_.ProcessId -Force" in keepalive
     assert "PS_PASSWORD" not in keepalive
     assert "HERMES-FoulerObsKeepAlive" in installer
     assert "RepetitionInterval (New-TimeSpan -Minutes 1)" in installer

@@ -44,6 +44,37 @@ function Get-HermesEnvValue {
     return $null
 }
 
+function Set-HermesProcessDefault {
+    param(
+        [string]$Name,
+        [string]$Value
+    )
+    if (-not [Environment]::GetEnvironmentVariable($Name, "Process")) {
+        [Environment]::SetEnvironmentVariable($Name, $Value, "Process")
+    }
+}
+
+function Test-StateEndpoint {
+    param([int]$Port = 8777)
+    try {
+        $response = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 "http://127.0.0.1:$Port/state"
+        return [bool]($response.StatusCode -eq 200 -and $response.Content.Length -gt 20)
+    } catch {
+        return $false
+    }
+}
+
+function Stop-ObsServerProcesses {
+    Get-CimInstance Win32_Process | Where-Object {
+        $_.CommandLine -and
+        $_.CommandLine -match "streaming[\\/]serve_obs_page\.py" -and
+        $_.CommandLine -match [regex]::Escape($ProjectDir) -and
+        $_.Name -match "python|py"
+    } | ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+}
+
 @(
     @{ Target = "OBS_WS_PASSWORD"; Names = @("OBS_WS_PASSWORD", "OBS_WEBSOCKET_PASSWORD", "HERMES_OBS_WEBSOCKET_PASSWORD") },
     @{ Target = "OBS_WS_HOST"; Names = @("OBS_WS_HOST", "OBS_WEBSOCKET_HOST", "HERMES_OBS_WEBSOCKET_HOST") },
@@ -62,11 +93,21 @@ if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
 
 Remove-Item Env:FP_PARENT_PID -ErrorAction SilentlyContinue
 [Environment]::SetEnvironmentVariable("FP_PARENT_PID", "0", "Process")
+Set-HermesProcessDefault -Name "PYTHONUTF8" -Value "1"
+Set-HermesProcessDefault -Name "PYTHONIOENCODING" -Value "utf-8"
+Set-HermesProcessDefault -Name "BOT_LOG_TO_FILE" -Value "1"
+Set-HermesProcessDefault -Name "OBS_SERVER_PORT" -Value "8777"
+Set-HermesProcessDefault -Name "OBS_SYNC_INTERVAL_SEC" -Value "0"
+Set-HermesProcessDefault -Name "FOULER_OBS_WS_DISABLED" -Value "1"
+[Environment]::SetEnvironmentVariable("PS_USERNAME", "LEBOTJAMESXD00N", "Process")
+[Environment]::SetEnvironmentVariable("SHOWDOWN_USER_ID", "LEBOTJAMESXD00N", "Process")
+[Environment]::SetEnvironmentVariable("SHOWDOWN_ACCOUNTS", "LEBOTJAMESXD00N", "Process")
+[Environment]::SetEnvironmentVariable("PS_FORMAT", "gen9ou", "Process")
 
 Set-Location -LiteralPath $ProjectDir
 
 if ($Foreground) {
-    & $python "streaming\serve_obs_page.py"
+    & $python -u "streaming\serve_obs_page.py"
     exit $LASTEXITCODE
 }
 
@@ -79,16 +120,24 @@ $stdoutLog = Join-Path $logDir "jigglypuff-obs-server.log"
 $stderrLog = Join-Path $logDir "jigglypuff-obs-server.err.log"
 $launch = Start-Process `
     -FilePath $python `
-    -ArgumentList @("streaming\serve_obs_page.py") `
+    -ArgumentList @("-u", "streaming\serve_obs_page.py") `
     -WorkingDirectory $ProjectDir `
     -WindowStyle Hidden `
     -RedirectStandardOutput $stdoutLog `
     -RedirectStandardError $stderrLog `
     -PassThru
 
-Start-Sleep -Seconds 4
-if ($launch.HasExited) {
-    Write-Error "Fouler OBS server exited during startup with code $($launch.ExitCode)"
-    exit 1
+for ($i = 0; $i -lt 12; $i++) {
+    Start-Sleep -Seconds 1
+    if ($launch.HasExited) {
+        Write-Error "Fouler OBS server exited during startup with code $($launch.ExitCode)"
+        exit 1
+    }
+    if (Test-StateEndpoint -Port 8777) {
+        exit 0
+    }
 }
-exit 0
+
+Stop-ObsServerProcesses
+Write-Error "Fouler OBS server process started but /state did not become healthy on port 8777"
+exit 1
