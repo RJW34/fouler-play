@@ -870,6 +870,20 @@ def test_read_queue_retries_transient_windows_file_lock(monkeypatch, tmp_path):
     assert calls["count"] == 1
 
 
+def test_read_queue_uses_utf8_for_rating_arrows(monkeypatch, tmp_path):
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text(
+        '[{"id":"event-1","status":"pending","content":"ELO gained 20 (1088 → 1108, +20)"}]',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("EVENT_QUEUE_FILE", str(queue_file))
+
+    import infrastructure.event_queue_lib as event_queue_lib
+    event_queue_lib = importlib.reload(event_queue_lib)
+
+    assert event_queue_lib.read_queue()[0]["content"] == "ELO gained 20 (1088 → 1108, +20)"
+
+
 def test_webhook_dns_failure_is_reported_without_posting(monkeypatch):
     import infrastructure.event_poster as event_poster
     import urllib.request

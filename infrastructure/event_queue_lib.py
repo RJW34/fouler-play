@@ -377,7 +377,7 @@ def _with_lock(fn):
     for attempt in range(attempts):
         try:
             QUEUE_FILE.touch(exist_ok=True)
-            with open(QUEUE_FILE, "r+") as f:
+            with open(QUEUE_FILE, "r+", encoding="utf-8") as f:
                 if sys.platform == "win32":
                     # Windows: lock first byte
                     msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
