@@ -6037,6 +6037,72 @@ def _recent_action_history(battle: Battle | None) -> list[str]:
     return history
 
 
+def _has_living_switch_target(battle: Battle | None) -> bool:
+    user = getattr(battle, "user", None) if battle is not None else None
+    for pkmn in getattr(user, "reserve", []) or []:
+        if getattr(pkmn, "fainted", False):
+            continue
+        try:
+            if float(getattr(pkmn, "hp", 0) or 0) > 0:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
+
+def _is_last_pokemon_state(battle: Battle | None) -> bool:
+    user = getattr(battle, "user", None) if battle is not None else None
+    active = getattr(user, "active", None)
+    if active is None:
+        return False
+    try:
+        if float(getattr(active, "hp", 0) or 0) <= 0:
+            return False
+    except (TypeError, ValueError):
+        return False
+    return not _has_living_switch_target(battle)
+
+
+def _is_damaging_policy_move(move: str) -> bool:
+    if move.startswith("switch "):
+        return False
+    move_name, move_norm = _move_name_and_norm(move)
+    move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+    return move_data.get(constants.CATEGORY) in {constants.PHYSICAL, constants.SPECIAL}
+
+
+def _is_status_pivot_policy_move(move: str) -> bool:
+    if move.startswith("switch "):
+        return False
+    move_name, move_norm = _move_name_and_norm(move)
+    move_data = all_move_json.get(move_norm, all_move_json.get(move_name, {}))
+    return move_norm in PIVOT_MOVES_NORM and move_data.get(constants.CATEGORY) == constants.STATUS
+
+
+def _last_mon_damage_loop_should_hold(
+    sorted_policy: list[tuple[str, float]],
+    battle: Battle | None,
+    best_move: str,
+) -> bool:
+    """Do not force variety when last-mon repeated damage is the only progress."""
+    if not _is_last_pokemon_state(battle):
+        return False
+    if not _is_damaging_policy_move(best_move):
+        return False
+
+    for move, weight in sorted_policy:
+        if move.lower().strip() == best_move.lower().strip() or weight <= 0:
+            continue
+        if move.startswith("switch "):
+            return False
+        if _is_damaging_policy_move(move):
+            continue
+        if _is_status_pivot_policy_move(move):
+            continue
+        return False
+    return True
+
+
 def break_repeated_decision(
     sorted_policy: list[tuple[str, float]],
     battle: Battle | None,
@@ -6074,6 +6140,20 @@ def break_repeated_decision(
     # Count how many times the about-to-win action appears in the recent window.
     repeats = sum(1 for a in recent if a == best_norm)
     if repeats < repeat_threshold:
+        return sorted_policy
+
+    if _last_mon_damage_loop_should_hold(sorted_policy, battle, best_move):
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "skip",
+                    "source": "decision_loop_break",
+                    "move": best_move,
+                    "reason": f"{best_move}_repeated_{repeats}_last_mon_damage_progress",
+                    "before": sorted_policy[0][1],
+                    "after": sorted_policy[0][1],
+                }
+            )
         return sorted_policy
 
     # Find the best DISTINCT legal alternative with positive weight.
