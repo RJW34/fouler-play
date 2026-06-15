@@ -828,6 +828,14 @@ def _score_switch(battle: Battle, target_name: str) -> float:
 
     # Hazard cost
     h_cost = _hazard_cost(battle, target)
+    if h_cost >= hp_ratio:
+        logger.info(
+            "Switch target %s suppressed: hazards %.1f%% >= HP %.1f%%",
+            target_name,
+            h_cost * 100,
+            hp_ratio * 100,
+        )
+        return 0.01
     score -= h_cost * 0.5
 
     # Can we threaten the opponent offensively?
