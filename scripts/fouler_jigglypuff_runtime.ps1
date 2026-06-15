@@ -563,12 +563,12 @@ function Start-BattleSession {
     )
     $leaseAccount = Get-RuntimeLeaseAccount -RuntimeLease $RuntimeLease
     if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
-        $envAssignments += @(
-            ConvertTo-CmdSetAssignment -Name "PS_USERNAME" -Value $leaseAccount,
-            ConvertTo-CmdSetAssignment -Name "SHOWDOWN_USER_ID" -Value $leaseAccount,
-            ConvertTo-CmdSetAssignment -Name "SHOWDOWN_ACCOUNTS" -Value $leaseAccount,
-            ConvertTo-CmdSetAssignment -Name "FOULER_ACTIVE_ACCOUNT" -Value $leaseAccount
-        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        foreach ($envName in @("PS_USERNAME", "SHOWDOWN_USER_ID", "SHOWDOWN_ACCOUNTS", "FOULER_ACTIVE_ACCOUNT")) {
+            $assignment = ConvertTo-CmdSetAssignment -Name $envName -Value $leaseAccount
+            if (-not [string]::IsNullOrWhiteSpace($assignment)) {
+                $envAssignments += $assignment
+            }
+        }
     }
     $envPrefix = ($envAssignments -join "&& ") + "&& "
     $commandLine = 'cmd.exe /d /c "{0}{1} 1>>"{2}" 2>>"{3}""' -f $envPrefix, $command, $stdout, $stderr
