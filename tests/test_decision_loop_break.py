@@ -20,6 +20,20 @@ def _battle(history, last_selected_move=None):
     return battle
 
 
+def _pokemon(*, hp=100, fainted=False):
+    pkmn = MagicMock()
+    pkmn.hp = hp
+    pkmn.fainted = fainted
+    return pkmn
+
+
+def _last_mon_battle(history):
+    battle = _battle(history)
+    battle.user.active = _pokemon(hp=97)
+    battle.user.reserve = [_pokemon(hp=0, fainted=True) for _ in range(5)]
+    return battle
+
+
 def _sorted(policy: dict) -> list[tuple[str, float]]:
     return sorted(policy.items(), key=lambda x: x[1], reverse=True)
 
@@ -75,6 +89,33 @@ class TestBreakRepeatedDecision:
         policy = _sorted({"switch blissey": 90.0, "sludgebomb": 50.0, "switch dondozo": 45.0})
         result = break_repeated_decision(policy, battle)
         assert result[0][0] != "switch blissey"
+
+    def test_last_mon_repeated_damage_is_not_forced_to_weaker_attack(self):
+        battle = _last_mon_battle(["malignantchain", "malignantchain", "malignantchain"])
+        policy = _sorted({"malignantchain": 0.36, "foulplay": 0.26, "partingshot": 0.18})
+        trace = []
+        result = break_repeated_decision(policy, battle, trace_events=trace)
+        assert result[0][0] == "malignantchain"
+        assert any(
+            e["source"] == "decision_loop_break"
+            and e["type"] == "skip"
+            and "last_mon_damage_progress" in e["reason"]
+            for e in trace
+        )
+
+    def test_repeated_damage_still_demoted_when_switch_target_alive(self):
+        battle = _battle(["malignantchain", "malignantchain", "malignantchain"])
+        battle.user.active = _pokemon(hp=97)
+        battle.user.reserve = [_pokemon(hp=100, fainted=False)]
+        policy = _sorted({"malignantchain": 0.36, "foulplay": 0.26, "partingshot": 0.18})
+        result = break_repeated_decision(policy, battle)
+        assert result[0][0] != "malignantchain"
+
+    def test_last_mon_repeated_recovery_can_still_be_broken(self):
+        battle = _last_mon_battle(["recover", "recover", "recover"])
+        policy = _sorted({"recover": 0.90, "foulplay": 0.30})
+        result = break_repeated_decision(policy, battle)
+        assert result[0][0] == "foulplay"
 
     def test_none_battle_returns_unchanged(self):
         policy = _sorted({"surf": 100.0, "ivycudgel": 50.0})
