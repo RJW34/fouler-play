@@ -180,6 +180,14 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 
 ## JIGGLYPUFF Action Items
 
+### Current Runtime Blocker (2026-06-15 16:10 UTC)
+- **Status:** JIGGLYPUFF is reachable on LAN at `192.168.1.126`, but the runtime/control surface is not usable from MIRAIDON.
+- **Published code ready for runtime pull:** `origin/opus48/multisample-mcts` -> `908a971f` (`Prefer burn progress into physical wincons`), which includes reporting fix `f0e7774f` (`Preserve terminal winner in battle reporting`).
+- **No post-fix ladder proof yet:** latest public replay for `LEBOTJAMESXD00N` is `gen9ou-2632524750`, uploaded 2026-06-15 15:09:45 UTC, before both fixes.
+- **Observed blockers:** SSH to `Ryanj@192.168.1.126` times out during banner exchange; `http://192.168.1.126:8777/{health,state,status}` accepts TCP but times out; worker port `8791` is closed; WinRM port `5985` is open but MIRAIDON cannot add `JIGGLYPUFF,192.168.1.126` to TrustedHosts without elevation.
+- **Required recovery proof:** from an elevated MIRAIDON shell, add TrustedHosts or repair OpenSSH on JIGGLY, then verify `git -C D:\Projects\fouler-play rev-parse HEAD` returns `908a971f` or a later descendant and `scripts\jigglypuff_devstream_control.py status --read-only --timeout 45` returns JSON.
+- **Do not claim runtime satisfaction** until a post-`908a971f` battle appears and Discord/result reporting is checked against the public replay winner and account rating line.
+
 ### Keep Runtime Readiness Verifiable
 1. Ensure DEKU can run `python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py status` from ubunztu.
 2. Keep scheduled tasks disabled unless a proof window and lease authorize a bounded batch.
