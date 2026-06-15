@@ -102,6 +102,7 @@ def test_delta_in_plausible_per_battle_range_not_one():
 
 @pytest.mark.asyncio
 async def test_battle_stats_enrichment_records_authoritative_rating(tmp_path):
+    run_battle._battle_stats_authoritative_facts.clear()
     stats_path = tmp_path / "battle_stats.json"
     stats_path.write_text(
         json.dumps(
@@ -123,17 +124,88 @@ async def test_battle_stats_enrichment_records_authoritative_rating(tmp_path):
         elo_before=1128,
         elo_after=1156,
         rating_delta=28,
+        result_key="win",
         path=stats_path,
     )
 
     saved = json.loads(stats_path.read_text(encoding="utf-8"))
     entry = saved["battles"][0]
     assert enriched is True
+    assert entry["result"] == "win"
     assert entry["rating"] == 1156.0
     assert entry["elo_before"] == 1128.0
     assert entry["elo_after"] == 1156.0
     assert entry["rating_delta"] == 28
     assert entry["rating_source"] == "showdown_raw"
+
+
+@pytest.mark.asyncio
+async def test_battle_stats_enrichment_reapplies_previous_authoritative_facts(tmp_path):
+    run_battle._battle_stats_authoritative_facts.clear()
+    stats_path = tmp_path / "battle_stats.json"
+    stats_path.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-a",
+                        "result": "loss",
+                        "rating": None,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert await run_battle._enrich_battle_stats_rating_once(
+        "battle-gen9ou-a",
+        elo_before=1000,
+        elo_after=1030,
+        rating_delta=30,
+        result_key="win",
+        path=stats_path,
+    )
+
+    # Simulate run.py saving its stale in-memory BattleStats list on the next
+    # battle append, wiping the previous async enrichment fields from disk.
+    stats_path.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-a",
+                        "result": "loss",
+                        "rating": None,
+                    },
+                    {
+                        "battle_id": "battle-gen9ou-b",
+                        "result": "loss",
+                        "rating": None,
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert await run_battle._enrich_battle_stats_rating_once(
+        "battle-gen9ou-b",
+        elo_before=1030,
+        elo_after=1048,
+        rating_delta=18,
+        result_key="win",
+        path=stats_path,
+    )
+
+    saved = json.loads(stats_path.read_text(encoding="utf-8"))
+    first, second = saved["battles"]
+    assert first["result"] == "win"
+    assert first["rating"] == 1030.0
+    assert first["rating_delta"] == 30
+    assert second["result"] == "win"
+    assert second["rating"] == 1048.0
+    assert second["rating_delta"] == 18
 
 
 @pytest.mark.asyncio

@@ -25,6 +25,7 @@ LOG_KEEP_TRACE_FILES = int(os.getenv("LOG_KEEP_TRACE_FILES", "500"))
 LOG_KEEP_STDOUT_FILES = int(os.getenv("LOG_KEEP_STDOUT_FILES", "3"))
 BATTLE_STATS_PATH = Path(__file__).resolve().parent.parent / "battle_stats.json"
 _battle_stats_enrichment_lock = asyncio.Lock()
+_battle_stats_authoritative_facts: dict[str, dict[str, object]] = {}
 
 
 def cleanup_old_logs(log_dir: str = "logs", trace_dir: str | None = None):
@@ -930,10 +931,17 @@ async def _enrich_battle_stats_rating_once(
     elo_before: float | None,
     elo_after: float | None,
     rating_delta: int | None,
+    result_key: str | None = None,
     path: Path | None = None,
 ) -> bool:
-    """Fill the just-recorded battle_stats row with authoritative ELO data."""
-    if not battle_tag or elo_after is None:
+    """Fill battle_stats rows with authoritative result/ELO data.
+
+    run.py owns the append path and keeps an in-memory battle list. Its next
+    save can overwrite fields this async helper previously added to disk, so
+    each enrichment pass reapplies all authoritative facts captured by this
+    process, not only the just-finished battle.
+    """
+    if not battle_tag or (elo_after is None and not result_key):
         return False
     stats_path = path or BATTLE_STATS_PATH
     async with _battle_stats_enrichment_lock:
@@ -954,27 +962,46 @@ async def _enrich_battle_stats_rating_once(
         if not isinstance(battles, list):
             return False
 
+        fact = _battle_stats_authoritative_facts.setdefault(battle_tag, {})
+        if result_key:
+            fact["result"] = str(result_key)
+        if elo_before is not None:
+            fact["elo_before"] = float(elo_before)
+        if elo_after is not None:
+            fact["elo_after"] = float(elo_after)
+        if rating_delta is not None:
+            fact["rating_delta"] = int(rating_delta)
+            fact["rating_source"] = "showdown_raw"
+        elif elo_after is not None:
+            fact.setdefault("rating_source", "ladder_api")
+
         target = None
-        for entry in reversed(battles):
+        known_ids = set(_battle_stats_authoritative_facts)
+        for entry in battles:
             if not isinstance(entry, dict):
                 continue
-            if entry.get("battle_id") == battle_tag or entry.get("replay_id") == battle_tag:
+            entry_id = str(entry.get("battle_id") or entry.get("replay_id") or "")
+            entry_replay = str(entry.get("replay_id") or "")
+            matched_id = entry_id if entry_id in known_ids else entry_replay
+            entry_fact = _battle_stats_authoritative_facts.get(matched_id)
+            if entry_fact:
+                fact_result = entry_fact.get("result")
+                if fact_result in {"win", "loss", "tie", "disconnect"}:
+                    entry["result"] = fact_result
+                if entry_fact.get("elo_after") is not None:
+                    entry["rating"] = float(entry_fact["elo_after"])
+                    entry["elo_after"] = float(entry_fact["elo_after"])
+                if entry_fact.get("elo_before") is not None:
+                    entry["elo_before"] = float(entry_fact["elo_before"])
+                if entry_fact.get("rating_delta") is not None:
+                    entry["rating_delta"] = int(entry_fact["rating_delta"])
+                    entry["rating_source"] = str(entry_fact.get("rating_source") or "showdown_raw")
+                elif entry_fact.get("rating_source") and entry.get("rating_source") is None:
+                    entry["rating_source"] = str(entry_fact["rating_source"])
+            if entry_id == battle_tag or entry_replay == battle_tag:
                 target = entry
-                break
         if target is None:
             return False
-
-        authoritative = rating_delta is not None and elo_before is not None
-        if authoritative or target.get("rating") is None:
-            target["rating"] = float(elo_after)
-        if elo_before is not None:
-            target["elo_before"] = float(elo_before)
-        target["elo_after"] = float(elo_after)
-        if rating_delta is not None:
-            target["rating_delta"] = int(rating_delta)
-            target["rating_source"] = "showdown_raw"
-        elif target.get("rating_source") is None:
-            target["rating_source"] = "ladder_api"
 
         try:
             stats_path.write_text(
@@ -985,8 +1012,9 @@ async def _enrich_battle_stats_rating_once(
             logger.debug("Could not write enriched battle_stats rating: %s", exc)
             return False
     logger.info(
-        "Enriched battle_stats rating for %s: after=%s delta=%s",
+        "Enriched battle_stats result/rating for %s: result=%s after=%s delta=%s",
         battle_tag,
+        result_key,
         elo_after,
         rating_delta,
     )
@@ -999,6 +1027,7 @@ async def _enrich_battle_stats_rating_after_record(
     elo_before: float | None,
     elo_after: float | None,
     rating_delta: int | None,
+    result_key: str | None = None,
     attempts: int = 30,
     delay_seconds: float = 0.5,
 ) -> bool:
@@ -1009,6 +1038,7 @@ async def _enrich_battle_stats_rating_after_record(
             elo_before=elo_before,
             elo_after=elo_after,
             rating_delta=rating_delta,
+            result_key=result_key,
         ):
             return True
         if attempt + 1 < attempts:
@@ -1023,8 +1053,9 @@ def _schedule_battle_stats_rating_enrichment(
     elo_before: float | None,
     elo_after: float | None,
     rating_delta: int | None,
+    result_key: str | None = None,
 ) -> None:
-    if not battle_tag or elo_after is None:
+    if not battle_tag or (elo_after is None and not result_key):
         return
     try:
         asyncio.create_task(
@@ -1033,6 +1064,7 @@ def _schedule_battle_stats_rating_enrichment(
                 elo_before=elo_before,
                 elo_after=elo_after,
                 rating_delta=rating_delta,
+                result_key=result_key,
             )
         )
     except RuntimeError:
@@ -3346,6 +3378,12 @@ async def pokemon_battle(
                     elo_before=_elo_before_final,
                     elo_after=_elo_after_final,
                     rating_delta=_elo_delta_final,
+                    result_key=_battle_result_from_evidence(
+                        winner,
+                        getattr(getattr(battle, "user", None), "account_name", None),
+                        opponent_name=opponent_name,
+                        elo_delta=_elo_delta_final,
+                    ),
                 )
 
                 return winner, battle_tag
