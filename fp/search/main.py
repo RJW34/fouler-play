@@ -3,7 +3,6 @@ import os
 import random
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from copy import deepcopy
 from dataclasses import dataclass, field, asdict
 from enum import Enum
@@ -562,28 +561,14 @@ def _run_mcts_policy_pass(
         for lm in legal_moves:
             legal_norm_to_move[normalize_name(lm)] = lm
 
-    # Timeout per sample: MCTS search time + 5s buffer for state conversion
-    timeout_sec = (int(per_sample_ms) / 1000.0) + 5.0
-
     for idx, (sample_battle, sample_weight) in enumerate(selected_samples):
         try:
             state = battle_to_poke_engine_state(sample_battle)
-            # Run MCTS with timeout to prevent hangs on pathological states
-            with ThreadPoolExecutor(max_workers=1) as mcts_executor:
-                future = mcts_executor.submit(
-                    monte_carlo_tree_search, state, int(per_sample_ms)
-                )
-                try:
-                    result = future.result(timeout=timeout_sec)
-                except (FuturesTimeoutError, TimeoutError):
-                    meta["samples_failed"] += 1
-                    logger.warning(
-                        "MCTS sample %s timed out after %.1fs (budget=%sms), skipping",
-                        idx,
-                        timeout_sec,
-                        per_sample_ms,
-                    )
-                    continue
+            # poke-engine already receives a per-sample millisecond budget.
+            # Running inline avoids creating a short-lived Python thread for
+            # every sample, which exhausts Windows runtime threads under live
+            # ladder batches before reporting/state cleanup can run.
+            result = monte_carlo_tree_search(state, int(per_sample_ms))
             total_visits = int(getattr(result, "total_visits", 0) or 0)
             if total_visits <= 0:
                 meta["samples_failed"] += 1
