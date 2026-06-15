@@ -270,7 +270,12 @@ def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
         backupCount=3,
         encoding="utf-8",
     )
-    handler.setLevel(logging.DEBUG)
+    worker_log_level = getattr(
+        logging,
+        os.getenv("FOULER_WORKER_LOG_LEVEL", "DEBUG").strip().upper(),
+        logging.DEBUG,
+    )
+    handler.setLevel(worker_log_level)
     from config import CustomFormatter
     handler.setFormatter(CustomFormatter())
     handler.addFilter(_WorkerFilter(worker_id))

@@ -77,6 +77,21 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _clear_state_store_failure(path: Path) -> None:
+    if not STATE_STORE_WRITE_FAILURE_PATH.exists():
+        return
+    try:
+        failure = json.loads(STATE_STORE_WRITE_FAILURE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    if failure.get("target") != str(path):
+        return
+    try:
+        STATE_STORE_WRITE_FAILURE_PATH.unlink()
+    except OSError:
+        pass
+
+
 def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp")
@@ -92,6 +107,7 @@ def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     for attempt in range(1, attempts + 1):
         try:
             os.replace(tmp, path)
+            _clear_state_store_failure(path)
             return
         except PermissionError as exc:
             last_error = exc
