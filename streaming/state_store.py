@@ -63,10 +63,26 @@ def _write_state_store_failure(path: Path, exc: BaseException, attempts: int) ->
     STATE_STORE_WRITE_FAILURE_PATH.write_text(json.dumps(failure, indent=2) + "\n", encoding="utf-8")
 
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except ValueError:
+        return default
+
+
 def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.{uuid4().hex}.tmp")
-    attempts = 6
+    attempts = max(1, _env_int("STATE_STORE_WRITE_ATTEMPTS", 30))
+    base_sleep = max(0.0, _env_float("STATE_STORE_WRITE_RETRY_BASE_SEC", 0.05))
+    max_sleep = max(0.0, _env_float("STATE_STORE_WRITE_RETRY_MAX_SEC", 0.5))
     with tmp.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=2)
         handle.write("\n")
@@ -84,7 +100,7 @@ def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
                 raise
             last_error = exc
         if attempt < attempts:
-            time.sleep(0.05 * attempt)
+            time.sleep(min(max_sleep, base_sleep * attempt))
     if tmp.exists():
         try:
             tmp.unlink()
