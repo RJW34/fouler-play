@@ -119,6 +119,7 @@ def test_obs_server_task_wrapper_loads_obs_secret_without_printing_it():
     assert "$obsProcessCount -gt 0" in text
     assert '$_.Name -match "python|py|cmd"' in text
     assert "Win32_Process" in text
+    assert 'start `"FoulerOBS`" /min cmd.exe /d /c' in text
     assert "SetEnvironmentVariable($_.Target, $value, \"Process\")" in text
     assert "Write-Output" not in text
     assert "Write-Host" not in text

@@ -215,7 +215,8 @@ foreach ($envName in @(
         $cmdLines += $assignment
     }
 }
-$cmdLines += "$(Quote-BatchArg $python) -u `"streaming\serve_obs_page.py`" 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)"
+$obsCommand = "$(Quote-BatchArg $python) -u `"streaming\serve_obs_page.py`" 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)"
+$cmdLines += "start `"FoulerOBS`" /min cmd.exe /d /c `"$obsCommand`""
 $cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
 
 $launch = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
