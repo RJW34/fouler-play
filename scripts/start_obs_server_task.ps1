@@ -185,10 +185,11 @@ $launch = Start-Process `
 
 for ($i = 0; $i -lt 12; $i++) {
     Start-Sleep -Seconds 1
-    if ((@(Get-ObsServerProcesses).Count -gt 0) -and (Test-StateEndpoint -Port 8777)) {
+    $obsProcessCount = @(Get-ObsServerProcesses).Count
+    if (($obsProcessCount -gt 0) -and (Test-StateEndpoint -Port 8777)) {
         exit 0
     }
-    if ($launch.HasExited) {
+    if ($launch.HasExited -and $obsProcessCount -eq 0) {
         Write-Error "Fouler OBS server exited during startup with code $($launch.ExitCode)"
         exit 1
     }
