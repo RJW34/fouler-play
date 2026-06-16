@@ -36,6 +36,55 @@ if ($RunCount -le 0 -or $MaxCycles -le 0) {
     exit 2
 }
 
+function Resolve-RuntimeLeasePath {
+    param([string]$RuntimeLease)
+    if ([string]::IsNullOrWhiteSpace($RuntimeLease)) {
+        return (Join-Path $ProjectDir "devstream\truth\runtime-lease.json")
+    }
+    if ([System.IO.Path]::IsPathRooted($RuntimeLease)) {
+        return $RuntimeLease
+    }
+    return (Join-Path $ProjectDir $RuntimeLease)
+}
+
+function Get-RuntimeLeaseAccount {
+    param([string]$RuntimeLease)
+    $path = Resolve-RuntimeLeasePath -RuntimeLease $RuntimeLease
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return ""
+    }
+    try {
+        $lease = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {
+        return ""
+    }
+    $candidates = @(
+        $lease.account,
+        $lease.psUsername,
+        $lease.showdownAccount,
+        $lease.battleScope.account,
+        $lease.battleScope.psUsername
+    )
+    foreach ($candidate in $candidates) {
+        $value = "$candidate".Trim()
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            return $value
+        }
+    }
+    return ""
+}
+
+function ConvertTo-CmdSetAssignment {
+    param([string]$Name, [string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Name) -or [string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+    if ($Value -notmatch '^[A-Za-z0-9_.-]+$') {
+        return $null
+    }
+    return "set $Name=$Value"
+}
+
 # --- SINGLETON GUARD ------------------------------------------------------
 # Exactly one battle supervisor may run for this repo. Before launching a new
 # one, terminate any pre-existing devstream_session.py "supervise" process that
@@ -135,9 +184,18 @@ $cmdFile = Join-Path $ProjectDir ".pids\start_battle_supervisor.cmd"
 $commandLine = @((Quote-BatchArg $Py)) + ($supervisorArgs | ForEach-Object { Quote-BatchArg $_ })
 $cmdLines = @(
     "@echo off",
-    "cd /d $(Quote-BatchArg $ProjectDir)",
-    (($commandLine -join " ") + " 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)")
+    "cd /d $(Quote-BatchArg $ProjectDir)"
 )
+$leaseAccount = Get-RuntimeLeaseAccount -RuntimeLease $RuntimeLease
+if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
+    foreach ($envName in @("PS_USERNAME", "SHOWDOWN_USER_ID", "SHOWDOWN_ACCOUNTS", "FOULER_ACTIVE_ACCOUNT")) {
+        $assignment = ConvertTo-CmdSetAssignment -Name $envName -Value $leaseAccount
+        if (-not [string]::IsNullOrWhiteSpace($assignment)) {
+            $cmdLines += $assignment
+        }
+    }
+}
+$cmdLines += (($commandLine -join " ") + " 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)")
 $cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
 
 $launch = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{

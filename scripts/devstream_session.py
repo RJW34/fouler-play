@@ -23,6 +23,9 @@ if str(ROOT) not in sys.path:
 from streaming import state_store
 from scripts.devstream_runtime_lease import (
     RUNTIME_LEASE_PATH_ENV,
+    lease_summary,
+    read_json,
+    runtime_lease_path,
     validate_runtime_lease,
 )
 
@@ -283,6 +286,23 @@ def env_value(env: dict[str, str], *names: str, default: str = "") -> str:
         if value:
             return value
     return default
+
+
+def runtime_lease_account(args: argparse.Namespace, env: dict[str, str]) -> str:
+    path = runtime_lease_path(getattr(args, "runtime_lease", None), env)
+    summary = lease_summary(read_json(path))
+    return str(summary.get("account") or "").strip()
+
+
+def apply_runtime_lease_account(env: dict[str, str], args: argparse.Namespace) -> dict[str, str]:
+    account = runtime_lease_account(args, env)
+    if not account:
+        return env
+    env = dict(env)
+    for name in ("PS_USERNAME", "SHOWDOWN_USER_ID", "SHOWDOWN_ACCOUNTS", "FOULER_ACTIVE_ACCOUNT"):
+        env[name] = account
+    env["FOULER_RUNTIME_LEASE_ACCOUNT"] = account
+    return env
 
 
 def normalize_account_name(value: object) -> str:
@@ -1726,7 +1746,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     completed_learning_cycles = 0
     battle_was_in_flight = False
     effective_max_cycles, max_cycles_reason = supervisor_cycle_limit(args)
-    env = prepare_runtime_env(load_env_files())
+    env = apply_runtime_lease_account(prepare_runtime_env(load_env_files()), args)
     effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT), env)
     lease_guard = runtime_lease_guard(
         purpose="devstream-supervise",
@@ -1961,7 +1981,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def cmd_cleanup_stale_truth(args: argparse.Namespace) -> int:
-    env = prepare_runtime_env(load_env_files())
+    env = apply_runtime_lease_account(prepare_runtime_env(load_env_files()), args)
     purpose = STALE_TRUTH_CLEANUP_PURPOSE if args.execute else STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE
     lease_guard = cleanup_runtime_lease_guard(purpose=purpose, args=args, env=env)
     payload: dict[str, Any] = {
@@ -2000,7 +2020,7 @@ def cmd_cleanup_stale_truth(args: argparse.Namespace) -> int:
 
 
 def cmd_start(args: argparse.Namespace) -> int:
-    env = prepare_runtime_env(load_env_files())
+    env = apply_runtime_lease_account(prepare_runtime_env(load_env_files()), args)
     effective_count = effective_run_count(args.run_count, env)
     continuous = bool(getattr(args, "continuous", False))
     start_purpose = "devstream-start-continuous" if continuous else "devstream-start"
