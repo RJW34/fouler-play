@@ -23,8 +23,10 @@ $ScriptArg = "streaming\serve_obs_page.py"
 $TaskWrapper = "scripts\start_obs_server_task.ps1"
 $StdoutLog = Join-Path $LogRoot "jigglypuff-obs-server.log"
 $StderrLog = Join-Path $LogRoot "jigglypuff-obs-server.err.log"
+$WrapperStdoutLog = Join-Path $LogRoot "jigglypuff-obs-wrapper.log"
+$WrapperStderrLog = Join-Path $LogRoot "jigglypuff-obs-wrapper.err.log"
 $TaskExecute = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" 1>>"{2}" 2>>"{3}""' -f $PowerShell, $TaskWrapper, $StdoutLog, $StderrLog
+$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" 1>>"{2}" 2>>"{3}""' -f $PowerShell, $TaskWrapper, $WrapperStdoutLog, $WrapperStderrLog
 $PidFile = Join-Path $ProjectDir ".pids\obs_server.pid"
 
 function Save-TaskBackup {
@@ -93,7 +95,10 @@ function Get-ObsTaskStatus {
         arguments = $TaskArguments
         stdoutLog = $StdoutLog
         stderrLog = $StderrLog
+        wrapperStdoutLog = $WrapperStdoutLog
+        wrapperStderrLog = $WrapperStderrLog
         stderrTail = if (Test-Path -LiteralPath $StderrLog -PathType Leaf) { @(Get-Content -LiteralPath $StderrLog -Tail 30 -ErrorAction SilentlyContinue | ForEach-Object { [string]$_ }) } else { @() }
+        wrapperStderrTail = if (Test-Path -LiteralPath $WrapperStderrLog -PathType Leaf) { @(Get-Content -LiteralPath $WrapperStderrLog -Tail 30 -ErrorAction SilentlyContinue | ForEach-Object { [string]$_ }) } else { @() }
         processCount = $processes.Count
         processes = $processes
         port8777Listening = [bool]$port
@@ -130,6 +135,8 @@ if (-not $Apply) {
         workingDirectory = $ProjectDir
         stdoutLog = $StdoutLog
         stderrLog = $StderrLog
+        wrapperStdoutLog = $WrapperStdoutLog
+        wrapperStderrLog = $WrapperStderrLog
         rollback = "Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"
     } | ConvertTo-Json -Depth 4
     exit 0
@@ -152,6 +159,8 @@ if ($Start) {
     Remove-StalePidFile
     Rotate-LogFile -Path $StdoutLog | Out-Null
     Rotate-LogFile -Path $StderrLog | Out-Null
+    Rotate-LogFile -Path $WrapperStdoutLog | Out-Null
+    Rotate-LogFile -Path $WrapperStderrLog | Out-Null
     Start-ScheduledTask -TaskName $TaskName
     Start-Sleep -Seconds 5
 }
