@@ -129,6 +129,7 @@ def test_obs_server_keepalive_task_restarts_only_public_surface():
     assert "HERMES-FoulerObsServer" in keepalive
     assert "http://127.0.0.1:$Port/health" in keepalive
     assert "healthEndpointOk" in keepalive
+    assert "(-not $started) -and $beforePort -and $beforeState" in keepalive
     assert "Start-ScheduledTask -TaskName $TaskName" in keepalive
     assert "Stop-ScheduledTask -TaskName $TaskName" in keepalive
     assert "stoppedStuckTask" in keepalive

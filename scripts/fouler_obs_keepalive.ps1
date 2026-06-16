@@ -83,6 +83,11 @@ if (-not ($beforePort -and $beforeState)) {
 $afterPort = Test-LocalPort -Port $Port
 $afterState = if ($afterPort) { Test-HealthEndpoint -Port $Port } else { $false }
 $afterTaskState = Get-TaskState -TaskName $TaskName
+$ok = if ((-not $started) -and $beforePort -and $beforeState) {
+    $true
+} else {
+    [bool]($afterPort -and $afterState)
+}
 $payload = [ordered]@{
     schemaVersion = "fouler-obs-keepalive/v1"
     checkedAt = (Get-Date).ToUniversalTime().ToString("o")
@@ -104,7 +109,7 @@ $payload = [ordered]@{
         healthEndpointOk = $afterState
         taskState = $afterTaskState
     }
-    ok = [bool]($afterPort -and $afterState)
+    ok = [bool]$ok
 }
 
 $payload | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statusPath -Encoding UTF8
