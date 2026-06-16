@@ -18,8 +18,9 @@ PURPOSE_DELEGATIONS: dict[str, tuple[str, ...]] = {
     # A JIGGLYPUFF runtime start is a bounded session lease, not just
     # permission to invoke the outer SSH wrapper. The wrapper launches the
     # supervisor, and the supervisor launches the bounded battle session.
-    "jigglypuff-runtime-start": ("devstream-supervise", "devstream-start"),
-    "devstream-supervise": ("devstream-start",),
+    "jigglypuff-runtime-start": ("devstream-supervise", "devstream-start", "run-py-battle-runner"),
+    "devstream-supervise": ("devstream-start", "run-py-battle-runner"),
+    "devstream-start": ("run-py-battle-runner",),
 }
 
 
