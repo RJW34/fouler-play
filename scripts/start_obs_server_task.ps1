@@ -103,13 +103,17 @@ function Test-StateEndpoint {
     }
 }
 
-function Stop-ObsServerProcesses {
-    Get-CimInstance Win32_Process | Where-Object {
+function Get-ObsServerProcesses {
+    @(Get-CimInstance Win32_Process | Where-Object {
         $_.CommandLine -and
         $_.CommandLine -match "streaming[\\/]serve_obs_page\.py" -and
         $_.CommandLine -match [regex]::Escape($ProjectDir) -and
         $_.Name -match "python|py|cmd"
-    } | Sort-Object ProcessId -Descending | ForEach-Object {
+    })
+}
+
+function Stop-ObsServerProcesses {
+    Get-ObsServerProcesses | Sort-Object ProcessId -Descending | ForEach-Object {
         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
 }
@@ -164,7 +168,12 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $stdoutLog = Join-Path $logDir "jigglypuff-obs-server.log"
 $stderrLog = Join-Path $logDir "jigglypuff-obs-server.err.log"
 Stop-ObsServerProcesses
-Start-Sleep -Seconds 1
+for ($i = 0; $i -lt 10; $i++) {
+    if (@(Get-ObsServerProcesses).Count -eq 0 -and -not (Test-StateEndpoint -Port 8777)) {
+        break
+    }
+    Start-Sleep -Milliseconds 500
+}
 $launch = Start-Process `
     -FilePath $python `
     -ArgumentList @("-u", "streaming\serve_obs_page.py") `
@@ -176,7 +185,7 @@ $launch = Start-Process `
 
 for ($i = 0; $i -lt 12; $i++) {
     Start-Sleep -Seconds 1
-    if (Test-StateEndpoint -Port 8777) {
+    if ((@(Get-ObsServerProcesses).Count -gt 0) -and (Test-StateEndpoint -Port 8777)) {
         exit 0
     }
     if ($launch.HasExited) {
