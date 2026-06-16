@@ -145,14 +145,27 @@ def test_jiggly_runtime_start_lease_delegates_to_supervisor_and_child_start(tmp_
         require_replay_behavior=True,
         now=NOW,
     )
+    runner = lease.validate_runtime_lease(
+        purpose="run-py-battle-runner",
+        lease_path=path,
+        requested_run_count=30,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+        now=NOW,
+    )
 
     assert artifact["allowedPurposes"] == [
         "jigglypuff-runtime-start",
         "devstream-supervise",
         "devstream-start",
+        "run-py-battle-runner",
     ]
     assert supervise["ok"] is True
     assert child_start["ok"] is True
+    assert runner["ok"] is True
 
 
 def test_supervise_lease_delegates_to_child_start(tmp_path):
@@ -182,7 +195,38 @@ def test_supervise_lease_delegates_to_child_start(tmp_path):
         now=NOW,
     )
 
-    assert artifact["allowedPurposes"] == ["devstream-supervise", "devstream-start"]
+    assert artifact["allowedPurposes"] == ["devstream-supervise", "devstream-start", "run-py-battle-runner"]
+    assert payload["ok"] is True
+
+
+def test_devstream_start_lease_delegates_to_run_py_battle_runner(tmp_path):
+    path = tmp_path / "runtime-lease.json"
+    artifact = lease.build_runtime_lease_artifact(
+        purpose="devstream-start",
+        machine="JIGGLYPUFF",
+        account="bot",
+        run_count=10,
+        max_cycles=1,
+        max_concurrent_battles=1,
+        replay_behavior="always",
+        valid_minutes=30,
+        now=NOW,
+    )
+    lease.atomic_write_json(path, artifact)
+
+    payload = lease.validate_runtime_lease(
+        purpose="run-py-battle-runner",
+        lease_path=path,
+        requested_run_count=10,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+        now=NOW,
+    )
+
+    assert artifact["allowedPurposes"] == ["devstream-start", "run-py-battle-runner"]
     assert payload["ok"] is True
 
 
