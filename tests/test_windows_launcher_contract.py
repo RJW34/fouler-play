@@ -104,7 +104,8 @@ def test_obs_server_task_wrapper_loads_obs_secret_without_printing_it():
     assert "Start-Process" in text
     assert "function Get-ObsServerProcesses" in text
     assert "Stop-ObsServerProcesses" in text
-    assert "@(Get-ObsServerProcesses).Count -gt 0" in text
+    assert "$obsProcessCount -gt 0" in text
+    assert "$launch.HasExited -and $obsProcessCount -eq 0" in text
     assert '$_.Name -match "python|py|cmd"' in text
     assert "Win32_Process" in text
     assert "-WindowStyle Hidden" in text
