@@ -1,5 +1,6 @@
 param(
     [string]$ProjectDir = (Resolve-Path "$PSScriptRoot\..").Path,
+    [string]$RuntimeLease = "",
     [switch]$Foreground
 )
 
@@ -54,6 +55,44 @@ function Set-HermesProcessDefault {
     }
 }
 
+function Resolve-RuntimeLeasePath {
+    param([string]$RuntimeLease)
+    if ([string]::IsNullOrWhiteSpace($RuntimeLease)) {
+        return (Join-Path $ProjectDir "devstream\truth\runtime-lease.json")
+    }
+    if ([System.IO.Path]::IsPathRooted($RuntimeLease)) {
+        return $RuntimeLease
+    }
+    return (Join-Path $ProjectDir $RuntimeLease)
+}
+
+function Get-RuntimeLeaseAccount {
+    param([string]$RuntimeLease)
+    $path = Resolve-RuntimeLeasePath -RuntimeLease $RuntimeLease
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return ""
+    }
+    try {
+        $lease = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {
+        return ""
+    }
+    $candidates = @(
+        $lease.account,
+        $lease.psUsername,
+        $lease.showdownAccount,
+        $lease.battleScope.account,
+        $lease.battleScope.psUsername
+    )
+    foreach ($candidate in $candidates) {
+        $value = "$candidate".Trim()
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            return $value
+        }
+    }
+    return ""
+}
+
 function Test-StateEndpoint {
     param([int]$Port = 8777)
     try {
@@ -69,8 +108,8 @@ function Stop-ObsServerProcesses {
         $_.CommandLine -and
         $_.CommandLine -match "streaming[\\/]serve_obs_page\.py" -and
         $_.CommandLine -match [regex]::Escape($ProjectDir) -and
-        $_.Name -match "python|py"
-    } | ForEach-Object {
+        $_.Name -match "python|py|cmd"
+    } | Sort-Object ProcessId -Descending | ForEach-Object {
         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
 }
@@ -99,10 +138,16 @@ Set-HermesProcessDefault -Name "BOT_LOG_TO_FILE" -Value "1"
 Set-HermesProcessDefault -Name "OBS_SERVER_PORT" -Value "8777"
 Set-HermesProcessDefault -Name "OBS_SYNC_INTERVAL_SEC" -Value "0"
 Set-HermesProcessDefault -Name "FOULER_OBS_WS_DISABLED" -Value "1"
-[Environment]::SetEnvironmentVariable("PS_USERNAME", "LEBOTJAMESXD00N", "Process")
-[Environment]::SetEnvironmentVariable("SHOWDOWN_USER_ID", "LEBOTJAMESXD00N", "Process")
-[Environment]::SetEnvironmentVariable("SHOWDOWN_ACCOUNTS", "LEBOTJAMESXD00N", "Process")
 [Environment]::SetEnvironmentVariable("PS_FORMAT", "gen9ou", "Process")
+$runtimeLeasePath = Resolve-RuntimeLeasePath -RuntimeLease $RuntimeLease
+[Environment]::SetEnvironmentVariable("FOULER_RUNTIME_LEASE_PATH", $runtimeLeasePath, "Process")
+$leaseAccount = Get-RuntimeLeaseAccount -RuntimeLease $RuntimeLease
+if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
+    [Environment]::SetEnvironmentVariable("PS_USERNAME", $leaseAccount, "Process")
+    [Environment]::SetEnvironmentVariable("SHOWDOWN_USER_ID", $leaseAccount, "Process")
+    [Environment]::SetEnvironmentVariable("SHOWDOWN_ACCOUNTS", $leaseAccount, "Process")
+    [Environment]::SetEnvironmentVariable("FOULER_ACTIVE_ACCOUNT", $leaseAccount, "Process")
+}
 
 Set-Location -LiteralPath $ProjectDir
 
@@ -118,6 +163,8 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 $stdoutLog = Join-Path $logDir "jigglypuff-obs-server.log"
 $stderrLog = Join-Path $logDir "jigglypuff-obs-server.err.log"
+Stop-ObsServerProcesses
+Start-Sleep -Seconds 1
 $launch = Start-Process `
     -FilePath $python `
     -ArgumentList @("-u", "streaming\serve_obs_page.py") `
@@ -129,12 +176,12 @@ $launch = Start-Process `
 
 for ($i = 0; $i -lt 12; $i++) {
     Start-Sleep -Seconds 1
+    if (Test-StateEndpoint -Port 8777) {
+        exit 0
+    }
     if ($launch.HasExited) {
         Write-Error "Fouler OBS server exited during startup with code $($launch.ExitCode)"
         exit 1
-    }
-    if (Test-StateEndpoint -Port 8777) {
-        exit 0
     }
 }
 

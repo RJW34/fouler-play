@@ -91,11 +91,19 @@ def test_obs_server_task_wrapper_loads_obs_secret_without_printing_it():
     assert "OBS_WEBSOCKET_PASSWORD" in text
     assert "HERMES_OBS_WEBSOCKET_PASSWORD" in text
     assert "FOULER_OBS_WS_DISABLED" in text
-    assert "LEBOTJAMESXD00N" in text
+    assert "function Resolve-RuntimeLeasePath" in text
+    assert "function Get-RuntimeLeaseAccount" in text
+    assert "FOULER_RUNTIME_LEASE_PATH" in text
+    assert "[Environment]::SetEnvironmentVariable(\"PS_USERNAME\", $leaseAccount, \"Process\")" in text
+    assert "[Environment]::SetEnvironmentVariable(\"SHOWDOWN_USER_ID\", $leaseAccount, \"Process\")" in text
+    assert "[Environment]::SetEnvironmentVariable(\"SHOWDOWN_ACCOUNTS\", $leaseAccount, \"Process\")" in text
+    assert "LEBOTJAMESXD00N" not in text
     assert 'Test-StateEndpoint -Port 8777' in text
     assert "FP_PARENT_PID" in text
     assert "[switch]$Foreground" in text
     assert "Start-Process" in text
+    assert "Stop-ObsServerProcesses" in text
+    assert '$_.Name -match "python|py|cmd"' in text
     assert "Win32_Process" in text
     assert "-WindowStyle Hidden" in text
     assert "RedirectStandardOutput" in text
