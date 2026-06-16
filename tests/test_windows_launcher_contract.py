@@ -70,7 +70,7 @@ def test_obs_server_task_runs_via_logged_cmd_wrapper():
     assert "$TaskExecute" in text
     assert "cmd.exe" in text
     assert "start_obs_server_task.ps1" in text
-    assert "-Foreground" not in text
+    assert "-Foreground" in text
     assert "jigglypuff-obs-server.log" in text
     assert "jigglypuff-obs-server.err.log" in text
     assert "jigglypuff-obs-wrapper.log" in text
