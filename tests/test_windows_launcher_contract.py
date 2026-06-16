@@ -73,10 +73,15 @@ def test_obs_server_task_runs_via_logged_cmd_wrapper():
     assert "-Foreground" not in text
     assert "jigglypuff-obs-server.log" in text
     assert "jigglypuff-obs-server.err.log" in text
+    assert "jigglypuff-obs-wrapper.log" in text
+    assert "jigglypuff-obs-wrapper.err.log" in text
+    assert "$WrapperStdoutLog" in text
+    assert "$WrapperStderrLog" in text
     assert "$TaskArguments" in text
     assert "New-ScheduledTaskAction -Execute $TaskExecute -Argument $TaskArguments" in text
     assert '$_.Name -match "python|py"' in text
     assert "stderrTail" in text
+    assert "wrapperStderrTail" in text
     assert "lastTaskResult" in text
     assert "OBS_WS_PASSWORD" not in text
     assert "function Rotate-LogFile" in text
