@@ -409,9 +409,25 @@ function Invoke-CurlEndpoint {
     if (-not $curl) {
         return $null
     }
-    $statusCodeText = & $curl.Source -sS -o NUL -w "%{http_code}" --max-time $Timeout $Url 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        return @{ url = $Url; ok = $false; error = "curl.exe exited $LASTEXITCODE"; probe = "curl.exe" }
+    $previousErrorAction = $ErrorActionPreference
+    $nativeError = $null
+    try {
+        $ErrorActionPreference = "Continue"
+        $statusCodeText = & $curl.Source -sS -o NUL -w "%{http_code}" --max-time $Timeout $Url 2>$null
+        $curlExitCode = $LASTEXITCODE
+    } catch {
+        $nativeError = $_.Exception.Message
+        $curlExitCode = 1
+        $statusCodeText = ""
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
+    if ($curlExitCode -ne 0) {
+        $reason = "curl.exe exited $curlExitCode"
+        if ($nativeError) {
+            $reason = "$reason`: $nativeError"
+        }
+        return @{ url = $Url; ok = $false; error = $reason; probe = "curl.exe" }
     }
     $statusCodeText = "$statusCodeText".Trim()
     if ($statusCodeText -notmatch "^\d{3}$") {
