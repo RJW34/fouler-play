@@ -14,6 +14,13 @@ RUNTIME_LEASE_PATH_ENV = "FOULER_RUNTIME_LEASE_PATH"
 PROJECT_ID = "fouler-play"
 
 ACTIVE_STATUSES = {"active", "approved", "current", "open"}
+PURPOSE_DELEGATIONS: dict[str, tuple[str, ...]] = {
+    # A JIGGLYPUFF runtime start is a bounded session lease, not just
+    # permission to invoke the outer SSH wrapper. The wrapper launches the
+    # supervisor, and the supervisor launches the bounded battle session.
+    "jigglypuff-runtime-start": ("devstream-supervise", "devstream-start"),
+    "devstream-supervise": ("devstream-start",),
+}
 
 
 def utc_now() -> datetime:
@@ -56,6 +63,23 @@ def atomic_write_json(path: Path, payload: dict[str, Any]) -> Path:
         except OSError:
             pass
     return path
+
+
+def expanded_allowed_purposes(purpose: str) -> list[str]:
+    purpose = str(purpose or "").strip()
+    if not purpose:
+        return []
+    expanded: list[str] = []
+    seen: set[str] = set()
+    stack = [purpose]
+    while stack:
+        current = stack.pop(0)
+        if current in seen:
+            continue
+        seen.add(current)
+        expanded.append(current)
+        stack.extend(PURPOSE_DELEGATIONS.get(current, ()))
+    return expanded
 
 
 def build_runtime_lease_artifact(
@@ -112,7 +136,7 @@ def build_runtime_lease_artifact(
         "createdAt": iso_timestamp(current),
         "machine": machine,
         "account": account,
-        "allowedPurposes": [purpose],
+        "allowedPurposes": expanded_allowed_purposes(purpose),
         "maxRunCount": int(run_count),
         "maxCycles": int(max_cycles),
         "maxConcurrentBattles": int(max_concurrent_battles),

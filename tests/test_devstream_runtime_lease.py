@@ -106,6 +106,86 @@ def test_runtime_lease_blocks_run_count_over_scope(tmp_path):
     assert "exceeds lease maxRunCount" in " ".join(payload["blockers"])
 
 
+def test_jiggly_runtime_start_lease_delegates_to_supervisor_and_child_start(tmp_path):
+    path = tmp_path / "runtime-lease.json"
+    artifact = lease.build_runtime_lease_artifact(
+        purpose="jigglypuff-runtime-start",
+        machine="JIGGLYPUFF",
+        account="bot",
+        run_count=30,
+        max_cycles=1,
+        max_concurrent_battles=1,
+        replay_behavior="always",
+        valid_minutes=30,
+        now=NOW,
+    )
+    lease.atomic_write_json(path, artifact)
+
+    supervise = lease.validate_runtime_lease(
+        purpose="devstream-supervise",
+        lease_path=path,
+        requested_run_count=30,
+        requested_max_cycles=1,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_cycles=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+        now=NOW,
+    )
+    child_start = lease.validate_runtime_lease(
+        purpose="devstream-start",
+        lease_path=path,
+        requested_run_count=30,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+        now=NOW,
+    )
+
+    assert artifact["allowedPurposes"] == [
+        "jigglypuff-runtime-start",
+        "devstream-supervise",
+        "devstream-start",
+    ]
+    assert supervise["ok"] is True
+    assert child_start["ok"] is True
+
+
+def test_supervise_lease_delegates_to_child_start(tmp_path):
+    path = tmp_path / "runtime-lease.json"
+    artifact = lease.build_runtime_lease_artifact(
+        purpose="devstream-supervise",
+        machine="JIGGLYPUFF",
+        account="bot",
+        run_count=10,
+        max_cycles=1,
+        max_concurrent_battles=1,
+        replay_behavior="always",
+        valid_minutes=30,
+        now=NOW,
+    )
+    lease.atomic_write_json(path, artifact)
+
+    payload = lease.validate_runtime_lease(
+        purpose="devstream-start",
+        lease_path=path,
+        requested_run_count=10,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+        now=NOW,
+    )
+
+    assert artifact["allowedPurposes"] == ["devstream-supervise", "devstream-start"]
+    assert payload["ok"] is True
+
+
 def test_supervise_requires_explicit_max_cycles(tmp_path):
     path = write_lease(tmp_path / "runtime-lease.json")
 

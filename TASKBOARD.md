@@ -180,13 +180,16 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 
 ## JIGGLYPUFF Action Items
 
-### Current Runtime Blocker (2026-06-15 16:10 UTC)
-- **Status:** JIGGLYPUFF is reachable on LAN at `192.168.1.126`, but the runtime/control surface is not usable from MIRAIDON.
-- **Published code ready for runtime pull:** `origin/opus48/multisample-mcts` -> `908a971f` (`Prefer burn progress into physical wincons`), which includes reporting fix `f0e7774f` (`Preserve terminal winner in battle reporting`).
-- **No post-fix ladder proof yet:** latest public replay for `LEBOTJAMESXD00N` is `gen9ou-2632524750`, uploaded 2026-06-15 15:09:45 UTC, before both fixes.
-- **Observed blockers:** SSH to `Ryanj@192.168.1.126` times out during banner exchange; `http://192.168.1.126:8777/{health,state,status}` accepts TCP but times out; worker port `8791` is closed; WinRM port `5985` is open but MIRAIDON cannot add `JIGGLYPUFF,192.168.1.126` to TrustedHosts without elevation.
-- **Required recovery proof:** from an elevated MIRAIDON shell, add TrustedHosts or repair OpenSSH on JIGGLY, then verify `git -C D:\Projects\fouler-play rev-parse HEAD` returns `908a971f` or a later descendant and `scripts\jigglypuff_devstream_control.py status --read-only --timeout 45` returns JSON.
-- **Do not claim runtime satisfaction** until a post-`908a971f` battle appears and Discord/result reporting is checked against the public replay winner and account rating line.
+### Current Runtime Blocker (2026-06-15 19:45 UTC)
+- **Status:** JIGGLYPUFF was reached on LAN at `192.168.1.126`, backed up, stopped, fast-forwarded, and start was requested, but management ports dropped before live proof could be collected.
+- **Runtime checkout:** remote `D:\Projects\fouler-play` fast-forwarded from `6a58f165` to `5937d83c` on `opus48/multisample-mcts`. Dirty tracked code/test/launcher changes were saved in `git stash` as `codex-predeploy-20260615T193904Z`; runtime data dirt remains.
+- **Remote backup:** predeploy backup was written at `D:\Projects\fouler-play\.codex-backups\predeploy-20260615T193737Z` with git status, tracked diff, selected runtime data/truth files, and process evidence.
+- **Lease/start attempt:** start lease `fouler-jigglypuff-runtime-start-20260615T193714Z-run30` was copied to `devstream\truth\runtime-lease.json`; `jigglypuff_devstream_control.py start --execute --run-count 30 --max-concurrent-battles 1 --max-cycles 1` returned success and launched OBS plus the battle supervisor wrapper.
+- **Root cause found 2026-06-16:** the battle supervisor did not start battles because `devstream_session.py supervise` rejected the copied lease: `runtime lease does not allow purpose devstream-supervise`. The wrapper accepted `jigglypuff-runtime-start`, then handed the same lease to a supervisor that requires `devstream-supervise`.
+- **Verification blocker:** after the start attempt, `192.168.1.126` briefly dropped SSH/WinRM/OBS HTTP/worker access; after recovery, status showed only the OBS server alive and no battle supervisor/session. OBS `/state` still mirrors stale `active_battles.json`.
+- **No post-start ladder proof yet:** public Showdown search for `LEBOTJAMESXD00N` still ends at `gen9ou-2632652449`, uploaded 2026-06-15 18:34:20 UTC, before the 19:40 UTC start request.
+- **Required recovery proof:** create/use a bounded lease accepted by both `jigglypuff-runtime-start` and `devstream-supervise`, clear stale `active_battles.json` through the existing recovery path, then verify `git -C D:\Projects\fouler-play rev-parse HEAD` returns `5937d83c` or a later descendant, `scripts\jigglypuff_devstream_control.py status --read-only --timeout 45` returns JSON, exactly one bounded battle supervisor/session is alive, and the next battle result/report matches the public replay winner and rating line.
+- **Do not claim runtime satisfaction** until a post-`5937d83c` battle appears and Discord/result reporting is checked against the public replay winner and account rating line.
 
 ### Keep Runtime Readiness Verifiable
 1. Ensure DEKU can run `python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py status` from ubunztu.
