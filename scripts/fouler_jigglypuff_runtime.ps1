@@ -400,6 +400,27 @@ function Rotate-LogFileIfLarge {
         Remove-Item -Force -ErrorAction SilentlyContinue
 }
 
+function Invoke-CurlEndpoint {
+    param(
+        [string]$Url,
+        [int]$Timeout
+    )
+    $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+    if (-not $curl) {
+        return $null
+    }
+    $statusCodeText = & $curl.Source -sS -o NUL -w "%{http_code}" --max-time $Timeout $Url 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        return @{ url = $Url; ok = $false; error = "curl.exe exited $LASTEXITCODE"; probe = "curl.exe" }
+    }
+    $statusCodeText = "$statusCodeText".Trim()
+    if ($statusCodeText -notmatch "^\d{3}$") {
+        return @{ url = $Url; ok = $false; error = "curl.exe returned invalid status code: $statusCodeText"; probe = "curl.exe" }
+    }
+    $statusCode = [int]$statusCodeText
+    return @{ url = $Url; ok = ($statusCode -ge 200 -and $statusCode -lt 400); statusCode = $statusCode; probe = "curl.exe" }
+}
+
 function Get-Endpoint {
     param([string]$Path)
     $url = "http://127.0.0.1:8777$Path"
@@ -409,9 +430,15 @@ function Get-Endpoint {
     }
     try {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec $timeout
-        return @{ url = $url; ok = $true; statusCode = [int]$response.StatusCode }
+        return @{ url = $url; ok = $true; statusCode = [int]$response.StatusCode; probe = "Invoke-WebRequest" }
     } catch {
-        return @{ url = $url; ok = $false; error = $_.Exception.Message }
+        $webError = $_.Exception.Message
+        $curlResult = Invoke-CurlEndpoint -Url $url -Timeout $timeout
+        if ($null -ne $curlResult) {
+            $curlResult.invokeWebRequestError = $webError
+            return $curlResult
+        }
+        return @{ url = $url; ok = $false; error = $webError; probe = "Invoke-WebRequest" }
     }
 }
 

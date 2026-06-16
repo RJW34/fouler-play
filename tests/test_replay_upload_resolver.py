@@ -169,6 +169,34 @@ def test_replay_handoff_absent_without_saved_replay_url():
     assert fields["replay_public_verified"] is False
 
 
+def test_replay_handoff_marks_requested_missing_url_as_pending():
+    fields = run_battle.replay_handoff_fields(
+        battle_tag="battle-gen9ou-2626011055-privatehash",
+        replay_url=None,
+        verified_replay_url=None,
+        save_replay_requested=True,
+    )
+
+    assert fields["replay_id"] == "gen9ou-2626011055"
+    assert fields["replay_url"] is None
+    assert fields["replay_status"] == "pending-public-upload"
+    assert fields["replay_public_verified"] is False
+
+
+def test_replay_handoff_does_not_publish_private_hash_url():
+    fields = run_battle.replay_handoff_fields(
+        battle_tag="battle-gen9ou-2626011055-privatehash",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2626011055-privatehash",
+        verified_replay_url=None,
+    )
+
+    assert fields["replay_id"] == "gen9ou-2626011055"
+    assert fields["replay_url"] is None
+    assert fields["raw_replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2626011055-privatehash"
+    assert fields["replay_status"] == "pending-public-upload"
+    assert fields["replay_public_verified"] is False
+
+
 def test_battle_result_queue_disabled_by_default_for_offline_eval(monkeypatch):
     monkeypatch.setenv("FOULER_OFFLINE_EVAL", "1")
     monkeypatch.delenv("FOULER_BATTLE_RESULT_QUEUE", raising=False)

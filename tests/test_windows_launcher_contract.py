@@ -48,6 +48,9 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert "multiple Fouler OBS HTTP servers are running" in text
     assert "multiple Fouler battle supervisors are running" in text
     assert 'if ($Path -eq "/health")' in text
+    assert "function Invoke-CurlEndpoint" in text
+    assert "probe = \"curl.exe\"" in text
+    assert "invokeWebRequestError" in text
     assert '$rel -eq "battle_stats.json"' in text
     assert "battleCount = $battles.Count" in text
     assert "lastBattle = $lastBattle" in text

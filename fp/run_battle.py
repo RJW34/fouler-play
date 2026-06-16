@@ -142,6 +142,7 @@ from constants_pkg.strategy import SETUP_MOVES
 from infrastructure.event_queue_lib import queue_event
 from infrastructure.discord_reporting import (
     build_contract_payload,
+    canonical_replay_url,
     format_elo_delta,
     public_replay_id_candidate,
 )
@@ -990,7 +991,15 @@ async def _enrich_battle_stats_rating_once(
         if opponent_name and opponent_name != "Unknown":
             fact["opponent"] = str(opponent_name)
         if replay_url:
-            fact["replay_url"] = str(replay_url)
+            canonical_url = canonical_replay_url(replay_url)
+            if canonical_url:
+                fact["replay_url"] = canonical_url
+                fact["replay_status"] = "public"
+            else:
+                pending_id = public_replay_id_candidate(replay_url)
+                if pending_id:
+                    fact["public_replay_id"] = pending_id
+                    fact["replay_status"] = "pending-public-upload"
 
         target = None
         known_ids = set(_battle_stats_authoritative_facts)
@@ -1023,6 +1032,10 @@ async def _enrich_battle_stats_rating_once(
                     entry["opponent"] = str(entry_fact["opponent"])
                 if entry_fact.get("replay_url"):
                     entry["replay_url"] = str(entry_fact["replay_url"])
+                if entry_fact.get("public_replay_id"):
+                    entry["public_replay_id"] = str(entry_fact["public_replay_id"])
+                if entry_fact.get("replay_status"):
+                    entry["replay_status"] = str(entry_fact["replay_status"])
             if entry_id == battle_tag or entry_replay == battle_tag:
                 target = entry
         if target is None:
@@ -1339,15 +1352,18 @@ def replay_handoff_fields(
     battle_tag: str | None,
     replay_url: str | None,
     verified_replay_url: str | None = None,
+    save_replay_requested: bool = False,
 ) -> dict[str, object]:
     """Preserve replay evidence even when public upload verification lags."""
 
-    replay_id = public_replay_id_candidate(verified_replay_url or replay_url) or None
-    candidate_url = (
-        verified_replay_url
+    verified_url = canonical_replay_url(verified_replay_url) or None
+    candidate_url = verified_url or canonical_replay_url(replay_url) or None
+    replay_id = public_replay_id_candidate(
+        verified_url
         or replay_url
-    )
-    verified = bool(verified_replay_url)
+        or (battle_tag if save_replay_requested else None)
+    ) or None
+    verified = bool(verified_url)
     if verified:
         status = "public"
     elif replay_id or candidate_url:
@@ -3176,7 +3192,7 @@ async def pokemon_battle(
                     opponent_name=opponent_name,
                 ) == "win"
 
-                if (
+                save_replay_requested = (
                     FoulPlayConfig.save_replay == SaveReplay.always
                     or (
                         FoulPlayConfig.save_replay == SaveReplay.on_loss and not we_won
@@ -3184,7 +3200,8 @@ async def pokemon_battle(
                     or (
                         FoulPlayConfig.save_replay == SaveReplay.on_win and we_won
                     )
-                ):
+                )
+                if save_replay_requested:
                     replay_url = await ps_websocket_client.save_replay(battle_tag)
 
                 # Post battle result to Discord
@@ -3204,26 +3221,31 @@ async def pokemon_battle(
                 # pass None and rely on post-only display if not available.
                 battle_turn_count = getattr(battle, "turn", None)
 
-                # Save replay JSON locally immediately (before PS expires it)
-                if replay_url:
-                    _replay_save_id = _normalize_replay_id(replay_url.split("/")[-1])
-                else:
-                    _replay_save_id = None
-                if _replay_save_id:
-                    await _save_replay_json_for_evidence(_replay_save_id)
-
                 # Retrieve pre-battle ELO for delta display
                 _elo_before_val = _elo_before_cache.pop(battle_tag, None)
                 _discord_replay_url = await resolve_public_replay_url(
                     battle_tag=battle_tag,
                     replay_url=replay_url,
-                    max_attempts=None if replay_url else 1,
-                    delay_seconds=None if replay_url else 0,
+                    max_attempts=None if (replay_url or save_replay_requested) else 1,
+                    delay_seconds=None if (replay_url or save_replay_requested) else 0,
+                    allow_battle_tag_fallback=save_replay_requested,
                 )
+                # Save replay JSON locally immediately (before PS expires it).
+                # If save_replay() missed the response but the upload succeeded,
+                # the battle tag still recovers the public replay id here.
+                _replay_save_id = public_replay_id_candidate(
+                    _discord_replay_url
+                    or replay_url
+                    or (battle_tag if save_replay_requested else None)
+                )
+                if _replay_save_id:
+                    await _save_replay_json_for_evidence(_replay_save_id)
+
                 _replay_handoff = replay_handoff_fields(
                     battle_tag=battle_tag,
                     replay_url=replay_url,
                     verified_replay_url=_discord_replay_url,
+                    save_replay_requested=save_replay_requested,
                 )
                 _queue_replay_url = _replay_handoff.get("replay_url")
                 _queue_replay_status = str(_replay_handoff.get("replay_status") or "absent")
@@ -3333,6 +3355,7 @@ async def pokemon_battle(
                         replay_url=replay_url,
                         max_attempts=1,
                         delay_seconds=0,
+                        allow_battle_tag_fallback=save_replay_requested,
                     )
                     if _late_replay_url:
                         _discord_replay_url = _late_replay_url
@@ -3340,6 +3363,7 @@ async def pokemon_battle(
                             battle_tag=battle_tag,
                             replay_url=replay_url,
                             verified_replay_url=_discord_replay_url,
+                            save_replay_requested=save_replay_requested,
                         )
                         _queue_replay_url = _replay_handoff.get("replay_url")
                         _queue_replay_status = str(_replay_handoff.get("replay_status") or "absent")
