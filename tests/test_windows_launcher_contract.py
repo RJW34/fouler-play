@@ -138,6 +138,9 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert "-AutoImprove" in installer
     assert "Rotate-LogFileIfLarge" in wrapper
     assert "Rotate-LogFileIfLarge" in runtime
+    assert "function Get-RuntimeLeaseAccount" in wrapper
+    assert "ConvertTo-CmdSetAssignment -Name $envName -Value $leaseAccount" in wrapper
+    assert '"PS_USERNAME", "SHOWDOWN_USER_ID", "SHOWDOWN_ACCOUNTS", "FOULER_ACTIVE_ACCOUNT"' in wrapper
     assert "[int]$MaxConcurrentBattles = 3" in wrapper
     assert "[int]$MaxConcurrentBattles = 3" in installer
     assert "[int]$MaxConcurrentBattles = 3" in runtime

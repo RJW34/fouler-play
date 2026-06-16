@@ -411,6 +411,21 @@ def test_showdown_account_authority_check_ignores_historical_mission_prose(tmp_p
     assert check["distinctAccounts"] == ["claudechamp"]
 
 
+def test_runtime_lease_account_overrides_stale_inherited_env(tmp_path):
+    runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json", account="LEBOTJAMESXD00N")
+
+    env = devstream_session.apply_runtime_lease_account(
+        {"PS_USERNAME": "npctypebeat", "SHOWDOWN_USER_ID": "npctypebeat"},
+        argparse.Namespace(runtime_lease=str(runtime_lease)),
+    )
+
+    assert env["PS_USERNAME"] == "LEBOTJAMESXD00N"
+    assert env["SHOWDOWN_USER_ID"] == "LEBOTJAMESXD00N"
+    assert env["SHOWDOWN_ACCOUNTS"] == "LEBOTJAMESXD00N"
+    assert env["FOULER_ACTIVE_ACCOUNT"] == "LEBOTJAMESXD00N"
+    assert env["FOULER_RUNTIME_LEASE_ACCOUNT"] == "LEBOTJAMESXD00N"
+
+
 def test_current_repo_docs_do_not_publish_fixed_live_account():
     assert devstream_session.documented_showdown_accounts() == []
 
@@ -1471,6 +1486,46 @@ def test_cmd_supervise_fails_closed_without_runtime_lease_or_cycle_bound(tmp_pat
     assert payload["state"] == "blocked-runtime-lease"
     assert payload["runtimeLease"]["ok"] is False
     assert "requested max cycles" in " ".join(payload["runtimeLease"]["blockers"])
+
+
+def test_cmd_supervise_validates_against_runtime_lease_account_not_stale_env(tmp_path, monkeypatch):
+    captured = {}
+    runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json", account="LEBOTJAMESXD00N")
+
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "npctypebeat"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(devstream_session, "write_supervisor_status", lambda payload: None)
+    monkeypatch.setattr(
+        devstream_session,
+        "write_pid_value",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("blocked supervisor must not write pid")),
+    )
+
+    def fake_guard(**kwargs):
+        captured["env"] = dict(kwargs["env"])
+        return {"ok": False, "blockers": ["intentional stop after env capture"]}
+
+    monkeypatch.setattr(devstream_session, "runtime_lease_guard", fake_guard)
+
+    args = argparse.Namespace(
+        run_count=30,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=1,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(runtime_lease),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 2
+    assert captured["env"]["PS_USERNAME"] == "LEBOTJAMESXD00N"
+    assert captured["env"]["SHOWDOWN_USER_ID"] == "LEBOTJAMESXD00N"
 
 
 def test_supervisor_commands_propagate_auto_improve_to_task_installer():
