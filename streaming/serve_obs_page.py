@@ -1428,13 +1428,21 @@ async def _load_devstream_health_payload(singleton_status: dict) -> tuple[dict, 
 
 
 async def handle_health(request: web.Request) -> web.Response:
-    singleton_status = _build_singleton_status()
     deep_requested = DEEP_HEALTH_DEFAULT or request.query.get("deep", "").strip().lower() in (
         "1",
         "true",
         "yes",
         "on",
     )
+    if deep_requested:
+        singleton_status = _build_singleton_status()
+    else:
+        singleton_status = {
+            "duplicateCount": 0,
+            "duplicates": [],
+            "skipped": True,
+            "reason": "default health is lightweight HTTP liveness; use /health?deep=1 for process proof",
+        }
     if deep_requested:
         payload, status_code = await _load_devstream_health_payload(singleton_status)
     else:
