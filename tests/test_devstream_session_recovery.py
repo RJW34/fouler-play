@@ -1558,6 +1558,118 @@ def test_supervisor_cycle_waits_when_battle_runner_alive(monkeypatch):
     assert payload["actions"] == []
 
 
+def test_supervisor_cycle_can_refresh_proof_without_starting_next_batch(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 8, start_next=False)
+
+    assert payload["proofRefreshed"] is True
+    assert payload["startNextBattleSession"] is False
+    assert payload["startSkipped"]["reason"].startswith("bounded learning-cycle limit")
+    assert payload["nextAction"] == "bounded learning cycle complete; supervisor may stop"
+    assert commands == [
+        ["python", "pipeline.py", "autoresearch", "-n", "30", "--no-discord"],
+        ["python", "scripts/devstream_cycle_report.py", "--write"],
+    ]
+
+
+def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_path, monkeypatch):
+    statuses = []
+    start_next_flags = []
+    runtime_states = iter(
+        [
+            {"activeBattleCount": 0, "battleRunnerAlive": False, "inFlight": False},
+            {"activeBattleCount": 1, "battleRunnerAlive": True, "inFlight": True},
+            {"activeBattleCount": 0, "battleRunnerAlive": False, "inFlight": False},
+        ]
+    )
+
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_PID_FILE", tmp_path / "supervisor.pid")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(devstream_session, "runtime_lease_guard", lambda **kwargs: {"ok": True})
+    monkeypatch.setattr(devstream_session, "write_pid_value", lambda *args, **kwargs: None)
+    monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(devstream_session, "supervisor_runtime_state", lambda: next(runtime_states))
+
+    def fake_write_status(payload):
+        statuses.append(json.loads(json.dumps(payload)))
+
+    def fake_cycle(args, cycle_index, *, start_next=True):
+        start_next_flags.append(start_next)
+        if cycle_index == 1:
+            return {
+                "state": "idle-restoring-runtime",
+                "proofRefreshed": True,
+                "battleRunnerAliveAfter": True,
+                "activeBattleCountAfter": 0,
+            }
+        if cycle_index == 2:
+            return {
+                "state": "battle-cycle-in-flight",
+                "proofRefreshed": False,
+            }
+        if cycle_index == 3:
+            return {
+                "state": "idle-restoring-runtime",
+                "proofRefreshed": True,
+                "battleRunnerAliveAfter": False,
+                "activeBattleCountAfter": 0,
+            }
+        raise AssertionError("supervisor should stop after one completed learning cycle")
+
+    monkeypatch.setattr(devstream_session, "write_supervisor_status", fake_write_status)
+    monkeypatch.setattr(devstream_session, "run_supervisor_cycle", fake_cycle)
+
+    args = argparse.Namespace(
+        run_count=30,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=1,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(tmp_path / "runtime-lease.json"),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 0
+
+    assert start_next_flags == [True, True, False]
+    final = statuses[-1]
+    assert final["state"] == "completed-max-cycles"
+    assert final["completedLearningCycles"] == 1
+    assert final["bounds"]["maxCyclesSemantics"] == "completed bounded learning cycles, not supervisor polling heartbeats"
+    assert final["lastCycle"]["learningCycleCompleted"] is True
+    assert final["lastCycle"]["completedLearningCycles"] == 1
+
+
 def test_supervisor_process_identity_requires_supervise_subcommand():
     tokens = devstream_session._command_expected_tokens(
         ["python", "scripts/devstream_session.py", "supervise", "--run-count", "25"]

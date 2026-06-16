@@ -1236,6 +1236,16 @@ def any_battle_runner_alive() -> bool:
     return any(pid_alive(path)[0] for path in battle_pid_files())
 
 
+def supervisor_runtime_state() -> dict[str, Any]:
+    active_count = read_active_battles()
+    battle_runner_alive = any_battle_runner_alive()
+    return {
+        "activeBattleCount": active_count,
+        "battleRunnerAlive": battle_runner_alive,
+        "inFlight": active_count > 0 or battle_runner_alive,
+    }
+
+
 def clear_stale_active_battles(
     *,
     execute: bool,
@@ -1588,7 +1598,12 @@ def write_supervisor_status(payload: dict[str, Any]) -> None:
     SUPERVISOR_STATUS_FILE.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str, Any]:
+def run_supervisor_cycle(
+    args: argparse.Namespace,
+    cycle_index: int,
+    *,
+    start_next: bool = True,
+) -> dict[str, Any]:
     effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT))
     active_count = read_active_battles()
     battle_runner_alive = any_battle_runner_alive()
@@ -1601,6 +1616,7 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         "actions": [],
         "requestedRunCount": getattr(args, "run_count", DEFAULT_RUN_COUNT),
         "effectiveRunCount": effective_count,
+        "startNextBattleSession": start_next,
     }
     if active_count > 0 and not battle_runner_alive:
         stale_clear = clear_stale_active_battles(
@@ -1621,6 +1637,7 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
         return payload
 
     payload["state"] = "idle-restoring-runtime"
+    payload["proofRefreshed"] = True
     py = supervisor_child_python()
     payload["actions"].append(
         run_supervisor_command(
@@ -1684,6 +1701,14 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
     runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
     if runtime_lease:
         start_command.extend(["--runtime-lease", runtime_lease])
+    if not start_next:
+        payload["startSkipped"] = {
+            "reason": "bounded learning-cycle limit reached; proof refreshed without launching another batch",
+        }
+        payload["battleRunnerAliveAfter"] = any_battle_runner_alive()
+        payload["activeBattleCountAfter"] = read_active_battles()
+        payload["nextAction"] = "bounded learning cycle complete; supervisor may stop"
+        return payload
     payload["actions"].append(
         run_supervisor_command(
             start_command,
@@ -1698,6 +1723,8 @@ def run_supervisor_cycle(args: argparse.Namespace, cycle_index: int) -> dict[str
 
 def cmd_supervise(args: argparse.Namespace) -> int:
     cycle_index = 0
+    completed_learning_cycles = 0
+    battle_was_in_flight = False
     effective_max_cycles, max_cycles_reason = supervisor_cycle_limit(args)
     env = prepare_runtime_env(load_env_files())
     effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT), env)
@@ -1723,7 +1750,9 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             "maxCycles": args.max_cycles,
             "effectiveMaxCycles": effective_max_cycles,
             "effectiveRunCount": effective_count,
+            "maxCyclesSemantics": "completed bounded learning cycles, not supervisor polling heartbeats",
         },
+        "completedLearningCycles": completed_learning_cycles,
         "cycleLease": {
             "reason": max_cycles_reason,
             "autoImproveSentinel": AUTO_IMPROVE_SENTINEL,
@@ -1762,13 +1791,48 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 write_supervisor_status(payload)
                 return 0
             cycle_index += 1
-            cycle = run_supervisor_cycle(args, cycle_index)
+            pre_cycle_runtime = supervisor_runtime_state()
+            completing_final_learning_cycle = bool(
+                effective_max_cycles
+                and battle_was_in_flight
+                and not pre_cycle_runtime["inFlight"]
+                and completed_learning_cycles + 1 >= effective_max_cycles
+            )
+            cycle = run_supervisor_cycle(
+                args,
+                cycle_index,
+                start_next=not completing_final_learning_cycle,
+            )
+            completed_this_cycle = bool(
+                battle_was_in_flight
+                and not pre_cycle_runtime["inFlight"]
+                and cycle.get("proofRefreshed")
+            )
+            if completed_this_cycle:
+                completed_learning_cycles += 1
+            cycle["learningCycleCompleted"] = completed_this_cycle
+            cycle["completedLearningCycles"] = completed_learning_cycles
+            cycle["preCycleRuntime"] = pre_cycle_runtime
+            post_cycle_in_flight = bool(
+                cycle.get("state") == "battle-cycle-in-flight"
+                or cycle.get("battleRunnerAliveAfter")
+                or positive_int(cycle.get("activeBattleCountAfter"), 0) > 0
+                or pre_cycle_runtime["inFlight"]
+            )
+            if completed_this_cycle:
+                battle_was_in_flight = bool(
+                    cycle.get("battleRunnerAliveAfter")
+                    or positive_int(cycle.get("activeBattleCountAfter"), 0) > 0
+                )
+            elif post_cycle_in_flight:
+                battle_was_in_flight = True
             payload["state"] = cycle.get("state", "unknown")
             payload["lastHeartbeatAt"] = iso_now()
             payload["lastCycle"] = cycle
             payload["cycles"] = (payload.get("cycles") or [])[-9:] + [cycle]
+            payload["completedLearningCycles"] = completed_learning_cycles
             write_supervisor_status(payload)
-            if effective_max_cycles and cycle_index >= effective_max_cycles:
+            if effective_max_cycles and completed_learning_cycles >= effective_max_cycles:
                 payload["state"] = "completed-max-cycles"
                 payload["completedAt"] = iso_now()
                 write_supervisor_status(payload)
