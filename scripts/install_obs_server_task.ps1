@@ -26,7 +26,7 @@ $StderrLog = Join-Path $LogRoot "jigglypuff-obs-server.err.log"
 $WrapperStdoutLog = Join-Path $LogRoot "jigglypuff-obs-wrapper.log"
 $WrapperStderrLog = Join-Path $LogRoot "jigglypuff-obs-wrapper.err.log"
 $TaskExecute = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -Foreground 1>>"{2}" 2>>"{3}""' -f $PowerShell, $TaskWrapper, $WrapperStdoutLog, $WrapperStderrLog
+$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" 1>>"{2}" 2>>"{3}""' -f $PowerShell, $TaskWrapper, $WrapperStdoutLog, $WrapperStderrLog
 $PidFile = Join-Path $ProjectDir ".pids\obs_server.pid"
 
 function Save-TaskBackup {

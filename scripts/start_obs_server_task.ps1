@@ -93,6 +93,17 @@ function Get-RuntimeLeaseAccount {
     return ""
 }
 
+function ConvertTo-CmdSetAssignment {
+    param([string]$Name, [string]$Value)
+    if ([string]::IsNullOrWhiteSpace($Name) -or [string]::IsNullOrWhiteSpace($Value)) {
+        return $null
+    }
+    if ($Value -match "[`r`n]") {
+        return $null
+    }
+    return "set $Name=$Value"
+}
+
 function Test-StateEndpoint {
     param([int]$Port = 8777)
     try {
@@ -116,6 +127,11 @@ function Stop-ObsServerProcesses {
     Get-ObsServerProcesses | Sort-Object ProcessId -Descending | ForEach-Object {
         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
+}
+
+function Quote-BatchArg {
+    param([string]$Value)
+    '"' + ($Value -replace '"', '""') + '"'
 }
 
 @(
@@ -174,24 +190,48 @@ for ($i = 0; $i -lt 10; $i++) {
     }
     Start-Sleep -Milliseconds 500
 }
-$launch = Start-Process `
-    -FilePath $python `
-    -ArgumentList @("-u", "streaming\serve_obs_page.py") `
-    -WorkingDirectory $ProjectDir `
-    -WindowStyle Hidden `
-    -RedirectStandardOutput $stdoutLog `
-    -RedirectStandardError $stderrLog `
-    -PassThru
+
+$cmdFile = Join-Path $pidDir "start_obs_server.cmd"
+$cmdLines = @(
+    "@echo off",
+    "cd /d $(Quote-BatchArg $ProjectDir)"
+)
+foreach ($envName in @(
+    "PYTHONUTF8",
+    "PYTHONIOENCODING",
+    "BOT_LOG_TO_FILE",
+    "OBS_SERVER_PORT",
+    "OBS_SYNC_INTERVAL_SEC",
+    "FOULER_OBS_WS_DISABLED",
+    "PS_FORMAT",
+    "FOULER_RUNTIME_LEASE_PATH",
+    "PS_USERNAME",
+    "SHOWDOWN_USER_ID",
+    "SHOWDOWN_ACCOUNTS",
+    "FOULER_ACTIVE_ACCOUNT"
+)) {
+    $assignment = ConvertTo-CmdSetAssignment -Name $envName -Value ([Environment]::GetEnvironmentVariable($envName, "Process"))
+    if (-not [string]::IsNullOrWhiteSpace($assignment)) {
+        $cmdLines += $assignment
+    }
+}
+$cmdLines += "$(Quote-BatchArg $python) -u `"streaming\serve_obs_page.py`" 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)"
+$cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
+
+$launch = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+    CommandLine = "cmd.exe /d /c $(Quote-BatchArg $cmdFile)"
+    CurrentDirectory = $ProjectDir
+}
+if ($launch.ReturnValue -ne 0) {
+    Write-Error "Win32_Process.Create failed with return value $($launch.ReturnValue)"
+    exit 1
+}
 
 for ($i = 0; $i -lt 12; $i++) {
     Start-Sleep -Seconds 1
     $obsProcessCount = @(Get-ObsServerProcesses).Count
     if (($obsProcessCount -gt 0) -and (Test-StateEndpoint -Port 8777)) {
         exit 0
-    }
-    if ($launch.HasExited -and $obsProcessCount -eq 0) {
-        Write-Error "Fouler OBS server exited during startup with code $($launch.ExitCode)"
-        exit 1
     }
 }
 
