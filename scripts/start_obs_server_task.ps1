@@ -104,11 +104,11 @@ function ConvertTo-CmdSetAssignment {
     return "set $Name=$Value"
 }
 
-function Test-StateEndpoint {
+function Test-HealthEndpoint {
     param([int]$Port = 8777)
     try {
-        $response = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 "http://127.0.0.1:$Port/state"
-        return [bool]($response.StatusCode -eq 200 -and $response.Content.Length -gt 20)
+        $response = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 "http://127.0.0.1:$Port/health"
+        return [bool]($response.StatusCode -eq 200)
     } catch {
         return $false
     }
@@ -185,7 +185,7 @@ $stdoutLog = Join-Path $logDir "jigglypuff-obs-server.log"
 $stderrLog = Join-Path $logDir "jigglypuff-obs-server.err.log"
 Stop-ObsServerProcesses
 for ($i = 0; $i -lt 10; $i++) {
-    if (@(Get-ObsServerProcesses).Count -eq 0 -and -not (Test-StateEndpoint -Port 8777)) {
+    if (@(Get-ObsServerProcesses).Count -eq 0 -and -not (Test-HealthEndpoint -Port 8777)) {
         break
     }
     Start-Sleep -Milliseconds 500
@@ -230,11 +230,11 @@ if ($launch.ReturnValue -ne 0) {
 for ($i = 0; $i -lt 12; $i++) {
     Start-Sleep -Seconds 1
     $obsProcessCount = @(Get-ObsServerProcesses).Count
-    if (($obsProcessCount -gt 0) -and (Test-StateEndpoint -Port 8777)) {
+    if (($obsProcessCount -gt 0) -and (Test-HealthEndpoint -Port 8777)) {
         exit 0
     }
 }
 
 Stop-ObsServerProcesses
-Write-Error "Fouler OBS server process started but /state did not become healthy on port 8777"
+Write-Error "Fouler OBS server process started but /health did not become healthy on port 8777"
 exit 1

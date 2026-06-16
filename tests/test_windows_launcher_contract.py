@@ -106,7 +106,9 @@ def test_obs_server_task_wrapper_loads_obs_secret_without_printing_it():
     assert "[Environment]::SetEnvironmentVariable(\"SHOWDOWN_USER_ID\", $leaseAccount, \"Process\")" in text
     assert "[Environment]::SetEnvironmentVariable(\"SHOWDOWN_ACCOUNTS\", $leaseAccount, \"Process\")" in text
     assert "LEBOTJAMESXD00N" not in text
-    assert 'Test-StateEndpoint -Port 8777' in text
+    assert 'Test-HealthEndpoint -Port 8777' in text
+    assert "http://127.0.0.1:$Port/health" in text
+    assert "/health did not become healthy" in text
     assert "FP_PARENT_PID" in text
     assert "[switch]$Foreground" in text
     assert "Invoke-CimMethod -ClassName Win32_Process -MethodName Create" in text
