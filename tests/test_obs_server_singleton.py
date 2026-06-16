@@ -169,6 +169,31 @@ async def test_health_default_uses_fast_public_surface(monkeypatch, tmp_path) ->
 
 
 @pytest.mark.asyncio
+async def test_health_default_skips_singleton_subprocess_probe(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(serve_obs_page, "DEEP_HEALTH_DEFAULT", False)
+
+    def fail_singleton_probe():
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(serve_obs_page, "_build_singleton_status", fail_singleton_probe)
+    monkeypatch.setattr(serve_obs_page, "recent_showdown_credential_failure", lambda _root: {"found": False})
+    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
+    monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
+    monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+
+    state_store.write_status({"status": "Searching"})
+    state_store.update_daily_stats(0, 0)
+    state_store.write_active_battles({"battles": [], "count": 0})
+
+    response = await serve_obs_page.handle_health(make_mocked_request("GET", "/health"))
+    payload = json.loads(response.text)
+
+    assert response.status == 200
+    assert payload["obsServerSingleton"]["skipped"] is True
+    assert payload["devstreamHealthProbe"]["method"] == "skipped"
+
+
+@pytest.mark.asyncio
 async def test_health_deep_query_uses_in_process_devstream_probe(monkeypatch) -> None:
     monkeypatch.setattr(serve_obs_page, "DEEP_HEALTH_DEFAULT", False)
     monkeypatch.setattr(serve_obs_page, "_build_singleton_status", lambda: {"duplicateCount": 0, "duplicates": []})
