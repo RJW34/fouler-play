@@ -6399,9 +6399,11 @@ def _choose_mcts_only(
     MCTS-respecting move selection (penalty pipeline gated OFF).
 
     Trusts the MCTS visit-count policy. Applies only hard-legality safety and the
-    decision loop-breaker, then picks the top line (with a small stochastic tie
-    spread among near-equal lines to avoid deterministic loops), plus the
-    immediate-survival switch override which is a safety net, not a heuristic bias.
+    decision loop-breaker, then picks the top line deterministically. Do not
+    sample from the policy here: MCTS already spent the turn budget estimating
+    line quality, and weighted re-sampling can turn a good search into avoidable
+    search-regret losses. The immediate-survival switch override remains a
+    safety net, not a heuristic bias.
     """
     trace_events: list = []
     sorted_policy = _apply_hard_legality_and_safety(
@@ -6445,15 +6447,14 @@ def _choose_mcts_only(
                         trace["decision_mode_detail"] = "mcts_only:survival_switch"
                     return best_switch[0]
 
-    choice = _choose_from_weighted_policy(
-        dict(sorted_policy), decision_profile=decision_profile
-    )
+    choice = sorted_policy[0][0]
     if trace is not None:
         trace["mcts_only"] = {
             "top_moves": [
                 {"move": m, "weight": round(float(w), 6)} for m, w in sorted_policy[:5]
             ],
             "events": trace_events,
+            "selection": "deterministic_argmax",
         }
         trace["decision_mode_detail"] = trace.get(
             "decision_mode_detail", "mcts_only"
