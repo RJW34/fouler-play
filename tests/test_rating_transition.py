@@ -176,6 +176,45 @@ async def test_battle_stats_enrichment_records_authoritative_rating(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_battle_stats_enrichment_marks_private_replay_pending(tmp_path):
+    run_battle._battle_stats_authoritative_facts.clear()
+    stats_path = tmp_path / "battle_stats.json"
+    stats_path.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-2632356554-privatehash",
+                        "result": "loss",
+                        "rating": None,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    enriched = await run_battle._enrich_battle_stats_rating_once(
+        "battle-gen9ou-2632356554-privatehash",
+        elo_before=1128,
+        elo_after=1156,
+        rating_delta=28,
+        result_key="win",
+        winner="LEBOTJAMESXD00N",
+        opponent_name="murdockfejao",
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2632356554-privatehash",
+        path=stats_path,
+    )
+
+    saved = json.loads(stats_path.read_text(encoding="utf-8"))
+    entry = saved["battles"][0]
+    assert enriched is True
+    assert "replay_url" not in entry
+    assert entry["public_replay_id"] == "gen9ou-2632356554"
+    assert entry["replay_status"] == "pending-public-upload"
+
+
+@pytest.mark.asyncio
 async def test_battle_stats_enrichment_reapplies_previous_authoritative_facts(tmp_path):
     run_battle._battle_stats_authoritative_facts.clear()
     stats_path = tmp_path / "battle_stats.json"
