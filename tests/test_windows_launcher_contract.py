@@ -70,7 +70,7 @@ def test_obs_server_task_runs_via_logged_cmd_wrapper():
     assert "$TaskExecute" in text
     assert "cmd.exe" in text
     assert "start_obs_server_task.ps1" in text
-    assert "-Foreground" in text
+    assert "-Foreground" not in text
     assert "jigglypuff-obs-server.log" in text
     assert "jigglypuff-obs-server.err.log" in text
     assert "jigglypuff-obs-wrapper.log" in text
@@ -106,15 +106,14 @@ def test_obs_server_task_wrapper_loads_obs_secret_without_printing_it():
     assert 'Test-StateEndpoint -Port 8777' in text
     assert "FP_PARENT_PID" in text
     assert "[switch]$Foreground" in text
-    assert "Start-Process" in text
+    assert "Invoke-CimMethod -ClassName Win32_Process -MethodName Create" in text
+    assert "start_obs_server.cmd" in text
+    assert "ConvertTo-CmdSetAssignment" in text
     assert "function Get-ObsServerProcesses" in text
     assert "Stop-ObsServerProcesses" in text
     assert "$obsProcessCount -gt 0" in text
-    assert "$launch.HasExited -and $obsProcessCount -eq 0" in text
     assert '$_.Name -match "python|py|cmd"' in text
     assert "Win32_Process" in text
-    assert "-WindowStyle Hidden" in text
-    assert "RedirectStandardOutput" in text
     assert "SetEnvironmentVariable($_.Target, $value, \"Process\")" in text
     assert "Write-Output" not in text
     assert "Write-Host" not in text
