@@ -20,11 +20,11 @@ function Test-LocalPort {
     }
 }
 
-function Test-StateEndpoint {
+function Test-HealthEndpoint {
     param([int]$Port)
     try {
-        $response = Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 "http://127.0.0.1:$Port/state"
-        return [bool]($response.StatusCode -eq 200 -and $response.Content.Length -gt 20)
+        $response = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 "http://127.0.0.1:$Port/health"
+        return [bool]($response.StatusCode -eq 200)
     } catch {
         return $false
     }
@@ -56,7 +56,7 @@ $statusPath = Join-Path $ProjectDir "devstream\truth\obs-server-keepalive.json"
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $statusPath) | Out-Null
 
 $beforePort = Test-LocalPort -Port $Port
-$beforeState = if ($beforePort) { Test-StateEndpoint -Port $Port } else { $false }
+$beforeState = if ($beforePort) { Test-HealthEndpoint -Port $Port } else { $false }
 $beforeTaskState = Get-TaskState -TaskName $TaskName
 $started = $false
 $stoppedStuckTask = $false
@@ -81,7 +81,7 @@ if (-not ($beforePort -and $beforeState)) {
 }
 
 $afterPort = Test-LocalPort -Port $Port
-$afterState = if ($afterPort) { Test-StateEndpoint -Port $Port } else { $false }
+$afterState = if ($afterPort) { Test-HealthEndpoint -Port $Port } else { $false }
 $afterTaskState = Get-TaskState -TaskName $TaskName
 $payload = [ordered]@{
     schemaVersion = "fouler-obs-keepalive/v1"
@@ -90,7 +90,7 @@ $payload = [ordered]@{
     port = $Port
     before = @{
         portOpen = $beforePort
-        stateEndpointOk = $beforeState
+        healthEndpointOk = $beforeState
         taskState = $beforeTaskState
     }
     action = @{
@@ -101,7 +101,7 @@ $payload = [ordered]@{
     }
     after = @{
         portOpen = $afterPort
-        stateEndpointOk = $afterState
+        healthEndpointOk = $afterState
         taskState = $afterTaskState
     }
     ok = [bool]($afterPort -and $afterState)

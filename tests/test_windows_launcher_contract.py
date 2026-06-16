@@ -127,7 +127,8 @@ def test_obs_server_keepalive_task_restarts_only_public_surface():
     installer = (ROOT / "scripts" / "install_obs_server_keepalive_task.ps1").read_text(encoding="utf-8")
 
     assert "HERMES-FoulerObsServer" in keepalive
-    assert "http://127.0.0.1:$Port/state" in keepalive
+    assert "http://127.0.0.1:$Port/health" in keepalive
+    assert "healthEndpointOk" in keepalive
     assert "Start-ScheduledTask -TaskName $TaskName" in keepalive
     assert "Stop-ScheduledTask -TaskName $TaskName" in keepalive
     assert "stoppedStuckTask" in keepalive
