@@ -146,6 +146,7 @@ SHOWDOWN_ACCOUNTS = [
     acc.strip() for acc in os.getenv("SHOWDOWN_ACCOUNTS", "").split(",") if acc.strip()
 ]
 SHOWDOWN_FORMAT = os.getenv("PS_FORMAT", "gen9ou").strip().lower()
+RUNTIME_LEASE_PATH = Path(os.getenv("FOULER_RUNTIME_LEASE_PATH", ROOT_DIR / "devstream" / "truth" / "runtime-lease.json"))
 ELO_REFRESH_COOLDOWN_SEC = int(os.getenv("SHOWDOWN_ELO_COOLDOWN_SEC", "5"))
 ELO_EVENT_RETRY_SEC = int(os.getenv("SHOWDOWN_ELO_EVENT_RETRY_SEC", "8"))
 ELO_POLL_INTERVAL_SEC = int(os.getenv("SHOWDOWN_ELO_POLL_SEC", "60"))
@@ -685,7 +686,53 @@ def _active_accounts_from_battles(battles: list[dict]) -> list[str]:
     return _dedupe_showdown_accounts(accounts)
 
 
+def _runtime_lease_account() -> str:
+    try:
+        lease = json.loads(RUNTIME_LEASE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    if not isinstance(lease, dict):
+        return ""
+    battle_scope = lease.get("battleScope") if isinstance(lease.get("battleScope"), dict) else {}
+    for value in (
+        lease.get("account"),
+        lease.get("psUsername"),
+        lease.get("showdownAccount"),
+        battle_scope.get("account"),
+        battle_scope.get("psUsername"),
+    ):
+        text = str(value or "").strip()
+        if text:
+            return text
+    return ""
+
+
+def _latest_battle_stats_account() -> str:
+    try:
+        raw = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+    battles = raw.get("battles") if isinstance(raw, dict) else raw
+    if not isinstance(battles, list):
+        return ""
+    for entry in reversed(battles):
+        if not isinstance(entry, dict):
+            continue
+        opponent = _normalize_showdown_id(str(entry.get("opponent") or ""))
+        for key in ("account", "bot_username", "ps_username", "winner", "loser"):
+            text = str(entry.get(key) or "").strip()
+            if text and _normalize_showdown_id(text) != opponent:
+                return text
+    return ""
+
+
 def _configured_showdown_accounts() -> list[str]:
+    lease_account = _runtime_lease_account()
+    if lease_account:
+        return _dedupe_showdown_accounts([lease_account])
+    latest_account = _latest_battle_stats_account()
+    if latest_account:
+        return _dedupe_showdown_accounts([latest_account])
     if SHOWDOWN_ACCOUNTS:
         return _dedupe_showdown_accounts(SHOWDOWN_ACCOUNTS)
     user_id = _resolve_showdown_user_id()

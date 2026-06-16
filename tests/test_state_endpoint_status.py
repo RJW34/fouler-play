@@ -274,6 +274,68 @@ def test_state_payload_uses_battle_stats_rating_for_active_account(tmp_path, mon
     assert payload["accounts_elo"] == {"LEBOTJAMESXD00N": 1248}
 
 
+def test_state_payload_uses_runtime_lease_account_while_searching(tmp_path, monkeypatch):
+    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
+    monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
+    monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+    stats_path = tmp_path / "battle_stats.json"
+    lease_path = tmp_path / "runtime-lease.json"
+    monkeypatch.setattr(serve_obs_page, "BATTLE_STATS_PATH", stats_path)
+    monkeypatch.setattr(serve_obs_page, "RUNTIME_LEASE_PATH", lease_path)
+    monkeypatch.setattr(serve_obs_page, "SHOWDOWN_ACCOUNTS", [])
+    monkeypatch.setattr(serve_obs_page, "SHOWDOWN_USER_ID", "npctypebeat")
+    monkeypatch.setattr(
+        serve_obs_page,
+        "recent_showdown_credential_failure",
+        lambda _root: {"found": False},
+    )
+    monkeypatch.setitem(serve_obs_page._ladder_cache, "accounts", {"npctypebeat": 1029})
+    monkeypatch.setitem(serve_obs_page._ladder_cache, "updated", 123.0)
+
+    lease_path.write_text(
+        json.dumps({
+            "schemaVersion": "fouler-play-runtime-lease/v1",
+            "account": "LEBOTJAMESXD00N",
+            "battleScope": {"account": "LEBOTJAMESXD00N"},
+        }),
+        encoding="utf-8",
+    )
+    stats_path.write_text(
+        json.dumps({
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-2632971718",
+                    "result": "win",
+                    "rating": 1143.0,
+                    "rating_source": "showdown_raw",
+                    "timestamp": "2026-06-16T05:12:52+00:00",
+                    "winner": "LEBOTJAMESXD00N",
+                    "opponent": "Trigby",
+                }
+            ]
+        }),
+        encoding="utf-8",
+    )
+    state_store.write_status({
+        "status": "Searching",
+        "battle_info": "Searching...",
+        "elo": 1029,
+        "elo_source": "showdown",
+        "accounts_elo": {"npctypebeat": 1029},
+    })
+    state_store.update_daily_stats(0, 0)
+    state_store.write_active_battles({"battles": [], "count": 0})
+
+    payload = serve_obs_page.build_state_payload()
+
+    assert payload["status"]["status"] == "Searching"
+    assert payload["status"]["elo"] == 1143
+    assert payload["status"]["elo_source"] == "battle_stats"
+    assert payload["accounts_elo"] == {"LEBOTJAMESXD00N": 1143}
+    assert payload["status"]["accounts_elo"] == {"LEBOTJAMESXD00N": 1143}
+    assert "npctypebeat" not in payload["accounts_elo"]
+
+
 def test_active_battle_atomic_write_retries_windows_replace_lock(tmp_path, monkeypatch):
     active_path = tmp_path / "active_battles.json"
     monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", active_path)
