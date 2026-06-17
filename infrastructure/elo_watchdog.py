@@ -170,23 +170,28 @@ def git_revert(commit_hash: str) -> bool:
             timeout=60,
         )
         if result.returncode == 0:
-            print(f"Successfully reverted commit {commit_hash[:8]}")
-            # Push the revert
-            push_result = subprocess.run(
-                ["git", "-C", str(REPO_DIR), "push", "origin", _current_branch()],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=60,
-            )
-            if push_result.returncode == 0:
-                print("Revert pushed to remote.")
-            else:
-                print(
-                    f"WARNING: Failed to push revert: {push_result.stderr}",
-                    file=sys.stderr,
+            print(f"Successfully reverted commit {commit_hash[:8]} (local working tree restored)")
+            # Push only if explicitly opted-in. The live bot runs from THIS local working
+            # tree, so the local revert already protects it; the push is just remote sync.
+            # Default OFF to avoid an unrequested outward push (Claude/DEKU 2026-06-16).
+            if os.getenv("ELO_WATCHDOG_PUSH", "0") == "1":
+                push_result = subprocess.run(
+                    ["git", "-C", str(REPO_DIR), "push", "origin", _current_branch()],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=60,
                 )
+                if push_result.returncode == 0:
+                    print("Revert pushed to remote.")
+                else:
+                    print(
+                        f"WARNING: Failed to push revert: {push_result.stderr}",
+                        file=sys.stderr,
+                    )
+            else:
+                print("Push skipped (ELO_WATCHDOG_PUSH != 1); local revert protects the live runtime.")
             return True
         else:
             print(
