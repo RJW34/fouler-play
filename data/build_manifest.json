@@ -7,9 +7,49 @@
       "timestamp": "2026-03-22T10:00:00+00:00",
       "source": "initial-seed",
       "progress_at_deploy": 2302,
+      "progress_end": 1521,
+      "timestamp_end": "2026-06-21T01:23:37.832772+00:00",
+      "files_changed": null,
+      "reverted": false
+    },
+    {
+      "sha": "1ec59a9f",
+      "subject": "fouler: daemon-integrated learning window (pre-round gap; mode kill-switch off/dryrun/auto; cadence + RAM gate; timeout-guard + git-stash-create restore-on-kill). Enables autonomous self-improvement, guarded by live elo_watchdog + keepalive.",
+      "timestamp": "2026-06-21T01:23:37.889463+00:00",
+      "source": "autoresearch",
+      "progress_at_deploy": 1521,
       "progress_end": null,
       "timestamp_end": null,
-      "files_changed": null,
+      "files_changed": [
+        "AGENTS.md",
+        "BAKUGO_OPERATIONS_GUIDE.md",
+        "TASKBOARD.md",
+        "battle_stats.json",
+        "data/pkmn_sets.py",
+        "devstream/truth/completion.json",
+        "devstream/truth/latest-elo-proof.json",
+        "fp/data/movepool_data.json",
+        "fp/run_battle.py",
+        "fp/search/main.py",
+        "infrastructure/_offline_baseline.py",
+        "infrastructure/discord_reporting.py",
+        "infrastructure/event_poster.py",
+        "infrastructure/event_queue_lib.py",
+        "infrastructure/improve_agent.py",
+        "infrastructure/offline_eval.py",
+        "replay_analysis/autoresearch_latest.json",
+        "run.py",
+        "scripts/devstream_health.py",
+        "scripts/devstream_runtime_lease.py",
+        "scripts/devstream_session.py",
+        "scripts/fouler_continuous_daemon.ps1",
+        "scripts/fouler_daemon_keepalive.ps1",
+        "scripts/run_improve_window.ps1",
+        "scripts/start_battle_supervisor_task.ps1",
+        "streaming/state_store.py",
+        "tests/test_battle_worker_recovery.py",
+        "tests/test_discord_reporting.py"
+      ],
       "reverted": false
     }
   ],
@@ -18,6 +58,6 @@
     "repo": "RJW34/fouler-play",
     "branch": "master",
     "created": "2026-03-22T10:00:00+00:00",
-    "last_updated": "2026-03-23T03:30:07.136038+00:00"
+    "last_updated": "2026-06-21T01:23:37.889463+00:00"
   }
 }

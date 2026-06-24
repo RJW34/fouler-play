@@ -58,6 +58,60 @@ def display_species(slot_or_species: str) -> str:
     return text.split(",")[0].strip()
 
 
+def slot_id(slot_token: str) -> str:
+    """Position slot id from a ``|move|`` / ``|-damage|`` actor token.
+
+    ``p2a: Tesla`` -> ``p2a``. This is the position slot, NOT the side.
+    """
+    return (slot_token or "").split(":", 1)[0].strip().lower()
+
+
+class NicknameResolver:
+    """Resolve a battle-log actor token to its real SPECIES, not its nickname.
+
+    Showdown ``|switch|`` / ``|drag|`` / ``|replace|`` lines are the only lines that
+    carry BOTH the slot+nickname (``p2a: Tesla``) and the real species
+    (``Iron Valiant, F``). Every later ``|move|`` / ``|-damage|`` / ``|faint|`` line
+    carries ONLY ``p2a: Tesla`` (the nickname). Keying learning data off the nickname
+    (the prior behavior of ``display_species``) produces garbage keys like
+    ``tesla``/``jackblack`` that the live lookup (species ``Pokemon.name``) can never
+    match. This resolver tracks the species currently occupying each slot so callers
+    can recover the true species.
+    """
+
+    def __init__(self) -> None:
+        # slot id (e.g. "p2a") -> current real species display name
+        self._slot_to_species: dict[str, str] = {}
+        # (slot id, normalized nickname) -> real species, persists after switch-out
+        self._nick_to_species: dict[tuple[str, str], str] = {}
+
+    def note_switch(self, slot_token: str, species_token: str) -> None:
+        slot = slot_id(slot_token)
+        nick = display_species(slot_token)
+        species = display_species(species_token)
+        if not slot or not species:
+            return
+        self._slot_to_species[slot] = species
+        if nick:
+            self._nick_to_species[(slot, normalize_id(nick))] = species
+
+    def resolve(self, actor_token: str) -> str:
+        """Return the real species for a ``|move|``/``|-damage|`` actor token.
+
+        Falls back to the nickname only if the slot was never seen in a switch/drag
+        (should not happen for well-formed logs, but stays non-fatal).
+        """
+        slot = slot_id(actor_token)
+        nick = display_species(actor_token)
+        by_nick = self._nick_to_species.get((slot, normalize_id(nick)))
+        if by_nick:
+            return by_nick
+        by_slot = self._slot_to_species.get(slot)
+        if by_slot:
+            return by_slot
+        return nick
+
+
 def slot_side(slot: str) -> str:
     head = (slot or "").split(":", 1)[0].lower()
     if head.startswith("p1"):
@@ -336,6 +390,9 @@ class LossLogIngestor:
         winner = ""
         last_move_for_target_slot: dict[str, dict[str, Any]] = {}
         last_damage_for_slot: dict[str, dict[str, Any]] = {}
+        # Resolve actor/target tokens (p2a: Tesla) to real species (Iron Valiant)
+        # so key_kos.attacker / problem_pokemon keys match the live species lookup.
+        resolver = NicknameResolver()
 
         for raw_line in log_lines:
             parts = split_line(raw_line)
@@ -350,18 +407,19 @@ class LossLogIngestor:
                     teams[side].append(display_species(parts[3]))
             elif tag == "turn" and len(parts) >= 3:
                 current_turn = int(parts[2])
-            elif tag in {"switch", "drag"} and len(parts) >= 4:
+            elif tag in {"switch", "drag", "replace"} and len(parts) >= 4:
                 side = slot_side(parts[2])
                 species = display_species(parts[3])
+                resolver.note_switch(parts[2], parts[3])
                 if side:
                     active_slots[side] = species
                     revealed[normalize_id(species)]
             elif tag == "move" and len(parts) >= 4:
                 actor_side = slot_side(parts[2])
-                actor = display_species(parts[2])
+                actor = resolver.resolve(parts[2])
                 move = parts[3]
                 target_side = slot_side(parts[4]) if len(parts) >= 5 else ""
-                target = display_species(parts[4]) if len(parts) >= 5 else ""
+                target = resolver.resolve(parts[4]) if len(parts) >= 5 else ""
                 entry = {
                     "turn": current_turn,
                     "side": actor_side,
@@ -381,7 +439,7 @@ class LossLogIngestor:
                 if last:
                     last.setdefault("effectiveness_log", []).append(tag[1:])
             elif tag == "-damage" and len(parts) >= 4:
-                target = display_species(parts[2])
+                target = resolver.resolve(parts[2])
                 target_side = slot_side(parts[2])
                 source = self._from_clause(parts[4:])
                 event = {
@@ -401,7 +459,7 @@ class LossLogIngestor:
                 damage_events.append(event)
                 last_damage_for_slot[slot] = event
             elif tag == "faint" and len(parts) >= 3:
-                target = display_species(parts[2])
+                target = resolver.resolve(parts[2])
                 target_side = slot_side(parts[2])
                 slot = parts[2].split(":", 1)[0].strip()
                 faint = {"turn": current_turn, "pokemon": target, "side": target_side}
@@ -418,15 +476,15 @@ class LossLogIngestor:
             elif tag in {"-fieldstart", "-fieldend"} and len(parts) >= 3:
                 terrain.append({"turn": current_turn, "event": tag[1:], "condition": parts[2]})
             elif tag == "-status" and len(parts) >= 4:
-                pokemon = display_species(parts[2])
+                pokemon = resolver.resolve(parts[2])
                 status = {"turn": current_turn, "pokemon": pokemon, "side": slot_side(parts[2]), "status": parts[3], "source": self._from_clause(parts[4:])}
                 statuses.append(status)
                 revealed[normalize_id(pokemon)]["status"] = parts[3]
             elif tag == "-ability" and len(parts) >= 4:
-                pokemon = display_species(parts[2])
+                pokemon = resolver.resolve(parts[2])
                 revealed[normalize_id(pokemon)]["ability"] = parts[3]
             elif tag in {"-item", "-enditem"} and len(parts) >= 4:
-                pokemon = display_species(parts[2])
+                pokemon = resolver.resolve(parts[2])
                 item = parts[3]
                 if item not in revealed[normalize_id(pokemon)]["items"]:
                     revealed[normalize_id(pokemon)]["items"].append(item)
