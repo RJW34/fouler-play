@@ -137,30 +137,29 @@ try {
   $launchStamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
   $stdoutPath = Join-Path $logDir ("ladder_client_{0}.out.log" -f $launchStamp)
   $stderrPath = Join-Path $logDir ("ladder_client_{0}.err.log" -f $launchStamp)
-  # BOUNDED ORPHAN-RESUME (2026-06-24): the keepalive only launches when 0 clients
-  # are alive, i.e. the prior client DIED. Previously this hard-set
-  # RESUME_ACTIVE_BATTLES=0 AND wiped active_battles.json, which FORFEITED every
-  # in-progress ladder game on each restart -> self-inflicted losses that drag ELO
-  # sideways. That over-corrected for a stall that run.py already handles safely:
-  # run_battle.py resumes only battles younger than RESUME_MAX_AGE_SEC, joins with
-  # a short RESUME_JOIN_TIMEOUT_SEC, and after RESUME_MAX_TIMEOUT_REQUEUES (2)
-  # forfeits+blacklists a dead orphan and returns to laddering. So the correct
-  # clean boot is: ATTEMPT a bounded resume (recover games that are still live),
-  # let run.py shed the truly-dead rooms quickly. Only snapshot active_battles.json
-  # (do NOT wipe it) so the resume queue is intact and OBS recovers.
-  $env:RESUME_ACTIVE_BATTLES = '1'
-  # Tight age cap so we never try to rejoin a long-dead room: only resume battles
-  # touched in the last ~6 min; older entries are skipped by run.py and shed.
-  if (-not $env:RESUME_MAX_AGE_SEC) { $env:RESUME_MAX_AGE_SEC = '360' }
-  if (-not $env:RESUME_JOIN_TIMEOUT_SEC) { $env:RESUME_JOIN_TIMEOUT_SEC = '8' }
-  if (-not $env:RESUME_MAX_TIMEOUT_REQUEUES) { $env:RESUME_MAX_TIMEOUT_REQUEUES = '2' }
+  # CLEAN-BOOT (2026-06-24, reverted to proven default): the keepalive only
+  # launches when 0 clients are alive, i.e. the prior client DIED and any in-flight
+  # battles it held are orphaned server-side. Empirically, enabling resume on this
+  # path (RESUME_ACTIVE_BATTLES=1) wedged the fresh client at the matchmaking step
+  # ("Searching for ranked" then idle, 0 CPU) -- the resume-priming "cancel active
+  # ladder search" interacts badly with the fresh search and the worker never
+  # re-establishes matchmaking. Restoring RESUME_ACTIVE_BATTLES=0 (which started a
+  # battling client reliably) is the right call: a keepalive restart only happens
+  # after the prior client already DIED, so its rooms are already orphaned and the
+  # forfeit cost is unavoidable either way -- but a wedged client that never
+  # ladders is far worse (zero games). NOTE the one retained improvement over the
+  # old code: we SNAPSHOT active_battles.json (for OBS/forensics) but no longer
+  # need to special-case it. The bounded-resume idea is deferred to a foreground
+  # path where it can be validated without risking the autonomous ladder.
+  $env:RESUME_ACTIVE_BATTLES = '0'
   try {
     $abFile = Join-Path $repo 'active_battles.json'
     if (Test-Path $abFile) {
       Copy-Item $abFile (Join-Path $logDir ('active_battles.preboot.{0}.json' -f $launchStamp)) -Force -ErrorAction SilentlyContinue
+      Set-Content -Path $abFile -Value '{"battles": [], "count": 0, "max_slots": 3, "updated": ""}' -Encoding ASCII -ErrorAction SilentlyContinue
     }
-    Write-KA "BOUNDED-RESUME boot: RESUME_ACTIVE_BATTLES=1 (max_age=$($env:RESUME_MAX_AGE_SEC)s, join_timeout=$($env:RESUME_JOIN_TIMEOUT_SEC)s, max_requeues=$($env:RESUME_MAX_TIMEOUT_REQUEUES)); active_battles.json preserved so live games are recovered, dead orphans shed by run.py."
-  } catch { Write-KA ("BOUNDED-RESUME prep warning: {0}" -f $_.Exception.Message) }
+    Write-KA "CLEAN-BOOT: RESUME_ACTIVE_BATTLES=0 + active_battles.json snapshot/cleared for a reliable fresh search (bounded-resume wedged matchmaking; deferred to a validated foreground path)."
+  } catch { Write-KA ("CLEAN-BOOT prep warning: {0}" -f $_.Exception.Message) }
   try {
     $proc = Start-Process -FilePath $python -ArgumentList $argList -WorkingDirectory $repo `
       -WindowStyle Hidden -PassThru -ErrorAction Stop `
