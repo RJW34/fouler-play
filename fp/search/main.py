@@ -234,6 +234,7 @@ from data import all_move_json
 from fp.movepool_tracker import get_threat_category, ThreatCategory
 from fp.search.move_validators import filter_blocked_moves
 from fp.opponent_model import OPPONENT_MODEL
+from fp import matchup_memory
 from sweep_fix import smart_sweep_prevention
 
 logger = logging.getLogger(__name__)
@@ -541,9 +542,18 @@ def _run_mcts_policy_pass(
     per_sample_ms: int,
     max_samples: int,
     legal_moves: set[str] | None = None,
+    deadline: float | None = None,
 ) -> tuple[dict[str, float], dict]:
     """
     Run bounded MCTS on up to max_samples sampled states and aggregate visit policy.
+
+    deadline: optional time.monotonic() wall-clock deadline. The samples run
+    SEQUENTIALLY, and the poke-engine MCTS can overshoot its requested per-sample
+    millisecond budget on complex states (observed single-decision latencies up to
+    ~165s in production). To guarantee we NEVER bleed the Showdown cumulative game
+    clock to a forfeit, we stop launching new samples once the deadline passes and
+    return whatever policy we have aggregated so far (a shallower in-time decision
+    strictly beats a perfect decision that loses on the clock).
     """
     selected_samples = sorted(
         list(sampled_battles or []), key=lambda x: float(x[1]), reverse=True
@@ -553,8 +563,10 @@ def _run_mcts_policy_pass(
         "samples_attempted": len(selected_samples),
         "samples_succeeded": 0,
         "samples_failed": 0,
+        "samples_skipped_deadline": 0,
         "total_visits": 0,
         "per_sample_ms": int(per_sample_ms),
+        "deadline_hit": False,
     }
     legal_norm_to_move: dict[str, str] = {}
     if legal_moves:
@@ -562,13 +574,41 @@ def _run_mcts_policy_pass(
             legal_norm_to_move[normalize_name(lm)] = lm
 
     for idx, (sample_battle, sample_weight) in enumerate(selected_samples):
+        # Hard wall-clock guard: never start another (potentially overshooting)
+        # MCTS sample once we are out of time. We keep at least one completed
+        # sample so we always return a usable policy.
+        if (
+            deadline is not None
+            and idx > 0
+            and meta["samples_succeeded"] > 0
+            and time.monotonic() >= deadline
+        ):
+            meta["deadline_hit"] = True
+            meta["samples_skipped_deadline"] = len(selected_samples) - idx
+            logger.warning(
+                "MCTS deadline reached after %d/%d samples; returning partial "
+                "policy to protect the game clock.",
+                idx,
+                len(selected_samples),
+            )
+            break
         try:
             state = battle_to_poke_engine_state(sample_battle)
             # poke-engine already receives a per-sample millisecond budget.
             # Running inline avoids creating a short-lived Python thread for
             # every sample, which exhausts Windows runtime threads under live
             # ladder batches before reporting/state cleanup can run.
-            result = monte_carlo_tree_search(state, int(per_sample_ms))
+            #
+            # Clamp THIS sample's budget to the wall-clock time we have left so a
+            # single overshooting sample cannot blow the whole game-clock budget.
+            sample_ms = int(per_sample_ms)
+            if deadline is not None:
+                ms_left = int((deadline - time.monotonic()) * 1000)
+                if ms_left < sample_ms:
+                    # Keep a small floor so the engine still does useful work,
+                    # but never request more time than we actually have.
+                    sample_ms = max(50, min(sample_ms, ms_left))
+            result = monte_carlo_tree_search(state, sample_ms)
             total_visits = int(getattr(result, "total_visits", 0) or 0)
             if total_visits <= 0:
                 meta["samples_failed"] += 1
@@ -6116,6 +6156,24 @@ def _recent_action_history(battle: Battle | None) -> list[str]:
     return history
 
 
+def _detect_action_cycle(recent: list[str], next_action: str) -> bool:
+    """Return True if recent history forms a repeating 2- or 3-action cycle
+    whose next predicted element matches next_action.
+
+    Examples caught:
+      [A,B,A,B] + next=A  → True  (2-cycle)
+      [A,B,C,A,B,C] + next=A → True  (3-cycle)
+    Used by break_repeated_decision to catch oscillation loops that never
+    hit the single-action repeat_threshold (each action only appears 2x).
+    """
+    n = len(recent)
+    if n >= 4 and recent[-4:-2] == recent[-2:] and recent[-2] == next_action:
+        return True
+    if n >= 6 and recent[-6:-3] == recent[-3:] and recent[-3] == next_action:
+        return True
+    return False
+
+
 def _has_living_switch_target(battle: Battle | None) -> bool:
     user = getattr(battle, "user", None) if battle is not None else None
     for pkmn in getattr(user, "reserve", []) or []:
@@ -6217,11 +6275,21 @@ def break_repeated_decision(
     best_norm = best_move.lower().strip()
 
     # Count how many times the about-to-win action appears in the recent window.
+    # Also detect oscillation cycles (e.g. A→B→C→A→B→C) where each individual
+    # action only appears 2x and would slip under repeat_threshold=3.
     repeats = sum(1 for a in recent if a == best_norm)
-    if repeats < repeat_threshold:
+    is_cycling = _detect_action_cycle(recent, best_norm)
+    if not is_cycling:
+        for cycle_len in range(2, min(4, len(recent) // 2 + 1)):
+            if recent[-cycle_len:] == recent[-2 * cycle_len : -cycle_len]:
+                is_cycling = True
+                break
+    if repeats < repeat_threshold and not is_cycling:
         return sorted_policy
 
-    if _last_mon_damage_loop_should_hold(sorted_policy, battle, best_move):
+    # Multi-move cycles (is_cycling) mean no real progress regardless of whether
+    # one of the cycled moves is damaging — skip the damage-progress exemption.
+    if not is_cycling and _last_mon_damage_loop_should_hold(sorted_policy, battle, best_move):
         if trace_events is not None:
             trace_events.append(
                 {
@@ -6236,10 +6304,66 @@ def break_repeated_decision(
         return sorted_policy
 
     # Find the best DISTINCT legal alternative with positive weight.
-    alternative = next(
-        ((m, w) for m, w in sorted_policy if m.lower().strip() != best_norm and w > 0),
-        None,
-    )
+    # When a multi-move cycle is detected, exclude ALL recently-seen actions so we
+    # don't swap to another cycle member (e.g. A→B→C→A loop picks B as "alternative"
+    # and the cycle persists — grounded in evidence from decision_instability traces).
+    if is_cycling:
+        recent_set = set(recent)
+        if best_norm not in recent_set:
+            # MCTS already picked a move outside the cycle — trust it; demoting it
+            # would promote a cycle member instead (the actual bug causing persistence).
+            return sorted_policy
+        alternative = next(
+            ((m, w) for m, w in sorted_policy if m.lower().strip() not in recent_set and w > 0),
+            None,
+        )
+        if alternative is None:
+            # All legal options are cycle members. Picking 2nd-best (old behaviour)
+            # just rotates through the same cycle indefinitely. Instead, pick the
+            # least-recently-used non-best candidate to maximally disrupt the pattern.
+            candidates = [
+                (m, w) for m, w in sorted_policy if m.lower().strip() != best_norm and w > 0
+            ]
+            if candidates:
+                alternative = min(
+                    candidates,
+                    key=lambda x: next(
+                        (i for i in range(len(recent) - 1, -1, -1)
+                         if recent[i] == x[0].lower().strip()),
+                        -1,
+                    ),
+                )
+                # LRU is still a cycle member — rotating LRU alone just shifts
+                # the cycle indefinitely (A→B→C→A becomes B→C→A→B, still cycling).
+                # Penalize ALL cycle members heavily so any non-cycle move with
+                # even modest MCTS weight can surface and break the loop.
+                rebuilt = [
+                    (m, w * 0.12 if m.lower().strip() in recent_set else w)
+                    for m, w in sorted_policy
+                ]
+                rebuilt.sort(key=lambda x: x[1], reverse=True)
+                if trace_events is not None:
+                    trace_events.append({
+                        "type": "override",
+                        "source": "decision_loop_break",
+                        "move": rebuilt[0][0],
+                        "reason": f"full_cycle_penalty_{len(recent_set)}_cycle_members",
+                        "before": sorted_policy[0][1],
+                        "after": rebuilt[0][1],
+                    })
+                logger.info(
+                    "FULL CYCLE BREAK: all %d candidates are cycle members; "
+                    "penalizing cycle moves 0.12x to surface non-cycle options",
+                    len(recent_set),
+                )
+                return rebuilt
+            else:
+                alternative = None
+    else:
+        alternative = next(
+            ((m, w) for m, w in sorted_policy if m.lower().strip() != best_norm and w > 0),
+            None,
+        )
     if alternative is None:
         # No distinct legal alternative: the repeated action is forced; keep it.
         return sorted_policy
@@ -6247,12 +6371,20 @@ def break_repeated_decision(
     alt_move, alt_weight = alternative
     best_weight = sorted_policy[0][1]
 
-    # Demote the repeated action to just below the best distinct alternative.
+    # Demote the repeated action(s) just below the best distinct alternative.
+    # For multi-move cycles, demote ALL cycle members so the bot cannot
+    # immediately re-enter the cycle by picking a different member next turn.
     demoted_weight = alt_weight * 0.5
-    rebuilt = [
-        (m, demoted_weight if m == best_move else w)
-        for m, w in sorted_policy
-    ]
+    if is_cycling:
+        rebuilt = [
+            (m, demoted_weight if m.lower().strip() in recent_set else w)
+            for m, w in sorted_policy
+        ]
+    else:
+        rebuilt = [
+            (m, demoted_weight if m == best_move else w)
+            for m, w in sorted_policy
+        ]
     rebuilt.sort(key=lambda x: x[1], reverse=True)
 
     if trace_events is not None:
@@ -6983,11 +7115,37 @@ def search_time_num_battles_standard_battle(battle):
 
 
 # Maximum total time budget for a single decision (seconds)
-# Pokemon Showdown gives ~150s total per game, or ~45s per turn with timer on
-# We need to leave margin for network latency, state processing, etc.
-MAX_DECISION_TIME_SECONDS = 20  # Reduced from 30 to avoid timeout losses
-# When in time pressure (<60s remaining), use a much tighter budget
-MAX_DECISION_TIME_PRESSURE_SECONDS = 6  # Reduced from 8 for more safety margin
+# Pokemon Showdown gen9ou gives 120s PER SIDE of CUMULATIVE game clock (+ a short
+# grace). That clock bleeds across EVERY move in the game, so a ~30-turn game must
+# fit ALL its decisions inside ~120s -> ~4s/move average is the hard ceiling, and
+# anything above that forfeits the game to inactivity even from a winning position.
+# The previous 20s cap let a single move eat 1/6 of the entire game clock; with the
+# observed p90=17.8s / max=165s per-move latency this drained the clock in 6-15
+# moves and lost won games (confirmed via live replay + init.log decision-time
+# distribution, 2026-06-24). A shallower IN-TIME move strictly beats a perfect move
+# that forfeits to the clock, so we cap aggressively and ALWAYS submit a move with
+# comfortable timer margin. Env-overridable for A/B without a code change.
+def _env_int_default(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+# Hard wall-clock cap for one decision when NOT in explicit time pressure.
+# 6s keeps a 30-turn game well under 120s even before the game-aware per-turn
+# divisor kicks in, while still allowing real MCTS depth on normal turns.
+MAX_DECISION_TIME_SECONDS = _env_int_default("MAX_DECISION_TIME_SECONDS", 6)
+# When in time pressure (<60s remaining), use a much tighter budget.
+MAX_DECISION_TIME_PRESSURE_SECONDS = _env_int_default(
+    "MAX_DECISION_TIME_PRESSURE_SECONDS", 3
+)
+# Absolute floor on a decision's wall clock: never let the cap collapse so low
+# that we cannot even sample one shallow MCTS pass + pick a move.
+MIN_DECISION_TIME_SECONDS = 1.0
 
 
 def _get_fallback_move(battle: Battle) -> str:
@@ -7458,10 +7616,24 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         mcts_policy = {}
         mcts_meta = {}
         if sampled_battles:
+            # Hard wall-clock deadline for the WHOLE MCTS pass (all samples).
+            # We already spent `elapsed` seconds; reserve ~0.6s for policy
+            # selection + trace + the network round-trip back to Showdown so the
+            # move actually lands before our cumulative clock ticks. This is the
+            # binding guarantee that a decision can never bleed the game clock to
+            # a forfeit, independent of how badly the engine overshoots its
+            # requested per-sample ms.
+            elapsed_now = time.time() - start_time
+            mcts_wall_left = max(
+                MIN_DECISION_TIME_SECONDS,
+                time_budget - elapsed_now - 0.6,
+            )
+            mcts_deadline = time.monotonic() + mcts_wall_left
             mcts_policy, mcts_meta = _run_mcts_policy_pass(
                 sampled_battles,
                 per_sample_ms=search_time_per_battle,
                 max_samples=num_battles,
+                deadline=mcts_deadline,
             )
             trace["mcts_meta"] = mcts_meta
 
@@ -7482,6 +7654,13 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 }
 
             trace["mcts_policy_raw"] = dict(mcts_policy)
+
+            # Loss-derived matchup-memory bias (safe weights path): nudge the
+            # engine's own candidates toward pivoting away from opponent species
+            # that historically beat us. Bounded multiplicative reweight only.
+            mcts_policy = matchup_memory.bias_policy(
+                mcts_policy, battle, trace=trace
+            )
 
             choice = select_move_from_eval_scores(
                 mcts_policy,
@@ -7544,6 +7723,9 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 )
 
         trace["eval_scores_raw"] = dict(eval_scores)
+
+        # Loss-derived matchup-memory bias (safe weights path), eval fallback.
+        eval_scores = matchup_memory.bias_policy(eval_scores, battle, trace=trace)
 
         choice = select_move_from_eval_scores(
             eval_scores,

@@ -50,19 +50,32 @@ def main() -> int:
 
     artifacts = []
     losses = 0
+    infra_losses = 0
     for p in files:
         try:
             art = build_loss_artifact(load_replay(p), bot_username=bot)
-            artifacts.append(art)
-            if art.get("result") == "loss":
-                losses += 1
         except Exception as exc:
             log.debug("skip %s: %s", p.name, exc)
+            continue
+        # EXCLUDE infra-losses (inactivity/timeout/disconnect/forfeit/crash) from
+        # the matchup-bias corpus: a game lost to the CLOCK from a winning
+        # position must not bias the live policy away from that opponent species.
+        # Only real played-out results inform matchup memory.
+        if art.get("is_infra_loss"):
+            infra_losses += 1
+            continue
+        artifacts.append(art)
+        if art.get("result") == "loss":
+            losses += 1
 
     if not artifacts:
-        log.warning("no parseable replays in window=%d; leaving weights unchanged", WINDOW)
+        log.warning(
+            "no piloting artifacts in window=%d (infra_losses_excluded=%d); leaving weights unchanged",
+            WINDOW, infra_losses,
+        )
         return 0
 
+    log.info("infra-losses excluded from matchup corpus: %d", infra_losses)
     weights = matchup_memory.update_weights_from_artifacts(artifacts)
     n_flagged = sum(
         1 for sid in set(list(weights["bad_matchups"]) + list(weights["problem_pokemon"]))

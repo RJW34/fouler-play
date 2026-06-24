@@ -221,6 +221,21 @@ def _parse_time_left_seconds(text: str) -> int | None:
     if "opponent" in lower:
         return None
 
+    # Showdown sends our side's clock as e.g.
+    #   "Time left: 50 sec this turn | 50 sec total"
+    # The CUMULATIVE GAME CLOCK is the "... total" value -- that is the clock
+    # that bleeds to zero and forfeits the game. Early in a game the per-turn and
+    # total happen to coincide, but once the per-turn timer resets to a higher
+    # value than the dwindling total, grabbing the FIRST "X sec" (this turn) would
+    # over-estimate how much game time we have left and under-protect against the
+    # forfeit. Prefer the "total" figure whenever it is present.
+    total_match = re.search(r"(\d+)\s*sec(?:onds?)?\s*total", lower)
+    if total_match:
+        try:
+            return int(total_match.group(1))
+        except ValueError:
+            pass
+
     # Try mm:ss format first (e.g., "1:30")
     match = re.search(r"(\d+)\s*:\s*(\d+)", text)
     if match:

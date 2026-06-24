@@ -304,10 +304,34 @@ Format response as structured improvement report with battle citations.
         return prompt
 
     def collect_loss_learning_artifacts(self, last_n: int) -> List[Dict]:
-        """Build deterministic loss artifacts from local replay JSONs only."""
+        """Build deterministic loss artifacts from local replay JSONs.
+
+        ONLY real played-out (piloting) losses are returned for engine/piloting
+        learning. Infra-losses (inactivity/timeout/disconnect/forfeit/crash) are
+        EXCLUDED -- they reflect latency/network health, not decision quality, and
+        contaminate engine A/B and improve loops if ingested. The infra-loss rate
+        is tracked separately as a latency-health metric via
+        collect_loss_termination_metrics().
+        """
+        artifacts, _metrics = self.collect_loss_artifacts_and_metrics(last_n)
+        return artifacts
+
+    def collect_loss_artifacts_and_metrics(self, last_n: int) -> tuple[List[Dict], Dict]:
+        """Return (piloting_loss_artifacts, termination_metrics).
+
+        piloting_loss_artifacts: cleaned corpus -- played-out losses ONLY.
+        termination_metrics: infra/latency health, separate from engine signal.
+        """
         artifacts: List[Dict] = []
         battles = self.get_battle_stats()
         recent = battles[-last_n:] if len(battles) > last_n else battles
+        metrics = {
+            "losses_seen": 0,            # losses with a local replay we could classify
+            "piloting_losses": 0,        # real played-out losses (kept)
+            "infra_losses": 0,           # inactivity/timeout/disconnect/forfeit/crash (excluded)
+            "by_termination": {},        # termination -> count
+            "excluded_replay_ids": [],   # infra-loss replay ids (for audit)
+        }
         for battle in recent:
             if battle.get("result") != "loss":
                 continue
@@ -321,28 +345,83 @@ Format response as structured improvement report with battle citations.
             try:
                 with local_file.open("r", encoding="utf-8") as handle:
                     replay_data = json.load(handle)
-                artifacts.append(
-                    build_loss_artifact(
-                        replay_data,
-                        bot_username=self.bot_username,
-                        team_file=battle.get("team_file"),
-                    )
+                artifact = build_loss_artifact(
+                    replay_data,
+                    bot_username=self.bot_username,
+                    team_file=battle.get("team_file"),
                 )
             except Exception as exc:
                 print(f"Skipping mechanics-backed loss artifact for {replay_id}: {exc}")
-        return artifacts
+                continue
+
+            metrics["losses_seen"] += 1
+            termination = str(artifact.get("termination") or "unknown")
+            metrics["by_termination"][termination] = metrics["by_termination"].get(termination, 0) + 1
+
+            if artifact.get("is_infra_loss"):
+                # INFRA loss -> EXCLUDE from the engine/piloting learning corpus.
+                metrics["infra_losses"] += 1
+                metrics["excluded_replay_ids"].append(replay_id)
+                continue
+
+            metrics["piloting_losses"] += 1
+            artifacts.append(artifact)
+
+        seen = max(1, metrics["losses_seen"])
+        metrics["infra_loss_rate"] = round(metrics["infra_losses"] / seen, 4)
+        metrics["timeout_loss_rate"] = round(
+            metrics["by_termination"].get("inactivity", 0)
+            + metrics["by_termination"].get("timeout", 0),
+            4,
+        ) / seen
+        return artifacts, metrics
+
+    def collect_loss_termination_metrics(self, last_n: int) -> Dict:
+        """Latency/infra health metrics derived from recent losses.
+
+        A high infra/timeout-loss rate means FIX THE LATENCY, not the engine.
+        """
+        _artifacts, metrics = self.collect_loss_artifacts_and_metrics(last_n)
+        return metrics
 
     def build_loss_learning_section(self, last_n: int) -> str:
-        """Return a report-ready deterministic loss-learning summary."""
-        artifacts = self.collect_loss_learning_artifacts(last_n)
+        """Return a report-ready deterministic loss-learning summary.
+
+        Engine/piloting lessons are derived ONLY from played-out losses; infra
+        (latency/timeout) losses are reported as a SEPARATE health metric.
+        """
+        artifacts, metrics = self.collect_loss_artifacts_and_metrics(last_n)
+
+        # Infra/latency health -- always reported, even when there are no
+        # piloting losses, because a high timeout-loss rate is the signal to fix
+        # latency rather than the engine.
+        infra_lines = [
+            "Loss-termination health (infra vs piloting):",
+            f"- Losses classified: {metrics['losses_seen']}"
+            f" | piloting (kept): {metrics['piloting_losses']}"
+            f" | infra (excluded): {metrics['infra_losses']}",
+            f"- INFRA-LOSS RATE: {metrics.get('infra_loss_rate', 0.0):.1%}"
+            f"  (timeout/inactivity rate: {metrics.get('timeout_loss_rate', 0.0):.1%})",
+            f"- By termination: {metrics['by_termination']}",
+            "- NOTE: a high infra/timeout rate means FIX LATENCY, not the engine; "
+            "infra losses are excluded from the lessons below.",
+        ]
+
         if not artifacts:
-            return (
-                "No local loss replay artifacts were available. Detailed mechanics-backed "
-                "learning is blocked until replay JSON/logs are saved locally."
+            return "\n".join(
+                infra_lines
+                + [
+                    "",
+                    "No PLAYED-OUT loss artifacts were available for engine learning "
+                    "(all recent losses were infra/latency, or no replay JSON saved). "
+                    "Mechanics-backed engine learning is paused until a real played-out "
+                    "loss is captured.",
+                ]
             )
         summary = aggregate_loss_lessons(artifacts, min_repeats=2)
-        lines = [
-            f"Local loss artifacts reviewed: {len(artifacts)}",
+        lines = infra_lines + [
+            "",
+            f"Played-out loss artifacts reviewed (engine corpus): {len(artifacts)}",
             f"Escalation threshold: {summary['min_repeats']} repeated source-backed losses",
         ]
         if summary["proven_lessons"]:

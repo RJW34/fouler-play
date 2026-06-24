@@ -134,6 +134,96 @@ class ClaimValidation:
     evidence: list[dict[str, Any]] = field(default_factory=list)
 
 
+# Loss-termination taxonomy. INFRA losses are caused by latency/timeouts/network,
+# NOT by piloting/engine decisions, so they MUST be excluded from the engine/
+# piloting learning corpus (a high infra-loss rate means "fix latency", not "fix
+# the engine"). PILOTING losses are real played-out games and are the ONLY losses
+# that should inform decision/engine improvement.
+INFRA_TERMINATIONS = frozenset({"inactivity", "timeout", "disconnect", "crash", "forfeit"})
+PILOTING_TERMINATIONS = frozenset({"played_out"})
+
+
+def classify_loss_termination(
+    *,
+    result: str,
+    bot_name: str,
+    winner: str,
+    log_lines: list[str],
+    bot_move_count: int,
+    total_turns: int,
+) -> tuple[str, str, str]:
+    """Classify HOW a battle ended, to separate infra/latency losses from real
+    played-out (piloting) losses.
+
+    Returns (termination, loss_class, evidence_text):
+      termination : inactivity|timeout|disconnect|crash|forfeit|played_out|unknown
+      loss_class  : "infra" (exclude from engine learning) | "piloting" (keep) | ""
+      evidence    : the protocol line / heuristic that drove the classification
+
+    Detection is grounded in the Showdown protocol the bot actually receives
+    (verified on live replays 2026-06-24), in priority order:
+      1. Explicit "lost due to inactivity" / "<bot> forfeited." server messages.
+      2. Inactivity-timer depletion against the bot ("<bot> has 0 seconds left").
+      3. Disconnect markers in the log.
+      4. Heuristic: our move-count is abnormally low for the turn count (we stopped
+         submitting moves => almost certainly a latency/timeout death), even if the
+         server's terminal message was not captured in the saved log.
+    Anything else that reached a normal |win| is treated as a played-out loss.
+    """
+    bot_id = normalize_id(bot_name)
+    lowered = "\n".join(log_lines).lower()
+
+    def _mentions_bot(line: str) -> bool:
+        # Match the bot by display name appearing in the message text.
+        return bool(bot_name) and bot_name.lower() in line.lower()
+
+    if result != "loss":
+        return "played_out", "", ""
+
+    # 1 + 2: explicit inactivity / forfeit / timeout messages against the bot.
+    for line in log_lines:
+        ll = line.lower()
+        if "|-message|" in ll or "|inactive|" in ll:
+            if "lost due to inactivity" in ll and _mentions_bot(line):
+                return "inactivity", "infra", line.strip()
+            if "forfeited" in ll and _mentions_bot(line):
+                return "forfeit", "infra", line.strip()
+            # "<bot> has 0 seconds left." == our cumulative clock hit zero.
+            m = re.search(r"has\s+0\s+seconds?\s+left", ll)
+            if m and _mentions_bot(line):
+                return "timeout", "infra", line.strip()
+
+    # Generic inactivity/forfeit anywhere (winner-side phrasing varies); only
+    # attribute to infra when the bot is the loser (it is, result == loss).
+    if "lost due to inactivity" in lowered:
+        return "inactivity", "infra", "lost due to inactivity"
+    if re.search(r"\bforfeited\b", lowered) and not _winner_is_bot(winner, bot_name):
+        # A forfeit recorded as our loss is an infra/operational loss.
+        return "forfeit", "infra", "forfeited"
+
+    # 3: disconnect markers.
+    if "disconnect" in lowered or "connection" in lowered and "lost" in lowered:
+        return "disconnect", "infra", "disconnect marker in log"
+
+    # 4: heuristic move-count check. In a genuine played-out gen9ou loss the bot
+    # submits ~1 action per turn. If we made far fewer moves than turns elapsed,
+    # we stopped responding (latency/timeout death) regardless of the captured
+    # terminal message. Require a minimum game length so very short stomps
+    # (legitimate fast losses) are not misflagged.
+    if total_turns >= 6 and bot_move_count <= max(2, total_turns * 0.4):
+        return (
+            "inactivity",
+            "infra",
+            f"low move-count: {bot_move_count} moves over {total_turns} turns",
+        )
+
+    return "played_out", "piloting", ""
+
+
+def _winner_is_bot(winner: str, bot_name: str) -> bool:
+    return bool(winner) and normalize_id(winner) == normalize_id(bot_name)
+
+
 @dataclass
 class LossEvidence:
     replay_id: str
@@ -155,6 +245,15 @@ class LossEvidence:
     decisive_turns: list[dict[str, Any]]
     unresolved_unknowns: list[dict[str, Any]]
     mechanics_claims: list[dict[str, Any]]
+    # Termination classification (FIX 2, 2026-06-24). Defaulted fields MUST come
+    # after the required ones above.
+    #   termination: inactivity|timeout|disconnect|crash|forfeit|played_out|unknown
+    #   loss_class:  "infra" (exclude from engine learning) | "piloting" (keep) | "" (non-loss)
+    #   is_infra_loss: convenience bool == (result == loss and loss_class == infra)
+    termination: str = "unknown"
+    loss_class: str = ""
+    is_infra_loss: bool = False
+    termination_evidence: str = ""
     source_contract: dict[str, str] = field(default_factory=lambda: GROUNDING_SOURCES.copy())
 
 
@@ -514,6 +613,25 @@ class LossLogIngestor:
         mechanics = LocalMechanics(format_id=str(replay_data.get("formatid") or replay_data.get("format") or "gen9ou"))
         claims = self._derive_claims(mechanics, bot_side, key_kos, damage_events, hazards)
 
+        # --- Termination classification (FIX 2): separate infra/latency losses
+        # (inactivity/timeout/disconnect/forfeit) from real played-out piloting
+        # losses so only the latter feed engine/piloting improvement. ---
+        bot_move_count = 0
+        for _turn, _moves in move_orders.items():
+            for _entry in _moves:
+                if _entry.get("side") == bot_side:
+                    bot_move_count += 1
+        bot_display_name = players.get(bot_side, "") or self.bot_username
+        termination, loss_class, term_evidence = classify_loss_termination(
+            result=result,
+            bot_name=bot_display_name,
+            winner=winner,
+            log_lines=log_lines,
+            bot_move_count=bot_move_count,
+            total_turns=current_turn,
+        )
+        is_infra_loss = result == "loss" and loss_class == "infra"
+
         if team_file:
             revealed["__team_file__"] = {"path": team_file, "moves": [], "items": [], "ability": None, "status": None}
 
@@ -524,6 +642,10 @@ class LossLogIngestor:
             bot_side=bot_side,
             result=result,
             winner=winner,
+            termination=termination,
+            loss_class=loss_class,
+            is_infra_loss=is_infra_loss,
+            termination_evidence=term_evidence,
             players=players,
             teams=teams,
             revealed_sets=dict(revealed),
