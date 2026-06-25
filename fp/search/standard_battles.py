@@ -30,7 +30,89 @@ from data.pkmn_sets import (
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Per-decision memoization of the Bayesian candidate-set distribution.
+# bayesian_set_probabilities() is the dominant pre-MCTS sampling cost (candidate
+# gathering + compatibility filtering + reverse-damage validation), and it was
+# recomputed once PER opponent Pokemon PER sampled battle. Within a single
+# decision the revealed information is identical across the N samples, so the
+# returned distribution is identical -- only the random draw downstream differs.
+# We memoize the distribution per (pokemon revealed-signature) for the lifetime
+# of one decision; prepare_battles()/prepare_random_battles() bump the generation
+# so the cache never leaks stale info across decisions (revealed info changes).
+_BAYES_CACHE_GEN = 0
+_BAYES_CACHE: dict = {}
+# The cache is ONLY consulted while a sampling decision is active (between
+# begin_sampling_decision() and end_sampling_decision()). Outside that window --
+# e.g. direct callers or unit tests that mutate the underlying datasets -- the
+# distribution is always recomputed, so a dataset change can never serve a stale
+# cached result. Within one decision the datasets are static, so caching is safe.
+_BAYES_CACHE_ACTIVE = False
+
+
+def begin_sampling_decision() -> None:
+    """Reset + arm the per-decision Bayesian distribution cache. Call once per decision."""
+    global _BAYES_CACHE_GEN, _BAYES_CACHE, _BAYES_CACHE_ACTIVE
+    _BAYES_CACHE_GEN += 1
+    _BAYES_CACHE = {}
+    _BAYES_CACHE_ACTIVE = True
+
+
+def end_sampling_decision() -> None:
+    """Disarm + clear the cache once a decision's sampling loop has finished."""
+    global _BAYES_CACHE, _BAYES_CACHE_ACTIVE
+    _BAYES_CACHE_ACTIVE = False
+    _BAYES_CACHE = {}
+
+
+def _pkmn_reveal_signature(pkmn: Pokemon):
+    try:
+        moves = tuple(sorted(m.name for m in pkmn.moves))
+    except Exception:
+        moves = tuple()
+    sr = getattr(pkmn, "speed_range", None)
+    sr_min = getattr(sr, "min", None)
+    sr_max = getattr(sr, "max", None)
+    try:
+        hp = tuple(sorted(getattr(pkmn, "hidden_power_possibilities", []) or []))
+    except Exception:
+        hp = tuple()
+    return (
+        getattr(pkmn, "name", None),
+        moves,
+        hp,
+        getattr(pkmn, "item", None),
+        getattr(pkmn, "ability", None),
+        bool(getattr(pkmn, "terastallized", False)),
+        getattr(pkmn, "tera_type", None),
+        sr_min,
+        sr_max,
+        getattr(pkmn, "level", None),
+        tuple(sorted(getattr(pkmn, "impossible_items", []) or [])),
+        tuple(sorted(getattr(pkmn, "impossible_abilities", []) or [])),
+    )
+
+
 def bayesian_set_probabilities(pkmn: Pokemon, battle: Battle = None) -> list:
+    # Per-decision memo: identical revealed signature -> identical distribution.
+    # Only active inside a sampling decision (datasets static); otherwise always
+    # recompute so a dataset change can never serve a stale cached result.
+    if not _BAYES_CACHE_ACTIVE:
+        return _bayesian_set_probabilities_uncached(pkmn, battle)
+    try:
+        key = _pkmn_reveal_signature(pkmn)
+        cached = _BAYES_CACHE.get(key)
+        if cached is not None:
+            return cached
+    except Exception:
+        key = None
+    result = _bayesian_set_probabilities_uncached(pkmn, battle)
+    if key is not None:
+        _BAYES_CACHE[key] = result
+    return result
+
+
+def _bayesian_set_probabilities_uncached(pkmn: Pokemon, battle: Battle = None) -> list:
     """
     Calculate Bayesian posterior probabilities for each possible set given revealed information.
     
@@ -644,30 +726,45 @@ def sample_mega_evolution(battler: Battler, index: int):
     pkmn.mega_name = mega_pkmn_name
 
 
-def prepare_battles(battle: Battle, num_battles: int) -> list[(Battle, float)]:
+def prepare_battles(battle: Battle, num_battles: int, deadline: float | None = None) -> list[(Battle, float)]:
+    import time as _time
+    begin_sampling_decision()
     sampled_battles = []
     weights = []
-    for index in range(num_battles):
-        logger.info("Sampling battle {}".format(index))
-        battle_copy = deepcopy(battle)
-        if battle_copy.mega_evolve_possible():
-            sample_mega_evolution(battle_copy.opponent, index)
+    try:
+        for index in range(num_battles):
+            # Sampling is the dominant pre-MCTS cost (deepcopy + Bayesian set draw
+            # per opponent mon). Stop adding samples once we hit the sampling
+            # deadline so the surrounding decision budget is never exhausted before
+            # MCTS runs -- but ALWAYS keep at least one sample so MCTS has a state.
+            if deadline is not None and index > 0 and _time.monotonic() >= deadline:
+                logger.info(
+                    "Sampling stopped early at %d/%d (sampling budget spent)",
+                    index, num_battles,
+                )
+                break
+            logger.info("Sampling battle {}".format(index))
+            battle_copy = deepcopy(battle)
+            if battle_copy.mega_evolve_possible():
+                sample_mega_evolution(battle_copy.opponent, index)
 
-        sample_pokemon(battle_copy.opponent.active)
-        for pkmn in filter(lambda x: x.is_alive(), battle_copy.opponent.reserve):
-            sample_pokemon(pkmn)
+            sample_pokemon(battle_copy.opponent.active)
+            for pkmn in filter(lambda x: x.is_alive(), battle_copy.opponent.reserve):
+                sample_pokemon(pkmn)
 
-        if battle.generation in constants.NO_TEAM_PREVIEW_GENS:
-            populate_standardbattle_unrevealed_pkmn(battle_copy)
-        battle_copy.opponent.lock_moves()
-        # Compute sampling weight from opponent sets (product of per-Pokemon weights)
-        battle_weight = 1.0
-        for pkmn in [battle_copy.opponent.active] + list(battle_copy.opponent.reserve):
-            if pkmn is None:
-                continue
-            battle_weight *= max(1.0, getattr(pkmn, "sample_weight", 1.0))
-        sampled_battles.append(battle_copy)
-        weights.append(battle_weight)
+            if battle.generation in constants.NO_TEAM_PREVIEW_GENS:
+                populate_standardbattle_unrevealed_pkmn(battle_copy)
+            battle_copy.opponent.lock_moves()
+            # Compute sampling weight from opponent sets (product of per-Pokemon weights)
+            battle_weight = 1.0
+            for pkmn in [battle_copy.opponent.active] + list(battle_copy.opponent.reserve):
+                if pkmn is None:
+                    continue
+                battle_weight *= max(1.0, getattr(pkmn, "sample_weight", 1.0))
+            sampled_battles.append(battle_copy)
+            weights.append(battle_weight)
+    finally:
+        end_sampling_decision()
 
     # Normalize weights
     total = sum(weights) if weights else 0

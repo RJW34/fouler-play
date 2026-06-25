@@ -38,12 +38,19 @@ def get_all_remaining_sets_for_revealed_pkmn(battle: Battle) -> dict:
     return ret
 
 
-def prepare_random_battles(battle: Battle, num_battles: int) -> list[(Battle, float)]:
+def prepare_random_battles(battle: Battle, num_battles: int, deadline: float | None = None) -> list[(Battle, float)]:
+    import time as _time
     revealed_pkmn_sets = get_all_remaining_sets_for_revealed_pkmn(deepcopy(battle))
 
     sampled_battles = []
     weights = []
     for index in range(num_battles):
+        if deadline is not None and index > 0 and _time.monotonic() >= deadline:
+            logger.info(
+                "Sampling stopped early at %d/%d (sampling budget spent)",
+                index, num_battles,
+            )
+            break
         logger.info("Sampling battle {}".format(index))
         battle_copy = deepcopy(battle)
 

@@ -7292,6 +7292,8 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         MIN_DECISION_TIME_SECONDS, time_budget - 0.4
     )
     trace["time_budget"] = budget_meta
+    _stage_t0 = time.monotonic()
+    trace["stage_timing"] = {}
     in_time_pressure = (
         battle.time_remaining is not None and battle.time_remaining <= 60
     )
@@ -7635,13 +7637,30 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         # run. This replaces the old game-clock estimate with the authoritative
         # hard_deadline computed at the top from battle.time_remaining.
         budget_left = max(0.0, _time_left())
-        # When the clock is tight, run FEWER samples so each can still be useful
-        # and the whole pass finishes in time (prepare_fn + per-sample MCTS both
-        # scale with sample count).
-        if budget_left < 1.5:
-            num_battles = max(1, min(num_battles, max(FoulPlayConfig.parallelism, 1)))
-        elif budget_left < 3.0:
-            num_battles = max(1, min(num_battles, max(FoulPlayConfig.parallelism, 1) * 2))
+        # Opponent-set SAMPLING (deepcopy + Bayesian set draw per mon) is the
+        # dominant pre-MCTS cost and -- unlike the inner MCTS pass -- it was NOT
+        # bound to the decision budget. Live stage-timing showed prepare_fn for
+        # 6 samples consuming the ENTIRE budget (p90 sampling 4.4s, max 5.6s on a
+        # 6s budget) even at a full 150s clock, leaving negative time for MCTS and
+        # dropping ~49% of moves to 1-ply eval_fallback. We now (1) reserve only a
+        # FRACTION of the budget for sampling so MCTS always gets the rest, (2)
+        # pre-cap the sample count by a conservative measured per-sample cost, and
+        # (3) hand prepare_fn a hard sampling deadline so it stops early (always
+        # keeping >=1 sample). MCTS then runs on whatever real states we sampled.
+        SAMPLING_BUDGET_FRACTION = float(
+            os.getenv("DECISION_SAMPLING_BUDGET_FRACTION", "0.5")
+        )
+        PER_SAMPLE_COST_EST_S = float(
+            os.getenv("DECISION_PER_SAMPLE_COST_EST_S", "0.7")
+        )
+        sampling_budget_s = max(0.0, budget_left * SAMPLING_BUDGET_FRACTION)
+        cost_capped = max(1, int(sampling_budget_s / max(PER_SAMPLE_COST_EST_S, 0.05)))
+        num_battles = max(1, min(num_battles, cost_capped))
+        # Hard wall-clock stop for the sampling loop itself.
+        sampling_deadline = min(
+            hard_deadline,
+            time.monotonic() + max(PER_SAMPLE_COST_EST_S, sampling_budget_s),
+        )
         per_sample_budget_s = budget_left / max(num_battles, 1)
         game_aware_ms = max(50, int(per_sample_budget_s * 1000))
         if game_aware_ms < search_time_per_battle:
@@ -7662,6 +7681,11 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
             search_time_per_battle = boosted
 
         # Out of time before we even sample? Skip straight to the fast fallback.
+        try:
+            trace["stage_timing"]["pre_sampling_s"] = round(time.monotonic() - _stage_t0, 3)
+        except Exception:
+            pass
+        _sampling_t0 = time.monotonic()
         if _out_of_time(reserve=0.2):
             logger.warning(
                 "No time left for MCTS (%.2fs budget left), using eval fallback",
@@ -7670,12 +7694,17 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
             sampled_battles = []
         else:
             try:
-                sampled_battles = prepare_fn(battle, num_battles)
+                sampled_battles = prepare_fn(battle, num_battles, deadline=sampling_deadline)
             except Exception as e:
                 logger.warning(f"Battle sampling failed, using original: {e}")
                 sampled_battles = [(battle, 1.0)]
 
         # Re-check after sampling (prepare_fn itself can be slow).
+        try:
+            trace["stage_timing"]["sampling_s"] = round(time.monotonic() - _sampling_t0, 3)
+            trace["stage_timing"]["num_sampled"] = len(sampled_battles)
+        except Exception:
+            pass
         if sampled_battles and _out_of_time(reserve=0.2):
             logger.warning(
                 "No time left after sampling (%.2fs budget left), using eval fallback",
