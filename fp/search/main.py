@@ -7147,6 +7147,71 @@ MAX_DECISION_TIME_PRESSURE_SECONDS = _env_int_default(
 # that we cannot even sample one shallow MCTS pass + pick a move.
 MIN_DECISION_TIME_SECONDS = 1.0
 
+# ---------------------------------------------------------------------------
+# CLOCK-AWARE PER-DECISION BUDGET (the binding fix)
+# ---------------------------------------------------------------------------
+# Showdown gen9ou gives each side a CUMULATIVE clock (~120-150s + grace) that
+# bleeds across EVERY move in the game. The static MAX_DECISION_TIME_SECONDS cap
+# above did NOT actually bind in production: live ladder decisions were observed
+# at p90=24.8s, p99=99s, max=455s even with a 6s cap, because the cap only ever
+# bounded the inner MCTS pass while the surrounding stages (state sampling, the
+# endgame solver, the 1-ply eval-fallback loop, deepcopies) ran UNbounded. A few
+# such overshoots in a row drained the side clock to a forfeit ("lost due to
+# inactivity") even from winning positions and even in SHORT (turn-3) games.
+#
+# The fix: derive ONE wall-clock budget per decision from the remaining side
+# clock divided by the expected remaining turns, with a safety reserve for the
+# network round-trip + move selection, and enforce it as a single monotonic
+# deadline across ALL stages of find_best_move (not just MCTS).
+
+DECISION_EXPECTED_TURNS_LEFT = _env_int_default("DECISION_EXPECTED_TURNS_LEFT", 18)
+DECISION_CLOCK_RESERVE_SECONDS = float(
+    os.getenv("DECISION_CLOCK_RESERVE_SECONDS", "8")
+)
+DECISION_UNKNOWN_CLOCK_ASSUMED_SECONDS = float(
+    os.getenv("DECISION_UNKNOWN_CLOCK_ASSUMED_SECONDS", "45")
+)
+
+
+def _compute_decision_budget_seconds(battle: Battle) -> tuple[float, dict]:
+    """Wall-clock seconds this ONE decision may spend, bound to the side clock.
+
+    budget = clamp( (remaining_side_clock - reserve) / expected_remaining_turns,
+                    MIN_DECISION_TIME_SECONDS, MAX_DECISION_TIME_SECONDS )
+    """
+    clock = battle.time_remaining
+    clock_known = clock is not None
+    if not clock_known:
+        clock = DECISION_UNKNOWN_CLOCK_ASSUMED_SECONDS
+
+    clock = float(clock)
+    turn_num = battle.turn if isinstance(battle.turn, int) and battle.turn > 0 else 0
+    est_turns_left = max(2, DECISION_EXPECTED_TURNS_LEFT - turn_num // 2)
+
+    usable = clock - DECISION_CLOCK_RESERVE_SECONDS
+    if usable <= 0:
+        budget = MIN_DECISION_TIME_SECONDS
+    else:
+        budget = usable / est_turns_left
+
+    budget = max(MIN_DECISION_TIME_SECONDS, min(float(MAX_DECISION_TIME_SECONDS), budget))
+
+    if clock_known:
+        if clock <= 20:
+            budget = min(budget, MIN_DECISION_TIME_SECONDS)
+        elif clock <= 35:
+            budget = min(budget, 1.5)
+        elif clock <= 60:
+            budget = min(budget, float(MAX_DECISION_TIME_PRESSURE_SECONDS))
+
+    meta = {
+        "clock_known": clock_known,
+        "remaining_clock_s": round(clock, 1),
+        "est_turns_left": est_turns_left,
+        "budget_s": round(budget, 2),
+    }
+    return budget, meta
+
 
 def _get_fallback_move(battle: Battle) -> str:
     """
@@ -7217,19 +7282,34 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         battle.user.active = battle.user.reserve.pop(0)
         battle.opponent.active = battle.opponent.reserve.pop(0)
 
-    # Determine time budget
-    in_time_pressure = battle.time_remaining is not None and battle.time_remaining <= 60
-    time_budget = (
-        MAX_DECISION_TIME_PRESSURE_SECONDS
-        if in_time_pressure
-        else MAX_DECISION_TIME_SECONDS
+    # Determine time budget -- bound to the remaining SIDE CLOCK, not a static
+    # cap. This is the single number that every stage below must finish within.
+    time_budget, budget_meta = _compute_decision_budget_seconds(battle)
+    # Single monotonic wall-clock deadline enforced across ALL stages (sampling,
+    # endgame solver, MCTS, eval fallback). Reserve a sliver for selection + the
+    # network round-trip so the move actually LANDS inside the budget.
+    hard_deadline = time.monotonic() + max(
+        MIN_DECISION_TIME_SECONDS, time_budget - 0.4
+    )
+    trace["time_budget"] = budget_meta
+    in_time_pressure = (
+        battle.time_remaining is not None and battle.time_remaining <= 60
     )
 
-    if in_time_pressure:
+    if in_time_pressure or not budget_meta["clock_known"] or time_budget <= MAX_DECISION_TIME_PRESSURE_SECONDS:
         logger.warning(
-            f"TIME PRESSURE: {battle.time_remaining}s remaining, "
-            f"budget={time_budget}s"
+            "TIME BUDGET: clock=%s%s, est_turns_left=%d, budget=%.2fs",
+            battle.time_remaining if budget_meta["clock_known"] else "unknown",
+            "" if budget_meta["clock_known"] else " (assumed)",
+            budget_meta["est_turns_left"],
+            time_budget,
         )
+
+    def _time_left() -> float:
+        return hard_deadline - time.monotonic()
+
+    def _out_of_time(reserve: float = 0.0) -> bool:
+        return _time_left() <= reserve
 
     # Detect opponent's abilities before we start sampling
     # (sampling may change the ability, so check the original battle state)
@@ -7459,11 +7539,15 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
     # =========================================================================
     # PHASE 4.1: ENDGAME SOLVER
     # =========================================================================
-    # Try to solve simple endgames deterministically before MCTS
+    # Try to solve simple endgames deterministically before MCTS.
+    # The endgame solver can search combinatorially and is OPTIONAL -- skip it
+    # entirely when the clock budget is tight so it can never blow the deadline.
     try:
         from fp.search.endgame import is_endgame, solve_endgame
 
-        if is_endgame(battle, ENDGAME_MAX_POKEMON):
+        if _out_of_time(reserve=2.0):
+            logger.info("Skipping endgame solver (%.1fs budget left)", _time_left())
+        elif is_endgame(battle, ENDGAME_MAX_POKEMON):
             solution = solve_endgame(battle)
             if solution and solution.is_deterministic and solution.best_move:
                 logger.info(
@@ -7546,52 +7630,62 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         # Instead of burning 3000ms/sample and panicking at <60s, proactively
         # scale per-sample time so we never run the clock down.
         turn_num = battle.turn if isinstance(battle.turn, int) and battle.turn > 0 else 0
-        if battle.time_remaining is not None:
-            game_remaining_s = battle.time_remaining
-        else:
-            # Estimate conservatively: assume ~5s spent per turn so far
-            game_remaining_s = max(210.0 - turn_num * 5.0, 30.0)
-        est_turns_left = max(5, 50 - turn_num)
-        # Budget per turn: divide remaining time, leave 2s for overhead
-        turn_budget_s = (game_remaining_s / est_turns_left) - 2.0
-        if turn_budget_s > 0:
-            game_aware_ms = int((turn_budget_s * 1000) / max(num_battles, 1))
-            game_aware_ms = max(game_aware_ms, 500)  # Floor: never below 500ms
-            if game_aware_ms < search_time_per_battle:
-                logger.info(
-                    "Game-aware budget: %dms/sample (game_remaining=%.0fs, "
-                    "turn=%d, est_left=%d, was %dms)",
-                    game_aware_ms, game_remaining_s, turn_num,
-                    est_turns_left, search_time_per_battle,
-                )
-                search_time_per_battle = game_aware_ms
+        # Per-sample ms is bound to the SINGLE wall-clock budget for this whole
+        # decision: divide the time we still have across the samples we intend to
+        # run. This replaces the old game-clock estimate with the authoritative
+        # hard_deadline computed at the top from battle.time_remaining.
+        budget_left = max(0.0, _time_left())
+        # When the clock is tight, run FEWER samples so each can still be useful
+        # and the whole pass finishes in time (prepare_fn + per-sample MCTS both
+        # scale with sample count).
+        if budget_left < 1.5:
+            num_battles = max(1, min(num_battles, max(FoulPlayConfig.parallelism, 1)))
+        elif budget_left < 3.0:
+            num_battles = max(1, min(num_battles, max(FoulPlayConfig.parallelism, 1) * 2))
+        per_sample_budget_s = budget_left / max(num_battles, 1)
+        game_aware_ms = max(50, int(per_sample_budget_s * 1000))
+        if game_aware_ms < search_time_per_battle:
+            logger.info(
+                "Clock-aware budget: %dms/sample (budget_left=%.1fs, turn=%d, "
+                "samples=%d, was %dms)",
+                game_aware_ms, budget_left, turn_num, num_battles,
+                search_time_per_battle,
+            )
+            search_time_per_battle = game_aware_ms
 
-        # Invest more in high-stakes turns (but respect game-aware cap)
+        # Invest more in high-stakes turns, but NEVER above the per-sample budget.
         high_stakes = ability_state.opponent_active_is_threat or ability_state.ko_line_available
         if high_stakes and not in_time_pressure:
             boosted = int(search_time_per_battle * 1.5)
             boosted = min(boosted, FoulPlayConfig.search_time_ms * 2)
-            # Don't let high-stakes boost exceed game-aware budget
-            if turn_budget_s > 0:
-                max_high_stakes_ms = int((turn_budget_s * 1000) / max(num_battles, 1))
-                boosted = min(boosted, max_high_stakes_ms)
+            boosted = min(boosted, max(50, int(per_sample_budget_s * 1000)))
             search_time_per_battle = boosted
 
-        try:
-            sampled_battles = prepare_fn(battle, num_battles)
-        except Exception as e:
-            logger.warning(f"Battle sampling failed, using original: {e}")
-            sampled_battles = [(battle, 1.0)]
+        # Out of time before we even sample? Skip straight to the fast fallback.
+        if _out_of_time(reserve=0.2):
+            logger.warning(
+                "No time left for MCTS (%.2fs budget left), using eval fallback",
+                _time_left(),
+            )
+            sampled_battles = []
+        else:
+            try:
+                sampled_battles = prepare_fn(battle, num_battles)
+            except Exception as e:
+                logger.warning(f"Battle sampling failed, using original: {e}")
+                sampled_battles = [(battle, 1.0)]
 
-        # Check time budget
-        elapsed = time.time() - start_time
-        remaining_budget = time_budget - elapsed - 2.0
-        if remaining_budget <= 0:
-            logger.warning("No time left for MCTS, using eval fallback")
-            sampled_battles = []  # Signal to skip MCTS
+        # Re-check after sampling (prepare_fn itself can be slow).
+        if sampled_battles and _out_of_time(reserve=0.2):
+            logger.warning(
+                "No time left after sampling (%.2fs budget left), using eval fallback",
+                _time_left(),
+            )
+            sampled_battles = []
 
-        # Cap search time to fit within budget
-        if sampled_battles and remaining_budget > 0:
+        # Cap per-sample search time to whatever budget remains right now.
+        if sampled_battles:
+            remaining_budget = max(0.0, _time_left())
             max_per_battle_ms = int(
                 (remaining_budget * 1000) / max(len(sampled_battles), 1)
             )
@@ -7605,7 +7699,8 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         trace["search"] = {
             "num_battles": len(sampled_battles),
             "search_time_ms": search_time_per_battle,
-            "time_budget_s": time_budget,
+            "time_budget_s": round(time_budget, 2),
+            "budget_left_s": round(_time_left(), 2),
         }
         logger.info(
             "Sampling {} simulated battles (MCTS) at {}ms each".format(
@@ -7616,24 +7711,15 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         mcts_policy = {}
         mcts_meta = {}
         if sampled_battles:
-            # Hard wall-clock deadline for the WHOLE MCTS pass (all samples).
-            # We already spent `elapsed` seconds; reserve ~0.6s for policy
-            # selection + trace + the network round-trip back to Showdown so the
-            # move actually lands before our cumulative clock ticks. This is the
-            # binding guarantee that a decision can never bleed the game clock to
-            # a forfeit, independent of how badly the engine overshoots its
-            # requested per-sample ms.
-            elapsed_now = time.time() - start_time
-            mcts_wall_left = max(
-                MIN_DECISION_TIME_SECONDS,
-                time_budget - elapsed_now - 0.6,
-            )
-            mcts_deadline = time.monotonic() + mcts_wall_left
+            # The MCTS pass shares the SAME single hard_deadline as every other
+            # stage. This is the binding guarantee that a decision can never bleed
+            # the side clock to a forfeit, independent of how badly the engine
+            # overshoots its requested per-sample ms.
             mcts_policy, mcts_meta = _run_mcts_policy_pass(
                 sampled_battles,
                 per_sample_ms=search_time_per_battle,
                 max_samples=num_battles,
-                deadline=mcts_deadline,
+                deadline=hard_deadline,
             )
             trace["mcts_meta"] = mcts_meta
 
@@ -7687,7 +7773,17 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         eval_scores = {}
         total_weight = 0.0
         eval_samples = sampled_battles if sampled_battles else [(battle, 1.0)]
-        for sampled_battle, weight in eval_samples:
+        for sample_idx, (sampled_battle, weight) in enumerate(eval_samples):
+            # The 1-ply eval fallback loops one evaluate_position() per sample and
+            # was previously UNbounded -- a fat batch of samples here is what drove
+            # the worst 40-118s decisions. Stop once the budget is spent, but
+            # always complete at least one sample so we return a real policy.
+            if sample_idx > 0 and total_weight > 0 and _out_of_time(reserve=0.2):
+                logger.warning(
+                    "Eval fallback stopped after %d/%d samples (%.2fs budget left)",
+                    sample_idx, len(eval_samples), _time_left(),
+                )
+                break
             try:
                 scores = evaluate_position(sampled_battle)
                 for move, score in scores.items():
