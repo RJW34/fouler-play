@@ -7172,6 +7172,32 @@ DECISION_UNKNOWN_CLOCK_ASSUMED_SECONDS = float(
     os.getenv("DECISION_UNKNOWN_CLOCK_ASSUMED_SECONDS", "45")
 )
 
+# ---------------------------------------------------------------------------
+# MCTS HARD FLOOR (search-starvation guard)
+# ---------------------------------------------------------------------------
+# Opponent-set SAMPLING (Bayesian draw + deepcopy of the whole opponent team) is
+# the dominant pre-MCTS cost and is uninterruptible *within* a single sample, so
+# on heavy states it can overshoot the per-turn decision budget by seconds. Live
+# decision traces (2026-06-25, cc=3/sp=2) showed ~13% of moves SAMPLED a real
+# opponent state but then had <0.2s of per-turn budget left -- and the old code
+# DISCARDED that sampled state and dropped to a 1-ply eval (zero MCTS rollouts),
+# capping true skill at ~coin-flip. On those moves the *side clock* still held a
+# median of ~125s, i.e. there was ample real time; only the self-imposed per-turn
+# budget was spent. The fix: never discard a real sampled state -- grant it a
+# minimum MCTS pass whose deadline is drawn from the SIDE CLOCK (not the per-turn
+# budget). The floor only engages when the side clock is healthy and never spends
+# within MCTS_FLOOR_SIDE_CLOCK_SAFETY_S of the clock, so it stays well inside the
+# outer inactivity guard (async_pick_move binds its timeout to side_clock-6) and
+# therefore CANNOT reintroduce an inactivity forfeit. Env-overridable for A/B.
+MCTS_FLOOR_MS = _env_int_default("MCTS_FLOOR_MS", 600)
+MCTS_FLOOR_MIN_PER_SAMPLE_MS = _env_int_default("MCTS_FLOOR_MIN_PER_SAMPLE_MS", 120)
+MCTS_FLOOR_MIN_SIDE_CLOCK_S = float(
+    os.getenv("MCTS_FLOOR_MIN_SIDE_CLOCK_S", "25")
+)
+MCTS_FLOOR_SIDE_CLOCK_SAFETY_S = float(
+    os.getenv("MCTS_FLOOR_SIDE_CLOCK_SAFETY_S", "12")
+)
+
 
 def _compute_decision_budget_seconds(battle: Battle) -> tuple[float, dict]:
     """Wall-clock seconds this ONE decision may spend, bound to the side clock.
@@ -7686,15 +7712,49 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         except Exception:
             pass
         _sampling_t0 = time.monotonic()
-        if _out_of_time(reserve=0.2):
+        # --- MCTS HARD FLOOR (search-starvation guard) ---------------------------
+        # The per-turn budget (hard_deadline) is a self-imposed game-clock-
+        # conservation cap, NOT the inactivity-forfeit guard (that is the outer
+        # async_pick_move timeout bound to side_clock-6). When opponent-set sampling
+        # overshoots the per-turn budget but the SIDE CLOCK is still healthy, we
+        # therefore have real time to spend: rather than throwing a sampled state
+        # away for a 1-ply eval, we grant a minimum MCTS pass bounded by the side
+        # clock. The floor never spends within MCTS_FLOOR_SIDE_CLOCK_SAFETY_S of the
+        # clock, so it stays inside the outer guard and cannot cause a timeout. Under
+        # genuine time pressure (low side clock) the floor is disabled and the old
+        # protective eval-fallback behavior is preserved unchanged.
+        side_clock = battle.time_remaining
+        clock_healthy = side_clock is None or float(side_clock) > MCTS_FLOOR_MIN_SIDE_CLOCK_S
+
+        def _floor_deadline() -> float:
+            """Latest monotonic time MCTS may run to, guaranteeing a minimum real
+            search when the side clock can clearly afford it (else hard_deadline)."""
+            if not clock_healthy:
+                return hard_deadline
+            target = time.monotonic() + (MCTS_FLOOR_MS / 1000.0)
+            if side_clock is not None:
+                safe_cap = time.monotonic() + max(
+                    0.05, float(side_clock) - MCTS_FLOOR_SIDE_CLOCK_SAFETY_S
+                )
+                target = min(target, safe_cap)
+            return max(hard_deadline, target)
+
+        if _out_of_time(reserve=0.2) and not clock_healthy:
+            # Out of per-turn budget AND the side clock is tight -> protect the clock.
             logger.warning(
-                "No time left for MCTS (%.2fs budget left), using eval fallback",
-                _time_left(),
+                "No time left for MCTS (%.2fs budget left, clock=%s), using eval fallback",
+                _time_left(), side_clock,
             )
             sampled_battles = []
         else:
+            # Even if the per-turn budget is already spent, a healthy side clock can
+            # afford one bounded sample; widen the sampling deadline to the side-clock
+            # floor so prepare_fn still yields >=1 real state for the MCTS floor.
+            sample_deadline = sampling_deadline
+            if _out_of_time(reserve=0.2):
+                sample_deadline = max(sampling_deadline, _floor_deadline())
             try:
-                sampled_battles = prepare_fn(battle, num_battles, deadline=sampling_deadline)
+                sampled_battles = prepare_fn(battle, num_battles, deadline=sample_deadline)
             except Exception as e:
                 logger.warning(f"Battle sampling failed, using original: {e}")
                 sampled_battles = [(battle, 1.0)]
@@ -7705,16 +7765,35 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
             trace["stage_timing"]["num_sampled"] = len(sampled_battles)
         except Exception:
             pass
-        if sampled_battles and _out_of_time(reserve=0.2):
-            logger.warning(
-                "No time left after sampling (%.2fs budget left), using eval fallback",
-                _time_left(),
-            )
-            sampled_battles = []
 
-        # Cap per-sample search time to whatever budget remains right now.
+        # HARD FLOOR: never discard a real sampled state for a 1-ply eval. If the
+        # per-turn budget is spent but we sampled >=1 state and the side clock is
+        # healthy, run a minimum MCTS pass on it (deadline drawn from the side clock)
+        # instead. Only drop to eval when the side clock itself is too tight.
+        mcts_deadline = hard_deadline
+        floor_extended = False
+        if sampled_battles and _out_of_time(reserve=0.2):
+            if clock_healthy:
+                mcts_deadline = _floor_deadline()
+                floor_extended = mcts_deadline > hard_deadline
+                logger.warning(
+                    "Per-turn budget spent after sampling (%.2fs left) but clock=%s "
+                    "healthy -- granting MCTS floor (+%.0fms) instead of 1-ply eval.",
+                    _time_left(), side_clock,
+                    max(0.0, (mcts_deadline - hard_deadline) * 1000.0),
+                )
+            else:
+                logger.warning(
+                    "No time left after sampling (%.2fs budget left, clock=%s), using eval fallback",
+                    _time_left(), side_clock,
+                )
+                sampled_battles = []
+
+        # Cap per-sample search time to the time left until the (possibly floor-
+        # extended) MCTS deadline. When the floor granted us room, do not collapse
+        # below the per-sample floor so the move earns a real (if shallow) search.
         if sampled_battles:
-            remaining_budget = max(0.0, _time_left())
+            remaining_budget = max(0.0, mcts_deadline - time.monotonic())
             max_per_battle_ms = int(
                 (remaining_budget * 1000) / max(len(sampled_battles), 1)
             )
@@ -7723,13 +7802,16 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                     f"Reducing search time from {search_time_per_battle}ms to "
                     f"{max_per_battle_ms}ms to fit time budget"
                 )
-                search_time_per_battle = max(max_per_battle_ms, 10)
+                floor_ms = MCTS_FLOOR_MIN_PER_SAMPLE_MS if floor_extended else 10
+                search_time_per_battle = max(max_per_battle_ms, floor_ms)
 
         trace["search"] = {
             "num_battles": len(sampled_battles),
             "search_time_ms": search_time_per_battle,
             "time_budget_s": round(time_budget, 2),
             "budget_left_s": round(_time_left(), 2),
+            "floor_extended": floor_extended,
+            "mcts_deadline_left_s": round(mcts_deadline - time.monotonic(), 2),
         }
         logger.info(
             "Sampling {} simulated battles (MCTS) at {}ms each".format(
@@ -7740,15 +7822,16 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         mcts_policy = {}
         mcts_meta = {}
         if sampled_battles:
-            # The MCTS pass shares the SAME single hard_deadline as every other
-            # stage. This is the binding guarantee that a decision can never bleed
-            # the side clock to a forfeit, independent of how badly the engine
-            # overshoots its requested per-sample ms.
+            # MCTS shares a single monotonic deadline. Normally this is the per-turn
+            # hard_deadline (the game-clock-conservation guard); when a real state
+            # was sampled but the per-turn budget overshot, it is the side-clock-
+            # bounded floor so the move still earns real rollouts. Both stay inside
+            # the outer inactivity guard, so the 0-timeout guarantee holds either way.
             mcts_policy, mcts_meta = _run_mcts_policy_pass(
                 sampled_battles,
                 per_sample_ms=search_time_per_battle,
                 max_samples=num_battles,
-                deadline=hard_deadline,
+                deadline=mcts_deadline,
             )
             trace["mcts_meta"] = mcts_meta
 
