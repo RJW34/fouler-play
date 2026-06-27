@@ -2,7 +2,7 @@
 # Auto-split from battle_modifier.py
 
 from fp.battle_modifier._common import *  # noqa: F403
-from fp.battle_modifier._common import _parse_time_left_seconds, _side_id_from_protocol_ident
+from fp.battle_modifier._common import _parse_time_left_seconds, _parse_inactive_countdown_seconds, _side_id_from_protocol_ident
 
 def request(battle, split_msg):
     if len(split_msg) >= 2:
@@ -27,16 +27,24 @@ def inactive(battle, split_msg):
     if len(split_msg) < 3:
         return
     text = split_msg[2]
-    if constants.TIME_LEFT not in text:
+
+    if constants.TIME_LEFT in text:
+        time_left = _parse_time_left_seconds(text)
+        if time_left is None:
+            logger.warning("Failed to parse time left from inactive msg: '%s'", text)
+            return
+        battle.time_remaining = time_left
+        logger.debug("Time left (total): %s", time_left)
         return
 
-    time_left = _parse_time_left_seconds(text)
-    if time_left is None:
-        logger.warning("Failed to parse time left from inactive msg: '%s'", text)
-        return
-
-    battle.time_remaining = time_left
-    logger.debug("Time left: %s", time_left)
+    # Showdown stops sending "Time left:" in the low-clock danger zone and instead streams
+    # "<user> has N seconds left" countdown warnings (30/20/15/10/5). Ignoring those leaves
+    # battle.time_remaining stale-HIGH while the real bank drains to zero, so every time-budget
+    # safeguard fails to fire and we forfeit on inactivity. Consume our own countdown here.
+    countdown = _parse_inactive_countdown_seconds(text, battle)
+    if countdown is not None:
+        battle.time_remaining = countdown
+        logger.debug("Time left (countdown): %s", countdown)
 
 
 def inactiveoff(battle, _):

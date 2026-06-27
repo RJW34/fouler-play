@@ -6568,6 +6568,18 @@ class TestInactive(unittest.TestCase):
 
         self.assertEqual(60, self.battle.time_remaining)
 
+    def test_countdown_warning_for_our_account_updates_clock(self):
+        # Showdown's low-clock countdown ("<us> has N seconds left") MUST update our clock,
+        # otherwise time_remaining stays stale-high and we forfeit on inactivity (#79).
+        self.battle.time_remaining = 120
+        inactive(self.battle, ["", "inactive", "CoolUsername has 5 seconds left."])
+        self.assertEqual(5, self.battle.time_remaining)
+
+    def test_countdown_warning_for_opponent_is_ignored(self):
+        self.battle.time_remaining = 120
+        inactive(self.battle, ["", "inactive", "SomeOpponent has 5 seconds left."])
+        self.assertEqual(120, self.battle.time_remaining)
+
     def test_capture_group_failing(self):
         self.battle.time_remaining = 1
         split_msg = ["", "inactive", "some random message"]

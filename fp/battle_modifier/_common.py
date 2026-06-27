@@ -213,6 +213,39 @@ def get_move_information(m):
         return m.split("|")[2], {constants.ID: "unknown", constants.PRIORITY: 0}
 
 
+_INACTIVE_COUNTDOWN_RE = re.compile(
+    r"^(?P<name>.+?)\s+has\s+(?P<sec>\d+)\s+seconds?\s+left", re.IGNORECASE
+)
+
+
+def _our_identities(battle):
+    ids = set()
+    for v in (
+        getattr(getattr(battle, "user", None), "account_name", None),
+        getattr(getattr(battle, "user", None), "name", None),
+        getattr(battle, "username", None),
+    ):
+        if v:
+            ids.add(normalize_name(v))
+    return ids
+
+
+def _parse_inactive_countdown_seconds(text, battle):
+    """Parse Showdown's "<user> has N seconds left" inactivity countdown, returning N ONLY when it
+    refers to OUR account, so the opponent's countdown can never be mistaken for our own clock."""
+    if not text:
+        return None
+    m = _INACTIVE_COUNTDOWN_RE.match(text.strip())
+    if not m:
+        return None
+    if normalize_name(m.group("name")) not in _our_identities(battle):
+        return None
+    try:
+        return int(m.group("sec"))
+    except (TypeError, ValueError):
+        return None
+
+
 def _parse_time_left_seconds(text: str) -> int | None:
     if not text:
         return None
