@@ -7147,6 +7147,18 @@ MAX_DECISION_TIME_PRESSURE_SECONDS = _env_int_default(
 # that we cannot even sample one shallow MCTS pass + pick a move.
 MIN_DECISION_TIME_SECONDS = 1.0
 
+# When the side clock is critically low, skip MCTS entirely and play an instant
+# heuristic move. Even a budget-clamped danger-zone MCTS pass can be CPU-starved
+# (cc=3 concurrent battles on a 4-physical-core i7) and a single un-interruptible
+# sample can overrun the wall-clock deadline -- landing the move AFTER the side
+# bank hits 0 -> "lost due to inactivity". A pure-heuristic move cannot be starved
+# into an overrun, so it is the safe choice in the truly-critical zone. 7s is
+# conservative: only the imminent-forfeit band uses the instant move; all normal
+# and mild-pressure turns are unaffected.
+CRITICAL_CLOCK_FAST_PATH_SECONDS = _env_int_default(
+    "CRITICAL_CLOCK_FAST_PATH_SECONDS", 7
+)
+
 # ---------------------------------------------------------------------------
 # CLOCK-AWARE PER-DECISION BUDGET (the binding fix)
 # ---------------------------------------------------------------------------
@@ -7338,6 +7350,36 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
 
     def _out_of_time(reserve: float = 0.0) -> bool:
         return _time_left() <= reserve
+
+    # =========================================================================
+    # CRITICAL-CLOCK FAST PATH (inactivity-forfeit safety net)
+    # =========================================================================
+    # When the side clock is critically low, skip ALL sampling/MCTS and play an
+    # instant heuristic move. With cc=3 concurrent battles on a 4-physical-core
+    # i7, even a budget-clamped danger-zone MCTS pass gets CPU-starved and a
+    # single un-interruptible sample can overrun the wall-clock deadline, so the
+    # move lands AFTER the side bank hits 0 -> "lost due to inactivity". A pure
+    # heuristic move (no MCTS) cannot be starved into an overrun. Only fires when
+    # the clock is KNOWN and truly critical; normal/mild-pressure turns fall
+    # through to full search. _get_fallback_move handles force_switch safely.
+    if (
+        battle.time_remaining is not None
+        and battle.time_remaining <= CRITICAL_CLOCK_FAST_PATH_SECONDS
+    ):
+        fast_move = _get_fallback_move(battle)
+        logger.warning(
+            "CRITICAL CLOCK FAST PATH: clock=%.1fs <= %ds -- skipping MCTS, "
+            "playing instant heuristic move %s",
+            float(battle.time_remaining),
+            CRITICAL_CLOCK_FAST_PATH_SECONDS,
+            fast_move,
+        )
+        trace["decision_mode"] = "critical_clock_fast_path"
+        trace["critical_clock_fast_path"] = True
+        trace["fallback_reason"] = "critical_clock"
+        trace["choice"] = fast_move
+        trace["decision_time_s"] = round(time.time() - start_time, 3)
+        return fast_move, trace
 
     # Detect opponent's abilities before we start sampling
     # (sampling may change the ability, so check the original battle state)
