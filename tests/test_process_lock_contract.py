@@ -199,6 +199,48 @@ def test_acquire_lock_blocks_live_runner_without_runtime_lease(monkeypatch):
     assert process_lock.acquire_lock(username="bot") is False
 
 
+
+
+def test_acquire_lock_allows_offline_eval_with_isolated_lock(monkeypatch):
+    with temporary_pid_file() as pid_file:
+        monkeypatch.setenv("FOULER_OFFLINE_EVAL", "1")
+        monkeypatch.setenv("FOULER_PROCESS_LOCK_FILE", str(pid_file))
+        monkeypatch.setattr(
+            process_lock.sys,
+            "argv",
+            [
+                "python.exe",
+                "run.py",
+                "--bot-mode",
+                "accept_challenge",
+                "--ps-username",
+                "foulerEvalBot",
+                "--run-count",
+                "1",
+                "--max-concurrent-battles",
+                "1",
+            ],
+        )
+        monkeypatch.setattr(
+            process_lock,
+            "validate_runtime_lease",
+            lambda **kwargs: (_ for _ in ()).throw(AssertionError("live lease guard must be skipped")),
+        )
+        monkeypatch.setattr(process_lock.os, "getpid", lambda: 4321)
+        monkeypatch.setattr(
+            process_lock.psutil,
+            "Process",
+            lambda pid: SimpleNamespace(create_time=lambda: 123.5),
+        )
+        monkeypatch.setattr(process_lock.atexit, "register", lambda func: None)
+        monkeypatch.setattr(process_lock.signal, "signal", lambda *args, **kwargs: None)
+
+        assert process_lock.acquire_lock(username="foulerEvalBot") is True
+        payload = json.loads(pid_file.read_text(encoding="utf-8"))
+        assert payload["pid"] == 4321
+        assert payload["lockFile"] == os.path.abspath(pid_file)
+
+
 def test_acquire_lock_retries_after_clearly_stale_pid_file(monkeypatch):
     with temporary_pid_file() as pid_file:
         pid_file.write_text("987654321")

@@ -22,7 +22,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from replay_analysis.account_identity import resolve_bot_username
+from replay_analysis.account_identity import resolve_bot_accounts, resolve_bot_username
 
 from data import all_move_json, pokedex
 from fp.helpers import type_effectiveness_modifier
@@ -466,8 +466,22 @@ class LocalMechanics:
 
 
 class LossLogIngestor:
-    def __init__(self, bot_username: str | None = None):
+    def __init__(
+        self,
+        bot_username: str | None = None,
+        bot_accounts: set[str] | None = None,
+    ):
         self.bot_username = bot_username or resolve_bot_username()
+        # Account-history-aware identity: match the bot against the SET of every
+        # account it is or has been known as (current lease + env + canonical
+        # historical list), NOT just the single current account. This is what
+        # lets old-account replays (which dominate the window) resolve their side
+        # correctly instead of falling back to p1 and inverting the win/loss
+        # label. The single explicitly-passed bot_username is always included so
+        # an explicit caller override still matches.
+        accounts = set(bot_accounts) if bot_accounts is not None else resolve_bot_accounts()
+        accounts.add(normalize_id(self.bot_username))
+        self.bot_accounts = {acct for acct in accounts if acct}
 
     def ingest(self, replay_data: dict[str, Any], team_file: str | None = None) -> LossEvidence:
         log_lines = str(replay_data.get("log", "")).splitlines()
@@ -669,10 +683,38 @@ class LossLogIngestor:
         return ""
 
     def _detect_bot_side(self, players: dict[str, str]) -> str:
-        wanted = normalize_id(self.bot_username)
-        for side, player in players.items():
-            if normalize_id(player) == wanted:
-                return side
+        """Resolve which side (p1/p2) the bot played, account-history-aware.
+
+        Matches the replay's ``players`` (the reliable ``|player|p1|<name>`` /
+        ``|player|p2|<name>`` field) against the SET of every account the bot is
+        or has been known as -- the current lease account PLUS the historical
+        ones. This is the contamination root-fix: the prior implementation only
+        matched the single CURRENT account (e.g. ``thepeakmons``), so the
+        ~494/500 windowed replays played under a PRIOR account
+        (``LEBOTJAMESXD00N``) failed to match and fell back to ``p1``, inverting
+        the win/loss label for ~43% of them and recording the bot's OWN team as
+        "threats".
+
+        Resolution order:
+          1. exactly one side whose player is a known bot account -> that side.
+          2. both sides match (e.g. a self-play replay) -> prefer the side equal
+             to the explicit current username, else p1 (deterministic).
+          3. no side matches a known account -> fall back to p1 (legacy behavior;
+             such replays are not the bot's and add no useful signal).
+        """
+        matches = [
+            side
+            for side, player in players.items()
+            if normalize_id(player) in self.bot_accounts
+        ]
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            wanted = normalize_id(self.bot_username)
+            for side in matches:
+                if normalize_id(players.get(side, "")) == wanted:
+                    return side
+            return "p1" if "p1" in matches else matches[0]
         return "p1"
 
     @staticmethod
@@ -750,8 +792,9 @@ def build_loss_artifact(
     replay_data: dict[str, Any],
     bot_username: str | None = None,
     team_file: str | None = None,
+    bot_accounts: set[str] | None = None,
 ) -> dict[str, Any]:
-    ingestor = LossLogIngestor(bot_username=bot_username)
+    ingestor = LossLogIngestor(bot_username=bot_username, bot_accounts=bot_accounts)
     return asdict(ingestor.ingest(replay_data, team_file=team_file))
 
 

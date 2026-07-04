@@ -128,6 +128,25 @@ def _norm(value: object) -> str:
     return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
 
 
+# Pokemon TYPE names. A nickname->species fallthrough (when a slot was never seen
+# in a switch/drag line) can leak a bare type token ("water", "dark", ...) into
+# the species key, which would then masquerade as a "threat species". No real OU
+# species shares a name with a bare type, so any key that is exactly a type token
+# is a parse artifact and must never become a flagged matchup/problem entry.
+_TYPE_TOKENS = frozenset(
+    {
+        "normal", "fire", "water", "electric", "grass", "ice", "fighting",
+        "poison", "ground", "flying", "psychic", "bug", "rock", "ghost",
+        "dragon", "dark", "steel", "fairy",
+    }
+)
+
+
+def _is_type_token(species_id: str) -> bool:
+    """True if the normalized species key is just a bare Pokemon type name."""
+    return species_id in _TYPE_TOKENS
+
+
 def load_weights(path: Path | None = None) -> dict[str, Any]:
     """Load the loss-derived weights. Returns a safe empty structure on any error."""
     target = path or WEIGHTS_PATH
@@ -164,7 +183,7 @@ def _opponent_active_id(battle) -> str:
 
 def opponent_is_flagged(species_id: str, weights: dict[str, Any]) -> dict[str, Any] | None:
     """Return a reason dict if the opponent species is a known threat, else None."""
-    if not species_id:
+    if not species_id or _is_type_token(species_id):
         return None
 
     problem = weights.get("problem_pokemon", {})
@@ -312,7 +331,7 @@ def update_weights_from_artifacts(
         # bad_matchups: every opponent team member is a "game" vs that species.
         for species in opp_team:
             sid = _norm(species)
-            if not sid:
+            if not sid or _is_type_token(sid):
                 continue
             row = bad.setdefault(sid, {"games": 0, "losses": 0})
             row["games"] += 1
@@ -333,7 +352,7 @@ def update_weights_from_artifacts(
             if not attacker:
                 continue
             sid = _norm(attacker)
-            if not sid:
+            if not sid or _is_type_token(sid):
                 continue
             row = problem.setdefault(sid, {"kos_on_us": 0, "losses_present": 0})
             row["kos_on_us"] += 1

@@ -54,6 +54,15 @@ def _append_bounded_pending_message(messages, message, limit=MAX_PENDING_BATTLE_
     return dropped
 
 
+def _to_showdown_id(value):
+    """Normalize a Showdown display name to its protocol userid."""
+    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+
+
+def _strip_showdown_identity(value):
+    return str(value or "").strip().lstrip("!‽+%@&#~ ")
+
+
 def _put_bounded_nowait(queue, message, label):
     """Put without allowing inactive consumers to grow queues forever."""
     dropped = None
@@ -633,13 +642,37 @@ class PSWebsocketClient:
         client_id, challstr = await self.get_id_and_challstr()
 
         # Local --no-security showdown server (offline eval harness): no assertion
-        # is required; sending `/trn user,0,` with an empty assertion logs in.
+        # is required; sending `/trn user` logs in as an unregistered local user.
         if os.getenv("FOULER_NO_SECURITY_LOGIN", "").lower() in {"1", "true", "yes", "on"}:
-            message = ["/trn " + self.username + ",0,"]
+            message = ["/trn " + self.username]
             logger.info("Logging in via --no-security local server (no assertion)")
             await self.send_message("", message)
-            await asyncio.sleep(3)
-            return self.username
+            deadline = time.time() + 10
+            expected_id = _to_showdown_id(self.username)
+            while True:
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    raise LoginError(
+                        "Timed out waiting for no-security login confirmation "
+                        f"for {self.username}"
+                    )
+                msg = await asyncio.wait_for(
+                    self.receive_message(),
+                    timeout=min(remaining, 2.0),
+                )
+                split_msg = msg.split("|")
+                if len(split_msg) > 2 and split_msg[1] == "nametaken":
+                    raise LoginError(
+                        "No-security login rejected for "
+                        f"{self.username}: {split_msg[-1]}"
+                    )
+                if (
+                    len(split_msg) > 3
+                    and split_msg[1] == "updateuser"
+                    and _to_showdown_id(split_msg[2]) == expected_id
+                    and split_msg[3] == "1"
+                ):
+                    return expected_id
 
         guest_login = self.password is None
 
@@ -733,12 +766,12 @@ class PSWebsocketClient:
             if (
                 len(split_msg) == 9
                 and split_msg[1] == "pm"
-                and split_msg[3].strip().replace("!", "").replace("‽", "")
-                == self.username
+                and _to_showdown_id(_strip_showdown_identity(split_msg[3]))
+                == _to_showdown_id(self.username)
                 and split_msg[4].startswith("/challenge")
                 and split_msg[5] == battle_format
             ):
-                username = split_msg[2].strip()
+                username = _strip_showdown_identity(split_msg[2])
 
         message = ["/accept " + username]
         await self.send_message("", message)

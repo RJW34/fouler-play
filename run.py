@@ -1,4 +1,5 @@
 import asyncio
+import faulthandler
 import json
 import logging
 import traceback
@@ -26,6 +27,7 @@ from fp.run_battle import (
     pokemon_battle,
     get_active_battle_count,
     get_resume_pending_count,
+    get_resume_battle_ids,
     has_resume_battle,
     prime_resume_battles,
     cleanup_old_logs,
@@ -38,6 +40,11 @@ from data import pokedex
 from data.mods.apply_mods import apply_mods
 
 logger = logging.getLogger(__name__)
+
+try:
+    faulthandler.enable(all_threads=True)
+except Exception:
+    pass
 
 DRAIN_FILE = Path(__file__).resolve().parent / ".pids" / "drain.request"
 PARENT_PID = int(os.getenv("FP_PARENT_PID", "0") or 0)
@@ -224,9 +231,10 @@ class BattleStats:
     async def record_disconnect(self, team_file_name, battle_tag=None, rating=None):
         async with self._lock:
             self.disconnects += 1
+            self.losses += 1
             self.battles_run += 1
-            self._record_battle(team_file_name, "disconnect", battle_tag, rating=rating)
-            logger.info("Disconnect with team: {}".format(team_file_name))
+            self._record_battle(team_file_name, "loss", battle_tag, rating=rating)
+            logger.info("Disconnect/timeout loss with team: {}".format(team_file_name))
             logger.info("W: {}\tL: {}\tDC: {}".format(self.wins, self.losses, self.disconnects))
 
     async def get_battles_run(self):
@@ -254,11 +262,46 @@ class BattleStats:
             team_stats[team]["total"] += 1
             if result == "win":
                 team_stats[team]["wins"] += 1
-            elif result == "loss":
+            elif result in {"loss", "disconnect", "timeout", "tie", "draw"}:
                 team_stats[team]["losses"] += 1
-            elif result == "disconnect":
-                team_stats[team]["disconnects"] += 1
+                if result in {"disconnect", "timeout"}:
+                    team_stats[team]["disconnects"] += 1
         return team_stats
+
+
+async def _forfeit_pending_battle_tags(ps_websocket_client, battle_tags, *, reason: str) -> list[str]:
+    """Forfeit and detach pending Showdown rooms that must not be resumed."""
+    cleaned = []
+    seen = set()
+    for tag in list(battle_tags):
+        if not tag or tag in seen:
+            continue
+        seen.add(tag)
+        logger.info("Forfeiting pending battle %s (%s)", tag, reason)
+        try:
+            await ps_websocket_client.forfeit_battle(tag)
+        except Exception as e:
+            logger.warning("Failed to forfeit pending battle %s: %s", tag, e)
+        try:
+            await ps_websocket_client.leave_battle(tag)
+        except Exception:
+            pass
+        try:
+            ps_websocket_client.unregister_battle(tag)
+        except Exception:
+            pass
+        try:
+            ps_websocket_client.pending_battle_messages.pop(tag, None)
+        except Exception:
+            pass
+        try:
+            ps_websocket_client.pending_battle_times.pop(tag, None)
+        except Exception:
+            pass
+        cleaned.append(tag)
+    if cleaned:
+        await asyncio.sleep(1)
+    return cleaned
 
 
 # Keep global reference to prevent GC
@@ -509,6 +552,7 @@ async def battle_worker(
                     await stats.record_win(team_file_name, battle_tag, rating=_post_elo)
                 elif winner is None:
                     await stats.record_disconnect(team_file_name, battle_tag, rating=_post_elo)
+                    lost_battle = True
                 else:
                     await stats.record_loss(team_file_name, battle_tag, rating=_post_elo)
                     lost_battle = True
@@ -639,8 +683,15 @@ async def run_foul_play():
     if not RESUME_ACTIVE_BATTLES:
         # Clear stale active_battles.json from previous runs so OBS doesn't show dead battles.
         try:
-            from streaming.state_store import write_active_battles
-            write_active_battles({"battles": [], "count": 0, "max_slots": FoulPlayConfig.max_concurrent_battles, "updated": ""})
+            from streaming.state_store import expected_battle_surfaces, write_active_battles
+            write_active_battles(
+                {
+                    "battles": [],
+                    "count": 0,
+                    "max_slots": max(FoulPlayConfig.max_concurrent_battles, expected_battle_surfaces()),
+                    "updated": "",
+                }
+            )
             logger.info("Cleared active_battles.json for fresh start")
         except Exception as e:
             logger.warning(f"Failed to clear active_battles.json: {e}")
@@ -655,45 +706,45 @@ async def run_foul_play():
     except Exception as e:
         logger.warning(f"Failed to cancel stale search: {e}")
 
-    # Handle stale battles from previous session.
-    # If RESUME_ACTIVE_BATTLES is on, let the resume system reclaim them.
-    # Otherwise, forfeit them to avoid workers claiming them with wrong team_dict.
+    # Handle stale battles from previous session. Only age-valid battles primed
+    # from active_battles.json may be resumed; any other pending room is a stale
+    # Showdown carry-over and can attach the wrong team_dict to a dead battle.
     await asyncio.sleep(3)  # Let dispatcher receive updatesearch with existing games
 
     # Prime any in-progress battles so workers can resume instead of re-searching.
+    primed_resume_count = 0
     try:
-        await prime_resume_battles()
+        primed_resume_count = await prime_resume_battles()
     except Exception as e:
         logger.warning(f"Failed to prime resume battles: {e}")
 
-    if not RESUME_ACTIVE_BATTLES:
-        stale_tags = list(ps_websocket_client.pending_battle_messages.keys())
-        if stale_tags:
-            logger.info(f"Forfeiting {len(stale_tags)} stale battle(s) from previous session: {stale_tags}")
-            for tag in stale_tags:
-                try:
-                    await ps_websocket_client.forfeit_battle(tag)
-                except Exception as e:
-                    logger.warning(f"Failed to forfeit stale battle {tag}: {e}")
-            ps_websocket_client.pending_battle_messages.clear()
-            ps_websocket_client.pending_battle_times.clear()
-            await asyncio.sleep(1)
-        # Second pass: battles can arrive between cancel_search and the first pass
-        stale_tags_2 = list(ps_websocket_client.pending_battle_messages.keys())
-        if stale_tags_2:
-            logger.info(f"Forfeiting {len(stale_tags_2)} late-arriving stale battle(s): {stale_tags_2}")
-            for tag in stale_tags_2:
-                try:
-                    await ps_websocket_client.forfeit_battle(tag)
-                except Exception as e:
-                    logger.warning(f"Failed to forfeit stale battle {tag}: {e}")
-            ps_websocket_client.pending_battle_messages.clear()
-            ps_websocket_client.pending_battle_times.clear()
-            await asyncio.sleep(1)
-    else:
-        stale_count = len(ps_websocket_client.pending_battle_messages)
-        if stale_count:
-            logger.info(f"RESUME_ACTIVE_BATTLES on: keeping {stale_count} battle(s) for resume instead of forfeiting")
+    resumable_tags = await get_resume_battle_ids() if RESUME_ACTIVE_BATTLES else set()
+    pending_tags = set(ps_websocket_client.pending_battle_messages.keys())
+    stale_tags = sorted(pending_tags - resumable_tags)
+    if stale_tags:
+        await _forfeit_pending_battle_tags(
+            ps_websocket_client,
+            stale_tags,
+            reason="not backed by current resume truth",
+        )
+
+    # Second pass: rooms can arrive between cancel_search and the first cleanup.
+    pending_tags_2 = set(ps_websocket_client.pending_battle_messages.keys())
+    stale_tags_2 = sorted(pending_tags_2 - resumable_tags)
+    if stale_tags_2:
+        await _forfeit_pending_battle_tags(
+            ps_websocket_client,
+            stale_tags_2,
+            reason="late stale carry-over",
+        )
+
+    kept_count = len(set(ps_websocket_client.pending_battle_messages.keys()) & resumable_tags)
+    if kept_count:
+        logger.info(
+            "Keeping %s primed resumable battle(s) from active_battles.json (primed=%s)",
+            kept_count,
+            primed_resume_count,
+        )
 
     # Initialize team iterator for both TEAM_LIST (file) and TEAM_NAMES (env var)
     if FoulPlayConfig.team_names is not None:

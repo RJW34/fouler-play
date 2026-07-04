@@ -105,6 +105,131 @@ def test_autoresearch_detects_hazard_pressure_and_trace_instability(tmp_path: Pa
     assert "Next action" in markdown
 
 
+def test_autoresearch_does_not_flag_missing_hazards_when_team_has_no_setter(tmp_path: Path):
+    project = tmp_path
+    replay_dir = project / "replay_analysis"
+    team_dir = project / "teams" / "gen9" / "ou"
+    team_dir.mkdir(parents=True)
+    (team_dir / "no-setter-control").write_text(
+        "\n".join(
+            [
+                "Corviknight @ Leftovers",
+                "Ability: Pressure",
+                "- Brave Bird",
+                "- Defog",
+                "- Roost",
+                "- U-turn",
+                "",
+                "Cinderace @ Heavy-Duty Boots",
+                "Ability: Libero",
+                "- Pyro Ball",
+                "- Court Change",
+                "- U-turn",
+                "- Will-O-Wisp",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-no-setter-clean",
+                    "timestamp": "2026-03-10T10:30:00+00:00",
+                    "team_file": "no-setter-control",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-no-setter-clean",
+                }
+            ]
+        },
+    )
+    write_json(
+        replay_dir / "gen9ou-no-setter-clean.json",
+        {
+            "log": "\n".join(
+                [
+                    "|player|p1|ALL CHUNG|",
+                    "|player|p2|Opponent|",
+                    "|turn|1",
+                    "|move|p1a: Corviknight|U-turn|p2a: Great Tusk",
+                    "|win|Opponent",
+                ]
+            )
+        },
+    )
+
+    report = AutoResearcher(project_root=project).analyze(last_n=5)
+
+    assert "hazard_pressure" not in [issue["key"] for issue in report["issues"]]
+
+
+def test_autoresearch_flags_no_setter_team_when_hazard_control_is_never_used(tmp_path: Path):
+    project = tmp_path
+    replay_dir = project / "replay_analysis"
+    team_dir = project / "teams" / "gen9" / "ou"
+    team_dir.mkdir(parents=True)
+    (team_dir / "no-setter-control").write_text(
+        "\n".join(
+            [
+                "Corviknight @ Leftovers",
+                "Ability: Pressure",
+                "- Brave Bird",
+                "- Defog",
+                "- Roost",
+                "- U-turn",
+                "",
+                "Cinderace @ Heavy-Duty Boots",
+                "Ability: Libero",
+                "- Pyro Ball",
+                "- Court Change",
+                "- U-turn",
+                "- Will-O-Wisp",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-no-setter-hazards",
+                    "timestamp": "2026-03-10T10:40:00+00:00",
+                    "team_file": "no-setter-control",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-no-setter-hazards",
+                }
+            ]
+        },
+    )
+    write_json(
+        replay_dir / "gen9ou-no-setter-hazards.json",
+        {
+            "log": "\n".join(
+                [
+                    "|player|p1|ALL CHUNG|",
+                    "|player|p2|Opponent|",
+                    "|turn|1",
+                    "|-sidestart|p1: ALL CHUNG|move: Stealth Rock",
+                    "|turn|2",
+                    "|move|p1a: Corviknight|U-turn|p2a: Great Tusk",
+                    "|win|Opponent",
+                ]
+            )
+        },
+    )
+
+    report = AutoResearcher(project_root=project).analyze(last_n=5)
+
+    hazard = next(issue for issue in report["issues"] if issue["key"] == "hazard_pressure")
+    assert "no hazard setter" in hazard["proof"][0]
+    assert "Defog" in hazard["proof"][0]
+    assert "Court Change" in hazard["proof"][0]
+
+
 def test_autoresearch_decision_trace_proves_request_legal_options(tmp_path: Path):
     project = tmp_path
     trace_dir = project / "logs" / "decision_traces"

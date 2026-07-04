@@ -1,7 +1,8 @@
-import json
+﻿import json
 import os
 import asyncio
 import contextvars
+import faulthandler
 import time
 from collections import OrderedDict
 from copy import deepcopy
@@ -15,6 +16,11 @@ from datetime import datetime
 from data import all_move_json
 from data.pkmn_sets import RandomBattleTeamDatasets, TeamDatasets
 from data.pkmn_sets import SmogonSets
+
+try:
+    faulthandler.enable(all_threads=True)
+except Exception:
+    pass
 
 # ---------------------------------------------------------------------------
 # Startup log cleanup
@@ -35,7 +41,7 @@ def cleanup_old_logs(log_dir: str = "logs", trace_dir: str | None = None):
     trace_dir = trace_dir or os.path.join(log_dir, "decision_traces")
     removed = 0
 
-    # --- 1. Phantom _None.log files (always delete all — they're from dead rooms) ---
+    # --- 1. Phantom _None.log files (always delete all â€” they're from dead rooms) ---
     for fname in os.listdir(log_dir):
         if "_None.log" in fname:
             try:
@@ -134,7 +140,13 @@ from fp.battle_decision import StrategicDecisionLayer, clear_battle_strategy
 from fp.devstream_chat import POST_BATTLE_MESSAGES, post_battle_messages
 
 from fp.websocket_client import PSWebsocketClient
-from streaming.state_store import write_active_battles, read_active_battles, write_status, update_daily_stats
+from streaming.state_store import (
+    expected_battle_surfaces,
+    write_active_battles,
+    read_active_battles,
+    write_status,
+    update_daily_stats,
+)
 from fp.team_analysis import analyze_team
 from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_MOVES, RECOVERY_MOVES
 from fp.gameplan_integration import generate_and_store_gameplan, get_gameplan, clear_gameplan
@@ -145,6 +157,8 @@ from infrastructure.discord_reporting import (
     canonical_replay_url,
     format_elo_delta,
     public_replay_id_candidate,
+    recent_results_safety_alert,
+    summarize_recent_results_with_current,
 )
 
 logger = logging.getLogger(__name__)
@@ -206,6 +220,13 @@ RESUME_ACTIVE_BATTLES = os.getenv("RESUME_ACTIVE_BATTLES", "1").strip().lower() 
 )
 RESUME_MAX_AGE_SEC = int(os.getenv("RESUME_MAX_AGE_SEC", "900"))
 RESUME_JOIN_TIMEOUT_SEC = int(os.getenv("RESUME_JOIN_TIMEOUT_SEC", "10"))
+# Cap how many times a single in-flight resume entry may time out before we
+# stop re-queuing it. A battle whose Showdown room is dead but never emits a
+# close/finish message (a hard-killed prior client orphan) would otherwise
+# time out -> requeue -> re-claim -> time out forever, pinning a worker off
+# the ladder until the server inactivity timer fires (~1-2 min). After the
+# cap we forfeit + blacklist the orphan so the worker returns to laddering.
+RESUME_MAX_TIMEOUT_REQUEUES = int(os.getenv("RESUME_MAX_TIMEOUT_REQUEUES", "2"))
 SEARCH_WAIT_TIMEOUT_SEC = int(os.getenv("SEARCH_WAIT_TIMEOUT_SEC", "120"))
 REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "60"))
 REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "180"))
@@ -316,7 +337,7 @@ def _rollover_worker_handler(worker_id: int, battle_tag: str, opponent_name: str
     handler = _get_or_create_worker_handler(worker_id)
     handler.baseFilename = _worker_battle_log_path(worker_id, battle_tag, opponent_name)
     # doRollover() renames the current file to .1 and opens a fresh file
-    # with the new baseFilename — exactly like the original do_rollover().
+    # with the new baseFilename â€” exactly like the original do_rollover().
     handler.doRollover()
 
 # Battle chat defaults
@@ -415,7 +436,7 @@ def _battle_result_from_evidence(
     opponent_name: object = None,
     elo_delta: object = None,
 ) -> str:
-    """Return win/loss/tie from the battle winner.
+    """Return win/loss from the ladder battle winner.
 
     Ladder/profile ELO movement is display/proof context only because it can
     reflect a stale cache, another concurrent battle, or a mis-attributed raw
@@ -423,8 +444,16 @@ def _battle_result_from_evidence(
     optional ``elo_delta`` parameter remains for call-site compatibility but is
     intentionally not allowed to relabel an explicit winner.
     """
-    if winner is None or str(winner).lower() == "tie":
-        return "tie"
+    if winner is None:
+        # A ladder battle that reaches our terminal handler without a winner is
+        # a timeout/disconnect from our side, not a competitive draw.
+        return "loss"
+    if str(winner).lower() in {"tie", "draw"}:
+        # In unattended ladder play a tie/draw is a non-win mission outcome and
+        # can also be how operational timeouts surface downstream. Counting it
+        # as neutral hides regressions in ELO trend, loss-streak safety valves,
+        # and Discord reporting.
+        return "loss"
     if _is_our_showdown_account(winner, our_player_name):
         return "win"
     winner_norm = _normalize_username(str(winner) if winner is not None else "")
@@ -434,6 +463,98 @@ def _battle_result_from_evidence(
     if opponent_norm and winner_norm:
         return "win"
     return "loss"
+
+
+def _operational_loss_stream_payload(
+    battle_tag: str,
+    *,
+    reason: str,
+    ended: float | None = None,
+    elapsed_seconds: float | None = None,
+    timeout_strikes: int | None = None,
+) -> dict:
+    """BATTLE_END payload for bot-side timeout/disconnect losses.
+
+    ``winner=None`` is still the raw Showdown evidence, but downstream consumers
+    must not infer a tie from no winner. Carry the normalized result explicitly.
+    """
+
+    payload = {
+        "id": battle_tag,
+        "winner": None,
+        "result": "loss",
+        "terminalResult": "loss",
+        "reason": reason,
+        "operationalLoss": True,
+        "ended": time.time() if ended is None else ended,
+    }
+    if elapsed_seconds is not None:
+        payload["elapsedSeconds"] = round(float(elapsed_seconds), 3)
+    if timeout_strikes is not None:
+        payload["timeoutStrikes"] = int(timeout_strikes)
+    return payload
+
+
+def _queue_operational_loss_battle_result(
+    battle_tag: str,
+    *,
+    opponent_name: str | None,
+    team_name: str | None = None,
+    turns: int | None = None,
+    reason: str,
+    elapsed_seconds: float | None = None,
+    timeout_strikes: int | None = None,
+) -> bool:
+    """Queue Discord proof for a bot-side timeout/disconnect loss."""
+
+    if not battle_result_event_queue_enabled():
+        logger.info("Skipping operational-loss battle_result for %s: queue disabled", battle_tag)
+        return False
+    opponent = opponent_name or "unknown opponent"
+    reason_label = str(reason or "timeout").replace("_", " ")
+    elapsed_note = ""
+    if elapsed_seconds is not None:
+        elapsed_note = f"; elapsed={float(elapsed_seconds):.0f}s"
+    strikes_note = ""
+    if timeout_strikes is not None:
+        strikes_note = f"; timeout_strikes={int(timeout_strikes)}"
+    decisive_reason = (
+        "Loss came from inactivity/disconnect behavior, so this looks operational "
+        "before it looks strategic."
+    )
+    queue_event(
+        "battle_result",
+        "battles",
+        build_contract_payload(
+            "PROOF",
+            f"battle result loss vs {opponent}",
+            f"Battle {battle_tag} ended loss against {opponent}.",
+            (
+                "Timeouts, hard time limits, and disconnects count as losses for "
+                "ladder learning and operator reports."
+            ),
+            (
+                f"battle_id={battle_tag}; result=loss; reason={reason_label}; "
+                f"team_file={team_name or 'unknown'}; opponent={opponent}; "
+                f"turns={turns}{elapsed_note}{strikes_note}"
+            ),
+            "Review reconnect/timer handling before treating this as a strategic team loss.",
+            source="fp.run_battle",
+            battle_id=battle_tag,
+            result="loss",
+            team_file=team_name or "unknown",
+            opponent=opponent,
+            turns=turns,
+            decisive_reason=decisive_reason,
+            next_battle_action="Review reconnect / timer handling before blaming the team.",
+            operational_loss=True,
+            timeout_reason=reason,
+            elapsed_seconds=elapsed_seconds,
+            timeout_strikes=timeout_strikes,
+        ),
+        dedup_window_sec=5,
+    )
+    return True
 
 
 # Authoritative per-battle rating transition emitted by Showdown to the battle
@@ -453,7 +574,7 @@ def _battle_result_from_evidence(
 # We match the "rating: OLD -> NEW" part here, then attribute it to a player by
 # inspecting the text that precedes the match (see parse_rating_transition).
 _RATING_TRANSITION_RE = re.compile(
-    r"rating:\s*(\d+)\s*(?:&rarr;|&#8594;|→|->|&gt;)\s*(?:<[^>]+>\s*)*(\d+)",
+    r"rating:\s*(\d+)\s*(?:&rarr;|&#8594;|â†’|->|&gt;)\s*(?:<[^>]+>\s*)*(\d+)",
     re.IGNORECASE,
 )
 
@@ -738,13 +859,14 @@ async def _post_battle_to_discord(
     """Post battle result to Discord webhook using the Lucario reporting format.
 
     Format:
-        ⚔️ WIN vs Opponent (1050 → 1065 ELO)
-        🏆 Team: fat-team-a | Turns: 42
-        🔗 <https://replay.pokemonshowdown.com/gen9ou-XXXXX>
+        âš”ï¸ WIN vs Opponent (1050 â†’ 1065 ELO)
+        ðŸ† Team: fat-team-a | Turns: 42
+        ðŸ”— <https://replay.pokemonshowdown.com/gen9ou-XXXXX>
 
     Args:
         battle_tag: Battle ID
-        winner: Winner's username (None for tie/forfeit)
+        winner: Winner's username ("tie"/"draw" counts as a mission loss in ladder play;
+            None for an operational loss)
         opponent_name: Opponent's username
         replay_url: Replay URL (if available)
         team_name: Team name used (if applicable)
@@ -858,13 +980,13 @@ async def _post_battle_to_discord(
 
     if result_key == "tie":
         result_word = "TIE"
-        emoji = "🤝"
+        emoji = "ðŸ¤"
     elif result_key == "win":
         result_word = "WIN"
-        emoji = "⚔️"
+        emoji = "âš”ï¸"
     else:
         result_word = "LOSS"
-        emoji = "💀"
+        emoji = "ðŸ’€"
 
     # ELO delta
     if elo_after is not None and elo_before is not None:
@@ -891,16 +1013,16 @@ async def _post_battle_to_discord(
         team_display = f"Team: {short_name}"
     turn_display = f"Turns: {turn_count}" if turn_count else ""
     line2_parts = [p for p in [team_display, turn_display] if p]
-    line2 = ("🏆 " + " | ".join(line2_parts)) if line2_parts else ""
+    line2 = ("ðŸ† " + " | ".join(line2_parts)) if line2_parts else ""
 
     # --- Line 3: Replay link ---
     replay_line = ""
     replay_ref = replay_url or battle_tag
     replay_id = public_replay_id_candidate(replay_ref)
     if replay_id and await _replay_exists(replay_id):
-        replay_line = f"🔗 <https://replay.pokemonshowdown.com/{replay_id}>"
+        replay_line = f"ðŸ”— <https://replay.pokemonshowdown.com/{replay_id}>"
     elif replay_url:
-        replay_line = "🔗 Replay pending public upload"
+        replay_line = "ðŸ”— Replay pending public upload"
 
     # Assemble message
     lines = [line1]
@@ -909,6 +1031,13 @@ async def _post_battle_to_discord(
     if replay_line:
         lines.append(replay_line)
     message = "\n".join(lines)
+
+    if battle_result_event_queue_enabled():
+        logger.info(
+            "Skipping legacy direct Discord battle post for %s; structured event queue owns battle reports",
+            battle_tag,
+        )
+        return elo_after
 
     webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
     if not webhook_url:
@@ -1197,6 +1326,21 @@ async def has_resume_battle(worker_id: int | None = None) -> bool:
 async def get_resume_pending_count() -> int:
     async with _resume_lock:
         return sum(len(v) for v in _resume_by_worker.values()) + len(_resume_queue)
+
+
+async def get_resume_battle_ids() -> set[str]:
+    async with _resume_lock:
+        ids: set[str] = set()
+        for entry in _resume_queue:
+            battle_id = entry.get("id")
+            if battle_id:
+                ids.add(str(battle_id))
+        for entries in _resume_by_worker.values():
+            for entry in entries:
+                battle_id = entry.get("id")
+                if battle_id:
+                    ids.add(str(battle_id))
+        return ids
 
 
 def _resume_message_indicates_active(msg: str) -> bool:
@@ -1490,7 +1634,7 @@ async def update_active_battles_file():
         data = {
             "battles": battles,
             "count": len(battles),
-            "max_slots": FoulPlayConfig.max_concurrent_battles,
+            "max_slots": max(FoulPlayConfig.max_concurrent_battles, expected_battle_surfaces()),
             "updated": datetime.now().isoformat(),
         }
 
@@ -1513,7 +1657,17 @@ async def update_active_battles_file():
 
 async def send_stream_event(event_type, payload):
     """Send a real-time event signal to the stream server."""
+    stream_events = os.getenv("FOULER_STREAM_EVENTS", "").strip().lower()
+    if stream_events in {"0", "false", "no", "off"}:
+        logger.debug("Stream event %s skipped: FOULER_STREAM_EVENTS=%s", event_type, stream_events)
+        return {"skipped": True, "reason": "stream-events-disabled"}
+    if os.getenv("FOULER_OFFLINE_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}:
+        logger.debug("Stream event %s skipped for offline eval", event_type)
+        return {"skipped": True, "reason": "offline-eval"}
     url = os.getenv("STREAM_EVENT_URL", "http://localhost:8777/event")
+    if not url:
+        logger.debug("Stream event %s skipped: STREAM_EVENT_URL is empty", event_type)
+        return {"skipped": True, "reason": "stream-event-url-empty"}
     for attempt in range(3):  # Try 3 times: initial + 2 retries
         try:
             timeout = aiohttp.ClientTimeout(total=5)
@@ -1653,8 +1807,21 @@ async def async_pick_move(battle):
                     timeout = max(timeout, int(DECISION_TIMEOUT_SEC * 1.5))
         except Exception:
             pass
-        if battle_copy.time_remaining is not None and battle_copy.time_remaining < 30:
-            timeout = min(timeout, max(5, int(timeout * 0.6)))
+        # BACKSTOP: find_best_move now self-limits to a clock-aware budget, but
+        # asyncio.wait_for cannot stop the underlying executor thread, so a single
+        # misbehaving decision can keep a thread busy. Bind this outer timeout to
+        # the remaining SIDE CLOCK so the fallback move is ALWAYS submitted well
+        # before the inactivity forfeit -- even if the inner budget is bypassed.
+        tr = battle_copy.time_remaining
+        if tr is not None:
+            clock_cap = max(2, int(tr) - 6)
+            timeout = min(timeout, clock_cap)
+            if tr < 30:
+                timeout = min(timeout, max(3, int(tr * 0.5)))
+        else:
+            # Unknown clock -> stay conservative, never the full 25-37s.
+            timeout = min(timeout, 12)
+        timeout = max(2, timeout)
         if timeout > 0:
             best_move = await asyncio.wait_for(future, timeout=timeout)
         else:
@@ -1663,8 +1830,8 @@ async def async_pick_move(battle):
             best_move, trace = best_move
     except asyncio.TimeoutError:
         logger.warning(
-            "Decision timeout after %ss - using fallback move.",
-            DECISION_TIMEOUT_SEC,
+            "Decision timeout after %ss (clock-bound) - using fallback move.",
+            timeout,
         )
         best_move = _fallback_decision(battle_copy)
         trace_reason = "timeout"
@@ -2113,14 +2280,56 @@ def _is_invalid_choice_message(msg: str) -> bool:
     return "|error|[Invalid choice]" in (msg or "")
 
 
+def _first_alive_team_preview_slot(battle) -> int:
+    reserve = list(getattr(getattr(battle, "user", None), "reserve", []) or [])
+    for fallback_index, pkmn in enumerate(reserve, start=1):
+        try:
+            if getattr(pkmn, "hp", 1) <= 0:
+                continue
+        except Exception:
+            pass
+        try:
+            index = int(getattr(pkmn, "index"))
+            if index > 0:
+                return index
+        except Exception:
+            return fallback_index
+    return 1
+
+
+def _team_preview_message_for_slot(battle, slot: int) -> list[str]:
+    reserve = list(getattr(getattr(battle, "user", None), "reserve", []) or [])
+    size_of_team = max(len(reserve), slot)
+    team_list_indexes = list(range(1, size_of_team + 1))
+    if slot in team_list_indexes:
+        team_list_indexes.remove(slot)
+    else:
+        slot = team_list_indexes[0] if team_list_indexes else 1
+        team_list_indexes = [idx for idx in team_list_indexes if idx != slot]
+    order = "{}{}".format(slot, "".join(str(x) for x in team_list_indexes))
+    return ["/team {}|{}".format(order, battle.rqid)]
+
+
+def _initialize_standard_battle_datasets(pokemon_battle_type: str, unique_pkmn_names: set[str]) -> None:
+    try:
+        logger.info(
+            "Initializing Smogon/team datasets for %s (%d pokemon)",
+            pokemon_battle_type,
+            len(unique_pkmn_names),
+        )
+        SmogonSets.initialize(
+            FoulPlayConfig.smogon_stats or pokemon_battle_type, unique_pkmn_names
+        )
+        TeamDatasets.initialize(pokemon_battle_type, unique_pkmn_names)
+        logger.info("Battle dataset initialization complete")
+    except BaseException:
+        logger.exception(
+            "Battle dataset initialization failed; continuing without set priors"
+        )
+
+
 async def handle_team_preview(battle, ps_websocket_client):
     _preview_start = time.time()
-    battle_copy = deepcopy(battle)
-    battle_copy.user.active = Pokemon.get_dummy()
-    battle_copy.opponent.active = Pokemon.get_dummy()
-    battle_copy.team_preview = True
-
-    # Try heuristic lead selection first (more stable than MCTS in team preview)
     lead_pick = None
     try:
         team_plan = analyze_team(battle.user.team_dict) if battle.user.team_dict else None
@@ -2174,9 +2383,18 @@ async def handle_team_preview(battle, ps_websocket_client):
         logger.warning(f"Lead heuristic failed: {e}")
 
     if lead_pick is not None:
-        best_move = [f"/switch {lead_pick.index}", str(battle.rqid)]
+        try:
+            lead_slot = int(lead_pick.index)
+        except Exception:
+            lead_slot = _first_alive_team_preview_slot(battle)
     else:
-        best_move = await async_pick_move(battle_copy)
+        lead_slot = _first_alive_team_preview_slot(battle)
+
+    logger.info(
+        "Team preview selected lead slot %s in %s without pre-turn search",
+        lead_slot,
+        battle.battle_tag,
+    )
 
     # FIX: Before sending /team, check if team preview has already ended.
     # The server's inactivity timer may have auto-selected a team while we
@@ -2201,7 +2419,7 @@ async def handle_team_preview(battle, ps_websocket_client):
 
     # Check 2: queue-drain (yield first so WS messages can arrive)
     if not team_preview_expired:
-        await asyncio.sleep(0)  # yield to event loop — let pending WS messages queue up
+        await asyncio.sleep(0)  # yield to event loop â€” let pending WS messages queue up
         queue = ps_websocket_client.battle_queues.get(battle_tag)
         drained_msgs = []
         if queue:
@@ -2227,23 +2445,15 @@ async def handle_team_preview(battle, ps_websocket_client):
         logger.info("Team preview auto-resolved for %s; proceeding to battle loop", battle_tag)
         return
 
-    # because we copied the battle before sending it in, we need to update the last selected move here
-    pkmn_name = battle.user.reserve[int(best_move[0].split()[1]) - 1].name
-    battle.user.last_selected_move = LastUsedMove(
-        "teampreview", "switch {}".format(pkmn_name), battle.turn
-    )
-
-    size_of_team = len(battle.user.reserve) + 1
-    team_list_indexes = list(range(1, size_of_team))
-    choice_digit = int(best_move[0].split()[-1])
-
-    team_list_indexes.remove(choice_digit)
-    message = [
-        "/team {}{}|{}".format(
-            choice_digit, "".join(str(x) for x in team_list_indexes), battle.rqid
+    try:
+        pkmn_name = battle.user.reserve[lead_slot - 1].name
+        battle.user.last_selected_move = LastUsedMove(
+            "teampreview", "switch {}".format(pkmn_name), battle.turn
         )
-    ]
+    except Exception:
+        logger.debug("Could not record team preview lead slot %s", lead_slot)
 
+    message = _team_preview_message_for_slot(battle, lead_slot)
     await ps_websocket_client.send_message(battle.battle_tag, message)
 
 
@@ -2306,7 +2516,42 @@ async def get_battle_tag_and_opponent(
                     _release_search("resume confirmed")
                     return battle_tag, opponent_name, True, resume_entry.get("started")
                 if status == "timeout":
-                    await _requeue_resume_entry(resume_entry, "timeout")
+                    resume_entry["_timeout_requeues"] = (
+                        int(resume_entry.get("_timeout_requeues", 0)) + 1
+                    )
+                    if (
+                        RESUME_MAX_TIMEOUT_REQUEUES > 0
+                        and resume_entry["_timeout_requeues"] >= RESUME_MAX_TIMEOUT_REQUEUES
+                    ):
+                        # Dead-but-silent orphan: stop re-queuing so this worker
+                        # returns to the ladder. Forfeit + blacklist so neither
+                        # this loop nor the search loop re-claims the dead room.
+                        logger.warning(
+                            "Resume orphan %s timed out %s time(s); forfeiting and "
+                            "dropping so worker %s can ladder.",
+                            battle_tag,
+                            resume_entry["_timeout_requeues"],
+                            worker_id,
+                        )
+                        try:
+                            await ps_websocket_client.forfeit_battle(battle_tag)
+                        except Exception:
+                            pass
+                        try:
+                            await ps_websocket_client.leave_battle(battle_tag)
+                        except Exception:
+                            pass
+                        try:
+                            _blacklist_battle_tag(battle_tag)
+                        except Exception:
+                            pass
+                        if battle_tag in _active_battles:
+                            _log_battle_removal(battle_tag, "resume_orphan_dropped")
+                            del _active_battles[battle_tag]
+                            await update_active_battles_file()
+                        # do NOT requeue -> fall through to ladder search
+                    else:
+                        await _requeue_resume_entry(resume_entry, "timeout")
                 # If battle is closed/finished, drop and continue to next entry.
 
     battle_tag_pattern = re.compile(r'^>(battle-[a-z0-9-]+)')
@@ -2728,10 +2973,7 @@ async def start_standard_battle(
         unique_pkmn_names = set(
             [p.name for p in battle.user.reserve] + [battle.user.active.name]
         )
-        SmogonSets.initialize(
-            FoulPlayConfig.smogon_stats or pokemon_battle_type, unique_pkmn_names
-        )
-        TeamDatasets.initialize(pokemon_battle_type, unique_pkmn_names)
+        _initialize_standard_battle_datasets(pokemon_battle_type, unique_pkmn_names)
 
         # apply the messages that were held onto
         process_battle_updates(battle)
@@ -2748,10 +2990,7 @@ async def start_standard_battle(
             unique_pkmn_names = set(
                 p.name for p in [battle.user.active] + battle.user.reserve if p
             )
-            SmogonSets.initialize(
-                FoulPlayConfig.smogon_stats or pokemon_battle_type, unique_pkmn_names
-            )
-            TeamDatasets.initialize(pokemon_battle_type, unique_pkmn_names)
+            _initialize_standard_battle_datasets(pokemon_battle_type, unique_pkmn_names)
 
             battle.msg_list = _extract_log_lines(msg, battle.battle_tag)
             if battle.msg_list:
@@ -2795,10 +3034,7 @@ async def start_standard_battle(
             )
         else:
             battle.battle_type = BattleType.STANDARD_BATTLE
-            SmogonSets.initialize(
-                FoulPlayConfig.smogon_stats or pokemon_battle_type, unique_pkmn_names
-            )
-            TeamDatasets.initialize(pokemon_battle_type, unique_pkmn_names)
+            _initialize_standard_battle_datasets(pokemon_battle_type, unique_pkmn_names)
 
         await handle_team_preview(battle, ps_websocket_client)
 
@@ -2878,11 +3114,10 @@ async def _finalize_battle_runtime(
         try:
             await send_stream_event(
                 "BATTLE_END",
-                {
-                    "id": battle_tag,
-                    "winner": None,
-                    "ended": time.time(),
-                },
+                _operational_loss_stream_payload(
+                    battle_tag,
+                    reason="finalize_without_terminal_result",
+                ),
             )
         except Exception:
             pass
@@ -2928,11 +3163,11 @@ async def pokemon_battle(
     if gameplan:
         # Store gameplan in battle object for access by decision layer
         battle.gameplan = gameplan
-        logger.info(f"🎮 GAMEPLAN GENERATED: {gameplan.our_strategy}")
-        logger.info(f"📌 OUR WIN CONDITION: {gameplan.win_condition}")
-        logger.info(f"⚔️ OPPONENT WIN CONDITION: {gameplan.opponent_win_condition}")
-        logger.info(f"🔄 KEY PIVOTS: {', '.join(gameplan.key_pivot_triggers)}")
-        logger.info(f"💡 BACKUP PLAN: {gameplan.backup_plan or 'None'}")
+        logger.info(f"ðŸŽ® GAMEPLAN GENERATED: {gameplan.our_strategy}")
+        logger.info(f"ðŸ“Œ OUR WIN CONDITION: {gameplan.win_condition}")
+        logger.info(f"âš”ï¸ OPPONENT WIN CONDITION: {gameplan.opponent_win_condition}")
+        logger.info(f"ðŸ”„ KEY PIVOTS: {', '.join(gameplan.key_pivot_triggers)}")
+        logger.info(f"ðŸ’¡ BACKUP PLAN: {gameplan.backup_plan or 'None'}")
     else:
         battle.gameplan = None
         logger.warning(f"Failed to generate gameplan for {battle_tag}")
@@ -3007,13 +3242,21 @@ async def pokemon_battle(
                         battle_tag,
                         len(_dead_battle_blacklist),
                     )
+                    _queue_operational_loss_battle_result(
+                        battle_tag,
+                        opponent_name=opponent_name,
+                        team_name=getattr(FoulPlayConfig, "team_name", None),
+                        turns=getattr(battle, "turn", None),
+                        reason="hard_timeout",
+                        elapsed_seconds=elapsed,
+                    )
                     await send_stream_event(
                         "BATTLE_END",
-                        {
-                            "id": battle_tag,
-                            "winner": None,
-                            "ended": time.time(),
-                        },
+                        _operational_loss_stream_payload(
+                            battle_tag,
+                            reason="hard_timeout",
+                            elapsed_seconds=elapsed,
+                        ),
                     )
                     battle_end_event_sent = True
                     return None, battle_tag
@@ -3062,13 +3305,23 @@ async def pokemon_battle(
                         f"({timeout_strikes * message_timeout}s) - declaring disconnect"
                     )
                     _blacklist_battle_tag(battle_tag)
+                    _queue_operational_loss_battle_result(
+                        battle_tag,
+                        opponent_name=opponent_name,
+                        team_name=getattr(FoulPlayConfig, "team_name", None),
+                        turns=getattr(battle, "turn", None),
+                        reason="message_timeout_disconnect",
+                        elapsed_seconds=time.time() - battle_start_time,
+                        timeout_strikes=timeout_strikes,
+                    )
                     await send_stream_event(
                         "BATTLE_END",
-                        {
-                            "id": battle_tag,
-                            "winner": None,
-                            "ended": time.time(),
-                        },
+                        _operational_loss_stream_payload(
+                            battle_tag,
+                            reason="message_timeout_disconnect",
+                            elapsed_seconds=time.time() - battle_start_time,
+                            timeout_strikes=timeout_strikes,
+                        ),
                     )
                     battle_end_event_sent = True
                     return None, battle_tag
@@ -3127,11 +3380,12 @@ async def pokemon_battle(
                 )
 
             if battle_is_finished(battle_tag, msg):
-                winner = (
-                    msg.split(constants.WIN_STRING)[-1].split("\n")[0].strip()
-                    if constants.WIN_STRING in msg
-                    else None
-                )
+                if constants.WIN_STRING in msg:
+                    winner = msg.split(constants.WIN_STRING)[-1].split("\n")[0].strip()
+                elif constants.TIE_STRING in msg:
+                    winner = "tie"
+                else:
+                    winner = None
                 logger.info("Battle finished: %s Winner: %s", battle_tag, winner)
 
                 # Capture Showdown's AUTHORITATIVE per-battle rating change.
@@ -3339,14 +3593,26 @@ async def pokemon_battle(
                 except Exception as e:
                     logger.warning(f"Failed to update stream status: {e}")
 
-                await send_stream_event(
-                    "BATTLE_END",
-                    {
-                        "id": battle_tag,
-                        "winner": winner,
-                        "ended": time.time(),
-                    },
-                )
+                try:
+                    _terminal_result = _battle_result_from_evidence(
+                        winner,
+                        getattr(getattr(battle, "user", None), "account_name", None),
+                        opponent_name=opponent_name,
+                    )
+                except Exception:
+                    _terminal_result = "loss" if winner is None else None
+                _battle_end_payload = {
+                    "id": battle_tag,
+                    "winner": winner,
+                    "ended": time.time(),
+                }
+                if _terminal_result:
+                    _battle_end_payload["result"] = _terminal_result
+                    _battle_end_payload["terminalResult"] = _terminal_result
+                if winner is None and _terminal_result == "loss":
+                    _battle_end_payload["operationalLoss"] = True
+                    _battle_end_payload["reason"] = "terminal_without_winner"
+                await send_stream_event("BATTLE_END", _battle_end_payload)
                 battle_end_event_sent = True
 
                 if not _replay_handoff.get("replay_public_verified"):
@@ -3387,37 +3653,86 @@ async def pokemon_battle(
                         )
                         _turn_count_ev = getattr(battle, "turn", None)
                         _recent_summary = ""
+                        _recent_wins_ev = None
+                        _recent_losses_ev = None
+                        _recent_window_size_ev = None
+                        _recent_streak_ev = ""
+                        _stats_battles_for_alert = []
+                        _current_result_row = {
+                            "battle_id": battle_tag,
+                            "result": _result_str,
+                            "opponent": opponent_name,
+                            "turns": _turn_count_ev,
+                        }
                         try:
-                            from pathlib import Path as _Path
-                            _stats_path = _Path(__file__).resolve().parent.parent / "battle_stats.json"
-                            if _stats_path.exists():
-                                _stats_data = json.loads(_stats_path.read_text(encoding="utf-8"))
-                                _recent_battles = _stats_data.get("battles", [])[-5:]
-                                if _recent_battles:
-                                    _recent_wins = sum(1 for _b in _recent_battles if str(_b.get("result", "")).lower() == "win")
-                                    _recent_losses = sum(1 for _b in _recent_battles if str(_b.get("result", "")).lower() == "loss")
-                                    _recent_total = len(_recent_battles)
-                                    _recent_wr = int(round((_recent_wins / _recent_total) * 100)) if _recent_total else 0
-                                    _recent_summary = f"last {_recent_total}: {_recent_wins}-{_recent_losses} ({_recent_wr}% WR)"
-                        except Exception:
+                            _stats_battles = []
+                            if BATTLE_STATS_PATH.exists():
+                                _stats_data = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+                                _stats_battles = [
+                                    _b for _b in _stats_data.get("battles", [])
+                                    if isinstance(_b, dict)
+                                ]
+                            _stats_battles_for_alert = _stats_battles
+                            _recent_result_summary = summarize_recent_results_with_current(
+                                _stats_battles,
+                                _current_result_row,
+                                window=5,
+                            )
+                            _recent_summary = str(_recent_result_summary.get("record") or "")
+                            _recent_wins_ev = _recent_result_summary.get("wins")
+                            _recent_losses_ev = _recent_result_summary.get("losses")
+                            _recent_window_size_ev = _recent_result_summary.get("window_size")
+                            _recent_streak_ev = str(_recent_result_summary.get("streak") or "")
+                        except Exception as _recent_err:
+                            logger.debug("Failed to summarize recent battle window: %s", _recent_err)
                             _recent_summary = ""
+
+                        _message_text = str(msg or "").lower()
+                        _replay_is_public = bool(_replay_handoff.get("replay_public_verified")) or bool(
+                            canonical_replay_url(_queue_replay_url)
+                        )
+                        _opponent_label = opponent_name or "unknown opponent"
+                        _battle_ref = battle_tag.replace("battle-", "", 1) if battle_tag else "latest battle"
+                        _what_parts = [f"battle finished {_result_str} vs {_opponent_label}"]
+                        if _team_name_ev:
+                            _what_parts.append(f"using {_team_name_ev}")
+                        if _turn_count_ev:
+                            _what_parts.append(f"in {_turn_count_ev} turns")
+                        _what_happened = " ".join(_what_parts)
 
                         _decisive_reason = ""
                         if _result_str == "loss":
-                            if "forfeit" in (msg or "").lower():
-                                _decisive_reason = "Battle ended on forfeit rather than a clean board finish."
-                            elif "inactive" in (msg or "").lower() or "disconnect" in (msg or "").lower():
-                                _decisive_reason = "Loss came from inactivity/disconnect behavior, so this looks operational before it looks strategic."
-                            elif opponent_name:
-                                _decisive_reason = f"{opponent_name} closed the endgame before the bot stabilized the board."
-                        elif _result_str == "win" and opponent_name:
-                            _decisive_reason = f"{opponent_name} was converted once the bot secured the favorable endgame."
+                            if "forfeit" in _message_text:
+                                _decisive_reason = "Battle ended on forfeit; classify who forfeited from replay before treating it as gameplay signal."
+                            elif "inactive" in _message_text or "disconnect" in _message_text or "timeout" in _message_text:
+                                _decisive_reason = "Loss came from inactivity/disconnect behavior, so this is operational until reconnect and timer logs are cleared."
+                            elif not _replay_is_public:
+                                _decisive_reason = "Replay is not public yet, so the loss is recorded without a claimed strategic cause."
+                        elif _result_str == "win":
+                            _decisive_reason = ""
 
                         _next_action = ""
                         if _result_str == "loss":
-                            _next_action = "Review the replay before the next queue and tag whether this was policy, matchup, or ops."
+                            if "inactive" in _message_text or "disconnect" in _message_text or "timeout" in _message_text:
+                                _next_action = f"Inspect reconnect/timer logs for {_battle_ref} before treating the {_opponent_label} loss as team or policy signal."
+                            elif not _replay_is_public:
+                                _next_action = f"Resolve the replay for {_battle_ref} vs {_opponent_label} before assigning a strategic failure tag."
+                            else:
+                                _next_action = f"Review {_battle_ref} vs {_opponent_label} and classify one cause before the next improve cycle."
                         elif _result_str == "win":
-                            _next_action = "Keep watching whether this line keeps converting in the next few games."
+                            _next_action = ""
+
+                        _why_it_matters_ev = (
+                            f"{_result_str} vs {_opponent_label} is ladder evidence"
+                        )
+                        if _recent_summary:
+                            _why_it_matters_ev += f"; {_recent_summary}"
+                        if _result_str == "loss" and _decisive_reason:
+                            _why_it_matters_ev += f"; {_decisive_reason}"
+                        elif _result_str == "loss":
+                            _why_it_matters_ev += "; replay review is required before treating this as an accepted improvement signal"
+                        elif _result_str == "win":
+                            _why_it_matters_ev += "; keep proof focused on repeatable win conditions, not flavor text"
 
                         queue_event(
                             "battle_result",
@@ -3425,8 +3740,8 @@ async def pokemon_battle(
                             build_contract_payload(
                                 "PROOF",
                                 f"battle result {_result_str} vs {opponent_name}",
-                                f"Battle {battle_tag} ended {_result_str} against {opponent_name}.",
-                                "Operator-facing battle posts should immediately show whether the bot is climbing through repeatable play, variance, or an operational failure.",
+                                _what_happened,
+                                _why_it_matters_ev,
                                 f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={_queue_replay_url or ''}; replay_status={_queue_replay_status}",
                                 "Append replay or ladder delta if more context lands after posting.",
                                 source="fp.run_battle",
@@ -3444,11 +3759,58 @@ async def pokemon_battle(
                                 elo_after=_elo_after_final,
                                 rating_delta=_elo_delta_final,
                                 recent_record=_recent_summary,
+                                recent_wins=_recent_wins_ev,
+                                recent_losses=_recent_losses_ev,
+                                recent_window_size=_recent_window_size_ev,
+                                recent_streak=_recent_streak_ev,
                                 decisive_reason=_decisive_reason,
                                 next_battle_action=_next_action,
                             ),
                             dedup_window_sec=5,
                         )
+                        _safety_alert = recent_results_safety_alert(
+                            _stats_battles_for_alert,
+                            _current_result_row,
+                            short_window=5,
+                            trend_window=20,
+                            loss_streak_threshold=5,
+                            low_win_rate_threshold=0.45,
+                            min_decisive_for_rate=10,
+                        )
+                        if _safety_alert:
+                            _short_record_text = str(_safety_alert.get("short_record") or "unknown")
+                            if not _short_record_text.lower().startswith("last "):
+                                _short_record_text = f"last 5 {_short_record_text}"
+                            queue_event(
+                                "performance_alert",
+                                "battles",
+                                build_contract_payload(
+                                    "STAGNATION",
+                                    str(_safety_alert.get("headline") or "Fouler recent-results safety alert"),
+                                    (
+                                        f"{_safety_alert.get('summary')}; "
+                                        f"{_short_record_text}"
+                                    ),
+                                    (
+                                        "A long loss streak or sub-threshold recent win rate means the ladder bot may be malfunctioning "
+                                        "or no longer improving; HERMES should open a bounded repair lane before more autonomous batches."
+                                    ),
+                                    (
+                                        f"battle_id={battle_tag}; trigger={_safety_alert.get('trigger')}; "
+                                        f"trend={_safety_alert.get('trend_record')}; streak={_safety_alert.get('streak')}; "
+                                        f"decisive={_safety_alert.get('decisive')}"
+                                    ),
+                                    "Review recent replays, runtime logs, and team/policy changes before launching another improve cycle.",
+                                    source="fp.run_battle",
+                                    battle_id=battle_tag,
+                                    recent_record=str(_safety_alert.get("short_record") or ""),
+                                    trend=str(_safety_alert.get("trend_record") or ""),
+                                    performance_change=str(_safety_alert.get("summary") or ""),
+                                    code_fix_hint="create a repair ticket with recent replay evidence; do not treat the batch as healthy proof",
+                                    next_battle_action="pause or bound the next autonomous improve cycle until the loss pattern is classified",
+                                ),
+                                dedup_window_sec=900,
+                            )
                     except Exception as _qe_err:
                         logger.warning(f"Failed to queue battle_result event: {_qe_err}")
 
@@ -3473,11 +3835,10 @@ async def pokemon_battle(
                 logger.warning(f"Battle room closed without win/tie: {battle_tag}")
                 await send_stream_event(
                     "BATTLE_END",
-                    {
-                        "id": battle_tag,
-                        "winner": None,
-                        "ended": time.time(),
-                    },
+                    _operational_loss_stream_payload(
+                        battle_tag,
+                        reason="room_closed_without_winner",
+                    ),
                 )
                 battle_end_event_sent = True
                 return None, battle_tag
@@ -3551,3 +3912,4 @@ async def pokemon_battle(
             battle_tag,
             send_end_event=not battle_end_event_sent,
         )
+

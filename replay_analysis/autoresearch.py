@@ -30,6 +30,12 @@ BATCH_HISTORY_DIR = REPLAY_DIR / "batches"
 ROUTINE_CHANNEL = os.getenv("FOULER_ROUTINE_CHANNEL", "1466691161363054840")
 RESEARCH_CHANNEL = os.getenv("FOULER_RESEARCH_CHANNEL", "1466869808200028264")
 BOT_USERNAME = resolve_bot_username()
+HAZARD_SETTING_MOVES = {"stealthrock", "spikes", "toxicspikes", "stickyweb"}
+HAZARD_CONTROL_MOVES = {"defog", "rapidspin", "mortalspin", "tidyup", "courtchange"}
+
+
+def _normalize_move_name(value: Any) -> str:
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
 
 
 @dataclass
@@ -74,6 +80,62 @@ class AutoResearcher:
                         paths.append(candidate)
                         break
         return paths
+
+    def _team_file_candidates(self, team_file: Any) -> list[Path]:
+        raw = str(team_file or "").strip().replace("\\", "/")
+        if not raw:
+            return []
+        candidates = [self.project_root / "teams" / raw]
+        if not raw.startswith("gen9/ou/"):
+            candidates.append(self.project_root / "teams" / "gen9" / "ou" / raw)
+        return candidates
+
+    def _team_hazard_capabilities(self, team_file: Any) -> dict[str, Any]:
+        """Return deterministic hazard capabilities for the exact team file.
+
+        This keeps post-game research honest: a team without any hazard setter
+        cannot be blamed for never setting Stealth Rock, while a hazard-control
+        team can still be blamed for losing the hazard-control exchange.
+        """
+        for path in self._team_file_candidates(team_file):
+            if not path.exists() or not path.is_file():
+                continue
+            moves: set[str] = set()
+            move_labels: dict[str, str] = {}
+            try:
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line.startswith("- "):
+                        label = line[2:].strip()
+                        normalized = _normalize_move_name(label)
+                        moves.add(normalized)
+                        move_labels.setdefault(normalized, label)
+            except OSError:
+                break
+            hazard_moves = [
+                move_labels.get(move, move) for move in sorted(moves & HAZARD_SETTING_MOVES)
+            ]
+            control_moves = [
+                move_labels.get(move, move) for move in sorted(moves & HAZARD_CONTROL_MOVES)
+            ]
+            return {
+                "known": True,
+                "teamFile": str(team_file or ""),
+                "path": str(path.relative_to(self.project_root)).replace("\\", "/"),
+                "hazardMoves": hazard_moves,
+                "hazardControlMoves": control_moves,
+                "canSetHazards": bool(hazard_moves),
+                "canControlHazards": bool(control_moves),
+            }
+        return {
+            "known": False,
+            "teamFile": str(team_file or ""),
+            "path": "",
+            "hazardMoves": [],
+            "hazardControlMoves": [],
+            "canSetHazards": True,
+            "canControlHazards": True,
+        }
 
     def _latest_timestamp(self, battles: list[dict[str, Any]]) -> str:
         timestamps = [str(battle.get("timestamp") or "") for battle in battles]
@@ -225,21 +287,46 @@ class AutoResearcher:
                     return parts[2]
         return "p1"
 
-    def _hazard_issue(self, lines: list[str], bot_slot: str) -> tuple[bool, str]:
+    def _hazard_issue(
+        self,
+        lines: list[str],
+        bot_slot: str,
+        team_caps: dict[str, Any] | None = None,
+    ) -> tuple[bool, str]:
         if not lines:
             return False, "hazard analysis unavailable without replay or Showdown protocol log lines"
-        our_rocks = False
-        opp_rocks = False
+        team_caps = team_caps or {}
+        can_set_hazards = team_caps.get("canSetHazards", True) is True
+        can_control_hazards = team_caps.get("canControlHazards", True) is True
+        control_moves = {
+            _normalize_move_name(move)
+            for move in team_caps.get("hazardControlMoves", [])
+        }
+        our_hazards = False
+        hazards_on_us = False
+        control_used = False
         for line in lines:
             if "|-sidestart|" in line and ("Stealth Rock" in line or "Spikes" in line):
                 if f"|{bot_slot}:" in line:
-                    opp_rocks = True
+                    hazards_on_us = True
                 else:
-                    our_rocks = True
-        if opp_rocks and not our_rocks:
+                    our_hazards = True
+            if line.startswith("|move|") and f"|{bot_slot}a:" in line:
+                parts = line.split("|")
+                if len(parts) >= 4 and _normalize_move_name(parts[3]) in control_moves:
+                    control_used = True
+        if can_set_hazards and hazards_on_us and not our_hazards:
             return True, "opponent won the hazard race while bot never established its own chip engine"
-        if not our_rocks:
+        if can_set_hazards and not our_hazards:
             return True, "bot never established Stealth Rock or equivalent chip pressure"
+        if (
+            not can_set_hazards
+            and can_control_hazards
+            and hazards_on_us
+            and not control_used
+        ):
+            moves = ", ".join(team_caps.get("hazardControlMoves", []) or ["hazard control"])
+            return True, f"team has no hazard setter; opponent hazards stuck while bot never used {moves}"
         return False, ""
 
     def _early_faint_issue(self, lines: list[str], bot_slot: str) -> tuple[bool, str]:
@@ -543,7 +630,8 @@ class AutoResearcher:
                     if species:
                         opponent_counter[species] += 1
 
-            hazard_issue, hazard_detail = self._hazard_issue(lines, bot_slot)
+            team_caps = self._team_hazard_capabilities(battle.get("team_file"))
+            hazard_issue, hazard_detail = self._hazard_issue(lines, bot_slot, team_caps)
             if hazard_issue:
                 pattern_counter["hazard_pressure"] += 1
                 evidence_map["hazard_pressure"].append(f"{battle_label}: {hazard_detail}")

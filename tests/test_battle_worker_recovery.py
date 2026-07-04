@@ -54,6 +54,30 @@ class _DummyShowdownClient:
         self.released.append((worker_id, reason))
 
 
+class _DummyPendingBattleClient:
+    def __init__(self) -> None:
+        self.pending_battle_messages = {
+            "battle-gen9ou-stale": ["stale"],
+            "battle-gen9ou-resume": ["resume"],
+        }
+        self.pending_battle_times = {
+            "battle-gen9ou-stale": 1.0,
+            "battle-gen9ou-resume": 2.0,
+        }
+        self.forfeited = []
+        self.left = []
+        self.unregistered = []
+
+    async def forfeit_battle(self, tag: str) -> None:
+        self.forfeited.append(tag)
+
+    async def leave_battle(self, tag: str) -> None:
+        self.left.append(tag)
+
+    def unregister_battle(self, tag: str) -> None:
+        self.unregistered.append(tag)
+
+
 def test_loss_drain_bool_parser_ignores_inline_comments(monkeypatch) -> None:
     monkeypatch.setenv("LOSS_TRIGGERED_DRAIN", "0  # disable early-stop for devstream runs")
 
@@ -97,3 +121,22 @@ async def test_battle_worker_retries_empty_search_without_recording(monkeypatch)
     assert stats.recorded is False
     assert client.searches == 1
     assert client.released == [(0, "cleanup")]
+
+
+@pytest.mark.asyncio
+async def test_forfeit_pending_battle_tags_removes_only_stale_entries() -> None:
+    client = _DummyPendingBattleClient()
+
+    cleaned = await run._forfeit_pending_battle_tags(
+        client,
+        ["battle-gen9ou-stale"],
+        reason="test",
+    )
+
+    assert cleaned == ["battle-gen9ou-stale"]
+    assert client.forfeited == ["battle-gen9ou-stale"]
+    assert client.left == ["battle-gen9ou-stale"]
+    assert client.unregistered == ["battle-gen9ou-stale"]
+    assert "battle-gen9ou-stale" not in client.pending_battle_messages
+    assert "battle-gen9ou-stale" not in client.pending_battle_times
+    assert "battle-gen9ou-resume" in client.pending_battle_messages

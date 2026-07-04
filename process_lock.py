@@ -6,6 +6,7 @@ Creates a PID file and checks for stale processes before starting.
 import os
 import sys
 import signal
+import time
 import atexit
 import json
 from datetime import datetime, timezone
@@ -19,6 +20,29 @@ except Exception:  # pragma: no cover - import failure must fail closed in the g
 LOCK_DIR = os.path.dirname(os.path.abspath(__file__))
 PID_FILE = os.path.join(LOCK_DIR, ".bot.pid")
 PID_CREATE_TIME_TOLERANCE_SECONDS = 2.0
+# A matching ladder process younger than this is treated as a healthy,
+# still-materializing sibling rather than a stale corpse. Without this guard,
+# a keepalive launch that overlaps a healthy client would hard-kill it during
+# kill_stale_processes(), stranding its in-flight battles server-side and
+# forcing the next client into a slow orphan-resume recovery (the ~1-2 min
+# restart downtime). Override via FOULER_STALE_GRACE_SEC.
+STALE_PROCESS_GRACE_SECONDS = float(os.environ.get("FOULER_STALE_GRACE_SEC", "90") or 90)
+
+
+def _truthy_env(name: str) -> bool:
+    return str(os.environ.get(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _offline_eval_mode() -> bool:
+    return _truthy_env("FOULER_OFFLINE_EVAL")
+
+
+def _pid_file_path() -> str:
+    raw = str(os.environ.get("FOULER_PROCESS_LOCK_FILE") or "").strip()
+    if raw:
+        return os.path.abspath(raw)
+    return PID_FILE
+
 
 
 def _normalize_cmdline(cmdline) -> list[str]:
@@ -76,6 +100,8 @@ def _arg_positive_int(cmdline, name: str) -> int | None:
 def _current_runtime_lease_guard() -> dict[str, object] | None:
     if not _is_battle_runner_command(sys.argv):
         return None
+    if _offline_eval_mode():
+        return None
     if validate_runtime_lease is None:
         return {
             "ok": False,
@@ -111,7 +137,41 @@ def _is_stale_bot_process(proc, our_dir: str, protected_pids: set[int]) -> bool:
     if not _is_battle_runner_command(cmdline):
         return False
     cwd = proc.info.get("cwd", "")
-    return _cwd_matches_repo(cwd, our_dir)
+    if not _cwd_matches_repo(cwd, our_dir):
+        return False
+    # Recency guard: never reap a matching client that started within the grace
+    # window. A just-launched (or healthy, recently-restarted) ladder client is
+    # NOT stale; killing it is what caused the back-to-back restart self-kills
+    # (each new launch reaped its predecessor). Genuinely stale corpses are older
+    # than the grace window. If the start time is unknowable we preserve the
+    # legacy behaviour (treat as stale-eligible) so the singleton-cleanup
+    # contract is unchanged; real processes always expose create_time via psutil.
+    if STALE_PROCESS_GRACE_SECONDS > 0:
+        create_time = _proc_create_time(proc)
+        if create_time is not None:
+            try:
+                age = time.time() - float(create_time)
+            except (TypeError, ValueError):
+                age = None
+            if age is not None and age < STALE_PROCESS_GRACE_SECONDS:
+                return False
+    return True
+
+
+def _proc_create_time(proc):
+    """Best-effort process start epoch; None if it cannot be determined."""
+    try:
+        ct = None
+        info = getattr(proc, "info", None)
+        if isinstance(info, dict):
+            ct = info.get("create_time")
+        if ct is None:
+            getter = getattr(proc, "create_time", None)
+            if callable(getter):
+                ct = getter()
+        return ct
+    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError, AttributeError):
+        return None
 
 
 def _pid_payload() -> dict[str, object]:
@@ -119,6 +179,7 @@ def _pid_payload() -> dict[str, object]:
         "pid": os.getpid(),
         "startedAt": datetime.now(timezone.utc).isoformat(),
         "command": _normalize_cmdline(sys.argv),
+        "lockFile": _pid_file_path(),
     }
     try:
         payload["createTime"] = psutil.Process(os.getpid()).create_time()
@@ -128,7 +189,7 @@ def _pid_payload() -> dict[str, object]:
 
 
 def _read_pid_payload() -> dict[str, object] | int | None:
-    with open(PID_FILE, encoding="utf-8") as f:
+    with open(_pid_file_path(), encoding="utf-8") as f:
         raw = f.read().strip()
     if not raw:
         return None
@@ -195,10 +256,12 @@ def is_bot_process(pid: int) -> bool:
 
 def kill_stale_processes():
     """Find and kill any stale bot processes from THIS directory only."""
+    if _offline_eval_mode():
+        return 0
     our_dir = os.path.abspath(LOCK_DIR)
     protected_pids = _protected_process_ids()
     killed = 0
-    for proc in psutil.process_iter(["pid", "cmdline", "cwd"]):
+    for proc in psutil.process_iter(["pid", "cmdline", "cwd", "create_time"]):
         try:
             # Only kill processes running from OUR exact directory. Never kill
             # processes from other fouler-play installs, and never kill this
@@ -215,7 +278,9 @@ def kill_stale_processes():
 
 def _claim_pid_file_atomically():
     """Create the PID file only if no other process already owns it."""
-    fd = os.open(PID_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    path = _pid_file_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     try:
         content = json.dumps(_pid_payload(), sort_keys=True) + "\n"
         os.write(fd, content.encode("utf-8"))
@@ -260,7 +325,7 @@ def _remove_stale_pid_file() -> bool:
         print(f"[LOCK] Stale PID file (PID {old_pid} not a bot). Cleaning up.", file=sys.stderr)
 
     try:
-        os.remove(PID_FILE)
+        os.remove(_pid_file_path())
     except FileNotFoundError:
         return True
     except OSError as exc:
@@ -312,10 +377,11 @@ def acquire_lock(username: str = "unknown") -> bool:
 def release_lock():
     """Release the process lock."""
     try:
-        if os.path.exists(PID_FILE):
+        path = _pid_file_path()
+        if os.path.exists(path):
             pid = _pid_from_payload(_read_pid_payload())
             if pid == os.getpid():
-                os.remove(PID_FILE)
+                os.remove(path)
                 print(f"[LOCK] Released lock (PID {os.getpid()})", file=sys.stderr)
     except (ValueError, json.JSONDecodeError, OSError):
         pass
