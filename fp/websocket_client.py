@@ -647,7 +647,14 @@ class PSWebsocketClient:
             message = ["/trn " + self.username]
             logger.info("Logging in via --no-security local server (no assertion)")
             await self.send_message("", message)
-            deadline = time.time() + 10
+            # A freshly-started managed eval server can accept the websocket and
+            # send challstr while its main process is still loading formats, so
+            # the /trn confirmation may lag tens of seconds. Poll until the
+            # deadline; a quiet 2s window is NOT a failure (latent bug: the
+            # uncaught wait_for TimeoutError used to abort login on any 2s gap).
+            deadline = time.time() + float(
+                os.getenv("FOULER_NO_SECURITY_LOGIN_TIMEOUT_SEC", "60")
+            )
             expected_id = _to_showdown_id(self.username)
             while True:
                 remaining = deadline - time.time()
@@ -656,10 +663,13 @@ class PSWebsocketClient:
                         "Timed out waiting for no-security login confirmation "
                         f"for {self.username}"
                     )
-                msg = await asyncio.wait_for(
-                    self.receive_message(),
-                    timeout=min(remaining, 2.0),
-                )
+                try:
+                    msg = await asyncio.wait_for(
+                        self.receive_message(),
+                        timeout=min(remaining, 2.0),
+                    )
+                except asyncio.TimeoutError:
+                    continue
                 split_msg = msg.split("|")
                 if len(split_msg) > 2 and split_msg[1] == "nametaken":
                     raise LoginError(
