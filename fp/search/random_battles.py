@@ -3,6 +3,7 @@ import random
 from copy import deepcopy
 
 from constants import BattleType
+from data import pokedex
 from fp.battle import Battle, Pokemon
 from data.pkmn_sets import RandomBattleTeamDatasets, TeamDatasets
 from fp.search.helpers import populate_pkmn_from_set
@@ -10,6 +11,7 @@ from fp.helpers import (
     POKEMON_TYPE_INDICES,
     is_super_effective,
     type_effectiveness_modifier,
+    normalize_name,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,19 +40,11 @@ def get_all_remaining_sets_for_revealed_pkmn(battle: Battle) -> dict:
     return ret
 
 
-def prepare_random_battles(battle: Battle, num_battles: int, deadline: float | None = None) -> list[(Battle, float)]:
-    import time as _time
+def prepare_random_battles(battle: Battle, num_battles: int) -> list[(Battle, float)]:
     revealed_pkmn_sets = get_all_remaining_sets_for_revealed_pkmn(deepcopy(battle))
 
     sampled_battles = []
-    weights = []
     for index in range(num_battles):
-        if deadline is not None and index > 0 and _time.monotonic() >= deadline:
-            logger.info(
-                "Sampling stopped early at %d/%d (sampling budget spent)",
-                index, num_battles,
-            )
-            break
         logger.info("Sampling battle {}".format(index))
         battle_copy = deepcopy(battle)
 
@@ -73,23 +67,26 @@ def prepare_random_battles(battle: Battle, num_battles: int, deadline: float | N
 
         populate_randombattle_unrevealed_pkmn(battle_copy)
         battle_copy.opponent.lock_moves()
-        battle_weight = 1.0
-        for pkmn in [battle_copy.opponent.active] + list(battle_copy.opponent.reserve):
-            if pkmn is None:
-                continue
-            battle_weight *= max(1.0, getattr(pkmn, "sample_weight", 1.0))
-        sampled_battles.append(battle_copy)
-        weights.append(battle_weight)
+        sampled_battles.append((battle_copy, 1 / num_battles))
 
-    total = sum(weights) if weights else 0
-    if total <= 0:
-        return [(b, 1 / max(len(sampled_battles), 1)) for b in sampled_battles]
-    return [(b, w / total) for b, w in zip(sampled_battles, weights)]
+    return sampled_battles
 
 
 def sample_randombattle_pokemon(existing_pokemon: list[Pokemon]) -> Pokemon:
+    def is_mega(pkmn: Pokemon):
+        if normalize_name(pokedex.get(pkmn.name, {}).get("forme", "")).startswith(
+            "mega"
+        ):
+            return True
+        for mega_name, mega_item in pkmn.get_mega_pkmn_info():
+            if pkmn.item == mega_item:
+                return True
+
+        return False
+
     ok = False
     existing_pokemon_names = {pkmn.name for pkmn in existing_pokemon}
+    has_mega = any(is_mega(p) for p in existing_pokemon)
 
     sample_count = 0
     while not ok:
@@ -102,9 +99,13 @@ def sample_randombattle_pokemon(existing_pokemon: list[Pokemon]) -> Pokemon:
         pkmn = Pokemon(pkmn_name, pkmn_full_set.pkmn_set.level)
         if pkmn_name in existing_pokemon_names:
             ok = False
+        if sample_count < 10 and is_mega(pkmn) and has_mega:
+            ok = False
         if sample_count < 10 and _more_than_3_pokemon_weak_to_a_given_typing(
             existing_pokemon + [pkmn]
         ):
+            ok = False
+        if sample_count < 10 and _more_than_1_species(existing_pokemon + [pkmn]):
             ok = False
         if sample_count < 10 and _more_than_2_pokemon_of_any_type(
             existing_pokemon + [pkmn]
@@ -123,9 +124,15 @@ def sample_randombattle_pokemon(existing_pokemon: list[Pokemon]) -> Pokemon:
 # From P.S. documentation:
 #
 # Team generation currently uses this feature to prevent teams from having:
+#   more than 1 species
 #   more than 3 Pokemon weak to any given typing,
 #   more than 2 Pokemon of any given type,
 #   or more than 1 Pokemon that shares a 4x weakness
+def _more_than_1_species(team: list[Pokemon]) -> bool:
+    pkmn_species = set([pkmn.get_species() for pkmn in team])
+    return len(pkmn_species) < len(team)
+
+
 def _more_than_3_pokemon_weak_to_a_given_typing(team: list[Pokemon]) -> bool:
     num_pkmn_weak_to_typing = {}
     for pkmn in team:

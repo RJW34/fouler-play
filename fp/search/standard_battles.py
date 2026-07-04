@@ -1,15 +1,6 @@
 import logging
-import os
 import random
 from copy import deepcopy
-
-# A/B switch for the offline eval harness ONLY. When set, the Bayesian-sampled
-# opponent set keeps just its revealed moves (no move completion), reproducing the
-# pre-fix "inert opponent" behavior so the harness can measure the win-rate impact
-# of the set-sampling restoration. NEVER set this in production.
-_FORCE_NO_SETSAMPLE = str(os.getenv("FOULER_FORCE_NO_SETSAMPLE", "0")).lower() in {
-    "1", "true", "yes", "on",
-}
 
 import constants
 from data import all_move_json, pokedex
@@ -28,201 +19,6 @@ from data.pkmn_sets import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Per-decision memoization of the Bayesian candidate-set distribution.
-# bayesian_set_probabilities() is the dominant pre-MCTS sampling cost (candidate
-# gathering + compatibility filtering + reverse-damage validation), and it was
-# recomputed once PER opponent Pokemon PER sampled battle. Within a single
-# decision the revealed information is identical across the N samples, so the
-# returned distribution is identical -- only the random draw downstream differs.
-# We memoize the distribution per (pokemon revealed-signature) for the lifetime
-# of one decision; prepare_battles()/prepare_random_battles() bump the generation
-# so the cache never leaks stale info across decisions (revealed info changes).
-_BAYES_CACHE_GEN = 0
-_BAYES_CACHE: dict = {}
-# The cache is ONLY consulted while a sampling decision is active (between
-# begin_sampling_decision() and end_sampling_decision()). Outside that window --
-# e.g. direct callers or unit tests that mutate the underlying datasets -- the
-# distribution is always recomputed, so a dataset change can never serve a stale
-# cached result. Within one decision the datasets are static, so caching is safe.
-_BAYES_CACHE_ACTIVE = False
-
-
-def begin_sampling_decision() -> None:
-    """Reset + arm the per-decision Bayesian distribution cache. Call once per decision."""
-    global _BAYES_CACHE_GEN, _BAYES_CACHE, _BAYES_CACHE_ACTIVE
-    _BAYES_CACHE_GEN += 1
-    _BAYES_CACHE = {}
-    _BAYES_CACHE_ACTIVE = True
-
-
-def end_sampling_decision() -> None:
-    """Disarm + clear the cache once a decision's sampling loop has finished."""
-    global _BAYES_CACHE, _BAYES_CACHE_ACTIVE
-    _BAYES_CACHE_ACTIVE = False
-    _BAYES_CACHE = {}
-
-
-def _pkmn_reveal_signature(pkmn: Pokemon):
-    try:
-        moves = tuple(sorted(m.name for m in pkmn.moves))
-    except Exception:
-        moves = tuple()
-    sr = getattr(pkmn, "speed_range", None)
-    sr_min = getattr(sr, "min", None)
-    sr_max = getattr(sr, "max", None)
-    try:
-        hp = tuple(sorted(getattr(pkmn, "hidden_power_possibilities", []) or []))
-    except Exception:
-        hp = tuple()
-    return (
-        getattr(pkmn, "name", None),
-        moves,
-        hp,
-        getattr(pkmn, "item", None),
-        getattr(pkmn, "ability", None),
-        bool(getattr(pkmn, "terastallized", False)),
-        getattr(pkmn, "tera_type", None),
-        sr_min,
-        sr_max,
-        getattr(pkmn, "level", None),
-        tuple(sorted(getattr(pkmn, "impossible_items", []) or [])),
-        tuple(sorted(getattr(pkmn, "impossible_abilities", []) or [])),
-    )
-
-
-def bayesian_set_probabilities(pkmn: Pokemon, battle: Battle = None) -> list:
-    # Per-decision memo: identical revealed signature -> identical distribution.
-    # Only active inside a sampling decision (datasets static); otherwise always
-    # recompute so a dataset change can never serve a stale cached result.
-    if not _BAYES_CACHE_ACTIVE:
-        return _bayesian_set_probabilities_uncached(pkmn, battle)
-    try:
-        key = _pkmn_reveal_signature(pkmn)
-        cached = _BAYES_CACHE.get(key)
-        if cached is not None:
-            return cached
-    except Exception:
-        key = None
-    result = _bayesian_set_probabilities_uncached(pkmn, battle)
-    if key is not None:
-        _BAYES_CACHE[key] = result
-    return result
-
-
-def _bayesian_set_probabilities_uncached(pkmn: Pokemon, battle: Battle = None) -> list:
-    """
-    Calculate Bayesian posterior probabilities for each possible set given revealed information.
-    
-    Args:
-        pkmn: Pokemon to calculate probabilities for
-        battle: Battle context (optional, used for speed comparisons)
-    
-    Returns:
-        List of tuples (PredictedPokemonSet, probability)
-    """
-    # Gather all possible sets from both data sources
-    candidate_sets = []
-    
-    # Try TeamDatasets first
-    team_sets = TeamDatasets.get_all_remaining_sets(pkmn)
-    if team_sets:
-        candidate_sets.extend(team_sets)
-    
-    # Also include SmogonSets - get_all_remaining_sets returns PokemonSet (not Predicted)
-    # We need to convert them to PredictedPokemonSet with moves
-    smogon_sets = SmogonSets.get_all_remaining_sets(pkmn)
-    if smogon_sets:
-        # Convert PokemonSet to PredictedPokemonSet by sampling moves
-        for pkmn_set in smogon_sets:
-            # Create a minimal moveset with known moves
-            known_moves = tuple(m.name for m in pkmn.moves)
-            predicted_set = PredictedPokemonSet(
-                pkmn_set=pkmn_set,
-                pkmn_moveset=PokemonMoveset(moves=known_moves if known_moves else tuple())
-            )
-            if smogon_set_makes_sense(predicted_set):
-                candidate_sets.append(predicted_set)
-    
-    if not candidate_sets:
-        logger.debug(f"No candidate sets found for {pkmn.name}")
-        return []
-    
-    # Calculate prior probabilities from set frequencies
-    set_probs = []
-    total_count = sum(max(1, s.pkmn_set.count) for s in candidate_sets)
-    
-    for pkmn_set in candidate_sets:
-        prior = max(1, pkmn_set.pkmn_set.count) / total_count
-        set_probs.append((pkmn_set, prior))
-    
-    # Bayesian update: eliminate incompatible sets and renormalize
-    compatible_sets = []
-    
-    for pkmn_set, prob in set_probs:
-        is_compatible = True
-        
-        # Check revealed moves
-        for move in pkmn.moves:
-            if move.name not in pkmn_set.pkmn_moveset.moves:
-                # Handle hidden power specially
-                if move.name == constants.HIDDEN_POWER:
-                    hidden_power_possibilities = [
-                        f"{constants.HIDDEN_POWER}{p}{constants.HIDDEN_POWER_ACTIVE_MOVE_BASE_DAMAGE_STRING}"
-                        for p in pkmn.hidden_power_possibilities
-                    ]
-                    has_compatible_hp = any(
-                        hp_move in pkmn_set.pkmn_moveset.moves 
-                        for hp_move in hidden_power_possibilities
-                    )
-                    if not has_compatible_hp:
-                        is_compatible = False
-                        break
-                else:
-                    is_compatible = False
-                    break
-        
-        if not is_compatible:
-            continue
-        
-        # Check revealed item
-        if pkmn.item is not None and pkmn.item != constants.UNKNOWN_ITEM:
-            if not pkmn_set.pkmn_set.item_check(pkmn):
-                continue
-        
-        # Check revealed ability
-        if pkmn.ability is not None:
-            if not pkmn_set.pkmn_set.ability_check(pkmn):
-                continue
-        
-        # Check tera type if terastallized
-        if pkmn.terastallized and pkmn.tera_type:
-            if pkmn_set.pkmn_set.tera_type and pkmn_set.pkmn_set.tera_type != pkmn.tera_type:
-                continue
-        
-        # Check speed range
-        if not pkmn_set.pkmn_set.speed_check(pkmn):
-            continue
-        
-        # Check impossible items/abilities
-        if pkmn_set.pkmn_set.item in pkmn.impossible_items:
-            continue
-        if pkmn_set.pkmn_set.ability in pkmn.impossible_abilities:
-            continue
-        
-        compatible_sets.append((pkmn_set, prob))
-    
-    if not compatible_sets:
-        logger.debug(f"All sets eliminated by Bayesian filtering for {pkmn.name}")
-        return []
-    
-    # Renormalize probabilities
-    total_prob = sum(prob for _, prob in compatible_sets)
-    compatible_sets = [(pkmn_set, prob / total_prob) for pkmn_set, prob in compatible_sets]
-    
-    return compatible_sets
 
 
 TRICKABLE_ITEMS = {
@@ -285,8 +81,6 @@ def choice_item(predicted_pkmn_set: PredictedPokemonSet):
 
     num_illogical_moves = 0
     for mv in predicted_pkmn_set.pkmn_moveset.moves:
-        if mv not in all_move_json:
-            continue  # Skip unknown moves (e.g. hiddenpower60)
         if all_move_json[mv][constants.CATEGORY] not in logical_moves and mv not in [
             "trick",
             "switcheroo",
@@ -327,7 +121,7 @@ def smogon_set_makes_sense(predicted_pkmn_set: PredictedPokemonSet):
 
         case "assaultvest":
             if predicted_pkmn_set.pkmn_set.ability != "klutz" and any(
-                all_move_json.get(mv, {}).get(constants.CATEGORY) == constants.STATUS
+                all_move_json[mv][constants.CATEGORY] == constants.STATUS
                 for mv in predicted_pkmn_set.pkmn_moveset.moves
             ):
                 return False
@@ -517,68 +311,24 @@ def pokemon_guaranteed_move(pkmn: Pokemon):
             pkmn.add_move(required_move)
 
 
-def sample_pokemon(pkmn: Pokemon, battle: Battle = None):
+def sample_pokemon(pkmn: Pokemon):
     if not pkmn.mega_name:
-        _sample_pokemon(pkmn, battle)
+        _sample_pokemon(pkmn)
         return
 
     # the ability of a mega pokemon that has not yet mega-evolved
     # needs to be sampled from its non-mega version
     pkmn_without_mega = deepcopy(pkmn)
     pkmn_without_mega.mega_name = None
-    _sample_pokemon(pkmn_without_mega, battle)
+    _sample_pokemon(pkmn_without_mega)
     pkmn.ability = pkmn_without_mega.ability
-    _sample_pokemon(pkmn, battle)
+    _sample_pokemon(pkmn)
 
 
-def _sample_pokemon(pkmn: Pokemon, battle: Battle = None):
+def _sample_pokemon(pkmn: Pokemon):
     pokemon_guaranteed_move(pkmn)
     set_most_likely_hidden_power(pkmn)
 
-    # Use Bayesian inference to get probability distribution over sets
-    bayesian_probs = bayesian_set_probabilities(pkmn, battle)
-    
-    if bayesian_probs:
-        # Sample from the Bayesian probability distribution
-        sets_list = [s for s, _ in bayesian_probs]
-        probs_list = [p for _, p in bayesian_probs]
-        sampled_set = deepcopy(random.choices(sets_list, weights=probs_list)[0])
-
-        # Determine source based on where the set came from
-        if sampled_set in TeamDatasets.get_pkmn_sets_from_pkmn_name(pkmn):
-            source = "bayesian-teamdatasets"
-        else:
-            source = "bayesian-smogonsets"
-
-        # CRITICAL: a Bayesian SmogonSets candidate is constructed with ONLY the
-        # revealed moves (see bayesian_set_probabilities), so a fully-unrevealed
-        # opponent pokemon would otherwise be serialized with ZERO moves -- which
-        # makes it inert in MCTS (no threats simulated), defeating the whole point
-        # of opponent-set sampling. If the sampled set has fewer than 4 moves,
-        # complete the moveset by sampling likely moves for the chosen set, exactly
-        # as the non-Bayesian fallback paths do.
-        existing_moves = list(sampled_set.pkmn_moveset.moves)
-        if len(existing_moves) < 4 and not _FORCE_NO_SETSAMPLE:
-            completed_moves = sample_pokemon_moveset_with_known_pkmn_set(
-                pkmn, sampled_set.pkmn_set
-            )
-            # Preserve any moves the Bayesian set already carried, then add the
-            # sampled completions (dedup, cap at 4).
-            merged = list(existing_moves)
-            for mv in completed_moves:
-                if mv not in merged:
-                    merged.append(mv)
-                if len(merged) >= 4:
-                    break
-            sampled_set = PredictedPokemonSet(
-                pkmn_set=sampled_set.pkmn_set,
-                pkmn_moveset=PokemonMoveset(moves=tuple(merged)),
-            )
-
-        populate_pkmn_from_set(pkmn, sampled_set, source=source)
-        return
-
-    # Fallback to original logic if Bayesian inference returns no results
     # 1: TeamDatasets is not emptied and `get_all_remaining_sets` returned at least one set
     # Note: TeamDatasets are not sampled according to their counts
     # because the counts are not indicative of the actual distribution of sets
@@ -586,8 +336,7 @@ def _sample_pokemon(pkmn: Pokemon, battle: Battle = None):
     # if at least 1 move is known
     remaining_team_sets = TeamDatasets.get_all_remaining_sets(pkmn)
     if remaining_team_sets and (not pkmn.moves or random.random() < 0.75):
-        weights = [max(1, s.pkmn_set.count) for s in remaining_team_sets]
-        sampled_set = deepcopy(random.choices(remaining_team_sets, weights=weights)[0])
+        sampled_set = deepcopy(random.choice(remaining_team_sets))
         populate_pkmn_from_set(pkmn, sampled_set, source="teamdatasets-full")
         return
 
@@ -599,8 +348,7 @@ def _sample_pokemon(pkmn: Pokemon, battle: Battle = None):
         if s.pkmn_set.set_makes_sense(pkmn) and smogon_set_makes_sense(s)
     ]
     if remaining_team_sets:
-        weights = [max(1, s.pkmn_set.count) for s in remaining_team_sets]
-        sampled_set = deepcopy(random.choices(remaining_team_sets, weights=weights)[0].pkmn_set)
+        sampled_set = deepcopy(random.choice(remaining_team_sets).pkmn_set)
         moves = sample_pokemon_moveset_with_known_pkmn_set(pkmn, sampled_set)
         sampled_set = PredictedPokemonSet(
             pkmn_set=sampled_set,
@@ -726,48 +474,21 @@ def sample_mega_evolution(battler: Battler, index: int):
     pkmn.mega_name = mega_pkmn_name
 
 
-def prepare_battles(battle: Battle, num_battles: int, deadline: float | None = None) -> list[(Battle, float)]:
-    import time as _time
-    begin_sampling_decision()
+def prepare_battles(battle: Battle, num_battles: int) -> list[(Battle, float)]:
     sampled_battles = []
-    weights = []
-    try:
-        for index in range(num_battles):
-            # Sampling is the dominant pre-MCTS cost (deepcopy + Bayesian set draw
-            # per opponent mon). Stop adding samples once we hit the sampling
-            # deadline so the surrounding decision budget is never exhausted before
-            # MCTS runs -- but ALWAYS keep at least one sample so MCTS has a state.
-            if deadline is not None and index > 0 and _time.monotonic() >= deadline:
-                logger.info(
-                    "Sampling stopped early at %d/%d (sampling budget spent)",
-                    index, num_battles,
-                )
-                break
-            logger.info("Sampling battle {}".format(index))
-            battle_copy = deepcopy(battle)
-            if battle_copy.mega_evolve_possible():
-                sample_mega_evolution(battle_copy.opponent, index)
+    for index in range(num_battles):
+        logger.info("Sampling battle {}".format(index))
+        battle_copy = deepcopy(battle)
+        if battle_copy.mega_evolve_possible():
+            sample_mega_evolution(battle_copy.opponent, index)
 
-            sample_pokemon(battle_copy.opponent.active)
-            for pkmn in filter(lambda x: x.is_alive(), battle_copy.opponent.reserve):
-                sample_pokemon(pkmn)
+        sample_pokemon(battle_copy.opponent.active)
+        for pkmn in filter(lambda x: x.is_alive(), battle_copy.opponent.reserve):
+            sample_pokemon(pkmn)
 
-            if battle.generation in constants.NO_TEAM_PREVIEW_GENS:
-                populate_standardbattle_unrevealed_pkmn(battle_copy)
-            battle_copy.opponent.lock_moves()
-            # Compute sampling weight from opponent sets (product of per-Pokemon weights)
-            battle_weight = 1.0
-            for pkmn in [battle_copy.opponent.active] + list(battle_copy.opponent.reserve):
-                if pkmn is None:
-                    continue
-                battle_weight *= max(1.0, getattr(pkmn, "sample_weight", 1.0))
-            sampled_battles.append(battle_copy)
-            weights.append(battle_weight)
-    finally:
-        end_sampling_decision()
+        if battle.generation in constants.NO_TEAM_PREVIEW_GENS:
+            populate_standardbattle_unrevealed_pkmn(battle_copy)
+        battle_copy.opponent.lock_moves()
+        sampled_battles.append((battle_copy, 1 / num_battles))
 
-    # Normalize weights
-    total = sum(weights) if weights else 0
-    if total <= 0:
-        return [(b, 1 / max(len(sampled_battles), 1)) for b in sampled_battles]
-    return [(b, w / total) for b, w in zip(sampled_battles, weights)]
+    return sampled_battles
