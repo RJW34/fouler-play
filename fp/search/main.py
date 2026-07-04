@@ -333,6 +333,53 @@ PENALTY_PIPELINE_ENABLED = str(
     os.getenv("FOULER_PENALTY_PIPELINE", "0")
 ).lower() in {"1", "true", "yes", "on"}
 
+# --- P1: decision loop-breaker gate (2026-07-04) --------------------------------
+# break_repeated_decision demotes any move picked >= repeat_threshold times in the
+# recent action window by up to ~3000:1. Trace evidence from the 2026-07-04 loss
+# corpus: on stall teams correct play IS repetition -- the breaker accounted for
+# 249/265 (94%) of played-vs-policy inversions, demoting saltcure/recover/protect/
+# roost win conditions the search was confident in (e.g. gen9ou-2643766855 t20:
+# protect 0.751 -> 0.039, played earthquake). Upstream foul-play has no such layer.
+#
+# FOULER_LOOP_BREAK gates the whole layer:
+#   1 (default) = breaker active, but guarded: it never overrides a decisive
+#                 search and requires provable position stagnation (see
+#                 break_repeated_decision).
+#   0           = break_repeated_decision is a no-op; the search policy is trusted.
+# Flipping to 0 is config-only (.env) and must be justified by the offline eval
+# acceptance gate (infrastructure/offline_eval.py --no-loop-break arm).
+LOOP_BREAK_DECISIVE_BEST_FRACTION = 0.45
+LOOP_BREAK_DECISIVE_RUNNERUP_RATIO = 3.0
+LOOP_BREAK_STAGNATION_SPAN = 3
+LOOP_BREAK_FP_HISTORY_LIMIT = 16
+
+_loop_break_mode_logged = False
+
+
+def _loop_break_enabled() -> bool:
+    """Read the FOULER_LOOP_BREAK kill-switch (checked per decision so tests and
+    config flips do not require module reloads; run.py loads .env at start)."""
+    return str(os.getenv("FOULER_LOOP_BREAK", "1")).lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _log_loop_break_mode_once(enabled: bool) -> None:
+    global _loop_break_mode_logged
+    if _loop_break_mode_logged:
+        return
+    _loop_break_mode_logged = True
+    logger.info(
+        "Decision loop-breaker: %s (FOULER_LOOP_BREAK=%s)",
+        "ENABLED with decisive-search + stagnation guards"
+        if enabled
+        else "DISABLED (no-op; search policy trusted)",
+        os.getenv("FOULER_LOOP_BREAK", "1"),
+    )
+
 # Number of MCTS samples to actually search per turn. Raised to track the sampled
 # opponent-set count (max_mcts_battles) so every plausible team is searched, rather
 # than the old default of 2 which starved the hidden-information averaging.
@@ -6174,6 +6221,80 @@ def _detect_action_cycle(recent: list[str], next_action: str) -> bool:
     return False
 
 
+def _position_fingerprint(battle: Battle | None) -> tuple | None:
+    """Cheap board-state fingerprint: species on the field + per-side HP totals.
+
+    Used by the loop-breaker's stagnation guard: repeating an action is only a
+    pathological loop when the position is provably NOT changing. Any HP delta
+    (chip damage, recovery, sacks) or a switch changes the fingerprint. Returns
+    None when the battle state cannot be read; callers must treat None as
+    "unknown", never as stagnation.
+    """
+    if battle is None:
+        return None
+    try:
+        sides = []
+        for side in (getattr(battle, "user", None), getattr(battle, "opponent", None)):
+            if side is None:
+                return None
+            active = getattr(side, "active", None)
+            species = str(getattr(active, "name", "") or "") if active is not None else ""
+            hp_total = 0.0
+            members = [active] + list(getattr(side, "reserve", []) or [])
+            for pkmn in members:
+                if pkmn is None:
+                    continue
+                hp_total += float(getattr(pkmn, "hp", 0) or 0)
+            sides.append((species, round(hp_total, 2)))
+        return (sides[0][0], sides[0][1], sides[1][0], sides[1][1])
+    except (TypeError, ValueError):
+        return None
+
+
+def _update_loop_break_fp_history(battle: Battle | None) -> list[tuple]:
+    """Record the current position fingerprint on the battle object (one entry
+    per turn, newest last) and return the history list.
+
+    Stored as ``battle._loop_break_fp_history`` entries of ``(turn, fingerprint)``.
+    Re-decisions within the same turn (e.g. a forced switch) refresh the entry
+    instead of appending so multi-decision turns cannot fake stagnation.
+    """
+    if battle is None:
+        return []
+    history = getattr(battle, "_loop_break_fp_history", None)
+    if not isinstance(history, list):
+        history = []
+        try:
+            setattr(battle, "_loop_break_fp_history", history)
+        except (AttributeError, TypeError):
+            return history
+    turn = getattr(battle, "turn", None)
+    if not isinstance(turn, int):
+        turn = None
+    entry = (turn, _position_fingerprint(battle))
+    if history and turn is not None and history[-1][0] == turn:
+        history[-1] = entry
+    else:
+        history.append(entry)
+    del history[:-LOOP_BREAK_FP_HISTORY_LIMIT]
+    return history
+
+
+def _position_stagnant(
+    history: list[tuple], span: int = LOOP_BREAK_STAGNATION_SPAN
+) -> bool:
+    """True only when the last ``span`` recorded fingerprints are present,
+    readable and identical -- i.e. the board provably did not change while the
+    repeated action accrued. Unknown state (None fingerprints, short history)
+    is NOT stagnation: the breaker must fail toward trusting the search."""
+    if span <= 0 or len(history) < span:
+        return False
+    tail = [fp for _turn, fp in history[-span:]]
+    if any(fp is None for fp in tail):
+        return False
+    return all(fp == tail[0] for fp in tail)
+
+
 def _has_living_switch_target(battle: Battle | None) -> bool:
     user = getattr(battle, "user", None) if battle is not None else None
     for pkmn in getattr(user, "reserve", []) or []:
@@ -6263,9 +6384,26 @@ def break_repeated_decision(
     Grounded only: uses the live action_history / legal policy moves; never any
     model knowledge of Pokemon. The repeated action is demoted, never removed, so
     it stays a legal last resort when it is the only option.
+
+    Gated + guarded (2026-07-04, loss-corpus trace audit: this layer caused 94%
+    of played-vs-policy inversions by demoting correct repeated stall play):
+      - FOULER_LOOP_BREAK=0 makes this a no-op (search policy trusted).
+      - When enabled, it never fires against a DECISIVE search (best line holding
+        >= LOOP_BREAK_DECISIVE_BEST_FRACTION of positive policy mass, or
+        >= LOOP_BREAK_DECISIVE_RUNNERUP_RATIO x the runner-up).
+      - When enabled, it requires provable position STAGNATION over the
+        repetition window (identical board fingerprints); a repeated action that
+        is changing the board (chip, recovery, hazard turns) is a plan, not a loop.
     """
     if not sorted_policy or battle is None:
         return sorted_policy
+
+    enabled = _loop_break_enabled()
+    _log_loop_break_mode_once(enabled)
+    if not enabled:
+        return sorted_policy
+
+    fp_history = _update_loop_break_fp_history(battle)
 
     recent = _recent_action_history(battle)[-window:]
     if len(recent) < repeat_threshold:
@@ -6285,6 +6423,54 @@ def break_repeated_decision(
                 is_cycling = True
                 break
     if repeats < repeat_threshold and not is_cycling:
+        return sorted_policy
+
+    # Guard (2026-07-04): never override a DECISIVE search. The loss-corpus trace
+    # audit showed the breaker demoting wincon lines the search was sure about
+    # (gen9ou-2643766855 t20: protect 0.751 -> 0.039, 9.6x the runner-up). If the
+    # best line holds >= LOOP_BREAK_DECISIVE_BEST_FRACTION of the positive policy
+    # mass or dominates the runner-up by LOOP_BREAK_DECISIVE_RUNNERUP_RATIO,
+    # repetition is the search's answer, not instability -- keep it.
+    best_weight = sorted_policy[0][1]
+    runner_up_weight = sorted_policy[1][1] if len(sorted_policy) > 1 else 0.0
+    positive_mass = sum(w for _m, w in sorted_policy if w > 0)
+    best_fraction = (best_weight / positive_mass) if positive_mass > 0 else 0.0
+    if (
+        best_fraction >= LOOP_BREAK_DECISIVE_BEST_FRACTION
+        # Relative epsilon so an exact ratio boundary (e.g. 0.30 vs 3 x 0.10)
+        # counts as decisive despite float rounding.
+        or best_weight
+        >= LOOP_BREAK_DECISIVE_RUNNERUP_RATIO * max(runner_up_weight, 0.0) * (1.0 - 1e-9)
+    ):
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "skip",
+                    "source": "decision_loop_break",
+                    "move": best_move,
+                    "reason": f"{best_move}_repeated_{repeats}_search_decisive",
+                    "before": best_weight,
+                    "after": best_weight,
+                }
+            )
+        return sorted_policy
+
+    # Guard (2026-07-04): repetition is only pathological when the position is
+    # provably NOT progressing. Chip damage (salt cure / toxic), recovery, sacks
+    # and switches all change the board fingerprint; a stall plan that IS working
+    # keeps repeating while the fingerprint moves -- never break that.
+    if not _position_stagnant(fp_history):
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "skip",
+                    "source": "decision_loop_break",
+                    "move": best_move,
+                    "reason": f"{best_move}_repeated_{repeats}_position_not_stagnant",
+                    "before": best_weight,
+                    "after": best_weight,
+                }
+            )
         return sorted_policy
 
     # Multi-move cycles (is_cycling) mean no real progress regardless of whether
