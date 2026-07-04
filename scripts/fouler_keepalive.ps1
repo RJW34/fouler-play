@@ -109,6 +109,24 @@ try {
   }
 
   # ----- count -eq 0: launch exactly one -----
+  # IMPROVE-WINDOW PAUSE (2026-07-04, foreman): honor .pids\continuous-ladder.stop.
+  # The improve window (scripts\run_improve_window.ps1) pauses laddering via this
+  # stop file so offline evals run on a quiet box; previously only the retired
+  # continuous daemon honored it and THIS live keepalive would relaunch a ladder
+  # client mid-eval. While the stop file is present (and fresh) we skip the
+  # relaunch and log why. STALENESS GUARD: an improve window is bounded (hours);
+  # a stop file older than 8h is an orphan (crashed window that never cleaned
+  # up) and must not silently kill the lane - delete it and relaunch.
+  $stopFile = Join-Path $repo '.pids\continuous-ladder.stop'
+  if (Test-Path $stopFile) {
+    $stopAgeHours = ((Get-Date) - (Get-Item $stopFile).LastWriteTime).TotalHours
+    if ($stopAgeHours -lt 8) {
+      Write-KA ("PAUSED: 0 clients but stop file present (age {0:N1}h < 8h) - improve/eval window owns the box; skipping relaunch." -f $stopAgeHours)
+      exit 0
+    }
+    Write-KA ("STALE STOP FILE: age {0:N1}h >= 8h - orphaned pause (crashed improve window?); deleting it and relaunching the ladder." -f $stopAgeHours)
+    Remove-Item $stopFile -Force -ErrorAction SilentlyContinue
+  }
   # cc stays 3 (mission-fixed). search-parallelism is env-overridable for the
   # oversubscription A/B (2026-06-24): this box is a 4-physical-core i7-7700HQ, so
   # cc=3 x sp=4 = 12 search workers oversubscribes 4 cores -> ~7% of moves drop to
