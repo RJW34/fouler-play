@@ -43,6 +43,72 @@ def offline_battle_stats_path(
     return root / "eval_results" / "offline" / f"{label}-battle_stats.json"
 
 
+def _offline_state_path(
+    *,
+    root: Path,
+    env: Mapping[str, str],
+    env_name: str,
+    default_name: str,
+) -> Path:
+    raw = str(env.get(env_name) or "").strip()
+    if raw:
+        path = Path(raw).expanduser()
+        if not path.is_absolute():
+            path = root / path
+        return path
+    label = str(env.get("FOULER_OFFLINE_EVAL_LABEL") or "eval").strip() or "eval"
+    return root / "eval_results" / "offline" / f"{label}-{default_name}"
+
+
+def configure_state_store_module(
+    state_store_module: ModuleType,
+    *,
+    root: Path = PROJECT_ROOT,
+    env: Mapping[str, str] | None = None,
+) -> dict[str, Path]:
+    env = os.environ if env is None else env
+    paths = {
+        "activeBattles": _offline_state_path(
+            root=root,
+            env=env,
+            env_name="FOULER_OFFLINE_ACTIVE_BATTLES_FILE",
+            default_name="active_battles.json",
+        ),
+        "streamStatus": _offline_state_path(
+            root=root,
+            env=env,
+            env_name="FOULER_OFFLINE_STREAM_STATUS_FILE",
+            default_name="stream_status.json",
+        ),
+        "dailyStats": _offline_state_path(
+            root=root,
+            env=env,
+            env_name="FOULER_OFFLINE_DAILY_STATS_FILE",
+            default_name="daily_stats.json",
+        ),
+        "stabilityReport": _offline_state_path(
+            root=root,
+            env=env,
+            env_name="FOULER_OFFLINE_STABILITY_REPORT_FILE",
+            default_name="stability_report.json",
+        ),
+        "stateStoreFailure": _offline_state_path(
+            root=root,
+            env=env,
+            env_name="FOULER_OFFLINE_STATE_STORE_FAILURE_FILE",
+            default_name="state-store-write-failure.json",
+        ),
+    }
+    state_store_module.ACTIVE_BATTLES_PATH = paths["activeBattles"]
+    state_store_module.STREAM_STATUS_PATH = paths["streamStatus"]
+    state_store_module.DAILY_STATS_PATH = paths["dailyStats"]
+    state_store_module.STABILITY_REPORT_PATH = paths["stabilityReport"]
+    state_store_module.STATE_STORE_WRITE_FAILURE_PATH = paths["stateStoreFailure"]
+    for path in paths.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
+    return paths
+
+
 def configure_run_module(
     run_module: ModuleType,
     argv: list[str],
@@ -63,10 +129,17 @@ def main(argv: list[str] | None = None) -> int:
         sys.path.insert(0, str(PROJECT_ROOT))
 
     import run as run_module
+    from streaming import state_store
 
     stats_path, run_argv = configure_run_module(run_module, argv)
+    state_paths = configure_state_store_module(state_store)
     sys.argv = run_argv
     print(f"[offline-eval-runner] battle stats redirected to {stats_path}", file=sys.stderr)
+    print(
+        "[offline-eval-runner] state store redirected to "
+        + ", ".join(f"{name}={path}" for name, path in state_paths.items()),
+        file=sys.stderr,
+    )
 
     try:
         from process_lock import acquire_lock

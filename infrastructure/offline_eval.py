@@ -19,7 +19,7 @@ large and fragile. Instead we run fouler END-TO-END exactly as it plays on ladde
 The opponent is a deterministic poke-env baseline on the same local server.
 
 Topology:
-  - Local showdown server (node pokemon-showdown start --no-security PORT)
+  - Local showdown server (node pokemon-showdown --no-security start PORT)
   - fouler:   run.py --bot-mode accept_challenge  (global python, real engine)
   - baseline: poke-env player in .venv-eval, challenges fouler N times
 
@@ -41,6 +41,7 @@ import math
 import os
 import shlex
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -54,6 +55,14 @@ if not VENV_PY.exists():
     VENV_PY = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
 FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
 PROCESS_OWNER_SCHEMA = "fouler-play-offline-eval-process-owner/v1"
+
+
+def configured_showdown_dir() -> Path:
+    raw = os.getenv("POKEMON_SHOWDOWN_DIR")
+    if raw:
+        path = Path(raw).expanduser()
+        return path if path.is_absolute() else PROJECT_ROOT / path
+    return PROJECT_ROOT.parent / "pokemon-showdown"
 
 
 def _split_python_command(raw: str) -> list[str]:
@@ -152,7 +161,7 @@ def build_eval_env(
     """Build the child-process environment for an offline eval run."""
     env = os.environ.copy()
     env.setdefault("PS_PASSWORD", "")
-    # Local --no-security server: skip HTTP assertion entirely (/trn user,0,).
+    # Local eval server: skip HTTP assertion entirely (/trn user,0,).
     env["FOULER_NO_SECURITY_LOGIN"] = "1"
     env["SEARCH_TIME_MS"] = str(search_time_ms)
     env["MIN_SEARCH_TIME_MS"] = "0"  # don't clamp; we set search time explicitly
@@ -161,6 +170,12 @@ def build_eval_env(
     env["FOULER_OFFLINE_EVAL"] = "1"
     env["FOULER_OFFLINE_EVAL_LABEL"] = label
     env["FOULER_OFFLINE_BATTLE_STATS_FILE"] = str(RESULTS_DIR / f"{label}-battle_stats.json")
+    env["FOULER_OFFLINE_ACTIVE_BATTLES_FILE"] = str(RESULTS_DIR / f"{label}-active_battles.json")
+    env["FOULER_OFFLINE_STREAM_STATUS_FILE"] = str(RESULTS_DIR / f"{label}-stream_status.json")
+    env["FOULER_OFFLINE_DAILY_STATS_FILE"] = str(RESULTS_DIR / f"{label}-daily_stats.json")
+    env["FOULER_OFFLINE_STABILITY_REPORT_FILE"] = str(RESULTS_DIR / f"{label}-stability_report.json")
+    env["FOULER_OFFLINE_STATE_STORE_FAILURE_FILE"] = str(RESULTS_DIR / f"{label}-state-store-write-failure.json")
+    env["FOULER_PROCESS_LOCK_FILE"] = str(RESULTS_DIR / f"{label}.bot.pid")
     # Offline eval has no Discord transport and uses --save-replay never, so
     # battle-result queue events only create unpostable replay backlog.
     env["FOULER_BATTLE_RESULT_QUEUE"] = "0"
@@ -172,7 +187,8 @@ def build_eval_env(
     env["EVENT_QUEUE_BACKLOG_ARCHIVE_DIR"] = str(RESULTS_DIR / "discord-events")
     env["REPLAY_UPLOAD_RESOLVE_ATTEMPTS"] = "1"
     env["REPLAY_UPLOAD_RESOLVE_DELAY_SEC"] = "0"
-    env["STREAM_EVENT_URL"] = f"http://127.0.0.1:{showdown_port}/offline-eval-disabled"
+    env["FOULER_STREAM_EVENTS"] = "0"
+    env["STREAM_EVENT_URL"] = ""
     if extra_env:
         env.update({k: str(v) for k, v in extra_env.items()})
     return env
@@ -187,6 +203,7 @@ def build_fouler_command(
     team: str,
     battles: int,
     search_time_ms: int,
+    concurrency: int = 1,
 ) -> list[str]:
     return [
         *fouler_python,
@@ -206,6 +223,8 @@ def build_fouler_command(
         # never exits mid-series and strands a pending challenge.
         "--run-count",
         str(battles + 5),
+        "--max-concurrent-battles",
+        str(max(1, int(concurrency))),
         "--search-time-ms",
         str(search_time_ms),
         "--save-replay",
@@ -412,6 +431,86 @@ def _free_port_guess(default: int) -> int:
     return int(os.getenv("EVAL_SHOWDOWN_PORT", str(default)))
 
 
+def showdown_server_reachable(port: int, *, host: str = "127.0.0.1", timeout: float = 1.0) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def require_showdown_server(port: int) -> None:
+    if showdown_server_reachable(port):
+        return
+    raise RuntimeError(
+        f"local Pokemon Showdown eval server is not reachable on 127.0.0.1:{port}; "
+        "start it with `node pokemon-showdown --no-security start "
+        f"{port}` from the configured Pokemon Showdown checkout"
+    )
+
+
+def start_managed_showdown_server(port: int) -> subprocess.Popen | None:
+    """Start a local no-security Showdown sidecar unless one is already listening."""
+    if showdown_server_reachable(port):
+        if os.getenv("EVAL_SHOWDOWN_ADOPT_EXISTING", "").strip().lower() in {"1", "true", "yes", "on"}:
+            return None
+        raise RuntimeError(
+            f"managed Pokemon Showdown server refused to adopt existing listener on {port}; "
+            "stop the existing server or set EVAL_SHOWDOWN_ADOPT_EXISTING=1 after verifying it is a no-security eval server"
+        )
+
+    showdown_dir = configured_showdown_dir()
+    launcher = showdown_dir / "pokemon-showdown"
+    package_json = showdown_dir / "package.json"
+    if not showdown_dir.exists() or not launcher.exists() or not package_json.exists():
+        raise RuntimeError(
+            "managed Pokemon Showdown server cannot start: "
+            f"checkout is incomplete at {showdown_dir}"
+        )
+
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    stdout_path = RESULTS_DIR / f"managed-showdown-{port}.out.log"
+    stderr_path = RESULTS_DIR / f"managed-showdown-{port}.err.log"
+    stdout_file = stdout_path.open("w", encoding="utf-8")
+    stderr_file = stderr_path.open("w", encoding="utf-8")
+    try:
+        proc = subprocess.Popen(
+            ["node", "pokemon-showdown", "--no-security", "start", str(port)],
+            cwd=str(showdown_dir),
+            stdout=stdout_file,
+            stderr=stderr_file,
+        )
+    finally:
+        stdout_file.close()
+        stderr_file.close()
+    deadline = time.time() + float(os.getenv("EVAL_SHOWDOWN_START_TIMEOUT_SECONDS", "120"))
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            break
+        if showdown_server_reachable(port):
+            return proc
+        time.sleep(0.5)
+
+    detail = {
+        "pid": proc.pid,
+        "returncode": proc.poll(),
+        "stdoutTail": stdout_path.read_text(encoding="utf-8", errors="replace")[-1000:] if stdout_path.exists() else "",
+        "stderrTail": stderr_path.read_text(encoding="utf-8", errors="replace")[-1000:] if stderr_path.exists() else "",
+    }
+    if proc.poll() is None:
+        _terminate_process_tree(proc, reason="managed-showdown-start-timeout")
+    raise RuntimeError(f"managed Pokemon Showdown server did not start on {port}: {detail}")
+
+
+def require_completed_battle_count(*, requested: int, actual: int, label: str) -> None:
+    if actual >= requested:
+        return
+    raise RuntimeError(
+        f"offline eval {label!r} produced only {actual}/{requested} battles; "
+        "this is not an acceptable proof artifact"
+    )
+
+
 def run_eval(
     *,
     battles: int,
@@ -424,7 +523,10 @@ def run_eval(
     baseline_user: str,
     extra_env: dict | None,
     per_battle_timeout: float,
+    manage_showdown_server: bool,
+    concurrency: int,
 ) -> dict:
+    concurrency = max(1, int(concurrency))
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     ws_uri = f"ws://localhost:{showdown_port}/showdown/websocket"
     fmt = "gen9ou"
@@ -437,6 +539,7 @@ def run_eval(
     )
     fouler_python = resolve_fouler_python()
     owner_command = [sys.executable, *sys.argv]
+    managed_showdown_proc: subprocess.Popen | None = None
     write_process_owner_status(
         label=label,
         stage="starting",
@@ -448,11 +551,81 @@ def run_eval(
                 "baseline": baseline,
                 "showdownPort": showdown_port,
                 "searchTimeMs": search_time_ms,
+                "manageShowdownServer": manage_showdown_server,
+                "concurrency": concurrency,
                 "eventQueueEnabled": env.get("FOULER_BATTLE_RESULT_QUEUE") != "0",
             }
         },
     )
+    try:
+        if manage_showdown_server:
+            managed_showdown_proc = start_managed_showdown_server(showdown_port)
+            write_process_owner_status(
+                label=label,
+                stage="managed-showdown-ready",
+                command=owner_command,
+                extra={
+                    "managedShowdownServer": _process_snapshot(
+                        managed_showdown_proc,
+                        ["node", "pokemon-showdown", "--no-security", "start", str(showdown_port)],
+                    )
+                    if managed_showdown_proc
+                    else {"adoptedExistingListener": True, "port": showdown_port}
+                },
+            )
+        if not showdown_server_reachable(showdown_port):
+            blocker = (
+                f"local Pokemon Showdown eval server is not reachable on 127.0.0.1:{showdown_port}"
+            )
+            write_process_owner_status(
+                label=label,
+                stage="blocked-showdown-unreachable",
+                command=owner_command,
+                extra={"blockers": [blocker]},
+            )
+            require_showdown_server(showdown_port)
 
+        return _run_eval_with_ready_server(
+            battles=battles,
+            team=team,
+            baseline=baseline,
+            label=label,
+            showdown_port=showdown_port,
+            search_time_ms=search_time_ms,
+            fouler_user=fouler_user,
+            baseline_user=baseline_user,
+            env=env,
+            extra_env=extra_env,
+            fouler_python=fouler_python,
+            owner_command=owner_command,
+            per_battle_timeout=per_battle_timeout,
+            concurrency=concurrency,
+        )
+    finally:
+        if managed_showdown_proc is not None:
+            _terminate_process_tree(managed_showdown_proc, reason="managed-showdown-eval-complete")
+
+
+def _run_eval_with_ready_server(
+    *,
+    battles: int,
+    team: str,
+    baseline: str,
+    label: str,
+    showdown_port: int,
+    search_time_ms: int,
+    fouler_user: str,
+    baseline_user: str,
+    env: dict[str, str],
+    extra_env: dict | None,
+    fouler_python: list[str],
+    owner_command: list[str],
+    per_battle_timeout: float,
+    concurrency: int,
+) -> dict:
+    concurrency = max(1, int(concurrency))
+    ws_uri = f"ws://localhost:{showdown_port}/showdown/websocket"
+    fmt = "gen9ou"
     # --- Launch fouler in accept_challenge mode (the REAL engine) ---
     fouler_log = RESULTS_DIR / f"{label}-fouler.log"
     fouler_cmd = build_fouler_command(
@@ -463,6 +636,7 @@ def run_eval(
         team=team,
         battles=battles,
         search_time_ms=search_time_ms,
+        concurrency=concurrency,
     )
     print(f"[eval:{label}] starting fouler: {' '.join(fouler_cmd)}")
     with open(fouler_log, "w", encoding="utf-8") as flog:
@@ -497,6 +671,7 @@ def run_eval(
         "--team-file", str(PROJECT_ROOT / "teams" / Path(*team.split("/"))),
         "--result-file", str(result_file),
         "--per-battle-timeout", str(per_battle_timeout),
+        "--concurrency", str(concurrency),
     ]
     print(f"[eval:{label}] starting baseline ({baseline}) challenger")
     with open(baseline_log, "w", encoding="utf-8") as blog:
@@ -514,7 +689,7 @@ def run_eval(
         baseline_cmd=baseline_cmd,
     )
 
-    overall_timeout = per_battle_timeout * battles + 120
+    overall_timeout = per_battle_timeout * math.ceil(battles / concurrency) + 120
     cleanup: list[dict[str, object]] = []
     try:
         baseline_proc.wait(timeout=overall_timeout)
@@ -587,6 +762,24 @@ def run_eval(
         baseline_cmd=baseline_cmd,
         extra={"cleanup": cleanup, "result": out},
     )
+    if n < battles:
+        write_process_owner_status(
+            label=label,
+            stage="blocked-underfilled-result",
+            command=owner_command,
+            fouler_proc=fouler_proc,
+            fouler_cmd=fouler_cmd,
+            baseline_proc=baseline_proc,
+            baseline_cmd=baseline_cmd,
+            extra={
+                "cleanup": cleanup,
+                "result": out,
+                "blockers": [
+                    f"offline eval produced only {n}/{battles} requested battles",
+                ],
+            },
+        )
+        require_completed_battle_count(requested=battles, actual=n, label=label)
     print(f"[eval:{label}] fouler {fouler_wins}/{n} = {fouler_wr:.1%} "
           f"(Wilson LCB {lcb:.1%})")
     return out
@@ -629,6 +822,17 @@ def main():
     ap.add_argument("--baseline-user", default="evalBaseline")
     ap.add_argument("--per-battle-timeout", type=float, default=180.0)
     ap.add_argument(
+        "--concurrency",
+        type=int,
+        default=max(1, int(os.getenv("IMPROVE_AGENT_EVAL_CONCURRENCY", "1"))),
+        help="number of concurrent local eval battles; default preserves serial harness behavior",
+    )
+    ap.add_argument(
+        "--manage-showdown-server",
+        action="store_true",
+        help="start/stop a local no-security Pokemon Showdown server for this bounded eval run",
+    )
+    ap.add_argument(
         "--no-setsample", action="store_true",
         help="Degrade opponent set-sampling (frozen-baseline A/B arm). Sets "
              "FOULER_FORCE_NO_SETSAMPLE=1 which makes _sample_pokemon skip move "
@@ -656,6 +860,8 @@ def main():
         baseline_user=args.baseline_user,
         extra_env=extra_env,
         per_battle_timeout=args.per_battle_timeout,
+        manage_showdown_server=args.manage_showdown_server,
+        concurrency=args.concurrency,
     )
 
 

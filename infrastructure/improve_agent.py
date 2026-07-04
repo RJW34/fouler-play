@@ -21,7 +21,7 @@ import re
 import subprocess
 import sys
 import textwrap
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -98,6 +98,7 @@ LEGAL_COUNT_RE = re.compile(r"\blegal(?:Moves|Switches)=(\d+)\b")
 # watchdog has something to revert.
 BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
 DEPLOY_LOG_PATH = PROJECT_ROOT / "infrastructure" / "deploy_log.json"
+IMPROVE_LEDGER_PATH = PROJECT_ROOT / "eval_results" / "improve_ledger.jsonl"
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
 AUTO_PUSH_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_PUSH"
 PUSH_REMOTE_ENV = "IMPROVE_AGENT_PUSH_REMOTE"
@@ -197,6 +198,55 @@ def current_win_rate_snapshot(battles: list, sample_size: int = DEPLOY_WIN_RATE_
         return None, 0
     wins = sum(1 for b in decisive if b.get("result") == "win")
     return wins / len(decisive), len(decisive)
+
+
+def _json_safe(value: object, *, max_chars: int = 4000) -> object:
+    try:
+        text = json.dumps(value, sort_keys=True, default=str)
+    except TypeError:
+        return str(value)[:max_chars]
+    if len(text) <= max_chars:
+        return value
+    return {"truncated": True, "preview": text[:max_chars]}
+
+
+def _ladder_snapshot() -> dict:
+    battles = _load_battles()
+    decisive = [b for b in battles if isinstance(b, dict) and b.get("result") in ("win", "loss")]
+    recent = decisive[-20:]
+    last = decisive[-1] if decisive else {}
+    return {
+        "latest_battle_id": last.get("battle_id") or last.get("battle_tag") or last.get("replay_id"),
+        "current_elo": last.get("elo_after", last.get("rating")),
+        "recent_sample": len(recent),
+        "recent_wins": sum(1 for b in recent if b.get("result") == "win"),
+        "recent_losses": sum(1 for b in recent if b.get("result") == "loss"),
+    }
+
+
+def append_improve_ledger(
+    outcome: str,
+    *,
+    issue: str | None = None,
+    target_file: str | None = None,
+    detail: dict | None = None,
+    returncode: int | None = None,
+) -> None:
+    """Record every real improve attempt so HERMES can distinguish no-op from silence."""
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "outcome": outcome,
+        "issue": issue,
+        "target_file": target_file,
+        "source": "improve_agent",
+        "auto_improve_enabled": auto_improve_enabled(False),
+        "returncode": returncode,
+        "detail": _json_safe(detail or {}),
+        "ladder": _ladder_snapshot(),
+    }
+    IMPROVE_LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with IMPROVE_LEDGER_PATH.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, sort_keys=True, default=str) + "\n")
 
 
 def record_deploy(pre_commit: str, post_commit: str) -> None:
@@ -456,6 +506,17 @@ def pick_target_file(report: dict) -> str:
 
 
 FUNC_NAME_RE = re.compile(r"\b([a-z_][a-z0-9_]{3,})\s*\(", re.IGNORECASE)
+DEFAULT_SYMBOLS_BY_ISSUE = {
+    "decision_instability": (
+        "_recent_action_history",
+        "break_repeated_decision",
+        "_apply_hard_legality_and_safety",
+        "_choose_mcts_only",
+        "select_move_from_eval_scores",
+        "_get_fallback_move",
+        "find_best_move",
+    ),
+}
 
 
 def _implicated_symbols(report: dict) -> list[str]:
@@ -472,6 +533,10 @@ def _implicated_symbols(report: dict) -> list[str]:
             names.extend(str(v) for v in val)
         elif isinstance(val, str):
             names.append(val)
+    issue_blob = " ".join([str(top.get("key", "")), str(top.get("title", ""))]).lower()
+    for issue_key, default_names in DEFAULT_SYMBOLS_BY_ISSUE.items():
+        if issue_key in issue_blob:
+            names.extend(default_names)
     blob = " ".join(
         [str(top.get("title", "")), " ".join(text_list(top.get("proof") or top.get("evidence")))]
     )
@@ -952,6 +1017,20 @@ def offline_eval_gate() -> tuple[bool, dict]:
             "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
         }
 
+    if not FROZEN_BASELINE_PATH.exists():
+        bootstrap = (
+            f"{sys.executable} infrastructure/offline_eval.py --battles {EVAL_GATE_BATTLES} "
+            f"--team {EVAL_GATE_TEAM} --baseline {EVAL_GATE_BASELINE} --label frozen"
+        )
+        print("[AGENT] ERROR: missing eval_results/offline/frozen.json; eval gate FAIL-CLOSED "
+              "until the current deployed engine has a frozen reference run.")
+        return False, {
+            "error": "missing_frozen_baseline",
+            "path": str(FROZEN_BASELINE_PATH),
+            "bootstrap_command": bootstrap,
+            "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
+        }
+
     # Run the candidate arm.
     print(f"[AGENT] Running offline eval gate: {EVAL_GATE_BATTLES} battles vs "
           f"{EVAL_GATE_BASELINE} on {EVAL_GATE_TEAM} ...")
@@ -1010,14 +1089,7 @@ def offline_eval_gate() -> tuple[bool, dict]:
             return bool(verdict.get("ACCEPT", False)), verdict
         return False, {"error": "frozen comparison produced no verdict"}
 
-    # No frozen reference yet: accept only if the candidate beats the baseline
-    # with a Wilson lower bound > 0.50 (we are confident fouler wins >half).
-    accepted = bool(cand.get("fouler_wilson_lcb", 0.0) > 0.50)
-    return accepted, {
-        "fouler_win_rate": cand.get("fouler_win_rate"),
-        "fouler_wilson_lcb": cand.get("fouler_wilson_lcb"),
-        "rule": "wilson_lcb_gt_0.50 (no frozen reference)",
-    }
+    return False, {"error": "unreachable_missing_frozen_baseline"}
 
 
 def syntax_check(target_file: str) -> bool:
@@ -1132,24 +1204,46 @@ def main() -> int:
             f"[AGENT] BLOCKED: auto-improvement is disabled. Set {AUTO_IMPROVE_SENTINEL}=1 "
             f"or pass --enable-auto-improve to allow mutation."
         )
+        append_improve_ledger(
+            "blocked",
+            detail={"reason": "auto_improve_disabled", "sentinel": AUTO_IMPROVE_SENTINEL},
+            returncode=2,
+        )
         return 2
     if not args.dry_run:
         lease_guard = validate_runtime_lease(
             purpose="improve-agent",
             lease_path=args.runtime_lease,
+            requested_run_count=EVAL_GATE_BATTLES,
             requested_max_cycles=args.max_cycles,
+            requested_max_concurrent_battles=int(os.getenv("IMPROVE_AGENT_MAX_CONCURRENT_BATTLES", "1")),
+            requested_account=os.getenv("IMPROVE_AGENT_ACCOUNT", "LEBOTJAMESXD00N"),
+            require_run_count=True,
             require_max_cycles=True,
+            require_max_concurrent_battles=True,
+            require_replay_behavior=True,
         )
         if not lease_guard.get("ok"):
             print("[AGENT] BLOCKED: runtime lease/proof window is required for recursive improvement.")
             for blocker in lease_guard.get("blockers") or []:
                 print(f"[AGENT] BLOCKER: {blocker}")
+            append_improve_ledger(
+                "blocked",
+                detail={"reason": "runtime_lease_invalid", "lease_guard": lease_guard},
+                returncode=2,
+            )
             return 2
 
     # 1. Load autoresearch report
     report = load_autoresearch()
     if not report or not report.get("top_issue"):
         print("[AGENT] No autoresearch report or no issues found. Skipping.")
+        if not args.dry_run:
+            append_improve_ledger(
+                "no_change",
+                detail={"reason": "no_autoresearch_top_issue"},
+                returncode=0,
+            )
         return 0
 
     blockers = validate_autoresearch_for_improvement(report)
@@ -1157,6 +1251,13 @@ def main() -> int:
         print("[AGENT] Autoresearch is not promotable. Skipping.")
         for blocker in blockers:
             print(f"[AGENT] BLOCKER: {blocker}")
+        if not args.dry_run:
+            append_improve_ledger(
+                "no_change",
+                issue=(report.get("top_issue") or {}).get("title"),
+                detail={"reason": "autoresearch_not_promotable", "blockers": blockers},
+                returncode=0,
+            )
         return 0
 
     # Deploy-spacing gate: don't ship another change until the previous one has had
@@ -1169,6 +1270,13 @@ def main() -> int:
             f"[AGENT] Deferring: only {since}/{min_games} games since last deploy. "
             f"Letting the previous change be validated (elo_watchdog) before shipping another."
         )
+        if not args.dry_run:
+            append_improve_ledger(
+                "no_change",
+                issue=(report.get("top_issue") or {}).get("title"),
+                detail={"reason": "deploy_spacing", "games_since_last_deploy": since, "min_games_between_deploys": min_games},
+                returncode=0,
+            )
         return 0
 
     top = report["top_issue"]
@@ -1199,6 +1307,13 @@ def main() -> int:
     if not diff_text:
         print("[AGENT] No valid diff in response. Skipping.")
         print(f"[AGENT] Response preview: {response[:300]}")
+        append_improve_ledger(
+            "no_change",
+            issue=top.get("title"),
+            target_file=target_file,
+            detail={"reason": "no_valid_diff", "response_length": len(response)},
+            returncode=0,
+        )
         return 0
 
     print(f"[AGENT] Diff extracted ({len(diff_text.splitlines())} lines)")
@@ -1207,18 +1322,39 @@ def main() -> int:
     original_target_text = (PROJECT_ROOT / target_file).read_text(encoding="utf-8")
     if not apply_diff(diff_text, target_file):
         print("[AGENT] Diff failed to apply. Skipping.")
+        append_improve_ledger(
+            "rejected",
+            issue=top.get("title"),
+            target_file=target_file,
+            detail={"reason": "diff_apply_failed"},
+            returncode=1,
+        )
         return 1
 
     # 6. Syntax check
     if not syntax_check(target_file):
         print("[AGENT] Syntax check failed. Reverting.")
         restore_file_snapshot(target_file, original_target_text)
+        append_improve_ledger(
+            "rejected",
+            issue=top.get("title"),
+            target_file=target_file,
+            detail={"reason": "syntax_check_failed"},
+            returncode=1,
+        )
         return 1
 
     # 7. Run tests — now only a CHEAP PRE-FILTER, not the acceptance gate.
     if not run_tests():
         print("[AGENT] Tests failed (pre-filter). Reverting.")
         restore_file_snapshot(target_file, original_target_text)
+        append_improve_ledger(
+            "rejected",
+            issue=top.get("title"),
+            target_file=target_file,
+            detail={"reason": "tests_failed"},
+            returncode=1,
+        )
         return 1
 
     # 8. REAL acceptance gate (P1): offline win-rate eval vs frozen baseline.
@@ -1228,6 +1364,13 @@ def main() -> int:
         print("[AGENT] Eval gate REJECTED the change (no significant win-rate gain "
               "/ regression). Reverting.")
         restore_file_snapshot(target_file, original_target_text)
+        append_improve_ledger(
+            "rejected",
+            issue=top.get("title"),
+            target_file=target_file,
+            detail={"reason": "offline_eval_rejected", "eval_detail": detail},
+            returncode=1,
+        )
         return 1
 
     # 9. Commit and push
@@ -1243,9 +1386,23 @@ def main() -> int:
             print(f"[AGENT] Successfully committed and pushed fix for: {top['title']}")
         else:
             print(f"[AGENT] Successfully committed local fix for: {top['title']}")
+        append_improve_ledger(
+            "accepted",
+            issue=top.get("title"),
+            target_file=target_file,
+            detail={"reason": "offline_eval_accepted", "eval_detail": detail, "push_requested": push_requested},
+            returncode=0,
+        )
         return 0
     else:
         print("[AGENT] Commit/push failed. Change is staged but not pushed.")
+        append_improve_ledger(
+            "blocked",
+            issue=top.get("title"),
+            target_file=target_file,
+            detail={"reason": "commit_or_push_failed", "push_requested": push_requested},
+            returncode=1,
+        )
         return 1
 
 

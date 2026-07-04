@@ -57,6 +57,13 @@ def _env_int(env: Mapping[str, str], name: str, default: int) -> int:
         return default
 
 
+def _env_bool(env: Mapping[str, str], name: str, default: bool) -> bool:
+    raw = env.get(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
 def _quote_command(parts: list[str]) -> str:
     return subprocess.list2cmdline(parts)
 
@@ -133,6 +140,9 @@ def _runtime_python_candidates(root: Path, env: Mapping[str, str]) -> list[list[
 
 def configured_eval(root: Path, env: Mapping[str, str]) -> dict[str, object]:
     battles = _env_int(env, "IMPROVE_AGENT_EVAL_BATTLES", 200)
+    search_time_ms = _env_int(env, "IMPROVE_AGENT_EVAL_SEARCH_TIME_MS", 100)
+    manage_showdown = _env_bool(env, "IMPROVE_AGENT_EVAL_MANAGE_SHOWDOWN", True)
+    concurrency = max(1, _env_int(env, "IMPROVE_AGENT_EVAL_CONCURRENCY", 1))
     baseline = env.get("IMPROVE_AGENT_EVAL_BASELINE", "simple")
     team = env.get("IMPROVE_AGENT_EVAL_TEAM", "gen9/ou/fat-team-1-stall")
     showdown_port = _env_int(env, "EVAL_SHOWDOWN_PORT", 8765)
@@ -142,6 +152,9 @@ def configured_eval(root: Path, env: Mapping[str, str]) -> dict[str, object]:
         "battles": battles,
         "baseline": baseline,
         "team": team,
+        "searchTimeMs": search_time_ms,
+        "manageShowdownServer": manage_showdown,
+        "concurrency": concurrency,
         "showdownPort": showdown_port,
         "label": label,
         "showdownDir": showdown_dir,
@@ -172,9 +185,15 @@ def eval_command(config: dict[str, object], *, label: str = "candidate", no_sets
         str(config["baseline"]),
         "--label",
         label,
+        "--search-time-ms",
+        str(config["searchTimeMs"]),
+        "--concurrency",
+        str(config["concurrency"]),
     ]
     if no_setsample:
         cmd.append("--no-setsample")
+    if config.get("manageShowdownServer"):
+        cmd.append("--manage-showdown-server")
     return cmd
 
 
@@ -200,9 +219,15 @@ def _display_eval_command(
         str(config["baseline"]),
         "--label",
         label,
+        "--search-time-ms",
+        str(config["searchTimeMs"]),
+        "--concurrency",
+        str(config["concurrency"]),
     ]
     if no_setsample:
         cmd.append("--no-setsample")
+    if config.get("manageShowdownServer"):
+        cmd.append("--manage-showdown-server")
     return _quote_command(cmd)
 
 
@@ -220,7 +245,7 @@ def provisioning_commands(root: Path, config: dict[str, object]) -> dict[str, li
             rf".venv-eval\Scripts\python.exe -m pip install -r {req_windows}",
             rf"if (!(Test-Path -LiteralPath {_ps_quote(showdown_windows)})) {{ git clone {showdown_url} {_ps_quote(showdown_windows)} }}",
             rf"Push-Location -LiteralPath {_ps_quote(showdown_windows)}; npm ci; Pop-Location",
-            rf"Push-Location -LiteralPath {_ps_quote(showdown_windows)}; node pokemon-showdown start --no-security {config['showdownPort']}; Pop-Location",
+            rf"Push-Location -LiteralPath {_ps_quote(showdown_windows)}; node pokemon-showdown --no-security start {config['showdownPort']}; Pop-Location",
             _display_eval_command(r".venv-eval\Scripts\python.exe", config, label="frozen", no_setsample=True),
             "python infrastructure/offline_eval_readiness.py --require-ready",
         ],
@@ -230,7 +255,7 @@ def provisioning_commands(root: Path, config: dict[str, object]) -> dict[str, li
             f".venv-eval/bin/python -m pip install -r {req_posix}",
             f"test -d {_sh_quote(showdown_posix)} || git clone {showdown_url} {_sh_quote(showdown_posix)}",
             f"cd {_sh_quote(showdown_posix)} && npm ci",
-            f"cd {_sh_quote(showdown_posix)} && node pokemon-showdown start --no-security {config['showdownPort']}",
+            f"cd {_sh_quote(showdown_posix)} && node pokemon-showdown --no-security start {config['showdownPort']}",
             _display_eval_command(".venv-eval/bin/python", config, label="frozen", no_setsample=True),
             "python3 infrastructure/offline_eval_readiness.py --require-ready",
         ],
@@ -241,13 +266,27 @@ def _check_executable(command: str) -> tuple[bool, dict[str, object]]:
     executable = shutil.which(command)
     if not executable:
         return False, {"command": command, "found": False}
+    if os.name == "nt" and os.getenv("FOULER_OFFLINE_READINESS_VERSION_PROBE", "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return True, {
+            "command": command,
+            "path": executable,
+            "found": True,
+            "versionProbeSkipped": True,
+            "versionProbePolicy": "disabled-by-default-on-windows",
+        }
     probe = subprocess.run(
         [executable, "--version"],
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
         errors="replace",
-        timeout=10,
+        timeout=int(os.getenv("FOULER_OFFLINE_READINESS_VERSION_TIMEOUT_SECONDS", "3")),
     )
     detail = {
         "command": command,
@@ -1085,11 +1124,20 @@ def build_readiness_payload(
 
     if run_server_check:
         server_ok, server_detail = _check_showdown_server(int(config["showdownPort"]))
+        if not server_ok and bool(config.get("manageShowdownServer")):
+            server_detail = {
+                **server_detail,
+                "status": "managed-start-on-demand",
+                "readyWithoutResidentServer": True,
+                "managedCommand": _quote_command(eval_command(config, label="candidate")),
+                "note": "offline_eval.py --manage-showdown-server starts and stops a local no-security Showdown sidecar inside each bounded eval run",
+            }
+            server_ok = True
         add_check(
             "local showdown eval server",
             server_ok,
             server_detail,
-            f"start a local no-security Pokemon Showdown server: node pokemon-showdown start --no-security {config['showdownPort']}",
+            f"start a local Pokemon Showdown server: node pokemon-showdown --no-security start {config['showdownPort']}",
         )
     else:
         add_check("local showdown eval server", True, {"skipped": "server check disabled"})
@@ -1120,7 +1168,7 @@ def build_readiness_payload(
         ),
         "showdownInstall": f"cd {showdown_dir} && npm ci",
         "showdownServerCwd": str(showdown_dir),
-        "showdownServer": f"node pokemon-showdown start --no-security {config['showdownPort']}",
+        "showdownServer": f"node pokemon-showdown --no-security start {config['showdownPort']}",
     }
     return {
         "schemaVersion": SCHEMA_VERSION,
@@ -1140,6 +1188,8 @@ def build_readiness_payload(
             ".venv-eval python can import poke_env and websockets",
             "Fouler runtime Python can import the run.py dependencies from requirements.txt",
             "a local no-security Pokemon Showdown server is reachable on EVAL_SHOWDOWN_PORT",
+            "or offline_eval.py --manage-showdown-server is configured so each bounded eval starts/stops its own local no-security Showdown sidecar",
+            "offline eval concurrency is explicit in the candidate/frozen commands and defaults to serial behavior unless IMPROVE_AGENT_EVAL_CONCURRENCY is set",
             ".bot.pid is absent, stale-cleanable, or points to no live Fouler runner",
             "eval_results/offline/*-status.json is archived, adopted by a live finite sidecar, or blocked before a new eval starts",
             "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",

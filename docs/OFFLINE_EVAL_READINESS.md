@@ -61,6 +61,17 @@ handoff:
 - `missingPaths`, `malformedPaths`, `staleReasons`, and `reasons`: explicit
   blockers or evidence strings for handoff reports.
 
+The mission monitor also consumes this same result proof as
+`fouler-offline-eval-resume-proof/v1`. After any ladder stop-loss condition
+(`fouler-loss-streak`, `fouler-low-recent-win-rate`,
+`fouler-rating-drawdown` from runtime or ELO-proof pre-target/sustain skid,
+or `fouler-ladder-batch-too-large-for-stage`),
+`scripts/fouler_mission_monitor.py --start-gate-only` blocks with
+`fouler-offline-eval-resume-proof-missing` until the read-only result proof is
+`accepted` and both candidate battle counts meet `IMPROVE_AGENT_EVAL_BATTLES`.
+This gate does not run evals or start Pokemon Showdown; it only reads the
+existing candidate and compare artifacts.
+
 For completion-level proof, run the stricter gate:
 
 ```powershell
@@ -133,13 +144,13 @@ cd "$showdown"
 npm ci
 ```
 
-Only after provisioning, an operator can start a local no-security server on the
+Only after provisioning, an operator can start a local no-security eval server on the
 configured eval port. The doctor reports the cwd under
 `commands.showdownServerCwd` and the command under `commands.showdownServer`;
 default command:
 
 ```bash
-node pokemon-showdown start --no-security 8765
+node pokemon-showdown --no-security start 8765
 ```
 
 ## Eval Commands
@@ -148,13 +159,13 @@ The recursive gate candidate command is reported under
 `commands.candidateEval`. By default it is equivalent to:
 
 ```powershell
-.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label candidate
+.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label candidate --search-time-ms 100 --concurrency 3 --manage-showdown-server
 ```
 
 Create the frozen proof baseline first:
 
 ```powershell
-.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label frozen --no-setsample
+.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label frozen --no-setsample --search-time-ms 100 --concurrency 3 --manage-showdown-server
 ```
 
 After the improve gate runs a candidate, the compare proof command is:
@@ -166,6 +177,13 @@ After the improve gate runs a candidate, the compare proof command is:
 Environment knobs consumed by both the doctor and improve gate:
 
 - `IMPROVE_AGENT_EVAL_BATTLES`, default `200`
+- `IMPROVE_AGENT_EVAL_SEARCH_TIME_MS`, default `100`
+- `IMPROVE_AGENT_EVAL_CONCURRENCY`, default `1`; use `3` for bounded local no-security proof windows when the machine can sustain three simultaneous battles
+- `IMPROVE_AGENT_EVAL_MANAGE_SHOWDOWN`, default enabled; set to `0` only if a
+  resident no-security Showdown server is deliberately managed elsewhere
+- `EVAL_SHOWDOWN_ADOPT_EXISTING`, default disabled; set to `1` only after
+  verifying the listener on `EVAL_SHOWDOWN_PORT` is already the intended
+  no-security eval server
 - `IMPROVE_AGENT_EVAL_TEAM`, default `gen9/ou/fat-team-1-stall`
 - `IMPROVE_AGENT_EVAL_BASELINE`, default `simple`
 - `EVAL_SHOWDOWN_PORT`, default `8765`
@@ -181,7 +199,9 @@ The readiness doctor requires:
 - `node`, `npm`, and `git` are available for reproducible Showdown provisioning
 - configured Pokemon Showdown checkout has `package.json`, `pokemon-showdown`,
   and installed `node_modules`
-- local no-security Pokemon Showdown is reachable on `EVAL_SHOWDOWN_PORT`
+- local no-security Pokemon Showdown is reachable on `EVAL_SHOWDOWN_PORT`, or
+  the managed sidecar command is enabled so each bounded eval starts/stops its
+  own local server
 - `infrastructure/offline_eval.py` exists
 - `infrastructure/_offline_baseline.py` exists
 - configured team file exists
