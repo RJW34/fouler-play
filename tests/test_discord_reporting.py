@@ -17,8 +17,10 @@ from infrastructure.discord_reporting import (
     is_contract_message,
     public_replay_id_candidate,
     redacted_report_summary,
+    recent_results_safety_alert,
     structured_report_fields,
     summarize_recent_results,
+    summarize_recent_results_with_current,
     top_recurring_issue,
 )
 from infrastructure.event_queue_lib import classify_delivery_error, queue_health_summary
@@ -88,6 +90,19 @@ def test_event_poster_dry_run_writes_redacted_delivery_proof(monkeypatch, tmp_pa
     import infrastructure.event_queue_lib as event_queue_lib
 
     queue_file = tmp_path / "events_queue.json"
+    content = build_contract_payload(
+        "PROOF",
+        "battle result loss vs RedactedOpponent",
+        "battle finished loss vs RedactedOpponent in 12 turns",
+        "secret-token-should-not-render caused a disconnect-shaped loss that must be redacted",
+        "battle_id=battle-gen9ou-2613956411; result=loss; opponent=RedactedOpponent; turns=12",
+        "Review reconnect proof before the next run.",
+        battle_id="battle-gen9ou-2613956411",
+        result="loss",
+        opponent="RedactedOpponent",
+        turns=12,
+        next_battle_action="Review reconnect proof before the next run.",
+    )
     queue_file.write_text(
         json.dumps(
             [
@@ -96,7 +111,7 @@ def test_event_poster_dry_run_writes_redacted_delivery_proof(monkeypatch, tmp_pa
                     "timestamp": 1,
                     "event_type": "battle_result",
                     "channel": "battles",
-                    "content": "[PROOF] **battle result**\n- battle `2613956411`\nsecret-token-should-not-render",
+                    "content": content,
                     "status": "pending",
                     "retry_count": 0,
                 }
@@ -136,6 +151,110 @@ def test_event_poster_dry_run_writes_redacted_delivery_proof(monkeypatch, tmp_pa
     assert "secret-token-should-not-render" not in rendered
     queue_after = json.loads(queue_file.read_text(encoding="utf-8"))
     assert queue_after[0]["status"] == "pending"
+
+
+def test_idle_reporting_proof_keeps_latest_battle_result(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    content = build_contract_payload(
+        "PROOF",
+        "battle result win vs LatestOpponent",
+        "",
+        "Operator-facing battle posts should report concrete ladder facts.",
+        "battle_id=battle-gen9ou-2613956411; result=win; opponent=LatestOpponent; turns=21; replay=https://replay.pokemonshowdown.com/gen9ou-2613956411; replay_status=public",
+        "Append replay or ladder delta if more context lands after posting.",
+        battle_id="battle-gen9ou-2613956411",
+        result="win",
+        opponent="LatestOpponent",
+        turns=21,
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2613956411",
+        replay_status="public",
+        decisive_reason="LatestOpponent lost after the bot preserved its defensive core.",
+        recent_record="last 5: 4-1 (80% WR)",
+    )
+    queue_file.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "event-latest",
+                    "timestamp": 100,
+                    "event_type": "battle_result",
+                    "channel": "battles",
+                    "content": content,
+                    "status": "posted",
+                    "retry_count": 0,
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    truth_dir = tmp_path / "devstream" / "truth"
+    monkeypatch.setenv("EVENT_QUEUE_FILE", str(queue_file))
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/example/token")
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setattr(event_poster, "TRUTH_DIR", truth_dir)
+    monkeypatch.setattr(event_poster, "DISCORD_REPORTING_PROOF", truth_dir / "discord-reporting.json")
+
+    payload = event_poster.write_reporting_proof(status="idle", event=None, blockers=["no pending Discord events"])
+
+    latest = payload["latestBattleResult"]
+    assert latest["eventId"] == "event-latest"
+    assert latest["battle_id"] == "battle-gen9ou-2613956411"
+    assert latest["analysis"]["result"] == "win"
+    assert latest["analysis"]["proofReadiness"]["readyForHermes"] is True
+
+
+def test_idle_reporting_recomputes_stale_latest_battle_analysis(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    content = build_contract_payload(
+        "PROOF",
+        "battle result win vs StaleAnalysis",
+        "",
+        "Operator-facing battle posts should report concrete ladder facts.",
+        "battle_id=battle-gen9ou-2613956412; result=win; opponent=StaleAnalysis; turns=18; replay=https://replay.pokemonshowdown.com/gen9ou-2613956412; replay_status=public",
+        "Append replay or ladder delta if more context lands after posting.",
+        battle_id="battle-gen9ou-2613956412",
+        result="win",
+        opponent="StaleAnalysis",
+        turns=18,
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2613956412",
+        replay_status="public",
+        recent_record="last 5: 5-0 (100% WR)",
+    )
+    queue_file.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "event-stale-analysis",
+                    "timestamp": 100,
+                    "event_type": "battle_result",
+                    "channel": "battles",
+                    "content": content,
+                    "status": "posted",
+                    "analysis": {"proofReadiness": {"readyForHermes": True}},
+                    "retry_count": 0,
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    truth_dir = tmp_path / "devstream" / "truth"
+    monkeypatch.setenv("EVENT_QUEUE_FILE", str(queue_file))
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/example/token")
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setattr(event_poster, "TRUTH_DIR", truth_dir)
+    monkeypatch.setattr(event_poster, "DISCORD_REPORTING_PROOF", truth_dir / "discord-reporting.json")
+
+    payload = event_poster.write_reporting_proof(status="idle", event=None, blockers=["no pending Discord events"])
+
+    readiness = payload["latestBattleResult"]["analysis"]["proofReadiness"]
+    assert readiness["readyForHermes"] is False
+    assert "battle_cause_unclassified" in readiness["qualityGaps"]
 
 
 def test_run_battle_replay_handoff_preserves_pending_public_replay():
@@ -770,6 +889,32 @@ def test_battle_result_queue_event_populates_structured_fields(monkeypatch, tmp_
     queue_file.unlink(missing_ok=True)
 
 
+def test_mission_alert_queue_event_does_not_infer_fake_battle_fields(monkeypatch, tmp_path):
+    queue_file = tmp_path / "events_queue.json"
+    monkeypatch.setenv("EVENT_QUEUE_FILE", str(queue_file))
+    queue_file.write_text("[]", encoding="utf-8")
+
+    import infrastructure.event_queue_lib as event_queue_lib
+    event_queue_lib = importlib.reload(event_queue_lib)
+
+    event_id = event_queue_lib.queue_event(
+        "mission_alert",
+        "project",
+        "[ALERT] **Fouler mission monitor: fouler-runtime-idle**\n"
+        "What happened: runtime is idle.\n"
+        "Proof: `devstream/truth/mission-monitor.json`.",
+        dedup_window_sec=0,
+    )
+    assert event_id is not None
+
+    event = event_queue_lib.get_pending_events()[0]
+    assert event["event_type"] == "mission_alert"
+    assert "battle_id" not in event
+    assert "proof" not in event
+    assert "analysis" not in event
+    queue_file.unlink(missing_ok=True)
+
+
 def test_structured_report_fields_backfills_from_rendered_message():
     message = build_contract_message(
         "PROOF",
@@ -788,9 +933,12 @@ def test_structured_report_fields_backfills_from_rendered_message():
     assert fields["turns"] == 22
     assert fields["proof"]["battleIds"] == ["gen9ou-2613956411"]
     assert fields["analysis"]["result"] == "win"
+    assert fields["result"] == "win"
     assert fields["analysis"]["currentBattleState"] == "battle win; vs RenderedOnly; 22 turns; id 2613956411; public replay gen9ou-2613956411"
     assert fields["analysis"]["whyItMatters"] == "rendered messages should still produce safe structure"
-    assert fields["analysis"]["nextHermesAction"] == "none"
+    assert fields["analysis"]["nextHermesAction"].startswith("Classify the win condition")
+    assert fields["analysis"]["proofReadiness"]["readyForHermes"] is False
+    assert "battle_cause_unclassified" in fields["analysis"]["proofReadiness"]["qualityGaps"]
     assert fields["proof_readiness"]["status"] == "proof-ready"
 
 
@@ -831,11 +979,12 @@ def test_queue_health_classifies_backlog_dns_and_webhook_failures():
         "current_battle_state": 1,
         "loser": 1,
         "next_hermes_action": 1,
-        "proof": 1,
-        "proof_readiness": 1,
-        "turns": 1,
-        "why_it_matters": 1,
-        "winner": 1,
+            "proof": 1,
+            "proof_readiness": 1,
+            "result": 1,
+            "turns": 1,
+            "why_it_matters": 1,
+            "winner": 1,
     }
     assert health["backlogClassification"]["status"] == "dns-failed"
     assert health["backlogClassification"]["severity"] == "stream-safety-blocker"
@@ -847,6 +996,57 @@ def test_queue_health_classifies_backlog_dns_and_webhook_failures():
     assert health["failedEventTypes"] == {"batch": 1, "battle_result": 1}
     assert health["statusCounts"] == {"failed": 2, "pending": 1}
 
+
+def test_archive_stale_failed_events_removes_terminal_failures(monkeypatch, tmp_path):
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    archive_dir = tmp_path / "logs" / "discord-events"
+    latest_archive = tmp_path / "devstream" / "truth" / "discord-backlog-archive.json"
+    queue_file.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "failed-old",
+                    "timestamp": 100.0,
+                    "event_type": "battle_result",
+                    "status": "failed",
+                    "retry_count": 3,
+                    "last_error": "dns_failure",
+                },
+                {
+                    "id": "failed-fresh",
+                    "timestamp": 950.0,
+                    "event_type": "battle_result",
+                    "status": "failed",
+                    "retry_count": 3,
+                    "last_error": "validation_failed",
+                },
+                {
+                    "id": "pending",
+                    "timestamp": 990.0,
+                    "event_type": "batch",
+                    "status": "pending",
+                    "retry_count": 0,
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_DIR", archive_dir)
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_LATEST", latest_archive)
+
+    archived = event_queue_lib.archive_stale_failed_events(max_age_sec=600, now=1000.0)
+
+    assert archived == 1
+    events = json.loads(queue_file.read_text(encoding="utf-8"))
+    assert [event["id"] for event in events] == ["failed-fresh", "pending"]
+    archive = json.loads(latest_archive.read_text(encoding="utf-8"))
+    assert archive["reason"] == "stale-failed-discord-events-archived-before-live-readiness"
+    assert archive["archivalDisposition"] == "terminal-failed-events-archived-locally-not-retried"
+    assert archive["archivedEventTypes"] == {"battle_result": 1}
+    assert archive["events"][0]["statusBeforeArchive"] == "failed"
 
 def test_queue_health_marks_structured_backlog_as_local_proof_classified():
     health = queue_health_summary(
@@ -1062,10 +1262,230 @@ def test_payload_formatter_builds_operator_facing_battle_report():
     assert formatted.startswith("[PROOF] **battle result loss vs GOATZILASPAMMER**")
     assert "battle finished loss vs GOATZILASPAMMER using 1 stall in 47 turns" in formatted
     assert "last 5: 2-3 (40% WR)" in formatted
+    assert "Operator-facing battle posts should" not in formatted
+    assert "battle updates should" not in formatted
+    assert "loss changed the ladder run vs GOATZILASPAMMER" in formatted
     assert "GOATZILASPAMMER closed the endgame before the bot stabilized the board." in formatted
     assert "next battle focus: Review the replay before the next queue and tag whether this was policy, matchup, or ops." in formatted
     assert "- replay `gen9ou-2555107042`: https://replay.pokemonshowdown.com/gen9ou-2555107042" in formatted
     assert "- ELO `lost 20 (1223 → 1203, -20)`" in formatted
+
+
+def test_payload_formatter_replaces_short_id_battle_recaps_with_fact_line():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs Smurf42069",
+        "2635307132: loss vs Smurf42069; replay pending-public-upload.",
+        "Operator-facing battle posts should report the exact ladder window and avoid invented flavor text.",
+        "battle_id=battle-gen9ou-2635307132; result=loss; opponent=Smurf42069",
+        "resolve replay link and tag a concrete cause",
+        source="fp.run_battle",
+        battle_id="battle-gen9ou-2635307132",
+        result="loss",
+        opponent="Smurf42069",
+        turns=41,
+        replay_status="pending-public-upload",
+        recent_record="last 5: 4-1 (80% WR)",
+        decisive_reason="Replay is not public yet, so the loss is recorded without a claimed strategic cause.",
+        next_battle_action="Resolve the replay link before assigning a strategic failure tag.",
+        elo_before=1494,
+        elo_after=1474,
+        rating_delta=-20,
+    )
+
+    formatted = format_payload_or_message(payload)
+
+    assert "2635307132: loss vs Smurf42069; replay pending-public-upload." not in formatted
+    assert "battle finished loss vs Smurf42069 in 41 turns" in formatted
+    assert "last 5: 4-1 (80% WR)" in formatted
+    assert "closed the endgame before the bot stabilized the board" not in formatted
+    assert "ELO lost 20" in formatted
+    assert "ELO ELO" not in formatted
+    assert formatted.count("replay pending public upload") == 1
+
+
+def test_payload_formatter_generates_clean_battle_fact_line_without_explicit_what():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result win vs Joshjay860",
+        "",
+        "Operator-facing battle posts should report concrete ladder facts.",
+        "battle_id=battle-gen9ou-2635338540; result=win; team_file=gen9/ou/fat-team-1-stall; opponent=Joshjay860; turns=24; replay=https://replay.pokemonshowdown.com/gen9ou-2635338540; replay_status=public",
+        "append replay or ladder delta if it becomes available",
+        source="fp.run_battle",
+        battle_id="battle-gen9ou-2635338540",
+        result="win",
+        team_file="gen9/ou/fat-team-1-stall",
+        opponent="Joshjay860",
+        turns=24,
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-2635338540",
+        replay_status="public",
+        recent_record="last 5: 1-4 (20% WR)",
+        elo_before=1302,
+        elo_after=1318,
+        rating_delta=16,
+    )
+
+    formatted = format_payload_or_message(payload)
+    summary = redacted_report_summary(formatted)
+
+    assert "battle finished win vs Joshjay860 using 1 stall in 24 turns" in formatted
+    assert "last 5: 1-4 (20% WR)" in formatted
+    assert "2635338540: win vs Joshjay860" not in formatted
+    assert summary["opponent"] == "Joshjay860"
+    assert summary["currentBattleState"] == "battle win; vs Joshjay860; 24 turns; id 2635338540; public replay gen9ou-2635338540"
+
+
+def test_redacted_report_summary_sanitizes_opponent_from_formatted_report():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result win vs Joshjay860",
+        "2635338540: win vs Joshjay860; replay public; ELO gained 16 (1302 -> 1318, +16); last 5: 1-4 (20% WR)",
+        "battle updates should confirm concrete proof",
+        "battle_id=battle-gen9ou-2635338540; result=win; opponent=Joshjay860; turns=24",
+        "append replay or ladder delta",
+        battle_id="battle-gen9ou-2635338540",
+        result="win",
+        opponent="Joshjay860",
+        turns=24,
+    )
+    formatted = format_payload_or_message(payload)
+
+    summary = redacted_report_summary(formatted)
+    fields = structured_report_fields(formatted, event_type="battle_result")
+
+    assert summary["opponent"] == "Joshjay860"
+    assert fields["analysis"]["opponent"] == "Joshjay860"
+    assert fields["result"] == "win"
+    assert "Joshjay860 2635338540" not in summary["currentBattleState"]
+
+
+def test_structured_report_fields_exposes_top_level_loss_result():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs TimerOpponent",
+        "battle-gen9ou-timeout ended loss against TimerOpponent.",
+        "operational losses must be machine-readable as losses",
+        "battle_id=battle-gen9ou-timeout; result=loss; opponent=TimerOpponent; turns=17",
+        "Inspect reconnect/timer logs for gen9ou-timeout before treating the TimerOpponent loss as team or policy signal.",
+        source="fp.run_battle",
+        battle_id="battle-gen9ou-timeout",
+        result="loss",
+        opponent="TimerOpponent",
+        turns=17,
+    )
+
+    fields = structured_report_fields(payload, event_type="battle_result")
+
+    assert fields["result"] == "loss"
+    assert fields["analysis"]["result"] == "loss"
+    assert fields["winner"] == "TimerOpponent"
+    assert fields["loser"] == "fouler-play"
+
+
+def test_formatter_rebuilds_already_formatted_stale_battle_report():
+    stale = build_contract_message(
+        "PROOF",
+        "battle result win vs Dr. Spacebar",
+        "2635342342: win vs Dr. Spacebar; replay public; ELO gained 20 (1318 -> 1338, +20); last 5: 2-3 (40% WR); Win has public replay proof; compare it against nearby wins before claiming a repeatable pattern.; next battle focus: Keep the replay and compare the next wins for the same concrete pattern.",
+        "battle updates should confirm concrete proof",
+        [
+            "battle 2635342342",
+            "replay gen9ou-2635342342: https://replay.pokemonshowdown.com/gen9ou-2635342342",
+            "win vs Dr. Spacebar 47 turns",
+            "window last 5: 2-3 (40% WR)",
+        ],
+        "Append replay or ladder delta if more context lands after posting.",
+    )
+
+    formatted = format_payload_or_message(stale)
+    summary = redacted_report_summary(formatted)
+
+    assert "2635342342: win vs Dr. Spacebar" not in formatted
+    assert "Win has public replay proof" not in formatted
+    assert "battle updates should" not in formatted
+    assert "battle finished win vs Dr. Spacebar in 47 turns" in formatted
+    assert "last 5: 2-3 (40% WR)" in formatted
+    assert summary["opponent"] == "Dr. Spacebar"
+    assert "battle updates should" not in str(summary["whyItMatters"]).lower()
+
+
+def test_event_poster_quality_gate_blocks_canned_battle_report():
+    import infrastructure.event_poster as event_poster
+
+    message = build_contract_message(
+        "PROOF",
+        "battle result loss vs Example",
+        "battle finished loss vs Example in 18 turns",
+        "battle updates should tell us whether this was variance",
+        ["battle battle-gen9ou-123", "result loss vs Example", "18 turns"],
+        "review replay",
+    )
+
+    event = {
+        "id": "quality-bad",
+        "event_type": "battle_result",
+        "channel": "battles",
+        "content": message,
+    }
+
+    findings = event_poster.report_quality_findings(event)
+
+    assert any(item.startswith("banned_phrase:battle updates should") for item in findings)
+    assert event_poster.validate_event_content(event)[0] is False
+
+
+def test_event_poster_quality_gate_blocks_impossible_recent_record():
+    import infrastructure.event_poster as event_poster
+
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs Tsaun",
+        "battle finished loss vs Tsaun in 18 turns; last 5: 3-1 (60% WR)",
+        "loss vs Tsaun is ladder evidence; last 5: 3-1 (60% WR)",
+        "battle_id=battle-gen9ou-2636046261; result=loss; opponent=Tsaun; turns=18",
+        "Review replay.",
+        battle_id="battle-gen9ou-2636046261",
+        result="loss",
+        opponent="Tsaun",
+        turns=18,
+    )
+    message = format_payload_or_message(payload)
+
+    findings = event_poster.report_quality_findings(
+        {
+            "id": "quality-bad-recent",
+            "event_type": "battle_result",
+            "channel": "battles",
+            "content": message,
+        }
+    )
+
+    assert "recent_record_count_mismatch:last5!=4" in findings
+
+
+def test_payload_formatter_prefers_structured_recent_record_over_mismatched_text():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result loss vs RecordMismatch",
+        "",
+        "structured fields should own the recent record",
+        "battle_id=battle-gen9ou-record; result=loss; opponent=RecordMismatch; turns=18",
+        "Review replay.",
+        battle_id="battle-gen9ou-record",
+        result="loss",
+        opponent="RecordMismatch",
+        turns=18,
+        recent_record="last 5: 5-0 (100% WR)",
+        recent_wins=3,
+        recent_losses=2,
+        recent_window_size=5,
+    )
+
+    rendered = format_payload_or_message(payload)
+
+    assert "last 5: 3-2 (60% WR)" in rendered
+    assert "last 5: 5-0" not in rendered
 
 
 def test_payload_formatter_omits_boolean_placeholder_turns():
@@ -1178,6 +1598,61 @@ def test_payload_formatter_marks_private_replay_as_pending_not_public_link():
     assert "https://replay.pokemonshowdown.com/gen9ou-111" not in formatted
 
 
+def test_pending_replay_battle_result_is_not_hermes_analysis_ready():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result win vs PendingReplay",
+        "",
+        "Operator-facing battle posts should report concrete ladder facts.",
+        "battle_id=battle-gen9ou-222-privatehash; result=win; opponent=PendingReplay; turns=12",
+        "Append replay or ladder delta if more context lands after posting.",
+        battle_id="battle-gen9ou-222-privatehash",
+        result="win",
+        opponent="PendingReplay",
+        turns=12,
+        replay_status="pending-public-upload",
+        recent_record="last 5: 3-2 (60% WR)",
+    )
+
+    formatted = format_payload_or_message(payload)
+    fields = structured_report_fields(formatted, event_type="battle_result")
+
+    readiness = fields["proof_readiness"]
+    assert readiness["status"] == "proof-ready"
+    assert readiness["readyForHermes"] is False
+    assert "replay_pending_public_upload" in readiness["qualityGaps"]
+    assert "battle_cause_unclassified" in readiness["qualityGaps"]
+    assert fields["analysis"]["nextHermesAction"].startswith("Resolve public replay")
+
+
+def test_public_replay_without_cause_requires_hermes_classification():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result win vs PublicNoCause",
+        "",
+        "Operator-facing battle posts should report concrete ladder facts.",
+        "battle_id=battle-gen9ou-333; result=win; opponent=PublicNoCause; turns=17; replay=https://replay.pokemonshowdown.com/gen9ou-333; replay_status=public",
+        "Append replay or ladder delta if more context lands after posting.",
+        battle_id="battle-gen9ou-333",
+        result="win",
+        opponent="PublicNoCause",
+        turns=17,
+        replay_url="https://replay.pokemonshowdown.com/gen9ou-333",
+        replay_status="public",
+        recent_record="last 5: 4-1 (80% WR)",
+    )
+
+    formatted = format_payload_or_message(payload)
+    fields = structured_report_fields(formatted, event_type="battle_result")
+
+    readiness = fields["proof_readiness"]
+    assert readiness["status"] == "proof-ready"
+    assert readiness["readyForHermes"] is False
+    assert "replay_pending_public_upload" not in readiness["qualityGaps"]
+    assert "battle_cause_unclassified" in readiness["qualityGaps"]
+    assert fields["analysis"]["nextHermesAction"].startswith("Classify the win condition")
+
+
 def test_payload_formatter_flags_operational_losses():
     payload = build_contract_payload(
         "PROOF",
@@ -1200,7 +1675,7 @@ def test_payload_formatter_flags_operational_losses():
     )
     formatted = format_payload_or_message(payload)
     assert "inactivity/disconnect behavior" in formatted
-    assert "operator reports should flag ladder-invisible runtime failures immediately" in formatted
+    assert "runtime or timer evidence is part of this ladder loss" in formatted
 
 
 def test_payload_formatter_summarizes_batch_payload_without_blob_dump():
@@ -1276,3 +1751,173 @@ def test_recent_results_summary_and_recurring_issue_helpers():
         "hazards got away",
     ])
     assert issue.startswith("battle ended through inactivity/disconnect behavior")
+
+
+def test_recent_results_summary_counts_operational_results_as_losses():
+    battles = [
+        {"result": "win"},
+        {"result": "lost"},
+        {"result": "timeout"},
+        {"result": "disconnect after reconnect"},
+        {"result": "won"},
+    ]
+
+    summary = summarize_recent_results(battles, window=5)
+
+    assert summary["record"] == "last 5: 2-3 (40% WR)"
+    assert summary["streak"] == "win x1"
+
+
+def test_recent_results_summary_counts_ladder_ties_as_losses():
+    battles = [
+        {"result": "win"},
+        {"result": "tie"},
+        {"result": "draw"},
+        {"result": "loss"},
+        {"result": "won"},
+    ]
+
+    summary = summarize_recent_results(battles, window=5)
+
+    assert summary["record"] == "last 5: 2-3 (40% WR)"
+    assert summary["streak"] == "win x1"
+
+
+def test_recent_results_summary_ignores_unfilled_stats_rows():
+    battles = [
+        {"result": "win"},
+        {"result": ""},
+        {"result": "loss"},
+        {"result": None},
+        {"result": "win"},
+    ]
+
+    summary = summarize_recent_results(battles, window=5)
+
+    assert summary["record"] == "last 3: 2-1 (67% WR)"
+    assert summary["window_size"] == 3
+    assert summary["streak"] == "win x1"
+
+
+def test_payload_formatter_renders_ladder_tie_as_loss():
+    payload = build_contract_payload(
+        "PROOF",
+        "battle result tie vs TimerOpponent",
+        "battle finished tie vs TimerOpponent in 18 turns",
+        "tie must be treated as loss for ladder mission accounting",
+        "battle_id=battle-gen9ou-testtie; result=tie; opponent=TimerOpponent; turns=18",
+        "Inspect replay.",
+        battle_id="battle-gen9ou-testtie",
+        result="tie",
+        opponent="TimerOpponent",
+        turns=18,
+        next_battle_action="Inspect replay.",
+    )
+
+    formatted = format_payload_or_message(payload)
+    fields = structured_report_fields(formatted, event_type="battle_result")
+
+    assert formatted.startswith("[PROOF] **battle loss vs TimerOpponent**")
+    assert "battle finished loss vs TimerOpponent" in formatted
+    assert "battle finished tie vs TimerOpponent" not in formatted
+    assert fields["result"] == "loss"
+    assert fields["winner"] == "TimerOpponent"
+    assert fields["loser"] == "fouler-play"
+
+
+def test_recent_results_summary_with_current_includes_new_loss():
+    battles = [
+        {"battle_id": "battle-gen9ou-1", "result": "win"},
+        {"battle_id": "battle-gen9ou-2", "result": "win"},
+        {"battle_id": "battle-gen9ou-3", "result": "win"},
+        {"battle_id": "battle-gen9ou-4", "result": "win"},
+        {"battle_id": "battle-gen9ou-5", "result": "win"},
+    ]
+
+    summary = summarize_recent_results_with_current(
+        battles,
+        {"battle_id": "battle-gen9ou-6", "result": "loss"},
+        window=5,
+    )
+
+    assert summary["record"] == "last 5: 4-1 (80% WR)"
+    assert summary["streak"] == "loss x1"
+
+
+def test_recent_results_summary_with_current_dedupes_battle_tag_alias():
+    battles = [
+        {"battle_id": "battle-gen9ou-1", "result": "win"},
+        {"battle_id": "battle-gen9ou-2", "result": "loss"},
+        {"battle_id": "battle-gen9ou-3", "result": "loss"},
+        {"battle_id": "battle-gen9ou-4", "result": "loss"},
+        {"battle_tag": "battle-gen9ou-5", "result": "loss"},
+    ]
+
+    summary = summarize_recent_results_with_current(
+        battles,
+        {"battle_id": "battle-gen9ou-5", "result": "win"},
+        window=5,
+    )
+
+    assert summary["record"] == "last 5: 2-3 (40% WR)"
+    assert summary["streak"] == "win x1"
+
+
+def test_recent_results_safety_alert_flags_loss_streak():
+    battles = [
+        {"battle_id": "battle-gen9ou-1", "result": "win"},
+        {"battle_id": "battle-gen9ou-2", "result": "loss"},
+        {"battle_id": "battle-gen9ou-3", "result": "loss"},
+        {"battle_id": "battle-gen9ou-4", "result": "loss"},
+        {"battle_id": "battle-gen9ou-5", "result": "loss"},
+    ]
+
+    alert = recent_results_safety_alert(
+        battles,
+        {"battle_id": "battle-gen9ou-6", "result": "loss"},
+        trend_window=20,
+        loss_streak_threshold=5,
+    )
+
+    assert alert["trigger"] == "loss-streak"
+    assert alert["loss_streak"] == 5
+    assert alert["trend_record"] == "last 6: 1-5 (17% WR)"
+
+
+def test_recent_results_safety_alert_flags_low_recent_win_rate():
+    battles = [
+        {"battle_id": f"battle-gen9ou-{idx}", "result": "loss" if idx % 3 else "win"}
+        for idx in range(1, 20)
+    ]
+
+    alert = recent_results_safety_alert(
+        battles,
+        {"battle_id": "battle-gen9ou-20", "result": "win"},
+        trend_window=20,
+        loss_streak_threshold=5,
+        low_win_rate_threshold=0.45,
+        min_decisive_for_rate=10,
+    )
+
+    assert alert["trigger"] == "low-recent-win-rate"
+    assert alert["trend_record"] == "last 20: 7-13 (35% WR)"
+
+
+def test_format_payload_collapses_duplicate_recent_window_label():
+    formatted = format_payload_or_message(
+        json.dumps(
+            {
+                "event_class": "STAGNATION",
+                "headline": "Fouler recent win-rate safety alert",
+                "what_happened": "recent decisive win rate 40% is below 45%; last 20: 8-12 (40% WR); last 5 last 5: 2-3 (40% WR)",
+                "why_it_matters": "recent ladder trend is below the safety threshold",
+                "proof": "battle_id=battle-gen9ou-1; trigger=low-recent-win-rate",
+                "remaining": "Review recent replays before launching another improve cycle.",
+                "recent_record": "last 5: 2-3 (40% WR)",
+            }
+        )
+    )
+
+    assert "last 5 last 5" not in formatted
+    assert "last 5: 2-3 (40% WR)" in formatted
+

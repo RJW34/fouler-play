@@ -145,6 +145,7 @@ if (-not $Apply) {
 $backup = Save-TaskBackup -Name $TaskName
 Remove-StalePidFile
 New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
+$startFallback = $null
 $action = New-ScheduledTaskAction -Execute $TaskExecute -Argument $TaskArguments -WorkingDirectory $ProjectDir
 $trigger = New-ScheduledTaskTrigger -AtLogOn
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 30) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
@@ -163,8 +164,47 @@ if ($Start) {
     Rotate-LogFile -Path $WrapperStderrLog | Out-Null
     Start-ScheduledTask -TaskName $TaskName
     Start-Sleep -Seconds 5
+    $scheduledStatus = Get-ObsTaskStatus
+    if (-not $scheduledStatus.port8777Listening -or $scheduledStatus.processCount -le 0) {
+        $fallbackStartedAt = (Get-Date).ToUniversalTime().ToString("o")
+        $fallbackExitCode = $null
+        try {
+            & $PowerShell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectDir $TaskWrapper) 1>>$WrapperStdoutLog 2>>$WrapperStderrLog
+            $fallbackExitCode = $LASTEXITCODE
+        } catch {
+            $fallbackExitCode = -1
+            $startFallback = [ordered]@{
+                used = $true
+                reason = "scheduled task did not materialize OBS server process or port"
+                startedAt = $fallbackStartedAt
+                exitCode = $fallbackExitCode
+                error = $_.Exception.Message
+            }
+        }
+        if ($null -eq $startFallback) {
+            $startFallback = [ordered]@{
+                used = $true
+                reason = "scheduled task did not materialize OBS server process or port"
+                startedAt = $fallbackStartedAt
+                exitCode = $fallbackExitCode
+                error = $null
+            }
+        }
+        Start-Sleep -Seconds 2
+    } else {
+        $startFallback = [ordered]@{
+            used = $false
+            reason = "scheduled task produced a live OBS server"
+            startedAt = $null
+            exitCode = $null
+            error = $null
+        }
+    }
 }
 
 $statusPayload = Get-ObsTaskStatus
 $statusPayload | Add-Member -NotePropertyName backup -NotePropertyValue $backup
+if ($null -ne $startFallback) {
+    $statusPayload | Add-Member -NotePropertyName startFallback -NotePropertyValue $startFallback
+}
 $statusPayload | ConvertTo-Json -Depth 6

@@ -88,13 +88,21 @@ button[aria-label*="do not sell"] {
   left: 0 !important;
   top: 0 !important;
   right: auto !important;
-  min-width: 1280px !important;
-  min-height: 720px !important;
-  width: 100vw !important;
-  height: 100vh !important;
+  min-width: 640px !important;
+  min-height: 360px !important;
+  width: 640px !important;
+  height: 360px !important;
   max-width: none !important;
   max-height: none !important;
-  transform: none !important;
+  transform: scale(2) !important;
+  transform-origin: top left !important;
+}
+.innerbattle,
+.backdrop {
+  width: 640px !important;
+  height: 360px !important;
+  max-width: none !important;
+  max-height: none !important;
   transform-origin: top left !important;
 }
 .innerbattle { background-color: #05070a !important; }
@@ -260,3 +268,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

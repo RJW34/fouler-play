@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -9,6 +10,36 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import devstream_cycle_report
+import fouler_mission_monitor
+
+
+def _active_lease() -> dict:
+    return {
+        "status": "active",
+        "account": "LEBOTJAMESXD00N",
+        "expiresAt": "2999-01-01T00:00:00+00:00",
+    }
+
+
+def _elo_battle(index: int, *, team: str, rating: int, result: str = "win") -> dict:
+    return {
+        "battle_id": f"battle-gen9ou-proof-{index}",
+        "result": result,
+        "ratingAfter": rating,
+        "teamFile": team,
+        "decisionTracePath": f"logs/decision_traces/gen9ou-proof-{index}.json",
+        "timestamp": f"2026-05-25T12:{index:02d}:00+00:00",
+    }
+
+
+def _elo_cycle(generated_at: str | None = None) -> dict:
+    return {
+        "generatedAt": generated_at or datetime.now(timezone.utc).isoformat(),
+        "autoresearch": {
+            "json": {"exists": True, "path": "replay_analysis/autoresearch_latest.json"},
+            "report": {"exists": True, "path": "replay_analysis/reports/autoresearch_latest.md"},
+        },
+    }
 
 
 def test_cycle_report_completion_payload_marks_fresh_learning_proof():
@@ -48,7 +79,263 @@ def test_cycle_report_completion_payload_marks_fresh_learning_proof():
     assert completion["latestBattleLearningVerified"] is True
     assert completion["performanceTrendStatus"] == "improving"
     assert completion["performanceImprovementVerified"] is True
+    assert completion["activeImprovementVerified"] is True
     assert completion["blockers"] == []
+
+
+def test_cycle_report_builds_1700_sustain_elo_proof_for_all_fixed_teams(monkeypatch):
+    monkeypatch.setattr(devstream_cycle_report, "current_source_commit", lambda: "abc1234")
+    battles = []
+    index = 0
+    for team in devstream_cycle_report.ELO_REQUIRED_TEAMS:
+        for offset in range(10):
+            battles.append(
+                _elo_battle(
+                    index,
+                    team=team,
+                    rating=1710 + ((index + offset) % 8),
+                    result="loss" if index % 4 == 0 else "win",
+                )
+            )
+            index += 1
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {"battles": battles},
+        _elo_cycle(),
+        account="LEBOTJAMESXD00N",
+        autoresearch={
+            "win_rate": 0.6,
+            "regression": {"status": "improving", "rating_delta": 18, "win_rate_delta": 0.1},
+            "evidence_integrity": {
+                "loss_count": 2,
+                "losses_with_replay_json": 2,
+                "losses_with_decision_trace": 2,
+                "claims_without_evidence": [],
+            },
+        },
+    )
+    status = fouler_mission_monitor.elo_sustain_proof_status(
+        proof,
+        lease=_active_lease(),
+        max_age_seconds=3600,
+    )
+
+    assert proof["schemaVersion"] == "fouler-play-elo-proof/v1"
+    assert proof["sourceCommit"] == "abc1234"
+    assert proof["source"]["sourceCommit"] == "abc1234"
+    assert proof["target"]["ratingFloor"] == 1700
+    assert proof["target"]["noCherryPicking"] is True
+    assert proof["target"]["uninterruptedPostTargetFloorRequired"] is True
+    assert proof["summary"]["sustainedTarget"] is True
+    assert proof["summary"]["gamesAtOrAboveFloor"] == 30
+    assert proof["summary"]["sustainEvidenceShapeComplete"] is True
+    assert proof["summary"]["sustainProofComplete"] is True
+    assert proof["summary"]["analysisEvidenceComplete"] is True
+    assert proof["summary"]["latestBattleId"] == "battle-gen9ou-proof-29"
+    assert proof["summary"]["latestBattleAt"] == "2026-05-25T12:29:00+00:00"
+    assert proof["summary"]["latestBattleLearningVerified"] is True
+    assert proof["summary"]["performanceImprovementVerified"] is True
+    assert proof["summary"]["performanceTrendStatus"] == "improving"
+    assert proof["summary"]["improvementSignalStatus"] == "positive"
+    assert proof["summary"]["ratingDelta"] == 18
+    assert proof["summary"]["winRateDelta"] == 0.1
+    assert proof["summary"]["winRate"] == 0.6
+    assert proof["summary"]["preTargetDrawdownWithinLimit"] is True
+    assert proof["summary"]["maxPreTargetDrawdown"] is None
+    assert proof["summary"]["missingSustainReplayCount"] == 0
+    assert proof["summary"]["unknownSustainTeamCount"] == 0
+    assert proof["summary"]["missingDecisionTraceCount"] == 0
+    assert proof["summary"]["duplicateDecisionTraceProofCount"] == 0
+    assert proof["summary"]["duplicateDecisionTraceProofs"] == []
+    assert proof["analysis"]["autoresearchJsonPath"] == "replay_analysis/autoresearch_latest.json"
+    assert proof["analysis"]["autoresearchReportPath"] == "replay_analysis/reports/autoresearch_latest.md"
+    assert proof["analysis"]["decisionTraceReviewPath"] == "devstream/truth/proof-status.json"
+    assert proof["summary"]["teamCoverage"] == {
+        "fat-team-1-stall": 10,
+        "fat-team-2-pivot": 10,
+        "fat-team-3-dondozo": 10,
+    }
+    assert status["ready"] is True
+
+
+def test_cycle_report_elo_proof_blocks_large_pre_target_skid_before_sustain():
+    battles = [
+        _elo_battle(0, team="fat-team-1-stall", rating=1600, result="win"),
+        _elo_battle(1, team="fat-team-2-pivot", rating=1688, result="win"),
+        _elo_battle(2, team="fat-team-3-dondozo", rating=1570, result="loss"),
+        _elo_battle(3, team="fat-team-1-stall", rating=1640, result="win"),
+        _elo_battle(4, team="fat-team-2-pivot", rating=1695, result="win"),
+    ]
+    index = len(battles)
+    for team in devstream_cycle_report.ELO_REQUIRED_TEAMS:
+        for _ in range(10):
+            battles.append(_elo_battle(index, team=team, rating=1710 + (index % 6)))
+            index += 1
+
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {"battles": battles},
+        _elo_cycle(),
+        account="LEBOTJAMESXD00N",
+    )
+    status = fouler_mission_monitor.elo_sustain_proof_status(
+        proof,
+        lease=_active_lease(),
+        max_age_seconds=3600,
+    )
+
+    assert proof["summary"]["sustainedTarget"] is False
+    assert proof["summary"]["sustainEvidenceShapeComplete"] is False
+    assert proof["summary"]["sustainProofComplete"] is False
+    assert proof["summary"]["preTargetRatedGames"] == 5
+    assert proof["summary"]["maxPreTargetDrawdown"] == 118.0
+    assert proof["summary"]["preTargetDrawdownPeakBattleId"] == "battle-gen9ou-proof-1"
+    assert proof["summary"]["preTargetDrawdownTroughBattleId"] == "battle-gen9ou-proof-2"
+    assert proof["summary"]["preTargetDrawdownWithinLimit"] is False
+    assert status["ready"] is False
+    assert status["ratings"]["maxPreTargetDrawdown"] == 118.0
+    assert any("pre-target drawdown" in blocker for blocker in status["blockers"])
+
+
+def test_cycle_report_elo_proof_blocks_when_rating_never_reaches_target():
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {
+            "battles": [
+                _elo_battle(index, team="fat-team-1-stall", rating=1490 + (index % 5))
+                for index in range(30)
+            ]
+        },
+        _elo_cycle("2026-05-25T12:35:23+00:00"),
+        account="LEBOTJAMESXD00N",
+    )
+    status = fouler_mission_monitor.elo_sustain_proof_status(
+        proof,
+        lease=_active_lease(),
+        max_age_seconds=3600,
+    )
+
+    assert proof["summary"]["sustainedTarget"] is False
+    assert proof["summary"]["sustainEvidenceShapeComplete"] is False
+    assert proof["summary"]["sustainProofComplete"] is False
+    assert status["ready"] is False
+    assert any("never reaches 1700" in blocker for blocker in status["blockers"])
+
+
+def test_cycle_report_elo_proof_requires_replay_and_fixed_team_provenance():
+    battles = []
+    index = 0
+    for team in devstream_cycle_report.ELO_REQUIRED_TEAMS:
+        for offset in range(10):
+            battles.append(_elo_battle(index, team=team, rating=1710 + (offset % 8)))
+            index += 1
+    battles[0].pop("battle_id")
+    battles[1]["teamFile"] = "teams/gen9/ou/experimental-team"
+
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {"battles": battles},
+        _elo_cycle("2026-05-25T12:35:23+00:00"),
+        account="LEBOTJAMESXD00N",
+    )
+
+    assert proof["summary"]["sustainedTarget"] is False
+    assert proof["summary"]["sustainEvidenceShapeComplete"] is False
+    assert proof["summary"]["sustainProofComplete"] is False
+    assert proof["summary"]["missingSustainReplayCount"] == 1
+    assert proof["summary"]["unknownSustainTeamCount"] == 1
+    assert proof["summary"]["missingSustainReplayBattleIds"] == ["unknown"]
+
+
+def test_cycle_report_elo_proof_requires_decision_trace_and_analysis_evidence():
+    battles = []
+    index = 0
+    for team in devstream_cycle_report.ELO_REQUIRED_TEAMS:
+        for offset in range(10):
+            battles.append(_elo_battle(index, team=team, rating=1710 + (offset % 8)))
+            index += 1
+    battles[0].pop("decisionTracePath")
+
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {"battles": battles},
+        {
+            "generatedAt": datetime.now(timezone.utc).isoformat(),
+            "autoresearch": {
+                "json": {"exists": False, "path": "replay_analysis/autoresearch_latest.json"},
+                "report": {"exists": True, "path": "replay_analysis/reports/autoresearch_latest.md"},
+            },
+        },
+        account="LEBOTJAMESXD00N",
+    )
+    status = fouler_mission_monitor.elo_sustain_proof_status(
+        proof,
+        lease=_active_lease(),
+        max_age_seconds=3600,
+    )
+
+    assert proof["summary"]["sustainedTarget"] is False
+    assert proof["summary"]["sustainEvidenceShapeComplete"] is False
+    assert proof["summary"]["sustainProofComplete"] is False
+    assert proof["summary"]["missingDecisionTraceCount"] == 1
+    assert proof["summary"]["missingDecisionTraceBattleIds"] == ["battle-gen9ou-proof-0"]
+    assert proof["analysis"]["autoresearchJsonPath"] == ""
+    assert status["ready"] is False
+    assert status["decisionTraces"]["missingDecisionTraceBattleIds"] == ["battle-gen9ou-proof-0"]
+    assert "autoresearchJsonPath" in status["analysis"]["missingPathKeys"]
+
+
+def test_cycle_report_elo_proof_rejects_duplicate_decision_trace_evidence():
+    battles = []
+    index = 0
+    for team in devstream_cycle_report.ELO_REQUIRED_TEAMS:
+        for offset in range(10):
+            battles.append(_elo_battle(index, team=team, rating=1710 + (offset % 8)))
+            index += 1
+    battles[1]["decisionTracePath"] = battles[0]["decisionTracePath"]
+
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {"battles": battles},
+        _elo_cycle(),
+        account="LEBOTJAMESXD00N",
+    )
+    status = fouler_mission_monitor.elo_sustain_proof_status(
+        proof,
+        lease=_active_lease(),
+        max_age_seconds=3600,
+    )
+
+    assert proof["summary"]["sustainedTarget"] is False
+    assert proof["summary"]["sustainEvidenceShapeComplete"] is False
+    assert proof["summary"]["sustainProofComplete"] is False
+    assert proof["summary"]["duplicateDecisionTraceProofCount"] == 1
+    assert proof["summary"]["duplicateDecisionTraceProofs"] == [
+        "logs/decision_traces/gen9ou-proof-0.json"
+    ]
+    assert status["ready"] is False
+    assert status["counts"]["duplicateDecisionTraceProofCount"] == 1
+    assert any("duplicate sustain-window decision trace proof" in blocker for blocker in status["blockers"])
+
+
+def test_cycle_report_elo_proof_sorts_source_battles_by_timestamp_before_sustain_derivation():
+    low_after_first_target = _elo_battle(1, team="fat-team-1-stall", rating=1690, result="loss")
+    low_after_first_target["timestamp"] = "2026-05-25T12:30:00+00:00"
+    battles = [
+        low_after_first_target,
+        _elo_battle(0, team="fat-team-1-stall", rating=1710, result="win"),
+    ]
+    index = 2
+    for team in devstream_cycle_report.ELO_REQUIRED_TEAMS:
+        for _ in range(10):
+            battles.append(_elo_battle(index, team=team, rating=1710 + (index % 6), result="win"))
+            index += 1
+
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {"battles": battles},
+        _elo_cycle(),
+        account="LEBOTJAMESXD00N",
+    )
+
+    assert proof["games"][0]["battleId"] == "battle-gen9ou-proof-0"
+    assert proof["summary"]["belowFloorAfterFirstTarget"] == 1
+    assert proof["summary"]["chronologicalBattleOrderComplete"] is True
+    assert proof["summary"]["sustainedTarget"] is False
+    assert proof["summary"]["sustainProofComplete"] is False
 
 
 def test_cycle_report_completion_payload_blocks_unsupported_autoresearch_claims():
@@ -126,6 +413,7 @@ def test_cycle_report_blocks_stale_empty_active_battles_without_runner(tmp_path,
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_MD", truth_dir / "cycle-report.md")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_COMPLETION", truth_dir / "completion.json")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_PROOF_STATUS", truth_dir / "proof-status.json")
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_ELO_PROOF", truth_dir / "latest-elo-proof.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(
@@ -167,6 +455,7 @@ def test_cycle_report_allows_completed_cycle_with_classified_local_discord_proof
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_MD", truth_dir / "cycle-report.md")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_COMPLETION", truth_dir / "completion.json")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_PROOF_STATUS", truth_dir / "proof-status.json")
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_ELO_PROOF", truth_dir / "latest-elo-proof.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(
@@ -312,6 +601,7 @@ def test_cycle_report_completion_payload_blocks_with_active_battles():
 
     assert completion["status"] == "cycle-proof-blocked"
     assert completion["latestBattleLearningVerified"] is False
+    assert completion["activeImprovementVerified"] is False
     assert completion["blockers"] == ["active battles are still present; completion proof is not final"]
     assert completion["activeBattleTelemetryPresent"] is True
     assert completion["activeBattleTelemetryIsCompletionProof"] is False
@@ -325,6 +615,7 @@ def test_cycle_report_excludes_terminal_ghost_active_battles(tmp_path, monkeypat
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_MD", truth_dir / "cycle-report.md")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_COMPLETION", truth_dir / "completion.json")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_PROOF_STATUS", truth_dir / "proof-status.json")
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_ELO_PROOF", truth_dir / "latest-elo-proof.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(
@@ -542,6 +833,7 @@ def test_cycle_report_write_refreshes_redacted_discord_preview(tmp_path, monkeyp
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_MD", truth_dir / "cycle-report.md")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_COMPLETION", truth_dir / "completion.json")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_PROOF_STATUS", truth_dir / "proof-status.json")
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_ELO_PROOF", truth_dir / "latest-elo-proof.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(
@@ -627,6 +919,7 @@ def test_cycle_report_write_records_fresh_generated_artifact_metadata(tmp_path, 
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_MD", truth_dir / "cycle-report.md")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_COMPLETION", truth_dir / "completion.json")
     monkeypatch.setattr(devstream_cycle_report, "OUTPUT_PROOF_STATUS", truth_dir / "proof-status.json")
+    monkeypatch.setattr(devstream_cycle_report, "OUTPUT_ELO_PROOF", truth_dir / "latest-elo-proof.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_REPORTING", truth_dir / "discord-reporting.json")
     monkeypatch.setattr(devstream_cycle_report, "DISCORD_DELIVERY", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(devstream_cycle_report, "refresh_discord_proof_preview", lambda: {"refreshed": True})
@@ -668,10 +961,16 @@ def test_cycle_report_write_records_fresh_generated_artifact_metadata(tmp_path, 
 
     cycle = json.loads((truth_dir / "cycle-report.json").read_text(encoding="utf-8"))
     proof_status = json.loads((truth_dir / "proof-status.json").read_text(encoding="utf-8"))
+    elo_proof = json.loads((truth_dir / "latest-elo-proof.json").read_text(encoding="utf-8"))
 
-    assert cycle["written"] == [str(truth_dir / "cycle-report.json"), str(truth_dir / "cycle-report.md"), str(truth_dir / "completion.json"), str(truth_dir / "proof-status.json")]
+    assert cycle["written"] == [str(truth_dir / "cycle-report.json"), str(truth_dir / "cycle-report.md"), str(truth_dir / "completion.json"), str(truth_dir / "proof-status.json"), str(truth_dir / "latest-elo-proof.json")]
     assert cycle["truthFiles"]["completion"]["exists"] is True
     assert cycle["truthFiles"]["proofStatus"]["exists"] is True
+    assert cycle["truthFiles"]["latestEloProof"]["exists"] is True
     assert cycle["truthFiles"]["proofStatus"]["updatedAt"] is not None
     assert cycle["truthFiles"]["proofStatus"]["ageSeconds"] < 2
+    assert cycle["truthFiles"]["latestEloProof"]["updatedAt"] is not None
+    assert cycle["truthFiles"]["latestEloProof"]["ageSeconds"] < 2
     assert proof_status["generatedAt"] == cycle["generatedAt"]
+    assert elo_proof["schemaVersion"] == "fouler-play-elo-proof/v1"
+    assert elo_proof["source"]["generatedBy"] == "scripts/devstream_cycle_report.py"

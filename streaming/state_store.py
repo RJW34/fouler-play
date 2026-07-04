@@ -28,6 +28,7 @@ STABILITY_REPORT_PATH = ROOT_DIR / "stability_report.json"
 STATE_STORE_WRITE_FAILURE_PATH = ROOT_DIR / "devstream" / "truth" / "state-store-write-failure.json"
 
 DEFAULT_NEXT_FIX = "Pending replay review"
+DEFAULT_DEVSTREAM_BATTLE_SURFACES = 3
 
 DEFAULT_STATUS = {
     "elo": "---",
@@ -35,6 +36,7 @@ DEFAULT_STATUS = {
     "losses": 0,
     "status": "Idle",
     "battle_info": "Waiting for battle...",
+    "active_battles": [],
     "streaming": False,
     "stream_pid": None,
     "updated": None,
@@ -75,6 +77,34 @@ def _env_float(name: str, default: float) -> float:
         return float(os.getenv(name, str(default)))
     except ValueError:
         return default
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in {"0", "false", "no", "off"}
+
+
+def expected_battle_surfaces() -> int:
+    """Return the minimum number of public OBS battle surfaces to keep live."""
+    return max(1, _env_int("FP_EXPECTED_DEVSTREAM_BATTLE_SURFACES", DEFAULT_DEVSTREAM_BATTLE_SURFACES))
+
+
+def _normalize_max_slots(payload: dict[str, Any]) -> int:
+    raw_value = payload.get("max_slots", 0)
+    try:
+        raw_slots = int(raw_value)
+    except (TypeError, ValueError):
+        raw_slots = 0
+    battles = payload.get("battles")
+    battle_count = len(battles) if isinstance(battles, list) else 0
+    count_value = payload.get("count", battle_count)
+    try:
+        payload_count = int(count_value)
+    except (TypeError, ValueError):
+        payload_count = battle_count
+    return max(raw_slots, battle_count, payload_count, expected_battle_surfaces())
 
 
 def _clear_state_store_failure(path: Path) -> None:
@@ -178,6 +208,7 @@ def read_active_battles() -> dict[str, Any]:
         data["count"] = len(data["battles"])
     if "updated" not in data:
         data["updated"] = None
+    data["max_slots"] = _normalize_max_slots(data)
     return data
 
 
@@ -188,7 +219,9 @@ def write_active_battles(payload: dict[str, Any]) -> None:
         payload["count"] = len(payload["battles"])
     if "updated" not in payload:
         payload["updated"] = datetime.now().isoformat()
+    payload["max_slots"] = _normalize_max_slots(payload)
     _atomic_write_json(ACTIVE_BATTLES_PATH, payload)
+    _sync_stream_status_with_active_battles(payload)
 
 
 def read_status() -> dict[str, Any]:
@@ -217,6 +250,39 @@ def write_status(status: dict[str, Any]) -> None:
     data.update(status)
     data["updated"] = datetime.now().isoformat()
     _atomic_write_json(STREAM_STATUS_PATH, data)
+
+
+def _active_battle_summary(battles: list[dict[str, Any]]) -> str:
+    opponents = []
+    for battle in battles:
+        opponent = battle.get("opponent")
+        if isinstance(opponent, str) and opponent.strip():
+            opponents.append(opponent.strip())
+        else:
+            opponents.append("Unknown")
+    return ", ".join(f"vs {opponent}" for opponent in opponents) if opponents else "Searching..."
+
+
+def _sync_stream_status_with_active_battles(payload: dict[str, Any]) -> None:
+    if not _env_bool("FOULER_SYNC_STREAM_STATUS_WITH_ACTIVE_BATTLES", True):
+        return
+    try:
+        normalized = read_active_battles()
+        battles = normalized.get("battles", [])
+        status = read_status()
+        if status.get("runtime_blocked") and not battles:
+            return
+        status = _status_with_cleared_blocker(status)
+        status["active_battles"] = [battle.get("id") for battle in battles if battle.get("id")]
+        if battles:
+            status["status"] = "Active"
+            status["battle_info"] = _active_battle_summary(battles)
+        else:
+            status["status"] = "Searching"
+            status["battle_info"] = "Searching..."
+        write_status(status)
+    except Exception as exc:
+        _write_state_store_failure(STREAM_STATUS_PATH, exc, 1)
 
 
 def write_runtime_blocked_status(*, code: str, summary: str) -> dict[str, Any]:

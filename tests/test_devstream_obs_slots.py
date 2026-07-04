@@ -17,7 +17,9 @@ def test_battle_slot_polls_local_slot_state() -> None:
 
     assert "var STATE_URL='/slot/'+SLOT+'/state';" in html
     assert "battle_id" in html
-    assert "window.location.replace(url);" in html
+    assert "battle_lab" in html
+    assert "window.location.replace" not in html
+    assert "play.pokemonshowdown.com" not in html
     assert "/magneton-state" not in html
 
 

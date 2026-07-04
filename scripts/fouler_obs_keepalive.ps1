@@ -44,9 +44,12 @@ function Stop-ObsServerProcesses {
     Get-CimInstance Win32_Process | Where-Object {
         $_.CommandLine -and
         $_.CommandLine -match "streaming[\\/]serve_obs_page\.py" -and
-        $_.CommandLine -match [regex]::Escape($ProjectDir) -and
         $_.Name -match "python|py"
     } | ForEach-Object {
+        $taskkill = Join-Path $env:SystemRoot "System32\taskkill.exe"
+        if (Test-Path -LiteralPath $taskkill -PathType Leaf) {
+            try { & $taskkill /PID $_.ProcessId /T /F *>$null } catch {}
+        }
         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
     Remove-Item -LiteralPath (Join-Path $ProjectDir ".pids\obs_server.pid") -Force -ErrorAction SilentlyContinue

@@ -89,7 +89,7 @@ def test_showdown_browser_css_hides_privacy_chrome_without_crop() -> None:
 
 def test_public_battle_slot_is_viewport_responsive_for_obs_browser_sources() -> None:
     html = PUBLIC_BATTLE_SLOT_HTML.read_text(encoding="utf-8")
-    served_html = serve_obs_page.BATTLE_SLOT_HTML.format(slot=1)
+    served_html = serve_obs_page.BATTLE_SLOT_HTML.replace("__SLOT__", "1")
 
     assert "width:100vw;height:100vh" in html.replace(" ", "")
     assert "width:640px;height:540px" not in html.replace(" ", "")
@@ -98,16 +98,21 @@ def test_public_battle_slot_is_viewport_responsive_for_obs_browser_sources() -> 
     assert "Waiting for battle" not in html
     assert "SLOT ?" not in html
     assert "<title>Battle Slot" not in served_html
+    assert "window.location.replace" not in served_html
+    assert "play.pokemonshowdown.com" not in served_html
 
 
 def test_showdown_browser_css_keeps_battle_panel_uncropped() -> None:
     css = PUBLIC_BATTLE_INJECT_CSS.read_text(encoding="utf-8")
 
     assert "overflow: visible !important" in css
-    assert "min-width: 1280px !important" in css
-    assert "min-height: 720px !important" in css
+    assert "min-width: 640px !important" in css
+    assert "min-height: 360px !important" in css
     assert "max-width: none !important" in css
+    assert "transform: scale(2) !important" in css
     assert "transform-origin: top left !important" in css
+    assert ".innerbattle" in css
+    assert ".backdrop" in css
 
 
 @pytest.mark.asyncio
@@ -124,13 +129,14 @@ async def test_public_slot_source_uses_local_viewer_overlay(monkeypatch) -> None
 
     assert response.status == 200
     assert "var SLOT=2;" in html
-    assert "MATCHMAKING" in html
-    assert "RANKED BATTLE FEED 2" in html
+    assert "Fouler live mission proof / slot 2" in html
+    assert "Battle Lab" in html
     assert "NEXT MATCH LOADING" not in html
     assert "BATTLE QUEUE" not in html
     assert "FEATURED MATCH" not in html
     assert "IDLE" not in html
-    assert "window.location.replace(url)" in html
+    assert "window.location.replace" not in html
+    assert "play.pokemonshowdown.com" not in html
 
 
 @pytest.mark.asyncio
@@ -152,7 +158,46 @@ async def test_public_slot_source_loads_battle_surface_when_active(monkeypatch) 
     assert response.status == 200
     assert "var SLOT=2;" in html
     assert "var STATE_URL='/slot/'+SLOT+'/state';" in html
-    assert "window.location.replace(url)" in html
+    assert "window.location.replace" not in html
+
+
+@pytest.mark.asyncio
+async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> None:
+    battle = {
+        "id": "battle-gen9ou-active",
+        "slot": 2,
+        "opponent": "Test Opponent",
+        "started": "2026-06-22T00:00:00",
+        "players": ["LEBOTJAMESXD00N", "Test Opponent"],
+    }
+    monkeypatch.setattr(
+        serve_obs_page,
+        "build_state_payload",
+        lambda: {
+            "battles": [battle],
+            "status": {"status": "Active", "today_wins": 3, "today_losses": 2, "accounts_elo": {"LEBOTJAMESXD00N": 1234}},
+            "accounts_elo": {"LEBOTJAMESXD00N": 1234},
+            "updated": "2026-06-22T00:01:00",
+        },
+    )
+    monkeypatch.setattr(
+        serve_obs_page,
+        "_recent_battle_events",
+        lambda active_battle: (["Turn 4", "Bot selected Move Recover"], 4, "battle-gen9ou-active.log"),
+    )
+    monkeypatch.setattr(serve_obs_page, "_recent_battle_results", lambda: [])
+    request = make_mocked_request("GET", "/slot/2/state", match_info={"slot": "2"})
+
+    response = await serve_obs_page.handle_slot_state(request)
+    payload = json.loads(response.text)
+
+    assert response.status == 200
+    assert payload["battle_id"] == "battle-gen9ou-active"
+    assert payload["battle_lab"]["active"] is True
+    assert payload["battle_lab"]["opponent"] == "Test Opponent"
+    assert payload["battle_lab"]["turn"] == 4
+    assert payload["battle_lab"]["elo"] == 1234
+    assert payload["battle_lab"]["events"] == ["Turn 4", "Bot selected Move Recover"]
 
 
 def test_hybrid_scene_builder_prunes_operator_dashboard_sources() -> None:
@@ -254,3 +299,4 @@ def test_hybrid_scene_builder_prunes_operator_dashboard_sources() -> None:
     assert slot_item["bounds"] == {"x": float(BATTLE_SLOT_WIDTH), "y": float(BATTLE_SLOT_HEIGHT)}
     assert slot_item["bounds_crop"] is False
     assert slot_item["crop_left"] == 0
+

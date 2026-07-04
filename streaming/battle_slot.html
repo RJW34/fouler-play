@@ -70,12 +70,16 @@ body{
 /* Idle/searching state */
 .searching-overlay{
   position:absolute;inset:0;z-index:5;
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
   background:var(--bg-dark);
   transition:opacity 0.5s;
 }
 .searching-overlay.hidden{opacity:0;pointer-events:none}
+
+.searching-panel{
+  position:absolute;left:280px;top:190px;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
 
 .sonar{width:140px;height:140px;position:relative;margin-bottom:20px}
 .sonar-circle{
@@ -120,15 +124,17 @@ body{
 <body>
 <!-- Searching/idle state -->
 <div class="searching-overlay" id="searchingOverlay">
-  <div class="sonar">
-    <div class="sonar-scanner"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
+  <div class="searching-panel">
+    <div class="sonar">
+      <div class="sonar-scanner"></div>
+      <div class="sonar-circle"></div>
+      <div class="sonar-circle"></div>
+      <div class="sonar-circle"></div>
+      <div class="sonar-circle"></div>
+    </div>
+    <div class="searching-text">MATCHMAKING</div>
+    <div class="searching-sub" id="searchingSub">RANKED BATTLE FEED <span id="slotLabel">?</span></div>
   </div>
-  <div class="searching-text">MATCHMAKING</div>
-  <div class="searching-sub" id="searchingSub">RANKED BATTLE FEED <span id="slotLabel">?</span></div>
   <div class="slot-number" id="bigSlotNum"></div>
 </div>
 

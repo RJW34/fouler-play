@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -17,10 +20,35 @@ OUTPUT_JSON = ROOT / "devstream" / "truth" / "cycle-report.json"
 OUTPUT_MD = ROOT / "devstream" / "truth" / "cycle-report.md"
 OUTPUT_COMPLETION = ROOT / "devstream" / "truth" / "completion.json"
 OUTPUT_PROOF_STATUS = ROOT / "devstream" / "truth" / "proof-status.json"
+OUTPUT_ELO_PROOF = ROOT / "devstream" / "truth" / "latest-elo-proof.json"
 DISCORD_REPORTING = ROOT / "devstream" / "truth" / "discord-reporting.json"
 DISCORD_DELIVERY = ROOT / "devstream" / "truth" / "discord-delivery.json"
 IDLE_RUNTIME_BLOCKER = "fouler-play battle runner is idle; OBS HTTP alone is not active battle proof"
 TERMINAL_BATTLE_RESULTS = {"win", "loss", "tie", "draw", "forfeit", "timeout", "ended", "error"}
+DEFAULT_ACCOUNT = "LEBOTJAMESXD00N"
+ELO_TARGET_RATING = 1700
+ELO_SUSTAIN_MINIMUM_GAMES = 30
+ELO_SUSTAIN_MINIMUM_GAMES_PER_TEAM = 10
+ELO_SUSTAIN_MAX_DRAWDOWN = 75
+ELO_SUSTAIN_MINIMUM_WIN_RATE = 0.5
+ELO_REQUIRED_TEAMS = ("fat-team-1-stall", "fat-team-2-pivot", "fat-team-3-dondozo")
+
+
+def current_source_commit() -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except Exception:
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
 
 
 def refresh_discord_proof_preview() -> dict[str, Any]:
@@ -213,6 +241,498 @@ def summarize_record(payload: Any) -> dict[str, Any]:
         "losses": losses,
         "games": total,
         "updated": payload.get("updated") or payload.get("updated_at"),
+    }
+
+
+def normalize_result(value: object) -> str:
+    text = str(value or "").strip().lower()
+    if text in {"win", "won"}:
+        return "win"
+    if text in {"tie", "draw"}:
+        return "draw"
+    if text in {"loss", "lost", "forfeit", "timeout", "timed out", "disconnect", "disconnected", "inactive", "ended", "error"}:
+        return "loss"
+    if any(marker in text for marker in ("timeout", "disconnect", "inactive")):
+        return "loss"
+    return "unknown"
+
+
+def rating_after(row: dict[str, Any]) -> int | None:
+    for key in ("ratingAfter", "rating_after", "rating", "eloAfter", "elo_after", "elo"):
+        value = row.get(key)
+        if value is None:
+            continue
+        try:
+            rating = int(float(value))
+        except (TypeError, ValueError):
+            continue
+        if rating > 0:
+            return rating
+    return None
+
+
+def normalize_team(value: object) -> str:
+    text = str(value or "").strip().replace("\\", "/")
+    if not text:
+        return ""
+    leaf = text.rstrip("/").split("/")[-1]
+    if "." in leaf:
+        leaf = leaf.rsplit(".", 1)[0]
+    return leaf
+
+
+def battle_timestamp(row: dict[str, Any]) -> str | None:
+    for key in ("timestamp", "endedAt", "ended_at", "createdAt", "created_at", "time"):
+        value = row.get(key)
+        if value:
+            return str(value)
+    return None
+
+
+def parse_battle_timestamp(value: object) -> datetime | None:
+    if not value:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def battle_order_key(row: dict[str, Any]) -> tuple[datetime, str]:
+    parsed = parse_battle_timestamp(row.get("timestamp"))
+    return (
+        parsed or datetime.max.replace(tzinfo=timezone.utc),
+        normalized_battle_id(row.get("battleId")),
+    )
+
+
+def replay_url(row: dict[str, Any], battle_id: str) -> str:
+    for key in ("replayUrl", "replay_url", "replay"):
+        value = str(row.get(key) or "").strip()
+        if value:
+            return value
+    normalized = battle_id.removeprefix("battle-")
+    return f"https://replay.pokemonshowdown.com/{normalized}" if normalized and normalized != "unknown" else ""
+
+
+def decision_trace_value(row: dict[str, Any]) -> tuple[str, str]:
+    for key in ("decisionTracePath", "decision_trace_path", "decisionTrace"):
+        value = str(row.get(key) or "").strip()
+        if value:
+            return "decisionTracePath", value
+    for key in ("decisionTraceUrl", "decision_trace_url"):
+        value = str(row.get(key) or "").strip()
+        if value:
+            return "decisionTraceUrl", value
+    return "", ""
+
+
+def replay_proof_present(value: object) -> bool:
+    text = str(value or "").strip()
+    if not re.fullmatch(r"https?://replay\.pokemonshowdown\.com/[A-Za-z0-9][A-Za-z0-9-]*", text):
+        return False
+    replay_id = text.rstrip("/").rsplit("/", 1)[-1].lower()
+    return replay_id not in {"unknown", "none", "null"}
+
+
+def normalized_battle_id(value: object) -> str:
+    text = str(value or "").strip().lower()
+    if text.startswith("battle-"):
+        text = text[len("battle-"):]
+    return text
+
+
+def replay_matches_battle_id(replay_url: object, battle_id: object) -> bool:
+    replay = str(replay_url or "").strip()
+    normalized = normalized_battle_id(battle_id)
+    if not replay or not normalized:
+        return False
+    replay_id = replay.rstrip("/").rsplit("/", 1)[-1].lower()
+    return replay_id == normalized
+
+
+def decision_trace_proof_present(row: dict[str, Any]) -> bool:
+    return bool(decision_trace_proof_id(row))
+
+
+def decision_trace_proof_id(row: dict[str, Any]) -> str:
+    for key in ("decisionTracePath", "decision_trace_path", "decisionTrace", "decisionTraceUrl", "decision_trace_url"):
+        value = str(row.get(key) or "").strip()
+        if value and value.lower() not in {"unknown", "none", "null"}:
+            return value.replace("\\", "/").rstrip("/").lower()
+    return ""
+
+
+def completed_battle_rows(stats: Any) -> list[dict[str, Any]]:
+    battles = stats.get("battles") if isinstance(stats, dict) else stats
+    if not isinstance(battles, list):
+        return []
+    completed: list[dict[str, Any]] = []
+    for row in battles:
+        if not isinstance(row, dict):
+            continue
+        result = normalize_result(row.get("result") or row.get("status") or row.get("outcome"))
+        if result not in {"win", "loss", "draw"}:
+            continue
+        battle_id = str(row.get("battleId") or row.get("battle_id") or row.get("id") or "unknown").strip() or "unknown"
+        team = normalize_team(row.get("teamFile") or row.get("team_file") or row.get("teamName") or row.get("team"))
+        proof_row = {
+            "battleId": battle_id,
+            "result": result,
+            "replayUrl": replay_url(row, battle_id),
+            "opponent": str(row.get("opponent") or row.get("opponentName") or ""),
+            "opponentRating": row.get("opponentRating") or row.get("opponent_rating"),
+            "ratingBefore": row.get("ratingBefore") or row.get("rating_before"),
+            "ratingAfter": rating_after(row),
+            "teamFile": team,
+            "timestamp": battle_timestamp(row),
+            "failureClasses": row.get("failureClasses") if isinstance(row.get("failureClasses"), list) else [],
+        }
+        trace_key, trace_value = decision_trace_value(row)
+        if trace_key:
+            proof_row[trace_key] = trace_value
+        completed.append(proof_row)
+    completed.sort(key=battle_order_key)
+    return completed
+
+
+def max_drawdown(ratings: list[int]) -> float | None:
+    if not ratings:
+        return None
+    peak = ratings[0]
+    drawdown = 0
+    for rating in ratings:
+        if rating > peak:
+            peak = rating
+        drawdown = max(drawdown, peak - rating)
+    return float(drawdown)
+
+
+def drawdown_summary(games: list[dict[str, Any]]) -> dict[str, Any]:
+    if not games:
+        return {
+            "ratedGames": 0,
+            "maxDrawdown": None,
+            "peakRating": None,
+            "peakBattleId": None,
+            "troughRating": None,
+            "troughBattleId": None,
+        }
+
+    peak = games[0]
+    drawdown_peak = games[0]
+    trough_after_peak = games[0]
+    max_seen = 0
+    for game in games:
+        rating = int(game["ratingAfter"])
+        if rating > int(peak["ratingAfter"]):
+            peak = game
+        drawdown = int(peak["ratingAfter"]) - rating
+        if drawdown > max_seen:
+            max_seen = drawdown
+            drawdown_peak = peak
+            trough_after_peak = game
+
+    return {
+        "ratedGames": len(games),
+        "maxDrawdown": float(max_seen),
+        "peakRating": int(drawdown_peak["ratingAfter"]),
+        "peakBattleId": str(drawdown_peak.get("battleId") or ""),
+        "troughRating": int(trough_after_peak["ratingAfter"]),
+        "troughBattleId": str(trough_after_peak.get("battleId") or ""),
+    }
+
+
+def artifact_path_if_present(meta: object) -> str:
+    if not isinstance(meta, dict):
+        return ""
+    if meta.get("exists") is False:
+        return ""
+    return str(meta.get("path") or "").strip().replace("\\", "/")
+
+
+def rel_output_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT)).replace("\\", "/")
+    except ValueError:
+        return str(path).replace("\\", "/")
+
+
+def build_elo_analysis_evidence(cycle: dict[str, Any]) -> dict[str, Any]:
+    autoresearch = cycle.get("autoresearch") if isinstance(cycle.get("autoresearch"), dict) else {}
+    return {
+        "generatedAtUtc": cycle.get("generatedAt"),
+        "autoresearchJsonPath": artifact_path_if_present(autoresearch.get("json")),
+        "autoresearchReportPath": artifact_path_if_present(autoresearch.get("report")),
+        "decisionTraceReviewPath": rel_output_path(OUTPUT_PROOF_STATUS),
+        "topIssue": None,
+        "reviewedBattleCount": None,
+        "lossesAnalyzed": None,
+    }
+
+
+def build_elo_proof_payload(
+    stats: Any,
+    cycle: dict[str, Any],
+    *,
+    account: str | None = None,
+    autoresearch: Any = None,
+) -> dict[str, Any]:
+    autoresearch_payload = autoresearch if isinstance(autoresearch, dict) else {}
+    regression = (
+        autoresearch_payload.get("regression")
+        if isinstance(autoresearch_payload.get("regression"), dict)
+        else {}
+    )
+    improvement = positive_improvement_signal(autoresearch_payload, regression)
+    games = completed_battle_rows(stats)
+    missing_battle_timestamp_games = [
+        game for game in games if parse_battle_timestamp(game.get("timestamp")) is None
+    ]
+    out_of_order_battle_timestamp_games: list[dict[str, Any]] = []
+    previous_timestamp: datetime | None = None
+    for game in games:
+        parsed_timestamp = parse_battle_timestamp(game.get("timestamp"))
+        if parsed_timestamp is None:
+            continue
+        if previous_timestamp is not None and parsed_timestamp < previous_timestamp:
+            out_of_order_battle_timestamp_games.append(game)
+        previous_timestamp = parsed_timestamp
+    chronological_battle_order_complete = (
+        not missing_battle_timestamp_games
+        and not out_of_order_battle_timestamp_games
+    )
+    rated_games = [game for game in games if isinstance(game.get("ratingAfter"), int)]
+    first_target_index = next(
+        (index for index, game in enumerate(rated_games) if int(game["ratingAfter"]) >= ELO_TARGET_RATING),
+        None,
+    )
+    pre_target_games = rated_games[:first_target_index] if first_target_index is not None else rated_games
+    pre_target_drawdown = drawdown_summary(pre_target_games)
+    max_pre_target_drawdown = pre_target_drawdown["maxDrawdown"]
+    pre_target_drawdown_within_limit = (
+        max_pre_target_drawdown is None
+        or max_pre_target_drawdown <= ELO_SUSTAIN_MAX_DRAWDOWN
+    )
+    sustain_games = rated_games[first_target_index:] if first_target_index is not None else []
+    games_at_or_above = [game for game in sustain_games if int(game["ratingAfter"]) >= ELO_TARGET_RATING]
+    below_floor_after_first_target = len(sustain_games) - len(games_at_or_above)
+    team_coverage = {team: 0 for team in ELO_REQUIRED_TEAMS}
+    for game in games_at_or_above:
+        team = normalize_team(game.get("teamFile")).lower()
+        if team in team_coverage:
+            team_coverage[team] += 1
+    missing_sustain_replay_games = [
+        game for game in games_at_or_above if not replay_proof_present(game.get("replayUrl"))
+    ]
+    mismatched_sustain_replay_games = [
+        game
+        for game in games_at_or_above
+        if replay_proof_present(game.get("replayUrl"))
+        and not replay_matches_battle_id(game.get("replayUrl"), game.get("battleId"))
+    ]
+    sustain_battle_ids = [normalized_battle_id(game.get("battleId")) for game in games_at_or_above]
+    missing_sustain_battle_id_games = [
+        game
+        for game, battle_id in zip(games_at_or_above, sustain_battle_ids)
+        if not battle_id or battle_id in {"unknown", "none", "null"}
+    ]
+    duplicate_sustain_battle_ids = sorted(
+        battle_id
+        for battle_id in set(sustain_battle_ids)
+        if battle_id and sustain_battle_ids.count(battle_id) > 1
+    )
+    sustain_replay_ids = [
+        str(game.get("replayUrl") or "").strip().rstrip("/").rsplit("/", 1)[-1].lower()
+        for game in games_at_or_above
+        if replay_proof_present(game.get("replayUrl"))
+    ]
+    duplicate_sustain_replay_ids = sorted(
+        replay_id
+        for replay_id in set(sustain_replay_ids)
+        if replay_id and sustain_replay_ids.count(replay_id) > 1
+    )
+    unknown_sustain_team_games = [
+        game
+        for game in games_at_or_above
+        if normalize_team(game.get("teamFile")).lower() not in team_coverage
+    ]
+    missing_decision_trace_games = [
+        game for game in games_at_or_above if not decision_trace_proof_present(game)
+    ]
+    sustain_decision_trace_ids = [
+        decision_trace_proof_id(game)
+        for game in games_at_or_above
+        if decision_trace_proof_present(game)
+    ]
+    duplicate_decision_trace_proofs = sorted(
+        trace_id
+        for trace_id in set(sustain_decision_trace_ids)
+        if trace_id and sustain_decision_trace_ids.count(trace_id) > 1
+    )
+    sustain_wins = sum(1 for game in games_at_or_above if game["result"] == "win")
+    sustain_losses = sum(1 for game in games_at_or_above if game["result"] == "loss")
+    sustain_win_rate = sustain_wins / len(games_at_or_above) if games_at_or_above else None
+    sustain_ratings = [int(game["ratingAfter"]) for game in sustain_games if isinstance(game.get("ratingAfter"), int)]
+    sustain_drawdown = max_drawdown(sustain_ratings)
+    latest_game = games[-1] if games else {}
+    final_rating = int(rated_games[-1]["ratingAfter"]) if rated_games else None
+    sustain_evidence_shape_complete = (
+        bool(sustain_games)
+        and not missing_sustain_replay_games
+        and not mismatched_sustain_replay_games
+        and not missing_sustain_battle_id_games
+        and not duplicate_sustain_battle_ids
+        and not duplicate_sustain_replay_ids
+        and not unknown_sustain_team_games
+        and not missing_decision_trace_games
+        and not duplicate_decision_trace_proofs
+        and chronological_battle_order_complete
+        and pre_target_drawdown_within_limit
+    )
+    sustained_target = (
+        len(games_at_or_above) >= ELO_SUSTAIN_MINIMUM_GAMES
+        and below_floor_after_first_target == 0
+        and all(count >= ELO_SUSTAIN_MINIMUM_GAMES_PER_TEAM for count in team_coverage.values())
+        and final_rating is not None
+        and final_rating >= ELO_TARGET_RATING
+        and sustain_win_rate is not None
+        and sustain_win_rate >= ELO_SUSTAIN_MINIMUM_WIN_RATE
+        and (sustain_drawdown is None or sustain_drawdown <= ELO_SUSTAIN_MAX_DRAWDOWN)
+        and sustain_evidence_shape_complete
+    )
+    timestamps = [str(game["timestamp"]) for game in games if game.get("timestamp")]
+    showdown_user = (
+        str(account or "").strip()
+        or os.getenv("FOULER_ACTIVE_ACCOUNT", "").strip()
+        or DEFAULT_ACCOUNT
+    )
+    source_commit = current_source_commit()
+    analysis_evidence = build_elo_analysis_evidence(cycle)
+    analysis_evidence_complete = all(
+        str(analysis_evidence.get(key) or "").strip()
+        for key in ("autoresearchJsonPath", "autoresearchReportPath", "decisionTraceReviewPath")
+    )
+    latest_battle_learning_verified = bool(
+        autoresearch_payload
+        and analysis_evidence_complete
+        and not autoresearch_has_unsupported_claims(autoresearch_payload)
+    )
+    return {
+        "schemaVersion": "fouler-play-elo-proof/v1",
+        "format": "gen9ou",
+        "checkedAtUtc": cycle.get("generatedAt") or iso_now(),
+        "sourceCommit": source_commit,
+        "account": {
+            "showdownUserId": showdown_user,
+            "ratingSource": "battle_stats.json",
+        },
+        "target": {
+            "ratingFloor": ELO_TARGET_RATING,
+            "minimumCompletedGames": ELO_SUSTAIN_MINIMUM_GAMES,
+            "sustainMinimumGames": ELO_SUSTAIN_MINIMUM_GAMES,
+            "sustainMinimumGamesPerTeam": ELO_SUSTAIN_MINIMUM_GAMES_PER_TEAM,
+            "maximumSustainDrawdown": ELO_SUSTAIN_MAX_DRAWDOWN,
+            "maximumPreTargetDrawdown": ELO_SUSTAIN_MAX_DRAWDOWN,
+            "minimumSustainWinRate": ELO_SUSTAIN_MINIMUM_WIN_RATE,
+            "requiredTeams": list(ELO_REQUIRED_TEAMS),
+            "opponentBand": "prefer 1700+ when opponent rating is known",
+            "noCherryPicking": True,
+            "uninterruptedPostTargetFloorRequired": True,
+        },
+        "session": {
+            "startedAt": timestamps[0] if timestamps else None,
+            "endedAt": timestamps[-1] if timestamps else None,
+            "runCountTarget": ELO_SUSTAIN_MINIMUM_GAMES,
+            "maxConcurrentBattles": None,
+        },
+        "games": games,
+        "analysis": analysis_evidence,
+        "summary": {
+            "completedGames": len(games),
+            "latestBattleId": latest_game.get("battleId"),
+            "latestBattleAt": latest_game.get("timestamp"),
+            "latestBattleLearningVerified": latest_battle_learning_verified,
+            "performanceImprovementVerified": bool(improvement["ok"]),
+            "performanceTrendStatus": improvement["trend"],
+            "improvementSignalStatus": improvement["status"],
+            "improvementSignal": improvement,
+            "winRate": autoresearch_payload.get("win_rate"),
+            "ratingDelta": improvement["ratingDelta"],
+            "winRateDelta": improvement["winRateDelta"],
+            "wins": sum(1 for game in games if game["result"] == "win"),
+            "losses": sum(1 for game in games if game["result"] == "loss"),
+            "peakRating": max((int(game["ratingAfter"]) for game in rated_games), default=None),
+            "finalRating": final_rating,
+            "passesTarget": any(int(game["ratingAfter"]) >= ELO_TARGET_RATING for game in rated_games),
+            "sustainedTarget": sustained_target,
+            "sustainWindowGames": len(sustain_games),
+            "gamesAtOrAboveFloor": len(games_at_or_above),
+            "belowFloorAfterFirstTarget": below_floor_after_first_target,
+            "maxSustainDrawdown": sustain_drawdown,
+            "preTargetRatedGames": pre_target_drawdown["ratedGames"],
+            "maxPreTargetDrawdown": max_pre_target_drawdown,
+            "preTargetDrawdownPeakRating": pre_target_drawdown["peakRating"],
+            "preTargetDrawdownPeakBattleId": pre_target_drawdown["peakBattleId"],
+            "preTargetDrawdownTroughRating": pre_target_drawdown["troughRating"],
+            "preTargetDrawdownTroughBattleId": pre_target_drawdown["troughBattleId"],
+            "preTargetDrawdownWithinLimit": pre_target_drawdown_within_limit,
+            "minimumSustainWinRate": ELO_SUSTAIN_MINIMUM_WIN_RATE,
+            "sustainWinRate": sustain_win_rate,
+            "teamCoverage": team_coverage,
+            "sustainReplayProofCount": len(games_at_or_above) - len(missing_sustain_replay_games),
+            "missingSustainReplayCount": len(missing_sustain_replay_games),
+            "missingSustainReplayBattleIds": [
+                str(game.get("battleId") or "") for game in missing_sustain_replay_games[:10]
+            ],
+            "mismatchedSustainReplayCount": len(mismatched_sustain_replay_games),
+            "mismatchedSustainReplayBattleIds": [
+                str(game.get("battleId") or "") for game in mismatched_sustain_replay_games[:10]
+            ],
+            "missingSustainBattleIdCount": len(missing_sustain_battle_id_games),
+            "duplicateSustainBattleIdCount": len(duplicate_sustain_battle_ids),
+            "duplicateSustainBattleIds": duplicate_sustain_battle_ids[:10],
+            "duplicateSustainReplayIdCount": len(duplicate_sustain_replay_ids),
+            "duplicateSustainReplayIds": duplicate_sustain_replay_ids[:10],
+            "unknownSustainTeamCount": len(unknown_sustain_team_games),
+            "unknownSustainTeamBattleIds": [
+                str(game.get("battleId") or "") for game in unknown_sustain_team_games[:10]
+            ],
+            "decisionTraceProofCount": len(games_at_or_above) - len(missing_decision_trace_games),
+            "missingDecisionTraceCount": len(missing_decision_trace_games),
+            "missingDecisionTraceBattleIds": [
+                str(game.get("battleId") or "") for game in missing_decision_trace_games[:10]
+            ],
+            "duplicateDecisionTraceProofCount": len(duplicate_decision_trace_proofs),
+            "duplicateDecisionTraceProofs": duplicate_decision_trace_proofs[:10],
+            "missingBattleTimestampCount": len(missing_battle_timestamp_games),
+            "missingBattleTimestampBattleIds": [
+                str(game.get("battleId") or "") for game in missing_battle_timestamp_games[:10]
+            ],
+            "outOfOrderBattleTimestampCount": len(out_of_order_battle_timestamp_games),
+            "outOfOrderBattleTimestampBattleIds": [
+                str(game.get("battleId") or "") for game in out_of_order_battle_timestamp_games[:10]
+            ],
+            "chronologicalBattleOrderComplete": chronological_battle_order_complete,
+            "analysisEvidenceComplete": analysis_evidence_complete,
+            "sustainEvidenceShapeComplete": sustain_evidence_shape_complete,
+            "sustainProofComplete": sustained_target and analysis_evidence_complete,
+        },
+        "source": {
+            "battleStatsPath": "battle_stats.json",
+            "cycleReportPath": str(OUTPUT_JSON.relative_to(ROOT)),
+            "generatedBy": "scripts/devstream_cycle_report.py",
+            "sourceCommit": source_commit,
+            "noRuntimeActions": True,
+        },
     }
 
 
@@ -610,6 +1130,14 @@ def build_completion_payload(cycle: dict[str, Any], autoresearch: Any) -> dict[s
         blockers.append(f"unconsumed battles remain after latest autoresearch batch: {unconsumed_count} battle(s)")
     if not report_exists:
         warnings.append("autoresearch markdown report was not available for completion proof")
+    active_improvement_verified = bool(
+        active_battles == 0
+        and report_exists
+        and not blockers
+        and integrity["present"]
+        and not integrity["blocksCompletionProof"]
+        and improvement["ok"]
+    )
     return {
         "schemaVersion": "fouler-play-devstream-completion/v1",
         "projectId": "fouler-play",
@@ -628,7 +1156,7 @@ def build_completion_payload(cycle: dict[str, Any], autoresearch: Any) -> dict[s
         "winRate": autoresearch.get("win_rate"),
         "finalRating": (cycle.get("streamStatus") or {}).get("elo"),
         "ratingDelta": regression.get("rating_delta") or regression.get("ratingDelta"),
-        "activeImprovementVerified": False,
+        "activeImprovementVerified": active_improvement_verified,
         "activeBattleTelemetryPresent": active_battles > 0,
         "activeBattleTelemetryIsCompletionProof": False,
         "reportPaths": {
@@ -1063,9 +1591,22 @@ def write_proof_status(payload: dict[str, Any], completion: dict[str, Any]) -> d
     return proof_status
 
 
+def write_elo_proof(
+    payload: dict[str, Any],
+    stats: Any,
+    *,
+    account: str | None = None,
+    autoresearch: Any = None,
+) -> dict[str, Any]:
+    proof = build_elo_proof_payload(stats, payload, account=account, autoresearch=autoresearch)
+    OUTPUT_ELO_PROOF.write_text(json.dumps(proof, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return proof
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Write fouler-play bounded devstream cycle handoff report.")
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--account", default=None, help="Showdown account id to stamp into generated ELO proof")
     args = parser.parse_args()
     discord_proof_refresh = refresh_discord_proof_preview() if args.write else None
     payload = build_payload()
@@ -1073,12 +1614,16 @@ def main() -> int:
         payload["discordProofRefresh"] = discord_proof_refresh
     if args.write:
         OUTPUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-        completion = write_completion(payload, read_json(ROOT / "replay_analysis" / "autoresearch_latest.json"))
+        stats = read_json(ROOT / "battle_stats.json")
+        autoresearch = read_json(ROOT / "replay_analysis" / "autoresearch_latest.json")
+        completion = write_completion(payload, autoresearch)
         write_proof_status(payload, completion)
+        write_elo_proof(payload, stats, account=args.account, autoresearch=autoresearch)
         payload.setdefault("truthFiles", {})
         payload["truthFiles"]["completion"] = file_meta(OUTPUT_COMPLETION)
         payload["truthFiles"]["proofStatus"] = file_meta(OUTPUT_PROOF_STATUS)
-        payload["written"] = [str(OUTPUT_JSON), str(OUTPUT_MD), str(OUTPUT_COMPLETION), str(OUTPUT_PROOF_STATUS)]
+        payload["truthFiles"]["latestEloProof"] = file_meta(OUTPUT_ELO_PROOF)
+        payload["written"] = [str(OUTPUT_JSON), str(OUTPUT_MD), str(OUTPUT_COMPLETION), str(OUTPUT_PROOF_STATUS), str(OUTPUT_ELO_PROOF)]
         OUTPUT_JSON.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         write_markdown(payload)
     print(json.dumps(payload, indent=2, sort_keys=True))

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import html
 import json
 import os
 import subprocess
@@ -25,6 +26,7 @@ import time
 import re
 import atexit
 from datetime import datetime
+from collections import deque
 from aiohttp import web
 import aiohttp
 from pathlib import Path
@@ -177,6 +179,7 @@ _replay_cache: dict[str, dict[str, float | bool]] = {}
 _emerald_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Emerald ROM", "status_text": "INITIALIZING"}
 _firered_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Fire Red ROM", "status_text": "INITIALIZING"}
 BATTLE_STATS_PATH = ROOT_DIR / "battle_stats.json"
+BATTLE_LOG_DIR = ROOT_DIR / "logs"
 
 PID_FILE = ROOT_DIR / ".pids" / "obs_server.pid"
 PROCESS_SCAN_TIMEOUT_SEC = float(os.getenv("FOULER_OBS_PROCESS_SCAN_TIMEOUT_SEC", "4") or "4")
@@ -607,6 +610,211 @@ def _build_direct_battle_url(bid: str) -> str:
     # (SPECTATOR_USERNAME in .env) so they can view any battle, with or
     # without a spectator hash.  The bot invites the spectator to each battle.
     return f"https://play.pokemonshowdown.com/{bid}"
+
+
+def _format_battle_label(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "Unknown"
+    return re.sub(r"\s+", " ", text)
+
+
+def _format_seconds(seconds: float | int | None) -> str:
+    try:
+        total = max(0, int(seconds or 0))
+    except (TypeError, ValueError):
+        return "0m"
+    minutes, sec = divmod(total, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h {minutes:02d}m"
+    if minutes:
+        return f"{minutes}m {sec:02d}s"
+    return f"{sec}s"
+
+
+def _battle_age_seconds(battle: dict | None) -> int | None:
+    if not battle:
+        return None
+    started = _parse_started_iso(str(battle.get("started") or ""))
+    if not started:
+        return None
+    now = datetime.now(started.tzinfo) if started.tzinfo else datetime.now()
+    return max(0, int((now - started).total_seconds()))
+
+
+def _latest_battle_log_path(battle: dict | None) -> Path | None:
+    if not battle:
+        return None
+    battle_id = str(battle.get("id") or "").strip()
+    if not battle_id or not BATTLE_LOG_DIR.exists():
+        return None
+    matches = sorted(
+        BATTLE_LOG_DIR.glob(f"{battle_id}*.log"),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
+        reverse=True,
+    )
+    return matches[0] if matches else None
+
+
+def _tail_text(path: Path, max_bytes: int = 98304) -> str:
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            if size > max_bytes:
+                fh.seek(size - max_bytes)
+            return fh.read().decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _format_move_name(value: str) -> str:
+    text = value.replace("-", " ").replace("_", " ").strip()
+    if not text:
+        return "unknown action"
+    return " ".join(part.capitalize() for part in re.split(r"\s+", text))
+
+
+def _parse_protocol_event(line: str) -> str | None:
+    parts = line.split("|")
+    if len(parts) < 2:
+        return None
+    event = parts[1]
+    if event == "turn" and len(parts) >= 3:
+        return f"Turn {parts[2]}"
+    if event == "move" and len(parts) >= 5:
+        actor = parts[2].split(":", 1)[-1].strip()
+        move = parts[3].strip()
+        target = parts[4].split(":", 1)[-1].strip()
+        return f"{actor} used {move} into {target}"
+    if event == "switch" and len(parts) >= 4:
+        actor = parts[2].split(":", 1)[-1].strip()
+        details = parts[3].split(",", 1)[0].strip()
+        return f"{actor} switched in ({details})"
+    if event == "faint" and len(parts) >= 3:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} fainted"
+    if event == "win" and len(parts) >= 3:
+        return f"{parts[2].strip()} won"
+    if event == "-damage" and len(parts) >= 4:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} took damage ({parts[3].strip()})"
+    if event == "-heal" and len(parts) >= 4:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} healed ({parts[3].strip()})"
+    if event == "-status" and len(parts) >= 4:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} status: {parts[3].strip()}"
+    if event == "-boost" and len(parts) >= 5:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} boosted {parts[3].strip()} by {parts[4].strip()}"
+    if event == "-unboost" and len(parts) >= 5:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} lowered {parts[3].strip()} by {parts[4].strip()}"
+    return None
+
+
+def _clean_battle_log_line(raw: str) -> str | None:
+    line = raw.strip()
+    if not line:
+        return None
+    line = re.sub(r"^(INFO|DEBUG|WARNING|ERROR)\s+", "", line).strip()
+    if not line:
+        return None
+    if line.startswith(("Calling calculate damage", "Received battle JSON", "No Z-move data")):
+        return None
+    turn_match = re.search(r"\bTurn:\s*(\d+)", line)
+    if turn_match:
+        return f"Turn {turn_match.group(1)}"
+    choose_match = re.search(r"\|/choose\s+([^|]+)\|", line)
+    if choose_match:
+        return f"Bot selected {_format_move_name(choose_match.group(1))}"
+    if line.startswith("|"):
+        return _parse_protocol_event(line)
+    if "[STRATEGIC]" in line:
+        return line.split("[STRATEGIC]", 1)[1].strip()
+    if line.startswith("Win Condition:"):
+        return line
+    if " already has the move " in line or " used a " in line:
+        return line[:160]
+    return None
+
+
+def _recent_battle_events(battle: dict | None, limit: int = 10) -> tuple[list[str], int | None, str | None]:
+    path = _latest_battle_log_path(battle)
+    if not path:
+        return [], None, None
+    seen: deque[str] = deque(maxlen=limit)
+    latest_turn: int | None = None
+    for raw in _tail_text(path).splitlines():
+        event = _clean_battle_log_line(raw)
+        if not event:
+            continue
+        turn_match = re.search(r"\bTurn\s+(\d+)", event)
+        if turn_match:
+            try:
+                latest_turn = int(turn_match.group(1))
+            except ValueError:
+                pass
+        if not seen or seen[-1] != event:
+            seen.append(event)
+    return list(seen), latest_turn, str(path.name)
+
+
+def _recent_battle_results(limit: int = 5) -> list[dict]:
+    try:
+        raw = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    entries = raw.get("battles") if isinstance(raw, dict) else raw
+    if not isinstance(entries, list):
+        return []
+    recent = []
+    for entry in reversed(entries[-limit:]):
+        if not isinstance(entry, dict):
+            continue
+        recent.append({
+            "result": entry.get("result") or "?",
+            "opponent": entry.get("opponent") or "unknown",
+            "rating": entry.get("rating") or entry.get("elo_after"),
+            "delta": entry.get("rating_delta"),
+            "team": entry.get("team_file") or "",
+            "replay": entry.get("replay_status") or "",
+        })
+    return recent
+
+
+def _build_battle_lab_payload(slot_num: int, battle: dict | None) -> dict:
+    state = build_state_payload()
+    status = state.get("status") if isinstance(state.get("status"), dict) else {}
+    events, turn, log_name = _recent_battle_events(battle)
+    age_seconds = _battle_age_seconds(battle)
+    accounts_elo = status.get("accounts_elo") or state.get("accounts_elo") or {}
+    elo_value = None
+    if isinstance(accounts_elo, dict) and accounts_elo:
+        elo_value = next(iter(accounts_elo.values()))
+    elif status.get("elo"):
+        elo_value = status.get("elo")
+    return {
+        "slot": slot_num,
+        "active": bool(battle),
+        "battle_id": battle.get("id") if battle else None,
+        "opponent": _format_battle_label(battle.get("opponent")) if battle else None,
+        "players": battle.get("players", []) if battle else [],
+        "started": battle.get("started") if battle else None,
+        "age_seconds": age_seconds,
+        "age_label": _format_seconds(age_seconds),
+        "turn": turn,
+        "log_name": log_name,
+        "status": status.get("status") or ("Active" if battle else "Searching"),
+        "battle_info": status.get("battle_info") or "",
+        "wins": status.get("today_wins", 0),
+        "losses": status.get("today_losses", 0),
+        "elo": elo_value,
+        "events": events,
+        "recent_results": _recent_battle_results(),
+        "updated": state.get("updated"),
+    }
 
 
 def _build_public_slot_source_url(slot: int, battle_id: str | None = None) -> str:
@@ -1752,100 +1960,152 @@ async def handle_magneton_state(request: web.Request) -> web.Response:
 
 
 
-BATTLE_SLOT_HTML = """<!DOCTYPE html>
+class _SlotTemplate(str):
+    def format(self, *args, **kwargs) -> str:
+        slot = kwargs.get("slot")
+        if slot is None and args:
+            slot = args[0]
+        if slot is None:
+            slot = "__SLOT__"
+        return str(self).replace("__SLOT__", str(slot))
+
+
+BATTLE_SLOT_HTML = _SlotTemplate("""<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Showdown Battle Feed {slot}</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+<head><meta charset="UTF-8"><title>Fouler Battle Lab __SLOT__</title>
 <style>
-*{{margin:0;padding:0;box-sizing:border-box}}
-body{{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
-font-family:'Outfit',system-ui,sans-serif;color:#eaeaea}}
-#scanning{{position:absolute;top:0;left:0;width:100%;height:100%;
-display:flex;flex-direction:column;align-items:center;justify-content:center;
-z-index:2;transition:opacity 0.3s}}
-#battle-frame{{position:absolute;top:0;left:0;width:100%;height:100%;
-border:none;z-index:1}}
-.hidden{{opacity:0;pointer-events:none}}
-.sonar{{width:120px;height:120px;position:relative;margin-bottom:24px}}
-.sonar-circle{{position:absolute;top:50%;left:50%;
-transform:translate(-50%,-50%);border:1.5px solid #08d9d6;
-border-radius:50%;opacity:0;animation:sonar-ping 4s infinite linear}}
-.sonar-circle:nth-child(2){{animation-delay:1s}}
-.sonar-circle:nth-child(3){{animation-delay:2s}}
-.sonar-circle:nth-child(4){{animation-delay:3s}}
-@keyframes sonar-ping{{0%{{width:0;height:0;opacity:1}}100%{{width:100%;height:100%;opacity:0}}}}
-.sonar-scanner{{position:absolute;top:0;left:0;width:100%;height:100%;
-background:conic-gradient(from 0deg,transparent 0deg,#08d9d6 360deg);
-opacity:0.1;border-radius:50%;animation:spin 4s linear infinite}}
-@keyframes spin{{to{{transform:rotate(360deg)}}}}
-.scanning-text{{font-size:13px;font-weight:800;letter-spacing:3px;text-transform:uppercase;
-color:#08d9d6;text-shadow:0 0 12px rgba(8,217,214,0.4);animation:pulse 2s ease-in-out infinite}}
-.scanning-sub{{margin-top:8px;font-size:10px;letter-spacing:2px;text-transform:uppercase;
-color:rgba(8,217,214,0.4)}}
-@keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.5}}}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:100vw;height:100vh;overflow:hidden;background:#08090d;color:#f4f1e8;
+font-family:Inter,Segoe UI,system-ui,sans-serif}
+.shell{width:1280px;height:720px;padding:28px;display:grid;grid-template-rows:74px 1fr 76px;gap:18px}
+.top{display:grid;grid-template-columns:1fr auto;align-items:start;border-bottom:1px solid #2b3040;padding-bottom:16px}
+.kicker{font-size:14px;font-weight:800;color:#58c7d9;text-transform:uppercase}
+.title{font-size:42px;line-height:46px;font-weight:900;color:#fff;margin-top:2px}
+.status{display:flex;gap:10px;align-items:center;justify-content:flex-end}
+.pill{min-width:118px;padding:10px 14px;border:1px solid #3b4252;border-radius:7px;background:#121722;color:#f4f1e8;text-align:center}
+.pill strong{display:block;font-size:20px;line-height:24px}
+.pill span{display:block;font-size:11px;color:#a8b3c7;text-transform:uppercase}
+.main{display:grid;grid-template-columns:472px 1fr;gap:22px;min-height:0}
+.panel{border:1px solid #2b3040;border-radius:8px;background:#11151d;padding:20px;min-height:0}
+.match{display:grid;grid-template-rows:auto auto 1fr;gap:18px}
+.label{font-size:12px;color:#a8b3c7;text-transform:uppercase;font-weight:800;margin-bottom:8px}
+.opponent{font-size:38px;line-height:42px;font-weight:900;color:#fff;word-break:break-word}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.metric{border-left:4px solid #58c7d9;background:#171d28;padding:12px}
+.metric b{display:block;font-size:24px;line-height:30px;color:#fff}
+.metric span{font-size:12px;color:#a8b3c7;text-transform:uppercase}
+.battle-id{align-self:end;font-size:15px;color:#d5c46a;word-break:break-all}
+.events{display:grid;grid-template-rows:auto 1fr;gap:12px}
+.event-list{display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.event{display:grid;grid-template-columns:52px 1fr;gap:10px;padding:10px 12px;border-radius:6px;background:#171d28;border-left:4px solid #d56b5f;color:#f1f5f9;font-size:17px;line-height:23px}
+.event em{font-style:normal;color:#d5c46a;font-weight:800}
+.empty{height:100%;display:flex;align-items:center;justify-content:center;border:1px dashed #3b4252;border-radius:8px;color:#a8b3c7;font-size:24px;font-weight:800;text-align:center}
+.bottom{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+.result{border:1px solid #2b3040;border-radius:7px;background:#11151d;padding:10px 12px;min-width:0}
+.result b{display:block;font-size:18px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result span{font-size:12px;color:#a8b3c7;text-transform:uppercase}
+.win{color:#7bd88f}.loss{color:#d56b5f}.pending{color:#d5c46a}
 </style></head><body>
-<div id="scanning">
-  <div class="sonar">
-    <div class="sonar-scanner"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
-  </div>
-  <div class="scanning-text">MATCHMAKING</div>
-  <div class="scanning-sub">RANKED BATTLE FEED {slot}</div>
-</div>
-<iframe id="battle-frame" class="hidden"></iframe>
+<main class="shell">
+  <section class="top">
+    <div>
+      <div class="kicker">Fouler live mission proof / slot __SLOT__</div>
+      <div class="title" id="headline">Battle Lab standing by</div>
+    </div>
+    <div class="status">
+      <div class="pill"><strong id="turn">--</strong><span>Turn</span></div>
+      <div class="pill"><strong id="record">0-0</strong><span>Run</span></div>
+      <div class="pill"><strong id="elo">--</strong><span>ELO</span></div>
+    </div>
+  </section>
+  <section class="main">
+    <div class="panel match">
+      <div>
+        <div class="label">Current matchup</div>
+        <div class="opponent" id="opponent">Searching ladder</div>
+      </div>
+      <div class="meta">
+        <div class="metric"><b id="status">Searching</b><span>Status</span></div>
+        <div class="metric"><b id="age">0s</b><span>Age</span></div>
+      </div>
+      <div class="battle-id" id="battleId">No active battle assigned to this slot.</div>
+    </div>
+    <div class="panel events">
+      <div>
+        <div class="label">Recent battle decisions and events</div>
+      </div>
+      <div class="event-list" id="events"><div class="empty">Waiting for a live battle event feed.</div></div>
+    </div>
+  </section>
+  <section class="bottom" id="results"></section>
+</main>
 <script>
-(function(){{
-  var SLOT={slot};
+(function(){
+  var SLOT=__SLOT__;
   var STATE_URL='/slot/'+SLOT+'/state';
   var POLL_MS=3000;
-  var activeBid=null;
-  var scanning=document.getElementById('scanning');
-  var frame=document.getElementById('battle-frame');
-
-  function slotOf(b,i){{return b.slot!=null?parseInt(b.slot):(i+1);}}
-
-  function showBattle(bid, battleUrl){{
-    var url=(battleUrl||('https://play.pokemonshowdown.com/'+bid))+'?r='+Date.now();
-    // Pokemon Showdown intentionally refuses battle display inside an iframe.
-    // OBS browser sources should leave this local polling page and load the
-    // battle URL as the top-level page.
-    window.location.replace(url);
-  }}
-
-  function showScanning(){{
-    frame.classList.add('hidden');
-    frame.src='about:blank';
-    scanning.classList.remove('hidden');
-  }}
-
-  function poll(){{
-    fetch(STATE_URL+'?t='+Date.now())
-      .then(function(r){{return r.json();}})
-      .then(function(d){{
-        var battleId=d.battle_id||null;
-        var battleUrl=d.url||null;
-        if(battleId){{
-          if(battleId!==activeBid){{
-            activeBid=battleId;
-            showBattle(battleId,battleUrl);
-          }}
-        }} else {{
-          if(activeBid!==null){{
-            activeBid=null;
-            showScanning();
-          }}
-        }}
-      }})
-      .catch(function(){{}});
-  }}
+  function text(id,value){document.getElementById(id).textContent=value==null?'--':String(value);}
+  function cls(result){return result==='win'?'win':(result==='loss'?'loss':'pending');}
+  function renderEvents(events){
+    var root=document.getElementById('events');
+    root.innerHTML='';
+    if(!events||!events.length){
+      root.innerHTML='<div class="empty">Live state is up. Waiting for parsed battle events.</div>';
+      return;
+    }
+    events.slice(-9).forEach(function(event,idx){
+      var div=document.createElement('div');
+      div.className='event';
+      div.innerHTML='<em>'+String(idx+1).padStart(2,'0')+'</em><span></span>';
+      div.querySelector('span').textContent=event;
+      root.appendChild(div);
+    });
+  }
+  function renderResults(results){
+    var root=document.getElementById('results');
+    root.innerHTML='';
+    (results||[]).slice(0,4).forEach(function(r){
+      var div=document.createElement('div');
+      div.className='result';
+      var delta=r.delta==null?'':(' / '+(r.delta>0?'+':'')+r.delta);
+      div.innerHTML='<span class="'+cls(r.result)+'"></span><b></b><span></span>';
+      div.children[0].textContent=String(r.result||'?').toUpperCase()+delta;
+      div.children[1].textContent=r.opponent||'unknown';
+      div.children[2].textContent=(r.team||'team pending')+' / '+(r.replay||'replay pending');
+      root.appendChild(div);
+    });
+    while(root.children.length<4){
+      var empty=document.createElement('div');
+      empty.className='result';
+      empty.innerHTML='<span class="pending">PENDING</span><b>Proof slot open</b><span>Awaiting result</span>';
+      root.appendChild(empty);
+    }
+  }
+  function render(payload){
+    var lab=payload.battle_lab||payload;
+    var active=!!lab.active;
+    text('headline',active?'Live Battle Lab':'Battle Lab ready');
+    text('turn',lab.turn||'--');
+    text('record',(lab.wins||0)+'-'+(lab.losses||0));
+    text('elo',lab.elo||'--');
+    text('opponent',active?('vs '+(lab.opponent||'Unknown')):'Searching ladder');
+    text('status',lab.status||'Searching');
+    text('age',lab.age_label||'0s');
+    text('battleId',active?(lab.battle_id||'active battle'):'No active battle assigned to this slot.');
+    renderEvents(lab.events||[]);
+    renderResults(lab.recent_results||[]);
+  }
+  function poll(){
+    fetch(STATE_URL+'?t='+Date.now(),{cache:'no-store'})
+      .then(function(r){return r.json();})
+      .then(render)
+      .catch(function(){text('status','HTTP retry');});
+  }
   poll();
   setInterval(poll,POLL_MS);
-}})();
+})();
 </script>
-</body></html>"""
+</body></html>""")
 
 
 BATTLE_REDIRECT_HTML = BATTLE_SLOT_HTML  # deprecated alias
@@ -1877,21 +2137,24 @@ async def handle_slot_state(request: web.Request) -> web.Response:
             "slot": slot_num,
             "battle_id": battle_id,
             "url": url,
+            "battle_lab": _build_battle_lab_payload(slot_num, battle),
         })
 
     return web.json_response({
         "slot": slot_num,
         "battle_id": None,
         "url": None,
+        "battle_lab": _build_battle_lab_payload(slot_num, None),
     })
 
 
 async def handle_battle_slot(request: web.Request) -> web.Response:
     """Battle slot OBS browser source.
 
-    Always serves the self-managing BATTLE_SLOT_HTML page: shows SCANNING
-    animation by default, polls /slot/N/state, and redirects to PS
-    via window.location.replace() when a battle is active for this slot.
+    Always serves the self-managing BATTLE_SLOT_HTML page. The OBS-safe
+    page stays local, polls /slot/N/state, and renders live battle facts
+    from active_battles.json plus the battle log tail instead of navigating
+    OBS CEF into Pokemon Showdown.
 
     obs-battle-sync pins all slots to /slot/N every 5 min so OBS returns to
     SCANNING automatically after battles end (no permanent-stick bug).
@@ -1906,7 +2169,7 @@ async def handle_battle_slot(request: web.Request) -> web.Response:
         return web.Response(text="Invalid slot", status=400)
 
     return web.Response(
-        text=BATTLE_SLOT_HTML.format(slot=slot_num),
+        text=BATTLE_SLOT_HTML.replace("__SLOT__", str(slot_num)),
         content_type="text/html",
     )
 

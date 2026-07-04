@@ -34,6 +34,7 @@ from infrastructure.event_queue_lib import (
     mark_failed,
     expire_old_events,
     quarantine_stale_battle_results,
+    archive_stale_failed_events,
     cleanup_queue,
     queue_stats,
     queue_health_summary,
@@ -41,6 +42,8 @@ from infrastructure.event_queue_lib import (
 from infrastructure.gen9_validation import Gen9Validator
 from infrastructure.discord_reporting import (
     canonical_replay_url,
+    format_payload_or_message,
+    is_generic_why_text,
     public_replay_id_candidate,
     redacted_report_summary,
     structured_report_fields,
@@ -104,6 +107,18 @@ GEN9_VALIDATED_CONTENT_MARKERS = (
     "move",
     "tera",
     "hazard",
+)
+REPORT_QUALITY_BANNED_PHRASES = (
+    "battle updates should",
+    "operator-facing battle posts should",
+    "was converted once the bot secured the favorable endgame",
+    "closed the endgame before the bot stabilized the board",
+    "keep watching whether this line keeps converting",
+    "review the replay before the next queue and tag whether this was policy, matchup, or ops",
+)
+RECENT_RECORD_RE = re.compile(
+    r"\blast\s+(?P<count>\d+)\s*:\s*(?P<wins>\d+)\s*-\s*(?P<losses>\d+)\s*\(\s*(?P<wr>\d+)%\s*WR\s*\)",
+    re.IGNORECASE,
 )
 
 # Logging
@@ -253,6 +268,48 @@ def _queue_summary(events: list[dict[str, Any]] | None = None) -> dict[str, Any]
     }
 
 
+def _latest_battle_result_summary(
+    *,
+    current_event: dict[str, Any] | None = None,
+    events: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    candidates: list[dict[str, Any]] = []
+    if isinstance(current_event, dict) and current_event.get("event_type") == "battle_result":
+        candidates.append(current_event)
+    for event in events if events is not None else _read_queue_events():
+        if isinstance(event, dict) and event.get("event_type") == "battle_result":
+            candidates.append(event)
+    if not candidates:
+        return None
+
+    def event_ts(event: dict[str, Any]) -> float:
+        try:
+            return float(event.get("timestamp") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    latest = max(candidates, key=event_ts)
+    content = str(latest.get("content") or "")
+    structured = structured_report_fields(content, event_type="battle_result") if content else _event_structured_fields(latest)
+    return {
+        "eventId": latest.get("id"),
+        "eventStatus": latest.get("status"),
+        "eventTimestamp": latest.get("timestamp"),
+        "channel": latest.get("channel"),
+        "battle_id": latest.get("battle_id") or structured.get("battle_id"),
+        "result": latest.get("result") or (structured.get("analysis") or {}).get("result"),
+        "winner": latest.get("winner") or structured.get("winner"),
+        "loser": latest.get("loser") or structured.get("loser"),
+        "turns": latest.get("turns") if latest.get("turns") is not None else structured.get("turns"),
+        "proof": structured.get("proof"),
+        "analysis": structured.get("analysis"),
+        "reportSummary": (
+            redacted_report_summary(str(latest.get("content") or ""))
+            if latest.get("content") else {}
+        ),
+    }
+
+
 def _proof_report_paths() -> dict[str, str]:
     return {
         "discordReporting": _relative(DISCORD_REPORTING_PROOF),
@@ -275,6 +332,44 @@ def _transport_summary(destination_alias: str) -> dict[str, Any]:
     }
 
 
+def _clean_status_text(value: object) -> str:
+    return str(value or "").lstrip("\ufeff").strip()
+
+
+def _generic_event_report_summary(event: dict[str, Any]) -> dict[str, Any]:
+    content = _clean_status_text(event.get("content"))
+    headline = content.splitlines()[0].strip() if content.splitlines() else str(event.get("event_type") or "status")
+    return {
+        "eventType": str(event.get("event_type") or "unknown"),
+        "headline": headline[:180],
+        "viewerSummary": headline[:180],
+        "currentState": content[:500],
+        "whyItMatters": "Non-battle status event; battle and replay fields are intentionally not inferred.",
+        "nextHermesAction": str(event.get("next_hermes_action") or "Use the linked source report or repair queue for the next action."),
+        "secretLikeContentRedacted": False,
+    }
+
+
+def _generic_event_analysis(event: dict[str, Any]) -> dict[str, Any]:
+    summary = _generic_event_report_summary(event)
+    return {
+        "eventClass": "status_update",
+        "headline": summary.get("headline"),
+        "viewerSummary": summary.get("viewerSummary"),
+        "currentState": summary.get("currentState"),
+        "whyItMatters": summary.get("whyItMatters"),
+        "nextHermesAction": summary.get("nextHermesAction"),
+        "proofReadiness": {
+            "status": "proof-ready",
+            "classification": "status-update-proof",
+            "readyForHermes": True,
+            "missingFields": [],
+            "qualityGaps": [],
+            "blockers": [],
+        },
+    }
+
+
 def write_delivery_proof(
     *,
     status: str,
@@ -288,8 +383,15 @@ def write_delivery_proof(
 ) -> dict[str, Any]:
     event = event if isinstance(event, dict) else {}
     destination_alias = destination_alias or str(event.get("channel") or "unknown")
-    battle_ids = _extract_battle_ids_from_text(str(event.get("content") or ""))
-    report_summary = redacted_report_summary(str(event.get("content") or "")) if event else {}
+    event_type = str(event.get("event_type") or "")
+    is_battle_result = event_type == "battle_result"
+    battle_ids = _extract_battle_ids_from_text(str(event.get("content") or "")) if is_battle_result else []
+    queue_events = _read_queue_events()
+    report_summary = (
+        redacted_report_summary(str(event.get("content") or ""))
+        if event and is_battle_result
+        else _generic_event_report_summary(event) if event else {}
+    )
     structured_fields = _event_structured_fields(event)
     payload = {
         "schemaVersion": "fouler-play-discord-delivery/v1",
@@ -312,6 +414,10 @@ def write_delivery_proof(
         "errorCode": error_code,
         "blockers": blockers or [],
         "queue": _queue_summary(),
+        "latestBattleResult": _latest_battle_result_summary(
+            current_event=event,
+            events=queue_events,
+        ),
         "reportSummary": report_summary,
         "reportPaths": _proof_report_paths(),
         "secretValuesPrinted": False,
@@ -330,8 +436,14 @@ def write_reporting_proof(
     blockers: list[str] | None = None,
 ) -> dict[str, Any]:
     event = event if isinstance(event, dict) else {}
+    event_type = str(event.get("event_type") or "")
+    is_battle_result = event_type == "battle_result"
     destination_alias = str(event.get("channel") or (delivery_payload or {}).get("destinationAlias") or "unknown")
     structured_fields = _event_structured_fields(event)
+    latest_battle_result = (
+        (delivery_payload or {}).get("latestBattleResult")
+        or _latest_battle_result_summary(current_event=event)
+    )
     payload = {
         "schemaVersion": "fouler-play-discord-reporting/v1",
         "generatedAtUtc": _iso_now(),
@@ -340,15 +452,20 @@ def write_reporting_proof(
         "destinationAlias": destination_alias,
         "transport": _transport_summary(destination_alias),
         "queue": _queue_summary(),
-        "battleIds": (delivery_payload or {}).get("battleIds") or _extract_battle_ids_from_text(str(event.get("content") or "")),
-        "battle_id": (delivery_payload or {}).get("battle_id") or structured_fields.get("battle_id"),
-        "winner": (delivery_payload or {}).get("winner") or structured_fields.get("winner"),
-        "loser": (delivery_payload or {}).get("loser") or structured_fields.get("loser"),
-        "turns": (delivery_payload or {}).get("turns") or structured_fields.get("turns"),
+        "battleIds": ((delivery_payload or {}).get("battleIds") or _extract_battle_ids_from_text(str(event.get("content") or ""))) if is_battle_result else [],
+        "battle_id": ((delivery_payload or {}).get("battle_id") or structured_fields.get("battle_id")) if is_battle_result else None,
+        "winner": ((delivery_payload or {}).get("winner") or structured_fields.get("winner")) if is_battle_result else None,
+        "loser": ((delivery_payload or {}).get("loser") or structured_fields.get("loser")) if is_battle_result else None,
+        "turns": ((delivery_payload or {}).get("turns") or structured_fields.get("turns")) if is_battle_result else None,
         "proof": (delivery_payload or {}).get("proof") or structured_fields.get("proof"),
         "analysis": (delivery_payload or {}).get("analysis") or structured_fields.get("analysis"),
+        "latestBattleResult": latest_battle_result,
         "reportSummary": (delivery_payload or {}).get("reportSummary")
-        or (redacted_report_summary(str(event.get("content") or "")) if event else {}),
+        or (
+            redacted_report_summary(str(event.get("content") or ""))
+            if event and is_battle_result
+            else _generic_event_report_summary(event) if event else {}
+        ),
         "blockers": blockers or [],
         "reportPaths": _proof_report_paths(),
         "secretValuesPrinted": False,
@@ -359,8 +476,18 @@ def write_reporting_proof(
 
 
 def _event_structured_fields(event: dict[str, Any]) -> dict[str, Any]:
+    event_type = str(event.get("event_type") or "")
+    if event_type != "battle_result":
+        return {
+            "battle_id": None,
+            "winner": None,
+            "loser": None,
+            "turns": None,
+            "proof": None,
+            "analysis": _generic_event_analysis(event),
+        }
     content = str(event.get("content") or "")
-    extracted = structured_report_fields(content, event_type=str(event.get("event_type") or "")) if content else {}
+    extracted = structured_report_fields(content, event_type=event_type) if content else {}
     return {
         "battle_id": event.get("battle_id") or extracted.get("battle_id"),
         "winner": event.get("winner") or extracted.get("winner"),
@@ -771,14 +898,64 @@ def validate_event_content(event: dict) -> Tuple[bool, str]:
     if warnings:
         for warning in warnings:
             logger.warning("Validation warning for %s: %s", event.get("id", "unknown"), warning)
-    
+
+    quality_findings = report_quality_findings(event)
+    if quality_findings:
+        return False, "report quality failed: " + "; ".join(quality_findings[:5])
+
     return True, ""
+
+
+def report_quality_findings(event: dict[str, Any]) -> list[str]:
+    """Return transport-blocking report quality findings for Discord-bound events."""
+
+    event_type = str(event.get("event_type") or "")
+    content = str(event.get("content") or "")
+    if event_type not in {"battle_result", "performance_alert"} and "[PROOF]" not in content:
+        return []
+
+    lowered = content.lower()
+    findings: list[str] = []
+    for phrase in REPORT_QUALITY_BANNED_PHRASES:
+        if phrase in lowered:
+            findings.append(f"banned_phrase:{phrase}")
+
+    summary = redacted_report_summary(content)
+    why = str(summary.get("whyItMatters") or "")
+    if is_generic_why_text(why):
+        findings.append("generic_why")
+
+    structured = structured_report_fields(content, event_type=event_type)
+    readiness = structured.get("proof_readiness")
+    if isinstance(readiness, dict) and readiness.get("status") != "proof-ready":
+        missing = ",".join(str(item) for item in readiness.get("missingFields") or [])
+        findings.append(f"proof_not_ready:{missing or readiness.get('status')}")
+
+    result = str(structured.get("result") or "").lower()
+    if result == "tie" and any(token in lowered for token in ("timeout", "timed out", "inactive", "disconnect")):
+        findings.append("timeout_reported_as_tie")
+
+    for match in RECENT_RECORD_RE.finditer(content):
+        count = int(match.group("count"))
+        wins = int(match.group("wins"))
+        losses = int(match.group("losses"))
+        wr = int(match.group("wr"))
+        if wins + losses != count:
+            findings.append(f"recent_record_count_mismatch:last{count}!={wins + losses}")
+            continue
+        expected_wr = int(round((wins / count) * 100)) if count else 0
+        if wr != expected_wr:
+            findings.append(f"recent_record_winrate_mismatch:{wr}!={expected_wr}")
+
+    return findings
 
 
 def post_to_discord(event: dict) -> dict[str, Any]:
     """Post event to Discord via webhook (or OpenClaw CLI fallback)."""
+    event = dict(event)
     channel = event["channel"]
-    content = event["content"]
+    content = format_payload_or_message(str(event.get("content") or ""))
+    event["content"] = content
     suppress = event.get("suppress_embeds", False)
 
     # Validate before posting
@@ -997,6 +1174,24 @@ def process_one_event(dry_run: bool = False) -> bool:
                 error_code="stale_battle_result_quarantined",
             )
             return False
+        archived_failed = archive_stale_failed_events(EXPIRY_SEC)
+        if archived_failed:
+            logger.warning(
+                "Archived %s stale terminal Discord failure event(s); live transport withheld",
+                archived_failed,
+            )
+            write_delivery_proof(
+                status="blocked",
+                event=None,
+                destination_alias="unknown",
+                dry_run=False,
+                blockers=[
+                    f"archived {archived_failed} stale terminal Discord failure event(s)",
+                    "live Discord transport is withheld until the next fresh queue pass",
+                ],
+                error_code="stale_failed_events_archived",
+            )
+            return False
         expired = expire_old_events(EXPIRY_SEC)
         if expired:
             logger.warning("Archived and expired %s stale Discord event(s); live transport withheld", expired)
@@ -1059,6 +1254,11 @@ def process_one_event(dry_run: bool = False) -> bool:
     # Post to Discord
     event = prepare_battle_result_replay_for_post(event)
     result = post_to_discord(event)
+    if result.get("ok"):
+        mark_posted(event_id)
+    else:
+        mark_failed(event_id, str(result.get("errorCode") or result.get("status") or "post_failed"))
+
     write_delivery_proof(
         status=str(result.get("status") or "failed"),
         event=event,
@@ -1068,11 +1268,6 @@ def process_one_event(dry_run: bool = False) -> bool:
         retry_after=result.get("retryAfter"),
         error_code=result.get("errorCode"),
     )
-
-    if result.get("ok"):
-        mark_posted(event_id)
-    else:
-        mark_failed(event_id, str(result.get("errorCode") or result.get("status") or "post_failed"))
 
     return True
 
@@ -1145,6 +1340,11 @@ def main() -> int:
     parser.add_argument("--doctor", action="store_true", help="print read-only Discord queue/poster readiness")
     parser.add_argument("--once", action="store_true", help="process at most one event and exit")
     parser.add_argument("--dry-run", action="store_true", help="write redacted Discord proof for the oldest pending event without posting")
+    parser.add_argument(
+        "--archive-terminal-failures",
+        action="store_true",
+        help="archive stale failed queue events as local proof without posting to Discord",
+    )
     parser.add_argument("--require-ready", action="store_true", help="with --doctor, exit non-zero if no transport is configured")
     args = parser.parse_args()
     if args.doctor:
@@ -1163,6 +1363,35 @@ def main() -> int:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 1 if args.require_ready and not payload["ready"] else 0
     load_env_chain()
+    if args.archive_terminal_failures:
+        archived_failed = archive_stale_failed_events(EXPIRY_SEC)
+        status = "archived" if archived_failed else "idle"
+        blockers = (
+            [
+                f"archived {archived_failed} stale terminal Discord failure event(s)",
+                "no Discord transport was attempted",
+            ]
+            if archived_failed
+            else ["no stale terminal Discord failure events"]
+        )
+        write_delivery_proof(
+            status=status,
+            event=None,
+            destination_alias="unknown",
+            dry_run=False,
+            blockers=blockers,
+            error_code="stale_failed_events_archived" if archived_failed else "no_stale_failed_events",
+        )
+        payload = {
+            "schemaVersion": "fouler-play-discord-terminal-failure-archive/v1",
+            "checkedAt": _iso_now(),
+            "archivedFailedEvents": archived_failed,
+            "queue": _queue_summary(),
+            "reportPaths": _proof_report_paths(),
+            "secretValuesPrinted": False,
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
     if args.dry_run:
         return 0 if process_one_event(dry_run=True) else 1
     if args.once:
@@ -1173,3 +1402,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

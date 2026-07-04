@@ -63,7 +63,8 @@ def _clean_line(value: object) -> str:
     text = text.replace("\r", " ")
     text = text.replace("\n", "\n")
     lines = [" ".join(line.split()) for line in text.split("\n")]
-    return "\n".join(line for line in lines if line)
+    cleaned = "\n".join(line for line in lines if line)
+    return re.sub(r"\blast\s+(\d+)\s+last\s+\1\s*:", r"last \1:", cleaned, flags=re.IGNORECASE)
 
 
 def _truncate(text: object, limit: int = _MAX_FIELD_LEN) -> str:
@@ -260,6 +261,60 @@ def _compact_sentence_parts(parts: Sequence[str], limit: int = _MAX_FIELD_LEN) -
     return "; ".join(trimmed) + suffix
 
 
+def _is_unclassified_cause_text(value: object) -> bool:
+    text = _clean_line(value).lower()
+    if not text:
+        return True
+    return any(
+        marker in text
+        for marker in (
+            "no concrete strategic cause",
+            "without a claimed strategic cause",
+            "needs replay review",
+            "replay review is required",
+            "before assigning a strategic failure tag",
+            "before treating this as an accepted improvement signal",
+            "repeatable win cause still needs replay review",
+            "still needs replay review",
+            "unclassified",
+            "classify the",
+            "classify replay",
+            "resolve public replay",
+        )
+    )
+
+
+def _classification_text_from_payload(data: dict) -> str:
+    for key in (
+        "decisive_reason",
+        "strategic_issue",
+        "loss_pattern",
+        "performance_change",
+        "code_fix_hint",
+    ):
+        text = _clean_line(data.get(key, ""))
+        if text and not _is_unclassified_cause_text(text):
+            return text
+    if _detect_operational_flag(data):
+        return "operational runtime/timer signal classified"
+    return ""
+
+
+def _default_next_battle_action(data: dict, *, result: str, replay: dict[str, object]) -> str:
+    replay_status = _clean_line(replay.get("status") if isinstance(replay, dict) else "")
+    replay_id = _clean_line(replay.get("id") if isinstance(replay, dict) else "")
+    opponent = _sanitized_opponent_name(data.get("opponent", ""))
+    battle_id = _clean_line(data.get("battle_id", ""))
+    target = replay_id or battle_id or opponent or "latest battle"
+    if replay_status == "pending-public-upload":
+        return f"Resolve public replay for {target}, then classify the battle cause before the next improve cycle."
+    if result == "loss":
+        return f"Classify the loss cause for {target} before launching another improve cycle."
+    if result == "win":
+        return f"Classify the win condition for {target} before accepting it as learned improvement."
+    return ""
+
+
 def _split_semicolon_list(text: str) -> list[str]:
     cleaned = _clean_line(text)
     if not cleaned or cleaned == "pending":
@@ -335,12 +390,26 @@ def _positive_turn_count(value: object) -> int | None:
 
 def _normalize_result(value: object) -> str:
     text = _clean_line(value).lower()
+    normalized = re.sub(r"[\s_-]+", " ", text).strip()
     if text in {"won", "win", "victory"}:
         return "win"
-    if text in {"lost", "loss", "defeat"}:
+    if text in {"lost", "loss", "defeat"} or normalized in {
+        "timeout",
+        "timed out",
+        "timer loss",
+        "disconnect",
+        "disconnected",
+        "inactive",
+        "inactivity",
+        "inactivity loss",
+        "operational loss",
+        "forfeit loss",
+    }:
+        return "loss"
+    if any(token in normalized for token in ("timed out", "timeout", "disconnect", "inactive", "inactivity")):
         return "loss"
     if text in {"tie", "draw"}:
-        return "tie"
+        return "loss"
     return text
 
 
@@ -518,7 +587,7 @@ def _proof_from_payload(data: dict) -> str:
     if analysis_count not in (None, ""):
         add(f"loss reviews queued={analysis_count}")
 
-    recent_record = _clean_line(data.get("recent_record", ""))
+    recent_record = _recent_record_summary(data)
     if recent_record:
         add(f"window {recent_record}")
 
@@ -566,13 +635,42 @@ def _remaining_from_payload(data: dict) -> str:
     return _truncate(remaining, 220)
 
 
+def _sanitized_opponent_name(value: object) -> str:
+    opponent = _clean_line(value)
+    if not opponent:
+        return ""
+    opponent = re.sub(
+        r"\s+\d{6,}:\s+(?:win|won|loss|lost|tie|draw)\s+vs\b.*$",
+        "",
+        opponent,
+        flags=re.IGNORECASE,
+    )
+    opponent = re.sub(r"\s+in\s+\d+\s+turns\b.*$", "", opponent, flags=re.IGNORECASE)
+    opponent = re.sub(r"\s+battle\s+(?:finished|result)\b.*$", "", opponent, flags=re.IGNORECASE)
+    opponent = re.sub(
+        r"\s+(?:replay|elo|last\s+\d+:|next battle focus:)\b.*$",
+        "",
+        opponent,
+        flags=re.IGNORECASE,
+    )
+    return opponent.strip(" .;")
+
+
 def _headline_from_payload(data: dict) -> str:
     headline = _clean_line(data.get("headline", ""))
     result = _result_from_payload(data)
-    opponent = _clean_line(data.get("opponent", ""))
+    opponent = _sanitized_opponent_name(data.get("opponent", ""))
     if headline:
         headline_result, headline_opponent = _result_and_opponent_from_text(headline)
-        if result in {"win", "loss"} and headline_result in {"win", "loss"} and headline_result != result:
+        raw_headline_result = _raw_result_word_from_text(headline)
+        raw_headline_needs_loss_normalization = (
+            result == "loss" and raw_headline_result in {"tie", "draw"}
+        )
+        if (
+            result in {"win", "loss"}
+            and headline_result in {"win", "loss"}
+            and (headline_result != result or raw_headline_needs_loss_normalization)
+        ):
             return _truncate(f"battle {result} vs {opponent or headline_opponent or 'opponent'}", _MAX_HEADLINE_LEN)
         return _truncate(headline, _MAX_HEADLINE_LEN)
 
@@ -610,17 +708,26 @@ def _subject_matter_summary(data: dict) -> list[str]:
 
 def _recent_record_summary(data: dict) -> str:
     recent_record = _clean_line(data.get("recent_record", ""))
-    if recent_record:
-        return recent_record
     wins = _safe_int(data.get("recent_wins"))
     losses = _safe_int(data.get("recent_losses"))
     size = _safe_int(data.get("recent_window_size"))
+    if recent_record and wins is None and losses is None:
+        return recent_record
     if wins is None or losses is None:
         return ""
     if size is None:
         size = wins + losses
     wr = int(round((wins / size) * 100)) if size else 0
-    return f"last {size}: {wins}-{losses} ({wr}% WR)"
+    computed = f"last {size}: {wins}-{losses} ({wr}% WR)"
+    if not recent_record:
+        return computed
+    match = re.search(r"last\s+(\d+)\s*:\s*(\d+)\s*-\s*(\d+)", recent_record, flags=re.IGNORECASE)
+    if not match:
+        return computed
+    claimed_size, claimed_wins, claimed_losses = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    if (claimed_size, claimed_wins, claimed_losses) != (size, wins, losses):
+        return computed
+    return recent_record
 
 
 def _trend_summary(data: dict) -> str:
@@ -654,10 +761,25 @@ def _what_from_payload(data: dict) -> str:
     actionability = _actionability_line(data)
 
     result = _result_from_payload(data)
-    opponent = _clean_line(data.get("opponent", ""))
+    opponent = _sanitized_opponent_name(data.get("opponent", ""))
     turns = _positive_turn_count(data.get("turns"))
     team_file = data.get("team_file")
     if result:
+        generic_explicit = False
+        if explicit:
+            lowered_explicit = explicit.lower()
+            raw_explicit_result = _raw_result_word_from_text(explicit)
+            generic_explicit = (
+                lowered_explicit.startswith("battle battle-")
+                and " ended " in lowered_explicit
+                and " against " in lowered_explicit
+            ) or bool(
+                re.match(r"^\d{6,}:\s+(?:win|won|loss|lost|tie|draw)\s+vs\b", lowered_explicit)
+            ) or bool(
+                re.match(r"^battle\s+(?:finished|result)\s+(?:win|won|loss|lost|tie|draw)\b", lowered_explicit)
+            ) or "queued the outcome" in lowered_explicit
+            if result == "loss" and raw_explicit_result in {"tie", "draw"}:
+                generic_explicit = True
         battle_line = f"battle finished {result}"
         if opponent:
             battle_line += f" vs {opponent}"
@@ -665,7 +787,19 @@ def _what_from_payload(data: dict) -> str:
             battle_line += f" using {_short_team_name(team_file)}"
         if turns is not None:
             battle_line += f" in {turns} turns"
-        parts = [battle_line]
+        parts = [explicit] if explicit and not generic_explicit else [battle_line]
+        replay_status = _clean_line(data.get("replay_status", ""))
+        explicit_lower = explicit.lower()
+        if replay_status and replay_status not in {"unknown", "absent"} and "replay" not in explicit_lower:
+            parts.append(f"replay {replay_status}")
+        elo_delta = format_elo_delta(
+            data.get("elo_before"),
+            data.get("elo_after"),
+            result,
+            rating_delta=data.get("rating_delta"),
+        )
+        if elo_delta and "elo" not in explicit_lower:
+            parts.append(elo_delta)
         if recent_record:
             parts.append(recent_record)
         if trend:
@@ -726,27 +860,89 @@ def _what_from_payload(data: dict) -> str:
     return _truncate(explicit or "pending", 220)
 
 
+_GENERIC_WHY_PHRASES = (
+    "queued the outcome for discord delivery",
+    "queued the concise discord summary",
+    "mechanics of posting",
+    "operator-facing battle posts should",
+    "battle updates should",
+)
+
+
+def _is_generic_why_text(value: object) -> bool:
+    explicit = _clean_line(value).lower()
+    if not explicit:
+        return False
+    return "operational failure" in explicit or any(phrase in explicit for phrase in _GENERIC_WHY_PHRASES)
+
+
+def is_generic_why_text(value: object) -> bool:
+    """Public helper for transport gates that must reject canned reports."""
+
+    return _is_generic_why_text(value)
+
+
+def _battle_why_from_payload(data: dict, result: str) -> str:
+    opponent = _sanitized_opponent_name(data.get("opponent", ""))
+    if result == "loss":
+        lead = "loss changed the ladder run"
+    elif result == "win":
+        lead = "win added positive ladder evidence"
+    else:
+        lead = f"{result} needs ladder review"
+    if opponent:
+        lead += f" vs {opponent}"
+
+    parts = [lead]
+    elo_delta = format_elo_delta(
+        data.get("elo_before"),
+        data.get("elo_after"),
+        result,
+        rating_delta=data.get("rating_delta"),
+    )
+    if elo_delta:
+        parts.append(elo_delta)
+    recent_record = _recent_record_summary(data)
+    if recent_record:
+        parts.append(recent_record)
+
+    replay = _replay_summary_from_payload(data)
+    replay_status = _clean_line(replay.get("status"))
+    replay_id = _clean_line(replay.get("id"))
+    if replay_status == "public" and replay_id:
+        parts.append(f"public replay {replay_id} available for review")
+    elif replay_status == "pending-public-upload" and replay_id:
+        parts.append(f"replay {replay_id} pending public upload")
+
+    classification = _classification_text_from_payload(data)
+    if classification:
+        parts.append(classification)
+    elif replay_status == "pending-public-upload" and replay_id:
+        parts.append("replay is pending; strategic cause is not accepted yet")
+    elif result == "loss":
+        parts.append("loss cause is unclassified; HERMES must review the replay before the next improve cycle")
+    elif result == "win":
+        parts.append("win condition is unclassified; HERMES must review the replay before accepting this as learned improvement")
+
+    next_action = _clean_line(data.get("next_battle_action", ""))
+    if next_action:
+        parts.append(f"next battle focus: {next_action}")
+
+    return _compact_sentence_parts(parts, 360)
+
+
 def _why_from_payload(data: dict) -> str:
     explicit = _clean_line(data.get("why_it_matters", ""))
-    if explicit and not any(
-        phrase in explicit
-        for phrase in (
-            "queued the outcome for Discord delivery",
-            "queued the concise Discord summary",
-            "mechanics of posting",
-        )
-    ) and "operational failure" not in explicit.lower():
+    if explicit and not _is_generic_why_text(explicit):
         return _truncate(explicit, 220)
 
     flag = _detect_operational_flag(data)
     if flag == "operational":
-        return "operator reports should flag ladder-invisible runtime failures immediately so losses caused by disconnects or inactivity are not mistaken for team or policy problems"
+        return "runtime or timer evidence is part of this ladder loss; inspect reconnect and inactivity logs before treating it as a team or policy problem"
 
     result = _result_from_payload(data)
     if result:
-        if result == "loss":
-            return "battle updates should tell us whether this was a real matchup/policy miss or just variance, and what the next ladder-relevant adjustment is"
-        return "battle updates should confirm the win condition that worked so we know whether the bot is climbing through repeatable play or variance"
+        return _battle_why_from_payload(data, result)
     if data.get("batch_results"):
         return "routine updates should center the win/loss trend, the matchup issue behind it, and the next battle-relevant adjustment instead of recap mechanics"
     if data.get("report") or data.get("top_issues"):
@@ -833,12 +1029,68 @@ def parse_contract_payload(payload: str) -> dict:
     }
 
 
+def _data_from_formatted_battle_contract(message: str) -> dict[str, object]:
+    summary = redacted_report_summary(message)
+    result = _normalize_result(summary.get("result"))
+    if not result:
+        return {}
+
+    what = _extract_contract_section(message, "What happened:")
+    proof = _extract_contract_section(message, "Proof:")
+    remaining = _extract_contract_section(message, "Remaining:")
+    replay = summary.get("replay") if isinstance(summary.get("replay"), dict) else {}
+    data: dict[str, object] = {
+        "event_class": summary.get("eventClass") or "PROOF",
+        "headline": summary.get("headline") or f"battle result {result}",
+        "result": result,
+        "opponent": summary.get("opponent") or "",
+        "turns": _structured_turns_from_text(message),
+        "battle_id": _first_battle_id(message) or "",
+        "replay_status": replay.get("status") or "",
+        "replay_id": replay.get("id") or "",
+        "replay_url": replay.get("url") or "",
+        "why_it_matters": summary.get("whyItMatters") or "",
+        "proof": proof,
+        "remaining": remaining,
+    }
+
+    recent_match = re.search(r"\blast\s+\d+:\s+\d+-\d+\s+\(\d+%\s+WR\)", what, re.IGNORECASE)
+    if recent_match:
+        data["recent_record"] = recent_match.group(0)
+
+    elo_match = re.search(
+        r"\bELO\s+(?:gained|lost|unchanged|unverified)\s+[^;.\n]+(?:\([^;\n]+\))?",
+        what,
+        re.IGNORECASE,
+    )
+    if elo_match:
+        data["performance_change"] = elo_match.group(0)
+
+    if "inactivity" in what.lower() or "disconnect" in what.lower() or "timeout" in what.lower():
+        data["operational_loss"] = True
+        data["next_battle_action"] = "Review reconnect / timer handling before blaming the team."
+    elif result == "loss":
+        data["next_battle_action"] = "Review the replay and tag one concrete cause: policy, matchup, execution, or ops."
+
+    return data
+
+
 def format_payload_or_message(content: str) -> str:
     stripped = (content or "").strip()
     if not stripped:
         return stripped
     if is_contract_message(stripped):
-        return stripped
+        data = _data_from_formatted_battle_contract(stripped)
+        if not data:
+            return stripped
+        return build_contract_message(
+            data.get("event_class", "PROOF"),
+            _headline_from_payload(data),
+            _what_from_payload(data),
+            _why_from_payload(data),
+            _proof_from_payload(data),
+            _remaining_from_payload(data),
+        )
     try:
         data = parse_contract_payload(stripped)
     except Exception:
@@ -1051,6 +1303,8 @@ def _proof_readiness(
     analysis: object = None,
     turns: object = None,
     next_action: object = "",
+    replay: object = None,
+    cause_classified: bool = False,
 ) -> dict[str, object]:
     required = ["battle_id", "proof", "analysis.nextAction"]
     if event_type == "battle_result" or _normalize_result(result):
@@ -1069,14 +1323,26 @@ def _proof_readiness(
     quality_gaps: list[str] = []
     if (event_type == "battle_result" or _normalize_result(result)) and _positive_turn_count(turns) is None:
         quality_gaps.append("turns")
+    replay_obj = replay if isinstance(replay, dict) else {}
+    replay_status = _clean_line(replay_obj.get("status"))
+    if replay_status == "pending-public-upload":
+        quality_gaps.append("replay_pending_public_upload")
+    if _normalize_result(result) in {"win", "loss"} and not cause_classified:
+        quality_gaps.append("battle_cause_unclassified")
     status = "proof-ready" if not missing else "proof-needs-fields"
+    ready_for_hermes = status == "proof-ready" and not quality_gaps
     return {
         "status": status,
-        "readyForHermes": status == "proof-ready",
+        "readyForHermes": ready_for_hermes,
         "classification": "battle-result-proof" if event_type == "battle_result" or _normalize_result(result) else "status-update-proof",
         "missingFields": missing,
         "qualityGaps": quality_gaps,
         "blockers": [f"missing {field}" for field in missing],
+        "nextHermesAction": (
+            "classify replay/cause before using this result as an improvement signal"
+            if status == "proof-ready" and quality_gaps else
+            ""
+        ),
     }
 
 
@@ -1088,9 +1354,19 @@ def _result_and_opponent_from_text(text: str) -> tuple[str, str]:
     )
     if not match:
         return "", ""
-    opponent = re.sub(r"\s+in\s+\d+\s+turns\b.*$", "", _clean_line(match.group("opponent")), flags=re.IGNORECASE)
-    opponent = re.sub(r"\s+battle\s+(?:finished|result)\b.*$", "", opponent, flags=re.IGNORECASE)
-    return _normalize_result(match.group("result")), opponent.strip(" .")
+    opponent = _sanitized_opponent_name(match.group("opponent"))
+    return _normalize_result(match.group("result")), opponent
+
+
+def _raw_result_word_from_text(text: str) -> str:
+    match = re.search(
+        r"\b(?:battle(?: result| finished)?\s+)?(?P<result>win|won|loss|lost|tie|draw)\b",
+        text or "",
+        re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    return match.group("result").lower()
 
 
 def redacted_report_summary(content: str) -> dict[str, object]:
@@ -1108,11 +1384,16 @@ def redacted_report_summary(content: str) -> dict[str, object]:
         secret_redacted = secret_redacted or changed
         viewer, changed = _safe_report_text(_what_from_payload(data), 360)
         secret_redacted = secret_redacted or changed
-        next_action_source = data.get("next_battle_action") or _remaining_from_payload(data)
+        result = _result_from_payload(data)
+        replay = _replay_summary_from_payload(data)
+        next_action_source = (
+            data.get("next_battle_action")
+            or _default_next_battle_action(data, result=result, replay=replay)
+            or _remaining_from_payload(data)
+        )
         next_action, changed = _safe_report_text(next_action_source, 220)
         secret_redacted = secret_redacted or changed
-        result = _result_from_payload(data)
-        opponent, changed = _safe_report_text(data.get("opponent", ""), 120)
+        opponent, changed = _safe_report_text(_sanitized_opponent_name(data.get("opponent", "")), 120)
         secret_redacted = secret_redacted or changed
         battle_ids = _battle_ids_from_report_text(
             " ".join(
@@ -1120,7 +1401,6 @@ def redacted_report_summary(content: str) -> dict[str, object]:
                 for key in ("battle_id", "replay_url", "replay", "proof", "headline")
             )
         )
-        replay = _replay_summary_from_payload(data)
         ops_signal = "operational-loss" if _detect_operational_flag(data) else ("loss-review" if result == "loss" else "routine")
         why, changed = _safe_report_text(_why_from_payload(data), 240)
         secret_redacted = secret_redacted or changed
@@ -1160,19 +1440,34 @@ def redacted_report_summary(content: str) -> dict[str, object]:
     headline_source = header_match.group("head") if header_match else header
     what = _extract_contract_section(formatted, "What happened:")
     remaining = _extract_contract_section(formatted, "Remaining:")
-    result, opponent = _result_and_opponent_from_text(" ".join([headline_source, what]))
+    result, opponent = _result_and_opponent_from_text("; ".join([headline_source, what]))
     headline, changed = _safe_report_text(headline_source, _MAX_HEADLINE_LEN)
     secret_redacted = secret_redacted or changed
     viewer, changed = _safe_report_text(what or headline_source or "pending", 360)
     secret_redacted = secret_redacted or changed
-    next_action_match = re.search(r"next battle focus:\s*([^;]+)", what, re.IGNORECASE)
-    next_action_source = next_action_match.group(1) if next_action_match else remaining
-    next_action, changed = _safe_report_text(next_action_source or "pending", 220)
-    secret_redacted = secret_redacted or changed
     battle_ids = _battle_ids_from_report_text(formatted)
     replay = _first_replay_summary(formatted)
-    why = _extract_contract_section(formatted, "Why it matters:")
-    why, changed = _safe_report_text(why or "pending", 240)
+    raw_why = _extract_contract_section(formatted, "Why it matters:")
+    synthetic_data = {
+        "result": result,
+        "opponent": opponent,
+        "turns": _structured_turns_from_text(formatted),
+        "battle_id": f"battle-{battle_ids[0]}" if battle_ids else "",
+        "replay_status": replay.get("status") if isinstance(replay, dict) else "",
+        "replay_id": replay.get("id") if isinstance(replay, dict) else "",
+        "why_it_matters": raw_why,
+    }
+    next_action_match = re.search(r"next battle focus:\s*([^;]+)", what, re.IGNORECASE)
+    next_action_source = (
+        next_action_match.group(1)
+        if next_action_match else
+        _default_next_battle_action(synthetic_data, result=result, replay=replay)
+        or remaining
+    )
+    next_action, changed = _safe_report_text(next_action_source or "pending", 220)
+    secret_redacted = secret_redacted or changed
+    why_source = _why_from_payload(synthetic_data) if _is_generic_why_text(raw_why) else (raw_why or _why_from_payload(synthetic_data))
+    why, changed = _safe_report_text(why_source or "pending", 240)
     secret_redacted = secret_redacted or changed
     ops_signal = "operational-loss" if any(
         word in " ".join([headline_source, what]).lower()
@@ -1253,7 +1548,7 @@ def structured_report_fields(content: str, *, event_type: str = "") -> dict[str,
 
     summary = redacted_report_summary(raw)
     result = _result_from_payload(data) if data else _normalize_result(summary.get("result"))
-    opponent = _clean_line((data.get("opponent") if data else summary.get("opponent")) or "")
+    opponent = _sanitized_opponent_name((data.get("opponent") if data else summary.get("opponent")) or "")
     battle_id = _first_battle_id(
         data.get("battle_id") if data else None,
         data.get("replay_url") if data else None,
@@ -1307,6 +1602,13 @@ def structured_report_fields(content: str, *, event_type: str = "") -> dict[str,
         or proof.get("battleIds")
         or (isinstance(replay, dict) and replay.get("status") != "absent")
     )
+    cause_classified = False
+    if data:
+        cause_classified = bool(_classification_text_from_payload(data))
+    else:
+        cause_classified = bool(
+            summary.get("opsSignal") == "operational-loss"
+        )
     proof_readiness = _proof_readiness(
         event_type=event_type,
         result=result,
@@ -1315,6 +1617,8 @@ def structured_report_fields(content: str, *, event_type: str = "") -> dict[str,
         analysis=summary,
         turns=turns,
         next_action=next_hermes_action,
+        replay=replay,
+        cause_classified=cause_classified,
     )
 
     analysis = {
@@ -1332,6 +1636,7 @@ def structured_report_fields(content: str, *, event_type: str = "") -> dict[str,
     }
     return {
         "battle_id": battle_id,
+        "result": result or None,
         "winner": winner,
         "loser": loser,
         "turns": turns,
@@ -1350,15 +1655,17 @@ def summarize_items(items: Iterable[str], fallback: str = "none") -> str:
 
 
 def summarize_recent_results(battles: Sequence[dict], *, window: int = 5) -> dict[str, object]:
-    recent = list(battles)[-window:]
-    wins = sum(1 for battle in recent if _normalize_result(battle.get("result")) == "win")
-    losses = sum(1 for battle in recent if _normalize_result(battle.get("result")) == "loss")
+    decisive = [
+        _normalize_result(battle.get("result"))
+        for battle in battles
+        if isinstance(battle, dict) and _normalize_result(battle.get("result")) in {"win", "loss"}
+    ]
+    recent = decisive[-window:]
+    wins = sum(1 for outcome in recent if outcome == "win")
+    losses = sum(1 for outcome in recent if outcome == "loss")
     streak_kind = "none"
     streak = 0
-    for battle in reversed(recent):
-        outcome = _normalize_result(battle.get("result"))
-        if outcome not in {"win", "loss"}:
-            break
+    for outcome in reversed(recent):
         if streak_kind == "none":
             streak_kind = outcome
         if outcome != streak_kind:
@@ -1370,6 +1677,103 @@ def summarize_recent_results(battles: Sequence[dict], *, window: int = 5) -> dic
         "losses": losses,
         "record": f"last {len(recent)}: {wins}-{losses} ({int(round((wins / len(recent)) * 100)) if recent else 0}% WR)",
         "streak": f"{streak_kind} x{streak}" if streak and streak_kind != "none" else "no streak",
+    }
+
+
+def summarize_recent_results_with_current(
+    battles: Sequence[dict],
+    current_battle: dict,
+    *,
+    window: int = 5,
+    identity_key: str = "battle_id",
+) -> dict[str, object]:
+    """Summarize a result window after merging the just-finished battle.
+
+    The live battle runner queues Discord before its async stats enrichment
+    finishes. Without this merge, a newly finished loss can still post the
+    previous all-win window, which is misleading operator evidence.
+    """
+
+    rows = [dict(battle) for battle in battles if isinstance(battle, dict)]
+    current = dict(current_battle or {})
+
+    def row_identity(row: dict) -> str:
+        for key in (identity_key, "battle_id", "battle_tag", "id"):
+            value = _clean_line(row.get(key, ""))
+            if value:
+                return value
+        return ""
+
+    current_id = row_identity(current)
+    merged = False
+
+    if current_id:
+        start = max(0, len(rows) - (window + 3))
+        for index in range(len(rows) - 1, start - 1, -1):
+            if row_identity(rows[index]) == current_id:
+                updated = dict(rows[index])
+                updated.update(current)
+                rows[index] = updated
+                merged = True
+                break
+
+    if current and not merged:
+        rows.append(current)
+
+    return summarize_recent_results(rows, window=window)
+
+
+def recent_results_safety_alert(
+    battles: Sequence[dict],
+    current_battle: dict,
+    *,
+    short_window: int = 5,
+    trend_window: int = 20,
+    loss_streak_threshold: int = 5,
+    low_win_rate_threshold: float = 0.45,
+    min_decisive_for_rate: int = 10,
+) -> dict[str, object]:
+    """Return a machine-actionable alert when recent ladder results look unsafe."""
+
+    short = summarize_recent_results_with_current(battles, current_battle, window=short_window)
+    trend = summarize_recent_results_with_current(battles, current_battle, window=trend_window)
+    decisive = int(trend.get("wins") or 0) + int(trend.get("losses") or 0)
+    win_rate = (float(trend.get("wins") or 0) / decisive) if decisive else 0.0
+    streak_text = str(trend.get("streak") or "")
+    loss_streak = 0
+    if streak_text.startswith("loss x"):
+        try:
+            loss_streak = int(streak_text.split("x", 1)[1])
+        except (TypeError, ValueError):
+            loss_streak = 0
+
+    if loss_streak >= loss_streak_threshold:
+        trigger = "loss-streak"
+        headline = f"Fouler loss streak safety alert ({loss_streak} straight)"
+        summary = (
+            f"loss streak {loss_streak} reached threshold {loss_streak_threshold}; "
+            f"{trend.get('record')}"
+        )
+    elif decisive >= min_decisive_for_rate and win_rate < low_win_rate_threshold:
+        trigger = "low-recent-win-rate"
+        headline = f"Fouler recent win-rate safety alert ({win_rate:.0%})"
+        summary = (
+            f"recent decisive win rate {win_rate:.0%} is below {low_win_rate_threshold:.0%}; "
+            f"{trend.get('record')}"
+        )
+    else:
+        return {}
+
+    return {
+        "trigger": trigger,
+        "headline": headline,
+        "summary": summary,
+        "short_record": short.get("record"),
+        "trend_record": trend.get("record"),
+        "streak": trend.get("streak"),
+        "loss_streak": loss_streak,
+        "win_rate": win_rate,
+        "decisive": decisive,
     }
 
 
