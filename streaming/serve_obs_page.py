@@ -22,7 +22,9 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
+import traceback
 import re
 import atexit
 from datetime import datetime
@@ -159,6 +161,7 @@ REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "60"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
+LOOP_LAG_WARN_SEC = float(os.getenv("OBS_LOOP_LAG_WARN_SEC", "2.0") or "2.0")
 
 ws_clients: set[web.WebSocketResponse] = set()
 _obs_client = None
@@ -521,9 +524,10 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
     await ws.prepare(request)
 
     ws_clients.add(ws)
+    init_payload = await asyncio.to_thread(build_state_payload)
     await ws.send_str(json.dumps({
         "type": "INIT",
-        "payload": build_state_payload(),
+        "payload": init_payload,
         "timestamp": time.time(),
     }))
 
@@ -586,7 +590,7 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
             print(f"[EVENT] Payload: {payload}")
         
         await maybe_refresh_elo_from_event(event_type, payload)
-        state = build_state_payload()
+        state = await asyncio.to_thread(build_state_payload)
         await broadcast("STATE_UPDATE", state)
         
         # Update OBS sources immediately when battle events come in (event-based, not polling)
@@ -784,8 +788,9 @@ def _recent_battle_results(limit: int = 5) -> list[dict]:
     return recent
 
 
-def _build_battle_lab_payload(slot_num: int, battle: dict | None) -> dict:
-    state = build_state_payload()
+def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | None = None) -> dict:
+    if state is None:
+        state = build_state_payload()
     status = state.get("status") if isinstance(state.get("status"), dict) else {}
     events, turn, log_name = _recent_battle_events(battle)
     age_seconds = _battle_age_seconds(battle)
@@ -1217,7 +1222,7 @@ async def _run_elo_refresh_task(*, force: bool, delay: int = 0) -> None:
             await asyncio.sleep(max(0, delay))
         refreshed = await _refresh_elo(force=force)
         if refreshed:
-            await broadcast("STATE_UPDATE", build_state_payload())
+            await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
     except asyncio.CancelledError:
         pass
     except Exception:
@@ -1643,7 +1648,8 @@ async def handle_health(request: web.Request) -> web.Response:
         "on",
     )
     if deep_requested:
-        singleton_status = _build_singleton_status()
+        # Process-table scan shells out to PowerShell (seconds); keep it off the event loop.
+        singleton_status = await asyncio.to_thread(_build_singleton_status)
     else:
         singleton_status = {
             "duplicateCount": 0,
@@ -1654,7 +1660,8 @@ async def handle_health(request: web.Request) -> web.Response:
     if deep_requested:
         payload, status_code = await _load_devstream_health_payload(singleton_status)
     else:
-        payload, status_code = _public_surface_health_payload(
+        payload, status_code = await asyncio.to_thread(
+            _public_surface_health_payload,
             singleton_status,
             {
                 "ok": None,
@@ -1674,7 +1681,7 @@ async def handle_health(request: web.Request) -> web.Response:
     return web.json_response(payload, status=status_code)
 
 
-async def handle_status(request: web.Request) -> web.Response:
+def _build_status_payload() -> dict:
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
     current_accounts = _current_showdown_accounts(battles)
@@ -1696,11 +1703,16 @@ async def handle_status(request: web.Request) -> web.Response:
     daily = state_store.read_daily_stats()
     status["today_wins"] = daily.get("wins", 0)
     status["today_losses"] = daily.get("losses", 0)
-    return web.json_response(status)
+    return status
+
+
+async def handle_status(request: web.Request) -> web.Response:
+    # File reads + battle_stats fallbacks run off-loop so slow disk never wedges the server.
+    return web.json_response(await asyncio.to_thread(_build_status_payload))
 
 
 async def handle_state(request: web.Request) -> web.Response:
-    return web.json_response(build_state_payload())
+    return web.json_response(await asyncio.to_thread(build_state_payload))
 
 
 DEKU_STATE_URL = os.getenv("DEKU_STATE_URL", "http://127.0.0.1:8777/state")
@@ -1776,7 +1788,7 @@ async def handle_battles_file(request: web.Request) -> web.Response:
 
 
 async def handle_debug_state(request: web.Request) -> web.Response:
-    return web.json_response(build_debug_payload())
+    return web.json_response(await asyncio.to_thread(build_debug_payload))
 
 
 async def poll_files(app: web.Application) -> None:
@@ -1808,12 +1820,12 @@ async def poll_files(app: web.Application) -> None:
         if status_mtime and status_mtime != last_status_mtime:
             print(f"[POLL] Status file changed (mtime: {status_mtime})")
             last_status_mtime = status_mtime
-            await broadcast("STATE_UPDATE", build_state_payload())
+            await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
 
         if battles_mtime and battles_mtime != last_battles_mtime:
             print(f"[POLL] Battles file changed (mtime: {battles_mtime})")
             last_battles_mtime = battles_mtime
-            await broadcast("STATE_UPDATE", build_state_payload())
+            await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
 
         # Periodic OBS sync so a failed update doesn't leave a slot stale.
         # Also poll DEKU's state for cross-machine battle display in slot 2.
@@ -1822,7 +1834,7 @@ async def poll_files(app: web.Application) -> None:
             if (now - last_obs_sync) >= OBS_SYNC_INTERVAL_SEC:
                 print(f"[POLL] Running periodic OBS sync (interval: {OBS_SYNC_INTERVAL_SEC}s)")
                 last_obs_sync = now
-                local_payload = build_state_payload()
+                local_payload = await asyncio.to_thread(build_state_payload)
                 local_payload = await _merge_deku_battles(local_payload)
                 await maybe_update_obs_sources(local_payload)
 
@@ -1834,7 +1846,7 @@ async def poll_files(app: web.Application) -> None:
                 try:
                     refreshed = await _refresh_elo(force=True)
                     if refreshed:
-                        await broadcast("STATE_UPDATE", build_state_payload())
+                        await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
                 except Exception:
                     pass
 
@@ -1850,15 +1862,63 @@ async def poll_files(app: web.Application) -> None:
                     print(f"[GHOST-CLEANUP] Error: {e}")
 
 
+_loop_beat = {"ts": 0.0, "thread_id": 0}
+
+
+async def monitor_loop_lag(app: web.Application) -> None:
+    """Log when the event loop stalls (sync work wedging the loop = port stops accepting)."""
+    interval = 0.25
+    _loop_beat["thread_id"] = threading.get_ident()
+    _loop_beat["ts"] = time.monotonic()
+    while True:
+        started = time.monotonic()
+        await asyncio.sleep(interval)
+        _loop_beat["ts"] = time.monotonic()
+        lag = _loop_beat["ts"] - started - interval
+        if lag >= LOOP_LAG_WARN_SEC:
+            print(f"[LOOP-LAG] Event loop was blocked ~{lag:.1f}s (warn threshold {LOOP_LAG_WARN_SEC:.1f}s)")
+
+
+def _loop_stall_watcher() -> None:
+    """OS-thread watchdog: dump the loop thread's stack DURING a stall.
+
+    The async LOOP-LAG monitor can only report a stall after surviving it;
+    keepalives kill a wedged server mid-stall, so the report never lands.
+    This plain thread keeps running while the loop is frozen and writes the
+    loop thread's live stack to stderr, naming the blocking call.
+    """
+    while True:
+        time.sleep(0.5)
+        beat_ts = _loop_beat["ts"]
+        thread_id = _loop_beat["thread_id"]
+        if not beat_ts or not thread_id:
+            continue
+        stall = time.monotonic() - beat_ts
+        if stall < LOOP_LAG_WARN_SEC:
+            continue
+        frame = sys._current_frames().get(thread_id)
+        stack = "".join(traceback.format_stack(frame)) if frame else "<no frame>"
+        print(
+            f"[LOOP-STALL] Event loop unresponsive for {stall:.1f}s; loop thread stack:\n{stack}",
+            file=sys.stderr,
+            flush=True,
+        )
+        time.sleep(5)  # rate-limit dumps during one long stall
+
+
 async def start_background_tasks(app: web.Application) -> None:
     app["poller"] = asyncio.create_task(poll_files(app))
+    app["loop_lag_monitor"] = asyncio.create_task(monitor_loop_lag(app))
+    threading.Thread(target=_loop_stall_watcher, name="loop-stall-watcher", daemon=True).start()
     # Initialize ELO cache and broadcast once ready
     async def init_and_broadcast_elo():
         await _init_elo_cache()
-        await broadcast("STATE_UPDATE", build_state_payload())
+        await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
     app["elo_init"] = asyncio.create_task(init_and_broadcast_elo())
     if _obs_client:
-        app["obs_init"] = asyncio.create_task(maybe_update_obs_sources(build_state_payload()))
+        async def init_obs_sources():
+            await maybe_update_obs_sources(await asyncio.to_thread(build_state_payload))
+        app["obs_init"] = asyncio.create_task(init_obs_sources())
 
 
 async def cleanup_background_tasks(app: web.Application) -> None:
@@ -1867,6 +1927,11 @@ async def cleanup_background_tasks(app: web.Application) -> None:
         poller.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await poller
+    lag_monitor = app.get("loop_lag_monitor")
+    if lag_monitor:
+        lag_monitor.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await lag_monitor
     obs_init = app.get("obs_init")
     if obs_init:
         obs_init.cancel()
@@ -2128,24 +2193,32 @@ async def handle_slot_state(request: web.Request) -> web.Response:
     if slot_num < 1 or slot_num > 9:
         return web.json_response({"error": "invalid slot"}, status=400)
 
-    battle = _battle_for_slot(slot_num)
+    # State + battle-log tail reads are sync disk work; keep them off the event loop.
+    return web.json_response(await asyncio.to_thread(_slot_state_payload, slot_num))
+
+
+def _slot_state_payload(slot_num: int) -> dict:
+    # Build the state payload once and share it with the battle-lab section.
+    state = build_state_payload()
+    battles = state.get("battles") or []
+    battle = _build_slot_map(battles).get(slot_num) if isinstance(battles, list) else None
 
     if battle:
         battle_id = battle.get("id")
         url = _build_direct_battle_url(battle_id) if battle_id else None
-        return web.json_response({
+        return {
             "slot": slot_num,
             "battle_id": battle_id,
             "url": url,
-            "battle_lab": _build_battle_lab_payload(slot_num, battle),
-        })
+            "battle_lab": _build_battle_lab_payload(slot_num, battle, state=state),
+        }
 
-    return web.json_response({
+    return {
         "slot": slot_num,
         "battle_id": None,
         "url": None,
-        "battle_lab": _build_battle_lab_payload(slot_num, None),
-    })
+        "battle_lab": _build_battle_lab_payload(slot_num, None, state=state),
+    }
 
 
 async def handle_battle_slot(request: web.Request) -> web.Response:

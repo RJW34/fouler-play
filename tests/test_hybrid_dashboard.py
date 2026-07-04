@@ -289,3 +289,172 @@ def test_trace_reason_redacts_project_key():
     assert parsed is not None
     assert "[redacted]" in parsed["reason"]
     assert "sk-proj-" not in parsed["reason"]
+
+
+def test_public_turns_precomputed_once_per_rescan(tmp_path):
+    trace_dir = tmp_path / "decision_traces"
+    _write_trace(
+        trace_dir,
+        "battle-gen9ou-9_turn1_1.json",
+        {
+            "battle_tag": "battle-gen9ou-9",
+            "turn": 1,
+            "timestamp": "2026-07-04T10:00:00Z",
+            "decision_mode": "eval",
+            "choice": "surf",
+            "eval_scores_raw": {"surf": 0.9},
+        },
+    )
+    provider = DashboardDataProvider(
+        trace_dir=trace_dir,
+        state_module=_FakeStateStore(),
+        scan_interval_sec=3600.0,
+    )
+
+    first = provider.trace_cache.get_public_turns()
+    assert first and first[0]["battle_id"] == "battle-gen9ou-9"
+    assert first[0]["engine_choice"] == "surf"
+
+    # Between rescans the same precomputed list is reused: no per-request
+    # re-sanitize of every cached turn (the old per-poll cost that wedged
+    # the event loop at ~4000 traces).
+    assert provider.trace_cache.get_public_turns() is first
+
+    _write_trace(
+        trace_dir,
+        "battle-gen9ou-9_turn2_1.json",
+        {
+            "battle_tag": "battle-gen9ou-9",
+            "turn": 2,
+            "timestamp": "2026-07-04T10:00:01Z",
+            "decision_mode": "eval",
+            "choice": "protect",
+            "eval_scores_raw": {"protect": 0.6},
+        },
+    )
+    provider.trace_cache.refresh(force=True)
+    second = provider.trace_cache.get_public_turns()
+    assert second is not first
+    assert len(second) == 2
+
+
+def test_dashboard_state_route_offloads_slow_provider(tmp_path):
+    """Regression for the OBS page-server wedge: a slow get_state_payload used
+    to run inline in the route handler and block the event loop for seconds
+    per poll; it must now run off-loop via asyncio.to_thread."""
+    import time as _time
+
+    class _SlowProvider:
+        def get_state_payload(self):
+            _time.sleep(1.0)
+            return {"ok": True}
+
+        def get_turns_payload(self, *, limit=50):
+            return {"turns": [], "limit": limit}
+
+        def get_battles_payload(self):
+            return {"battles": []}
+
+    dashboard_html = tmp_path / "dashboard.html"
+    overlay_html = tmp_path / "overlay.html"
+    dashboard_html.write_text("<html>dashboard</html>", encoding="utf-8")
+    overlay_html.write_text("<html>overlay</html>", encoding="utf-8")
+
+    async def _run():
+        app = web.Application()
+        register_dashboard_routes(
+            app,
+            provider=_SlowProvider(),
+            dashboard_html=dashboard_html,
+            overlay_html=overlay_html,
+        )
+        server = TestServer(app)
+        client = TestClient(server)
+        await client.start_server()
+        try:
+            fetch = asyncio.ensure_future(client.get("/api/dashboard/state"))
+            loop = asyncio.get_event_loop()
+            started = loop.time()
+            await asyncio.sleep(0.05)
+            elapsed = loop.time() - started
+            resp = await fetch
+            assert resp.status == 200
+            payload = await resp.json()
+            assert payload == {"ok": True}
+        finally:
+            await client.close()
+        return elapsed
+
+    elapsed = asyncio.run(_run())
+    assert elapsed < 0.6, f"event loop blocked for {elapsed:.2f}s during dashboard state build"
+
+
+def _simple_trace(turn: int, choice: str) -> dict:
+    return {
+        "battle_tag": "battle-gen9ou-77",
+        "turn": turn,
+        "timestamp": f"2026-07-04T11:00:{turn:02d}Z",
+        "decision_mode": "eval",
+        "choice": choice,
+        "eval_scores_raw": {choice: 0.9},
+    }
+
+
+def test_payload_memo_coalesces_concurrent_polls(tmp_path):
+    trace_dir = tmp_path / "decision_traces"
+    _write_trace(trace_dir, "battle-gen9ou-77_turn1_1.json", _simple_trace(1, "surf"))
+
+    provider = DashboardDataProvider(
+        trace_dir=trace_dir,
+        state_module=_FakeStateStore(),
+        scan_interval_sec=0.0,
+        payload_memo_ttl_sec=60.0,
+    )
+    first = provider.get_state_payload()
+    # Within the TTL, repeated polls (OBS sources poll every ~1.5s) reuse the
+    # same built payload instead of re-running the trace scan + aggregation.
+    assert provider.get_state_payload() is first
+
+    uncached = DashboardDataProvider(
+        trace_dir=trace_dir,
+        state_module=_FakeStateStore(),
+        scan_interval_sec=0.0,
+        payload_memo_ttl_sec=0.0,
+    )
+    a = uncached.get_state_payload()
+    assert uncached.get_state_payload() is not a
+
+
+def test_trace_files_parse_and_sanitize_once_per_change(tmp_path, monkeypatch):
+    import streaming.hybrid_dashboard as hd
+
+    trace_dir = tmp_path / "decision_traces"
+    _write_trace(trace_dir, "battle-gen9ou-77_turn1_1.json", _simple_trace(1, "surf"))
+    _write_trace(trace_dir, "battle-gen9ou-77_turn2_1.json", _simple_trace(2, "protect"))
+
+    provider = DashboardDataProvider(
+        trace_dir=trace_dir,
+        state_module=_FakeStateStore(),
+        scan_interval_sec=0.0,
+        payload_memo_ttl_sec=0.0,
+    )
+    assert len(provider.get_state_payload()["timeline"]) == 2
+
+    parse_calls = {"count": 0}
+    real_parse = hd.parse_trace_file
+
+    def counting_parse(path):
+        parse_calls["count"] += 1
+        return real_parse(path)
+
+    monkeypatch.setattr(hd, "parse_trace_file", counting_parse)
+
+    _write_trace(trace_dir, "battle-gen9ou-77_turn3_1.json", _simple_trace(3, "toxic"))
+    provider.trace_cache.refresh(force=True)
+    payload = provider.get_state_payload()
+
+    # Incremental rescan: only the NEW trace file is parsed/sanitized; the two
+    # unchanged files are served from the per-entry cache.
+    assert parse_calls["count"] == 1
+    assert len(payload["timeline"]) == 3
+    assert payload["timeline"][0]["turn"] == 3

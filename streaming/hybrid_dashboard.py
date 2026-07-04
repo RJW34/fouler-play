@@ -9,6 +9,7 @@ dashboard payloads.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -33,6 +34,7 @@ DEFAULT_DASHBOARD_HTML = Path(__file__).resolve().parent / "hybrid_dashboard.htm
 DEFAULT_OVERLAY_HTML = Path(__file__).resolve().parent / "hybrid_overlay.html"
 
 DEFAULT_SCAN_INTERVAL_SEC = 1.0
+DEFAULT_PAYLOAD_MEMO_TTL_SEC = 1.0
 MAX_TURNS_LIMIT = 200
 DEFAULT_TURNS_LIMIT = 50
 TIMELINE_LIMIT = 20
@@ -303,10 +305,39 @@ def parse_trace_file(path: Path) -> dict[str, Any] | None:
     return parse_trace_turn(payload, source_name=path.name, fallback_epoch=stat.st_mtime)
 
 
+def _public_turn_view(turn: dict[str, Any]) -> dict[str, Any]:
+    """Sanitized public projection of a parsed trace turn.
+
+    Computed once per trace-cache rescan (not per request): re-sanitizing every
+    cached turn on every poll was measured at ~0.7s for ~4000 traces and was a
+    main contributor to the OBS page server's event-loop wedge.
+    """
+    return {
+        "trace_id": _sanitize_id(turn.get("trace_id"), max_len=160, fallback="trace"),
+        "battle_id": _sanitize_id(turn.get("battle_id"), max_len=96, fallback="-"),
+        "turn": _safe_int(turn.get("turn"), default=-1, minimum=-1, maximum=10000),
+        "timestamp": _sanitize_text(turn.get("timestamp"), max_len=48, fallback=None),
+        "decision_mode": _sanitize_decision_mode(turn.get("decision_mode")),
+        "engine_choice": _sanitize_text(turn.get("engine_choice"), max_len=80, fallback="-"),
+        "candidate_list": [
+            _sanitize_text(candidate, max_len=80, fallback="")
+            for candidate in (turn.get("candidate_list") or [])
+            if _sanitize_text(candidate, max_len=80, fallback="")
+        ][:MAX_CANDIDATES],
+        "selected_choice": _sanitize_text(turn.get("selected_choice"), max_len=80, fallback="-"),
+        "override": bool(turn.get("override", False)),
+        "hybrid_status": _sanitize_hybrid_status(turn.get("hybrid_status")),
+        "reason": _sanitize_text(turn.get("reason"), max_len=180, fallback=""),
+        "choice_override": _sanitize_text(turn.get("choice_override"), max_len=64, fallback=""),
+        "formatted_choice": _sanitize_text(turn.get("formatted_choice"), max_len=120, fallback=""),
+    }
+
+
 @dataclass
 class _TraceFileEntry:
     signature: tuple[int, int]
     parsed_turn: dict[str, Any] | None
+    public_turn: dict[str, Any] | None
     parse_error: bool
 
 
@@ -316,6 +347,7 @@ class DecisionTraceCache:
         self.scan_interval_sec = max(0.2, float(scan_interval_sec))
         self._entries: dict[Path, _TraceFileEntry] = {}
         self._turns: list[dict[str, Any]] = []
+        self._public_turns: list[dict[str, Any]] = []
         self._parse_errors = 0
         self._last_scan_epoch = 0.0
         self._last_dir_signature: tuple[int, int] | None = None
@@ -346,6 +378,7 @@ class DecisionTraceCache:
         if not self.trace_dir.exists():
             self._entries = {}
             self._turns = []
+            self._public_turns = []
             self._parse_errors = 0
             self._last_scan_epoch = now
             self._last_dir_signature = None
@@ -366,13 +399,27 @@ class DecisionTraceCache:
             self._last_scan_epoch = now
             return
 
+        # Single-pass scandir keeps signatures from directory find-data (no
+        # per-file stat syscalls): the old glob+stat of every trace file was
+        # measured in the hundreds of ms per rescan at ~4000 traces.
         current_signatures: dict[Path, tuple[int, int]] = {}
-        for path in self.trace_dir.glob("*.json"):
-            try:
-                stat = path.stat()
-            except Exception:
-                continue
-            current_signatures[path] = (int(stat.st_mtime_ns), int(stat.st_size))
+        try:
+            with os.scandir(self.trace_dir) as scan:
+                for dirent in scan:
+                    if not dirent.name.endswith(".json"):
+                        continue
+                    try:
+                        if not dirent.is_file():
+                            continue
+                        stat = dirent.stat()
+                    except OSError:
+                        continue
+                    current_signatures[Path(dirent.path)] = (
+                        int(stat.st_mtime_ns),
+                        int(stat.st_size),
+                    )
+        except OSError:
+            pass
 
         existing_paths = set(self._entries)
         current_paths = set(current_signatures)
@@ -387,25 +434,28 @@ class DecisionTraceCache:
             self._entries[path] = _TraceFileEntry(
                 signature=signature,
                 parsed_turn=parsed_turn,
+                # Sanitize once per file, not once per rescan/request.
+                public_turn=_public_turn_view(parsed_turn) if parsed_turn is not None else None,
                 parse_error=parsed_turn is None,
             )
 
-        turns: list[dict[str, Any]] = []
+        pairs: list[tuple[dict[str, Any], dict[str, Any]]] = []
         parse_errors = 0
         for entry in self._entries.values():
             if entry.parse_error:
                 parse_errors += 1
-            if entry.parsed_turn is not None:
-                turns.append(entry.parsed_turn)
-        turns.sort(
-            key=lambda turn: (
-                _safe_float(turn.get("sort_ts"), default=0.0),
-                _safe_int(turn.get("turn"), default=-1),
+            if entry.parsed_turn is not None and entry.public_turn is not None:
+                pairs.append((entry.parsed_turn, entry.public_turn))
+        pairs.sort(
+            key=lambda pair: (
+                _safe_float(pair[0].get("sort_ts"), default=0.0),
+                _safe_int(pair[0].get("turn"), default=-1),
             ),
             reverse=True,
         )
 
-        self._turns = turns
+        self._turns = [pair[0] for pair in pairs]
+        self._public_turns = [pair[1] for pair in pairs]
         self._parse_errors = parse_errors
         self._last_scan_epoch = now
         self._last_dir_signature = dir_signature
@@ -423,6 +473,11 @@ class DecisionTraceCache:
     def get_all_turns(self) -> list[dict[str, Any]]:
         self.refresh()
         return [dict(turn) for turn in self._turns]
+
+    def get_public_turns(self) -> list[dict[str, Any]]:
+        """Precomputed sanitized views, newest first. Treat as read-only."""
+        self.refresh()
+        return self._public_turns
 
     def health(self) -> dict[str, Any]:
         self.refresh()
@@ -442,6 +497,7 @@ class DashboardDataProvider:
         trace_dir: Path | str = DEFAULT_TRACE_DIR,
         state_module=state_store,
         scan_interval_sec: float = DEFAULT_SCAN_INTERVAL_SEC,
+        payload_memo_ttl_sec: float = DEFAULT_PAYLOAD_MEMO_TTL_SEC,
     ):
         trace_path = Path(trace_dir)
         if not trace_path.is_absolute():
@@ -451,6 +507,26 @@ class DashboardDataProvider:
             trace_path,
             scan_interval_sec=scan_interval_sec,
         )
+        self.payload_memo_ttl_sec = max(0.0, float(payload_memo_ttl_sec))
+        self._payload_memo: dict[str, tuple[float, Any]] = {}
+        self._payload_memo_lock = threading.Lock()
+
+    def _memoized_payload(self, key: str, builder) -> Any:
+        """Coalesce concurrent OBS pollers onto one payload build per TTL.
+
+        Multiple browser sources poll the dashboard APIs every ~1.5s; without
+        this, each poll rebuilt the full payload (trace rescan + aggregation),
+        which starved the box and wedged the page server's event loop.
+        """
+        if self.payload_memo_ttl_sec <= 0:
+            return builder()
+        with self._payload_memo_lock:
+            cached = self._payload_memo.get(key)
+            if cached and (time.monotonic() - cached[0]) < self.payload_memo_ttl_sec:
+                return cached[1]
+            value = builder()
+            self._payload_memo[key] = (time.monotonic(), value)
+            return value
 
     def _read_status(self) -> dict[str, Any]:
         try:
@@ -536,27 +612,8 @@ class DashboardDataProvider:
             "reason": "no_trace_data",
         }
 
-    @staticmethod
-    def _public_turn(turn: dict[str, Any]) -> dict[str, Any]:
-        return {
-            "trace_id": _sanitize_id(turn.get("trace_id"), max_len=160, fallback="trace"),
-            "battle_id": _sanitize_id(turn.get("battle_id"), max_len=96, fallback="-"),
-            "turn": _safe_int(turn.get("turn"), default=-1, minimum=-1, maximum=10000),
-            "timestamp": _sanitize_text(turn.get("timestamp"), max_len=48, fallback=None),
-            "decision_mode": _sanitize_decision_mode(turn.get("decision_mode")),
-            "engine_choice": _sanitize_text(turn.get("engine_choice"), max_len=80, fallback="-"),
-            "candidate_list": [
-                _sanitize_text(candidate, max_len=80, fallback="")
-                for candidate in (turn.get("candidate_list") or [])
-                if _sanitize_text(candidate, max_len=80, fallback="")
-            ][:MAX_CANDIDATES],
-            "selected_choice": _sanitize_text(turn.get("selected_choice"), max_len=80, fallback="-"),
-            "override": bool(turn.get("override", False)),
-            "hybrid_status": _sanitize_hybrid_status(turn.get("hybrid_status")),
-            "reason": _sanitize_text(turn.get("reason"), max_len=180, fallback=""),
-            "choice_override": _sanitize_text(turn.get("choice_override"), max_len=64, fallback=""),
-            "formatted_choice": _sanitize_text(turn.get("formatted_choice"), max_len=120, fallback=""),
-        }
+    # Kept for compatibility; the per-turn sanitize now happens once per rescan.
+    _public_turn = staticmethod(_public_turn_view)
 
     @staticmethod
     def _build_recent_trend(turns: list[dict[str, Any]]) -> dict[str, Any]:
@@ -606,9 +663,15 @@ class DashboardDataProvider:
             minimum=1,
             maximum=MAX_TURNS_LIMIT,
         )
-        turns = self.trace_cache.get_turns(limit=safe_limit)
+        return self._memoized_payload(
+            f"turns:{safe_limit}",
+            lambda: self._build_turns_payload(safe_limit),
+        )
+
+    def _build_turns_payload(self, safe_limit: int) -> dict[str, Any]:
+        public_turns = self.trace_cache.get_public_turns()
         return {
-            "turns": [self._public_turn(turn) for turn in turns],
+            "turns": [dict(turn) for turn in public_turns[:safe_limit]],
             "limit": safe_limit,
             "total_available": self.trace_cache.total_turns,
             "updated": _utc_now_iso(),
@@ -616,7 +679,10 @@ class DashboardDataProvider:
         }
 
     def get_battles_payload(self) -> dict[str, Any]:
-        turns = self.trace_cache.get_all_turns()
+        return self._memoized_payload("battles", self._build_battles_payload)
+
+    def _build_battles_payload(self) -> dict[str, Any]:
+        turns = self.trace_cache.get_public_turns()
         battles = self._build_battle_payload(turns)
         return {
             **battles,
@@ -625,8 +691,11 @@ class DashboardDataProvider:
         }
 
     def get_state_payload(self) -> dict[str, Any]:
-        turns = self.trace_cache.get_all_turns()
-        public_turns = [self._public_turn(turn) for turn in turns]
+        return self._memoized_payload("state", self._build_state_payload)
+
+    def _build_state_payload(self) -> dict[str, Any]:
+        public_turns = self.trace_cache.get_public_turns()
+        turns = public_turns
         timeline = public_turns[:TIMELINE_LIMIT]
         latest = timeline[0] if timeline else None
 
@@ -728,9 +797,14 @@ def get_default_provider() -> DashboardDataProvider:
         os.getenv("DASHBOARD_TRACE_SCAN_INTERVAL_SEC", DEFAULT_SCAN_INTERVAL_SEC),
         default=DEFAULT_SCAN_INTERVAL_SEC,
     )
+    memo_ttl = _safe_float(
+        os.getenv("DASHBOARD_PAYLOAD_MEMO_TTL_SEC", DEFAULT_PAYLOAD_MEMO_TTL_SEC),
+        default=DEFAULT_PAYLOAD_MEMO_TTL_SEC,
+    )
     _default_provider = DashboardDataProvider(
         trace_dir=DEFAULT_TRACE_DIR,
         scan_interval_sec=scan_interval,
+        payload_memo_ttl_sec=memo_ttl,
     )
     return _default_provider
 
@@ -754,8 +828,10 @@ def register_dashboard_routes(
     dashboard_file = Path(dashboard_html)
     overlay_file = Path(overlay_html)
 
+    # Payload builders hit the disk (trace-dir rescan can take seconds on a cold
+    # cache); run them off-loop so OBS polling never wedges the HTTP server.
     async def handle_dashboard_state(_request: web.Request) -> web.Response:
-        return web.json_response(data_provider.get_state_payload())
+        return web.json_response(await asyncio.to_thread(data_provider.get_state_payload))
 
     async def handle_dashboard_turns(request: web.Request) -> web.Response:
         raw_limit = request.query.get("limit", str(DEFAULT_TURNS_LIMIT))
@@ -765,10 +841,12 @@ def register_dashboard_routes(
             minimum=1,
             maximum=MAX_TURNS_LIMIT,
         )
-        return web.json_response(data_provider.get_turns_payload(limit=limit))
+        return web.json_response(
+            await asyncio.to_thread(data_provider.get_turns_payload, limit=limit)
+        )
 
     async def handle_dashboard_battles(_request: web.Request) -> web.Response:
-        return web.json_response(data_provider.get_battles_payload())
+        return web.json_response(await asyncio.to_thread(data_provider.get_battles_payload))
 
     async def handle_dashboard_page(_request: web.Request) -> web.Response:
         target = dashboard_file if dashboard_file.exists() else DEFAULT_DASHBOARD_HTML
@@ -778,8 +856,24 @@ def register_dashboard_routes(
         target = overlay_file if overlay_file.exists() else DEFAULT_OVERLAY_HTML
         return web.FileResponse(str(target))
 
+    async def _warm_trace_cache(app: web.Application) -> None:
+        # The first trace scan parses every trace file (~10s at ~4000 traces);
+        # warm it off-loop at startup so the first OBS polls don't queue on it.
+        trace_cache = getattr(data_provider, "trace_cache", None)
+        if trace_cache is None:
+            return
+
+        async def _warm() -> None:
+            try:
+                await asyncio.to_thread(trace_cache.refresh, force=True)
+            except Exception:
+                pass
+
+        app["dashboard_cache_warmup"] = asyncio.create_task(_warm())
+
     _add_get_if_missing(app, "/api/dashboard/state", handle_dashboard_state)
     _add_get_if_missing(app, "/api/dashboard/turns", handle_dashboard_turns)
     _add_get_if_missing(app, "/api/dashboard/battles", handle_dashboard_battles)
     _add_get_if_missing(app, "/dashboard/hybrid", handle_dashboard_page)
     _add_get_if_missing(app, "/overlay/hybrid", handle_overlay_page)
+    app.on_startup.append(_warm_trace_cache)

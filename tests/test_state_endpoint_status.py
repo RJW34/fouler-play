@@ -359,3 +359,32 @@ def test_active_battle_atomic_write_retries_windows_replace_lock(tmp_path, monke
     assert json.loads(active_path.read_text(encoding="utf-8"))["count"] == 0
     assert not (tmp_path / "active_battles.json.tmp").exists()
     assert not state_store.STATE_STORE_WRITE_FAILURE_PATH.exists()
+
+
+def test_state_endpoint_offloads_blocking_payload_build(monkeypatch):
+    """Regression for the OBS page-server wedge: a slow build_state_payload used
+    to run inline in the handler and block the event loop (port stopped
+    accepting); it must now run off-loop via asyncio.to_thread."""
+    import time as _time
+
+    def slow_build():
+        _time.sleep(1.0)
+        return {"battles": [], "status": {}, "count": 0}
+
+    monkeypatch.setattr(serve_obs_page, "build_state_payload", slow_build)
+
+    async def _run():
+        request_task = asyncio.ensure_future(serve_obs_page.handle_state(None))
+        loop = asyncio.get_event_loop()
+        started = loop.time()
+        # The handler runs during this sleep; if it blocked the loop, the sleep
+        # itself would take ~1s instead of ~0.05s.
+        await asyncio.sleep(0.05)
+        elapsed = loop.time() - started
+        response = await request_task
+        return elapsed, response
+
+    elapsed, response = asyncio.run(_run())
+    assert elapsed < 0.6, f"event loop blocked for {elapsed:.2f}s during /state build"
+    payload = json.loads(response.text)
+    assert payload["battles"] == []
