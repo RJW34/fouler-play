@@ -99,9 +99,11 @@ Canonical source of truth: `~/projects/the-abso-citadel/docs/hermes/DEVSTREAM_MI
 **Definition of Done:** reach AND sustain 1700 ELO in gen9ou on the 3 provided fat/stall teams,
 without redesigning the teams. ELO ~1164-1194 today; this is NOT done.
 
-> Note: `CLAUDE.md` and `devstream.yaml` mention older thresholds (1700 / 1800) and an older account
-> name (`npctypebeat`). The canonical mission above wins on any conflict: target is **1700**,
-> account is **LEBOTJAMESXD00N**.
+> Note: the mission text quotes the historical account name `LEBOTJAMESXD00N` (and `CLAUDE.md` /
+> `devstream.yaml` mention older thresholds 1700/1800 and an even older name `npctypebeat`). Those
+> account names are **RETIRED**. The **current live account is `thepeakmons`** (authoritative:
+> `.env` `PS_USERNAME`, `devstream/truth/runtime-lease.json`, `devstream/truth/health.json`). The
+> canonical target on any conflict is **1700 ELO**.
 
 ---
 
@@ -170,7 +172,7 @@ python infrastructure/improve_agent.py --dry-run   # show the fix it WOULD make,
 |---|---|---|
 | `run.py` | Battle entry point: websocket, laddering, batch loop, data collection. **Protected — do not edit.** | `python run.py ...` |
 | `process_lock.py` | Singleton lock (`.bot.pid`) — one `run.py` per account. | `acquire_lock()` (called from run.py) |
-| `fp/search/main.py` (7.3k lines) | **MCTS / decision engine.** `forced_lines -> eval -> 9-layer penalty pipeline`. The core "how the bot picks a move". | `find_best_move(...)` |
+| `fp/search/main.py` (7.3k lines) | **MCTS-first decision engine.** Real order: clock-safety -> endgame -> forced-line -> **MCTS** -> forced/matchup bias -> hard-legality+survival safety -> deterministic argmax (`_choose_mcts_only`). The heuristic **penalty pipeline is default-OFF** (`FOULER_PENALTY_PIPELINE=0`). **See [ARCHITECTURE.md](ARCHITECTURE.md) for the verified pipeline + layer status table.** | `find_best_move(...)` |
 | `fp/search/eval.py` (1.7k) | 1-ply position evaluation (material, hazards, HP, status). | called by main.py |
 | `fp/search/forced_lines.py` | Forced-sequence detection (OHKOs, forced switches). | called by main.py |
 | `fp/search/endgame.py` | Endgame / conversion logic. | called by main.py |
@@ -205,25 +207,29 @@ are **never_modify**.
 
 ---
 
-## 4. CURRENT STATE & ACTIVE BLOCKERS  (as of 2026-06-02)
+## 4. CURRENT STATE & ACTIVE BLOCKERS  (as of 2026-07-04)
 
-**What just got fixed (commit `82dee164`, branch `opus48/multisample-mcts`, on JIGGLY):**
-The self-improvement loop — crashing/orphaned since February — now mechanically runs. Four bugs fixed:
-1. `improve_agent` UTF-8 vs cp1252 crash on the `≈` character.
-2. Corrupt-patch apply (bad diffs were poisoning the tree).
-3. A permanently-red test gate that reverted *every* fix.
-4. A missing supervisor singleton guard.
-Result: `autoresearch -> improve_agent -> elo_watchdog` is wired into the runtime supervisor, and
-bad fixes are now correctly reverted.
+**Working branch: `fix/clock-countdown-parse-79`** (pushed to `origin/fix/clock-countdown-parse-79`).
+This is a **long-lived local fork line that has NEVER been merged back to `origin/master`** — do
+not assume `master` is current; trust `git status` on the box you are on. The fork is 387 commits /
+992 files ahead of the upstream base `55fa9b4`. The self-improvement loop (crashing since February)
+now runs, gated behind an offline-eval acceptance gate + a played-vs-policy divergence monitor.
+
+**Engine identity (the thing most stale docs get wrong):** the bot is **MCTS-first**. The heuristic
+penalty pipeline, the decision loop-breaker, and matchup-memory bias are all currently **OFF**; the
+strategic/archetype cluster is dormant/log-only. See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the
+verified pipeline and the ON/OFF/DORMANT layer table (this supersedes the old
+`forced_lines -> eval -> 9 penalty layers` description everywhere).
 
 **Honest status — NOT done:**
-- **No auto-fix has committed yet.** The loop runs but hasn't landed an accepted improvement.
-- **ELO has not climbed.** Sitting ~1164-1194; target is 1700.
-- **Top blocker: "decision instability".** The recurring top issue keeps **failing the test gate**,
-  so every proposed fix gets rejected. Likely causes: the diff is sent too little code context
-  (`MAX_CODE_LINES=500`, and for big files like `main.py` only the *last* 500 lines are sent), and/or
-  the grounded issue set is too narrow. Fixing this probably means giving the agent more/targeted
-  code context or broadening the issue catalog — not hacking the gate to pass.
+- **ELO band ~1050-1200** (recent live), not climbing to the 1700 target yet.
+- **2026-07-04 finding:** the decision loop-breaker (`break_repeated_decision`) was **trace-proven
+  harmful** — it caused 94% of played-vs-policy inversions (249/265 override turns) by demoting
+  correct repeated stall play, and was disabled via `.env` (`FOULER_LOOP_BREAK=0`) after the offline
+  eval gate. This is also the root of the old "decision_instability" label: the self-improvement loop
+  had added the breaker to cure a label its own patch created.
+- A separate **re-baseline effort** (`rebaseline/upstream-anchor-20260704` + worktree) is testing
+  whether anchoring to upstream removes the harmful layers by construction.
 
 **Dead artifact warning:** `replay_analysis/improvement_todo.json` (February) is a **dead legacy
 artifact**. The live pipeline reads `replay_analysis/autoresearch_latest.json`. Do not drive work
@@ -254,15 +260,19 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
    commit — the broken-gate-that-reverts-everything was the February failure.
 7. **Edit only allowed files.** Respect `guardrails.json allowed_modify` / `never_modify` and
    `improve_agent.ALLOWED_TARGETS`. Also: `min_games_between_deploys: 15`.
-8. **Account name:** `LEBOTJAMESXD00N`. One self-registered account, up to 3 concurrent battles.
+8. **Account name:** current live account is **`thepeakmons`** (per `.env` / `runtime-lease.json` /
+   `health.json`). `LEBOTJAMESXD00N` and `npctypebeat` are retired names — do not treat them as
+   current. One self-registered account, up to 3 concurrent battles.
 
 ---
 
 ## 6. CONVENTIONS
 
-- **Branch:** confirm the working branch from `git status` — do NOT assume `master`. ubunztu code
-  home currently sits on `claude/wincon-plan-bias`; the live runtime fix is on JIGGLY's
-  `opus48/multisample-mcts`. These diverge — sync deliberately, never `git reset --hard` shared data.
+- **Branch:** confirm the working branch from `git status` — do NOT assume `master`. The live
+  runtime + docs branch is `fix/clock-countdown-parse-79` (a long-lived fork line never merged to
+  `origin/master`). Older branch names in these docs (`claude/wincon-plan-bias`,
+  `opus48/multisample-mcts`) are historical — trust `git branch` / `git log` on the box you are on,
+  never `git reset --hard` shared data.
 - **Commit discipline:** one focused, scoped change per commit. Run `python -m pytest tests/ -v`
   **before** committing. Prefer new commits over amends.
 - **Do not push to a public remote** unless explicitly told. `origin` is the shared repo; pushing

@@ -1,12 +1,15 @@
-# BAKUGO Operations Guide — live PS_USERNAME runtime (MAGNETON/Windows)
+# BAKUGO Operations Guide — live PS_USERNAME runtime (JIGGLYPUFF/Windows)
+
+> Note: `MAGNETON` is RETIRED (2026-05-13). The live runtime is **JIGGLYPUFF**. Engine
+> architecture: see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Configuration Details
 
 | Item | Value |
 |------|-------|
 | **Install path** | `D:\Projects\fouler-play\` on JIGGLYPUFF |
-| **Branch** | `master` for deployment/base; check `TASKBOARD.md` first if a newer docs/coding-agent branch is temporarily ahead |
-| **Bot account** | `LEBOTJAMESXD00N`; current authority is `devstream\truth\runtime-lease.json`, with `.env` kept in sync as fallback |
+| **Branch** | `fix/clock-countdown-parse-79` (live runtime/docs; a long-lived fork line never merged to `origin/master`). Do NOT assume `master`; confirm with `git status`. |
+| **Bot account** | `thepeakmons`; authority is `devstream\truth\runtime-lease.json` + `.env` `PS_USERNAME` (kept in sync). `LEBOTJAMESXD00N`/`npctypebeat` are RETIRED names. |
 | **Credentials** | `.env` file (`PS_USERNAME`, `PS_PASSWORD`) |
 | **Logs** | `logs/` dir (rotating, 10MB max, 3 backups) |
 | **Start method** | `scripts\start_battle_supervisor_task.ps1` via `HERMES-FoulerBattleSupervisor` (current proof window: 30 battles, 1 concurrent) |
@@ -16,8 +19,8 @@
 
 ## Key .env Settings
 ```
-PS_USERNAME=LEBOTJAMESXD00N
-SHOWDOWN_ACCOUNTS=LEBOTJAMESXD00N
+PS_USERNAME=thepeakmons
+SHOWDOWN_ACCOUNTS=thepeakmons
 MAX_CONCURRENT_BATTLES=1
 LOSS_TRIGGERED_DRAIN=0
 TEAM_NAMES=gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo
@@ -43,7 +46,7 @@ Get-Content devstream\truth\latest-elo-proof.json
 git pull origin master
 
 # Restart streaming server
-Start-Process python -ArgumentList "streaming/serve_obs_page.py" -WorkingDirectory "C:\Users\Ryan\projects\fouler-play" -WindowStyle Hidden
+Start-Process python -ArgumentList "streaming/serve_obs_page.py" -WorkingDirectory "D:\Projects\fouler-play" -WindowStyle Hidden
 ```
 
 ## Troubleshooting
