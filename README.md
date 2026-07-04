@@ -1,5 +1,7 @@
 # Fouler Play
 
+> **Architecture: see [ARCHITECTURE.md](ARCHITECTURE.md) (the truthful current engine map).**
+
 A finite-lease competitive Pokemon (gen9ou) battle agent for the DEKU/HERMES devstream. Live ladder work runs in bounded proof windows, while recursive improvement work runs through a local Pokemon Showdown offline-eval harness before any change is trusted.
 
 Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).
@@ -13,16 +15,21 @@ Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).
 ## Architecture
 
 ```
-run.py                     Entry point
-fp/search/main.py          Decision engine: forced_lines -> eval -> penalty pipeline
-fp/search/eval.py          1-ply position evaluation
+run.py                     Entry point + battle-worker pool
+fp/search/main.py          Decision engine: clock-safety -> endgame -> forced-line -> MCTS -> argmax
 fp/search/forced_lines.py  Forced sequence detection (OHKOs, forced switches)
+fp/search/eval.py          1-ply position evaluation (eval-fallback path only)
 fp/battle_modifier.py      Pokemon Showdown protocol parser
 fp/run_battle.py           Battle loop + data collection
 replay_analysis/           Morning report generator
 ```
 
-The bot uses a 1-ply eval engine with 9 penalty layers to make decisions. It plays teams faithfully to their archetype (fat/stall) rather than optimizing for cheese wins.
+The engine is **MCTS-first**: it searches over Bayesian-sampled opponent sets and picks the
+top line by deterministic argmax under clock-safety and hard-legality/survival safety. The
+older heuristic **penalty pipeline is default-OFF** (`FOULER_PENALTY_PIPELINE=0`) and only
+runs on the eval-fallback branch. It plays teams faithfully to their archetype (fat/stall)
+rather than optimizing for cheese wins. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full
+verified pipeline and a layer-by-layer ON/OFF/DORMANT status table.
 
 ## Autoresearch MVP
 

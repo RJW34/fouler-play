@@ -110,7 +110,12 @@ is still required to confirm the 1700 trajectory.
 - **Recent engine commits** (March 23-25): stagnation switch boost for resisted moves, recovery loop detection, switch oscillation detection, out-healing pattern detection, passive penalty tuning, hazard suppression at critical HP, type-disadvantage switch penalties.
 - **Infrastructure is DONE.** No further infra/reporting/pipeline work needed.
 
-Decision pipeline: forced_lines -> eval -> penalty pipeline (9 layers). Bot needs to reach 1700+ ELO for matchup data to be meaningful. WR is flat at ~50% — next gains come from Phase 2-3 decision improvements.
+Decision pipeline (CURRENT, verified 2026-07-04): **MCTS-first** — clock-safety -> endgame ->
+forced-line -> **MCTS** over Bayesian-sampled opponent sets -> forced/matchup bias ->
+hard-legality+survival safety -> deterministic argmax. The old `forced_lines -> eval -> 9 penalty
+layers` line is stale: the penalty pipeline is default-OFF (`FOULER_PENALTY_PIPELINE=0`). See
+**[ARCHITECTURE.md](ARCHITECTURE.md)** for the full verified map + layer status table. Bot needs to
+reach 1700+ ELO for matchup data to be meaningful.
 
 ---
 
@@ -274,5 +279,5 @@ These systems are **complete and working**. Do not recreate, extend, refactor, o
 - [x] Streaming pipeline (built, low priority)
 - [x] Replay analysis pipeline (built, needs quality improvements)
 - [x] Win-rate diagnosis (2026-02-07): 76% of losses had no Stealth Rock, recovery underused, excessive switching. Fixed with early-game hazard urgency + FAT/STALL recovery boost.
-- [x] MCTS-to-Eval overhaul (2026-02-09): Replaced MCTS with 1-ply eval engine + forced line detection. Created `fp/search/eval.py`, `fp/search/forced_lines.py`. Pipeline: forced_lines -> eval -> penalty pipeline. All 9 penalty layers preserved.
+- [x] MCTS-to-Eval overhaul (2026-02-09): Replaced MCTS with 1-ply eval engine + forced line detection. Created `fp/search/eval.py`, `fp/search/forced_lines.py`. Pipeline: forced_lines -> eval -> penalty pipeline. All 9 penalty layers preserved. **(SUPERSEDED 2026-06-22: multi-sample MCTS was restored as the primary chooser and the penalty pipeline was gated default-OFF (`FOULER_PENALTY_PIPELINE=0`). This 2026-02 "eval-first" description no longer reflects the engine — see [ARCHITECTURE.md](ARCHITECTURE.md).)**
 - [x] Round system + disconnect tracking (2026-03-02): All battle outcomes count toward quota. Round-complete summary with per-team stats. Dead battle timeout (DISCONNECT_STRIKES). Branch consolidation (foulest-play -> master).

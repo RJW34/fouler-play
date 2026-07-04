@@ -1,3 +1,8 @@
+> **HISTORICAL SNAPSHOT (2026-02-14) — SUPERSEDED.** This is a point-in-time analysis from when
+> the engine was "1-ply eval + penalty pipeline". The engine is now **MCTS-first** with the penalty
+> pipeline default-OFF. For the truthful current map, read **[ARCHITECTURE.md](ARCHITECTURE.md)** at
+> the repo root. Kept for history only; do not treat the pipeline description below as current.
+
 # Fouler Play Architecture & Bottleneck Analysis
 **Analysis Date:** 2026-02-14  
 **Analyzed By:** DEKU Sub-agent (fouler-analyzer)  
