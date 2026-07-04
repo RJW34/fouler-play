@@ -34,7 +34,34 @@ natures = {
 }
 
 
+def random_battles_evs() -> tuple[int, int, int, int, int, int]:
+    if "champions" in FoulPlayConfig.pokemon_format:
+        return (11,) * 6
+    else:
+        return (85,) * 6
+
+
+def maximum_ev() -> int:
+    if "champions" in FoulPlayConfig.pokemon_format:
+        return 32
+    else:
+        return 252
+
+
+def champions_stat_point_to_effective_ev(stat_point: int) -> int:
+    if stat_point == 0:
+        return 0
+    else:
+        return 8 * stat_point - 4
+
+
 def get_pokemon_info_from_condition(condition_string: str):
+    def remove_maxhp_chars(val: str):
+        chars = {"g", "y", "r"}
+        while val and val[-1] in chars:
+            val = val[:-1]
+        return val
+
     if constants.FNT in condition_string:
         return 0, 0, None
 
@@ -42,10 +69,10 @@ def get_pokemon_info_from_condition(condition_string: str):
     hp = int(split_string[0])
     if any(s in condition_string for s in constants.NON_VOLATILE_STATUSES):
         maxhp, status = split_string[1].split(" ")
-        maxhp = int(maxhp)
+        maxhp = int(remove_maxhp_chars(maxhp))
         return hp, maxhp, status
     else:
-        maxhp = int(split_string[1])
+        maxhp = int(remove_maxhp_chars(split_string[1]))
         return hp, maxhp, None
 
 
@@ -120,7 +147,7 @@ def _calculate_stats_gen_1_2(base_stats, level):
     return new_stats
 
 
-def _calculate_stats(base_stats, level, ivs=(31,) * 6, evs=(85,) * 6, nature="serious"):
+def _calculate_stats(base_stats, level, ivs, evs, nature):
     new_stats = dict()
 
     new_stats[constants.HITPOINTS] = (
@@ -163,6 +190,9 @@ def _calculate_stats(base_stats, level, ivs=(31,) * 6, evs=(85,) * 6, nature="se
 def calculate_stats(base_stats, level, ivs=(31,) * 6, evs=(85,) * 6, nature="serious"):
     if any(g in FoulPlayConfig.pokemon_format for g in ["gen1", "gen2"]):
         return _calculate_stats_gen_1_2(base_stats, level)
+    elif "champions" in FoulPlayConfig.pokemon_format:
+        evs = [champions_stat_point_to_effective_ev(ev) for ev in evs]
+        return _calculate_stats(base_stats, level, ivs, evs, nature)
     else:
         return _calculate_stats(base_stats, level, ivs, evs, nature)
 
