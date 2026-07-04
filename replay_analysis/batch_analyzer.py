@@ -20,7 +20,13 @@ if str(PROJECT_ROOT) not in sys.path:
 from replay_analysis.turn_review import TurnReviewer
 from replay_analysis.loss_learning import aggregate_loss_lessons, build_loss_artifact
 from replay_analysis.account_identity import resolve_bot_username
-from fp.theknower_competitive import build_competitive_meta_context
+try:
+    from fp.theknower_competitive import build_competitive_meta_context
+except ImportError:
+    # fp/theknower_competitive was retired in the upstream engine re-baseline
+    # (2026-07-04 audit). The analysis prompt degrades to no meta context.
+    def build_competitive_meta_context() -> str:
+        return ""
 from infrastructure.gen9_validation import Gen9Validator
 
 # Analysis source contract:

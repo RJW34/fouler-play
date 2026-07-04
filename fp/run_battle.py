@@ -130,13 +130,11 @@ from config import FoulPlayConfig, SaveReplay
 from fp.battle import LastUsedMove, Pokemon, Battle
 from fp.battle_modifier import async_update_battle, process_battle_updates
 from fp.helpers import normalize_name
-from fp.search.main import find_best_move
+# Decision engine: upstream foul-play core via the thin fork adapter
+# (clock-budget clamp + decision-trace capture). Returns (choice, trace).
+from fp.search.adapter import find_best_move_with_trace as find_best_move
 from fp.decision_trace import write_decision_trace, build_trace_base
-from fp.movepool_tracker import get_threat_category, ThreatCategory
-from fp.opponent_model import OPPONENT_MODEL
-from fp.hybrid_policy import run_hybrid_rerank
 from fp.helpers import type_effectiveness_modifier
-from fp.battle_decision import StrategicDecisionLayer, clear_battle_strategy
 from fp.devstream_chat import POST_BATTLE_MESSAGES, post_battle_messages
 
 from fp.websocket_client import PSWebsocketClient
@@ -147,10 +145,20 @@ from streaming.state_store import (
     write_status,
     update_daily_stats,
 )
-from fp.team_analysis import analyze_team
-from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_MOVES, RECOVERY_MOVES
-from fp.gameplan_integration import generate_and_store_gameplan, get_gameplan, clear_gameplan
 from constants_pkg.strategy import SETUP_MOVES
+
+# Move-category sets for the EMERGENCY FALLBACK scorer only (the normal path
+# is the upstream MCTS engine). Inlined from the retired fp/playstyle_config.
+PIVOT_MOVES = {
+    "u-turn", "volt-switch", "flip-turn", "parting-shot",
+    "teleport", "baton-pass", "chilly-reception",
+}
+RECOVERY_MOVES = {
+    "recover", "roost", "soft-boiled", "slack-off", "synthesis",
+    "moonlight", "morning-sun", "rest", "shore-up", "wish",
+    "heal-order", "milk-drink", "swallow",
+}
+HAZARD_MOVES = {"stealth-rock", "spikes", "toxic-spikes", "sticky-web"}
 from infrastructure.event_queue_lib import queue_event
 from infrastructure.discord_reporting import (
     build_contract_payload,
@@ -1845,127 +1853,9 @@ async def async_pick_move(battle):
         best_move = _fallback_decision(battle_copy)
         trace_reason = trace_reason or "fallback"
 
-    # === STRATEGIC LAYER INTEGRATION ===
-    # Log archetype detection (full move selection integration in next phase)
-    try:
-        strategic_layer = StrategicDecisionLayer()
-        battle_tag = battle_copy.battle_tag
-        
-        # Convert Pokemon objects to dicts for archetype analyzer
-        def pokemon_to_dict(pokemon):
-            if pokemon is None:
-                return None
-            # Extract move names - ensure all are strings
-            move_names = []
-            if pokemon.moves:
-                for move in pokemon.moves:
-                    try:
-                        if isinstance(move, str):
-                            move_names.append(move.strip() if move else "")
-                        elif hasattr(move, 'name'):
-                            move_names.append(str(move.name).strip() if move.name else "")
-                        else:
-                            move_str = str(move).strip() if move else ""
-                            # Try to extract move name from __repr__ or similar
-                            if move_str.startswith("<") and ">" in move_str:
-                                # Likely a Move object repr, skip
-                                continue
-                            move_names.append(move_str)
-                    except Exception as e:
-                        logger.debug(f"Failed to extract move: {e}")
-                        continue
-            
-            return {
-                "name": pokemon.name,
-                "species": pokemon.name,  # Pokemon.name is already normalized species name
-                "types": list(pokemon.types) if pokemon.types else [],
-                "hp": pokemon.hp,
-                "max_hp": pokemon.max_hp,
-                "moves": [m for m in move_names if m],  # Filter out empty strings
-                "ability": pokemon.ability or "unknown",
-                "item": pokemon.item or "unknown",
-            }
-        
-        team_data = []
-        if battle_copy.user.active:
-            team_data.append(pokemon_to_dict(battle_copy.user.active))
-        for p in battle_copy.user.reserve:
-            if p is not None:
-                team_data.append(pokemon_to_dict(p))
-        
-        # Initialize strategic layer for this battle
-        archetype, gameplan = strategic_layer.initialize_for_battle(battle_tag, team_data)
-        
-        # Log archetype for analysis
-        logger.info(f"[STRATEGIC] Archetype={archetype.archetype}, Confidence={archetype.confidence:.2f}")
-        logger.info(f"[STRATEGIC] Win Condition: {archetype.primary_win_condition}")
-        
-        if trace is not None:
-            trace["strategic"] = {
-                "archetype": archetype.archetype,
-                "confidence": archetype.confidence,
-                "win_condition": archetype.primary_win_condition,
-                "engine_choice": best_move,
-            }
-    except Exception as e:
-        logger.warning(f"Strategic layer initialization failed: {e}")
-        if trace is not None:
-            trace["strategic"] = {
-                "status": "error",
-                "reason": str(e),
-            }
-
-    # Optional hybrid rerank: engine proposes candidates, LLM reranks among them.
-    if FoulPlayConfig.decision_policy == "hybrid" and best_move:
-        try:
-            engine_move = best_move
-            hybrid_result = await run_hybrid_rerank(
-                battle=battle_copy,
-                engine_choice=engine_move,
-                trace=trace,
-                api_key=FoulPlayConfig.openai_api_key or "",
-                model=FoulPlayConfig.openai_model,
-                api_base=FoulPlayConfig.openai_api_base,
-                timeout_sec=FoulPlayConfig.llm_timeout_sec,
-                top_k=FoulPlayConfig.llm_rerank_top_k,
-            )
-
-            if hybrid_result.decision and hybrid_result.decision != engine_move:
-                logger.info(
-                    "Hybrid rerank override: %s -> %s",
-                    engine_move,
-                    hybrid_result.decision,
-                )
-                best_move = hybrid_result.decision
-
-            hybrid_meta = (
-                dict(hybrid_result.metadata)
-                if isinstance(hybrid_result.metadata, dict)
-                else {}
-            )
-            if hybrid_meta:
-                hybrid_meta.setdefault("engine_choice", engine_move)
-                hybrid_meta.setdefault("selected_decision", best_move)
-                hybrid_meta.setdefault(
-                    "override",
-                    bool(
-                        hybrid_result.decision
-                        and hybrid_result.decision != engine_move
-                    ),
-                )
-
-            if TRACE_DECISIONS and trace is None and hybrid_result.metadata:
-                trace = build_trace_base(battle_copy, reason=trace_reason or "hybrid")
-                trace["choice"] = best_move
-            if trace is not None and hybrid_meta:
-                trace["hybrid"] = hybrid_meta
-        except Exception as e:
-            logger.warning(f"Hybrid rerank failed; using engine choice: {e}")
-            if TRACE_DECISIONS and trace is not None:
-                trace["hybrid"] = {
-                    "status": "error",
-                    "reason": f"exception:{e}",
-                }
+    # (Strategic-layer archetype logging and the hybrid LLM rerank were removed
+    # in the upstream re-baseline: the former was log-only per-decision CPU
+    # overhead, the latter was permanently OFF. See the 2026-07-04 audit.)
 
     # Safety check: if force_switch is active but MCTS returned a move, override with a switch
     if battle.force_switch and not best_move.startswith(constants.SWITCH_STRING + " "):
@@ -2024,12 +1914,6 @@ def _get_best_switch(battle, legal_switch_slots: set[int] | None = None):
     ]
     if alive_reserves:
         opponent = battle.opponent.active
-        threat_category = None
-        if opponent is not None:
-            try:
-                threat_category = get_threat_category(opponent.name)
-            except Exception:
-                threat_category = None
 
         def score_switch(pkmn):
             hp_ratio = pkmn.hp / max(pkmn.max_hp, 1)
@@ -2053,13 +1937,8 @@ def _get_best_switch(battle, legal_switch_slots: set[int] | None = None):
                 )
                 score += best_off
 
-            # Bulk preference based on observed threat category
-            if threat_category == ThreatCategory.PHYSICAL_ONLY:
-                score += pkmn.stats[constants.DEFENSE] / 200.0
-            elif threat_category == ThreatCategory.SPECIAL_ONLY:
-                score += pkmn.stats[constants.SPECIAL_DEFENSE] / 200.0
-            else:
-                score += (pkmn.stats[constants.DEFENSE] + pkmn.stats[constants.SPECIAL_DEFENSE]) / 400.0
+            # General bulk preference
+            score += (pkmn.stats[constants.DEFENSE] + pkmn.stats[constants.SPECIAL_DEFENSE]) / 400.0
 
             return score
 
@@ -2330,68 +2209,31 @@ def _initialize_standard_battle_datasets(pokemon_battle_type: str, unique_pkmn_n
 
 async def handle_team_preview(battle, ps_websocket_client):
     _preview_start = time.time()
-    lead_pick = None
+    lead_slot = None
+    # Upstream behavior restored: the lead is picked by a full MCTS search over
+    # the preview state (the fork's heuristic-only lead pick was flagged by the
+    # 2026-07-04 divergence audit as a real decision-quality cut -- leads are
+    # high-leverage in gen9ou). async_pick_move routes through the clock-bound
+    # outer timeout, so a slow preview search degrades to the fallback decision
+    # instead of walking into the inactivity timer; the expiry guards below are
+    # kept as the last line of defense.
     try:
-        team_plan = analyze_team(battle.user.team_dict) if battle.user.team_dict else None
-        if team_plan:
-            playstyle = team_plan.playstyle
-        else:
-            playstyle = PlaystyleConfig.get_team_playstyle(FoulPlayConfig.team_name or "")
+        battle_copy = deepcopy(battle)
+        battle_copy.user.active = Pokemon.get_dummy()
+        battle_copy.opponent.active = Pokemon.get_dummy()
+        battle_copy.team_preview = True
 
-        hazard_moves_norm = {normalize_name(m) for m in HAZARD_MOVES}
-        pivot_moves_norm = {normalize_name(m) for m in PIVOT_MOVES}
-        setup_moves_norm = {normalize_name(m) for m in SETUP_MOVES}
-
-        def score_lead(pkmn):
-            score = 0.0
-            moves = {m.name for m in pkmn.moves}
-            if pkmn.name in (team_plan.hazard_setters if team_plan else set()) or moves & hazard_moves_norm:
-                score += 2.0
-            if moves & pivot_moves_norm:
-                score += 0.8
-            if moves & setup_moves_norm and playstyle == Playstyle.HYPER_OFFENSE:
-                score += 1.0
-            # Speed bonus
-            score += pkmn.stats[constants.SPEED] / 200.0
-
-            # Matchup vs opponent roster (type-based)
-            if battle.opponent.reserve:
-                matchup_scores = []
-                for opp in battle.opponent.reserve:
-                    if opp is None:
-                        continue
-                    try:
-                        worst = max(
-                            type_effectiveness_modifier(t, pkmn.types) for t in opp.types
-                        )
-                        best_off = max(
-                            type_effectiveness_modifier(t, opp.types) for t in pkmn.types
-                        )
-                        matchup_scores.append((2.0 - min(worst, 2.0)) + best_off)
-                    except Exception:
-                        continue
-                if matchup_scores:
-                    score += sum(matchup_scores) / len(matchup_scores)
-            return score
-
-        candidates = [p for p in battle.user.reserve if p.hp > 0]
-        if candidates:
-            scored = [(p, score_lead(p)) for p in candidates]
-            best, _best_score = max(scored, key=lambda x: x[1])
-            lead_pick = best
+        best_move = await async_pick_move(battle_copy)
+        lead_slot = int(best_move[0].split()[-1])
     except Exception as e:
-        logger.warning(f"Lead heuristic failed: {e}")
+        logger.warning(f"Team preview search failed, falling back to first alive slot: {e}")
+        lead_slot = None
 
-    if lead_pick is not None:
-        try:
-            lead_slot = int(lead_pick.index)
-        except Exception:
-            lead_slot = _first_alive_team_preview_slot(battle)
-    else:
+    if lead_slot is None:
         lead_slot = _first_alive_team_preview_slot(battle)
 
     logger.info(
-        "Team preview selected lead slot %s in %s without pre-turn search",
+        "Team preview selected lead slot %s in %s via MCTS preview search",
         lead_slot,
         battle.battle_tag,
     )
@@ -3158,19 +3000,8 @@ async def pokemon_battle(
         "slot": (worker_id + 1) if worker_id is not None else None,
     })
 
-    # Generate pre-battle gameplan for strategic decision-making
-    gameplan = generate_and_store_gameplan(battle_tag, battle)
-    if gameplan:
-        # Store gameplan in battle object for access by decision layer
-        battle.gameplan = gameplan
-        logger.info(f"ðŸŽ® GAMEPLAN GENERATED: {gameplan.our_strategy}")
-        logger.info(f"ðŸ“Œ OUR WIN CONDITION: {gameplan.win_condition}")
-        logger.info(f"âš”ï¸ OPPONENT WIN CONDITION: {gameplan.opponent_win_condition}")
-        logger.info(f"ðŸ”„ KEY PIVOTS: {', '.join(gameplan.key_pivot_triggers)}")
-        logger.info(f"ðŸ’¡ BACKUP PLAN: {gameplan.backup_plan or 'None'}")
-    else:
-        battle.gameplan = None
-        logger.warning(f"Failed to generate gameplan for {battle_tag}")
+    # (Pre-battle gameplan generation removed in the upstream re-baseline:
+    # it was generated but never consumed by move selection.)
 
     timeout_strikes = 0
     message_timeout = MESSAGE_TIMEOUT_SEC
@@ -3844,10 +3675,6 @@ async def pokemon_battle(
                 return None, battle_tag
 
             action_required = await async_update_battle(battle, msg)
-            try:
-                OPPONENT_MODEL.observe(battle)
-            except Exception as e:
-                logger.debug(f"Opponent model update failed: {e}")
 
             # Send turn update for real-time OBS updates
             if action_required and "|turn|" in msg:
@@ -3903,10 +3730,7 @@ async def pokemon_battle(
         logger.exception("Unhandled exception in battle loop for %s", battle_tag)
         raise
     finally:
-        # Clean up gameplan and strategic cache from memory (memory leak fix)
         _elo_before_cache.pop(battle_tag, None)
-        clear_gameplan(battle_tag)
-        clear_battle_strategy(battle_tag)
         await _finalize_battle_runtime(
             ps_websocket_client,
             battle_tag,
