@@ -249,7 +249,8 @@ def runtime_lease_surface_expectation() -> dict[str, Any]:
             "source": "runtime-lease-missing-max-concurrent",
             "path": str(RUNTIME_LEASE_PATH),
         }
-    expected = max(DEFAULT_DEVSTREAM_BATTLE_SURFACES, expected)
+    # A valid active lease is authoritative: it may lower the expectation
+    # below the default (e.g. a cc=1 proof window on a cc=3 default box).
     return {
         "expected": expected,
         "source": "runtime-lease",
