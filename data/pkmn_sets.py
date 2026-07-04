@@ -45,6 +45,9 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+SETS_DOWNLOAD_TIMEOUT_SEC = float(os.getenv("FOULER_SETS_DOWNLOAD_TIMEOUT_SEC", "8"))
+
+
 def get_sets_file(cache_path: str, remote_url: str) -> dict:
     if os.path.exists(cache_path):
         with open(cache_path, "r") as f:
@@ -52,14 +55,20 @@ def get_sets_file(cache_path: str, remote_url: str) -> dict:
         logger.info(f"Loaded from cache: {cache_path}")
         return sets
 
-    r = requests.get(remote_url)
-    if r.status_code == 200:
-        sets = r.json()
-    else:
-        logger.warning(
-            f"Could not retrieve from remote: {remote_url} "
-            f"(status code {r.status_code})"
-        )
+    # Fork ops-hardening: bounded download + exception guard so an unreachable
+    # sets host can never wedge battle startup (unattended-ladder requirement).
+    try:
+        r = requests.get(remote_url, timeout=SETS_DOWNLOAD_TIMEOUT_SEC)
+        if r.status_code == 200:
+            sets = r.json()
+        else:
+            logger.warning(
+                f"Could not retrieve from remote: {remote_url} "
+                f"(status code {r.status_code})"
+            )
+            sets = {}
+    except requests.RequestException as exc:
+        logger.warning(f"Could not retrieve from remote: {remote_url} ({exc})")
         sets = {}
 
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
@@ -693,7 +702,18 @@ class _SmogonSets(PokemonSets):
         )
 
     def _get_smogon_stats_json(self, smogon_stats_url):
-        cache_file_name = ntpath.basename(smogon_stats_url)
+        # Include the URL's year-month in the cache filename so the usage-stats cache
+        # REFRESHES each month. The basename alone ("gen9ou-0.json") is monthless, so the
+        # first fetch froze the opponent model forever (the bot served months-old usage
+        # data, starving the MCTS set-prediction). Fork fix 3b128698 (#79 Lever 1).
+        _marker = "/stats/"
+        _i = smogon_stats_url.find(_marker)
+        _month_tag = (
+            smogon_stats_url[_i + len(_marker):].split("/", 1)[0]
+            if _i != -1
+            else "unknown"
+        )
+        cache_file_name = "{}-{}".format(_month_tag, ntpath.basename(smogon_stats_url))
         cache_file = os.path.join(SMOGON_CACHE_DIR, cache_file_name)
         if os.path.exists(cache_file):
             with open(cache_file, "r") as f:
