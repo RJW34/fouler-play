@@ -1,5 +1,24 @@
 # AGENTS.md — Fouler Play
 
+## 2026-06-19 Codex Live Repair Hold
+
+Codex thread `019ed784-dde9-7101-8804-3b3e850e45e2` is the sole
+code-changing repair owner until HERMES proves lease ownership, mission checks,
+proof gates, rollback, and escalation. Runtime evidence processes may run, but
+recursive self-improvement/builders must not.
+
+Current live posture:
+
+- `HERMES` orchestrator service and Claude/HERMES repair tasks are disabled.
+- Fouler ladder supervision and Discord event draining may run as runtime
+  evidence only.
+- The generated battle supervisor command must include `--skip-improve` unless
+  an owner deliberately opens a new auto-improve proof window.
+- Timeouts/disconnects are operational losses, not ties; see
+  `tests/test_timeout_result_accounting.py`.
+- Runtime leases must allow stale-truth cleanup so false `active_battles.json`
+  state does not block recovery; see `tests/test_runtime_lease_purposes.py`.
+
 > Codex-and-friends orientation. **Full agent manual is `CLAUDE.md`** in this directory — read that first; this file is the quick "where do I start" pointer.
 
 ## What this repo is

@@ -143,3 +143,11 @@ fp/data/movepool_data.json
 .codex_backups/
 .pytest_tmp/
 .bot.pid.*
+
+# leftover deploy/backup litter patterns (checkpoint 2026-07-04, group 6)
+*-bak
+*.predeploybak
+*.pre-*
+*.stale-*
+.active_battles.json.*.tmp
+config.py.bak*
