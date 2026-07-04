@@ -126,3 +126,20 @@ devstream/truth/runtime-lease*.json
 fp/matchup_weights.json
 logs/matchup_ab_log.jsonl
 
+
+# transient history-scrub mirror (account-switch 2026-06-24)
+.scrub-work/
+
+
+# runtime data + backup litter (checkpoint 2026-07-04)
+battle_stats.json
+devstream/truth/
+replay_analysis/autoresearch_latest.json
+fp/data/movepool_data.json
+*.bak
+*.bak-*
+.codex-backups/
+.codex-ops/
+.codex_backups/
+.pytest_tmp/
+.bot.pid.*
