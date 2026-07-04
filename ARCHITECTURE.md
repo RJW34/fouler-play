@@ -257,3 +257,36 @@ tree, not that in-progress re-baseline.
 | `scripts/{devstream_runtime_lease,devstream_session,fouler_mission_monitor}.py`, `scripts/fouler_keepalive.ps1` | Runtime lease, session planner, monitor, keepalive. |
 | `.env` | Deployed config; source of the flag values in §4. **Protected.** |
 | `docs/archive/` | Frozen Feb-2026 snapshots and superseded reports. |
+
+---
+
+## RE-BASELINE STATUS + EVAL-GATE CAVEAT (2026-07-04)
+
+A re-baseline of the decision engine onto current upstream foul-play + poke-engine 0.0.47
+lives on branch `rebaseline/upstream-anchor-20260704` (worktree `D:\Projects\fouler-play-rebaseline`).
+Full writeup: `REBASELINE_PHASE_A_RESULT.md` on that branch.
+
+**Phase A (DONE):** the rebaselined engine builds, imports, and plays the offline gate end to
+end on poke-engine 0.0.47. Multithreaded MCTS is confirmed live: threads 1 -> 2 -> 4 produced
+53,000 -> 97,000 -> 467,000 MCTS total_visits per 1.5s window (a several-fold search increase;
+the June crisis was "not enough search inside the clock", so this is the highest-leverage upgrade).
+
+**Phase A eval verdict: REJECT, but INCONCLUSIVE / underpowered.** n=4 only (the box was under
+live load; `fat-team-1-stall` mirrors are ~20 min each). One stall-mirror loss in four is fully
+consistent with the frozen 0.97 rate; the "significant" z is an artifact of n=4 vs n=200. This is
+NOT a demonstrated regression.
+
+**KNOWN EVAL-GATE WEAKNESS (constitution R5 depends on this gate - read before trusting it):**
+the offline gate's `simple` (SimpleHeuristics) baseline is too weak to discriminate engine quality
+- both the frozen fork engine and the rebaselined engine crush it ~96-97%, so the gate CANNOT
+separate them even at full n. This is the same non-discrimination that forced the loop-breaker A/B
+to fall back to the live played-vs-policy divergence gauge. Do NOT flip or reject an engine on the
+weak offline gate alone. A decision-grade gate needs a DISCRIMINATING signal: self-play head-to-head
+vs the frozen fork engine, a stronger baseline (MaxDamage), or a monitored live-ladder A/B.
+
+**Phase B (owner-gated live swap) needs, in order:** (1) a properly-powered (n~100-200,
+parallelism 4) AND discriminating gate on a QUIET box (streaming + cobblemon lanes idle so it is
+not starved and the live ladder is not disturbed); (2) resolve the single loss at full n; (3) build
+0.0.47 runtime deps on the live tree; (4) swap the live `thepeakmons` client; (5) pick a live
+`--search-threads`; (6) watch ELO with a rollback ready. None of Phase B is done.
+
