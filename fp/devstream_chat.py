@@ -15,6 +15,14 @@ POST_BATTLE_LIVE_PROMO_MESSAGE = os.getenv("POST_BATTLE_LIVE_PROMO_MESSAGE", "tw
 POST_BATTLE_MESSAGES = [POST_BATTLE_GG_MESSAGE, POST_BATTLE_LIVE_PROMO_MESSAGE]
 STREAM_STATUS_JSON = os.getenv("FOULER_DEVSTREAM_STATUS_JSON", "").strip()
 STREAM_STATUS_URL = os.getenv("FOULER_DEVSTREAM_STATUS_URL", "").strip()
+POST_BATTLE_CHAT_ENABLED = os.getenv("FOULER_POST_BATTLE_CHAT_ENABLED", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+POST_BATTLE_CHAT_COOLDOWN_BATTLES = int(os.getenv("FOULER_POST_BATTLE_CHAT_COOLDOWN_BATTLES", "12"))
+_post_battle_chat_calls = 0
 
 
 def _env_bool(name: str) -> bool | None:
@@ -106,6 +114,12 @@ def devstream_is_live() -> bool:
 
 
 def post_battle_messages() -> list[str]:
+    global _post_battle_chat_calls
+    if not POST_BATTLE_CHAT_ENABLED:
+        return []
+    _post_battle_chat_calls += 1
+    if POST_BATTLE_CHAT_COOLDOWN_BATTLES > 1 and (_post_battle_chat_calls - 1) % POST_BATTLE_CHAT_COOLDOWN_BATTLES:
+        return []
     messages = [POST_BATTLE_GG_MESSAGE]
     if devstream_is_live() and POST_BATTLE_LIVE_PROMO_MESSAGE:
         messages.append(POST_BATTLE_LIVE_PROMO_MESSAGE)
