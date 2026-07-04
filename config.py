@@ -164,6 +164,7 @@ class _FoulPlayConfig:
     pokemon_format: str = ""
     smogon_stats: str = None
     search_time_ms: int
+    search_threads: int
     parallelism: int
     max_concurrent_battles: int
     max_mcts_battles: int | None
@@ -242,6 +243,12 @@ class _FoulPlayConfig:
             type=int,
             default=_env_int("SEARCH_PARALLELISM", 4),
             help="Number of states to search in parallel",
+        )
+        parser.add_argument(
+            "--search-threads",
+            type=int,
+            default=_env_int("SEARCH_THREADS", 1),
+            help="Number of threads to use per state (poke-engine >=0.0.47 multithreaded MCTS)",
         )
         parser.add_argument(
             "--max-concurrent-battles",
@@ -365,6 +372,7 @@ class _FoulPlayConfig:
         self.pokemon_format = args.pokemon_format
         self.smogon_stats = args.smogon_stats_format
         self.search_time_ms = args.search_time_ms
+        self.search_threads = max(1, args.search_threads)
         self.parallelism = args.search_parallelism
         self.max_concurrent_battles = max(1, args.max_concurrent_battles)
         # >0 caps the sampled-opponent battles; 0 (or negative) means "no cap"
