@@ -16,7 +16,7 @@ from typing import Optional
 
 import constants
 from data import all_move_json, pokedex
-from fp.helpers import calculate_stats
+from fp.helpers import calculate_stats, random_battles_evs
 from fp.helpers import normalize_name
 
 PWD = os.path.dirname(os.path.abspath(__file__))
@@ -45,9 +45,6 @@ if typing.TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-SETS_DOWNLOAD_TIMEOUT_SEC = float(os.getenv("FOULER_SETS_DOWNLOAD_TIMEOUT_SEC", "8"))
-
-
 def get_sets_file(cache_path: str, remote_url: str) -> dict:
     if os.path.exists(cache_path):
         with open(cache_path, "r") as f:
@@ -55,18 +52,14 @@ def get_sets_file(cache_path: str, remote_url: str) -> dict:
         logger.info(f"Loaded from cache: {cache_path}")
         return sets
 
-    try:
-        r = requests.get(remote_url, timeout=SETS_DOWNLOAD_TIMEOUT_SEC)
-        if r.status_code == 200:
-            sets = r.json()
-        else:
-            logger.warning(
-                f"Could not retrieve from remote: {remote_url} "
-                f"(status code {r.status_code})"
-            )
-            sets = {}
-    except requests.RequestException as exc:
-        logger.warning(f"Could not retrieve from remote: {remote_url} ({exc})")
+    r = requests.get(remote_url)
+    if r.status_code == 200:
+        sets = r.json()
+    else:
+        logger.warning(
+            f"Could not retrieve from remote: {remote_url} "
+            f"(status code {r.status_code})"
+        )
         sets = {}
 
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
@@ -166,6 +159,7 @@ class PredictedPokemonSet:
         match_ability=True,
         match_item=True,
         speed_check=True,
+        level_check=False,
         tera_check=True,
     ) -> bool:
         return self.pkmn_set.set_makes_sense(
@@ -173,6 +167,7 @@ class PredictedPokemonSet:
             match_ability=match_ability,
             match_item=match_item,
             speed_check=speed_check,
+            level_check=level_check,
             match_tera=tera_check,
         ) and self.pkmn_moveset.full_set_pkmn_can_have_moves(pkmn)
 
@@ -205,10 +200,6 @@ class PokemonSet:
         return pkmn.speed_range.min <= speed <= pkmn.speed_range.max
 
     def item_check(self, pkmn: Pokemon) -> bool:
-        if pkmn.mega_name is None and self.item in [
-            mpi[1] for mpi in pkmn.get_mega_pkmn_info()
-        ]:
-            return False
         if pkmn.item == self.item and pkmn.removed_item is None:
             return True
         elif pkmn.removed_item == self.item:
@@ -236,10 +227,12 @@ class PokemonSet:
         match_ability=True,
         match_item=True,
         speed_check=True,
+        level_check=False,
         match_tera=True,
     ):
         ability_check = not match_ability or self.ability_check(pkmn)
         item_check = not match_item or self.item_check(pkmn)
+        level_check = not level_check or pkmn.level == self.level
         speed_check = not speed_check or self.speed_check(pkmn)
         tera_check = True
         if (
@@ -250,7 +243,9 @@ class PokemonSet:
         ):
             tera_check = False
 
-        return ability_check and item_check and speed_check and tera_check
+        return (
+            ability_check and item_check and speed_check and level_check and tera_check
+        )
 
 
 @dataclass
@@ -337,9 +332,18 @@ class PokemonSets:
         return []
 
     def get_pkmn_sets_from_pkmn_name(self, pkmn: Pokemon):
-        return self.get_key_in_dict_from_pkmn_name(
+        ret = []
+        ret += self.get_key_in_dict_from_pkmn_name(
             pkmn.name, pkmn.base_name, pkmn.mega_name, self.pkmn_sets
         )
+
+        pkmn_mega_info = pkmn.get_mega_pkmn_info()
+        for pkmn_mega_name, _ in pkmn_mega_info:
+            ret += self.get_key_in_dict_from_pkmn_name(
+                pkmn_mega_name, pkmn_mega_name, None, self.pkmn_sets
+            )
+
+        return ret
 
     def get_raw_pkmn_sets_from_pkmn_name(self, pkmn_name: str, pkmn_base_name: str):
         if pkmn_name in self.raw_pkmn_sets:
@@ -366,10 +370,10 @@ class _RandomBattleSets(PokemonSets):
         self.pkmn_sets = {}
         self.pkmn_mode = "uninitialized"
 
-    def _load_raw_sets(self, generation):
-        if generation.endswith("blitz"):
-            generation = generation[:-5]
-        self.raw_pkmn_sets = get_randbats_sets_file(f"{generation}randombattle")
+    def _load_raw_sets(self, pokemon_battle_mode):
+        if pokemon_battle_mode.endswith("blitz"):
+            pokemon_battle_mode = pokemon_battle_mode[:-5]
+        self.raw_pkmn_sets = get_randbats_sets_file(pokemon_battle_mode)
 
     def _initialize_pkmn_sets(self):
         for pkmn, sets in self.raw_pkmn_sets.items():
@@ -389,7 +393,7 @@ class _RandomBattleSets(PokemonSets):
                             ability=ability,
                             item=item,
                             nature="serious",
-                            evs=(85, 85, 85, 85, 85, 85),
+                            evs=random_battles_evs(),
                             count=count,
                             tera_type=tera_type,
                             level=level,
@@ -419,7 +423,8 @@ class _RandomBattleSets(PokemonSets):
                 pkmn,
                 match_ability=match_traits,
                 match_item=match_traits,
-                speed_check=False,  # speed check never makes sense for randombattles because we know the nature/evs
+                speed_check=False,
+                level_check=False,
                 tera_check=match_traits,
             ):
                 return pkmn_set
@@ -437,7 +442,8 @@ class _RandomBattleSets(PokemonSets):
                 pkmn,
                 match_ability=True,
                 match_item=True,
-                speed_check=False,  # speed check never makes sense for randombattles because we know the nature/evs
+                speed_check=True,
+                level_check=True,
                 tera_check=True,
             ):
                 remaining_sets.append(pkmn_set)
@@ -449,6 +455,7 @@ class _RandomBattleSets(PokemonSets):
                     match_ability=False,
                     match_item=False,
                     speed_check=False,
+                    level_check=False,
                     tera_check=False,
                 ):
                     remaining_sets.append(pkmn_set)
@@ -473,7 +480,6 @@ class _TeamDatasets(PokemonSets):
         self.raw_pkmn_sets = {}
         self.raw_pkmn_moves = {}
         self.pkmn_sets = {}
-        self.movepool_data = {}
         self.pkmn_mode = "uninitialized"
 
     def _get_sets_dict(self):
@@ -687,18 +693,7 @@ class _SmogonSets(PokemonSets):
         )
 
     def _get_smogon_stats_json(self, smogon_stats_url):
-        # Include the URL's year-month in the cache filename so the usage-stats cache
-        # REFRESHES each month. The basename alone ("gen9ou-0.json") is monthless, so the
-        # first fetch froze the opponent model forever (the bot served months-old usage
-        # data, starving the MCTS set-prediction). See #79 Lever 1.
-        _marker = "/stats/"
-        _i = smogon_stats_url.find(_marker)
-        _month_tag = (
-            smogon_stats_url[_i + len(_marker):].split("/", 1)[0]
-            if _i != -1
-            else "unknown"
-        )
-        cache_file_name = "{}-{}".format(_month_tag, ntpath.basename(smogon_stats_url))
+        cache_file_name = ntpath.basename(smogon_stats_url)
         cache_file = os.path.join(SMOGON_CACHE_DIR, cache_file_name)
         if os.path.exists(cache_file):
             with open(cache_file, "r") as f:
@@ -762,7 +757,7 @@ class _SmogonSets(PokemonSets):
                 counter_name = normalize_name(counter_name)
                 if counter_name in pkmn_names:
                     matchup_effectiveness[counter_name] = round(
-                        1 - counter_information[1], 2
+                        1 - counter_information["p"], 2
                     )
 
             for spread, count in sorted(

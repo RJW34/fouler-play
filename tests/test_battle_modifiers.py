@@ -58,7 +58,6 @@ from fp.battle_modifier import zpower
 from fp.battle_modifier import clearnegativeboost
 from fp.battle_modifier import check_speed_ranges
 from fp.battle_modifier import check_choicescarf
-from fp.battle_modifier import check_choicescarf_from_ability_order
 from fp.battle_modifier import check_heavydutyboots
 from fp.battle_modifier import get_damage_dealt
 from fp.battle_modifier import singleturn
@@ -270,6 +269,15 @@ class TestSwitchOrDrag(unittest.TestCase):
         self.opponent_active = Pokemon("caterpie", 100)
         self.battle.opponent.active = self.opponent_active
         self.battle.opponent.reserve = []
+
+    def test_50_100_g_message(self):
+        split_msg = ["", "switch", "p1a: pikachu", "Pikachu, L100, M", "50/100g"]
+        switch_or_drag(self.battle, split_msg)
+
+        self.assertEqual("pikachu", self.battle.user.active.name)
+        self.assertEqual(
+            0.5, self.battle.user.active.hp / self.battle.user.active.max_hp
+        )
 
     def test_adds_intimidate_to_impossible_abilities_when_switching_in(self):
         split_msg = ["", "switch", "p2a: caterpie", "Caterpie, L100, M", "100/100"]
@@ -940,6 +948,18 @@ class TestHealOrDamage(unittest.TestCase):
         self.battle.opponent.active = self.opponent_active
         self.battle.user.active = self.user_active
 
+    def test_50_100_g_message(self):
+        split_msg = [
+            "",
+            "-heal",
+            "p1a: Pikachu",
+            "50/100g",
+        ]
+        heal_or_damage(self.battle, split_msg)
+        self.assertEqual(
+            0.5, self.battle.user.active.hp / self.battle.user.active.max_hp
+        )
+
     def test_heal_from_healing_wish_clears_side_condition(self):
         # |-heal|p1a: Caterpie|100/100|[from] move: Healing Wish
         self.battle.opponent.side_conditions[constants.HEALING_WISH] = 1
@@ -1441,7 +1461,7 @@ class TestMove(unittest.TestCase):
     ):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
 
         self.battle.opponent.active = Pokemon("gyarados", 79)
         self.battle.opponent.active.add_move("terablast")
@@ -1483,7 +1503,7 @@ class TestMove(unittest.TestCase):
     ):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
 
         self.battle.opponent.active = Pokemon("gyarados", 79)
         self.battle.opponent.active.add_move("terablast")
@@ -1521,7 +1541,7 @@ class TestMove(unittest.TestCase):
     ):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
 
         self.battle.opponent.active = Pokemon("tornadustherian", 79)
         self.battle.opponent.active.add_move("terablast")
@@ -1544,7 +1564,7 @@ class TestMove(unittest.TestCase):
     ):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
 
         self.battle.opponent.active = Pokemon("tornadustherian", 79)
         self.battle.opponent.active.add_move("terablast")
@@ -3210,6 +3230,24 @@ class TestUpdateAbility(unittest.TestCase):
         split_msg = ["", "-ability", "p2a: Calyrex", "Unnerve"]
         update_ability(self.battle, split_msg)
         self.assertEqual("asonespectrier", self.battle.opponent.active.ability)
+
+    def test_alternate_set_trace_ability(self):
+        # |-ability|p2a: Porygon2|Levitate|Trace|[from] ability: Trace|[of] p1a: Claydol
+        self.battle.generation = "gen3"
+        self.battle.user.active.ability = "levitate"
+        self.battle.opponent.active.ability = None
+        split_msg = [
+            "",
+            "-ability",
+            "p2a: Caterpie",
+            "Levitate",
+            "Trace",
+            "[from] ability: Trace",
+            "[of] p1a: Caterpie",
+        ]
+        update_ability(self.battle, split_msg)
+        self.assertEqual("levitate", self.battle.opponent.active.ability)
+        self.assertEqual("trace", self.battle.opponent.active.original_ability)
 
     def test_sets_original_ability_from_trace(self):
         self.battle.user.active.ability = "intimidate"
@@ -5150,64 +5188,6 @@ class TestGuessChoiceScarf(unittest.TestCase):
 
         self.assertEqual("choicescarf", self.battle.opponent.active.item)
 
-    def test_guesses_choicescarf_from_switch_in_ability_order(self):
-        self.battle.user.active = Pokemon("kyurem", 100)
-        self.battle.user.active.set_spread("timid", "0,0,0,252,4,252")
-        self.battle.opponent.active = Pokemon("landorustherian", 100)
-        self.battle.opponent.active.item = constants.UNKNOWN_ITEM
-        self.battle.opponent.active.can_have_choice_item = True
-
-        messages = [
-            "|switch|p1a: Kyurem|Kyurem|100/100",
-            "|switch|p2a: Landorus-Therian|Landorus-Therian, M|100/100",
-            "|-ability|p2a: Landorus-Therian|Intimidate|boost",
-            "|-unboost|p1a: Kyurem|atk|1",
-            "|-ability|p1a: Kyurem|Pressure",
-        ]
-
-        check_choicescarf_from_ability_order(self.battle, messages)
-
-        self.assertEqual("choicescarf", self.battle.opponent.active.item)
-        self.assertTrue(self.battle.opponent.active.item_inferred)
-
-    def test_does_not_guess_choicescarf_from_ability_order_when_naturally_faster_is_possible(
-        self,
-    ):
-        self.battle.user.active = Pokemon("suicune", 100)
-        self.battle.user.active.set_spread("timid", "0,0,0,252,4,252")
-        self.battle.opponent.active = Pokemon("landorustherian", 100)
-        self.battle.opponent.active.item = constants.UNKNOWN_ITEM
-        self.battle.opponent.active.can_have_choice_item = True
-
-        messages = [
-            "|switch|p1a: Suicune|Suicune|100/100",
-            "|switch|p2a: Landorus-Therian|Landorus-Therian, M|100/100",
-            "|-ability|p2a: Landorus-Therian|Intimidate|boost",
-            "|-ability|p1a: Suicune|Pressure",
-        ]
-
-        check_choicescarf_from_ability_order(self.battle, messages)
-
-        self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
-
-    def test_does_not_guess_choicescarf_from_ability_order_when_we_activate_first(self):
-        self.battle.user.active = Pokemon("kyurem", 100)
-        self.battle.user.active.set_spread("timid", "0,0,0,252,4,252")
-        self.battle.opponent.active = Pokemon("landorustherian", 100)
-        self.battle.opponent.active.item = constants.UNKNOWN_ITEM
-        self.battle.opponent.active.can_have_choice_item = True
-
-        messages = [
-            "|switch|p1a: Kyurem|Kyurem|100/100",
-            "|switch|p2a: Landorus-Therian|Landorus-Therian, M|100/100",
-            "|-ability|p1a: Kyurem|Pressure",
-            "|-ability|p2a: Landorus-Therian|Intimidate|boost",
-        ]
-
-        check_choicescarf_from_ability_order(self.battle, messages)
-
-        self.assertEqual(constants.UNKNOWN_ITEM, self.battle.opponent.active.item)
-
     def test_guesses_choicescarf_when_enemy_knocks_out_user(self):
         self.battle.user.active.stats[constants.SPEED] = (
             210  # opponent's speed should not be greater than 207 (max speed caterpie)
@@ -6153,7 +6133,7 @@ class TestImmune(unittest.TestCase):
     def test_randbats_does_not_infer_zoroark_from_tera_immunity_on_judgment(self):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
         self.battle.opponent.reserve = []
 
         self.battle.opponent.active = Pokemon("enamorustherian", 83)
@@ -6177,7 +6157,7 @@ class TestImmune(unittest.TestCase):
     def test_randbats_infer_zoroark_from_immunity_when_in_reserves(self):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
 
         self.battle.opponent.reserve = [Pokemon("zoroarkhisui", 80)]
         self.battle.opponent.reserve[0].add_move("nastyplot")
@@ -6218,7 +6198,7 @@ class TestImmune(unittest.TestCase):
     def test_randbats_infer_zoroarkhisui_from_immunity_when_not_in_reserves(self):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
         self.battle.opponent.reserve = []
 
         self.battle.opponent.active = Pokemon("gyarados", 100)
@@ -6253,7 +6233,7 @@ class TestImmune(unittest.TestCase):
     def test_randbats_infer_zoroark_from_immunity_when_not_in_reserves(self):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
         self.battle.opponent.reserve = []
 
         self.battle.opponent.active = Pokemon("gyarados", 100)
@@ -6332,7 +6312,7 @@ class TestImmune(unittest.TestCase):
     def test_does_not_infer_zoroark_if_pkmn_terastallized_to_gain_immunity(self):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
         self.battle.opponent.reserve = []
 
         self.battle.opponent.active = Pokemon("gyarados", 100)
@@ -6353,7 +6333,7 @@ class TestImmune(unittest.TestCase):
     def test_does_not_infer_zoroark_if_pkmn_naturally_immune(self):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
         self.battle.opponent.reserve = []
 
         self.battle.opponent.active = Pokemon("urshifu", 100)
@@ -6372,7 +6352,7 @@ class TestImmune(unittest.TestCase):
     def test_does_not_infer_zoroark_if_futuresight_ending(self):
         self.battle.battle_type = BattleType.RANDOM_BATTLE
         self.battle.generation = "gen9"
-        RandomBattleTeamDatasets.initialize("gen9")
+        RandomBattleTeamDatasets.initialize("gen9randombattle")
         self.battle.opponent.reserve = []
 
         self.battle.opponent.active = Pokemon("Urshifu", 100)
@@ -6568,9 +6548,18 @@ class TestInactive(unittest.TestCase):
 
         self.assertEqual(60, self.battle.time_remaining)
 
+    def test_prefers_cumulative_total_over_per_turn_grace(self):
+        # The bank ("sec total") is what forfeits the game; the per-turn grace
+        # can reset higher than the dwindling total (fork clock-fix class).
+        split_msg = ["", "inactive", "Time left: 60 sec this turn ", " 25 sec total"]
+        inactive(self.battle, split_msg)
+
+        self.assertEqual(25, self.battle.time_remaining)
+
     def test_countdown_warning_for_our_account_updates_clock(self):
         # Showdown's low-clock countdown ("<us> has N seconds left") MUST update our clock,
-        # otherwise time_remaining stays stale-high and we forfeit on inactivity (#79).
+        # otherwise time_remaining stays stale-high and we forfeit on inactivity
+        # (fork fix bb9ba617, issue #79).
         self.battle.time_remaining = 120
         inactive(self.battle, ["", "inactive", "CoolUsername has 5 seconds left."])
         self.assertEqual(5, self.battle.time_remaining)
