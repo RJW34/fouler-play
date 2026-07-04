@@ -1,4 +1,4 @@
-﻿# HERMES-FoulerKeepalive (hardened v3 2026-06-23, claude)
+# HERMES-FoulerKeepalive (hardened v3 2026-06-23, claude)
 # Goal: maintain EXACTLY ONE top-level run.py search_ladder ladder client on the
 # 8-core box, without ever re-over-committing it (the over-commit crisis was
 # caused by this guard spawning DUPLICATE clients).
@@ -120,7 +120,7 @@ try {
   $argList = @(
     'run.py',
     '--websocket-uri','wss://sim3.psim.us/showdown/websocket',
-    '--ps-username','LEBOTJAMESXD00N',
+    '--ps-username','thepeakmons',
     '--bot-mode','search_ladder',
     '--pokemon-format','gen9ou',
     '--run-count','1000',

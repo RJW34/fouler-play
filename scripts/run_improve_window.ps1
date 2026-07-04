@@ -16,7 +16,9 @@ param(
   [int]$Battles = 40,
   [double]$MinFreeGB = 3.5,
   [switch]$AutoImprove,
-  [int]$LeaseMinutes = 30
+  [int]$LeaseMinutes = 180,
+  [string]$Account = 'LEBOTJAMESXD00N',
+  [int]$MaxConcurrentBattles = 1
 )
 $ErrorActionPreference = 'Continue'
 $proj   = 'D:\Projects\fouler-play'
@@ -30,7 +32,10 @@ function Get-LadderPids { (Get-CimInstance Win32_Process -Filter "Name='python.e
 function Get-WsCount($p) { if (-not $p) { return 0 }; (Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Where-Object { $_.RemotePort -eq 443 -and $p -contains $_.OwningProcess } | Measure-Object).Count }
 function Start-Daemon { Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $daemon | Out-Null }
 
-say "=== improve-window START (AutoImprove=$($AutoImprove.IsPresent) Battles=$Battles MinFreeGB=$MinFreeGB) ==="
+if ($Battles -le 0) { say "STOP: Battles must be positive."; exit 2 }
+if ($MaxConcurrentBattles -le 0) { say "STOP: MaxConcurrentBattles must be positive."; exit 2 }
+
+say "=== improve-window START (AutoImprove=$($AutoImprove.IsPresent) Battles=$Battles Account=$Account MinFreeGB=$MinFreeGB) ==="
 
 # RAM gate (proven design: never run under memory pressure -> would risk OOM vs the live ladder)
 $freeGB = [math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB, 2)
@@ -50,6 +55,11 @@ if (-not $AutoImprove) {
 
 # ---- AUTO-IMPROVE (opt-in) ----
 $daemonWasRunning = [bool](Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" 2>$null | Where-Object { $_.CommandLine -match 'fouler_continuous_daemon' })
+$prePauseWs = Get-WsCount (Get-LadderPids)
+if ($prePauseWs -ne 0) {
+  say "DEFER: active ladder websocket count is $prePauseWs; auto-improve only runs from a pre-round gap."
+  exit 0
+}
 say "AUTO-IMPROVE: pausing ladder (daemonRunning=$daemonWasRunning) via stop file."
 New-Item -ItemType File -Path $stop -Force | Out-Null
 $deadline = (Get-Date).AddMinutes(4)
@@ -64,15 +74,42 @@ if ($ws -ne 0) {
 }
 try {
   $lease = 'devstream\truth\runtime-lease.json'
-  say "writing runtime lease ($LeaseMinutes min) for improve-agent."
-  & $py 'scripts\devstream_runtime_lease.py' '--purpose' 'improve-agent' '--write' '--machine' 'JIGGLYPUFF' '--max-cycles' '1' '--valid-minutes' "$LeaseMinutes" '--approved' '--runtime-lease' $lease *>&1 | Add-Content $log
+  $autoExitCode = 0
+  $evalBudgetMinutes = [int][math]::Ceiling((($Battles * 220) + 300) / 60)
+  $effectiveLeaseMinutes = [int][math]::Max($LeaseMinutes, $evalBudgetMinutes + 10)
+  say "writing runtime lease ($effectiveLeaseMinutes min) for improve-agent."
+  $leaseOut = & $py 'scripts\devstream_runtime_lease.py' '--purpose' 'improve-agent' '--write' '--machine' 'JIGGLYPUFF' '--run-count' "$Battles" '--max-cycles' '1' '--max-concurrent-battles' "$MaxConcurrentBattles" '--account' "$Account" '--replay-behavior' 'never' '--valid-minutes' "$effectiveLeaseMinutes" '--approved' '--runtime-lease' $lease *>&1
+  $leaseRc = $LASTEXITCODE
+  $leaseOut | Add-Content $log
+  if ($leaseRc -ne 0) {
+    throw "runtime lease write failed with rc=$leaseRc"
+  }
   say "running improve_agent.py --enable-auto-improve --max-cycles 1."
   $autoOut = Join-Path $proj 'logs\improve_window_auto.out.txt'
-  & $py 'infrastructure\improve_agent.py' '--enable-auto-improve' '--max-cycles' '1' '--runtime-lease' $lease *> $autoOut
+  $oldEvalBattles = $env:IMPROVE_AGENT_EVAL_BATTLES
+  $oldAgentAccount = $env:IMPROVE_AGENT_ACCOUNT
+  $oldMaxConcurrentBattles = $env:IMPROVE_AGENT_MAX_CONCURRENT_BATTLES
+  $env:IMPROVE_AGENT_EVAL_BATTLES = [string]$Battles
+  $env:IMPROVE_AGENT_ACCOUNT = $Account
+  $env:IMPROVE_AGENT_MAX_CONCURRENT_BATTLES = [string]$MaxConcurrentBattles
+  try {
+    & $py 'infrastructure\improve_agent.py' '--enable-auto-improve' '--max-cycles' '1' '--runtime-lease' $lease *> $autoOut
+    $agentRc = $LASTEXITCODE
+  }
+  finally {
+    if ($null -eq $oldEvalBattles) { Remove-Item Env:\IMPROVE_AGENT_EVAL_BATTLES -ErrorAction SilentlyContinue } else { $env:IMPROVE_AGENT_EVAL_BATTLES = $oldEvalBattles }
+    if ($null -eq $oldAgentAccount) { Remove-Item Env:\IMPROVE_AGENT_ACCOUNT -ErrorAction SilentlyContinue } else { $env:IMPROVE_AGENT_ACCOUNT = $oldAgentAccount }
+    if ($null -eq $oldMaxConcurrentBattles) { Remove-Item Env:\IMPROVE_AGENT_MAX_CONCURRENT_BATTLES -ErrorAction SilentlyContinue } else { $env:IMPROVE_AGENT_MAX_CONCURRENT_BATTLES = $oldMaxConcurrentBattles }
+  }
   Get-Content $autoOut -ErrorAction SilentlyContinue |
     Where-Object { $_ -match '\[AGENT\] (Top issue|Target file|ACCEPT|reject|Recorded deploy|Deferring|BLOCKED|committed|No autoresearch)' } |
     ForEach-Object { say ("  " + $_.Trim()) }
-  say "improve cycle complete."
+  if ($agentRc -ne 0) {
+    say "improve_agent.py exited rc=$agentRc."
+    $autoExitCode = $agentRc
+  } else {
+    say "improve cycle complete."
+  }
 }
 finally {
   say "RESUME: clearing stop file + relaunching ladder daemon (always, even on error)."
@@ -80,4 +117,4 @@ finally {
   Start-Daemon
 }
 say "=== improve-window END ==="
-exit 0
+exit $autoExitCode

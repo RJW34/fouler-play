@@ -22,14 +22,25 @@ if (-not (Test-Path -LiteralPath $Py -PathType Leaf)) {
         $Py = "python.exe"
     }
 }
-if (-not $Foreground) {
-    $Pythonw = Join-Path $ProjectDir ".venv\Scripts\pythonw.exe"
-    if (Test-Path -LiteralPath $Pythonw -PathType Leaf) {
-        $Py = $Pythonw
-    }
-}
-
 New-Item -ItemType Directory -Force -Path (Join-Path $ProjectDir ".pids") | Out-Null
+
+$LaunchLockPath = Join-Path $ProjectDir ".pids\battle-supervisor-launch.lock"
+$LaunchLockStream = $null
+try {
+    $LaunchLockStream = [System.IO.File]::Open(
+        $LaunchLockPath,
+        [System.IO.FileMode]::OpenOrCreate,
+        [System.IO.FileAccess]::ReadWrite,
+        [System.IO.FileShare]::None
+    )
+    $lockBytes = [System.Text.Encoding]::ASCII.GetBytes("pid=$PID started=$(Get-Date -Format o)")
+    $LaunchLockStream.SetLength(0)
+    $LaunchLockStream.Write($lockBytes, 0, $lockBytes.Length)
+    $LaunchLockStream.Flush()
+} catch {
+    Write-Error "Another battle supervisor launcher owns $LaunchLockPath; refusing duplicate launch."
+    exit 3
+}
 
 if ($RunCount -le 0 -or $MaxCycles -le 0) {
     Write-Error "Fouler battle supervisor requires explicit positive -RunCount and -MaxCycles bounds."
@@ -85,6 +96,26 @@ function ConvertTo-CmdSetAssignment {
     return "set $Name=$Value"
 }
 
+function Close-LaunchLock {
+    if ($null -ne $LaunchLockStream) {
+        try { $LaunchLockStream.Close() } catch {}
+        try { $LaunchLockStream.Dispose() } catch {}
+    }
+}
+
+function Get-ExistingLadderRunnerPids {
+    param([string]$Account)
+    $runners = @()
+    foreach ($p in @(Get-CimInstance Win32_Process -Filter "name like 'python%'" -ErrorAction SilentlyContinue)) {
+        $cl = $p.CommandLine
+        if (-not $cl) { continue }
+        if ($cl -notmatch 'run\.py' -or $cl -notmatch 'search_ladder') { continue }
+        if (-not [string]::IsNullOrWhiteSpace($Account) -and $cl -notmatch [regex]::Escape($Account)) { continue }
+        $runners += $p.ProcessId
+    }
+    return $runners
+}
+
 # --- SINGLETON GUARD ------------------------------------------------------
 # Exactly one battle supervisor may run for this repo. Before launching a new
 # one, terminate any pre-existing devstream_session.py "supervise" process that
@@ -116,6 +147,13 @@ if (Test-Path -LiteralPath $supPidFile) {
 Start-Sleep -Seconds 1
 # --- END SINGLETON GUARD --------------------------------------------------
 
+$leaseAccount = Get-RuntimeLeaseAccount -RuntimeLease $RuntimeLease
+$existingRunners = @(Get-ExistingLadderRunnerPids -Account $leaseAccount)
+if ($existingRunners.Count -gt 0) {
+    Write-Output "[singleton-guard] existing ladder runner(s) for account '$leaseAccount': $($existingRunners -join ', '); launching supervisor in monitor/adopt mode."
+    Write-Output "[singleton-guard] devstream_session.py supervise will observe the live runner and must not start another batch while it is in flight."
+}
+
 $stopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
 if (Test-Path -LiteralPath $stopFile -PathType Leaf) {
     Remove-Item -LiteralPath $stopFile -Force
@@ -140,6 +178,8 @@ if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {
 }
 if ($AutoImprove) {
     $supervisorArgs += "--enable-auto-improve"
+} else {
+    $supervisorArgs += "--skip-improve"
 }
 
 if ($Foreground) {
@@ -186,7 +226,6 @@ $cmdLines = @(
     "@echo off",
     "cd /d $(Quote-BatchArg $ProjectDir)"
 )
-$leaseAccount = Get-RuntimeLeaseAccount -RuntimeLease $RuntimeLease
 if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
     foreach ($envName in @("PS_USERNAME", "SHOWDOWN_USER_ID", "SHOWDOWN_ACCOUNTS", "FOULER_ACTIVE_ACCOUNT")) {
         $assignment = ConvertTo-CmdSetAssignment -Name $envName -Value $leaseAccount
@@ -198,13 +237,16 @@ if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
 $cmdLines += (($commandLine -join " ") + " 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)")
 $cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
 
-$launch = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-    CommandLine = "cmd.exe /d /c $(Quote-BatchArg $cmdFile)"
-    CurrentDirectory = $ProjectDir
-}
-if ($launch.ReturnValue -ne 0) {
-    Write-Error "Win32_Process.Create failed with return value $($launch.ReturnValue)"
+$launch = Start-Process `
+    -FilePath $env:ComSpec `
+    -ArgumentList @("/d", "/c", (Quote-BatchArg $cmdFile)) `
+    -WorkingDirectory $ProjectDir `
+    -WindowStyle Hidden `
+    -PassThru
+if (-not $launch -or -not $launch.Id) {
+    Write-Error "Start-Process failed to launch Fouler battle supervisor"
     exit 1
 }
 Start-Sleep -Seconds 3
+Close-LaunchLock
 exit 0

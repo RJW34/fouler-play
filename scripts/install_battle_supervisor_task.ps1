@@ -31,7 +31,7 @@ $StderrLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.err.log"
 $TaskExecute = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
 $AutoImproveArg = if ($AutoImprove) { " -AutoImprove" } else { "" }
 $RuntimeLeaseArg = if ([string]::IsNullOrWhiteSpace($RuntimeLease)) { "" } else { ' -RuntimeLease "{0}"' -f ($RuntimeLease -replace '"', '\"') }
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -MaxCycles {4} -QueueTimeoutSeconds {5} -SleepSeconds {6}{7}{8}"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $MaxCycles, $QueueTimeoutSeconds, $SleepSeconds, $RuntimeLeaseArg, $AutoImproveArg
+$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -MaxCycles {4} -QueueTimeoutSeconds {5} -SleepSeconds {6}{7}{8} -Foreground"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $MaxCycles, $QueueTimeoutSeconds, $SleepSeconds, $RuntimeLeaseArg, $AutoImproveArg
 $PidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
 $StopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
 
@@ -83,6 +83,7 @@ function Stop-BattleSupervisorProcesses {
 function Get-BattleSupervisorStatus {
     $task = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
     $taskInfo = Get-ScheduledTaskInfo -TaskName $TaskName -ErrorAction SilentlyContinue
+    $actualAction = if ($task) { $task.Actions | Select-Object -First 1 } else { $null }
     $processes = @(Get-BattleSupervisorProcesses)
     [pscustomobject]@{
         taskName = $TaskName
@@ -92,8 +93,9 @@ function Get-BattleSupervisorStatus {
         lastRunTime = if ($taskInfo) { $taskInfo.LastRunTime.ToUniversalTime().ToString("o") } else { $null }
         projectDir = $ProjectDir
         wrapper = Join-Path $ProjectDir $TaskWrapper
-        execute = $TaskExecute
-        arguments = $TaskArguments
+        execute = if ($actualAction) { $actualAction.Execute } else { $TaskExecute }
+        arguments = if ($actualAction) { $actualAction.Arguments } else { $TaskArguments }
+        workingDirectory = if ($actualAction) { $actualAction.WorkingDirectory } else { $ProjectDir }
         stdoutLog = $StdoutLog
         stderrLog = $StderrLog
         stderrTail = if (Test-Path -LiteralPath $StderrLog -PathType Leaf) { @(Get-Content -LiteralPath $StderrLog -Tail 30 -ErrorAction SilentlyContinue | ForEach-Object { [string]$_ }) } else { @() }
@@ -103,6 +105,56 @@ function Get-BattleSupervisorStatus {
         processes = $processes
         rollback = "Unregister-ScheduledTask -TaskName '$TaskName' -Confirm:`$false"
     }
+}
+
+function Wait-BattleSupervisorProcess {
+    param(
+        [int]$TimeoutSeconds = 45
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        $processes = @(Get-BattleSupervisorProcesses)
+        if ($processes.Count -gt 0) {
+            return $processes
+        }
+        Start-Sleep -Seconds 2
+    } while ((Get-Date) -lt $deadline)
+    return @()
+}
+
+function Start-ForegroundWrapperProcess {
+    $directArgs = @(
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        (Join-Path $ProjectDir $TaskWrapper),
+        "-RunCount",
+        "$RunCount",
+        "-MaxConcurrentBattles",
+        "$MaxConcurrentBattles",
+        "-MaxCycles",
+        "$MaxCycles",
+        "-QueueTimeoutSeconds",
+        "$QueueTimeoutSeconds",
+        "-SleepSeconds",
+        "$SleepSeconds",
+        "-Foreground"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {
+        $directArgs += @("-RuntimeLease", $RuntimeLease)
+    }
+    if ($AutoImprove) {
+        $directArgs += "-AutoImprove"
+    }
+    return Start-Process `
+        -FilePath $PowerShell `
+        -ArgumentList $directArgs `
+        -WorkingDirectory $ProjectDir `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $StdoutLog `
+        -RedirectStandardError $StderrLog `
+        -PassThru
 }
 
 if ($Status) {
@@ -147,10 +199,21 @@ if ($Start -and ($RunCount -le 0 -or $MaxCycles -le 0)) {
 
 $backup = Save-TaskBackup -Name $TaskName
 New-Item -ItemType Directory -Force -Path $LogRoot | Out-Null
+$startFallback = $null
 $action = New-ScheduledTaskAction -Execute $TaskExecute -Argument $TaskArguments -WorkingDirectory $ProjectDir
-$trigger = New-ScheduledTaskTrigger -AtLogOn
+# 2026-07-04 fix (defect: task NEVER ran, LastTaskResult 0x41303): the old
+# AtLogOn-only trigger + LogonType Interactive principal can never fire on this
+# box -- it is administered over SSH (network logons) and has had NO interactive
+# logon since the 2026-07-02 02:20 reboot, so an InteractiveToken task is
+# unrunnable. Match the working HERMES-Cobblemon* pattern: fire at boot too, and
+# use S4U (run whether user is logged on or not, no stored password) so the
+# supervisor comes up on a headless boot.
+$trigger = @(
+    (New-ScheduledTaskTrigger -AtLogOn),
+    (New-ScheduledTaskTrigger -AtStartup)
+)
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 30) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
+$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U -RunLevel Limited
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Description "HERMES-managed persistent Fouler Play Showdown battle supervisor." -Force | Out-Null
 
 if ($Start) {
@@ -160,9 +223,47 @@ if ($Start) {
     Rotate-LogFile -Path $StdoutLog | Out-Null
     Rotate-LogFile -Path $StderrLog | Out-Null
     Start-ScheduledTask -TaskName $TaskName
-    Start-Sleep -Seconds 8
+    $scheduledProcesses = @(Wait-BattleSupervisorProcess -TimeoutSeconds 45)
+    if ($scheduledProcesses.Count -le 0) {
+        $fallbackStartedAt = (Get-Date).ToUniversalTime().ToString("o")
+        $fallbackProcess = $null
+        $fallbackError = $null
+        try {
+            $fallbackProcess = Start-ForegroundWrapperProcess
+        } catch {
+            $fallbackError = $_.Exception.Message
+        }
+        $fallbackProcesses = @(Wait-BattleSupervisorProcess -TimeoutSeconds 45)
+        $startFallback = [ordered]@{
+            used = $true
+            reason = "scheduled task did not materialize battle supervisor process"
+            startedAt = $fallbackStartedAt
+            launcherPid = if ($fallbackProcess) { $fallbackProcess.Id } else { $null }
+            error = $fallbackError
+            processCountAfter = $fallbackProcesses.Count
+            processesAfter = $fallbackProcesses
+        }
+    } else {
+        $startFallback = [ordered]@{
+            used = $false
+            reason = "scheduled task produced a live battle supervisor"
+            startedAt = $null
+            launcherPid = $null
+            error = $null
+            processCountAfter = $scheduledProcesses.Count
+            processesAfter = $scheduledProcesses
+        }
+    }
 }
 
 $statusPayload = Get-BattleSupervisorStatus
 $statusPayload | Add-Member -NotePropertyName backup -NotePropertyValue $backup
+$statusPayload | Add-Member -NotePropertyName startFallback -NotePropertyValue $startFallback
+if ($Start -and $statusPayload.processCount -le 0) {
+    $statusPayload | Add-Member -NotePropertyName blocked -NotePropertyValue $true
+    $statusPayload | Add-Member -NotePropertyName status -NotePropertyValue "blocked-supervisor-launch"
+    $statusPayload | Add-Member -NotePropertyName blockers -NotePropertyValue @("battle supervisor launch did not produce a live devstream_session.py supervise process")
+    $statusPayload | ConvertTo-Json -Depth 8
+    exit 2
+}
 $statusPayload | ConvertTo-Json -Depth 6

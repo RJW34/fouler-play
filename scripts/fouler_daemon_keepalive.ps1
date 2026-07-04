@@ -1,17 +1,19 @@
-# fouler_daemon_keepalive.ps1 - Claude/DEKU 2026-06-16. Relaunch the continuous-ladder
-# daemon if it is absent, so a crash / JIGGLY reboot no longer stops laddering permanently
-# (the daemon was orphaned under WmiPrvSE with no supervisor). HONORS the stop file so it
-# never fights an intentional pause (e.g. an -AutoImprove learning window).
+# Legacy scheduled-task entry point. The old continuous-ladder daemon is no
+# longer the authority; bounded HERMES supervisor cycles are. Keep this file so
+# the existing scheduled task remains useful, but delegate to the mission
+# monitor that refreshes truth, opens tickets, and safely restarts one bounded
+# supervisor when rails allow it.
 $ErrorActionPreference = 'SilentlyContinue'
 $proj = 'D:\Projects\fouler-play'
-$daemon = Join-Path $proj 'scripts\fouler_continuous_daemon.ps1'
-$stop = Join-Path $proj '.pids\continuous-ladder.stop'
+$monitor = Join-Path $proj 'scripts\fouler_mission_monitor_task.ps1'
 $log = Join-Path $proj 'logs\daemon-keepalive.log'
-function say($m) { ("{0} keepalive: {1}" -f (Get-Date -Format o), $m) | Add-Content $log }
+function say($m) { ("{0} keepalive: {1}" -f (Get-Date -Format o), $m) | Add-Content -LiteralPath $log -Encoding ASCII }
 
-if (Test-Path $stop) { say "stop file present -> intentional pause, not relaunching"; exit 0 }
-$alive = Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" 2>$null | Where-Object { $_.CommandLine -match 'fouler_continuous_daemon' }
-if ($alive) { exit 0 }
+if (-not (Test-Path -LiteralPath $monitor -PathType Leaf)) {
+    say "mission monitor wrapper missing -> cannot delegate"
+    exit 1
+}
 
-say "daemon ABSENT -> relaunching"
-Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $daemon
+say "delegating to HERMES Fouler mission monitor"
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $monitor
+exit 0

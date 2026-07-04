@@ -44,6 +44,7 @@ DRAIN_FILE = PID_DIR / "drain.request"
 SUPERVISOR_PID_FILE = PID_DIR / "devstream_battle_supervisor.pid"
 SUPERVISOR_STOP_FILE = PID_DIR / "supervisor.stop"
 SUPERVISOR_STATUS_FILE = ROOT / "devstream" / "truth" / "supervisor-status.json"
+SUPERVISOR_IMPROVE_LEASE_FILE = ROOT / "devstream" / "truth" / "improve-runtime-lease.json"
 STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-backups"
 STALE_STREAM_STATUS_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-stream-status-backups"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
@@ -51,6 +52,7 @@ BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
 STREAM_STATUS_FILE = ROOT / "stream_status.json"
 STALE_ACTIVE_TRUTH_SECONDS = 1800
 STALE_STREAM_TRUTH_SECONDS = 21600
+IDLE_RUNNER_STALE_SECONDS = int(os.getenv("FP_IDLE_RUNNER_STALE_SECONDS", "180"))
 ACTIVE_STREAM_STATUSES = {"active", "battling", "running", "searching"}
 STALE_TRUTH_CLEANUP_PURPOSE = "devstream-stale-truth-cleanup"
 STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE = f"{STALE_TRUTH_CLEANUP_PURPOSE}-dry-run"
@@ -498,6 +500,8 @@ def supervisor_command(
         command.extend(["--runtime-lease", runtime_lease])
     if enable_auto_improve:
         command.append("--enable-auto-improve")
+    else:
+        command.append("--skip-improve")
     return command
 
 
@@ -1050,6 +1054,29 @@ def runtime_pid_file_check() -> dict[str, Any]:
     }
 
 
+def clear_dead_battle_pid_files(*, reason: str) -> list[dict[str, Any]]:
+    """Remove only battle PID files whose recorded process is already dead."""
+    actions: list[dict[str, Any]] = []
+    for pid_file in battle_pid_files():
+        status = pid_file_status(pid_file)
+        if not status.get("exists") or not status.get("stale") or status.get("alive"):
+            continue
+        action = {
+            "pidFile": str(pid_file),
+            "pid": status.get("pid"),
+            "reason": reason,
+            "statusReason": status.get("reason"),
+            "removed": False,
+        }
+        try:
+            pid_file.unlink()
+            action["removed"] = True
+        except OSError as exc:
+            action["error"] = str(exc)
+        actions.append(action)
+    return actions
+
+
 def write_pid(path: Path, proc: subprocess.Popen[Any], command: list[str]) -> None:
     write_pid_value(path, proc.pid, command)
 
@@ -1137,7 +1164,12 @@ def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> di
     handle = log_path.open("a", encoding="utf-8")
     creationflags = 0
     if os.name == "nt":
-        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS
+        breakaway = getattr(subprocess, "CREATE_BREAKAWAY_FROM_JOB", 0x01000000)
+        creationflags = (
+            subprocess.CREATE_NEW_PROCESS_GROUP
+            | subprocess.DETACHED_PROCESS
+            | breakaway
+        )
     proc = subprocess.Popen(
         command,
         cwd=str(ROOT),
@@ -1164,6 +1196,15 @@ def process_age_seconds(pid: int) -> float | None:
         return None
 
 
+def process_parent_pid(pid: int) -> int | None:
+    try:
+        import psutil  # type: ignore
+
+        return int(psutil.Process(pid).ppid())
+    except Exception:
+        return None
+
+
 def battle_pid_files() -> list[Path]:
     return [BOT_LOCK_PID_FILE, BATTLE_PID_FILE]
 
@@ -1179,10 +1220,14 @@ def live_battle_runner_owners() -> list[dict[str, Any]]:
         if key in seen:
             continue
         seen.add(key)
-        runners.append({
+        runner = {
             "pidFile": str(pid_file),
             "pid": int(pid),
-        })
+        }
+        parent_pid = process_parent_pid(int(pid))
+        if parent_pid is not None:
+            runner["parentPid"] = parent_pid
+        runners.append(runner)
     return runners
 
 
@@ -1190,11 +1235,62 @@ def _distinct_battle_runner_pids(runners: list[dict[str, Any]]) -> list[int]:
     return sorted({int(runner["pid"]) for runner in runners})
 
 
+def _logical_battle_runner_groups(runners: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_pid = {int(runner["pid"]): runner for runner in runners}
+    children_by_parent: dict[int, list[int]] = {}
+    for pid, runner in by_pid.items():
+        parent_pid = runner.get("parentPid")
+        if parent_pid is None:
+            continue
+        try:
+            parent_int = int(parent_pid)
+        except (TypeError, ValueError):
+            continue
+        if parent_int in by_pid:
+            children_by_parent.setdefault(parent_int, []).append(pid)
+
+    roots = sorted(
+        pid
+        for pid, runner in by_pid.items()
+        if int(runner.get("parentPid") or 0) not in by_pid
+    )
+    groups: list[dict[str, Any]] = []
+    assigned: set[int] = set()
+    for root_pid in roots:
+        stack = [root_pid]
+        members: list[int] = []
+        while stack:
+            pid = stack.pop()
+            if pid in assigned:
+                continue
+            assigned.add(pid)
+            members.append(pid)
+            stack.extend(children_by_parent.get(pid, []))
+        groups.append({
+            "rootPid": root_pid,
+            "memberPids": sorted(members),
+            "pidFiles": [
+                str(by_pid[pid].get("pidFile"))
+                for pid in sorted(members)
+                if by_pid.get(pid)
+            ],
+        })
+
+    for pid in sorted(set(by_pid) - assigned):
+        groups.append({
+            "rootPid": pid,
+            "memberPids": [pid],
+            "pidFiles": [str(by_pid[pid].get("pidFile"))],
+        })
+    return groups
+
+
 def _battle_runtime_ownership_conflict_payload(
     command: list[str],
     runners: list[dict[str, Any]],
-    distinct_pids: list[int],
+    runner_groups: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    distinct_pids = [int(group["rootPid"]) for group in runner_groups]
     return {
         "alreadyRunning": True,
         "blocked": True,
@@ -1202,7 +1298,9 @@ def _battle_runtime_ownership_conflict_payload(
         "runtimeOwnershipConflict": True,
         "duplicateBattleRunners": True,
         "battleRunnerCount": len(distinct_pids),
+        "battleRunnerProcessCount": len(_distinct_battle_runner_pids(runners)),
         "distinctPids": distinct_pids,
+        "logicalBattleRunners": runner_groups,
         "knownRunners": runners,
         "adoptedPidFile": None,
         "command": command,
@@ -1219,9 +1317,9 @@ def existing_battle_runner_start_result(command: list[str]) -> dict[str, Any] | 
     runners = live_battle_runner_owners()
     if not runners:
         return None
-    distinct_pids = _distinct_battle_runner_pids(runners)
-    if len(distinct_pids) > 1:
-        return _battle_runtime_ownership_conflict_payload(command, runners, distinct_pids)
+    runner_groups = _logical_battle_runner_groups(runners)
+    if len(runner_groups) > 1:
+        return _battle_runtime_ownership_conflict_payload(command, runners, runner_groups)
 
     canonical_runner = next(
         (runner for runner in runners if runner["pidFile"] == str(BATTLE_PID_FILE)),
@@ -1246,6 +1344,9 @@ def existing_battle_runner_start_result(command: list[str]) -> dict[str, Any] | 
         "pid": canonical_runner["pid"],
         "pidFile": canonical_runner["pidFile"],
         "knownRunners": runners,
+        "battleRunnerCount": len(runner_groups),
+        "battleRunnerProcessCount": len(_distinct_battle_runner_pids(runners)),
+        "logicalBattleRunners": runner_groups,
         "adoptedPidFile": adopted,
         "command": command,
         "reason": "existing battle runner is alive; not spawning duplicate runner",
@@ -1264,6 +1365,62 @@ def supervisor_runtime_state() -> dict[str, Any]:
         "battleRunnerAlive": battle_runner_alive,
         "inFlight": active_count > 0 or battle_runner_alive,
     }
+
+
+def idle_battle_runner_recovery_candidate(stale_after_seconds: int = IDLE_RUNNER_STALE_SECONDS) -> dict[str, Any]:
+    active_battles = read_active_battles()
+    candidates: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for pid_file in battle_pid_files():
+        alive, pid = pid_alive(pid_file)
+        item: dict[str, Any] = {
+            "pidFile": str(pid_file),
+            "pid": pid,
+            "alive": alive,
+        }
+        if pid and pid not in seen:
+            seen.add(pid)
+            age = process_age_seconds(pid)
+            if age is None and pid_file.exists():
+                age = max(0.0, time.time() - pid_file.stat().st_mtime)
+            item["ageSeconds"] = round(age, 3) if age is not None else None
+            item["stale"] = bool(alive and age is not None and age >= stale_after_seconds)
+        else:
+            item["stale"] = False
+        candidates.append(item)
+    stale_alive = [item for item in candidates if item.get("alive") and item.get("stale")]
+    live_young = [item for item in candidates if item.get("alive") and not item.get("stale")]
+    should_recover = bool(active_battles <= 0 and stale_alive and not live_young)
+    return {
+        "activeBattleCount": active_battles,
+        "staleAfterSeconds": stale_after_seconds,
+        "candidates": candidates,
+        "staleAliveCount": len(stale_alive),
+        "liveYoungCount": len(live_young),
+        "shouldRecover": should_recover,
+        "reason": (
+            "idle stale runner is safe to drain/recover"
+            if should_recover
+            else "active battle or non-stale runner blocks recovery"
+        ),
+    }
+
+
+def learning_cycle_completed_after_cycle(
+    *,
+    battle_was_in_flight: bool,
+    pre_cycle_runtime: dict[str, Any],
+    cycle: dict[str, Any],
+) -> bool:
+    recovered_idle_runner = bool(
+        isinstance(cycle.get("staleBattleRuntimeRecovery"), dict)
+        and cycle["staleBattleRuntimeRecovery"].get("recovered")
+    )
+    return bool(
+        battle_was_in_flight
+        and cycle.get("proofRefreshed")
+        and (not pre_cycle_runtime.get("inFlight") or recovered_idle_runner)
+    )
 
 
 def clear_stale_active_battles(
@@ -1576,13 +1733,21 @@ def tail_text(text: str, max_chars: int = 4000) -> str:
     return text[-max_chars:]
 
 
-def run_supervisor_command(command: list[str], *, timeout: int) -> dict[str, Any]:
+def run_supervisor_command(
+    command: list[str],
+    *,
+    timeout: int,
+    env_overrides: dict[str, str] | None = None,
+) -> dict[str, Any]:
     started = time.time()
+    child_env = prepare_runtime_env(load_env_files())
+    if env_overrides:
+        child_env.update({str(key): str(value) for key, value in env_overrides.items()})
     try:
         result = subprocess.run(
             command,
             cwd=str(ROOT),
-            env=prepare_runtime_env(load_env_files()),
+            env=child_env,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -1638,10 +1803,11 @@ def run_supervisor_cycle(
         "effectiveRunCount": effective_count,
         "startNextBattleSession": start_next,
     }
+    queue_timeout_seconds = positive_int(getattr(args, "queue_timeout_seconds", 180), 180)
     if active_count > 0 and not battle_runner_alive:
         stale_clear = clear_stale_active_battles(
             execute=True,
-            stale_after_seconds=max(int(args.queue_timeout_seconds), 60),
+            stale_after_seconds=max(queue_timeout_seconds, 60),
             clear_reason="stale active battle truth blocked three-slot supervisor restart",
         )
         payload["staleActiveBattleClear"] = stale_clear
@@ -1651,10 +1817,26 @@ def run_supervisor_cycle(
             payload["activeBattleCountAfterClear"] = active_count
             payload["battleRunnerAliveAfterClear"] = battle_runner_alive
 
-    if active_count > 0 or battle_runner_alive:
+    idle_recovery = idle_battle_runner_recovery_candidate(max(IDLE_RUNNER_STALE_SECONDS, queue_timeout_seconds))
+    payload["idleRunnerRecovery"] = idle_recovery
+    if active_count > 0 or (battle_runner_alive and not idle_recovery.get("shouldRecover")):
         payload["state"] = "battle-cycle-in-flight"
         payload["nextAction"] = "wait for active battle runner/drain before proof refresh"
         return payload
+    if battle_runner_alive and idle_recovery.get("shouldRecover"):
+        recovery = recover_stale_battle_runtime(
+            execute=True,
+            stale_after_seconds=int(idle_recovery.get("staleAfterSeconds") or IDLE_RUNNER_STALE_SECONDS),
+        )
+        payload["staleBattleRuntimeRecovery"] = recovery
+        active_count = read_active_battles()
+        battle_runner_alive = any_battle_runner_alive()
+        payload["activeBattleCountAfterRecovery"] = active_count
+        payload["battleRunnerAliveAfterRecovery"] = battle_runner_alive
+        if active_count > 0 or battle_runner_alive:
+            payload["state"] = "battle-cycle-in-flight"
+            payload["nextAction"] = "stale idle runner recovery attempted; wait for drain before proof refresh"
+            return payload
 
     payload["state"] = "idle-restoring-runtime"
     payload["proofRefreshed"] = True
@@ -1684,28 +1866,93 @@ def run_supervisor_cycle(
     }
     if improve_enabled:
         improve_cycle_limit, _ = supervisor_cycle_limit(args)
-        improve_command = [
+        improve_cycle_limit = improve_cycle_limit or DEFAULT_AUTO_IMPROVE_MAX_CYCLES
+        improve_env = prepare_runtime_env(load_env_files())
+        improve_account = env_value(
+            improve_env,
+            "IMPROVE_AGENT_ACCOUNT",
+            "FOULER_ACTIVE_ACCOUNT",
+            "SHOWDOWN_USER_ID",
+            "PS_USERNAME",
+            default="LEBOTJAMESXD00N",
+        )
+        improve_lease = str(SUPERVISOR_IMPROVE_LEASE_FILE.relative_to(ROOT))
+        lease_minutes = max(60, ((effective_count * 220) + 300 + 59) // 60 + 10)
+        payload["improveLease"] = {
+            "path": improve_lease,
+            "runCount": effective_count,
+            "maxCycles": improve_cycle_limit,
+            "maxConcurrentBattles": args.max_concurrent_battles,
+            "account": improve_account,
+            "validMinutes": lease_minutes,
+            "purpose": "improve-agent",
+        }
+        lease_command = [
             py,
-            "infrastructure/improve_agent.py",
-            "--enable-auto-improve",
+            "scripts/devstream_runtime_lease.py",
+            "--purpose",
+            "improve-agent",
+            "--write",
+            "--machine",
+            "JIGGLYPUFF",
+            "--run-count",
+            str(effective_count),
             "--max-cycles",
-            str(improve_cycle_limit or DEFAULT_AUTO_IMPROVE_MAX_CYCLES),
+            str(improve_cycle_limit),
+            "--max-concurrent-battles",
+            str(args.max_concurrent_battles),
+            "--account",
+            improve_account,
+            "--replay-behavior",
+            "never",
+            "--valid-minutes",
+            str(lease_minutes),
+            "--approved",
+            "--runtime-lease",
+            improve_lease,
         ]
-        runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
-        if runtime_lease:
-            improve_command.extend(["--runtime-lease", runtime_lease])
-        payload["actions"].append(
-            run_supervisor_command(
-                improve_command,
-                timeout=getattr(args, "improve_timeout_seconds", 240),
-            )
+        lease_result = run_supervisor_command(
+            lease_command,
+            timeout=getattr(args, "proof_timeout_seconds", 300),
         )
-        payload["actions"].append(
-            run_supervisor_command(
-                [py, "infrastructure/elo_watchdog.py"],
-                timeout=getattr(args, "proof_timeout_seconds", 300),
+        payload["actions"].append(lease_result)
+        if lease_result.get("returnCode") != 0:
+            payload["autoImprove"]["blocked"] = True
+            payload["autoImprove"]["blocker"] = "failed to write improve-agent runtime lease"
+            payload["actions"].append(
+                run_supervisor_command(
+                    [py, "infrastructure/elo_watchdog.py"],
+                    timeout=getattr(args, "proof_timeout_seconds", 300),
+                )
             )
-        )
+        else:
+            improve_env_overrides = {
+                "IMPROVE_AGENT_EVAL_BATTLES": str(effective_count),
+                "IMPROVE_AGENT_ACCOUNT": improve_account,
+                "IMPROVE_AGENT_MAX_CONCURRENT_BATTLES": str(args.max_concurrent_battles),
+            }
+            improve_command = [
+                py,
+                "infrastructure/improve_agent.py",
+                "--enable-auto-improve",
+                "--max-cycles",
+                str(improve_cycle_limit),
+                "--runtime-lease",
+                improve_lease,
+            ]
+            payload["actions"].append(
+                run_supervisor_command(
+                    improve_command,
+                    timeout=getattr(args, "improve_timeout_seconds", 240),
+                    env_overrides=improve_env_overrides,
+                )
+            )
+            payload["actions"].append(
+                run_supervisor_command(
+                    [py, "infrastructure/elo_watchdog.py"],
+                    timeout=getattr(args, "proof_timeout_seconds", 300),
+                )
+            )
     start_command = [
         py,
         "scripts/devstream_session.py",
@@ -1788,6 +2035,9 @@ def cmd_supervise(args: argparse.Namespace) -> int:
         write_supervisor_status(payload)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
+    payload["deadBattlePidCleanup"] = clear_dead_battle_pid_files(
+        reason="supervisor start confirmed recorded battle runner PID is not alive"
+    )
     if SUPERVISOR_STOP_FILE.exists():
         SUPERVISOR_STOP_FILE.unlink()
     write_pid_value(
@@ -1803,6 +2053,9 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             runtime_lease=getattr(args, "runtime_lease", None),
         ),
     )
+    payload["state"] = "supervisor-loop-starting"
+    payload["lastHeartbeatAt"] = iso_now()
+    write_supervisor_status(payload)
     try:
         while True:
             if SUPERVISOR_STOP_FILE.exists():
@@ -1812,21 +2065,42 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 return 0
             cycle_index += 1
             pre_cycle_runtime = supervisor_runtime_state()
+            current_lease_guard = runtime_lease_guard(
+                purpose="devstream-supervise",
+                args=args,
+                env=env,
+                run_count=effective_count,
+                max_cycles=effective_max_cycles,
+                require_max_cycles=True,
+            )
+            payload["runtimeLease"] = current_lease_guard
+            lease_ok = bool(current_lease_guard.get("ok"))
             completing_final_learning_cycle = bool(
                 effective_max_cycles
                 and battle_was_in_flight
                 and not pre_cycle_runtime["inFlight"]
                 and completed_learning_cycles + 1 >= effective_max_cycles
             )
+            payload["state"] = "running-cycle"
+            payload["lastHeartbeatAt"] = iso_now()
+            payload["currentCycleIndex"] = cycle_index
+            payload["currentCycleStartedAt"] = payload["lastHeartbeatAt"]
+            payload["runtimeLease"] = current_lease_guard
+            payload["preCycleRuntime"] = pre_cycle_runtime
+            payload["nextAction"] = (
+                "running proof/improve/start cycle; status will refresh when bounded action returns"
+            )
+            write_supervisor_status(payload)
             cycle = run_supervisor_cycle(
                 args,
                 cycle_index,
-                start_next=not completing_final_learning_cycle,
+                start_next=lease_ok and not completing_final_learning_cycle,
             )
-            completed_this_cycle = bool(
-                battle_was_in_flight
-                and not pre_cycle_runtime["inFlight"]
-                and cycle.get("proofRefreshed")
+            cycle["runtimeLease"] = current_lease_guard
+            completed_this_cycle = learning_cycle_completed_after_cycle(
+                battle_was_in_flight=battle_was_in_flight,
+                pre_cycle_runtime=pre_cycle_runtime,
+                cycle=cycle,
             )
             if completed_this_cycle:
                 completed_learning_cycles += 1
@@ -1851,7 +2125,21 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             payload["lastCycle"] = cycle
             payload["cycles"] = (payload.get("cycles") or [])[-9:] + [cycle]
             payload["completedLearningCycles"] = completed_learning_cycles
+            if not lease_ok:
+                payload["state"] = "blocked-runtime-lease"
+                payload["error"] = runtime_lease_blocked_message(current_lease_guard)
+                payload["nextAction"] = (
+                    "wait for in-flight runner to drain; no new battle runner will start "
+                    "until HERMES renews the runtime lease"
+                )
+                cycle["leaseBlockedStartNext"] = True
+                cycle["nextAction"] = payload["nextAction"]
             write_supervisor_status(payload)
+            if not lease_ok and not post_cycle_in_flight:
+                payload["blockedAt"] = iso_now()
+                write_supervisor_status(payload)
+                print(json.dumps(payload, indent=2, sort_keys=True))
+                return 2
             if effective_max_cycles and completed_learning_cycles >= effective_max_cycles:
                 payload["state"] = "completed-max-cycles"
                 payload["completedAt"] = iso_now()
@@ -1907,19 +2195,24 @@ def build_doctor() -> dict[str, Any]:
     else:
         readiness = health.get("readiness") if isinstance(health, dict) and isinstance(health.get("readiness"), dict) else {}
         proof_handoff_ready = bool(readiness.get("proofHandoffReady"))
-        checks.append({
+        useful_work_ready = bool(readiness.get("usefulWorkProofReady"))
+        accepted_mode = None
+        if health and not health.get("healthy"):
+            if proof_handoff_ready:
+                accepted_mode = "proof-handoff"
+            elif useful_work_ready:
+                accepted_mode = "useful-work-proof"
+        health_check = {
             "name": "health_probe",
-            "ok": bool(health and (health.get("healthy") or proof_handoff_ready)),
+            "ok": bool(health and (health.get("healthy") or proof_handoff_ready or useful_work_ready)),
             "details": health,
-            **(
-                {
-                    "acceptedMode": "proof-handoff",
-                    "runtimeRestoration": "runtime is not live-ready; start only through HERMES after readiness gate allows project starts",
-                }
-                if health and not health.get("healthy") and proof_handoff_ready
-                else {}
-            ),
-        })
+        }
+        if accepted_mode:
+            health_check.update({
+                "acceptedMode": accepted_mode,
+                "runtimeRestoration": "runtime is not live-ready; start only through HERMES after readiness gate allows project starts",
+            })
+        checks.append(health_check)
     schema = ROOT / "devstream" / "truth" / "elo-proof.schema.json"
     example = ROOT / "devstream" / "truth" / "elo-proof.example.json"
     login_check = ROOT / "scripts" / "showdown_login_check.py"
@@ -2207,7 +2500,8 @@ def cmd_drain(args: argparse.Namespace) -> int:
     active_battles = read_active_battles()
     runner_alive = any_battle_runner_alive()
     runner_owners = live_battle_runner_owners()
-    distinct_runner_pids = _distinct_battle_runner_pids(runner_owners)
+    runner_groups = _logical_battle_runner_groups(runner_owners)
+    distinct_runner_pids = [int(group["rootPid"]) for group in runner_groups]
     payload = {
         "schemaVersion": "fouler-play-devstream-drain-plan/v1",
         "checkedAt": iso_now(),
@@ -2217,10 +2511,12 @@ def cmd_drain(args: argparse.Namespace) -> int:
         "runtimeOwnership": {
             "knownRunners": runner_owners,
             "distinctPids": distinct_runner_pids,
-            "duplicateBattleRunners": len(distinct_runner_pids) > 1,
+            "logicalBattleRunners": runner_groups,
+            "battleRunnerProcessCount": len(_distinct_battle_runner_pids(runner_owners)),
+            "duplicateBattleRunners": len(runner_groups) > 1,
             "requiredHermesAction": (
                 "drain/adopt exactly one live battle runner before starting another cycle"
-                if len(distinct_runner_pids) > 1
+                if len(runner_groups) > 1
                 else None
             ),
         },

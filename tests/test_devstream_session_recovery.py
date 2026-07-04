@@ -1230,7 +1230,7 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
 
-    def fake_run(command, *, timeout):
+    def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
         return {"command": command, "returnCode": 0}
 
@@ -1264,7 +1264,7 @@ def test_supervisor_cycle_caps_legacy_unbounded_run_count(monkeypatch):
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
 
-    def fake_run(command, *, timeout):
+    def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
         return {"command": command, "returnCode": 0}
 
@@ -1297,7 +1297,7 @@ def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
     monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
 
-    def fake_run(command, *, timeout):
+    def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
         return {"command": command, "returnCode": 0}
 
@@ -1333,7 +1333,7 @@ def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
 
-    def fake_run(command, *, timeout):
+    def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
         return {"command": command, "returnCode": 0}
 
@@ -1358,15 +1358,15 @@ def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
         "reason": "--enable-auto-improve",
         "sentinel": devstream_session.AUTO_IMPROVE_SENTINEL,
     }
-    assert commands[2] == [
+    assert commands[2][:3] == ["python", "scripts/devstream_runtime_lease.py", "--purpose"]
+    assert "improve-agent" in commands[2]
+    assert commands[3][:2] == [
         "python",
         "infrastructure/improve_agent.py",
-        "--enable-auto-improve",
-        "--max-cycles",
-        "1",
     ]
-    assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
-    assert commands[4][:3] == ["python", "scripts/devstream_session.py", "start"]
+    assert "--runtime-lease" in commands[3]
+    assert commands[4] == ["python", "infrastructure/elo_watchdog.py"]
+    assert commands[5][:3] == ["python", "scripts/devstream_session.py", "start"]
 
 
 def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag(monkeypatch):
@@ -1381,7 +1381,7 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
         lambda: {devstream_session.AUTO_IMPROVE_SENTINEL: "1"},
     )
 
-    def fake_run(command, *, timeout):
+    def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
         return {"command": command, "returnCode": 0}
 
@@ -1403,14 +1403,14 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
 
     assert payload["autoImprove"]["enabled"] is True
     assert payload["autoImprove"]["reason"] == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
-    assert commands[2] == [
+    assert commands[2][:3] == ["python", "scripts/devstream_runtime_lease.py", "--purpose"]
+    assert "improve-agent" in commands[2]
+    assert commands[3][:2] == [
         "python",
         "infrastructure/improve_agent.py",
-        "--enable-auto-improve",
-        "--max-cycles",
-        "1",
     ]
-    assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
+    assert "--runtime-lease" in commands[3]
+    assert commands[4] == ["python", "infrastructure/elo_watchdog.py"]
 
 
 def test_supervisor_auto_improve_accepts_env_sentinel():
@@ -1574,7 +1574,7 @@ def test_supervisor_cycle_clears_stale_active_truth_when_runner_is_dead(monkeypa
             "clearReason": kwargs["clear_reason"],
         }
 
-    def fake_run(command, *, timeout):
+    def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
         return {"command": command, "returnCode": 0}
 
@@ -1620,7 +1620,7 @@ def test_supervisor_cycle_can_refresh_proof_without_starting_next_batch(monkeypa
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
 
-    def fake_run(command, *, timeout):
+    def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
         return {"command": command, "returnCode": 0}
 

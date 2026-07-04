@@ -145,6 +145,36 @@ def test_obs_server_keepalive_task_restarts_only_public_surface():
     assert "jigglypuff-obs-keepalive.log" in installer
 
 
+def test_boot_watchdog_installs_startup_service_account_task():
+    installer = (ROOT / "infrastructure" / "windows" / "install_fouler_boot_watchdog_task.ps1").read_text(encoding="utf-8")
+    watchdog = (ROOT / "infrastructure" / "windows" / "fouler_boot_watchdog.ps1").read_text(encoding="utf-8")
+
+    assert "New-ScheduledTaskTrigger -AtStartup" in installer
+    assert 'New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest' in installer
+    assert "StartWhenAvailable" in installer
+    assert "starting the Fouler boot watchdog requires explicit positive -RunCount and -MaxCycles" in installer
+    assert "HERMES-FoulerBootWatchdog" in installer
+    assert "ServiceAccount" in installer
+    assert "Interactive" not in installer
+    assert "Start Streaming" not in installer
+    assert "TWITCH" not in installer.upper()
+
+    assert "scripts\\fouler_jigglypuff_runtime.ps1" in watchdog
+    assert "scripts\\fouler_mission_monitor.py" in watchdog
+    assert "--start-gate-only" in watchdog
+    assert "--run-count" in watchdog
+    assert "--max-cycles" in watchdog
+    assert "--max-concurrent-battles" in watchdog
+    assert "checking Fouler mission start gate before launch" in watchdog
+    assert "blocked: Fouler mission start gate" in watchdog
+    assert '"-Command", "start"' in watchdog
+    assert '"-Execute"' in watchdog
+    assert "supervisor.stop" in watchdog
+    assert "FOULER_PLAY_ENABLE_AUTO_IMPROVE" not in watchdog
+    assert "git push" not in watchdog
+    assert "Start Streaming" not in watchdog
+
+
 def test_battle_supervisor_defaults_to_one_rated_battle():
     wrapper = (ROOT / "scripts" / "start_battle_supervisor_task.ps1").read_text(encoding="utf-8")
     installer = (ROOT / "scripts" / "install_battle_supervisor_task.ps1").read_text(encoding="utf-8")
@@ -159,6 +189,11 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert "--max-cycles" in runtime
     assert "-MaxCycles" in installer
     assert "-AutoImprove" in installer
+    assert "-Foreground" in installer
+    assert "Wait-BattleSupervisorProcess" in installer
+    assert "Start-ForegroundWrapperProcess" in installer
+    assert "blocked-supervisor-launch" in installer
+    assert "battle supervisor launch did not produce a live devstream_session.py supervise process" in installer
     assert "Rotate-LogFileIfLarge" in wrapper
     assert "Rotate-LogFileIfLarge" in runtime
     assert "function Get-RuntimeLeaseAccount" in wrapper
@@ -180,6 +215,21 @@ def test_legacy_player_loop_is_clearly_quarantined():
     assert "This wrapper intentionally loops forever" in text
     assert "devstream_session.py supervise" in text
     assert "goto loop_start" in text
+
+
+def test_linux_player_loop_delegates_to_bounded_supervisor():
+    text = (ROOT / "infrastructure" / "linux" / "player_loop.sh").read_text(encoding="utf-8")
+
+    assert "scripts/devstream_session.py" in text
+    assert '"supervise"' in text
+    assert '"--max-cycles" "$MAX_CYCLES"' in text
+    assert "RUN_COUNT or BATCH_SIZE must be a positive bounded value" in text
+    assert "FOULER_PLAY_ENABLE_AUTO_IMPROVE" in text
+    assert "python run.py" not in text
+    assert '"run.py"' not in text
+    assert "while true" not in text
+    assert "git push" not in text
+    assert "git commit" not in text
 
 
 def test_jigglypuff_control_exposes_auto_improve_start_flag():
