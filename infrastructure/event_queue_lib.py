@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Event Queue Library for Fouler Play Discord Notifications
 
@@ -8,7 +8,7 @@ and precondition support. All Discord messages flow through this queue.
 Usage:
     from infrastructure.event_queue_lib import queue_event, read_queue, mark_posted, mark_failed
     
-    queue_event("batch_complete", "battles", "📊 Batch Report...", 
+    queue_event("batch_complete", "battles", "ðŸ“Š Batch Report...", 
                 precondition_check_fn="bot_is_alive", dedup_window_sec=10)
 """
 
@@ -99,6 +99,7 @@ DEDUP_WINDOWS = {
     "process_crash": 60,
     "bot_started": 30,
 }
+NON_BATTLE_STRUCTURED_EVENT_TYPES = {"hermes_status", "mission_alert", "ops_alert"}
 
 
 def _content_hash(event_type: str, channel: str, content: str) -> str:
@@ -291,7 +292,16 @@ def _backlog_archive_text(payload: dict[str, object], max_bytes: int | None = No
     return best_text
 
 
-def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now: float, max_age_sec: int, reason: str) -> dict[str, object]:
+def _write_backlog_archive(
+    events: list[dict],
+    stale_events: list[dict],
+    *,
+    now: float,
+    max_age_sec: int,
+    reason: str,
+    archival_disposition: str = "stale-pending-events-expired-locally-not-sent",
+    next_hermes_action: str = "Treat this as local stale-proof archive only; transport only fresh events after the queue is clean.",
+) -> dict[str, object]:
     event_types: Counter[str] = Counter(str(event.get("event_type") or "unknown") for event in stale_events)
     stale_ids = {id(event) for event in stale_events}
     remaining_pending = [
@@ -324,14 +334,15 @@ def _write_backlog_archive(events: list[dict], stale_events: list[dict], *, now:
         "oldestArchivedTimestamp": _iso_utc(oldest) if oldest is not None else None,
         "newestArchivedTimestamp": _iso_utc(newest) if newest is not None else None,
         "events": event_summaries,
-        "archivalDisposition": "stale-pending-events-expired-locally-not-sent",
+        "archivalDisposition": archival_disposition,
         "liveDiscordMessagesSent": False,
         "prunedArchiveCount": 0,
         "secretValuesPrinted": False,
-        "nextHermesAction": "Treat this as local stale-proof archive only; transport only fresh events after the queue is clean.",
+        "nextHermesAction": next_hermes_action,
     }
     TRUTH_DIR.mkdir(parents=True, exist_ok=True)
     BACKLOG_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    BACKLOG_ARCHIVE_LATEST.parent.mkdir(parents=True, exist_ok=True)
     archive_path = BACKLOG_ARCHIVE_DIR / f"backlog-archive-{_utc_stamp(now)}.json"
     payload["archivePath"] = str(archive_path)
     payload["latestPath"] = str(BACKLOG_ARCHIVE_LATEST)
@@ -405,9 +416,9 @@ def queue_event(
     if dedup_window_sec is None:
         dedup_window_sec = DEDUP_WINDOWS.get(event_type, 10)
 
-    structured_fields = structured_report_fields(content, event_type=event_type)
+    structured_fields = {} if event_type in NON_BATTLE_STRUCTURED_EVENT_TYPES else structured_report_fields(content, event_type=event_type)
     content = format_payload_or_message(content)
-    if not structured_fields.get("analysis"):
+    if event_type not in NON_BATTLE_STRUCTURED_EVENT_TYPES and not structured_fields.get("analysis"):
         structured_fields = structured_report_fields(content, event_type=event_type)
     content_md5 = _content_hash(event_type, channel, content)
     now = time.time()
@@ -630,6 +641,48 @@ def quarantine_stale_battle_results(max_age_sec: int = DEFAULT_EXPIRY_SEC) -> in
 
     return _with_lock(_do_quarantine)
 
+
+def archive_stale_failed_events(max_age_sec: int = DEFAULT_EXPIRY_SEC, *, now: float | None = None) -> int:
+    """Archive old terminal delivery failures so stale errors do not block fresh proof forever."""
+    now = time.time() if now is None else now
+    reason = "stale-failed-discord-events-archived-before-live-readiness"
+
+    def _do_archive(f):
+        events = _read_queue_locked(f)
+        stale_events = [
+            ev
+            for ev in events
+            if isinstance(ev, dict)
+            and ev.get("status") == STATUS_FAILED
+            and (now - _event_timestamp(ev, now)) > max_age_sec
+        ]
+        if not stale_events:
+            return 0
+        _write_backlog_archive(
+            events,
+            stale_events,
+            now=now,
+            max_age_sec=max_age_sec,
+            reason=reason,
+            archival_disposition="terminal-failed-events-archived-locally-not-retried",
+            next_hermes_action=(
+                "Terminal delivery failures were archived as local proof; retry only fresh/new Discord events."
+            ),
+        )
+        stale_event_ids = {id(ev) for ev in stale_events}
+        compacted_events = [
+            ev
+            for ev in events
+            if not (
+                isinstance(ev, dict)
+                and id(ev) in stale_event_ids
+                and ev.get("status") == STATUS_FAILED
+            )
+        ]
+        _write_queue_locked(f, compacted_events)
+        return len(stale_events)
+
+    return _with_lock(_do_archive)
 
 def cleanup_queue(keep_last: int = 200) -> int:
     """Remove old posted/failed/expired events, keeping last N."""
@@ -999,3 +1052,4 @@ def queue_health_summary(events: list | None = None, *, now: float | None = None
         "nextHermesAction": classification.get("nextHermesAction"),
         "blockers": blockers,
     }
+

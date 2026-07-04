@@ -28,6 +28,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 HTTP_PORT = 8777
 OBS_WS_PORT = 4455
+RUNTIME_LEASE_PATH = ROOT / "devstream" / "truth" / "runtime-lease.json"
+LOGS_DIR = ROOT / "logs"
+BATTLE_LOG_GLOB = "battle-*.log"
+SESSION_LOG_NAME = "init.log"
+LIVE_SIGNAL_MAX_BATTLE_LOG_AGE_SECONDS = 3600
+SIGNAL_STATE_LIVE = "LIVE"
+SIGNAL_STATE_STALE = "STALE — bot not playing; do not trust gauges"
 IDLE_RUNNER_STALE_SECONDS = int(os.getenv("FP_IDLE_RUNNER_STALE_SECONDS", "180"))
 PROOF_STATUS_MAX_AGE_SECONDS = int(os.getenv("FP_PROOF_STATUS_MAX_AGE_SECONDS", "1800"))
 TERMINAL_BATTLE_RESULTS = {"win", "loss", "tie", "draw", "forfeit", "timeout", "ended", "error"}
@@ -108,9 +115,12 @@ def positive_int_env(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
-EXPECTED_DEVSTREAM_BATTLE_SURFACES = positive_int_env(
-    "FP_EXPECTED_DEVSTREAM_BATTLE_SURFACES",
+EXPECTED_DEVSTREAM_BATTLE_SURFACES = max(
     DEFAULT_DEVSTREAM_BATTLE_SURFACES,
+    positive_int_env(
+        "FP_EXPECTED_DEVSTREAM_BATTLE_SURFACES",
+        DEFAULT_DEVSTREAM_BATTLE_SURFACES,
+    ),
 )
 
 SERVICES = [
@@ -152,7 +162,8 @@ BASE_ENDPOINTS = [
 ]
 
 
-def battle_slot_endpoints(expected: int = EXPECTED_DEVSTREAM_BATTLE_SURFACES) -> list[str]:
+def battle_slot_endpoints(expected: int | None = None) -> list[str]:
+    expected = expected or EXPECTED_DEVSTREAM_BATTLE_SURFACES
     return [
         endpoint
         for slot in range(1, expected + 1)
@@ -189,6 +200,62 @@ def parse_payload_timestamp(value: Any) -> float | None:
     except ValueError:
         return None
     return parsed.timestamp()
+
+
+def runtime_lease_surface_expectation() -> dict[str, Any]:
+    try:
+        lease = json.loads(RUNTIME_LEASE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {
+            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
+            "source": "default",
+            "path": str(RUNTIME_LEASE_PATH),
+        }
+    if not isinstance(lease, dict):
+        return {
+            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
+            "source": "default",
+            "path": str(RUNTIME_LEASE_PATH),
+        }
+    status = str(lease.get("status") or "").strip().lower()
+    if status and status not in {"active", "approved", "current", "open"}:
+        return {
+            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
+            "source": f"inactive-runtime-lease:{status}",
+            "path": str(RUNTIME_LEASE_PATH),
+        }
+    proof_window = lease.get("proofWindow") if isinstance(lease.get("proofWindow"), dict) else {}
+    expires_at = parse_payload_timestamp(proof_window.get("expiresAt") or proof_window.get("endsAt"))
+    if expires_at is not None and expires_at <= time.time():
+        return {
+            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
+            "source": "expired-runtime-lease",
+            "path": str(RUNTIME_LEASE_PATH),
+        }
+    battle_scope = lease.get("battleScope") if isinstance(lease.get("battleScope"), dict) else {}
+    bounds = lease.get("bounds") if isinstance(lease.get("bounds"), dict) else {}
+    raw_expected = (
+        lease.get("maxConcurrentBattles")
+        or battle_scope.get("maxConcurrentBattles")
+        or bounds.get("maxConcurrentBattles")
+    )
+    try:
+        expected = int(raw_expected)
+    except (TypeError, ValueError):
+        expected = 0
+    if expected <= 0:
+        return {
+            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
+            "source": "runtime-lease-missing-max-concurrent",
+            "path": str(RUNTIME_LEASE_PATH),
+        }
+    expected = max(DEFAULT_DEVSTREAM_BATTLE_SURFACES, expected)
+    return {
+        "expected": expected,
+        "source": "runtime-lease",
+        "path": str(RUNTIME_LEASE_PATH),
+        "leaseId": lease.get("leaseId") or lease.get("id"),
+    }
 
 
 def run_command(command: list[str], *, timeout: int = 4) -> subprocess.CompletedProcess[str] | None:
@@ -271,6 +338,7 @@ def runtime_processes() -> list[dict[str, Any]]:
             cmdline = proc.cmdline()
             cwd = proc.cwd()
             create_time = proc.create_time()
+            parent_pid = proc.ppid()
             status = proc.status() if hasattr(proc, "status") else ""
         except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
             processes.append(item)
@@ -288,6 +356,7 @@ def runtime_processes() -> list[dict[str, Any]]:
             "alive": is_runner,
             "isBattleRunner": is_runner,
             "cwdMatchesRepo": cwd_matches,
+            "parentPid": parent_pid,
             "ageSeconds": round(max(0.0, time.time() - create_time), 3),
             "commandSummary": " ".join(cmdline[:4]),
         })
@@ -295,6 +364,129 @@ def runtime_processes() -> list[dict[str, Any]]:
             item["stalePidReason"] = "pid belongs to unexpected command, cwd, or older process"
         processes.append(item)
     return processes
+
+
+def newest_battle_log() -> dict[str, Any]:
+    """Newest per-battle/session log under logs/ plus its age in seconds.
+
+    Only run.py's own play output (battle-*.log + init.log) counts as play
+    signal; keepalive/reporting logs keep getting written while the ladder
+    client is dead and must never refresh this signal.
+    """
+    candidates = list(LOGS_DIR.glob(BATTLE_LOG_GLOB))
+    session_log = LOGS_DIR / SESSION_LOG_NAME
+    if session_log.exists():
+        candidates.append(session_log)
+    newest_path: Path | None = None
+    newest_mtime: float | None = None
+    for path in candidates:
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if newest_mtime is None or mtime > newest_mtime:
+            newest_mtime = mtime
+            newest_path = path
+    if newest_path is None or newest_mtime is None:
+        return {"path": None, "ageSeconds": None}
+    try:
+        rel = str(newest_path.relative_to(ROOT))
+    except ValueError:
+        rel = str(newest_path)
+    return {"path": rel, "ageSeconds": round(max(0.0, time.time() - newest_mtime), 3)}
+
+
+def ladder_client_liveness() -> dict[str, Any]:
+    """Liveness of the top-level run.py search_ladder client.
+
+    Mirrors scripts/fouler_keepalive.ps1's singleton detection: a ladder client
+    is a python process whose cmdline contains BOTH run.py AND search_ladder; a
+    TOP-LEVEL client is a matching process whose parent is not itself matching
+    (venv shim + system-python child + MCTS workers = ONE client). Bool only —
+    never a raw process count for dedup/kill decisions.
+    """
+    status: dict[str, Any] = {
+        "clientAlive": False,
+        "topLevelPids": [],
+        "method": "top-level run.py search_ladder cmdline match per scripts/fouler_keepalive.ps1",
+    }
+    if psutil is None:
+        status["error"] = "psutil is not installed; cannot verify ladder client liveness"
+        return status
+    matching: dict[int, Any] = {}
+    for proc in psutil.process_iter(["pid", "ppid", "name", "cmdline"]):
+        try:
+            info = dict(proc.info)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        name = str(info.get("name") or "").lower()
+        if name not in {"python.exe", "pythonw.exe", "python", "pythonw", "python3"}:
+            continue
+        command = " ".join(str(part) for part in (info.get("cmdline") or ())).lower()
+        if "run.py" not in command or "search_ladder" not in command:
+            continue
+        try:
+            matching[int(info["pid"])] = info.get("ppid")
+        except (KeyError, TypeError, ValueError):
+            continue
+    top_level = sorted(pid for pid, ppid in matching.items() if ppid not in matching)
+    status["topLevelPids"] = top_level
+    status["clientAlive"] = bool(top_level)
+    return status
+
+
+def logical_battle_runner_groups(battle_runners: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_pid = {
+        int(proc["pid"]): proc
+        for proc in battle_runners
+        if proc.get("pid") is not None
+    }
+    children_by_parent: dict[int, list[int]] = {}
+    for pid, proc in by_pid.items():
+        parent_pid = proc.get("parentPid")
+        if parent_pid is None:
+            continue
+        try:
+            parent_int = int(parent_pid)
+        except (TypeError, ValueError):
+            continue
+        if parent_int in by_pid:
+            children_by_parent.setdefault(parent_int, []).append(pid)
+
+    roots = sorted(
+        pid
+        for pid, proc in by_pid.items()
+        if int(proc.get("parentPid") or 0) not in by_pid
+    )
+    groups: list[dict[str, Any]] = []
+    assigned: set[int] = set()
+    for root_pid in roots:
+        stack = [root_pid]
+        members: list[int] = []
+        while stack:
+            pid = stack.pop()
+            if pid in assigned:
+                continue
+            assigned.add(pid)
+            members.append(pid)
+            stack.extend(children_by_parent.get(pid, []))
+        groups.append({
+            "rootPid": root_pid,
+            "memberPids": sorted(members),
+            "pidFiles": [
+                str(by_pid[pid].get("pidFile"))
+                for pid in sorted(members)
+                if by_pid.get(pid)
+            ],
+        })
+
+    for pid in sorted(set(by_pid) - assigned):
+        groups.append({
+            "rootPid": pid,
+            "memberPids": [pid],
+            "pidFiles": [str(by_pid[pid].get("pidFile"))],
+        })
+    return groups
 
 
 def systemctl_state(unit: str) -> dict[str, Any]:
@@ -448,7 +640,7 @@ def summarize_truth(rel: str, parsed: Any) -> dict[str, Any] | None:
         try:
             max_slots = int(max_slots)
         except (TypeError, ValueError):
-            max_slots = max(len(battles), EXPECTED_DEVSTREAM_BATTLE_SURFACES)
+            max_slots = max(len(battles), runtime_lease_surface_expectation()["expected"])
         return {
             "battleCount": len(battles),
             "maxSlots": max_slots,
@@ -753,8 +945,10 @@ def battle_surface_readiness(
     *,
     check_http: bool,
     http_open: bool,
+    expectation: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    expected = EXPECTED_DEVSTREAM_BATTLE_SURFACES
+    expectation = expectation or runtime_lease_surface_expectation()
+    expected = int(expectation.get("expected") or EXPECTED_DEVSTREAM_BATTLE_SURFACES)
     declared_max_slots = active_battle_max_slots(truth)
     slot_checks: list[dict[str, Any]] = []
     for slot in range(1, expected + 1):
@@ -770,6 +964,7 @@ def battle_surface_readiness(
         })
     return {
         "expected": expected,
+        "expectation": expectation,
         "declaredMaxSlots": declared_max_slots,
         "maxSlotsOk": declared_max_slots >= expected,
         "checks": slot_checks,
@@ -1003,7 +1198,9 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     http_open = bool(raw_http_open or task_reports_http)
     obs_surface_ready = http_open
     obs_open = port_open(OBS_WS_PORT)
-    endpoints = {path: fetch_endpoint(path) for path in ENDPOINTS} if check_http and http_open else {}
+    battle_surface_expectation = runtime_lease_surface_expectation()
+    endpoints_to_fetch = [*BASE_ENDPOINTS, *battle_slot_endpoints(battle_surface_expectation["expected"])]
+    endpoints = {path: fetch_endpoint(path) for path in endpoints_to_fetch} if check_http and http_open else {}
     stale_truth = [item for item in truth if item["exists"] and item["stale"]]
     missing_required = [item for item in truth if not item["optional"] and not item["exists"]]
     raw_battle_count = active_battle_count(truth)
@@ -1013,14 +1210,21 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     stream_truth = stream_truth_status(truth)
     stream_summary = stream_status_summary(truth)
     slots = slot_readiness(endpoints, check_battle_pages=True) if check_http and http_open else {"ready": True, "checks": []}
-    battle_surfaces = battle_surface_readiness(truth, endpoints, check_http=check_http, http_open=http_open)
+    battle_surfaces = battle_surface_readiness(
+        truth,
+        endpoints,
+        check_http=check_http,
+        http_open=http_open,
+        expectation=battle_surface_expectation,
+    )
     runtime_blocked = bool(stream_summary.get("runtimeBlocked"))
     credential_failure = recent_showdown_credential_failure(ROOT)
     processes = runtime_processes()
     process_inspection_ready = all(bool(proc.get("processInspectionAvailable", True)) for proc in processes)
     battle_runners = [proc for proc in processes if proc.get("alive") and proc.get("isBattleRunner")]
-    duplicate_battle_runner_blocked = len(battle_runners) > 1
-    runner_active = bool(active_services or battle_runners)
+    battle_runner_groups = logical_battle_runner_groups(battle_runners)
+    duplicate_battle_runner_blocked = len(battle_runner_groups) > 1
+    runner_active = bool(active_services or battle_runner_groups)
     runner_proof_missing = False
     runner_has_fresh_idle_truth = (
         bool(active_battle_truth.get("exists"))
@@ -1065,7 +1269,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
     )
     if duplicate_battle_runner_blocked:
         reporting_action["currentBattleState"] = (
-            f"{len(battle_runners)} live fouler-play battle runners are competing for runtime ownership"
+            f"{len(battle_runner_groups)} live fouler-play battle runners are competing for runtime ownership"
         )
         reporting_action["nextHermesAction"] = (
             "drain/adopt exactly one live battle runner before starting or certifying another cycle"
@@ -1082,7 +1286,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
             f"not counting ghost battle telemetry as live proof: {', '.join(ghost_battles[:5])}"
         )
     if duplicate_battle_runner_blocked:
-        pids = ", ".join(str(proc.get("pid")) for proc in battle_runners[:5])
+        pids = ", ".join(str(group.get("rootPid")) for group in battle_runner_groups[:5])
         blockers.append(
             "duplicate fouler-play battle runners are alive; HERMES must drain/adopt one runtime owner "
             f"before claiming ready (pids: {pids})"
@@ -1225,6 +1429,15 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "blockers": [] if useful_work_proof_ready else useful_work_proof_blockers,
         "note": "HERMES-useful work can be proven by a live bounded battle runtime, a completed cycle proof, or a ready offline eval harness; this health probe does not start any of them.",
     }
+    newest_log = newest_battle_log()
+    ladder_client = ladder_client_liveness()
+    battle_log_age_s = newest_log.get("ageSeconds")
+    client_alive = bool(ladder_client.get("clientAlive"))
+    signal_live = (
+        client_alive
+        and battle_log_age_s is not None
+        and battle_log_age_s < LIVE_SIGNAL_MAX_BATTLE_LOG_AGE_SECONDS
+    )
     healthy = runtime_ready
     if healthy:
         status = "ready" if ready_for_live_focus and battle_count == 0 else "running"
@@ -1241,6 +1454,19 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "schemaVersion": "devstream-health/v1",
         "projectId": "fouler-play",
         "checkedAt": iso_now(),
+        "battle_log_age_s": battle_log_age_s,
+        "client_alive": client_alive,
+        "signal_state": SIGNAL_STATE_LIVE if signal_live else SIGNAL_STATE_STALE,
+        "signalFreshness": {
+            "policy": (
+                "LIVE only when client_alive AND battle_log_age_s < "
+                f"{LIVE_SIGNAL_MAX_BATTLE_LOG_AGE_SECONDS}s; anything else means the bot is not playing"
+            ),
+            "newestBattleLog": newest_log,
+            "ladderClient": ladder_client,
+            "maxLiveBattleLogAgeSeconds": LIVE_SIGNAL_MAX_BATTLE_LOG_AGE_SECONDS,
+            "measuredAt": iso_now(),
+        },
         "healthy": healthy,
         "running": running,
         "readyForLiveFocus": ready_for_live_focus,
@@ -1279,7 +1505,9 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         "runtimeProcesses": processes,
         "runtimeOwnership": {
             "processInspectionReady": process_inspection_ready,
-            "battleRunnerCount": len(battle_runners),
+            "battleRunnerCount": len(battle_runner_groups),
+            "battleRunnerProcessCount": len(battle_runners),
+            "logicalBattleRunners": battle_runner_groups,
             "duplicateBattleRunners": duplicate_battle_runner_blocked,
             "requiredHermesAction": (
                 "drain/adopt exactly one live battle runner; do not kill processes from this health probe"
