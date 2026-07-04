@@ -1906,10 +1906,48 @@ def _loop_stall_watcher() -> None:
         time.sleep(5)  # rate-limit dumps during one long stall
 
 
+
+def _listener_self_check() -> None:
+    """OS-thread watchdog: exit cleanly if the TCP listener dies while the process lives.
+
+    Proven failure mode (2026-07-04): the 8777 listen socket can disappear while the
+    event loop stays healthy ([POLL] heartbeats continue, loop-stall watcher silent).
+    A deaf-but-alive server wedges the OBS page and tricks keepalives into taskkilling
+    a "healthy" process. Instead: self-probe the listener; after 4 consecutive failures
+    (~80s) print loudly and exit(90) so the keepalive relaunch path sees a genuinely
+    dead process and restarts one working instance.
+    """
+    import socket as _socket
+
+    failures = 0
+    while True:
+        time.sleep(20)
+        try:
+            with _socket.create_connection(("127.0.0.1", PORT), timeout=5):
+                pass
+            failures = 0
+        except OSError as exc:
+            failures += 1
+            print(
+                f"[LISTENER-CHECK] self-connect to 127.0.0.1:{PORT} failed ({failures}/4): {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
+            if failures >= 4:
+                print(
+                    f"[LISTENER-CHECK] listener on port {PORT} is dead while the process is alive; "
+                    "exiting 90 for a clean keepalive relaunch.",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                os._exit(90)
+
+
 async def start_background_tasks(app: web.Application) -> None:
     app["poller"] = asyncio.create_task(poll_files(app))
     app["loop_lag_monitor"] = asyncio.create_task(monitor_loop_lag(app))
     threading.Thread(target=_loop_stall_watcher, name="loop-stall-watcher", daemon=True).start()
+    threading.Thread(target=_listener_self_check, name="listener-self-check", daemon=True).start()
     # Initialize ELO cache and broadcast once ready
     async def init_and_broadcast_elo():
         await _init_elo_cache()
