@@ -1,3 +1,32 @@
+# AGENTS.md -- Fouler Play (START HERE index for ANY LLM agent)
+
+> **START HERE, whoever you are -- Codex, Claude, or any other agent.** Read in this order:
+>
+> 1. **`MISSION.md`** (this repo) -- what fouler-play is FOR: intent, the any-team product,
+>    the anti-goals, and the definition of done. **Read it first.**
+> 2. **`VENTURE_CONSTITUTION.md`** on ubunztu (`~/devstream-claude/VENTURE_CONSTITUTION.md`;
+>    read-only via `ssh ubunztu cat ~/devstream-claude/VENTURE_CONSTITUTION.md`) -- the stable
+>    venture rules **R1-R10** and the anti-pattern catalog. These govern the whole venture.
+> 3. **`ARCHITECTURE.md`** (this repo) -- how the engine is ACTUALLY built today, verified
+>    against source, with the ON/OFF/DORMANT layer table. This is the truthful engine map and
+>    it **supersedes any older engine description** below, in `CLAUDE.md`, or in any root `.md`.
+> 4. **The running-state ledger** `~/devstream-claude/UNTETHER_COMPLETION_CAMPAIGN.md` on
+>    ubunztu (append-only) -- what happened and what is next. **Do NOT mint new "canonical" /
+>    "read-this-first" docs** (spawning a new canonical doc every few days is a documented
+>    failure mode -- constitution R9); append to the ledger instead.
+>
+> Nothing in this repo is Claude-specific. Read `CLAUDE.md` as **provider-agnostic** intent
+> and history, not as a Claude-only manual. Everything below this block is older operational
+> detail kept for reference; where it disagrees with MISSION.md / the constitution /
+> ARCHITECTURE.md, **those three win.**
+>
+> **The "2026-06-19 Codex Live Repair Hold" immediately below is VOID.** Per the constitution
+> (section 3): "Codex exclusive control and all prior competing-owner locks are void." If you
+> are the foreman agent now, you are cleared to act within the rules R1-R10 -- do not
+> re-litigate governance or treat that hold as current.
+
+---
+
 # AGENTS.md — Fouler Play
 
 ## 2026-06-19 Codex Live Repair Hold

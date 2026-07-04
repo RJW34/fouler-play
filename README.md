@@ -1,5 +1,6 @@
 # Fouler Play
 
+> **Mission and intent: see [MISSION.md](MISSION.md) -- what this project is FOR (read first).**
 > **Architecture: see [ARCHITECTURE.md](ARCHITECTURE.md) (the truthful current engine map).**
 
 A finite-lease competitive Pokemon (gen9ou) battle agent for the DEKU/HERMES devstream. Live ladder work runs in bounded proof windows, while recursive improvement work runs through a local Pokemon Showdown offline-eval harness before any change is trusted.
