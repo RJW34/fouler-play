@@ -1,0 +1,20 @@
+{
+  "frozen": {
+    "label": "frozen",
+    "fouler_wins": 194,
+    "battles": 200,
+    "fouler_win_rate": 0.97
+  },
+  "candidate": {
+    "label": "rebaseline-candidate",
+    "fouler_wins": 3,
+    "battles": 4,
+    "fouler_win_rate": 0.75
+  },
+  "delta_win_rate": -0.22,
+  "z": -2.393,
+  "p_value": 0.0167,
+  "candidate_beats_baseline_lcb_gt_50": false,
+  "statistically_significant_improvement": false,
+  "ACCEPT": false
+}

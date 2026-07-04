@@ -1,0 +1,14 @@
+{
+  "label": "rebaseline-candidate",
+  "team": "gen9/ou/fat-team-1-stall",
+  "baseline": "simple",
+  "battles": 4,
+  "fouler_wins": 3,
+  "baseline_wins": 1,
+  "ties": 0,
+  "fouler_win_rate": 0.75,
+  "fouler_wilson_lcb": 0.3006,
+  "search_time_ms": 50,
+  "extra_env": {},
+  "timestamp": "2026-07-04T19:49:35"
+}
