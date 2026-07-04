@@ -838,6 +838,15 @@ def main():
              "FOULER_FORCE_NO_SETSAMPLE=1 which makes _sample_pokemon skip move "
              "completion, reproducing the pre-fix inert-opponent behavior.",
     )
+    ap.add_argument(
+        "--no-loop-break", action="store_true",
+        help="Disable the decision loop-breaker in the fouler arm (sets "
+             "FOULER_LOOP_BREAK=0 so break_repeated_decision is a no-op and the "
+             "search policy is trusted). Candidate arm for the 2026-07-04 "
+             "loop-breaker A/B: trace audit showed the breaker caused 94% of "
+             "played-vs-policy inversions on stall teams. Recorded in the "
+             "result JSON via extra_env.",
+    )
     ap.add_argument("--compare", nargs=2, metavar=("FROZEN", "CANDIDATE"))
     args = ap.parse_args()
 
@@ -848,6 +857,8 @@ def main():
     extra_env = {}
     if args.no_setsample:
         extra_env["FOULER_FORCE_NO_SETSAMPLE"] = "1"
+    if args.no_loop_break:
+        extra_env["FOULER_LOOP_BREAK"] = "0"
 
     run_eval(
         battles=args.battles,
