@@ -36,6 +36,13 @@ SUPERVISOR_STOP_FILE_ISSUE_ID = "fouler-supervisor-stop-file-present"
 LOGS_DIR = ROOT / "logs"
 BATTLE_LOG_GLOB = "battle-*.log"
 SESSION_LOG_NAME = "init.log"
+DECISION_TRACE_DIR = LOGS_DIR / "decision_traces"
+# Played-vs-policy divergence gauge (2026-07-04): a decision "diverges" when the
+# played move carried < 45% of the search's best raw policy weight. The loop-
+# breaker defect (#79 hunt) caused 94% of these inversions; the gauge should sit
+# near zero with the breaker guarded/disabled and catches future overrider layers.
+DECISION_DIVERGENCE_PLAYED_FRACTION = 0.45
+DECISION_DIVERGENCE_MAX_TRACES = 400
 LIVE_SIGNAL_MAX_BATTLE_LOG_AGE_SECONDS = 3600
 SIGNAL_STATE_LIVE = "LIVE"
 SIGNAL_STATE_STALE = "STALE — bot not playing; do not trust gauges"
@@ -443,6 +450,87 @@ def signal_freshness_status(*, logs_dir: Path | None = None) -> dict[str, Any]:
             "measuredAt": iso_now(),
         },
     }
+
+
+def decision_divergence_status(
+    *,
+    trace_dir: Path | None = None,
+    max_traces: int = DECISION_DIVERGENCE_MAX_TRACES,
+) -> dict[str, Any]:
+    """Played-vs-policy divergence over the newest decision traces.
+
+    A turn diverges when the move actually played carried less than
+    DECISION_DIVERGENCE_PLAYED_FRACTION of the search's best raw policy weight,
+    i.e. a post-search layer overrode the search. The 2026-07-04 loss-corpus
+    audit traced 94% of such inversions to the decision loop-breaker; with the
+    breaker guarded/disabled this rate should sit near zero, and a climb flags
+    any future overrider layer. Observability only: no issue classification.
+    """
+    directory = trace_dir if trace_dir is not None else DECISION_TRACE_DIR
+    status: dict[str, Any] = {
+        "traceDir": display_path(directory),
+        "tracesScanned": 0,
+        "turnsScored": 0,
+        "divergentTurns": 0,
+        "divergenceRate": None,
+        "loopBreakOverrideTurns": 0,
+        "battlesCovered": 0,
+        "playedFractionThreshold": DECISION_DIVERGENCE_PLAYED_FRACTION,
+        "maxTraces": max_traces,
+        "measuredAt": iso_now(),
+    }
+    if not directory.is_dir():
+        status["error"] = "decision trace directory missing"
+        return status
+    try:
+        files = sorted(
+            directory.glob("battle-*.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )[:max_traces]
+    except OSError as exc:
+        status["error"] = str(exc)
+        return status
+    battles: set[str] = set()
+    for path in files:
+        payload = load_json(path, None)
+        if not isinstance(payload, dict):
+            continue
+        status["tracesScanned"] += 1
+        policy = payload.get("mcts_policy_raw")
+        choice = payload.get("choice")
+        if not isinstance(policy, dict) or not policy or not isinstance(choice, str):
+            continue
+        try:
+            weights = {str(move): float(weight) for move, weight in policy.items()}
+        except (TypeError, ValueError):
+            continue
+        best_weight = max(weights.values())
+        played_weight = weights.get(choice)
+        if best_weight <= 0 or played_weight is None:
+            continue
+        status["turnsScored"] += 1
+        battles.add(str(payload.get("battle_tag") or path.name.split("_turn")[0]))
+        if played_weight < DECISION_DIVERGENCE_PLAYED_FRACTION * best_weight:
+            status["divergentTurns"] += 1
+        events: list[Any] = []
+        for block_key in ("mcts_only", "eval"):
+            block = payload.get(block_key)
+            if isinstance(block, dict) and isinstance(block.get("events"), list):
+                events.extend(block["events"])
+        if any(
+            isinstance(event, dict)
+            and event.get("source") == "decision_loop_break"
+            and event.get("type") == "override"
+            for event in events
+        ):
+            status["loopBreakOverrideTurns"] += 1
+    status["battlesCovered"] = len(battles)
+    if status["turnsScored"]:
+        status["divergenceRate"] = round(
+            status["divergentTurns"] / status["turnsScored"], 4
+        )
+    return status
 
 
 def normalize_result(value: object) -> str:
@@ -2906,6 +2994,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     start_gate["repairActionFailures"] = repair_action_failures
     source_commit = current_source_commit()
     signal_fields = signal_freshness_status()
+    decision_divergence = decision_divergence_status()
     payload = {
         "schemaVersion": "fouler-play-mission-monitor/v1",
         "projectId": "fouler-play",
@@ -2920,6 +3009,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         "ticketsCleared": tickets_cleared,
         "discordAlert": discord_alert,
         "classification": {key: value for key, value in classification.items() if key != "issues"},
+        "decisionDivergence": decision_divergence,
         "actions": actions,
         "paths": {
             "health": str(HEALTH_FILE.relative_to(ROOT)),
