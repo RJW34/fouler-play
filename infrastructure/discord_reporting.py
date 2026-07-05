@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from collections import Counter
 from pathlib import Path
@@ -261,6 +262,37 @@ def _compact_sentence_parts(parts: Sequence[str], limit: int = _MAX_FIELD_LEN) -
     return "; ".join(trimmed) + suffix
 
 
+# --- Improve-loop parked state (constitution D4 "kill any gate you will not
+# service" + D6 "reports actionable-or-silent") -----------------------------
+# The per-battle "classify the replay / HERMES must review before the next
+# improve cycle" language below assumed a human/agent servicer that reviews each
+# replay and feeds an accepted improvement. That servicer does not exist: the
+# engine self-improvement loop (infrastructure/improve_agent.py) is off (no
+# FOULER_PLAY_ENABLE_AUTO_IMPROVE, no scheduled task), its only objective gate is
+# the weak "simple" offline baseline that constitution R5 forbids auto-accepting
+# engine changes on, and the deterministic replay classifier (replay_analysis)
+# has not run since 2026-02. A gate with no servicer is a permanent brake, not a
+# safeguard, and its per-battle "please review" prompts ask the owner to be the
+# analyst. Until a discriminating offline gate (or an autoresearch->eval
+# servicer) exists, the loop is honestly PARKED: report each battle as ladder
+# evidence and emit no dead review/classify prompt. Set
+# FOULER_IMPROVE_LOOP_ACTIVE=1 only once a real servicer exists, to restore the
+# review/classify prompts.
+IMPROVE_LOOP_PARKED_NOTE = (
+    "improve loop parked (no replay-review servicer; needs a discriminating "
+    "offline gate); logged as ladder evidence only"
+)
+
+
+def _improve_loop_active() -> bool:
+    return str(os.getenv("FOULER_IMPROVE_LOOP_ACTIVE", "")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
 def _is_unclassified_cause_text(value: object) -> bool:
     text = _clean_line(value).lower()
     if not text:
@@ -301,6 +333,9 @@ def _classification_text_from_payload(data: dict) -> str:
 
 
 def _default_next_battle_action(data: dict, *, result: str, replay: dict[str, object]) -> str:
+    if not _improve_loop_active():
+        # D6: no servicer performs this classification -> no dead next-action item.
+        return ""
     replay_status = _clean_line(replay.get("status") if isinstance(replay, dict) else "")
     replay_id = _clean_line(replay.get("id") if isinstance(replay, dict) else "")
     opponent = _sanitized_opponent_name(data.get("opponent", ""))
@@ -475,7 +510,9 @@ def _batch_coverage_line(batch_results: list, analysis_count: object) -> str:
     parts = [f"public replays {public_replay_count}/{total}"]
     if unresolved_count:
         parts.append(f"unresolved replay refs {unresolved_count}")
-    parts.extend([f"loss reviews queued {pending}", f"reviewed {reviewed}"])
+    if _improve_loop_active():
+        # Only surface a review queue when a servicer actually drains it (D4/D6).
+        parts.extend([f"loss reviews queued {pending}", f"reviewed {reviewed}"])
     return "; ".join(parts)
 
 
@@ -584,7 +621,8 @@ def _proof_from_payload(data: dict) -> str:
                     add(bit)
 
     analysis_count = data.get("analysis_count")
-    if analysis_count not in (None, ""):
+    if analysis_count not in (None, "") and _improve_loop_active():
+        # D4/D6: only advertise a review queue when a servicer drains it.
         add(f"loss reviews queued={analysis_count}")
 
     recent_record = _recent_record_summary(data)
@@ -917,6 +955,10 @@ def _battle_why_from_payload(data: dict, result: str) -> str:
     classification = _classification_text_from_payload(data)
     if classification:
         parts.append(classification)
+    elif not _improve_loop_active():
+        # D4/D6: no replay-review servicer exists -> state the parked fact instead
+        # of asking the owner/HERMES to review.
+        parts.append(IMPROVE_LOOP_PARKED_NOTE)
     elif replay_status == "pending-public-upload" and replay_id:
         parts.append("replay is pending; strategic cause is not accepted yet")
     elif result == "loss":
@@ -1287,6 +1329,10 @@ def _hermes_next_action(*, ops_signal: object, result: object, next_action: obje
     result_text = _normalize_result(result)
     if signal == "operational-loss":
         return "inspect runtime/connectivity/timer failure before queueing the next battle"
+    if not _improve_loop_active() and result_text in {"win", "loss"}:
+        # D4/D6: the analyze->patch improve loop has no servicer; do not emit its
+        # imperative as a per-battle next action.
+        return IMPROVE_LOOP_PARKED_NOTE
     if result_text == "loss":
         return "analyze the replay, isolate the repeatable loss pattern, patch one bounded improvement, then run the next battle"
     if result_text == "win":

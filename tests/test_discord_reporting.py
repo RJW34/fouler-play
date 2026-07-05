@@ -936,7 +936,9 @@ def test_structured_report_fields_backfills_from_rendered_message():
     assert fields["result"] == "win"
     assert fields["analysis"]["currentBattleState"] == "battle win; vs RenderedOnly; 22 turns; id 2613956411; public replay gen9ou-2613956411"
     assert fields["analysis"]["whyItMatters"] == "rendered messages should still produce safe structure"
-    assert fields["analysis"]["nextHermesAction"].startswith("Classify the win condition")
+    # D4/D6: improve loop parked by default -> no "Classify ... before improve cycle" prompt
+    assert not fields["analysis"]["nextHermesAction"].startswith("Classify")
+    assert "improve cycle" not in fields["analysis"]["nextHermesAction"]
     assert fields["analysis"]["proofReadiness"]["readyForHermes"] is False
     assert "battle_cause_unclassified" in fields["analysis"]["proofReadiness"]["qualityGaps"]
     assert fields["proof_readiness"]["status"] == "proof-ready"
@@ -1622,7 +1624,8 @@ def test_pending_replay_battle_result_is_not_hermes_analysis_ready():
     assert readiness["readyForHermes"] is False
     assert "replay_pending_public_upload" in readiness["qualityGaps"]
     assert "battle_cause_unclassified" in readiness["qualityGaps"]
-    assert fields["analysis"]["nextHermesAction"].startswith("Resolve public replay")
+    # D4/D6: parked default -> "Resolve public replay, then classify" prompt suppressed
+    assert not fields["analysis"]["nextHermesAction"].startswith("Resolve public replay")
 
 
 def test_public_replay_without_cause_requires_hermes_classification():
@@ -1650,7 +1653,8 @@ def test_public_replay_without_cause_requires_hermes_classification():
     assert readiness["readyForHermes"] is False
     assert "replay_pending_public_upload" not in readiness["qualityGaps"]
     assert "battle_cause_unclassified" in readiness["qualityGaps"]
-    assert fields["analysis"]["nextHermesAction"].startswith("Classify the win condition")
+    # D4/D6: parked default -> the classify imperative is suppressed (benign follow-up remains)
+    assert not fields["analysis"]["nextHermesAction"].startswith("Classify")
 
 
 def test_payload_formatter_flags_operational_losses():
@@ -1702,7 +1706,8 @@ def test_payload_formatter_summarizes_batch_payload_without_blob_dump():
     assert "top loss pattern: losses were split across opponents (1 unique)" in formatted
     assert "last 10: 6-4 (60% WR)" in formatted
     assert "improving" in formatted
-    assert "public replays 2/3; loss reviews queued 1; reviewed 1" in formatted
+    assert "public replays 2/3" in formatted
+    assert "loss reviews queued" not in formatted
     assert "- replay `gen9ou-111`: https://replay.pokemonshowdown.com/gen9ou-111" in formatted
     assert "- replay `gen9ou-222`: https://replay.pokemonshowdown.com/gen9ou-222" in formatted
     assert "vs A https://replay.pokemonshowdown.com/battle-gen9ou-111" not in formatted
@@ -1921,3 +1926,28 @@ def test_format_payload_collapses_duplicate_recent_window_label():
     assert "last 5 last 5" not in formatted
     assert "last 5: 2-3 (40% WR)" in formatted
 
+
+
+def test_improve_loop_parked_by_default_suppresses_review_prompts(monkeypatch):
+    """D4/D6: with no servicer (default), the dead review/classify prompts are gone."""
+    monkeypatch.delenv("FOULER_IMPROVE_LOOP_ACTIVE", raising=False)
+    from infrastructure import discord_reporting as dr
+
+    assert dr._improve_loop_active() is False
+    action = dr._hermes_next_action(ops_signal="routine", result="loss", next_action="")
+    assert action == dr.IMPROVE_LOOP_PARKED_NOTE
+    assert "analyze the replay" not in action
+    assert dr._default_next_battle_action({}, result="loss", replay={}) == ""
+    assert dr._default_next_battle_action({}, result="win", replay={}) == ""
+
+
+def test_improve_loop_active_restores_review_prompts(monkeypatch):
+    """When a real servicer is declared active, the original prompts return."""
+    monkeypatch.setenv("FOULER_IMPROVE_LOOP_ACTIVE", "1")
+    from infrastructure import discord_reporting as dr
+
+    assert dr._improve_loop_active() is True
+    action = dr._hermes_next_action(ops_signal="routine", result="loss", next_action="")
+    assert "analyze the replay" in action
+    classify = dr._default_next_battle_action({"opponent": "X"}, result="loss", replay={})
+    assert "classify" in classify.lower()
