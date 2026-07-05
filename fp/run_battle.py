@@ -3730,7 +3730,7 @@ async def pokemon_battle(
                         if _result_str == "loss" and _decisive_reason:
                             _why_it_matters_ev += f"; {_decisive_reason}"
                         elif _result_str == "loss":
-                            _why_it_matters_ev += "; replay review is required before treating this as an accepted improvement signal"
+                            _why_it_matters_ev += "; recorded as ladder evidence only (improve loop parked: no replay-review servicer; needs a discriminating offline gate)"
                         elif _result_str == "win":
                             _why_it_matters_ev += "; keep proof focused on repeatable win conditions, not flavor text"
 
