@@ -1,5 +1,14 @@
 # Mechanics-Backed Loss Learning Runbook
 
+> **DORMANT (2026-07-04):** The "Running A Review" procedure below has no
+> automated servicer -- nobody runs `replay_analysis.loss_learning` per battle,
+> so the engine self-improvement loop it feeds is PARKED (constitution D4). The
+> per-battle "replay review required" Discord prompts are now suppressed
+> (`IMPROVE_LOOP_PARKED_NOTE` in `infrastructure/discord_reporting.py`, default
+> parked; re-arm with `FOULER_IMPROVE_LOOP_ACTIVE=1`). This runbook is still a
+> valid MANUAL procedure for an on-demand human/agent review; it is NOT a live
+> loop.
+
 Fouler-play must treat battle losses as evidence, not as a prompt for invented
 Pokemon advice. The deterministic loss-learning layer lives in
 `replay_analysis/loss_learning.py` and reads local Pokemon Showdown replay JSON

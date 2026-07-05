@@ -7,6 +7,15 @@ Called after each batch completes.  Reads the latest autoresearch report
 Claude to write ONE targeted fix, applies it, runs tests, and commits
 if passing.  The ELO watchdog reverts if the fix hurts.
 
+DORMANT (2026-07-04): this engine self-improvement loop is PARKED. It has no
+scheduled servicer (no FOULER_PLAY_ENABLE_AUTO_IMPROVE, no scheduled task) and
+its only objective gate is the weak "simple" offline baseline, which per the
+venture constitution R5 cannot discriminate engine quality -- so engine changes
+MUST NOT be auto-accepted on it. Re-activating requires a discriminating offline
+gate or a human/agent audit of each diff; until then the per-battle "replay
+review required" prompts it fed are suppressed (see IMPROVE_LOOP_PARKED_NOTE in
+infrastructure/discord_reporting.py).
+
 Usage:
     python infrastructure/improve_agent.py --enable-auto-improve
     python infrastructure/improve_agent.py --dry-run  # show what would change, don't apply

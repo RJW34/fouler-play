@@ -189,7 +189,7 @@ it. None of this changes how a move is chosen; it governs HOW the bot is run and
   commits if green) → `infrastructure/elo_watchdog.py` (`git revert` if live ELO drops past
   the guardrail). NOTE: this loop is what *added* the harmful loop-breaker (it chased an
   "instability" label its own patch created) — hence the offline-eval gate + divergence
-  monitor now sit in front of it.
+  monitor now sit in front of it. **DORMANT (2026-07-04): this loop is PARKED -- no scheduled servicer, and its only objective gate is the weak "simple" offline baseline (R5: cannot discriminate engine quality), so engine changes are not auto-accepted. The per-battle "replay review required" prompts it fed are now suppressed at the reporting layer (`_improve_loop_active()` / `IMPROVE_LOOP_PARKED_NOTE` in `infrastructure/discord_reporting.py`, default parked). Re-arm via `FOULER_IMPROVE_LOOP_ACTIVE=1` only once a discriminating gate or an autoresearch->eval servicer exists.**
 
 ---
 
