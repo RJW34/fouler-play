@@ -26,6 +26,65 @@ from infrastructure.discord_reporting import (
 from infrastructure.event_queue_lib import classify_delivery_error, queue_health_summary
 
 
+def _configure_battle_digest_test(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text("[]", encoding="utf-8")
+    truth_dir = tmp_path / "devstream" / "truth"
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setattr(event_queue_lib, "TRUTH_DIR", truth_dir)
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_DIR", tmp_path / "logs" / "discord-events")
+    monkeypatch.setattr(event_queue_lib, "BACKLOG_ARCHIVE_LATEST", truth_dir / "discord-backlog-archive.json")
+    monkeypatch.setattr(event_poster, "TRUTH_DIR", truth_dir)
+    monkeypatch.setattr(event_poster, "DISCORD_REPORTING_PROOF", truth_dir / "discord-reporting.json")
+    monkeypatch.setattr(event_poster, "DISCORD_DELIVERY_PROOF", truth_dir / "discord-delivery.json")
+    monkeypatch.setattr(event_poster, "DISCORD_DOCTOR_PROOF", truth_dir / "discord-reporting-doctor.json")
+    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_STATE", truth_dir / "battle-report-digest-state.json")
+    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_SIZE", 10)
+    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_MAX_AGE_SEC", 21600)
+    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_REPORTED_ID_LIMIT", 100)
+    monkeypatch.setattr(event_poster, "DEKU_EVENT_QUEUE_ROOT", tmp_path / "deku-events")
+    return event_poster, event_queue_lib, queue_file, truth_dir
+
+
+def _queue_digest_test_battle(event_queue_lib, index: int) -> str:
+    result = "win" if index % 2 == 0 else "loss"
+    elo_before = 1000 + (index * 5)
+    elo_after = elo_before + (10 if result == "win" else -5)
+    replay_id = f"gen9ou-{2600000000 + index}"
+    battle_id = f"battle-{replay_id}"
+    payload = build_contract_payload(
+        "PROOF",
+        f"battle result {result} vs Opponent{index:02d}",
+        f"battle finished {result} vs Opponent{index:02d} in {20 + index} turns",
+        "This is durable ladder evidence for the current run.",
+        f"battle_id={battle_id}; result={result}; turns={20 + index}",
+        "No operator action required.",
+        source="unit-test",
+        battle_id=battle_id,
+        result=result,
+        opponent=f"Opponent{index:02d}",
+        turns=20 + index,
+        replay_url=f"https://replay.pokemonshowdown.com/{replay_id}",
+        replay_id=replay_id,
+        replay_status="public",
+        replay_public_verified=True,
+        elo_before=elo_before,
+        elo_after=elo_after,
+        rating_delta=elo_after - elo_before,
+    )
+    event_id = event_queue_lib.queue_event(
+        "battle_result",
+        "battles",
+        payload,
+        dedup_window_sec=0,
+    )
+    assert event_id
+    return event_id
+
+
 def test_event_poster_loads_env_chain_for_webhooks(monkeypatch, tmp_path):
     import infrastructure.event_poster as event_poster
 
@@ -118,6 +177,104 @@ def test_deku_event_queue_fails_closed_on_id_collision(monkeypatch, tmp_path):
     assert result["ok"] is False
     assert result["transport"] == "deku_event_queue"
     assert result["errorCode"] == "deku_event_queue_collision"
+
+
+def test_battle_results_are_retained_locally_and_emit_one_ten_battle_digest(monkeypatch, tmp_path):
+    event_poster, event_queue_lib, queue_file, truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
+
+    local_event_ids = []
+    for index in range(9):
+        local_event_ids.append(_queue_digest_test_battle(event_queue_lib, index))
+        assert event_poster.process_one_event() is True
+
+    pending_dir = tmp_path / "deku-events" / "pending"
+    assert not pending_dir.exists() or list(pending_dir.glob("*.json")) == []
+    local_events = json.loads(queue_file.read_text(encoding="utf-8"))
+    state = json.loads((truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8"))
+    assert [event["status"] for event in local_events] == ["posted"] * 9
+    assert len(state["pendingBattles"]) == 9
+    assert state["reportedEventIds"] == []
+
+    local_event_ids.append(_queue_digest_test_battle(event_queue_lib, 9))
+    assert event_poster.process_one_event() is True
+
+    queue_paths = list(pending_dir.glob("*.json"))
+    assert len(queue_paths) == 1
+    queued = json.loads(queue_paths[0].read_text(encoding="utf-8"))
+    local_events = json.loads(queue_file.read_text(encoding="utf-8"))
+    state = json.loads((truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8"))
+    rendered = json.dumps(queued).lower()
+
+    assert queued["eventType"] == "battle_digest"
+    assert queued["payload"]["battleDigest"]["battleCount"] == 10
+    assert queued["payload"]["battleDigest"]["wins"] == 5
+    assert queued["payload"]["battleDigest"]["losses"] == 5
+    assert queued["payload"]["battleDigest"]["eloStart"] == 1000
+    assert queued["payload"]["battleDigest"]["eloEnd"] == 1040
+    assert queued["payload"]["battleDigest"]["eloDelta"] == 40
+    assert queued["payload"]["battleDigest"]["latestReplayUrl"].endswith("gen9ou-2600000009")
+    assert len(queued["summary"]) < 900
+    assert queued["proof"] == [str(queue_file), str(truth_dir / "battle-report-digest-state.json"), "https://replay.pokemonshowdown.com/gen9ou-2600000009"]
+    assert "webhook" not in rendered
+    assert "avatar_url" not in rendered
+    assert "username" not in rendered
+    assert [event["id"] for event in local_events] == local_event_ids
+    assert [event["status"] for event in local_events] == ["posted"] * 10
+    assert all(event.get("proof") for event in local_events)
+    assert state["pendingBattles"] == []
+    assert state["reportedEventIds"] == local_event_ids
+    assert state["lastDigest"]["battleCount"] == 10
+
+
+def test_battle_digest_age_flush_recovers_idempotently_after_queue_before_state_crash(monkeypatch, tmp_path):
+    event_poster, event_queue_lib, _queue_file, truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
+    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_MAX_AGE_SEC", 60)
+
+    event_id = _queue_digest_test_battle(event_queue_lib, 0)
+    assert event_poster.process_one_event() is True
+    state = event_poster._read_battle_digest_state()
+    assert [item["localEventId"] for item in state["pendingBattles"]] == [event_id]
+
+    digest_event = event_poster._battle_digest_event(state["pendingBattles"])
+    queued_first = event_poster._queue_deku_project_event(digest_event, digest_event["content"])
+    assert queued_first["alreadyQueued"] is False
+
+    first_buffered = float(state["pendingBattles"][0]["bufferedAtEpoch"])
+    recovered = event_poster._flush_battle_digest_if_due(now=first_buffered + 61)
+    assert recovered["ok"] is True
+    assert recovered["alreadyQueued"] is True
+    assert recovered["flushed"] is True
+    assert len(list((tmp_path / "deku-events" / "pending").glob("*.json"))) == 1
+
+    state_after = json.loads((truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8"))
+    assert state_after["pendingBattles"] == []
+    assert state_after["reportedEventIds"] == [event_id]
+
+
+def test_battle_digest_parses_unchanged_elo_transition():
+    import infrastructure.event_poster as event_poster
+
+    content = format_payload_or_message(build_contract_payload(
+        "PROOF",
+        "battle result tie vs Example",
+        "battle finished tie vs Example in 30 turns",
+        "The rating stayed flat.",
+        "battle_id=battle-gen9ou-2600000100; result=tie; turns=30",
+        "No operator action required.",
+        battle_id="battle-gen9ou-2600000100",
+        result="tie",
+        opponent="Example",
+        turns=30,
+        elo_before=1000,
+        elo_after=1000,
+        rating_delta=0,
+    ))
+    entry = event_poster._battle_digest_entry(
+        {"id": "event-flat", "event_type": "battle_result", "content": content},
+        now=1.0,
+    )
+
+    assert entry["elo"] == {"before": 1000, "after": 1000, "delta": 0}
 
 
 def test_event_poster_doctor_reports_redacted_transport(monkeypatch, tmp_path):

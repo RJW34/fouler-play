@@ -8,6 +8,7 @@ Checks preconditions before posting, handles retries, and expires stale events.
 Run as: python3 /home/ryan/projects/fouler-play/infrastructure/event_poster.py
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -65,7 +66,27 @@ DISCORD_REPORTING_PROOF = TRUTH_DIR / "discord-reporting.json"
 DISCORD_DELIVERY_PROOF = TRUTH_DIR / "discord-delivery.json"
 DISCORD_DOCTOR_PROOF = TRUTH_DIR / "discord-reporting-doctor.json"
 DEKU_EVENT_QUEUE_ROOT = Path(os.getenv("DEKU_EVENT_QUEUE_ROOT", r"D:\DekuEvents"))
+BATTLE_DIGEST_STATE = Path(
+    os.getenv(
+        "FOULER_BATTLE_DIGEST_STATE",
+        str(TRUTH_DIR / "battle-report-digest-state.json"),
+    )
+)
+BATTLE_DIGEST_SIZE = max(1, int(os.getenv("FOULER_BATTLE_DIGEST_SIZE", "10")))
+BATTLE_DIGEST_MAX_AGE_SEC = max(
+    60,
+    int(os.getenv("FOULER_BATTLE_DIGEST_MAX_AGE_SEC", "21600")),
+)
+BATTLE_DIGEST_REPORTED_ID_LIMIT = max(
+    BATTLE_DIGEST_SIZE * 2,
+    int(os.getenv("FOULER_BATTLE_DIGEST_REPORTED_ID_LIMIT", "500")),
+)
 BATTLE_ID_RE = re.compile(r"\b(?:battle-)?gen9ou-[A-Za-z0-9-]+\b|battle `([^`]+)`")
+ELO_TRANSITION_RE = re.compile(
+    r"\bELO\s+(?:gained\s+\d+|lost\s+\d+|unchanged)\s+"
+    r"\((?P<before>\d+)\s*(?:->|\u2192)\s*(?P<after>\d+),\s*(?P<delta>[+-]?\d+)\)",
+    re.IGNORECASE,
+)
 PENDING_REPLAY_ID_RE = re.compile(
     r"replay\s+pending\s+public\s+upload\s+`?((?:battle-)?gen9ou-[A-Za-z0-9-]+)`?",
     re.IGNORECASE,
@@ -490,6 +511,8 @@ def _deku_event_queue_status(destination_alias: str) -> dict[str, Any]:
 
 def _deku_event_proof(event: dict[str, Any]) -> list[str]:
     proof = [str(Path(event_queue_lib.QUEUE_FILE))]
+    if str(event.get("event_type") or "") == "battle_digest":
+        proof.append(str(BATTLE_DIGEST_STATE))
     replay_url = str(event.get("replay_url") or "").strip()
     if replay_url.startswith(("https://", "http://")):
         proof.append(replay_url)
@@ -501,7 +524,7 @@ def _deku_project_event(event: dict[str, Any], content: str) -> dict[str, Any]:
     destination_alias = str(event.get("channel") or "battles")
     local_event_id = str(event.get("id") or "").strip()
     status = "warn" if any(marker in event_type.lower() for marker in ("error", "failed", "alert", "stop")) else "done"
-    return {
+    payload = {
         "schemaVersion": "deku-project-event/v1",
         "id": "fouler-%s" % local_event_id,
         "source": "fouler-play.event-poster",
@@ -519,6 +542,26 @@ def _deku_project_event(event: dict[str, Any], content: str) -> dict[str, Any]:
             "actionRequired": status == "warn",
         },
     }
+    digest = event.get("digest")
+    if isinstance(digest, dict):
+        payload["payload"]["battleDigest"] = {
+            key: digest.get(key)
+            for key in (
+                "battleCount",
+                "wins",
+                "losses",
+                "ties",
+                "unknown",
+                "totalTurns",
+                "eloStart",
+                "eloEnd",
+                "eloDelta",
+                "firstBattleId",
+                "latestBattleId",
+                "latestReplayUrl",
+            )
+        }
+    return payload
 
 
 def _queue_deku_project_event(event: dict[str, Any], content: str) -> dict[str, Any]:
@@ -571,6 +614,257 @@ def _queue_deku_project_event(event: dict[str, Any], content: str) -> dict[str, 
         "alreadyQueued": False,
         "blockers": [],
     }
+
+
+def _empty_battle_digest_state() -> dict[str, Any]:
+    return {
+        "schemaVersion": "fouler-play-battle-digest-state/v1",
+        "updatedAtUtc": _iso_now(),
+        "pendingBattles": [],
+        "reportedEventIds": [],
+        "lastDigest": None,
+    }
+
+
+def _read_battle_digest_state() -> dict[str, Any]:
+    if not BATTLE_DIGEST_STATE.exists():
+        return _empty_battle_digest_state()
+    try:
+        payload = json.loads(BATTLE_DIGEST_STATE.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"battle digest state is unreadable: {type(exc).__name__}") from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError("battle digest state is not an object")
+    if payload.get("schemaVersion") != "fouler-play-battle-digest-state/v1":
+        raise RuntimeError("battle digest state schema is unsupported")
+    if not isinstance(payload.get("pendingBattles"), list):
+        raise RuntimeError("battle digest pendingBattles is not a list")
+    if not isinstance(payload.get("reportedEventIds"), list):
+        raise RuntimeError("battle digest reportedEventIds is not a list")
+    return payload
+
+
+def _write_battle_digest_state(state: dict[str, Any]) -> None:
+    state = dict(state)
+    state["updatedAtUtc"] = _iso_now()
+    BATTLE_DIGEST_STATE.parent.mkdir(parents=True, exist_ok=True)
+    temporary = BATTLE_DIGEST_STATE.with_name(
+        f".{BATTLE_DIGEST_STATE.name}.{os.getpid()}.tmp"
+    )
+    try:
+        with temporary.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(state, indent=2, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, BATTLE_DIGEST_STATE)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _clean_digest_text(value: object, limit: int = 120) -> str:
+    return re.sub(r"\s+", " ", str(value or "")).strip()[:limit]
+
+
+def _battle_digest_entry(event: dict[str, Any], *, now: float) -> dict[str, Any]:
+    content = str(event.get("content") or "")
+    summary = redacted_report_summary(content)
+    analysis = event.get("analysis") if isinstance(event.get("analysis"), dict) else {}
+    proof = event.get("proof") if isinstance(event.get("proof"), dict) else {}
+    replay = proof.get("replay") if isinstance(proof.get("replay"), dict) else {}
+    battle_ids = proof.get("battleIds") if isinstance(proof.get("battleIds"), list) else []
+    battle_id = _clean_digest_text(
+        event.get("battle_id")
+        or (battle_ids[0] if battle_ids else None)
+        or (summary.get("battleIds") or [None])[0],
+        160,
+    )
+    result = _clean_digest_text(event.get("result") or analysis.get("result") or summary.get("result"), 20).lower()
+    if result == "draw":
+        result = "tie"
+    if result not in {"win", "loss", "tie"}:
+        result = "unknown"
+    replay_url = (
+        canonical_replay_url(event.get("replay_url"))
+        or canonical_replay_url(replay.get("url"))
+        or canonical_replay_url(summary.get("replay", {}).get("url") if isinstance(summary.get("replay"), dict) else None)
+    )
+    try:
+        turns = int(event.get("turns")) if event.get("turns") is not None else None
+    except (TypeError, ValueError):
+        turns = None
+    entry = {
+        "localEventId": _clean_digest_text(event.get("id"), 160),
+        "battleId": battle_id or None,
+        "result": result,
+        "opponent": _clean_digest_text(analysis.get("opponent") or summary.get("opponent"), 80) or None,
+        "turns": turns if turns is not None and turns > 0 else None,
+        "replayUrl": replay_url or None,
+        "eventTimestamp": event.get("timestamp"),
+        "bufferedAtEpoch": now,
+    }
+    elo = ELO_TRANSITION_RE.search(content)
+    if elo:
+        entry["elo"] = {
+            "before": int(elo.group("before")),
+            "after": int(elo.group("after")),
+            "delta": int(elo.group("delta")),
+        }
+    return entry
+
+
+def _battle_digest_event(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    local_ids = [str(entry.get("localEventId") or "") for entry in entries]
+    digest_key = hashlib.sha256("|".join(local_ids).encode("utf-8")).hexdigest()[:20]
+    result_counts = {
+        result: sum(1 for entry in entries if entry.get("result") == result)
+        for result in ("win", "loss", "tie", "unknown")
+    }
+    total_turns = sum(
+        int(entry["turns"])
+        for entry in entries
+        if isinstance(entry.get("turns"), int)
+    )
+    elo_entries = [entry["elo"] for entry in entries if isinstance(entry.get("elo"), dict)]
+    elo_start = elo_entries[0].get("before") if elo_entries else None
+    elo_end = elo_entries[-1].get("after") if elo_entries else None
+    elo_delta = elo_end - elo_start if isinstance(elo_start, int) and isinstance(elo_end, int) else None
+    latest_replay = next(
+        (str(entry.get("replayUrl")) for entry in reversed(entries) if entry.get("replayUrl")),
+        None,
+    )
+    first_battle_id = entries[0].get("battleId")
+    latest_battle_id = entries[-1].get("battleId")
+    latest_opponent = entries[-1].get("opponent")
+    digest = {
+        "battleCount": len(entries),
+        "wins": result_counts["win"],
+        "losses": result_counts["loss"],
+        "ties": result_counts["tie"],
+        "unknown": result_counts["unknown"],
+        "totalTurns": total_turns,
+        "eloStart": elo_start,
+        "eloEnd": elo_end,
+        "eloDelta": elo_delta,
+        "firstBattleId": first_battle_id,
+        "latestBattleId": latest_battle_id,
+        "latestReplayUrl": latest_replay,
+    }
+    parts = [
+        "Fouler ladder digest: "
+        f"{len(entries)} battles ({digest['wins']}W-{digest['losses']}L-{digest['ties']}T)"
+    ]
+    if total_turns:
+        parts[0] += f", {total_turns} turns"
+    parts[0] += "."
+    if elo_start is not None and elo_end is not None:
+        sign = "+" if elo_delta is not None and elo_delta >= 0 else ""
+        parts.append(f"ELO {elo_start} -> {elo_end} ({sign}{elo_delta}).")
+    if first_battle_id or latest_battle_id:
+        parts.append(f"Range {first_battle_id or 'unknown'} to {latest_battle_id or 'unknown'}.")
+    if latest_opponent:
+        parts.append(f"Latest opponent: {latest_opponent}.")
+    if latest_replay:
+        parts.append(f"Latest replay: {latest_replay}")
+    return {
+        "id": f"battle-digest-{digest_key}",
+        "event_type": "battle_digest",
+        "channel": "battles",
+        "content": " ".join(parts),
+        "replay_url": latest_replay,
+        "digest": digest,
+    }
+
+
+def _battle_digest_failure(exc: BaseException) -> dict[str, Any]:
+    return {
+        "ok": False,
+        "status": "failed",
+        "transport": "deku_event_digest_buffer",
+        "destinationAlias": "battles",
+        "blockers": [f"battle digest state failed: {type(exc).__name__}"],
+        "errorCode": "battle_digest_state_failed",
+        "flushed": False,
+    }
+
+
+def _flush_battle_digest_if_due(*, now: float | None = None) -> dict[str, Any]:
+    now = time.time() if now is None else now
+    try:
+        state = _read_battle_digest_state()
+        pending = [item for item in state["pendingBattles"] if isinstance(item, dict)]
+        if not pending:
+            return {
+                "ok": True,
+                "status": "idle",
+                "transport": "deku_event_digest_buffer",
+                "destinationAlias": "battles",
+                "blockers": [],
+                "flushed": False,
+            }
+        first_buffered = float(pending[0].get("bufferedAtEpoch") or now)
+        count_due = len(pending) >= BATTLE_DIGEST_SIZE
+        age_due = (now - first_buffered) >= BATTLE_DIGEST_MAX_AGE_SEC
+        if not count_due and not age_due:
+            return {
+                "ok": True,
+                "status": "digested",
+                "transport": "deku_event_digest_buffer",
+                "destinationAlias": "battles",
+                "blockers": [],
+                "flushed": False,
+                "digestPendingCount": len(pending),
+            }
+        batch = pending[:BATTLE_DIGEST_SIZE] if count_due else pending
+        digest_event = _battle_digest_event(batch)
+        result = _queue_deku_project_event(digest_event, digest_event["content"])
+        if not result.get("ok"):
+            return {**result, "flushed": False, "digestEvent": digest_event}
+        flushed_ids = [str(item.get("localEventId") or "") for item in batch]
+        state["pendingBattles"] = pending[len(batch):]
+        reported_ids = [str(item) for item in state["reportedEventIds"] if item]
+        reported_ids.extend(flushed_ids)
+        state["reportedEventIds"] = reported_ids[-BATTLE_DIGEST_REPORTED_ID_LIMIT:]
+        state["lastDigest"] = {
+            "digestId": digest_event["id"],
+            "queuedEventId": result.get("eventId"),
+            "queuedAtUtc": _iso_now(),
+            "battleCount": len(batch),
+            "firstBattleId": batch[0].get("battleId"),
+            "latestBattleId": batch[-1].get("battleId"),
+        }
+        _write_battle_digest_state(state)
+        return {**result, "flushed": True, "digestEvent": digest_event}
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        logger.error("Battle digest flush failed: %s", exc)
+        return _battle_digest_failure(exc)
+
+
+def _buffer_battle_result(event: dict[str, Any]) -> dict[str, Any]:
+    now = time.time()
+    try:
+        state = _read_battle_digest_state()
+        event_id = str(event.get("id") or "").strip()
+        if not event_id:
+            raise ValueError("battle result event is missing id")
+        reported_ids = {str(item) for item in state["reportedEventIds"] if item}
+        pending_ids = {
+            str(item.get("localEventId") or "")
+            for item in state["pendingBattles"]
+            if isinstance(item, dict)
+        }
+        if event_id not in reported_ids and event_id not in pending_ids:
+            state["pendingBattles"].append(_battle_digest_entry(event, now=now))
+            _write_battle_digest_state(state)
+        result = _flush_battle_digest_if_due(now=now)
+        if result.get("ok"):
+            already_digested = event_id in reported_ids or event_id in pending_ids
+            result["alreadyDigested"] = already_digested
+            if event_id in reported_ids and not result.get("flushed"):
+                result["status"] = "digested"
+        return result
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        logger.error("Battle digest buffer failed: %s", exc)
+        return _battle_digest_failure(exc)
 
 
 def _clean_status_text(value: object) -> str:
@@ -1221,6 +1515,8 @@ def post_to_discord(event: dict) -> dict[str, Any]:
             "errorCode": "validation_failed",
         }
 
+    if str(event.get("event_type") or "") == "battle_result":
+        return _buffer_battle_result(event)
     return _queue_deku_project_event(event, content)
 
 
@@ -1514,6 +1810,29 @@ def process_one_event(dry_run: bool = False) -> bool:
                 error_code="stale_backlog_archived",
             )
             return False
+
+    digest_flush = _flush_battle_digest_if_due()
+    if not digest_flush.get("ok"):
+        write_delivery_proof(
+            status=str(digest_flush.get("status") or "failed"),
+            event=None,
+            destination_alias="battles",
+            blockers=[str(item) for item in digest_flush.get("blockers") or []],
+            error_code=digest_flush.get("errorCode"),
+            transport=digest_flush.get("transport"),
+        )
+        return False
+    if digest_flush.get("flushed"):
+        digest_event = digest_flush.get("digestEvent")
+        write_delivery_proof(
+            status=str(digest_flush.get("status") or "queued"),
+            event=digest_event if isinstance(digest_event, dict) else None,
+            destination_alias="battles",
+            blockers=[str(item) for item in digest_flush.get("blockers") or []],
+            error_code=digest_flush.get("errorCode"),
+            transport=digest_flush.get("transport"),
+        )
+        return True
 
     pending = get_pending_events()
     if not pending:
