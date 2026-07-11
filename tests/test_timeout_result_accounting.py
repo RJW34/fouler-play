@@ -79,6 +79,74 @@ async def test_disconnect_persists_as_loss_not_neutral(tmp_path, monkeypatch):
     assert persisted["battles"][-1]["battle_id"] == "battle-gen9ou-timeout"
 
 
+@pytest.mark.asyncio
+async def test_battle_stats_stamp_active_account_and_season(tmp_path, monkeypatch):
+    stats_path = tmp_path / "battle_stats.json"
+    season_path = tmp_path / "account-season.json"
+    season_path.write_text(
+        json.dumps(
+            {
+                "account": "DekuFoulerLab",
+                "seasonId": "dekufoulerlab-gen9ou-20260710",
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run, "BATTLE_STATS_FILE", stats_path)
+    monkeypatch.setattr(run, "ACCOUNT_SEASON_FILE", season_path)
+    monkeypatch.setattr(run.FoulPlayConfig, "username", "DekuFoulerLab", raising=False)
+    monkeypatch.setattr(run.FoulPlayConfig, "pokemon_format", "gen9ou", raising=False)
+    stats = run.BattleStats()
+
+    await stats.record_win("fat-team-2-balance", "battle-gen9ou-current", rating=1045)
+
+    row = json.loads(stats_path.read_text(encoding="utf-8"))["battles"][0]
+    assert row["account"] == "DekuFoulerLab"
+    assert row["season_id"] == "dekufoulerlab-gen9ou-20260710"
+    assert row["format"] == "gen9ou"
+
+
+def test_battle_stats_load_only_active_tagged_account_season(tmp_path, monkeypatch):
+    stats_path = tmp_path / "battle_stats.json"
+    stats_path.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {"battle_id": "old-account", "account": "thepeakmons"},
+                    {
+                        "battle_id": "old-season",
+                        "account": "DekuFoulerLab",
+                        "season_id": "dekufoulerlab-gen9ou-20260709",
+                    },
+                    {
+                        "battle_id": "current",
+                        "account": "DekuFoulerLab",
+                        "season_id": "dekufoulerlab-gen9ou-20260710",
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    season_path = tmp_path / "account-season.json"
+    season_path.write_text(
+        json.dumps(
+            {
+                "account": "DekuFoulerLab",
+                "seasonId": "dekufoulerlab-gen9ou-20260710",
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(run, "BATTLE_STATS_FILE", stats_path)
+    monkeypatch.setattr(run, "ACCOUNT_SEASON_FILE", season_path)
+    monkeypatch.setattr(run.FoulPlayConfig, "username", "DekuFoulerLab", raising=False)
+
+    stats = run.BattleStats()
+
+    assert [row["battle_id"] for row in stats._battles] == ["current"]
+
+
 def test_legacy_disconnect_rows_count_as_team_losses():
     stats = run.BattleStats()
     stats._battles = [
@@ -187,6 +255,38 @@ async def test_structured_event_queue_owns_battle_discord_transport(monkeypatch)
         battle_tag="battle-gen9ou-structured",
         winner="LEBOTJAMESXD00N",
         opponent_name="QueueOpponent",
+        our_player_name="LEBOTJAMESXD00N",
+    )
+
+    assert elo_after == 1483.0
+    assert called["http"] is False
+
+
+@pytest.mark.asyncio
+async def test_disabled_event_queue_still_cannot_fall_back_to_direct_webhook(monkeypatch):
+    called = {"http": False}
+
+    class _UnexpectedSession:
+        def __init__(self, *args, **kwargs):
+            called["http"] = True
+            raise AssertionError("direct Discord webhook transport is forbidden")
+
+    async def fake_fetch_elo(username):
+        return 1483.0, None
+
+    async def fake_replay_exists(replay_id):
+        return False
+
+    monkeypatch.setenv("FOULER_BATTLE_RESULT_QUEUE", "0")
+    monkeypatch.setenv("DISCORD_BATTLES_WEBHOOK_URL", "https://discord.com/api/webhooks/example/token")
+    monkeypatch.setattr(run_battle, "_fetch_elo", fake_fetch_elo)
+    monkeypatch.setattr(run_battle, "_replay_exists", fake_replay_exists)
+    monkeypatch.setattr(run_battle.aiohttp, "ClientSession", _UnexpectedSession)
+
+    elo_after = await _post_battle_to_discord(
+        battle_tag="battle-gen9ou-queue-disabled",
+        winner="LEBOTJAMESXD00N",
+        opponent_name="QueueDisabledOpponent",
         our_player_name="LEBOTJAMESXD00N",
     )
 

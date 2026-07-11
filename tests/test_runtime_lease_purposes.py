@@ -14,8 +14,10 @@ def test_jiggly_runtime_start_lease_allows_continuous_supervisor_chain():
 
     assert allowed == [
         "jigglypuff-runtime-start",
+        "devstream-start-continuous-dry-run",
         "devstream-start-continuous",
         "devstream-supervise",
+        "devstream-start-dry-run",
         "devstream-start",
         "devstream-stale-truth-cleanup-dry-run",
         "devstream-stale-truth-cleanup",
@@ -37,7 +39,9 @@ def test_continuous_start_lease_allows_supervisor_and_battle_runner():
 
     assert lease["allowedPurposes"] == [
         "devstream-start-continuous",
+        "devstream-start-continuous-dry-run",
         "devstream-supervise",
+        "devstream-start-dry-run",
         "devstream-start",
         "devstream-stale-truth-cleanup-dry-run",
         "devstream-stale-truth-cleanup",

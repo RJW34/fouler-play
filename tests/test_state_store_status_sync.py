@@ -59,6 +59,26 @@ def test_write_active_battles_empty_syncs_searching_without_clearing_stats(monke
     assert status["losses"] == 5
 
 
+def test_write_active_battles_empty_preserves_bounded_session_ready(monkeypatch, tmp_path):
+    state_store = _load_state_store(monkeypatch, tmp_path)
+    state_store.write_status(
+        {
+            "status": "Searching",
+            "battle_info": "Searching...",
+            "runtime_mode": "bounded_session_complete",
+        }
+    )
+
+    state_store.write_active_battles({"battles": [], "count": 0})
+
+    status = state_store.read_status()
+    assert status["status"] == "Ready"
+    assert status["battle_info"] == (
+        "Bounded session complete; ready for the next finite batch."
+    )
+    assert status["runtime_mode"] == "bounded_session_complete"
+
+
 def test_write_active_battles_does_not_clear_runtime_blocked_empty_state(monkeypatch, tmp_path):
     state_store = _load_state_store(monkeypatch, tmp_path)
     state_store.write_status(

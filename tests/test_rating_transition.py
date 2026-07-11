@@ -69,7 +69,7 @@ def test_unknown_account_returns_none_not_opponent_delta():
 
 
 def test_parse_unicode_arrow():
-    msg = "|raw|npctypebeat's rating: 1000 → 1021<br />(+21 for winning)"
+    msg = "|raw|npctypebeat's rating: 1000 \u2192 1021<br />(+21 for winning)"
     assert parse_rating_transition(msg, OUR) == (1000, 1021, 21)
 
 
@@ -334,7 +334,7 @@ async def test_discord_result_uses_non_opponent_winner_when_account_alias_is_sta
     monkeypatch.setattr(run_battle, "_replay_exists", replay_missing)
     monkeypatch.setattr(run_battle.aiohttp, "ClientSession", lambda: FakeSession())
 
-    await run_battle._post_battle_to_discord(
+    elo_after = await run_battle._post_battle_to_discord(
         battle_tag="battle-gen9ou-2632180642",
         winner="LEBOTJAMESXD00N",
         opponent_name="murdockfejao",
@@ -344,9 +344,8 @@ async def test_discord_result_uses_non_opponent_winner_when_account_alias_is_sta
     )
 
     assert fetched_users == ["LEBOTJAMESXD00N"]
-    assert sent_payloads
-    assert "**WIN** vs murdockfejao" in sent_payloads[0]["content"]
-    assert "ELO gained 43 (1000 \u2192 1043, +43)" in sent_payloads[0]["content"]
+    assert elo_after == 1043
+    assert sent_payloads == []
 
 
 @pytest.mark.asyncio
@@ -382,7 +381,7 @@ async def test_discord_result_preserves_terminal_loss_when_rating_gain_contradic
     monkeypatch.setattr(run_battle, "_replay_exists", replay_missing)
     monkeypatch.setattr(run_battle.aiohttp, "ClientSession", lambda: FakeSession())
 
-    await run_battle._post_battle_to_discord(
+    elo_after = await run_battle._post_battle_to_discord(
         battle_tag="battle-gen9ou-2632180642",
         winner="murdockfejao",
         opponent_name="murdockfejao",
@@ -391,10 +390,8 @@ async def test_discord_result_preserves_terminal_loss_when_rating_gain_contradic
         rating_delta=(1000, 1043, 43),
     )
 
-    assert sent_payloads
-    assert "**LOSS** vs murdockfejao" in sent_payloads[0]["content"]
-    assert "ELO unverified (cached 1000, fetched 1043)" in sent_payloads[0]["content"]
-    assert "ELO gained" not in sent_payloads[0]["content"]
+    assert elo_after == 1043
+    assert sent_payloads == []
 
 
 @pytest.mark.asyncio
@@ -429,7 +426,7 @@ async def test_discord_result_preserves_terminal_win_when_rating_drop_contradict
     monkeypatch.setattr(run_battle, "_replay_exists", replay_missing)
     monkeypatch.setattr(run_battle.aiohttp, "ClientSession", lambda: FakeSession())
 
-    await run_battle._post_battle_to_discord(
+    elo_after = await run_battle._post_battle_to_discord(
         battle_tag="battle-gen9ou-2632180947",
         winner="currentbot",
         opponent_name="slyddvicious",
@@ -438,10 +435,8 @@ async def test_discord_result_preserves_terminal_win_when_rating_drop_contradict
         rating_delta=(1084, 1056, -28),
     )
 
-    assert sent_payloads
-    assert "**WIN** vs slyddvicious" in sent_payloads[0]["content"]
-    assert "ELO unverified (cached 1084, fetched 1056)" in sent_payloads[0]["content"]
-    assert "ELO lost" not in sent_payloads[0]["content"]
+    assert elo_after == 1056
+    assert sent_payloads == []
 
 
 def test_battle_result_does_not_relabel_explicit_winner_from_rating_delta():

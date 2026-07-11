@@ -412,6 +412,7 @@ Format response as structured improvement report with battle citations.
                 infra_lines
                 + [
                     "",
+                    "No local loss replay artifacts were available.",
                     "No PLAYED-OUT loss artifacts were available for engine learning "
                     "(all recent losses were infra/latency, or no replay JSON saved). "
                     "Mechanics-backed engine learning is paused until a real played-out "

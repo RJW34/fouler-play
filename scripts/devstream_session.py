@@ -50,9 +50,15 @@ STALE_STREAM_STATUS_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-stream-st
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
 STREAM_STATUS_FILE = ROOT / "stream_status.json"
+BATTLE_STATS_FILE = ROOT / "battle_stats.json"
+ACCOUNT_SEASON_FILE = ROOT / "devstream" / "truth" / "account-season.json"
+BATTLE_LOG_DIR = ROOT / "logs"
+REPLAY_ANALYSIS_DIR = ROOT / "replay_analysis"
+TEAMS_DIR = ROOT / "teams"
 STALE_ACTIVE_TRUTH_SECONDS = 1800
 STALE_STREAM_TRUTH_SECONDS = 21600
 IDLE_RUNNER_STALE_SECONDS = int(os.getenv("FP_IDLE_RUNNER_STALE_SECONDS", "180"))
+RESULT_PERSISTENCE_GRACE_SECONDS = int(os.getenv("FP_RESULT_PERSISTENCE_GRACE_SECONDS", "90"))
 ACTIVE_STREAM_STATUSES = {"active", "battling", "running", "searching"}
 STALE_TRUTH_CLEANUP_PURPOSE = "devstream-stale-truth-cleanup"
 STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE = f"{STALE_TRUTH_CLEANUP_PURPOSE}-dry-run"
@@ -434,7 +440,7 @@ def battle_supervisor_contract() -> dict[str, Any]:
 def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str, str] | None = None) -> list[str]:
     env = env or load_env_files()
     username = env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID")
-    command = [
+    battle_command = [
         runtime_python(),
         "run.py",
         "--websocket-uri",
@@ -455,20 +461,20 @@ def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str
     ]
     avatar = env_value(env, "PS_AVATAR")
     if avatar:
-        command.extend(["--ps-avatar", avatar])
+        battle_command.extend(["--ps-avatar", avatar])
     team_names = env_value(env, "TEAM_NAMES")
     team_list = env_value(env, "TEAM_LIST")
     team_name = env_value(env, "TEAM_NAME")
     if team_names:
-        command.extend(["--team-names", team_names])
+        battle_command.extend(["--team-names", team_names])
     elif team_list:
-        command.extend(["--team-list", team_list])
+        battle_command.extend(["--team-list", team_list])
     elif team_name:
-        command.extend(["--team-name", team_name])
+        battle_command.extend(["--team-name", team_name])
     spectator = env_value(env, "SPECTATOR_USERNAME")
     if spectator:
-        command.extend(["--spectator-username", spectator])
-    return command
+        battle_command.extend(["--spectator-username", spectator])
+    return [runtime_python(), "scripts/run_bounded_battle_session.py", "--", *battle_command]
 
 
 def supervisor_command(
@@ -639,6 +645,624 @@ def read_json_object(path: Path) -> dict[str, Any]:
     except Exception:
         return {}
     return parsed if isinstance(parsed, dict) else {}
+
+
+def read_battle_stats(path: Path | None = None) -> list[dict[str, Any]]:
+    stats_path = path or BATTLE_STATS_FILE
+    payload = read_json_object(stats_path)
+    battles = payload.get("battles")
+    if not isinstance(battles, list):
+        return []
+    return [row for row in battles if isinstance(row, dict)]
+
+
+def battle_stats_max_entries() -> int:
+    raw = os.getenv("BATTLE_STATS_MAX_ENTRIES", "5000").strip()
+    try:
+        return max(100, int(raw))
+    except ValueError:
+        return 5000
+
+
+def battle_identity_set(battles: list[dict[str, Any]]) -> set[str]:
+    identities: set[str] = set()
+    for row in battles:
+        for key in ("battle_id", "battleId", "replay_id", "battle_tag", "id"):
+            value = str(row.get(key) or "").strip()
+            if value:
+                identities.add(value)
+    return identities
+
+
+def battle_identity_index(battles: list[dict[str, Any]]) -> dict[str, int]:
+    identities: dict[str, int] = {}
+    for index, row in enumerate(battles):
+        for key in ("battle_id", "battleId", "replay_id", "battle_tag", "id"):
+            value = str(row.get(key) or "").strip()
+            if value:
+                identities.setdefault(value, index)
+    return identities
+
+
+def parse_active_battle_id(row: dict[str, Any]) -> str:
+    for key in ("id", "battle_id", "battleId", "battle_tag", "replay_id"):
+        value = str(row.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def newest_battle_stats_time(battles: list[dict[str, Any]]) -> datetime | None:
+    newest: datetime | None = None
+    for row in battles:
+        raw = row.get("timestamp") or row.get("updated") or row.get("endedAt")
+        if not raw:
+            continue
+        try:
+            parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        if newest is None or parsed > newest:
+            newest = parsed
+    return newest
+
+
+def abandoned_battle_stats_row(
+    battle: dict[str, Any],
+    *,
+    backup_path: Path,
+    backup_mtime: datetime,
+    source_updated: Any,
+    clear_reason: str,
+) -> dict[str, Any] | None:
+    battle_id = parse_active_battle_id(battle)
+    if not battle_id:
+        return None
+    return {
+        "battle_id": battle_id,
+        "timestamp": iso_now(),
+        "team_file": str(battle.get("team_file") or battle.get("team") or "unknown"),
+        "result": "loss",
+        "replay_id": battle_id,
+        "rating": None,
+        "opponent": str(battle.get("opponent") or ""),
+        "battle_url": str(battle.get("url") or ""),
+        "operational_loss": True,
+        "outcome_detail": "abandoned-active-battle-without-result",
+        "source": "stale-active-battle-cleanup",
+        "source_backup_path": str(backup_path),
+        "source_backup_mtime_utc": backup_mtime.isoformat(),
+        "source_active_battles_updated": source_updated,
+        "abandoned_started_at": battle.get("started"),
+        "abandoned_status": battle.get("status"),
+        "cleanup_reason": clear_reason,
+    }
+
+
+def normalize_pokemon_name(name: str) -> str:
+    cleaned = re.sub(r"\([^)]*\)", "", str(name or ""))
+    cleaned = cleaned.split(",", 1)[0]
+    return re.sub(r"[^a-z0-9]", "", cleaned.lower())
+
+
+def parse_team_file_pokemon(path: Path) -> set[str]:
+    names: set[str] = set()
+    try:
+        lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    except OSError:
+        return names
+    for line in lines:
+        stripped = line.strip()
+        if "@" not in stripped:
+            continue
+        header = stripped.split("@", 1)[0].strip()
+        normalized = normalize_pokemon_name(header)
+        if normalized:
+            names.add(normalized)
+    return names
+
+
+def match_team_file_from_pokemon(
+    pokemon_names: set[str],
+    *,
+    teams_dir: Path | None = None,
+) -> str | None:
+    teams_dir = teams_dir or TEAMS_DIR
+    target = {name for name in pokemon_names if name}
+    if not target or not teams_dir.is_dir():
+        return None
+    best_path: Path | None = None
+    best_score = 0.0
+    skipped_suffixes = {".md", ".txt", ".list", ".py", ".pyc"}
+    try:
+        candidates = [path for path in teams_dir.rglob("*") if path.is_file()]
+    except OSError:
+        return None
+    for path in candidates:
+        if path.name.startswith(".") or path.suffix.lower() in skipped_suffixes:
+            continue
+        team_names = parse_team_file_pokemon(path)
+        if not team_names:
+            continue
+        score = len(target & team_names) / max(1, len(target))
+        if score > best_score:
+            best_score = score
+            best_path = path
+    if best_path is None or best_score < 0.45:
+        return None
+    try:
+        return best_path.relative_to(teams_dir).as_posix()
+    except ValueError:
+        return str(best_path)
+
+
+def infer_team_file_from_replay(
+    battle_id: str,
+    account: str,
+    *,
+    replay_dir: Path | None = None,
+    teams_dir: Path | None = None,
+) -> str | None:
+    replay_dir = replay_dir or REPLAY_ANALYSIS_DIR
+    replay_id = battle_id.replace("battle-", "", 1)
+    replay_path = replay_dir / f"{replay_id}.json"
+    payload = read_json_object(replay_path)
+    raw_log = payload.get("log") or payload.get("logs") or payload.get("battle_log")
+    if isinstance(raw_log, str):
+        lines = raw_log.splitlines()
+    elif isinstance(raw_log, list):
+        lines = [str(line) for line in raw_log]
+    else:
+        return None
+
+    account_lower = str(account or "").strip().lower()
+    bot_side = ""
+    for line in lines:
+        if not line.startswith("|player|"):
+            continue
+        parts = line.split("|")
+        if len(parts) >= 4 and parts[3].strip().lower() == account_lower:
+            bot_side = parts[2].strip()
+            break
+    if not bot_side:
+        return None
+
+    pokemon_names: set[str] = set()
+    prefix = f"|poke|{bot_side}|"
+    for line in lines:
+        if not line.startswith(prefix):
+            continue
+        parts = line.split("|")
+        if len(parts) < 4:
+            continue
+        normalized = normalize_pokemon_name(parts[3])
+        if normalized:
+            pokemon_names.add(normalized)
+    return match_team_file_from_pokemon(pokemon_names, teams_dir=teams_dir)
+
+
+def showdown_account_from_runtime() -> str:
+    try:
+        env = prepare_runtime_env(load_env_files())
+        account = env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID", "FOULER_ACTIVE_ACCOUNT")
+        if account:
+            return account
+        lease_payload = read_json_object(runtime_lease_path(None, env))
+        lease = lease_summary(lease_payload)
+        account = str(lease.get("account") or "").strip()
+        if account:
+            return account
+    except Exception:
+        return ""
+    return ""
+
+
+def opponent_from_battle_log_path(path: Path, battle_id: str, winner: str, account: str) -> str:
+    if winner and winner.strip().lower() != account.strip().lower():
+        return winner.strip()
+    prefix = f"{battle_id}_"
+    stem = path.stem
+    if stem.startswith(prefix):
+        return stem[len(prefix) :].strip()
+    return ""
+
+
+def battle_log_proves_account(text: str, account: str) -> bool:
+    expected = normalize_account_name(account)
+    if not expected:
+        return False
+    candidates: list[str] = []
+    patterns = (
+        r"\|player\|p[12]\|([^|\r\n]+)\|",
+        r'"side"\s*:\s*\{\s*"name"\s*:\s*"([^"]+)"',
+        r"'side'\s*:\s*\{\s*'name'\s*:\s*'([^']+)'",
+        r"Battle finished:\s+battle-[A-Za-z0-9-]+\s+Winner:\s*([^\r\n]+)",
+    )
+    for pattern in patterns:
+        candidates.extend(re.findall(pattern, text, flags=re.IGNORECASE))
+    return expected in {normalize_account_name(candidate) for candidate in candidates}
+
+
+def active_season_id_for_account(account: str, path: Path | None = None) -> str:
+    payload = read_json_object(path or ACCOUNT_SEASON_FILE)
+    if normalize_account_name(payload.get("account")) != normalize_account_name(account):
+        return ""
+    return str(payload.get("seasonId") or "").strip()
+
+
+def completed_battle_stats_row_from_log(
+    path: Path,
+    *,
+    account: str,
+    replay_dir: Path | None = None,
+    teams_dir: Path | None = None,
+    season_id: str = "",
+) -> dict[str, Any] | None:
+    if not account:
+        return None
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        log_mtime = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+    except OSError:
+        return None
+    finished = re.search(
+        r"Battle finished:\s+(battle-[A-Za-z0-9-]+)\s+Winner:\s*([^\r\n]+)",
+        text,
+    )
+    if not finished:
+        return None
+    if not battle_log_proves_account(text, account):
+        return None
+    battle_id = finished.group(1).strip()
+    winner = finished.group(2).strip()
+    account_lower = account.strip().lower()
+    result = "win" if winner.lower() == account_lower else "loss"
+    rating_before = None
+    rating_after = None
+    rating_delta = None
+    rating_match = re.search(
+        rf"Captured authoritative rating transition for\s+{re.escape(battle_id)}:\s+(\d+)\s*->\s*(\d+)\s*\(([+-]?\d+)\)",
+        text,
+    )
+    if rating_match:
+        rating_before = int(rating_match.group(1))
+        rating_after = int(rating_match.group(2))
+        rating_delta = int(rating_match.group(3))
+    replay_match = re.search(r"Replay saved:\s+(https://replay\.pokemonshowdown\.com/[A-Za-z0-9-]+)", text)
+    replay_url = replay_match.group(1).strip() if replay_match else ""
+    team_file = infer_team_file_from_replay(
+        battle_id,
+        account,
+        replay_dir=replay_dir,
+        teams_dir=teams_dir,
+    ) or "unknown"
+    row: dict[str, Any] = {
+        "battle_id": battle_id,
+        "timestamp": log_mtime.isoformat(),
+        "team_file": team_file,
+        "result": result,
+        "replay_id": battle_id,
+        "rating": rating_after,
+        "battle_tag": battle_id,
+        "winner": winner,
+        "opponent": opponent_from_battle_log_path(path, battle_id, winner, account),
+        "recovered_result": True,
+        "source": "completed-battle-log-recovery",
+        "source_log_path": str(path),
+        "replay_url": replay_url,
+        "public_replay_id": battle_id.replace("battle-", "", 1),
+        "replay_status": "public" if replay_url else "unknown",
+        "account": account,
+    }
+    if season_id:
+        row["season_id"] = season_id
+    if rating_match:
+        row.update(
+            {
+                "elo_before": rating_before,
+                "elo_after": rating_after,
+                "rating_delta": rating_delta,
+                "rating_source": "showdown_raw_log_recovery",
+            }
+        )
+    return row
+
+
+def missing_battle_stats_value(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip() == "" or value.strip().lower() in {"unknown", "---"}
+    return False
+
+
+def enrich_existing_battle_stats_row(
+    existing: dict[str, Any],
+    recovered: dict[str, Any],
+    *,
+    account: str = "",
+) -> bool:
+    changed = False
+    fill_if_missing = [
+        "rating",
+        "battle_tag",
+        "winner",
+        "opponent",
+        "replay_url",
+        "public_replay_id",
+        "replay_status",
+        "elo_before",
+        "elo_after",
+        "rating_delta",
+        "rating_source",
+        "account",
+        "season_id",
+    ]
+    for key in fill_if_missing:
+        if missing_battle_stats_value(existing.get(key)) and not missing_battle_stats_value(recovered.get(key)):
+            existing[key] = recovered[key]
+            changed = True
+    existing_opponent = normalize_account_name(existing.get("opponent"))
+    recovered_opponent = normalize_account_name(recovered.get("opponent"))
+    normalized_account = normalize_account_name(account)
+    if (
+        normalized_account
+        and existing_opponent == normalized_account
+        and recovered_opponent
+        and recovered_opponent != normalized_account
+    ):
+        existing["opponent"] = recovered["opponent"]
+        changed = True
+    if missing_battle_stats_value(existing.get("team_file")) and not missing_battle_stats_value(recovered.get("team_file")):
+        existing["team_file"] = recovered["team_file"]
+        changed = True
+    if missing_battle_stats_value(existing.get("replay_id")) and not missing_battle_stats_value(recovered.get("replay_id")):
+        existing["replay_id"] = recovered["replay_id"]
+        changed = True
+    if changed:
+        existing["result_enriched_from_log"] = True
+        existing["source_log_path"] = recovered.get("source_log_path")
+        existing["rating_source"] = recovered.get("rating_source") or existing.get("rating_source")
+    return changed
+
+
+def recover_completed_battle_results_from_logs(
+    *,
+    execute: bool,
+    max_logs: int = 20,
+    log_dir: Path | None = None,
+    battle_stats_file: Path | None = None,
+    account: str | None = None,
+    replay_dir: Path | None = None,
+    teams_dir: Path | None = None,
+    season_id: str | None = None,
+) -> dict[str, Any]:
+    log_dir = log_dir or BATTLE_LOG_DIR
+    battle_stats_file = battle_stats_file or BATTLE_STATS_FILE
+    account = (account or showdown_account_from_runtime()).strip()
+    season_id = active_season_id_for_account(account) if season_id is None else season_id.strip()
+    payload: dict[str, Any] = {
+        "policy": "fouler-completed-battle-log-result-recovery/v1",
+        "execute": execute,
+        "logDir": str(log_dir),
+        "battleStatsPath": str(battle_stats_file),
+        "account": account,
+        "seasonId": season_id or None,
+        "checkedLogs": 0,
+        "rowsPlanned": 0,
+        "rowsAdded": 0,
+        "rowsUpdated": 0,
+        "battleIds": [],
+        "updatedBattleIds": [],
+        "skippedExistingBattleIds": [],
+        "recovered": False,
+    }
+    if not account:
+        payload["reason"] = "cannot recover completed battle logs without a Showdown account"
+        return payload
+    if not log_dir.is_dir():
+        payload["reason"] = "no battle log directory to inspect"
+        return payload
+
+    battles = read_battle_stats(battle_stats_file)
+    known_battle_ids = battle_identity_set(battles)
+    known_battle_indexes = battle_identity_index(battles)
+    latest_stats_time = newest_battle_stats_time(battles)
+    if latest_stats_time is not None:
+        payload["latestBattleStatsAtUtc"] = latest_stats_time.isoformat()
+
+    try:
+        logs = sorted(
+            log_dir.glob("battle-*.log"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )[:max_logs]
+    except OSError as exc:
+        payload["reason"] = "failed to scan battle logs"
+        payload["error"] = str(exc)
+        return payload
+
+    rows_to_add: list[dict[str, Any]] = []
+    rows_updated = 0
+    for path in logs:
+        payload["checkedLogs"] += 1
+        try:
+            log_mtime = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+        except OSError:
+            continue
+        row = completed_battle_stats_row_from_log(
+            path,
+            account=account,
+            replay_dir=replay_dir,
+            teams_dir=teams_dir,
+            season_id=season_id,
+        )
+        if row is None:
+            continue
+        battle_id = str(row.get("battle_id") or "").strip()
+        if not battle_id:
+            continue
+        if battle_id in known_battle_ids:
+            existing_index = known_battle_indexes.get(battle_id)
+            if existing_index is not None and enrich_existing_battle_stats_row(
+                battles[existing_index], row, account=account
+            ):
+                rows_updated += 1
+                payload["updatedBattleIds"].append(battle_id)
+            else:
+                payload["skippedExistingBattleIds"].append(battle_id)
+            continue
+        if latest_stats_time is not None and log_mtime <= latest_stats_time:
+            continue
+        known_battle_ids.add(battle_id)
+        known_battle_indexes[battle_id] = len(battles) + len(rows_to_add)
+        payload["battleIds"].append(battle_id)
+        rows_to_add.append(row)
+
+    payload["rowsPlanned"] = len(rows_to_add)
+    payload["rowsUpdated"] = rows_updated
+    if not rows_to_add and not rows_updated:
+        payload["reason"] = "no completed battle logs missing from battle_stats.json"
+        return payload
+    if not execute:
+        payload["reason"] = "dry run; completed battle log recovery planned only"
+        return payload
+
+    battles.extend(rows_to_add)
+    max_entries = battle_stats_max_entries()
+    if len(battles) > max_entries:
+        del battles[:-max_entries]
+        payload["trimmedToMaxEntries"] = max_entries
+    try:
+        _atomic_write_text(
+            battle_stats_file,
+            json.dumps({"battles": battles}, indent=2, ensure_ascii=False) + "\n",
+        )
+    except PermissionError:
+        battle_stats_file.chmod(0o666)
+        _atomic_write_text(
+            battle_stats_file,
+            json.dumps({"battles": battles}, indent=2, ensure_ascii=False) + "\n",
+        )
+        payload["permissionRepair"] = "chmod 666 before rewrite"
+    payload["rowsAdded"] = len(rows_to_add)
+    payload["recovered"] = True
+    payload["reason"] = "completed battle logs recovered as authoritative result rows"
+    return payload
+
+
+def recover_abandoned_battle_results_from_backups(
+    *,
+    execute: bool,
+    max_backups: int = 20,
+    clear_reason: str = "stale active battle truth had no live battle runner",
+    backup_dir: Path | None = None,
+    battle_stats_file: Path | None = None,
+) -> dict[str, Any]:
+    backup_dir = backup_dir or STALE_BATTLE_BACKUP_DIR
+    battle_stats_file = battle_stats_file or BATTLE_STATS_FILE
+    payload: dict[str, Any] = {
+        "policy": "fouler-abandoned-active-battle-result-recovery/v1",
+        "execute": execute,
+        "backupDir": str(backup_dir),
+        "battleStatsPath": str(battle_stats_file),
+        "checkedBackups": 0,
+        "rowsPlanned": 0,
+        "rowsAdded": 0,
+        "battleIds": [],
+        "skippedExistingBattleIds": [],
+        "recovered": False,
+    }
+    if any_battle_runner_alive():
+        payload["reason"] = "battle runner is alive; preserving result history until runtime settles"
+        return payload
+    if not backup_dir.is_dir():
+        payload["reason"] = "no stale active battle backups to inspect"
+        return payload
+
+    battles = read_battle_stats(battle_stats_file)
+    known_battle_ids = battle_identity_set(battles)
+    latest_stats_time = newest_battle_stats_time(battles)
+    if latest_stats_time is not None:
+        payload["latestBattleStatsAtUtc"] = latest_stats_time.isoformat()
+
+    try:
+        backups = sorted(
+            backup_dir.glob("active_battles-*.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )[:max_backups]
+    except OSError as exc:
+        payload["reason"] = "failed to scan stale active battle backups"
+        payload["error"] = str(exc)
+        return payload
+
+    rows_to_add: list[dict[str, Any]] = []
+    for path in backups:
+        payload["checkedBackups"] += 1
+        try:
+            backup_mtime = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+        except OSError:
+            continue
+        if latest_stats_time is not None and backup_mtime <= latest_stats_time:
+            continue
+        backup_payload = read_json_object(path)
+        entries = backup_payload.get("battles")
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            battle_id = parse_active_battle_id(entry)
+            if not battle_id:
+                continue
+            if battle_id in known_battle_ids:
+                payload["skippedExistingBattleIds"].append(battle_id)
+                continue
+            row = abandoned_battle_stats_row(
+                entry,
+                backup_path=path,
+                backup_mtime=backup_mtime,
+                source_updated=backup_payload.get("updated"),
+                clear_reason=clear_reason,
+            )
+            if row is None:
+                continue
+            known_battle_ids.add(battle_id)
+            payload["battleIds"].append(battle_id)
+            rows_to_add.append(row)
+
+    payload["rowsPlanned"] = len(rows_to_add)
+    if not rows_to_add:
+        payload["reason"] = "no abandoned active battle results missing from battle_stats.json"
+        return payload
+    if not execute:
+        payload["reason"] = "dry run; abandoned active battle result recovery planned only"
+        return payload
+
+    battles.extend(rows_to_add)
+    max_entries = battle_stats_max_entries()
+    if len(battles) > max_entries:
+        del battles[:-max_entries]
+        payload["trimmedToMaxEntries"] = max_entries
+    try:
+        _atomic_write_text(
+            battle_stats_file,
+            json.dumps({"battles": battles}, indent=2, ensure_ascii=False) + "\n",
+        )
+    except PermissionError:
+        battle_stats_file.chmod(0o666)
+        _atomic_write_text(
+            battle_stats_file,
+            json.dumps({"battles": battles}, indent=2, ensure_ascii=False) + "\n",
+        )
+        payload["permissionRepair"] = "chmod 666 before rewrite"
+    payload["rowsAdded"] = len(rows_to_add)
+    payload["recovered"] = True
+    payload["reason"] = "abandoned active battles recovered as operational loss rows"
+    return payload
 
 
 def finite_runtime_lease_preconditions() -> list[str]:
@@ -1157,6 +1781,23 @@ def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> di
             pid_file.unlink()
         except OSError:
             pass
+    if existing_pid is None and is_obs_http_command(command) and obs_http_ready():
+        removed_stale_pid_file = False
+        try:
+            pid_file.unlink()
+            removed_stale_pid_file = True
+        except OSError:
+            pass
+        return {
+            "pidFile": str(pid_file),
+            "alreadyRunning": True,
+            "pid": None,
+            "command": command,
+            "adoptedHealthyEndpoint": True,
+            "externalLifecycleOwner": True,
+            "previousPid": pid,
+            "removedStalePidFile": removed_stale_pid_file,
+        }
     PID_DIR.mkdir(parents=True, exist_ok=True)
     log_path = ROOT / "logs" / f"{pid_file.stem}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1824,11 +2465,25 @@ def run_supervisor_cycle(
         payload["nextAction"] = "wait for active battle runner/drain before proof refresh"
         return payload
     if battle_runner_alive and idle_recovery.get("shouldRecover"):
+        active_truth_age = active_battles_age_seconds()
+        if active_truth_age is not None and active_truth_age < RESULT_PERSISTENCE_GRACE_SECONDS:
+            payload["resultPersistenceGrace"] = {
+                "activeBattleTruthAgeSeconds": round(active_truth_age, 3),
+                "minimumGraceSeconds": RESULT_PERSISTENCE_GRACE_SECONDS,
+                "reason": "recently cleared active battle truth may still be waiting for run.py to persist battle_stats",
+            }
+            payload["state"] = "result-persistence-grace"
+            payload["nextAction"] = "wait for run.py to persist completed battle_stats before stale idle runner recovery"
+            return payload
+        payload["completedBattleLogResultRecoveryBeforeRuntimeRecovery"] = (
+            recover_completed_battle_results_from_logs(execute=True)
+        )
         recovery = recover_stale_battle_runtime(
             execute=True,
             stale_after_seconds=int(idle_recovery.get("staleAfterSeconds") or IDLE_RUNNER_STALE_SECONDS),
         )
         payload["staleBattleRuntimeRecovery"] = recovery
+        payload["completedBattleLogResultRecovery"] = recover_completed_battle_results_from_logs(execute=True)
         active_count = read_active_battles()
         battle_runner_alive = any_battle_runner_alive()
         payload["activeBattleCountAfterRecovery"] = active_count
@@ -1874,7 +2529,7 @@ def run_supervisor_cycle(
             "FOULER_ACTIVE_ACCOUNT",
             "SHOWDOWN_USER_ID",
             "PS_USERNAME",
-            default="LEBOTJAMESXD00N",
+            default="",
         )
         improve_lease = str(SUPERVISOR_IMPROVE_LEASE_FILE.relative_to(ROOT))
         lease_minutes = max(60, ((effective_count * 220) + 300 + 59) // 60 + 10)
@@ -2075,10 +2730,21 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             )
             payload["runtimeLease"] = current_lease_guard
             lease_ok = bool(current_lease_guard.get("ok"))
+            stale_after_seconds = max(
+                IDLE_RUNNER_STALE_SECONDS,
+                positive_int(getattr(args, "queue_timeout_seconds", 180), 180),
+            )
+            pre_cycle_idle_recovery = idle_battle_runner_recovery_candidate(stale_after_seconds)
+            pre_cycle_completes_learning = bool(
+                battle_was_in_flight
+                and (
+                    not pre_cycle_runtime["inFlight"]
+                    or pre_cycle_idle_recovery.get("shouldRecover")
+                )
+            )
             completing_final_learning_cycle = bool(
                 effective_max_cycles
-                and battle_was_in_flight
-                and not pre_cycle_runtime["inFlight"]
+                and pre_cycle_completes_learning
                 and completed_learning_cycles + 1 >= effective_max_cycles
             )
             payload["state"] = "running-cycle"
@@ -2087,6 +2753,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             payload["currentCycleStartedAt"] = payload["lastHeartbeatAt"]
             payload["runtimeLease"] = current_lease_guard
             payload["preCycleRuntime"] = pre_cycle_runtime
+            payload["preCycleIdleRunnerRecovery"] = pre_cycle_idle_recovery
             payload["nextAction"] = (
                 "running proof/improve/start cycle; status will refresh when bounded action returns"
             )
@@ -2301,6 +2968,12 @@ def cmd_cleanup_stale_truth(args: argparse.Namespace) -> int:
     payload["activeBattleCleanup"] = clear_stale_active_battles(
         execute=args.execute,
         stale_after_seconds=args.stale_after_seconds,
+    )
+    payload["abandonedBattleResultRecovery"] = recover_abandoned_battle_results_from_backups(
+        execute=args.execute,
+    )
+    payload["completedBattleLogResultRecovery"] = recover_completed_battle_results_from_logs(
+        execute=args.execute,
     )
     payload["streamStatusCleanup"] = archive_stale_stream_status(
         execute=args.execute,

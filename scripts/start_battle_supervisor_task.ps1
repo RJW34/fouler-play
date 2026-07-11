@@ -6,6 +6,9 @@ param(
     [int]$SleepSeconds = 15,
     [string]$RuntimeLease = "",
     [switch]$AutoImprove,
+    [switch]$ClearStopFile,
+    [switch]$ClearDrainRequest,
+    [string]$LoopBreak = "1",
     [switch]$Foreground
 )
 
@@ -155,14 +158,70 @@ if ($existingRunners.Count -gt 0) {
 }
 
 $stopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
+$drainFile = Join-Path $ProjectDir ".pids\drain.request"
+$recoveryProofWindowFile = Join-Path $ProjectDir ".pids\recovery-proof-window.json"
+if ($ClearStopFile -and $ClearDrainRequest) {
+    $proofWindowErrors = @()
+    if ($RunCount -lt 1 -or $RunCount -gt 5) {
+        $proofWindowErrors += "RunCount must be 1-5 for a stop-loss recovery proof window"
+    }
+    if ($MaxCycles -ne 1) {
+        $proofWindowErrors += "MaxCycles must be 1 for a stop-loss recovery proof window"
+    }
+    if ($MaxConcurrentBattles -ne 1) {
+        $proofWindowErrors += "MaxConcurrentBattles must be 1 for a stop-loss recovery proof window"
+    }
+    if ($LoopBreak -ne "1") {
+        $proofWindowErrors += "LoopBreak must be 1 for a stop-loss recovery proof window"
+    }
+    if ($proofWindowErrors.Count -gt 0) {
+        Write-Error ("Refusing to open recovery proof window: " + ($proofWindowErrors -join "; "))
+        Close-LaunchLock
+        exit 2
+    }
+    $launchedAt = [DateTime]::UtcNow
+    $marker = [ordered]@{
+        schemaVersion = "fouler-play-recovery-proof-window/v1"
+        approved = $true
+        purpose = "stop-loss-recovery-proof-window"
+        launchedAtUtc = $launchedAt.ToString("o")
+        expiresAtUtc = $launchedAt.AddMinutes(30).ToString("o")
+        runCount = $RunCount
+        maxCycles = $MaxCycles
+        maxConcurrentBattles = $MaxConcurrentBattles
+        loopBreak = $LoopBreak
+        noStreamStart = $true
+    }
+    $marker | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $recoveryProofWindowFile -Encoding ASCII
+    Write-Output "[start-gate] wrote finite recovery proof window marker"
+}
 if (Test-Path -LiteralPath $stopFile -PathType Leaf) {
-    Remove-Item -LiteralPath $stopFile -Force
+    if ($ClearStopFile) {
+        Remove-Item -LiteralPath $stopFile -Force
+        Write-Output "[start-gate] cleared supervisor.stop because -ClearStopFile was explicitly supplied"
+    } else {
+        Write-Output "[start-gate] supervisor.stop is present; refusing to launch a battle supervisor"
+        Close-LaunchLock
+        exit 0
+    }
+}
+
+if (Test-Path -LiteralPath $drainFile -PathType Leaf) {
+    if ($ClearDrainRequest) {
+        Remove-Item -LiteralPath $drainFile -Force
+        Write-Output "[start-gate] cleared drain.request because -ClearDrainRequest was explicitly supplied"
+    } else {
+        Write-Output "[start-gate] drain.request is present; refusing to launch a battle supervisor"
+        Close-LaunchLock
+        exit 0
+    }
 }
 
 $env:LOSS_TRIGGERED_DRAIN = "0"
 $env:BATTLE_STATS_MAX_ENTRIES = "5000"
 $env:BOT_LOG_TO_FILE = "1"
 $env:FOULER_PLAY_ENABLE_AUTO_IMPROVE = if ($AutoImprove) { "1" } else { "0" }
+$env:FOULER_LOOP_BREAK = $LoopBreak
 
 $supervisorArgs = @(
     (Join-Path $ProjectDir "scripts\devstream_session.py"),
@@ -224,7 +283,8 @@ $cmdFile = Join-Path $ProjectDir ".pids\start_battle_supervisor.cmd"
 $commandLine = @((Quote-BatchArg $Py)) + ($supervisorArgs | ForEach-Object { Quote-BatchArg $_ })
 $cmdLines = @(
     "@echo off",
-    "cd /d $(Quote-BatchArg $ProjectDir)"
+    "cd /d $(Quote-BatchArg $ProjectDir)",
+    (ConvertTo-CmdSetAssignment -Name "FOULER_LOOP_BREAK" -Value $LoopBreak)
 )
 if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
     foreach ($envName in @("PS_USERNAME", "SHOWDOWN_USER_ID", "SHOWDOWN_ACCOUNTS", "FOULER_ACTIVE_ACCOUNT")) {

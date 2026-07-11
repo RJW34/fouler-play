@@ -240,7 +240,11 @@ function Get-ProcessRole {
     if ([string]::IsNullOrWhiteSpace($CommandLine)) {
         return "unknown"
     }
-    if ($CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or $CommandLine -match "streaming\.serve_obs_page") {
+    if (
+        $CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or
+        $CommandLine -match "streaming\.serve_obs_page" -or
+        $CommandLine -match "streaming[\\/]+run_obs_server_service\.py"
+    ) {
         return "obsServer"
     }
     if ($CommandLine -match "run\.py" -and $CommandLine -match "search_ladder") {
@@ -267,7 +271,8 @@ function Get-ProcessInfo {
                     ($_.CommandLine -match "devstream_session\.py" -and $_.CommandLine -match "\bsupervise\b") -or
                     $_.CommandLine -match "start_one_touch\.bat" -or
                     $_.CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or
-                    $_.CommandLine -match "streaming\.serve_obs_page"
+                    $_.CommandLine -match "streaming\.serve_obs_page" -or
+                    $_.CommandLine -match "streaming[\\/]+run_obs_server_service\.py"
                 )
             ) -or
             (
@@ -276,7 +281,8 @@ function Get-ProcessInfo {
                 $_.CommandLine -match "--ps-username"
             ) -or
             $_.CommandLine -match "streaming[\\/]+serve_obs_page\.py" -or
-            $_.CommandLine -match "streaming\.serve_obs_page"
+            $_.CommandLine -match "streaming\.serve_obs_page" -or
+            $_.CommandLine -match "streaming[\\/]+run_obs_server_service\.py"
         )
     } | ForEach-Object {
         $redactedCommandLine = Redact-CommandLine -CommandLine $_.CommandLine

@@ -99,6 +99,32 @@ class TestThreatSwitchBias(unittest.TestCase):
             )
         )
 
+    def test_mcts_only_caps_dominant_magic_bounce_hazard_below_any_alternative(self):
+        battle = _mk_battle(
+            active_hp=250,
+            active_max_hp=334,
+            move_names=["stealthrock", "earthquake", "protect"],
+        )
+        ability_state = OpponentAbilityState(has_magic_bounce=True)
+        trace = {}
+
+        choice = select_move_from_eval_scores(
+            {"stealthrock": 10.0, "earthquake": 0.20, "protect": 0.05},
+            ability_state=ability_state,
+            battle=battle,
+            decision_profile=DecisionProfile.LOW,
+            trace=trace,
+            policy_source="mcts",
+        )
+
+        self.assertEqual(choice, "earthquake")
+        reflected = next(
+            event for event in trace["mcts_only"]["events"]
+            if event.get("reason") == "magic_bounce_reflects_status"
+        )
+        self.assertLess(reflected["after"], 0.20)
+
+
     def test_mcts_only_demotes_full_hp_recovery_when_alternative_exists(self):
         battle = _mk_battle(
             active_hp=334,

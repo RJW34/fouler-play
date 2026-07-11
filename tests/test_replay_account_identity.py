@@ -1,4 +1,16 @@
+import pytest
+
+from replay_analysis import account_identity
 from replay_analysis.account_identity import resolve_bot_username
+
+
+@pytest.fixture(autouse=True)
+def _isolate_runtime_lease(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        account_identity,
+        "RUNTIME_LEASE_PATH",
+        tmp_path / "missing-runtime-lease.json",
+    )
 
 
 def test_resolve_bot_username_prefers_runtime_account(monkeypatch):

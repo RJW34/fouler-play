@@ -39,8 +39,9 @@ specific teams' number go up" at the expense of general strength.
 - **Strong GENERAL play (1700+ ELO) on ARBITRARY given teams**, grounded in the upstream
   engine's real strength (MCTS over Bayesian-sampled opponent sets -- see `ARCHITECTURE.md`
   section 2).
-- **Honest ELO** from the live secure account (`thepeakmons`) -- age-honest gauges, no
-  ratcheting, no fake green (constitution R6).
+- **Honest ELO** from the account declared by `devstream/truth/account-season.json`
+  (currently `DekuFoulerLab`) -- age-honest gauges, no ratcheting, no fake green
+  (constitution R6).
 - **The learn-from-losses loop actually CLOSING**: replay analysis -> ranked recurring-loss
   issue -> ONE eval-gated engine improvement -> live divergence check -> keep or revert
   (`ARCHITECTURE.md` section 5).
@@ -67,8 +68,9 @@ specific teams' number go up" at the expense of general strength.
   Most of the wrapping (penalty pipeline, loop-breaker, matchup-memory, strategic/archetype
   cluster) is currently OFF or dormant -- see the layer-status table in `ARCHITECTURE.md`
   section 4. Do not add another layer to fix what a deletion would fix. (Constitution R9.)
-- **Resurfacing the retired / leaked account `LEBOTJAMESXD00N`** (or the older `npctypebeat`).
-  The account is `thepeakmons`, and only `thepeakmons`.
+- **Resurfacing a retired account** (`LEBOTJAMESXD00N`, `npctypebeat`, or `thepeakmons`).
+  The active account is the one named by `devstream/truth/account-season.json`, and
+  every runtime lease and environment file must agree with it.
 - **Losing on the clock** (inactivity forfeits). The CRITICAL-CLOCK fast path and the
   side-clock-derived per-turn budget exist for exactly this (`ARCHITECTURE.md` section 2,
   steps 1-2); do not regress them.
@@ -82,14 +84,17 @@ fouler-play **accepts an arbitrary team and sustains 1700+ ELO on the live ladde
 a **per-session data / replay report** for the player; the **learn-from-losses loop is closed**,
 and **every engine change is eval-gated** (constitution R5).
 
-**Current honest state:** roughly the **1050-1200 ELO band** on the pilot teams -- **NOT done**,
-and not yet climbing to 1700. The **biggest known lever is engine quality**, not more heuristic
-layers. See `ARCHITECTURE.md` and the divergence findings: the decision loop-breaker was
-trace-proven to cause 94% of played-vs-policy inversions (249/265 override turns) by demoting
-correct repeated stall play, and is now OFF (`FOULER_LOOP_BREAK=0`); a separate re-baseline-to-
-upstream effort (`rebaseline/upstream-anchor-20260704`) is testing whether anchoring back to
-upstream removes the harmful layers by construction. Point engine work at those findings, not
-at inventing new layers.
+**Current honest state:** **NOT done** and not yet a 1700+ any-team product. Pull live ELO,
+runtime state, and proof quality from `devstream/truth/` plus
+`devstream-spine/proofs/go_live_status_latest.json`; do not reuse a pasted band. As of the
+2026-07-06 reconciliation pass, the latest spine proof reported fouler offline/regressed and
+laddering without fresh improvement proof. The **biggest known lever is engine quality**, not
+more heuristic layers. See `ARCHITECTURE.md` and the divergence findings: the decision
+loop-breaker was trace-proven to cause 94% of played-vs-policy inversions (249/265 override
+turns) by demoting correct repeated stall play, and is now OFF (`FOULER_LOOP_BREAK=0`);
+a separate re-baseline-to-upstream effort (`rebaseline/upstream-anchor-20260704`) is testing
+whether anchoring back to upstream removes the harmful layers by construction. Point engine
+work at those findings and the engine-promotion gate, not at inventing new layers.
 
 ## Guardrails (owner-locked; cross-linked, not duplicated)
 
@@ -98,9 +103,10 @@ at inventing new layers.
 - **Eval-gate before ANY engine change** (constitution R5). No unaudited autonomous change to a
   decision engine, ever.
 - **OWNER-LOCKED, never change:** the 3 pilot teams; `max-concurrent-battles = 3`; MCTS
-  `search-parallelism = 2`; the single-client posture (constitution R3); account = `thepeakmons`
-  only. These are fixed by the owner and by the runtime lease
-  (`devstream/truth/runtime-lease.json`); do not "tune" them to chase ELO.
+  `search-parallelism = 2`; the single-client posture (constitution R3); and the active
+  account-season boundary. The account is fixed for a season by
+  `devstream/truth/account-season.json` and must match the runtime lease; do not switch it
+  mid-season or "tune" any of these controls to chase ELO.
 - **Full rules live elsewhere -- read them, do not duplicate them here:** the standing rules
   R1-R10 and the anti-pattern catalog are in `VENTURE_CONSTITUTION.md` on ubunztu
   (`~/devstream-claude/VENTURE_CONSTITUTION.md`, read-only via `ssh ubunztu cat ...`); the

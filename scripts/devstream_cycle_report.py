@@ -8,6 +8,8 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -21,17 +23,19 @@ OUTPUT_MD = ROOT / "devstream" / "truth" / "cycle-report.md"
 OUTPUT_COMPLETION = ROOT / "devstream" / "truth" / "completion.json"
 OUTPUT_PROOF_STATUS = ROOT / "devstream" / "truth" / "proof-status.json"
 OUTPUT_ELO_PROOF = ROOT / "devstream" / "truth" / "latest-elo-proof.json"
+ACCOUNT_SEASON_FILE = ROOT / "devstream" / "truth" / "account-season.json"
 DISCORD_REPORTING = ROOT / "devstream" / "truth" / "discord-reporting.json"
 DISCORD_DELIVERY = ROOT / "devstream" / "truth" / "discord-delivery.json"
 IDLE_RUNTIME_BLOCKER = "fouler-play battle runner is idle; OBS HTTP alone is not active battle proof"
 TERMINAL_BATTLE_RESULTS = {"win", "loss", "tie", "draw", "forfeit", "timeout", "ended", "error"}
-DEFAULT_ACCOUNT = "LEBOTJAMESXD00N"
+UNKNOWN_ACCOUNT = "unknown"
 ELO_TARGET_RATING = 1700
 ELO_SUSTAIN_MINIMUM_GAMES = 30
 ELO_SUSTAIN_MINIMUM_GAMES_PER_TEAM = 10
 ELO_SUSTAIN_MAX_DRAWDOWN = 75
 ELO_SUSTAIN_MINIMUM_WIN_RATE = 0.5
 ELO_REQUIRED_TEAMS = ("fat-team-1-stall", "fat-team-2-pivot", "fat-team-3-dondozo")
+SHOWDOWN_PROFILE_TIMEOUT_SECONDS = 5.0
 
 
 def current_source_commit() -> str | None:
@@ -55,9 +59,9 @@ def refresh_discord_proof_preview() -> dict[str, Any]:
     """Write a fresh local Discord proof preview without posting or draining."""
     queue_file = ROOT / "events_queue.json"
     try:
-        from infrastructure import event_poster
+        from infrastructure import event_poster, event_queue_lib
 
-        events = read_json(queue_file)
+        events = event_queue_lib.read_queue()
         if not isinstance(events, list):
             events = []
         pending = [event for event in events if isinstance(event, dict) and event.get("status") == "pending"]
@@ -120,6 +124,201 @@ def read_json(path: Path) -> Any:
         return json.loads(path.read_text(encoding="utf-8", errors="replace"))
     except Exception:
         return None
+
+
+def _clean_account(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _first_csv_value(value: Any) -> str:
+    text = _clean_account(value)
+    if not text:
+        return ""
+    return next((item.strip() for item in text.split(",") if item.strip()), "")
+
+
+def _dotenv_value(path: Path, key: str) -> str:
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return ""
+    prefix = f"{key}="
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#") or not line.startswith(prefix):
+            continue
+        value = line[len(prefix):].split("#", 1)[0].strip().strip('"').strip("'")
+        return value
+    return ""
+
+
+def account_from_runtime_lease(path: Path | None = None) -> tuple[str, str]:
+    lease_path = path or ROOT / "devstream" / "truth" / "runtime-lease.json"
+    lease = read_json(lease_path)
+    if not isinstance(lease, dict):
+        return "", ""
+    for value in (
+        lease.get("account"),
+        lease.get("showdownUserId"),
+        (lease.get("battleScope") or {}).get("account") if isinstance(lease.get("battleScope"), dict) else "",
+        (lease.get("battleScope") or {}).get("showdownUserId") if isinstance(lease.get("battleScope"), dict) else "",
+    ):
+        account = _first_csv_value(value)
+        if account:
+            return account, str(lease_path.relative_to(ROOT)).replace("\\", "/") if lease_path.is_relative_to(ROOT) else str(lease_path)
+    return "", ""
+
+
+def resolve_showdown_account(explicit: str | None = None) -> dict[str, Any]:
+    explicit_account = _first_csv_value(explicit)
+    if explicit_account:
+        return {"showdownUserId": explicit_account, "authoritySource": "cli", "accountAuthorityReady": True}
+
+    lease_account, lease_source = account_from_runtime_lease()
+    if lease_account:
+        return {
+            "showdownUserId": lease_account,
+            "authoritySource": lease_source,
+            "accountAuthorityReady": True,
+        }
+
+    for env_key in ("FOULER_ACTIVE_ACCOUNT", "PS_USERNAME", "SHOWDOWN_ACCOUNTS"):
+        account = _first_csv_value(os.getenv(env_key, ""))
+        if account:
+            return {"showdownUserId": account, "authoritySource": f"env:{env_key}", "accountAuthorityReady": True}
+
+    env_path = ROOT / ".env"
+    for env_key in ("PS_USERNAME", "SHOWDOWN_ACCOUNTS"):
+        account = _first_csv_value(_dotenv_value(env_path, env_key))
+        if account:
+            return {
+                "showdownUserId": account,
+                "authoritySource": f".env:{env_key}",
+                "accountAuthorityReady": True,
+            }
+
+    return {
+        "showdownUserId": UNKNOWN_ACCOUNT,
+        "authoritySource": "unresolved",
+        "accountAuthorityReady": False,
+    }
+
+
+def showdown_user_id(value: object) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+
+
+def _profile_number(value: object) -> int | float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        parsed = float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+    rounded = round(parsed, 2)
+    return int(rounded) if rounded.is_integer() else rounded
+
+
+def fetch_showdown_profile_rating(
+    account: str,
+    fmt: str = "gen9ou",
+    *,
+    timeout: float = SHOWDOWN_PROFILE_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
+    """Read the live Pokemon Showdown profile rating without mutating runtime state."""
+
+    user_id = showdown_user_id(account)
+    checked_at = iso_now()
+    if not user_id or user_id == UNKNOWN_ACCOUNT:
+        return {
+            "status": "unresolved-account",
+            "checkedAtUtc": checked_at,
+            "showdownUserId": user_id or UNKNOWN_ACCOUNT,
+            "format": fmt,
+            "rating": None,
+            "source": "pokemonshowdown-user-api",
+            "noRuntimeActions": True,
+        }
+
+    url = f"https://pokemonshowdown.com/users/{user_id}.json"
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "fouler-play-devstream-proof/1.0",
+        },
+    )
+    http_status: int | None = None
+    http_warning: str | None = None
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            http_status = int(getattr(response, "status", None) or response.getcode())
+            raw = response.read(65536)
+    except urllib.error.HTTPError as exc:
+        # Pokemon Showdown can return a useful user JSON body with a non-2xx
+        # status for unrated/unregistered account pages. The body is the proof.
+        http_status = int(exc.code)
+        http_warning = f"{type(exc).__name__}: HTTP Error {exc.code}: {exc.reason}"
+        raw = exc.read(65536)
+    except (OSError, urllib.error.URLError) as exc:
+        return {
+            "status": "fetch-failed",
+            "checkedAtUtc": checked_at,
+            "showdownUserId": user_id,
+            "format": fmt,
+            "rating": None,
+            "source": url,
+            "error": f"{type(exc).__name__}: {exc}",
+            "noRuntimeActions": True,
+        }
+    try:
+        payload = json.loads(raw.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError as exc:
+        return {
+            "status": "fetch-failed",
+            "checkedAtUtc": checked_at,
+            "showdownUserId": user_id,
+            "format": fmt,
+            "rating": None,
+            "source": url,
+            "httpStatus": http_status,
+            "error": f"{type(exc).__name__}: {exc}",
+            "httpWarning": http_warning,
+            "noRuntimeActions": True,
+        }
+
+    ratings = payload.get("ratings") if isinstance(payload, dict) else {}
+    format_rating = ratings.get(fmt) if isinstance(ratings, dict) else None
+    if not isinstance(format_rating, dict):
+        return {
+            "status": "format-missing",
+            "checkedAtUtc": checked_at,
+            "showdownUserId": str(payload.get("userid") or user_id) if isinstance(payload, dict) else user_id,
+            "format": fmt,
+            "rating": None,
+            "source": url,
+            "httpStatus": http_status,
+            "httpWarning": http_warning,
+            "noRuntimeActions": True,
+        }
+
+    rating = _profile_number(format_rating.get("elo"))
+    return {
+        "status": "fetched" if rating is not None else "rating-missing",
+        "checkedAtUtc": checked_at,
+        "showdownUserId": str(payload.get("userid") or user_id) if isinstance(payload, dict) else user_id,
+        "format": fmt,
+        "rating": rating,
+        "gxe": _profile_number(format_rating.get("gxe")),
+        "rpr": _profile_number(format_rating.get("rpr")),
+        "rprd": _profile_number(format_rating.get("rprd")),
+        "wins": format_rating.get("w"),
+        "losses": format_rating.get("l"),
+        "source": url,
+        "httpStatus": http_status,
+        "httpWarning": http_warning,
+        "noRuntimeActions": True,
+    }
 
 
 def file_meta(path: Path) -> dict[str, Any]:
@@ -371,10 +570,50 @@ def decision_trace_proof_id(row: dict[str, Any]) -> str:
     return ""
 
 
-def completed_battle_rows(stats: Any) -> list[dict[str, Any]]:
+def active_account_season(account: str, path: Path | None = None) -> str:
+    payload = read_json(path or ACCOUNT_SEASON_FILE)
+    if not isinstance(payload, dict):
+        return ""
+    if showdown_user_id(payload.get("account")) != showdown_user_id(account):
+        return ""
+    return str(payload.get("seasonId") or "").strip()
+
+
+def completed_battle_rows(
+    stats: Any,
+    *,
+    account: str | None = None,
+    season_id: str | None = None,
+) -> list[dict[str, Any]]:
     battles = stats.get("battles") if isinstance(stats, dict) else stats
     if not isinstance(battles, list):
         return []
+    account_id = showdown_user_id(account)
+    tagged_accounts_present = any(
+        showdown_user_id(row.get("account"))
+        for row in battles
+        if isinstance(row, dict)
+    )
+    if account_id and account_id != UNKNOWN_ACCOUNT and tagged_accounts_present:
+        battles = [
+            row
+            for row in battles
+            if isinstance(row, dict)
+            and showdown_user_id(row.get("account")) == account_id
+        ]
+    tagged_seasons_present = any(
+        str(row.get("season_id") or row.get("seasonId") or "").strip()
+        for row in battles
+        if isinstance(row, dict)
+    )
+    if season_id and tagged_seasons_present:
+        battles = [
+            row
+            for row in battles
+            if isinstance(row, dict)
+            and str(row.get("season_id") or row.get("seasonId") or "").strip()
+            == season_id
+        ]
     completed: list[dict[str, Any]] = []
     for row in battles:
         if not isinstance(row, dict):
@@ -485,6 +724,8 @@ def build_elo_proof_payload(
     *,
     account: str | None = None,
     autoresearch: Any = None,
+    live_profile: dict[str, Any] | None = None,
+    fetch_live_profile: bool = False,
 ) -> dict[str, Any]:
     autoresearch_payload = autoresearch if isinstance(autoresearch, dict) else {}
     regression = (
@@ -493,7 +734,10 @@ def build_elo_proof_payload(
         else {}
     )
     improvement = positive_improvement_signal(autoresearch_payload, regression)
-    games = completed_battle_rows(stats)
+    account_authority = resolve_showdown_account(account)
+    showdown_user = account_authority["showdownUserId"]
+    season_id = active_account_season(showdown_user)
+    games = completed_battle_rows(stats, account=showdown_user, season_id=season_id)
     missing_battle_timestamp_games = [
         game for game in games if parse_battle_timestamp(game.get("timestamp")) is None
     ]
@@ -610,12 +854,23 @@ def build_elo_proof_payload(
         and sustain_evidence_shape_complete
     )
     timestamps = [str(game["timestamp"]) for game in games if game.get("timestamp")]
-    showdown_user = (
-        str(account or "").strip()
-        or os.getenv("FOULER_ACTIVE_ACCOUNT", "").strip()
-        or DEFAULT_ACCOUNT
-    )
     source_commit = current_source_commit()
+    if isinstance(live_profile, dict):
+        live_profile_payload = live_profile
+    elif fetch_live_profile:
+        live_profile_payload = fetch_showdown_profile_rating(showdown_user, "gen9ou")
+    else:
+        live_profile_payload = {
+            "status": "not-fetched",
+            "checkedAtUtc": None,
+            "showdownUserId": showdown_user,
+            "format": "gen9ou",
+            "rating": None,
+            "source": "disabled-for-offline-build",
+            "noRuntimeActions": True,
+        }
+    live_profile_rating = _profile_number(live_profile_payload.get("rating"))
+    current_rating = live_profile_rating if live_profile_rating is not None else final_rating
     analysis_evidence = build_elo_analysis_evidence(cycle)
     analysis_evidence_complete = all(
         str(analysis_evidence.get(key) or "").strip()
@@ -633,7 +888,13 @@ def build_elo_proof_payload(
         "sourceCommit": source_commit,
         "account": {
             "showdownUserId": showdown_user,
-            "ratingSource": "battle_stats.json",
+            "authoritySource": account_authority["authoritySource"],
+            "authorityReady": account_authority["accountAuthorityReady"],
+            "seasonId": season_id or None,
+            "ratingSource": (
+                "battle_stats.json + pokemonshowdown-user-api"
+                if live_profile_rating is not None else "battle_stats.json"
+            ),
         },
         "target": {
             "ratingFloor": ELO_TARGET_RATING,
@@ -656,6 +917,7 @@ def build_elo_proof_payload(
         },
         "games": games,
         "analysis": analysis_evidence,
+        "liveProfile": live_profile_payload,
         "summary": {
             "completedGames": len(games),
             "latestBattleId": latest_game.get("battleId"),
@@ -672,6 +934,10 @@ def build_elo_proof_payload(
             "losses": sum(1 for game in games if game["result"] == "loss"),
             "peakRating": max((int(game["ratingAfter"]) for game in rated_games), default=None),
             "finalRating": final_rating,
+            "currentRating": current_rating,
+            "currentRatingSource": "pokemonshowdown-user-api" if live_profile_rating is not None else "battle_stats.json",
+            "liveProfileRating": live_profile_rating,
+            "liveProfileCheckedAtUtc": live_profile_payload.get("checkedAtUtc"),
             "passesTarget": any(int(game["ratingAfter"]) >= ELO_TARGET_RATING for game in rated_games),
             "sustainedTarget": sustained_target,
             "sustainWindowGames": len(sustain_games),
@@ -728,7 +994,7 @@ def build_elo_proof_payload(
         },
         "source": {
             "battleStatsPath": "battle_stats.json",
-            "cycleReportPath": str(OUTPUT_JSON.relative_to(ROOT)),
+            "cycleReportPath": rel_output_path(OUTPUT_JSON),
             "generatedBy": "scripts/devstream_cycle_report.py",
             "sourceCommit": source_commit,
             "noRuntimeActions": True,
@@ -1598,7 +1864,9 @@ def write_elo_proof(
     account: str | None = None,
     autoresearch: Any = None,
 ) -> dict[str, Any]:
-    proof = build_elo_proof_payload(stats, payload, account=account, autoresearch=autoresearch)
+    proof = build_elo_proof_payload(
+        stats, payload, account=account, autoresearch=autoresearch, fetch_live_profile=True
+    )
     OUTPUT_ELO_PROOF.write_text(json.dumps(proof, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return proof
 

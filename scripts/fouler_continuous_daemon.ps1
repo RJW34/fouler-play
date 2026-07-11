@@ -20,6 +20,19 @@ $pidFile = Join-Path $proj '.pids\continuous-ladder-daemon.pid'
 $log  = Join-Path $proj 'logs\continuous-ladder-daemon.log'
 $py   = Join-Path $proj '.venv\Scripts\python.exe'
 New-Item -ItemType Directory -Force -Path (Join-Path $proj '.pids') | Out-Null
+if ($env:FOULER_ALLOW_LEGACY_CONTINUOUS_DAEMON -ne '1') {
+  ("{0} legacy continuous daemon disabled; use the managed devstream session owner" -f (Get-Date -Format o)) | Add-Content $log
+  exit 0
+}
+$activeAccount = ''
+try {
+  $season = Get-Content -LiteralPath (Join-Path $proj 'devstream\truth\account-season.json') -Raw | ConvertFrom-Json
+  $activeAccount = [string]$season.account
+} catch {}
+if ([string]::IsNullOrWhiteSpace($activeAccount)) {
+  ("{0} account-season authority missing; refusing legacy continuous launch" -f (Get-Date -Format o)) | Add-Content $log
+  exit 2
+}
 if (Test-Path $pidFile) {
   $oldPid = [int](Get-Content $pidFile -Raw)
   $old = Get-CimInstance Win32_Process -Filter "ProcessId=$oldPid" 2>$null
@@ -33,7 +46,7 @@ Remove-Item $stop -Force -ErrorAction SilentlyContinue
 ("{0} continuous-ladder daemon START (pid {1})" -f (Get-Date -Format o), $PID) | Add-Content $log
 
 $learnAccount = $env:FOULER_LEARN_ACCOUNT
-if ([string]::IsNullOrWhiteSpace($learnAccount)) { $learnAccount = 'thepeakmons' }
+if ([string]::IsNullOrWhiteSpace($learnAccount)) { $learnAccount = $activeAccount }
 $learnBattles = [int]($env:FOULER_LEARN_EVAL_BATTLES)
 if ($learnBattles -le 0) { $learnBattles = 40 }
 $learnMaxConcurrentBattles = [int]($env:FOULER_LEARN_MAX_CONCURRENT_BATTLES)
@@ -113,7 +126,7 @@ while (-not (Test-Path $stop)) {
   if (-not $sup) {
     Invoke-LearningWindow   # pre-round gap: lease free + WS=0 (no-op unless mode!=off AND cadence due)
     if (Test-Path $stop) { break }
-    & $py "$proj\scripts\devstream_runtime_lease.py" --purpose devstream-supervise --write --machine JIGGLYPUFF --run-count 30 --max-cycles 1 --max-concurrent-battles 1 --account thepeakmons --replay-behavior always --valid-minutes 240 --approved --runtime-lease 'devstream\truth\runtime-lease.json' 2>&1 | Out-Null
+    & $py "$proj\scripts\devstream_runtime_lease.py" --purpose devstream-supervise --write --machine JIGGLYPUFF --run-count 30 --max-cycles 1 --max-concurrent-battles 1 --account $activeAccount --replay-behavior always --valid-minutes 240 --approved --runtime-lease 'devstream\truth\runtime-lease.json' 2>&1 | Out-Null
     & "$proj\scripts\start_battle_supervisor_task.ps1" -RunCount 30 -MaxCycles 1 -MaxConcurrentBattles 1 -RuntimeLease 'devstream\truth\runtime-lease.json' 2>&1 | Out-Null
     ("{0} launched single-cycle round (no supervisor was running)" -f (Get-Date -Format o)) | Add-Content $log
     Start-Sleep -Seconds 120

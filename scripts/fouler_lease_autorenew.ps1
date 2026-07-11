@@ -1,6 +1,6 @@
 # HERMES-FoulerLeaseAutorenew (2026-06-23, claude)
-# Keeps the fouler runtime proof-window lease ALWAYS valid so laddering + learning
-# never go dark on a fail-closed lease expiry. The lease's proofWindow gates
+# Legacy lease renewal helper. It is fail-closed unless an operator explicitly
+# sets FOULER_ENABLE_LEGACY_LEASE_AUTORENEW=1. The lease's proofWindow gates
 # acquire_lock() in process_lock.py -- once it expires, every freshly-launched
 # ladder client is refused and the ladder stops permanently until a human renews.
 # This re-issues the lease daily with a rolling multi-day window (no Showdown,
@@ -29,6 +29,20 @@ function Say([string]$m) {
   Add-Content -Path $log -Value ("[{0}] {1}" -f $ts, $m) -ErrorAction SilentlyContinue
 }
 
+if ($env:FOULER_ENABLE_LEGACY_LEASE_AUTORENEW -ne '1') {
+  Say 'DISABLED: managed finite session leases own the runtime; legacy auto-renew was not explicitly enabled.'
+  exit 0
+}
+$activeAccount = ''
+try {
+  $season = Get-Content -LiteralPath (Join-Path $repo 'devstream\truth\account-season.json') -Raw | ConvertFrom-Json
+  $activeAccount = [string]$season.account
+} catch {}
+if ([string]::IsNullOrWhiteSpace($activeAccount)) {
+  Say 'ERROR: account-season authority is missing; refusing to renew a lease.'
+  exit 1
+}
+
 # Rolling window: 8 days = 11520 minutes. Renewed daily -> window is always
 # >= 7 days ahead, so an expiry can never strand the ladder between renewals.
 $validMinutes = 11520
@@ -40,7 +54,7 @@ $argList = @(
   '--runtime-lease', $leaseFile,
   '--purpose', 'devstream-supervise',
   '--machine', 'JIGGLYPUFF',
-  '--account', 'thepeakmons',
+  '--account', $activeAccount,
   '--run-count', '1000',
   '--max-cycles', '1000',
   '--max-concurrent-battles', '3',

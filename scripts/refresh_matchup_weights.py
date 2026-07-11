@@ -12,8 +12,9 @@ repo-root file watcher that holds exclusive locks on update_*.py files.
 Usage:
     python refresh_matchup_weights.py [WINDOW]
 """
-import sys
 import logging
+import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve()
@@ -38,15 +39,43 @@ except Exception as exc:  # pragma: no cover
     log.error("import failure: %s", exc)
     raise
 
-WINDOW = int(sys.argv[1]) if len(sys.argv) > 1 else 500
+DEFAULT_WINDOW = 500
 
 
-def main() -> int:
+def matchup_memory_enabled(env_path: Path | None = None) -> bool:
+    """Read the runtime kill switch even when the scheduler did not load .env."""
+    raw = os.environ.get("MATCHUP_MEMORY_ENABLED")
+    if raw is None:
+        path = env_path or (REPO / ".env")
+        try:
+            for line in path.read_text(encoding="utf-8-sig").splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#") or "=" not in stripped:
+                    continue
+                key, value = stripped.split("=", 1)
+                if key.strip() == "MATCHUP_MEMORY_ENABLED":
+                    raw = value.split("#", 1)[0].strip().strip("\"'")
+                    break
+        except OSError:
+            pass
+    if raw is None:
+        return True
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def main(window: int = DEFAULT_WINDOW) -> int:
+    if not matchup_memory_enabled():
+        log.info(
+            "MATCHUP_MEMORY_ENABLED is disabled; leaving %s unchanged",
+            matchup_memory.WEIGHTS_PATH,
+        )
+        return 0
+
     bot = resolve_bot_username()
     replay_dir = REPO / "replay_analysis"
     files = [p for p in replay_dir.glob("gen9*.json") if not p.name.endswith("_gameplan.json")]
     files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-    files = files[:WINDOW]
+    files = files[:window]
 
     artifacts = []
     losses = 0
@@ -71,7 +100,7 @@ def main() -> int:
     if not artifacts:
         log.warning(
             "no piloting artifacts in window=%d (infra_losses_excluded=%d); leaving weights unchanged",
-            WINDOW, infra_losses,
+            window, infra_losses,
         )
         return 0
 
@@ -91,4 +120,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    requested_window = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_WINDOW
+    raise SystemExit(main(requested_window))

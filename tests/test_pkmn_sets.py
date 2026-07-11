@@ -6,6 +6,7 @@ from data.pkmn_sets import (
     PredictedPokemonSet,
     PokemonSet,
     PokemonMoveset,
+    EFFECTIVENESS,
 )
 from fp.battle import Pokemon, Move
 
@@ -94,6 +95,34 @@ class TestSmogonDatasets(unittest.TestCase):
         self.assertNotEqual(initial_len, len_after_pop)
         SmogonSets.add_new_pokemon("azelf")
         self.assertEqual(len_after_pop, len(SmogonSets.pkmn_sets["dragonite"]))
+
+    def test_smogon_counter_parser_accepts_current_dict_schema(self):
+        original_loader = SmogonSets._get_smogon_stats_json
+        SmogonSets._get_smogon_stats_json = lambda _url: {
+            "Gholdengo": {
+                "Raw count": 100,
+                "Teammates": {"Corviknight": 25},
+                "Checks and Counters": {
+                    "Corviknight": {"n": 10, "p": 0.08, "d": 0.01},
+                    "Blissey": [5, 0.25, 0.02],
+                },
+                "Spreads": {"Timid:0/0/0/252/4/252": 50},
+                "Items": {"Leftovers": 50},
+                "Moves": {"Make It Rain": 50},
+                "Abilities": {"Good as Gold": 50},
+                "Tera Types": {"Flying": 50},
+            }
+        }
+        try:
+            infos = SmogonSets._get_pokemon_information(
+                "unused",
+                {"gholdengo", "corviknight", "blissey"},
+            )
+        finally:
+            SmogonSets._get_smogon_stats_json = original_loader
+
+        self.assertEqual(0.92, infos["gholdengo"][EFFECTIVENESS]["corviknight"])
+        self.assertEqual(0.75, infos["gholdengo"][EFFECTIVENESS]["blissey"])
 
 
 class TestPredictSet(unittest.TestCase):

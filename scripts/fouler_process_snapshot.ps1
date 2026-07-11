@@ -16,12 +16,13 @@ foreach ($Proc in $Processes) {
     $Cmd = [string]$Proc.CommandLine
     $IsBattleRunner = (
         ($Cmd -like "*run.py*") -and
-        ($Cmd -like "*--bot-mode*search_ladder*") -and
-        ($Cmd -like "*--ps-username*LEBOTJAMESXD00N*")
+        ($Cmd -like "*--bot-mode*search_ladder*")
     )
     $IsObsHttp = (
         ($Cmd -like "*streaming*serve_obs_page.py*") -or
-        ($Cmd -like "*serve_obs_page.py*")
+        ($Cmd -like "*serve_obs_page.py*") -or
+        ($Cmd -like "*streaming*run_obs_server_service.py*") -or
+        ($Cmd -like "*run_obs_server_service.py*")
     )
     $IsSupervisor = (
         ($Cmd -like "*scripts/devstream_session.py*supervise*") -or
@@ -64,6 +65,7 @@ function Get-LogicalRootPids {
 }
 
 $BattleRootPids = @(Get-LogicalRootPids -Pids $BattlePids)
+$ObsRootPids = @(Get-LogicalRootPids -Pids $ObsPids)
 $SupervisorRootPids = @(Get-LogicalRootPids -Pids $SupervisorPids)
 
 $Payload = [ordered]@{
@@ -79,6 +81,8 @@ $Payload = [ordered]@{
     obsHttpAlive = ($ObsPids.Count -gt 0)
     obsHttpProcessCount = [int]$ObsPids.Count
     obsHttpPids = $ObsPids
+    obsHttpLogicalCount = [int]$ObsRootPids.Count
+    obsHttpRootPids = $ObsRootPids
     supervisorAlive = ($SupervisorPids.Count -gt 0)
     supervisorProcessCount = [int]$SupervisorPids.Count
     supervisorPids = $SupervisorPids

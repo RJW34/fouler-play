@@ -156,16 +156,33 @@ def test_jiggly_runtime_start_lease_delegates_to_supervisor_and_child_start(tmp_
         require_replay_behavior=True,
         now=NOW,
     )
+    dry_run = lease.validate_runtime_lease(
+        purpose="devstream-start-dry-run",
+        lease_path=path,
+        requested_run_count=30,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+        now=NOW,
+    )
 
     assert artifact["allowedPurposes"] == [
         "jigglypuff-runtime-start",
+        "devstream-start-continuous-dry-run",
+        "devstream-start-continuous",
         "devstream-supervise",
+        "devstream-start-dry-run",
         "devstream-start",
+        "devstream-stale-truth-cleanup-dry-run",
+        "devstream-stale-truth-cleanup",
         "run-py-battle-runner",
     ]
     assert supervise["ok"] is True
     assert child_start["ok"] is True
     assert runner["ok"] is True
+    assert dry_run["ok"] is True
 
 
 def test_supervise_lease_delegates_to_child_start(tmp_path):
@@ -195,7 +212,14 @@ def test_supervise_lease_delegates_to_child_start(tmp_path):
         now=NOW,
     )
 
-    assert artifact["allowedPurposes"] == ["devstream-supervise", "devstream-start", "run-py-battle-runner"]
+    assert artifact["allowedPurposes"] == [
+        "devstream-supervise",
+        "devstream-start-dry-run",
+        "devstream-start",
+        "devstream-stale-truth-cleanup-dry-run",
+        "devstream-stale-truth-cleanup",
+        "run-py-battle-runner",
+    ]
     assert payload["ok"] is True
 
 
@@ -226,7 +250,7 @@ def test_devstream_start_lease_delegates_to_run_py_battle_runner(tmp_path):
         now=NOW,
     )
 
-    assert artifact["allowedPurposes"] == ["devstream-start", "run-py-battle-runner"]
+    assert artifact["allowedPurposes"] == ["devstream-start", "devstream-start-dry-run", "run-py-battle-runner"]
     assert payload["ok"] is True
 
 

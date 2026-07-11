@@ -30,6 +30,7 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert "set FOULER_PLAY_ENABLE_AUTO_IMPROVE=$autoImproveEnv" in text
     assert "set BATTLE_STATS_MAX_ENTRIES=5000" in text
     assert '$_.CommandLine -match "streaming[\\\\/]+serve_obs_page\\.py"' in text
+    assert '$_.CommandLine -match "streaming[\\\\/]+run_obs_server_service\\.py"' in text
     assert '$_.CommandLine -match "search_ladder" -and' in text
     assert '$_.CommandLine -match "devstream_session\\.py" -and $_.CommandLine -match "\\bsupervise\\b"' in text
     assert '$_.CommandLine -match $escapedRepo -and' in text
@@ -67,28 +68,123 @@ def test_jigglypuff_wrapper_forces_actionable_logs_and_cleans_relative_obs_serve
     assert "call start_one_touch.bat" not in text
 
 
-def test_obs_server_task_runs_via_logged_cmd_wrapper():
+def test_process_snapshot_recognizes_current_account_and_service_owned_obs_runtime():
+    text = (ROOT / "scripts" / "fouler_process_snapshot.ps1").read_text(encoding="utf-8")
+
+    assert "LEBOTJAMESXD00N" not in text
+    assert '($Cmd -like "*--bot-mode*search_ladder*")' in text
+    assert '($Cmd -like "*run_obs_server_service.py*")' in text
+    assert "obsHttpLogicalCount" in text
+    assert "obsHttpRootPids" in text
+
+
+def test_runtime_account_authority_has_no_retired_operational_defaults():
+    operational_paths = [
+        ROOT / "scripts" / "devstream_session.py",
+        ROOT / "scripts" / "fouler_continuous_daemon.ps1",
+        ROOT / "scripts" / "fouler_keepalive.ps1",
+        ROOT / "scripts" / "fouler_lease_autorenew.ps1",
+        ROOT / "scripts" / "fouler_mission_monitor.py",
+        ROOT / "scripts" / "run_improve_window.ps1",
+        ROOT / "infrastructure" / "improve_agent.py",
+    ]
+
+    for path in operational_paths:
+        text = path.read_text(encoding="utf-8")
+        assert "LEBOTJAMESXD00N" not in text, path
+        assert "npctypebeat" not in text, path
+        assert "thepeakmons" not in text, path
+
+    continuous = operational_paths[1].read_text(encoding="utf-8")
+    renew = operational_paths[3].read_text(encoding="utf-8")
+    assert "FOULER_ALLOW_LEGACY_CONTINUOUS_DAEMON" in continuous
+    assert "FOULER_ENABLE_LEGACY_LEASE_AUTORENEW" in renew
+    assert "account-season.json" in continuous
+    assert "account-season.json" in renew
+
+
+def test_obs_server_task_runs_via_scheduler_owned_powershell_wrapper():
     text = (ROOT / "scripts" / "install_obs_server_task.ps1").read_text(encoding="utf-8")
 
     assert "$TaskExecute" in text
-    assert "cmd.exe" in text
+    assert "$TaskExecute = $PowerShell" in text
     assert "start_obs_server_task.ps1" in text
-    assert "-Foreground" not in text
+    assert "-Foreground" in text
     assert "jigglypuff-obs-server.log" in text
     assert "jigglypuff-obs-server.err.log" in text
-    assert "jigglypuff-obs-wrapper.log" in text
-    assert "jigglypuff-obs-wrapper.err.log" in text
-    assert "$WrapperStdoutLog" in text
-    assert "$WrapperStderrLog" in text
+    assert "jigglypuff-obs-wrapper.log" not in text
+    assert "jigglypuff-obs-wrapper.err.log" not in text
     assert "$TaskArguments" in text
     assert "New-ScheduledTaskAction -Execute $TaskExecute -Argument $TaskArguments" in text
-    assert '$_.Name -match "python|py"' in text
+    assert "New-ScheduledTaskTrigger -AtStartup" in text
+    assert "LogonType S4U" in text
+    assert "-AllowStartIfOnBatteries" in text
+    assert "-DontStopIfGoingOnBatteries" in text
+    assert "-DontStopOnIdleEnd" in text
+    assert "schedulerOwnedForeground" in text
+    assert "function Get-ManagedObsServerProcess" in text
+    assert "managedPid" in text
+    assert "healthEndpointOk" in text
+    assert "[switch]$SkipHttpProbe" in text
+    assert "healthProbeSkipped = [bool]$SkipHttpProbe" in text
+    assert "Get-ObsTaskStatus -SkipHttpProbe:$SkipHttpProbe" in text
+    assert "Get-CimInstance" not in text
+    assert "Win32_Process" not in text
     assert "stderrTail" in text
-    assert "wrapperStderrTail" in text
     assert "lastTaskResult" in text
     assert "OBS_WS_PASSWORD" not in text
     assert "function Rotate-LogFile" in text
     assert "archive" in text
+
+
+def test_obs_server_service_is_the_durable_lifecycle_owner():
+    text = (ROOT / "scripts" / "install_obs_server_service.ps1").read_text(encoding="utf-8")
+
+    assert "HERMES-FoulerObsServer" in text
+    assert "C:\\ProgramData\\HERMES\\bin\\nssm.exe" in text
+    assert '"AppExit", "Default", "Restart"' in text
+    assert '"Start", "SERVICE_AUTO_START"' in text
+    assert '"AppNoConsole", "1"' in text
+    assert "FOULER_OBS_LIFECYCLE_OWNER=windows-service" in text
+    assert "streaming\\run_obs_server_service.py" in text
+    assert 'Invoke-Nssm -Arguments @("set", $ServiceName, "Application", $Python)' in text
+    assert "DisableLegacyTasks" in text
+    assert "stop_obs_server_tree.py" in text
+    assert '"HERMES-FoulerObsKeepAlive", "HERMES-FoulerObsServer"' in text
+    assert 'lifecycleOwner = "windows-service"' in text
+    assert "Save-RollbackBackup" in text
+    assert "Start Streaming" not in text
+    assert "TWITCH" not in text.upper()
+
+
+def test_obs_server_service_entrypoint_loads_authority_and_runs_in_process():
+    text = (ROOT / "streaming" / "run_obs_server_service.py").read_text(encoding="utf-8")
+
+    assert 'LEASE_PATH = TRUTH_DIR / "runtime-lease.json"' in text
+    assert '_install_service_console_signal_handlers()' in text
+    assert '("SIGINT", "SIGBREAK")' in text
+    assert 'publish_latest=False' in text
+    assert '"FOULER_OBS_WS_DISABLED": "1"' in text
+    assert '"FP_PARENT_PID": "0"' in text
+    assert '"FOULER_ACTIVE_ACCOUNT"' in text
+    assert 'runpy.run_path(str(ROOT / "streaming" / "serve_obs_page.py"), run_name="__main__")' in text
+    assert '"service-entrypoint-started"' in text
+    assert '"python-exited"' in text
+    assert "Start Streaming" not in text
+    assert "TWITCH" not in text.upper()
+
+
+def test_obs_server_tree_stop_is_project_scoped_and_explicit():
+    text = (ROOT / "scripts" / "stop_obs_server_tree.py").read_text(encoding="utf-8")
+
+    assert "serve_obs_page.py" in text
+    assert "--project-dir" in text
+    assert '"--execute"' in text
+    assert "process.cwd()" in text
+    assert '"nssm.exe", "services.exe", "svchost.exe"' in text
+    assert "psutil.process_iter" in text
+    assert "sys.modules.setdefault(\"_wmi\", None)" in text
+    assert "subprocess" not in text
 
 
 def test_obs_server_task_wrapper_loads_obs_secret_without_printing_it():
@@ -106,20 +202,23 @@ def test_obs_server_task_wrapper_loads_obs_secret_without_printing_it():
     assert "[Environment]::SetEnvironmentVariable(\"SHOWDOWN_USER_ID\", $leaseAccount, \"Process\")" in text
     assert "[Environment]::SetEnvironmentVariable(\"SHOWDOWN_ACCOUNTS\", $leaseAccount, \"Process\")" in text
     assert "LEBOTJAMESXD00N" not in text
-    assert 'Test-HealthEndpoint -Port 8777' in text
-    assert "http://127.0.0.1:$Port/health" in text
-    assert "/health did not become healthy" in text
     assert "FP_PARENT_PID" in text
     assert "[switch]$Foreground" in text
-    assert "Invoke-CimMethod -ClassName Win32_Process -MethodName Create" in text
-    assert "start_obs_server.cmd" in text
-    assert "ConvertTo-CmdSetAssignment" in text
-    assert "function Get-ObsServerProcesses" in text
-    assert "Stop-ObsServerProcesses" in text
-    assert "$obsProcessCount -gt 0" in text
-    assert '$_.Name -match "python|py|cmd"' in text
-    assert "Win32_Process" in text
-    assert 'start `"FoulerOBS`" /min cmd.exe /d /c' in text
+    assert "lifecycle-manager-owned and must run with -Foreground" in text
+    assert "fouler-obs-launch/v1" in text
+    assert "obs-server-launch.jsonl" in text
+    assert "AppendAllText" in text
+    assert "FOULER_OBS_LIFECYCLE_OWNER" in text
+    assert 'Write-LaunchPhase -Phase "starting-python"' in text
+    assert 'Write-LaunchPhase -Phase "python-exited"' in text
+    assert '& $python -u "streaming\\serve_obs_page.py" 1>> $stdoutLog 2>> $stderrLog' in text
+    assert '$ErrorActionPreference = "Continue"' in text
+    assert "$commandInterpreter" not in text
+    assert "$pythonCommand" not in text
+    assert "Invoke-CimMethod" not in text
+    assert "Get-CimInstance" not in text
+    assert "Win32_Process" not in text
+    assert "start_obs_server.cmd" not in text
     assert "SetEnvironmentVariable($_.Target, $value, \"Process\")" in text
     assert "Write-Output" not in text
     assert "Write-Host" not in text
@@ -132,17 +231,61 @@ def test_obs_server_keepalive_task_restarts_only_public_surface():
     assert "HERMES-FoulerObsServer" in keepalive
     assert "http://127.0.0.1:$Port/health" in keepalive
     assert "healthEndpointOk" in keepalive
-    assert "(-not $started) -and $beforePort -and $beforeState" in keepalive
-    assert "Start-ScheduledTask -TaskName $TaskName" in keepalive
-    assert "Stop-ScheduledTask -TaskName $TaskName" in keepalive
+    assert "schtasks.exe" in keepalive
+    assert "/Run /TN $TaskName" in keepalive
+    assert "/End /TN $TaskName" in keepalive
+    assert "Get-ScheduledTask" not in keepalive
+    assert "Start-ScheduledTask" not in keepalive
+    assert "Stop-ScheduledTask" not in keepalive
     assert "stoppedStuckTask" in keepalive
     assert "stoppedStuckProcess" in keepalive
-    assert "streaming[\\\\/]serve_obs_page\\.py" in keepalive
-    assert "Stop-Process -Id $_.ProcessId -Force" in keepalive
+    assert ".pids\\obs_server.pid" in keepalive
+    assert "function Get-ManagedObsServerStatus" in keepalive
+    assert "startupGrace" in keepalive
+    assert "[int]$HealthProbeAttempts = 6" in keepalive
+    assert "[int]$HealthProbeIntervalSeconds = 8" in keepalive
+    assert "[int]$ClosedPortProbeAttempts = 2" in keepalive
+    assert "TimeoutSec $TimeoutSeconds" in keepalive
+    assert "$probeAttemptsUsed -ge $ClosedPortProbeAttempts" in keepalive
+    assert "probeAttemptsUsed = $probeAttemptsUsed" in keepalive
+    assert "$beforeLifecycleHealthy" in keepalive
+    assert "if (-not $beforeLifecycleHealthy)" in keepalive
+    assert '"scheduler-not-owning-process"' in keepalive
+    assert "lifecycleHealthy = $afterLifecycleHealthy" in keepalive
+    assert "if (-not ($beforePort -and $beforeState))" not in keepalive
+    assert "Stop-Process -Id $managed.processId -Force" in keepalive
+    assert "Get-CimInstance" not in keepalive
+    assert "Get-ServerOutputAgeSeconds" not in keepalive
+    assert "PORT-BLOCKED-BUT-ALIVE" not in keepalive
+    assert "netstat.exe" in keepalive
     assert "PS_PASSWORD" not in keepalive
     assert "HERMES-FoulerObsKeepAlive" in installer
+    assert "New-ScheduledTaskTrigger -AtStartup" in installer
+    assert "LogonType S4U" in installer
+    assert "-AllowStartIfOnBatteries" in installer
+    assert "-DontStopIfGoingOnBatteries" in installer
+    assert "-DontStopOnIdleEnd" in installer
     assert "RepetitionInterval (New-TimeSpan -Minutes 1)" in installer
-    assert "jigglypuff-obs-keepalive.log" in installer
+    assert "schedulerRunObserved" in installer
+    assert "fallbackUsed" in installer
+    assert "Get-ScheduledTaskInfo" not in installer
+    assert "$statusPayload = Get-KeepaliveTaskStatus" in installer
+    assert "$status = Get-KeepaliveTaskStatus" not in installer
+    assert "/V /FO CSV" in installer
+    assert "$TaskExecute = $PowerShell" in installer
+    assert "jigglypuff-obs-keepalive.log" not in installer
+
+
+def test_obs_listener_self_check_uses_a_valid_http_probe():
+    text = (ROOT / "streaming" / "serve_obs_page.py").read_text(encoding="utf-8")
+
+    assert 'psutil.process_iter(["pid", "ppid", "cmdline"])' in text
+    assert "Get-CimInstance Win32_Process" not in text
+    assert 'sys.modules.setdefault("_wmi", None)' in text
+    assert 'b"GET /health HTTP/1.1\\r\\n"' in text
+    assert 'b"Connection: close\\r\\n\\r\\n"' in text
+    assert "unexpected health response" in text
+    assert "HTTP self-probe" in text
 
 
 def test_boot_watchdog_installs_startup_service_account_task():
@@ -173,6 +316,17 @@ def test_boot_watchdog_installs_startup_service_account_task():
     assert "FOULER_PLAY_ENABLE_AUTO_IMPROVE" not in watchdog
     assert "git push" not in watchdog
     assert "Start Streaming" not in watchdog
+
+
+def test_fouler_deku_event_producer_has_no_network_transport():
+    producer = (ROOT / "scripts" / "fouler_deku_event_producer.ps1").read_text(encoding="utf-8")
+
+    assert "infrastructure\\event_poster.py" in producer
+    assert '"--once"' in producer
+    assert "fouler-deku-event-producer.lock" in producer
+    assert "Invoke-WebRequest" not in producer
+    assert "discord.com" not in producer
+    assert "ssh" not in producer.lower()
 
 
 def test_battle_supervisor_defaults_to_one_rated_battle():

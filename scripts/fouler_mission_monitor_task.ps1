@@ -1,5 +1,8 @@
 param(
-    [switch]$NoRepair
+    [switch]$NoRepair,
+    [switch]$QueueAlerts,
+    [int]$RunCount = 5,
+    [int]$MaxCycles = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,14 +27,16 @@ if (-not (Test-Path -LiteralPath $Py -PathType Leaf)) {
 $argsList = @(
     "scripts\fouler_mission_monitor.py",
     "--write",
-    "--queue-alerts",
-    "--run-count", "30",
-    "--max-cycles", "12",
+    "--run-count", "$RunCount",
+    "--max-cycles", "$MaxCycles",
     "--max-concurrent-battles", "1",
     "--queue-timeout-seconds", "180",
     "--sleep-seconds", "20",
     "--lease-minutes", "720"
 )
+if ($QueueAlerts) {
+    $argsList += "--queue-alerts"
+}
 
 if (-not $NoRepair) {
     $argsList += @("--repair-runtime", "--renew-lease")
@@ -39,7 +44,7 @@ if (-not $NoRepair) {
 
 try {
     $stamp = Get-Date -Format o
-    "$stamp mission-monitor start repair=$(-not $NoRepair)" | Add-Content -LiteralPath $LogPath -Encoding ASCII
+    "$stamp mission-monitor start repair=$(-not $NoRepair) queueAlerts=$QueueAlerts runCount=$RunCount maxCycles=$MaxCycles" | Add-Content -LiteralPath $LogPath -Encoding ASCII
     & $Py @argsList 1>> $LogPath 2>> $ErrPath
     $code = $LASTEXITCODE
     "$((Get-Date).ToString('o')) mission-monitor exit=$code" | Add-Content -LiteralPath $LogPath -Encoding ASCII

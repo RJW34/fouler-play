@@ -32,6 +32,7 @@ RESEARCH_CHANNEL = os.getenv("FOULER_RESEARCH_CHANNEL", "1466869808200028264")
 BOT_USERNAME = resolve_bot_username()
 HAZARD_SETTING_MOVES = {"stealthrock", "spikes", "toxicspikes", "stickyweb"}
 HAZARD_CONTROL_MOVES = {"defog", "rapidspin", "mortalspin", "tidyup", "courtchange"}
+MAGIC_BOUNCE_REFLECTED_MOVES = HAZARD_SETTING_MOVES | {"toxic", "willowisp", "thunderwave", "glare"}
 
 
 def _normalize_move_name(value: Any) -> str:
@@ -379,17 +380,50 @@ class AutoResearcher:
             )
         )
 
+    def _trace_loop_break_events(self, trace: dict[str, Any]) -> Iterable[dict[str, Any]]:
+        for _block_name, block in self._trace_policy_blocks(trace):
+            events = block.get("events") if isinstance(block.get("events"), list) else []
+            for event in events:
+                if not isinstance(event, dict):
+                    continue
+                if str(event.get("source") or "") == "decision_loop_break":
+                    yield event
+
+    def _trace_refutes_instability(self, trace: dict[str, Any], choice: str) -> bool:
+        choice_norm = _normalize_move_name(choice)
+        for event in self._trace_loop_break_events(trace):
+            move_norm = _normalize_move_name(event.get("move"))
+            if move_norm and choice_norm and move_norm != choice_norm:
+                continue
+            reason = str(event.get("reason") or "").lower()
+            if (
+                "_repeated_0_" in reason
+                or "position_not_stagnant" in reason
+                or "search_decisive" in reason
+                or "last_mon_damage_progress" in reason
+            ):
+                return True
+        return False
+
     def _trace_issue(self, traces: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
-        choice_counter: Counter[str] = Counter()
         reasons: list[str] = []
         legal_option_proofs: list[str] = []
+        loop_break_proofs: list[str] = []
         for trace in traces:
             choice = str(trace.get("choice", "")).strip()
-            if choice:
-                choice_counter[choice] += 1
             reason = str(trace.get("reason", "")).strip()
             if reason:
                 reasons.append(reason)
+            for event in self._trace_loop_break_events(trace):
+                event_type = str(event.get("type") or "")
+                event_reason = str(event.get("reason") or "")
+                if event_type != "override":
+                    continue
+                if "forcing_distinct" not in event_reason and "full_cycle_penalty" not in event_reason:
+                    continue
+                loop_break_proofs.append(
+                    f"loop-breaker intervened on {event.get('move', 'unknown')}: {event_reason}"
+                )
             legal_options = trace.get("legalOptions") if isinstance(trace.get("legalOptions"), dict) else {}
             request = trace.get("showdownRequest") if isinstance(trace.get("showdownRequest"), dict) else {}
             request_hash = str(legal_options.get("requestHash") or request.get("requestHash") or "").strip()
@@ -404,15 +438,35 @@ class AutoResearcher:
                     f"trace={trace.get('_trace_path', 'unknown')} "
                     f"traceSha256={trace.get('_trace_sha256', 'unknown')}"
                 )
-        repeated = [name for name, count in choice_counter.items() if count >= 3]
+
+        repeated: list[str] = []
+        current_run: list[str] = []
+        for trace in traces:
+            choice = str(trace.get("choice", "")).strip()
+            if not choice:
+                current_run = []
+                continue
+            if current_run and current_run[-1] == choice:
+                current_run.append(choice)
+            else:
+                current_run = [choice]
+            if (
+                len(current_run) >= 3
+                and choice not in repeated
+                and not self._trace_refutes_instability(trace, choice)
+            ):
+                repeated.append(choice)
+
         findings: list[str] = []
+        if loop_break_proofs:
+            findings.append("; ".join(loop_break_proofs[:3]))
         if repeated:
-            findings.append(f"repeated same action patterns: {', '.join(repeated[:3])}")
+            findings.append(f"consecutive repeated action loop: {', '.join(repeated[:3])}")
         if reasons:
             timeout_count = sum(1 for r in reasons if "timeout" in r or "fallback" in r or "error" in r)
             if timeout_count >= 2:
                 findings.append(f"decision traces show {timeout_count} fallback/timeout/error selections")
-        if legal_option_proofs:
+        if findings and legal_option_proofs:
             findings.append(legal_option_proofs[-1])
         return findings, reasons
 
@@ -462,6 +516,81 @@ class AutoResearcher:
                 )
         if len(high_regret_turns) >= 2:
             return True, "; ".join(high_regret_turns[:3])
+        return False, ""
+
+    def _trace_policy_blocks(self, trace: dict[str, Any]) -> Iterable[tuple[str, dict[str, Any]]]:
+        for key in ("mcts_only", "eval"):
+            block = trace.get(key)
+            if isinstance(block, dict):
+                yield key, block
+
+    def _magic_bounce_reflected_hazard_issue(self, traces: list[dict[str, Any]]) -> tuple[bool, str]:
+        """Find reflected status/hazard moves that survived safety filtering.
+
+        The packet 008 failure mode was not generic instability: the safety layer
+        noticed Magic Bounce, multiplied Stealth Rock/Toxic down, but the reflected
+        move still remained the top post-safety policy entry and was selected.
+        """
+        findings: list[str] = []
+        for trace in traces:
+            for block_name, block in self._trace_policy_blocks(trace):
+                events = block.get("events") if isinstance(block.get("events"), list) else []
+                reflected: dict[str, tuple[str, float]] = {}
+                for event in events:
+                    if not isinstance(event, dict):
+                        continue
+                    if str(event.get("reason") or "") != "magic_bounce_reflects_status":
+                        continue
+                    move_text = str(event.get("move") or "").strip()
+                    move_norm = _normalize_move_name(move_text.split(":")[-1])
+                    if move_norm not in MAGIC_BOUNCE_REFLECTED_MOVES:
+                        continue
+                    try:
+                        after_weight = float(event.get("after") or 0.0)
+                    except (TypeError, ValueError):
+                        after_weight = 0.0
+                    reflected[move_norm] = (move_text, after_weight)
+
+                if not reflected:
+                    continue
+
+                top_moves = block.get("top_moves") if isinstance(block.get("top_moves"), list) else []
+                top_norm = ""
+                best_alt_name = ""
+                best_alt_weight = 0.0
+                for index, row in enumerate(top_moves):
+                    if not isinstance(row, dict):
+                        continue
+                    move_text = str(row.get("move") or "").strip()
+                    move_norm = _normalize_move_name(move_text.split(":")[-1])
+                    try:
+                        weight = float(row.get("weight", row.get("eval_weight", 0.0)) or 0.0)
+                    except (TypeError, ValueError):
+                        weight = 0.0
+                    if index == 0:
+                        top_norm = move_norm
+                    if move_norm not in reflected and weight > best_alt_weight:
+                        best_alt_name = move_text
+                        best_alt_weight = weight
+
+                choice_norm = _normalize_move_name(trace.get("choice"))
+                bad_norm = choice_norm if choice_norm in reflected else top_norm if top_norm in reflected else ""
+                if not bad_norm:
+                    continue
+
+                move_text, after_weight = reflected[bad_norm]
+                turn = trace.get("turn", trace.get("battle_turn", "?"))
+                selected = "selected" if choice_norm == bad_norm else f"ranked first in {block_name}"
+                detail = f"turn {turn}: {selected} {move_text} into Magic Bounce"
+                if best_alt_name:
+                    detail += f"; reflected_after={after_weight:.3f}; best_non_reflected={best_alt_name} {best_alt_weight:.3f}"
+                trace_path = trace.get("_trace_path") or trace.get("_source_trace_path")
+                trace_sha = trace.get("_trace_sha256")
+                if trace_path and trace_sha:
+                    detail += f"; trace={trace_path} traceSha256={trace_sha}"
+                findings.append(detail)
+        if findings:
+            return True, "; ".join(findings[:3])
         return False, ""
 
     def _build_batch_identity(self, window: list[dict[str, Any]]) -> dict[str, Any]:
@@ -657,6 +786,11 @@ class AutoResearcher:
                 pattern_counter["search_regret"] += 1
                 evidence_map["search_regret"].append(f"{battle_label}: {regret_detail}")
 
+            magic_flag, magic_detail = self._magic_bounce_reflected_hazard_issue(traces)
+            if magic_flag:
+                pattern_counter["magic_bounce_reflected_hazard"] += 1
+                evidence_map["magic_bounce_reflected_hazard"].append(f"{battle_label}: {magic_detail}")
+
         issue_defs = {
             "hazard_pressure": (
                 "Hazard pressure is being lost",
@@ -686,6 +820,11 @@ class AutoResearcher:
                 "Audit the move-selection path between the MCTS policy and the final choice "
                 "(penalty pipeline overrides, sampling quality). With FOULER_PENALTY_PIPELINE "
                 "OFF this should shrink; if regret persists, the sampled opponent sets are wrong.",
+            ),
+            "magic_bounce_reflected_hazard": (
+                "Magic Bounce reflected hazards are still being selected",
+                "Decision traces show reflected status or hazard moves surviving safety filtering and being selected into Magic Bounce.",
+                "Cap reflected status/hazard moves below at least one positive non-reflected option after Magic Bounce is detected; only leave them available as a last resort.",
             ),
         }
 

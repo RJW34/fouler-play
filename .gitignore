@@ -133,7 +133,11 @@ logs/matchup_ab_log.jsonl
 
 # runtime data + backup litter (checkpoint 2026-07-04)
 battle_stats.json
-devstream/truth/
+devstream/truth/*
+!devstream/truth/completion.json
+!devstream/truth/elo-proof.example.json
+!devstream/truth/elo-proof.schema.json
+!devstream/truth/latest-elo-proof.json
 replay_analysis/autoresearch_latest.json
 fp/data/movepool_data.json
 *.bak

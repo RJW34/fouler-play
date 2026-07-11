@@ -285,6 +285,114 @@ def test_autoresearch_decision_trace_proves_request_legal_options(tmp_path: Path
     assert hashlib.sha256(trace_path.read_bytes()).hexdigest() == trace_match.group(2)
 
 
+def test_autoresearch_does_not_treat_legal_option_trace_as_instability(tmp_path: Path):
+    project = tmp_path
+    trace_dir = project / "logs" / "decision_traces"
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-grounded-normal",
+                    "timestamp": "2026-03-10T11:05:00+00:00",
+                    "team_file": "fat-team-1-stall",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-grounded-normal",
+                }
+            ]
+        },
+    )
+    trace_payload = {
+        "battle_tag": "battle-gen9ou-grounded-normal",
+        "turn": 34,
+        "choice": "icebeam",
+        "legalOptions": {
+            "source": "showdown-request",
+            "requestHash": "f" * 64,
+            "candidateSetBounded": True,
+            "legalMoves": [
+                {"activeSlot": 0, "id": "futuresight", "target": "normal"},
+                {"activeSlot": 0, "id": "sludgebomb", "target": "normal"},
+                {"activeSlot": 0, "id": "icebeam", "target": "normal"},
+                {"activeSlot": 0, "id": "chillyreception", "target": "self"},
+            ],
+            "legalSwitches": [],
+        },
+        "mcts_only": {
+            "events": [
+                {
+                    "type": "skip",
+                    "source": "decision_loop_break",
+                    "move": "icebeam",
+                    "reason": "icebeam_repeated_0_position_not_stagnant",
+                }
+            ],
+            "top_moves": [{"move": "icebeam", "weight": 0.264}],
+        },
+    }
+    write_json(trace_dir / "battle-gen9ou-grounded-normal_turn34_1.json", trace_payload)
+
+    report = AutoResearcher(project_root=project).analyze(last_n=5)
+
+    assert report["evidence_integrity"]["losses_with_request_legal_options"] == 1
+    assert report["evidence_integrity"]["claims_without_evidence"] == []
+    assert "decision_instability" not in [issue["key"] for issue in report["issues"]]
+
+
+def test_autoresearch_flags_grounded_loop_breaker_override(tmp_path: Path):
+    project = tmp_path
+    trace_dir = project / "logs" / "decision_traces"
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-loop-break",
+                    "timestamp": "2026-03-10T11:07:00+00:00",
+                    "team_file": "fat-team-1-stall",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-loop-break",
+                }
+            ]
+        },
+    )
+    write_json(
+        trace_dir / "battle-gen9ou-loop-break_turn21_1.json",
+        {
+            "battle_tag": "battle-gen9ou-loop-break",
+            "turn": 21,
+            "choice": "softboiled",
+            "legalOptions": {
+                "source": "showdown-request",
+                "requestHash": "e" * 64,
+                "candidateSetBounded": True,
+                "legalMoves": [
+                    {"activeSlot": 0, "id": "seismictoss", "target": "normal"},
+                    {"activeSlot": 0, "id": "softboiled", "target": "self"},
+                ],
+                "legalSwitches": [],
+            },
+            "mcts_only": {
+                "events": [
+                    {
+                        "type": "override",
+                        "source": "decision_loop_break",
+                        "move": "softboiled",
+                        "reason": "softboiled_repeated_3_in_last_6_forcing_distinct",
+                    }
+                ]
+            },
+        },
+    )
+
+    report = AutoResearcher(project_root=project).analyze(last_n=5)
+
+    decision = next(issue for issue in report["issues"] if issue["key"] == "decision_instability")
+    proof = "\n".join(decision["proof"])
+    assert "loop-breaker intervened" in proof
+    assert "requestHash=" in proof
+
+
 def test_autoresearch_does_not_count_wait_or_empty_force_switch_as_legal_options(tmp_path: Path):
     project = tmp_path
     trace_dir = project / "logs" / "decision_traces"
@@ -344,6 +452,66 @@ def test_autoresearch_does_not_count_wait_or_empty_force_switch_as_legal_options
 
     assert report["evidence_integrity"]["losses_with_decision_trace"] == 2
     assert report["evidence_integrity"]["losses_with_request_legal_options"] == 0
+
+
+def test_autoresearch_detects_magic_bounce_reflected_hazard_from_trace(tmp_path: Path):
+    project = tmp_path
+    trace_dir = project / "logs" / "decision_traces"
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-magic-bounce",
+                    "timestamp": "2026-03-10T11:30:00+00:00",
+                    "team_file": "fat-team-2-balance",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-magic-bounce",
+                }
+            ]
+        },
+    )
+    trace_payload = {
+        "battle_tag": "battle-gen9ou-magic-bounce",
+        "turn": 7,
+        "choice": "stealthrock",
+        "legalOptions": {
+            "source": "showdown-request",
+            "requestHash": "d" * 64,
+            "candidateSetBounded": True,
+            "legalMoves": [
+                {"activeSlot": 0, "id": "earthquake", "target": "allAdjacent"},
+                {"activeSlot": 0, "id": "stealthrock", "target": "foeSide"},
+            ],
+            "legalSwitches": [],
+        },
+        "mcts_only": {
+            "selection": "deterministic_argmax",
+            "top_moves": [
+                {"move": "stealthrock", "weight": 0.133557},
+                {"move": "earthquake", "weight": 0.032795},
+            ],
+            "events": [
+                {
+                    "type": "penalty",
+                    "source": "mcts_hard_safety",
+                    "move": "stealthrock",
+                    "reason": "magic_bounce_reflects_status",
+                    "before": 1.335569,
+                    "after": 0.133557,
+                }
+            ],
+        },
+    }
+    write_json(trace_dir / "battle-gen9ou-magic-bounce_turn7_1.json", trace_payload)
+
+    report = AutoResearcher(project_root=project).analyze(last_n=5)
+
+    issue = next(issue for issue in report["issues"] if issue["key"] == "magic_bounce_reflected_hazard")
+    proof = "\n".join(issue["proof"])
+    assert "selected stealthrock into Magic Bounce" in proof
+    assert "best_non_reflected=earthquake" in proof
+    assert "traceSha256=" in proof
 
 
 def test_autoresearch_detects_long_game_conversion_issue(tmp_path: Path):

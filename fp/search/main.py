@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+import re
 import threading
 import time
 from copy import deepcopy
@@ -4634,6 +4635,244 @@ def _find_switch_target(battle: Battle | None, move: str):
     return None
 
 
+def _side_condition_layer_count(side_conditions, condition) -> int:
+    if not isinstance(side_conditions, dict):
+        return 0
+    value = side_conditions.get(condition, 0)
+    if value in (None, 0):
+        condition_norm = normalize_name(str(condition))
+        for key, candidate in side_conditions.items():
+            if normalize_name(str(key)) == condition_norm:
+                value = candidate
+                break
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _pokemon_hp_ratio(pokemon) -> float:
+    try:
+        return float(getattr(pokemon, "hp", 0) or 0) / max(
+            float(getattr(pokemon, "max_hp", 1) or 1),
+            1.0,
+        )
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _entry_hazard_damage_ratio(
+    pokemon,
+    *,
+    battle: Battle | None = None,
+    ability_state: OpponentAbilityState | None = None,
+) -> float:
+    if pokemon is None or not _hp_positive(pokemon):
+        return 0.0
+
+    item_norm = normalize_name(str(getattr(pokemon, "item", "") or ""))
+    if item_norm == "heavydutyboots":
+        return 0.0
+
+    side_conditions = getattr(getattr(battle, "user", None), "side_conditions", {})
+    sr_layers = _side_condition_layer_count(side_conditions, constants.STEALTH_ROCK)
+    spikes_layers = _side_condition_layer_count(side_conditions, constants.SPIKES)
+    if ability_state is not None:
+        sr_layers = max(sr_layers, 1 if getattr(ability_state, "our_sr_up", False) else 0)
+        try:
+            spikes_layers = max(spikes_layers, int(getattr(ability_state, "our_spikes_layers", 0) or 0))
+        except (TypeError, ValueError):
+            pass
+
+    if sr_layers <= 0 and spikes_layers <= 0:
+        return 0.0
+
+    target_types = [
+        normalize_name(str(pkmn_type))
+        for pkmn_type in (getattr(pokemon, "types", []) or [])
+    ]
+    damage = 0.0
+    if sr_layers > 0:
+        damage += 0.125 * type_effectiveness_modifier("rock", target_types)
+
+    if spikes_layers > 0:
+        ability_norm = normalize_name(str(getattr(pokemon, "ability", "") or ""))
+        grounded = (
+            "flying" not in target_types
+            and ability_norm not in {normalize_name(str(a)) for a in UNGROUNDED_ABILITIES}
+            and item_norm not in {normalize_name(str(i)) for i in UNGROUNDED_ITEMS}
+        )
+        if grounded:
+            damage += [0.0, 0.125, 0.167, 0.25][min(spikes_layers, 3)]
+
+    return max(0.0, float(damage))
+
+
+def _hazards_would_faint_on_entry(
+    pokemon,
+    *,
+    battle: Battle | None = None,
+    ability_state: OpponentAbilityState | None = None,
+) -> tuple[bool, float, float]:
+    hp_ratio = _pokemon_hp_ratio(pokemon)
+    damage_ratio = _entry_hazard_damage_ratio(
+        pokemon,
+        battle=battle,
+        ability_state=ability_state,
+    )
+    return damage_ratio >= max(0.001, hp_ratio - 0.001), damage_ratio, hp_ratio
+
+
+def _apply_hazard_self_ko_guard(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list | None,
+) -> dict[str, float]:
+    """Keep MCTS-only from selecting switch lines that faint on entry hazards."""
+    if not policy or battle is None:
+        return policy
+
+    switch_lines = [
+        (move, float(weight))
+        for move, weight in policy.items()
+        if weight > 0 and move.startswith("switch ")
+    ]
+
+    force_switch = bool(getattr(battle, "force_switch", False))
+    non_switch_lines = [
+        (move, float(weight))
+        for move, weight in policy.items()
+        if weight > 0 and not move.startswith("switch ")
+    ]
+    direct_stay_lines = [
+        (move, weight)
+        for move, weight in non_switch_lines
+        if _choice_move_norm(move) not in PIVOT_MOVES_NORM
+    ]
+    best_direct = max(direct_stay_lines, key=lambda item: item[1], default=None)
+    best_stay = best_direct or max(non_switch_lines, key=lambda item: item[1], default=None)
+
+    switch_safety: dict[str, tuple[bool, float, float]] = {}
+    safe_switch_weights: list[float] = []
+    for move, weight in switch_lines:
+        target = _find_switch_target(battle, move)
+        would_faint, damage_ratio, hp_ratio = _hazards_would_faint_on_entry(
+            target,
+            battle=battle,
+            ability_state=ability_state,
+        )
+        switch_safety[move] = (would_faint, damage_ratio, hp_ratio)
+        if not would_faint:
+            safe_switch_weights.append(weight)
+
+    adjusted = dict(policy)
+    if force_switch:
+        if not switch_lines:
+            return adjusted
+        if not safe_switch_weights:
+            return adjusted
+        best_safe_weight = max(safe_switch_weights)
+        for move, weight in switch_lines:
+            would_faint, damage_ratio, hp_ratio = switch_safety[move]
+            if not would_faint:
+                continue
+            new_weight = min(float(weight), best_safe_weight * 0.45)
+            if abs(new_weight - float(weight)) <= 1e-9:
+                continue
+            adjusted[move] = new_weight
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "penalty",
+                        "source": "mcts_hard_safety",
+                        "move": move,
+                        "reason": (
+                            "hazard_self_ko_forced_switch_guard_"
+                            f"hp_{hp_ratio:.2f}_hazards_{damage_ratio:.2f}"
+                        ),
+                        "before": weight,
+                        "after": new_weight,
+                    }
+                )
+        return adjusted
+
+    if best_stay is not None:
+        best_stay_move, best_stay_weight = best_stay
+        for move, weight in switch_lines:
+            would_faint, damage_ratio, hp_ratio = switch_safety[move]
+            if not would_faint:
+                continue
+            new_weight = min(float(weight), best_stay_weight * 0.45)
+            if abs(new_weight - float(weight)) <= 1e-9:
+                continue
+            adjusted[move] = new_weight
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "penalty",
+                        "source": "mcts_hard_safety",
+                        "move": move,
+                        "reason": (
+                            "hazard_self_ko_switch_guard_"
+                            f"hp_{hp_ratio:.2f}_hazards_{damage_ratio:.2f}_stay_{best_stay_move}"
+                        ),
+                        "before": weight,
+                        "after": new_weight,
+                    }
+                )
+
+    if best_direct is None:
+        return adjusted
+
+    reserve = [
+        pkmn
+        for pkmn in (getattr(getattr(battle, "user", None), "reserve", []) or [])
+        if _hp_positive(pkmn)
+    ]
+    if not reserve:
+        return adjusted
+    all_pivot_targets_faint = all(
+        _hazards_would_faint_on_entry(
+            pkmn,
+            battle=battle,
+            ability_state=ability_state,
+        )[0]
+        for pkmn in reserve
+    )
+    if not all_pivot_targets_faint:
+        return adjusted
+
+    best_direct_move, best_direct_weight = best_direct
+    for move, weight in list(adjusted.items()):
+        if weight <= 0 or move.startswith("switch "):
+            continue
+        move_norm = _choice_move_norm(move)
+        if move_norm not in PIVOT_MOVES_NORM:
+            continue
+        new_weight = min(float(weight), best_direct_weight * 0.55)
+        if abs(new_weight - float(weight)) <= 1e-9:
+            continue
+        adjusted[move] = new_weight
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "penalty",
+                    "source": "mcts_hard_safety",
+                    "move": move,
+                    "reason": (
+                        "hazard_self_ko_pivot_guard_"
+                        f"all_targets_faint_stay_{best_direct_move}"
+                    ),
+                    "before": weight,
+                    "after": new_weight,
+                }
+            )
+
+    return adjusted
+
+
 def _assess_immediate_survival_risk(battle: Battle | None) -> dict[str, float | bool]:
     """
     Estimate whether staying in is likely to get KOed before we can act.
@@ -6597,6 +6836,351 @@ def break_repeated_decision(
     return rebuilt
 
 
+def _hp_positive(pokemon) -> bool:
+    if pokemon is None:
+        return False
+    try:
+        return float(getattr(pokemon, "hp", 0) or 0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _alive_members(side) -> list:
+    active = getattr(side, "active", None) if side is not None else None
+    try:
+        reserve = list(getattr(side, "reserve", []) or []) if side is not None else []
+    except TypeError:
+        reserve = []
+    return [p for p in [active] + reserve if _hp_positive(p)]
+
+
+def _choice_move_norm(choice: str) -> str:
+    move_name = choice.split(":")[-1] if ":" in choice else choice
+    if move_name.endswith("-tera"):
+        move_name = move_name[:-5]
+    return normalize_name(move_name)
+
+
+def _choice_likely_kos(choice: str, battle: Battle | None) -> bool:
+    if battle is None or choice.startswith("switch "):
+        return False
+    active = getattr(getattr(battle, "user", None), "active", None)
+    opponent = getattr(getattr(battle, "opponent", None), "active", None)
+    if active is None or opponent is None or getattr(opponent, "hp", 0) <= 0:
+        return False
+    move_norm = _choice_move_norm(choice)
+    try:
+        from fp.search.endgame import estimate_damage
+
+        damage_ratio = float(estimate_damage(active, opponent, move_norm) or 0.0)
+        opponent_hp_ratio = float(getattr(opponent, "hp", 0) or 0) / max(
+            float(getattr(opponent, "max_hp", 1) or 1),
+            1.0,
+        )
+        return damage_ratio >= max(0.01, opponent_hp_ratio * 0.95)
+    except Exception:
+        return False
+
+
+def _is_late_kingambit_snowball(
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+) -> bool:
+    if battle is None:
+        return False
+    opponent = getattr(getattr(battle, "opponent", None), "active", None)
+    if opponent is None or not _hp_positive(opponent):
+        return False
+
+    opp_name = normalize_name(getattr(opponent, "name", "") or "")
+    opp_base = normalize_name(getattr(opponent, "base_name", "") or "")
+    opp_ability = normalize_name(getattr(opponent, "ability", "") or "")
+    has_supreme_overlord = bool(
+        getattr(ability_state, "has_supreme_overlord", False)
+    )
+    if not (
+        has_supreme_overlord
+        or opp_name == "kingambit"
+        or opp_base == "kingambit"
+        or opp_ability == "supremeoverlord"
+    ):
+        return False
+
+    volatile_statuses = {
+        normalize_name(str(status))
+        for status in (getattr(opponent, "volatile_statuses", []) or [])
+    }
+    fallen_boost_known = any(status.startswith("fallen") for status in volatile_statuses)
+    turn_number = int(getattr(battle, "turn", 0) or 0)
+    our_alive = len(_alive_members(getattr(battle, "user", None)))
+    opp_alive = len(_alive_members(getattr(battle, "opponent", None)))
+    return fallen_boost_known or turn_number >= 20 or our_alive <= 3 or opp_alive <= 3
+
+
+def _apply_kingambit_sack_guard(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list | None,
+) -> dict[str, float]:
+    """Prevent MCTS-only from spending low-HP bodies into late Kingambit."""
+    if (
+        not policy
+        or battle is None
+        or getattr(battle, "force_switch", False)
+        or not _is_late_kingambit_snowball(battle, ability_state)
+    ):
+        return policy
+
+    our_alive = len(_alive_members(getattr(battle, "user", None)))
+    if our_alive <= 1:
+        return policy
+
+    stay_lines = [
+        (move, float(weight))
+        for move, weight in policy.items()
+        if weight > 0 and not move.startswith("switch ")
+    ]
+    if not stay_lines:
+        return policy
+    best_stay_move, best_stay_weight = max(stay_lines, key=lambda item: item[1])
+    if best_stay_weight <= 0:
+        return policy
+
+    opponent = getattr(getattr(battle, "opponent", None), "active", None)
+    opponent_types = [normalize_name(t) for t in (getattr(opponent, "types", []) or [])]
+    dark_pressure = "dark" in opponent_types or normalize_name(
+        getattr(opponent, "name", "") or ""
+    ) == "kingambit"
+
+    adjusted = dict(policy)
+    for move, weight in list(policy.items()):
+        if weight <= 0 or not move.startswith("switch "):
+            continue
+        target = _find_switch_target(battle, move)
+        if target is None or not _hp_positive(target):
+            continue
+        try:
+            target_hp_ratio = float(getattr(target, "hp", 0) or 0) / max(
+                float(getattr(target, "max_hp", 1) or 1),
+                1.0,
+            )
+        except Exception:
+            target_hp_ratio = 1.0
+        if target_hp_ratio > 0.35:
+            continue
+
+        target_types = [normalize_name(t) for t in (getattr(target, "types", []) or [])]
+        if not target_types:
+            continue
+        dark_effectiveness = (
+            type_effectiveness_modifier("dark", target_types) if dark_pressure else 1.0
+        )
+        weak_to_known_stab = False
+        for opp_type in opponent_types:
+            if type_effectiveness_modifier(opp_type, target_types) >= 2.0:
+                weak_to_known_stab = True
+                break
+        if dark_effectiveness <= 0.5 and not weak_to_known_stab:
+            continue
+
+        cap = best_stay_weight * 0.72
+        if target_hp_ratio <= 0.25:
+            cap = best_stay_weight * 0.66
+        new_weight = min(float(weight), cap)
+        if abs(new_weight - float(weight)) <= 1e-9:
+            continue
+        adjusted[move] = new_weight
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "penalty",
+                    "source": "mcts_hard_safety",
+                    "move": move,
+                    "reason": (
+                        "late_kingambit_sack_guard_"
+                        f"hp_{target_hp_ratio:.2f}_stay_{best_stay_move}"
+                    ),
+                    "before": weight,
+                    "after": new_weight,
+                }
+            )
+    return adjusted
+
+
+def _apply_endgame_preservation_bias(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list | None,
+) -> dict[str, float]:
+    """Preserve won late games without overriding immediate KO lines.
+
+    Live proof windows showed the bot fixing tactical search-regret but still
+    losing long games. This bias is deliberately bounded: it only activates in
+    late/low-material positions where the board score says we are ahead.
+    """
+    if not policy or battle is None or getattr(battle, "force_switch", False):
+        return policy
+
+    try:
+        turn_number = int(getattr(battle, "turn", 0) or 0)
+    except Exception:
+        turn_number = 0
+    our_alive = len(_alive_members(getattr(battle, "user", None)))
+    opp_alive = len(_alive_members(getattr(battle, "opponent", None)))
+    low_material = our_alive <= 3 and opp_alive <= 3
+    if turn_number < 25 and not low_material:
+        return policy
+
+    try:
+        _advantage_score, ahead = _estimate_board_advantage(battle, ability_state)
+    except Exception:
+        ahead = False
+    if not ahead:
+        return policy
+
+    active = getattr(getattr(battle, "user", None), "active", None)
+    if active is None or getattr(active, "hp", 0) <= 0:
+        return policy
+    try:
+        hp_ratio = float(getattr(active, "hp", 0) or 0) / max(float(getattr(active, "max_hp", 1) or 1), 1.0)
+    except Exception:
+        hp_ratio = 1.0
+
+    active_is_wincon = bool(getattr(ability_state, "our_active_is_wincon", False))
+    if not active_is_wincon:
+        try:
+            active_is_wincon = is_likely_wincon(active, battle)
+        except Exception:
+            active_is_wincon = False
+
+    recovery_like = set(RECOVERY_MOVES_NORM) | {"protect", "rest"}
+    recovery_moves = [
+        move
+        for move, weight in policy.items()
+        if weight > 0 and not move.startswith("switch ") and _choice_move_norm(move) in recovery_like
+    ]
+    ko_moves = {
+        move
+        for move, weight in policy.items()
+        if weight > 0 and not move.startswith("switch ") and _choice_likely_kos(move, battle)
+    }
+    direct_progress_moves = []
+    for move, weight in policy.items():
+        if weight <= 0 or move.startswith("switch "):
+            continue
+        if move in ko_moves or _is_meaningful_progress_move(
+            move,
+            battle,
+            ability_state,
+            include_status_pivots=False,
+        ):
+            direct_progress_moves.append((move, float(weight)))
+    best_direct_progress = max(direct_progress_moves, key=lambda item: item[1], default=None)
+
+    def _recent_pivot_or_switch() -> bool:
+        for action in _recent_action_history(battle)[-4:]:
+            if action.startswith("switch "):
+                return True
+            if _choice_move_norm(action) in PIVOT_MOVES_NORM:
+                return True
+        return False
+
+    preserve_anchor = active_is_wincon or bool(recovery_moves)
+    last_mon_conversion_lock = (
+        opp_alive <= 1
+        and our_alive >= 2
+        and best_direct_progress is not None
+        and (turn_number >= 25 or low_material)
+    )
+    if not preserve_anchor and not last_mon_conversion_lock:
+        return policy
+
+    direct_progress_move = best_direct_progress[0] if best_direct_progress else None
+    direct_progress_weight = best_direct_progress[1] if best_direct_progress else 0.0
+    recent_pivot_or_switch = _recent_pivot_or_switch() if last_mon_conversion_lock else False
+    adjusted = dict(policy)
+    for move, weight in list(policy.items()):
+        if weight <= 0:
+            continue
+        move_norm = _choice_move_norm(move)
+        new_weight = float(weight)
+        reason = None
+
+        if move in ko_moves:
+            continue
+
+        if not ko_moves and move_norm in recovery_like and hp_ratio <= 0.72:
+            try:
+                oddities = detect_odd_move(battle, move, ability_state)
+            except Exception:
+                oddities = []
+            repeated = any("repeat_status_move" in str(item) for item in oddities)
+            if not repeated:
+                boost = 1.25
+                if hp_ratio <= 0.55:
+                    boost = 1.45
+                if hp_ratio <= 0.40:
+                    boost = 1.65
+                if active_is_wincon:
+                    boost += 0.10
+                new_weight *= boost
+                reason = f"late_ahead_preserve_anchor_recovery_hp_{hp_ratio:.2f}"
+        elif (
+            last_mon_conversion_lock
+            and move_norm in PIVOT_MOVES_NORM
+            and move_norm in all_move_json
+            and all_move_json[move_norm].get(constants.CATEGORY) == constants.STATUS
+        ):
+            cap_ratio = 0.72 if recent_pivot_or_switch else 0.80
+            new_weight = min(new_weight, direct_progress_weight * cap_ratio)
+            reason = (
+                f"late_ahead_avoid_status_pivot_loop_vs_last_mon_"
+                f"progress_{direct_progress_move}"
+            )
+        elif last_mon_conversion_lock and move.startswith("switch "):
+            cap_ratio = 0.70 if recent_pivot_or_switch else 0.82
+            if hp_ratio <= 0.45:
+                cap_ratio = min(cap_ratio, 0.76)
+            new_weight = min(new_weight, direct_progress_weight * cap_ratio)
+            reason = (
+                f"late_ahead_avoid_switch_loop_vs_last_mon_"
+                f"progress_{direct_progress_move}"
+            )
+        elif move.startswith("switch ") and preserve_anchor and hp_ratio >= 0.35:
+            penalty = 0.72 if hp_ratio <= 0.65 else 0.84
+            new_weight *= penalty
+            reason = f"late_ahead_avoid_unforced_anchor_switch_hp_{hp_ratio:.2f}"
+        elif (
+            not ko_moves
+            and recovery_moves
+            and hp_ratio <= 0.58
+            and move_norm in all_move_json
+            and all_move_json[move_norm].get(constants.CATEGORY) in {constants.PHYSICAL, constants.SPECIAL}
+        ):
+            new_weight *= 0.84
+            reason = f"late_ahead_avoid_non_ko_trade_hp_{hp_ratio:.2f}"
+
+        if reason and abs(new_weight - float(weight)) > 1e-9:
+            adjusted[move] = new_weight
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "boost" if new_weight > float(weight) else "penalty",
+                        "source": "endgame_preservation",
+                        "move": move,
+                        "reason": reason,
+                        "before": weight,
+                        "after": new_weight,
+                    }
+                )
+
+    return adjusted
+
+
 def _apply_hard_legality_and_safety(
     policy: dict[str, float],
     *,
@@ -6632,12 +7216,21 @@ def _apply_hard_legality_and_safety(
     # MCTS-only path repeat a Magic Bounce hazard into our own side.
     if ability_state is not None and getattr(ability_state, "has_magic_bounce", False):
         reflected = {normalize_name(m) for m in MAGIC_BOUNCE_REFLECTED_MOVES}
+        non_reflected_positive = [
+            float(weight)
+            for move, weight in working.items()
+            if weight > 0
+            and normalize_name(move.split(":")[-1] if ":" in move else move) not in reflected
+        ]
+        best_non_reflected_floor = max(non_reflected_positive) * 0.50 if non_reflected_positive else None
         for move, weight in list(working.items()):
             move_name = move.split(":")[-1] if ":" in move else move
             move_norm = normalize_name(move_name)
             if move_norm not in reflected or weight <= 0:
                 continue
             new_weight = float(weight) * ABILITY_PENALTY_SEVERE
+            if best_non_reflected_floor is not None:
+                new_weight = min(new_weight, best_non_reflected_floor)
             working[move] = new_weight
             if trace_events is not None:
                 trace_events.append(
@@ -6694,6 +7287,27 @@ def _apply_hard_legality_and_safety(
                         }
                     )
 
+    working = _apply_hazard_self_ko_guard(
+        working,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+
+    working = _apply_kingambit_sack_guard(
+        working,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+
+    working = _apply_endgame_preservation_bias(
+        working,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+
     sorted_policy = sorted(working.items(), key=lambda x: x[1], reverse=True)
 
     # Hard loop-breaker: demote a move repeated too many times recently.
@@ -6705,6 +7319,165 @@ def _apply_hard_legality_and_safety(
     return sorted_policy
 
 
+def _forced_line_mcts_override(
+    sorted_policy: list[tuple[str, float]],
+    forced_line_bias: dict | None,
+    *,
+    battle: Battle | None = None,
+    ability_state: OpponentAbilityState | None = None,
+    trace_events: list | None = None,
+) -> str | None:
+    """Honor high-confidence forced survival switches after legality filtering.
+
+    MCTS may still be noisy on tactical survival turns. If the forced-line
+    detector already proved that the opponent KOs us and named a legal resist,
+    treating that line as a mild multiplier can still lose to a superficially
+    high-visit stall move such as repeated Protect. This override is deliberately
+    narrow: only forced_switch lines at confidence >= 0.85, only switch moves, and
+    only after the move survived the normal legality/safety filters.
+    """
+    if not sorted_policy or not forced_line_bias:
+        return None
+
+    move = str(forced_line_bias.get("move") or "")
+    if not move.startswith("switch "):
+        return None
+
+    if str(forced_line_bias.get("line_type") or "") != "forced_switch":
+        return None
+
+    try:
+        confidence = float(forced_line_bias.get("confidence", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence < 0.85:
+        return None
+
+    legal_weight = None
+    best_switch: tuple[str, float] | None = None
+    for candidate, weight in sorted_policy:
+        try:
+            numeric_weight = float(weight)
+        except (TypeError, ValueError):
+            numeric_weight = 0.0
+        if candidate.startswith("switch ") and numeric_weight > 0:
+            if best_switch is None or numeric_weight > best_switch[1]:
+                best_switch = (candidate, numeric_weight)
+        if candidate == move:
+            legal_weight = numeric_weight
+    if legal_weight is None or legal_weight <= 0 or best_switch is None:
+        return None
+
+    top_move, top_weight = sorted_policy[0]
+    try:
+        top_weight = float(top_weight)
+    except (TypeError, ValueError):
+        top_weight = 0.0
+    if top_move == move or top_move.startswith("switch "):
+        return None
+
+    candidate_move, candidate_weight = best_switch
+    if top_weight <= 0:
+        return None
+
+    top_move_name = top_move.split(":")[-1] if ":" in top_move else top_move
+    top_norm = normalize_name(top_move_name)
+    stall_survival_moves = set(RECOVERY_MOVES_NORM) | {"protect", "rest"}
+    top_is_stall_survival = top_norm in stall_survival_moves
+    try:
+        top_oddities = detect_odd_move(battle, top_move, ability_state) if battle is not None else []
+    except Exception:
+        top_oddities = []
+    repeated_stall = any("repeat_status_move" in str(item) for item in top_oddities)
+    damage_ratio = _forced_switch_damage_ratio(forced_line_bias.get("reason", ""))
+    strong_damage = damage_ratio is None or damage_ratio >= 1.20
+    switch_ratio = candidate_weight / top_weight
+
+    if top_is_stall_survival and not repeated_stall:
+        if not strong_damage or switch_ratio < 0.62:
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "skip",
+                        "source": "forced_line",
+                        "move": candidate_move,
+                        "reason": "top_stall_survival_line_preserved",
+                        "detail": forced_line_bias.get("reason", ""),
+                        "line_type": forced_line_bias.get("line_type", ""),
+                        "confidence": confidence,
+                        "top_move": top_move,
+                        "top_weight": top_weight,
+                        "switch_weight": candidate_weight,
+                        "switch_ratio": round(switch_ratio, 6),
+                        "damage_ratio": damage_ratio,
+                    }
+                )
+            return None
+
+    if switch_ratio < 0.40:
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "skip",
+                    "source": "forced_line",
+                    "move": candidate_move,
+                    "reason": "forced_switch_too_low_in_mcts_policy",
+                    "detail": forced_line_bias.get("reason", ""),
+                    "line_type": forced_line_bias.get("line_type", ""),
+                    "confidence": confidence,
+                    "top_move": top_move,
+                    "top_weight": top_weight,
+                    "switch_weight": candidate_weight,
+                    "switch_ratio": round(switch_ratio, 6),
+                    "damage_ratio": damage_ratio,
+                }
+            )
+        return None
+
+    if trace_events is not None:
+        trace_events.append(
+            {
+                "type": "override",
+                "source": "forced_line",
+                "move": candidate_move,
+                "reason": "high_confidence_forced_switch",
+                "detail": forced_line_bias.get("reason", ""),
+                "line_type": forced_line_bias.get("line_type", ""),
+                "confidence": confidence,
+                "before": top_weight,
+                "after": candidate_weight,
+                "replaced": top_move,
+                "detector_move": move,
+                "switch_ratio": round(switch_ratio, 6),
+                "damage_ratio": damage_ratio,
+            }
+        )
+    logger.info(
+        "Forced line override: choosing %s over %s "
+        "(line_type=forced_switch confidence=%.2f)",
+        candidate_move,
+        top_move,
+        confidence,
+    )
+    return candidate_move
+
+
+def _forced_switch_damage_ratio(reason: object) -> float | None:
+    if not isinstance(reason, str):
+        return None
+    match = re.search(r"\((\d+(?:\.\d+)?)%\s+vs\s+(\d+(?:\.\d+)?)%\)", reason)
+    if not match:
+        return None
+    try:
+        incoming = float(match.group(1))
+        hp = float(match.group(2))
+    except (TypeError, ValueError):
+        return None
+    if hp <= 0:
+        return None
+    return incoming / hp
+
+
 def _choose_mcts_only(
     mcts_policy: dict[str, float],
     *,
@@ -6712,6 +7485,7 @@ def _choose_mcts_only(
     ability_state: OpponentAbilityState | None,
     decision_profile: DecisionProfile,
     trace: dict | None,
+    forced_line_bias: dict | None = None,
 ) -> str:
     """
     MCTS-respecting move selection (penalty pipeline gated OFF).
@@ -6734,6 +7508,26 @@ def _choose_mcts_only(
         # Nothing legal survived; fall back to raw argmax of the input.
         ranked = sorted((mcts_policy or {}).items(), key=lambda x: x[1], reverse=True)
         return ranked[0][0] if ranked else ""
+
+    forced_override = _forced_line_mcts_override(
+        sorted_policy,
+        forced_line_bias,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+    if forced_override is not None:
+        if trace is not None:
+            trace["mcts_only"] = {
+                "top_moves": [
+                    {"move": m, "weight": round(float(w), 6)}
+                    for m, w in sorted_policy[:5]
+                ],
+                "events": trace_events,
+                "selection": "forced_line_override",
+            }
+            trace["decision_mode_detail"] = "mcts_only:forced_line_override"
+        return forced_override
 
     # Immediate survival override (safety, not heuristic bias): if we are likely to
     # be KOed before acting and the top line is not itself a survival line, prefer a
@@ -6788,6 +7582,7 @@ def select_move_from_eval_scores(
     decision_profile: DecisionProfile = DecisionProfile.DEFAULT,
     trace: dict | None = None,
     policy_source: str = "eval",
+    forced_line_bias: dict | None = None,
 ) -> str:
     """Select a move from a policy (MCTS or eval), applying penalty layers.
 
@@ -6803,6 +7598,7 @@ def select_move_from_eval_scores(
             ability_state=ability_state,
             decision_profile=decision_profile,
             trace=trace,
+            forced_line_bias=forced_line_bias,
         )
 
     trace_events = []
@@ -6911,6 +7707,13 @@ def select_move_from_eval_scores(
         trace_events=trace_events,
     )
 
+    blended_policy = _apply_endgame_preservation_bias(
+        blended_policy,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+
     # Repetition detection: penalize moves that have been spammed recently
     blended_policy = apply_repetition_penalty(
         blended_policy,
@@ -6974,6 +7777,32 @@ def select_move_from_eval_scores(
         battle,
         trace_events=trace_events,
     )
+
+    forced_override = _forced_line_mcts_override(
+        sorted_policy,
+        forced_line_bias,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+    if forced_override is not None:
+        if trace is not None:
+            trace["eval"] = {
+                "top_moves": [
+                    {
+                        "move": m,
+                        "eval_weight": w,
+                        "pre_penalty_score": pre_penalty_scores.get(m, 0.0),
+                    }
+                    for m, w in sorted_policy[:5]
+                ],
+                "policy_pre_penalty": pre_penalty_scores,
+                "policy_post_penalty": blended_policy,
+                "events": trace_events,
+                "selection": "forced_line_override",
+            }
+            trace["decision_mode_detail"] = "eval:forced_line_override"
+        return forced_override
 
     if trace is not None:
         top_moves = []
@@ -8076,6 +8905,8 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 trace["forced_line_bias"] = {
                     "move": forced.move,
                     "confidence": forced.confidence,
+                    "reason": forced.reason,
+                    "line_type": forced.line_type,
                     "applied": forced.move in mcts_policy,
                 }
 
@@ -8096,6 +8927,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 decision_profile=decision_profile,
                 trace=trace,
                 policy_source="mcts",
+                forced_line_bias=trace.get("forced_line_bias"),
             )
 
             elapsed_total = time.time() - start_time
@@ -8157,6 +8989,13 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                     f"Forced line bias (eval fallback): {forced.move} boosted "
                     f"{boost:.2f}x (confidence {forced.confidence})"
                 )
+            trace["forced_line_bias"] = {
+                "move": forced.move,
+                "confidence": forced.confidence,
+                "reason": forced.reason,
+                "line_type": forced.line_type,
+                "applied": forced.move in eval_scores,
+            }
 
         trace["eval_scores_raw"] = dict(eval_scores)
 
@@ -8170,6 +9009,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
             playstyle=playstyle,
             decision_profile=decision_profile,
             trace=trace,
+            forced_line_bias=trace.get("forced_line_bias"),
         )
 
         elapsed_total = time.time() - start_time

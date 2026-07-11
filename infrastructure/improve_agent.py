@@ -1226,7 +1226,12 @@ def main() -> int:
             requested_run_count=EVAL_GATE_BATTLES,
             requested_max_cycles=args.max_cycles,
             requested_max_concurrent_battles=int(os.getenv("IMPROVE_AGENT_MAX_CONCURRENT_BATTLES", "1")),
-            requested_account=os.getenv("IMPROVE_AGENT_ACCOUNT", "LEBOTJAMESXD00N"),
+            requested_account=(
+                os.getenv("IMPROVE_AGENT_ACCOUNT")
+                or os.getenv("FOULER_ACTIVE_ACCOUNT")
+                or os.getenv("PS_USERNAME")
+                or None
+            ),
             require_run_count=True,
             require_max_cycles=True,
             require_max_concurrent_battles=True,

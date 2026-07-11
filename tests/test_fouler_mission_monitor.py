@@ -3,7 +3,14 @@ import os
 import time
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from scripts import fouler_mission_monitor as monitor
+
+
+@pytest.fixture(autouse=True)
+def isolate_stale_active_battle_backup_dir(monkeypatch, tmp_path):
+    monkeypatch.setattr(monitor, "STALE_ACTIVE_BATTLE_BACKUP_DIR", tmp_path / "stale-active-battles-backups")
 
 
 def active_lease() -> dict:
@@ -20,9 +27,122 @@ def clean_rated_battles(count: int = 20, *, start_rating: int = 1300) -> list[di
             "battle_id": f"rated-truth-{index}",
             "rating": start_rating + (index % 6),
             "result": "win" if index % 2 else "loss",
+            "timestamp": f"2026-07-05T00:{index:02d}:00+00:00",
         }
         for index in range(count)
     ]
+
+
+def active_account_season(*, account: str = "LEBOTJAMESXD00N", created_at: datetime | None = None) -> dict:
+    return {
+        "schemaVersion": "fouler-play-account-season/v1",
+        "seasonId": "test-season",
+        "createdAtUtc": (created_at or datetime.now(timezone.utc)).isoformat(),
+        "account": account,
+        "baselineRating": 1000,
+        "firstBattleStarted": False,
+        "runtimeStatus": "staged-at-baseline",
+    }
+
+
+def test_abandoned_battle_cleanup_status_blocks_missing_result(tmp_path):
+    backup_dir = tmp_path / "stale-active-battles-backups"
+    backup_dir.mkdir()
+    backup = backup_dir / "active_battles-20260705T120000Z.json"
+    backup.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "id": "battle-gen9ou-abandoned",
+                        "opponent": "staller",
+                        "status": "active",
+                    }
+                ],
+                "count": 1,
+                "updated": "2026-07-05T12:00:00",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    status = monitor.abandoned_battle_cleanup_status(
+        [{"battle_id": "battle-gen9ou-previous", "timestamp": "2026-07-05T00:01:00+00:00"}],
+        backup_dir=backup_dir,
+    )
+
+    assert status["ready"] is False
+    assert status["status"] == "abandoned-active-battle-without-result"
+    assert status["missingBattleIds"] == ["battle-gen9ou-abandoned"]
+    assert status["sourceBackupPath"].endswith("active_battles-20260705T120000Z.json")
+
+
+def test_abandoned_battle_cleanup_ignores_preseason_backup(tmp_path):
+    backup_dir = tmp_path / "stale-active-battles-backups"
+    backup_dir.mkdir()
+    backup = backup_dir / "active_battles-old-season.json"
+    backup.write_text(
+        json.dumps({"battles": [{"id": "battle-gen9ou-old-account"}]}),
+        encoding="utf-8",
+    )
+    season_started_at = datetime.now(timezone.utc) + timedelta(seconds=1)
+
+    status = monitor.abandoned_battle_cleanup_status(
+        [],
+        backup_dir=backup_dir,
+        season_started_at=season_started_at,
+        season_account="DekuFoulerLab",
+    )
+
+    assert status["ready"] is True
+    assert status["status"] == "clear"
+    assert status["skippedPreSeasonBackups"] == 1
+    assert status["seasonAccount"] == "DekuFoulerLab"
+
+
+def test_abandoned_battle_cleanup_blocks_start_gate(monkeypatch, tmp_path):
+    backup_dir = tmp_path / "stale-active-battles-backups"
+    backup_dir.mkdir()
+    backup = backup_dir / "active_battles-20260705T120000Z.json"
+    backup.write_text(
+        json.dumps(
+            {
+                "battles": [{"id": "battle-gen9ou-abandoned", "opponent": "staller"}],
+                "count": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(monitor, "STALE_ACTIVE_BATTLE_BACKUP_DIR", backup_dir)
+    monkeypatch.setattr(monitor, "current_source_commit", lambda: "abc1234")
+    monkeypatch.setattr(monitor, "offline_eval_resume_proof_status", lambda: {"ready": True})
+    monkeypatch.setattr(monitor, "active_improvement_proof_status", lambda: {"ready": True})
+
+    payload = monitor.classify_mission(
+        health={
+            "checkedAt": datetime.now(timezone.utc).isoformat(),
+            "readiness": {"runtimeReady": True},
+            "runtimeOwnership": {"battleRunnerProcessCount": 1, "duplicateBattleRunners": False},
+            "activeBattleCount": 1,
+            "discordQueue": {"backlogClassification": {"blocking": False}},
+        },
+        supervisor={},
+        lease=active_lease(),
+        battles=clean_rated_battles(20, start_rating=1710),
+        max_health_age_seconds=60,
+        loss_streak_threshold=5,
+        low_win_rate_threshold=0.3,
+        rating_drawdown_threshold=100,
+        rating_drawdown_window=20,
+        elo_proof=sustain_proof(),
+        requested_run_count=1,
+        requested_max_cycles=1,
+    )
+
+    issue_ids = {item["id"] for item in payload["issues"]}
+    assert monitor.ABANDONED_BATTLE_ISSUE_ID in issue_ids
+    assert monitor.ABANDONED_BATTLE_ISSUE_ID in payload["startGate"]["blockingIssueIds"]
+    assert payload["startGate"]["ready"] is False
 
 
 def test_runtime_python_uses_configured_override(monkeypatch):
@@ -144,6 +264,51 @@ def sustain_proof(*, account: str = "LEBOTJAMESXD00N", checked_at: datetime | No
     }
 
 
+def test_elo_sustain_proof_carries_live_profile_rating_without_satisfying_sustain(monkeypatch):
+    monkeypatch.setattr(monitor, "current_source_commit", lambda: "abc1234")
+    proof = sustain_proof(account="thepeakmons")
+    proof["sourceCommit"] = "abc1234"
+    proof["source"]["sourceCommit"] = "abc1234"
+    proof["games"] = [proof_game(0, rating=1153, team="fat-team-1-stall", result="win")]
+    proof["summary"].update(
+        {
+            "completedGames": 1,
+            "wins": 1,
+            "losses": 0,
+            "peakRating": 1153,
+            "finalRating": 1153,
+            "currentRating": 1197.25,
+            "currentRatingSource": "pokemonshowdown-user-api",
+            "liveProfileRating": 1197.25,
+            "passesTarget": False,
+            "sustainedTarget": False,
+            "sustainWindowGames": 0,
+            "gamesAtOrAboveFloor": 0,
+            "sustainProofComplete": False,
+            "teamCoverage": {team: 0 for team in monitor.SUSTAIN_REQUIRED_TEAMS},
+            "sustainReplayProofCount": 0,
+            "decisionTraceProofCount": 0,
+        }
+    )
+    proof["liveProfile"] = {
+        "status": "fetched",
+        "rating": 1197.25,
+        "checkedAtUtc": proof["checkedAtUtc"],
+    }
+
+    status = monitor.elo_sustain_proof_status(
+        proof,
+        lease={"status": "active", "account": "thepeakmons", "expiresAt": "2999-01-01T00:00:00+00:00"},
+        max_age_seconds=3600,
+        current_checkout_commit="abc1234",
+    )
+
+    assert status["ready"] is False
+    assert status["ratings"]["currentRating"] == 1197.25
+    assert status["ratings"]["summaryFinalRating"] == 1153
+    assert any("never reaches 1700" in blocker for blocker in status["blockers"])
+
+
 def accepted_offline_eval_resume_proof() -> dict:
     return {
         "policy": monitor.OFFLINE_EVAL_RESUME_PROOF_POLICY,
@@ -211,7 +376,8 @@ def failed_active_improvement_proof() -> dict:
         "status": "blocked",
         "blockers": [
             "active improvement proof status must be post-packet-eval-improving",
-            "active improvement proof must show positive performance or a reduced failure class",
+            "active improvement proof must show a positive aggregate performance signal",
+            "active improvement proof must show the packet failure class is reduced",
         ],
         "proofWindow": {
             "latestBattleAfterPacket": True,
@@ -327,6 +493,32 @@ def test_active_improvement_proof_status_accepts_current_improving_post_packet_e
     assert status["noRuntimeActions"] is True
 
 
+def test_active_improvement_proof_status_accepts_preserved_post_packet_eval():
+    proof = {
+        "schemaVersion": monitor.ACTIVE_IMPROVEMENT_PROOF_SCHEMA_VERSION,
+        "checkedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "status": "post-packet-eval-accepted",
+        "actionablePostPacketEval": True,
+        "runtimeMutationTouched": False,
+        "networkSendAllowed": False,
+        "packet": {"status": "implemented"},
+        "latestBattle": {"performanceImprovementVerified": True},
+        "proofWindow": {
+            "latestBattleAfterPacket": True,
+            "autoresearchCoversLatestBattle": True,
+            "preservationSatisfied": True,
+        },
+        "failureClass": {"status": "reduced"},
+        "evidenceIntegrity": {"ok": True},
+        "blockers": [],
+    }
+
+    status = monitor.active_improvement_proof_status(proof)
+
+    assert status["ready"] is True
+    assert status["status"] == "accepted"
+
+
 def test_active_improvement_proof_status_rejects_unresolved_or_shallow_packet_eval():
     proof = {
         "schemaVersion": monitor.ACTIVE_IMPROVEMENT_PROOF_SCHEMA_VERSION,
@@ -349,9 +541,34 @@ def test_active_improvement_proof_status_rejects_unresolved_or_shallow_packet_ev
     status = monitor.active_improvement_proof_status(proof)
 
     assert status["ready"] is False
-    assert any("post-packet-eval-improving" in blocker for blocker in status["blockers"])
+    assert any("post-packet-eval-improving or post-packet-eval-accepted" in blocker for blocker in status["blockers"])
     assert any("evidenceIntegrity.ok" in blocker for blocker in status["blockers"])
     assert any("stale" in blocker for blocker in status["blockers"])
+
+
+def test_active_improvement_proof_status_rejects_aggregate_gain_without_targeted_reduction():
+    proof = {
+        "schemaVersion": monitor.ACTIVE_IMPROVEMENT_PROOF_SCHEMA_VERSION,
+        "checkedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "status": "post-packet-eval-improving",
+        "actionablePostPacketEval": True,
+        "runtimeMutationTouched": False,
+        "networkSendAllowed": False,
+        "packet": {"status": "implemented"},
+        "latestBattle": {"performanceImprovementVerified": True},
+        "proofWindow": {
+            "latestBattleAfterPacket": True,
+            "autoresearchCoversLatestBattle": True,
+        },
+        "failureClass": {"status": "unresolved-with-fresh-evidence"},
+        "evidenceIntegrity": {"ok": True},
+        "blockers": [],
+    }
+
+    status = monitor.active_improvement_proof_status(proof)
+
+    assert status["ready"] is False
+    assert any("failure class is reduced" in blocker for blocker in status["blockers"])
 
 
 def test_classifies_completed_supervisor_idle_runtime_as_repairable(monkeypatch, tmp_path):
@@ -1221,7 +1438,7 @@ def test_recent_rating_truth_missing_opens_start_gate_blocker(monkeypatch, tmp_p
     assert "fouler-rating-truth-insufficient" in payload["startGate"]["blockingIssueIds"]
 
 
-def test_recent_rating_truth_requires_twenty_rated_decisive_battles(monkeypatch, tmp_path):
+def test_current_account_season_builds_twenty_rated_battles_without_stop_loss(monkeypatch, tmp_path):
     monkeypatch.setattr(monitor, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop")
     monkeypatch.setattr(monitor, "offline_eval_resume_proof_status", missing_offline_eval_resume_proof)
     health = {
@@ -1241,15 +1458,50 @@ def test_recent_rating_truth_requires_twenty_rated_decisive_battles(monkeypatch,
         low_win_rate_threshold=0.45,
         rating_drawdown_threshold=75.0,
         rating_drawdown_window=60,
+        account_season=active_account_season(),
     )
 
-    issue = next(item for item in payload["issues"] if item["id"] == "fouler-rating-truth-insufficient")
+    issue = next(item for item in payload["issues"] if item["id"] == monitor.RATING_TRUTH_BUILDING_ISSUE_ID)
     assert issue["evidence"]["ratedDecisiveBattles"] == 19
     assert issue["evidence"]["minimumRatedDecisiveBattles"] == 20
     assert issue["evidence"]["ratingCoverage"] == 1.0
     assert issue["evidence"]["ratingTruthReady"] is False
-    assert payload["sessionGovernance"]["allowLaddering"] is False
-    assert "fouler-rating-truth-insufficient" in payload["startGate"]["blockingIssueIds"]
+    assert issue["evidence"]["remainingRatedDecisiveBattles"] == 1
+    assert payload["sessionGovernance"]["allowLaddering"] is True
+    assert monitor.RATING_TRUTH_BUILDING_ISSUE_ID in payload["startGate"]["allowedOpenIssueIds"]
+    assert payload["startGate"]["ready"] is True
+
+
+def test_fresh_account_season_zero_battles_does_not_write_stop_loss(monkeypatch, tmp_path):
+    stop_file = tmp_path / "supervisor.stop"
+    monkeypatch.setattr(monitor, "SUPERVISOR_STOP_FILE", stop_file)
+    monkeypatch.setattr(monitor, "offline_eval_resume_proof_status", missing_offline_eval_resume_proof)
+
+    payload = monitor.classify_mission(
+        health={
+            "checkedAt": datetime.now(timezone.utc).isoformat(),
+            "running": False,
+            "readiness": {"runtimeReady": False},
+            "runtimeOwnership": {"battleRunnerProcessCount": 0, "duplicateBattleRunners": False},
+        },
+        supervisor={},
+        lease=active_lease(),
+        battles=[],
+        max_health_age_seconds=300,
+        loss_streak_threshold=5,
+        low_win_rate_threshold=0.45,
+        rating_drawdown_threshold=75.0,
+        rating_drawdown_window=60,
+        account_season=active_account_season(),
+    )
+
+    action = monitor.enforce_stop_loss_tripwire(payload, write=True)
+    issue_ids = {item["id"] for item in payload["issues"]}
+    assert monitor.RATING_TRUTH_BUILDING_ISSUE_ID in issue_ids
+    assert "fouler-rating-truth-insufficient" not in issue_ids
+    assert payload["sessionGovernance"]["stopLossBreached"] is False
+    assert action is None
+    assert not stop_file.exists()
 
 
 def test_no_refresh_flags_allow_read_only_classification():
@@ -1375,6 +1627,200 @@ def test_recent_rating_drawdown_opens_mission_issue(monkeypatch, tmp_path):
     assert packet["authority"]["streamKeyRequired"] is False
     assert packet["evidence"]["offlineEvalResumeProof"]["ready"] is False
     assert queue["noRuntimeActions"] is True
+
+
+def test_stop_loss_tripwire_writes_live_runner_and_supervisor_blocks(monkeypatch, tmp_path):
+    drain_file = tmp_path / "drain.request"
+    stop_file = tmp_path / "supervisor.stop"
+    marker_file = tmp_path / "recovery-proof-window.json"
+    monkeypatch.setattr(monitor, "DRAIN_FILE", drain_file)
+    monkeypatch.setattr(monitor, "SUPERVISOR_STOP_FILE", stop_file)
+    monkeypatch.setattr(monitor, "RECOVERY_PROOF_WINDOW_FILE", marker_file)
+    classification = {
+        "sessionGovernance": {
+            "stopLossBreached": True,
+            "blockingIssueIds": ["fouler-rating-drawdown"],
+        }
+    }
+
+    dry_run = monitor.enforce_stop_loss_tripwire(classification, write=False)
+
+    assert dry_run is not None
+    assert dry_run["dryRun"] is True
+    assert dry_run["written"] is False
+    assert dry_run["triggerIssueIds"] == ["fouler-rating-drawdown"]
+    assert not drain_file.exists()
+    assert not stop_file.exists()
+
+    written = monitor.enforce_stop_loss_tripwire(classification, write=True)
+
+    assert written is not None
+    assert written["dryRun"] is False
+    assert written["written"] is True
+    assert drain_file.exists()
+    assert stop_file.exists()
+    assert "fouler-rating-drawdown" in drain_file.read_text(encoding="utf-8")
+    assert "fouler-rating-drawdown" in stop_file.read_text(encoding="utf-8")
+
+
+def test_stop_loss_tripwire_suppressed_during_approved_recovery_proof_window(monkeypatch, tmp_path):
+    drain_file = tmp_path / "drain.request"
+    stop_file = tmp_path / "supervisor.stop"
+    marker_file = tmp_path / "recovery-proof-window.json"
+    monkeypatch.setattr(monitor, "DRAIN_FILE", drain_file)
+    monkeypatch.setattr(monitor, "SUPERVISOR_STOP_FILE", stop_file)
+    monkeypatch.setattr(monitor, "RECOVERY_PROOF_WINDOW_FILE", marker_file)
+    marker_file.write_text(
+        json.dumps(
+            {
+                "schemaVersion": "fouler-play-recovery-proof-window/v1",
+                "approved": True,
+                "purpose": "stop-loss-recovery-proof-window",
+                "launchedAtUtc": datetime.now(timezone.utc).isoformat(),
+                "expiresAtUtc": (datetime.now(timezone.utc) + timedelta(minutes=20)).isoformat(),
+                "runCount": 5,
+                "maxCycles": 1,
+                "maxConcurrentBattles": 1,
+                "loopBreak": "1",
+                "noStreamStart": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    classification = {
+        "sessionGovernance": {
+            "stopLossBreached": True,
+            "blockingIssueIds": ["fouler-rating-drawdown"],
+        }
+    }
+
+    action = monitor.enforce_stop_loss_tripwire(classification, write=True)
+
+    assert action is not None
+    assert action["action"] == "stop-loss-tripwire-suppressed-for-recovery-proof-window"
+    assert action["written"] is False
+    assert action["recoveryProofWindow"]["active"] is True
+    assert action["triggerIssueIds"] == ["fouler-rating-drawdown"]
+    assert not drain_file.exists()
+    assert not stop_file.exists()
+
+
+def test_recovery_proof_window_accepts_powershell_utf8_bom_marker(monkeypatch, tmp_path):
+    marker_file = tmp_path / "recovery-proof-window.json"
+    monkeypatch.setattr(monitor, "RECOVERY_PROOF_WINDOW_FILE", marker_file)
+    marker = {
+        "schemaVersion": "fouler-play-recovery-proof-window/v1",
+        "approved": True,
+        "purpose": "stop-loss-recovery-proof-window",
+        "launchedAtUtc": datetime.now(timezone.utc).isoformat(),
+        "expiresAtUtc": (datetime.now(timezone.utc) + timedelta(minutes=20)).isoformat(),
+        "runCount": 5,
+        "maxCycles": 1,
+        "maxConcurrentBattles": 1,
+        "loopBreak": "1",
+        "noStreamStart": True,
+    }
+    marker_file.write_bytes(("\ufeff" + json.dumps(marker)).encode("utf-8"))
+
+    status = monitor.recovery_proof_window_status()
+
+    assert status["active"] is True
+    assert status["blockers"] == []
+
+
+def test_stop_loss_tripwire_ignores_expired_recovery_proof_window(monkeypatch, tmp_path):
+    drain_file = tmp_path / "drain.request"
+    stop_file = tmp_path / "supervisor.stop"
+    marker_file = tmp_path / "recovery-proof-window.json"
+    monkeypatch.setattr(monitor, "DRAIN_FILE", drain_file)
+    monkeypatch.setattr(monitor, "SUPERVISOR_STOP_FILE", stop_file)
+    monkeypatch.setattr(monitor, "RECOVERY_PROOF_WINDOW_FILE", marker_file)
+    marker_file.write_text(
+        json.dumps(
+            {
+                "schemaVersion": "fouler-play-recovery-proof-window/v1",
+                "approved": True,
+                "purpose": "stop-loss-recovery-proof-window",
+                "launchedAtUtc": (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(),
+                "expiresAtUtc": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
+                "runCount": 5,
+                "maxCycles": 1,
+                "maxConcurrentBattles": 1,
+                "loopBreak": "1",
+                "noStreamStart": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    classification = {
+        "sessionGovernance": {
+            "stopLossBreached": True,
+            "blockingIssueIds": ["fouler-rating-drawdown"],
+        }
+    }
+
+    action = monitor.enforce_stop_loss_tripwire(classification, write=True)
+
+    assert action is not None
+    assert action["action"] == "enforce-stop-loss-tripwire"
+    assert action["written"] is True
+    assert drain_file.exists()
+    assert stop_file.exists()
+
+
+def test_build_payload_enforces_stop_loss_tripwire_before_runtime_repair(monkeypatch, tmp_path):
+    drain_file = tmp_path / ".pids" / "drain.request"
+    stop_file = tmp_path / ".pids" / "supervisor.stop"
+    marker_file = tmp_path / ".pids" / "recovery-proof-window.json"
+    monitor_file = tmp_path / "mission-monitor.json"
+    monkeypatch.setattr(monitor, "DRAIN_FILE", drain_file)
+    monkeypatch.setattr(monitor, "SUPERVISOR_STOP_FILE", stop_file)
+    monkeypatch.setattr(monitor, "RECOVERY_PROOF_WINDOW_FILE", marker_file)
+    monkeypatch.setattr(monitor, "MISSION_MONITOR_FILE", monitor_file)
+    monkeypatch.setattr(monitor, "refresh_health", lambda *, skip_http, write: {"ok": True})
+    monkeypatch.setattr(monitor, "supervisor_task_status", lambda: {"ok": True})
+    monkeypatch.setattr(monitor, "load_json", lambda path, default=None: default if default is not None else {})
+    monkeypatch.setattr(monitor, "read_battles", lambda: [])
+    monkeypatch.setattr(monitor, "write_tickets", lambda issues, *, source: [])
+    monkeypatch.setattr(monitor, "reconcile_cleared_tickets", lambda active_issue_ids, *, classification, source: [])
+    monkeypatch.setattr(monitor, "current_source_commit", lambda: "test-commit")
+    monkeypatch.setattr(monitor, "signal_freshness_status", lambda: {})
+    monkeypatch.setattr(monitor, "decision_divergence_status", lambda: {"status": "test"})
+
+    def fake_classify_mission(**kwargs):
+        stop_present = stop_file.exists()
+        issues = [{"id": "fouler-rating-drawdown"}]
+        if stop_present:
+            issues.append({"id": monitor.SUPERVISOR_STOP_FILE_ISSUE_ID})
+        return {
+            "issues": issues,
+            "runtimeIdle": True,
+            "runtimeLeaseActive": True,
+            "duplicateRunners": False,
+            "stopFilePresent": stop_present,
+            "sessionGovernance": {
+                "allowLaddering": False,
+                "decision": "pause-laddering",
+                "stopLossBreached": True,
+                "blockingIssueIds": ["fouler-rating-drawdown"],
+            },
+            "startGate": {
+                "ready": False,
+                "blockingIssueIds": ["fouler-rating-drawdown"],
+            },
+            "repairQueue": {"packetCount": 1},
+        }
+
+    monkeypatch.setattr(monitor, "classify_mission", fake_classify_mission)
+    args = monitor.parse_args(["--write", "--repair-runtime", "--no-refresh-health", "--no-refresh-health-after-repair"])
+
+    payload = monitor.build_payload(args)
+
+    assert drain_file.exists()
+    assert stop_file.exists()
+    assert payload["classification"]["stopFilePresent"] is True
+    assert any(action["action"] == "enforce-stop-loss-tripwire" and action["written"] is True for action in payload["actions"])
+    assert any(action["action"] == "repair-skipped" and action["reason"] == "supervisor stop file is present" for action in payload["actions"])
 
 
 def test_stop_loss_offline_eval_issue_clears_but_requires_active_improvement_proof(monkeypatch, tmp_path):

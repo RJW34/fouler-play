@@ -262,15 +262,16 @@ def test_health_payload_blocks_useful_work_when_runtime_and_offline_proof_are_ab
 
 
 def test_windows_obs_surface_task_status_classifies_stderr(tmp_path, monkeypatch):
-    script = tmp_path / "scripts" / "install_obs_server_task.ps1"
+    script = tmp_path / "scripts" / "install_obs_server_service.ps1"
     script.parent.mkdir(parents=True)
     script.write_text("# task", encoding="utf-8")
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     monkeypatch.setattr(devstream_health.os, "name", "nt")
-    monkeypatch.setattr(
-        devstream_health,
-        "run_command",
-        lambda command, timeout=4: SimpleNamespace(
+    commands = []
+
+    def fake_run_command(command, timeout=4):
+        commands.append(command)
+        return SimpleNamespace(
             returncode=0,
             stdout=json.dumps(
                 {
@@ -285,14 +286,80 @@ def test_windows_obs_surface_task_status_classifies_stderr(tmp_path, monkeypatch
                 }
             ),
             stderr="",
-        ),
-    )
+        )
 
-    status = devstream_health.obs_surface_task_status()
+    monkeypatch.setattr(devstream_health, "run_command", fake_run_command)
+
+    status = devstream_health.obs_surface_task_status(check_http=False)
 
     assert status["available"] is True
     assert status["port8777Listening"] is True
     assert status["stderrTailClass"]["classes"] == ["duplicate_guard_false_positive", "obs_ws_auth_failed"]
+    assert commands[0][-1] == "-SkipHttpProbe"
+
+
+def test_windows_health_children_do_not_share_the_service_console(monkeypatch):
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(devstream_health.subprocess, "run", fake_run)
+    monkeypatch.setattr(devstream_health, "_child_creation_flags", lambda: 0x08000000)
+
+    result = devstream_health.run_command(["probe.exe"], timeout=7)
+
+    assert result.returncode == 0
+    assert calls[0][1]["stdin"] is devstream_health.subprocess.DEVNULL
+    assert calls[0][1]["creationflags"] == 0x08000000
+    assert calls[0][1]["timeout"] == 7
+
+
+def test_http_handler_witness_skips_recursive_obs_health_probe(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    probed_ports = []
+    task_probe_modes = []
+
+    def fake_port_open(port, host="127.0.0.1"):
+        probed_ports.append(port)
+        return False
+
+    def fake_obs_surface_task_status(*, check_http=True):
+        task_probe_modes.append(check_http)
+        return {
+            "available": True,
+            "servicePresent": True,
+            "serviceState": "Running",
+            "managedPid": 1234,
+            "processCount": 1,
+            "port8777Listening": False,
+            "healthEndpointOk": None,
+            "healthProbeSkipped": True,
+            "lifecycleHealthy": False,
+            "stderrTailClass": {"classes": ["clean"], "summary": "clean"},
+        }
+
+    monkeypatch.setattr(devstream_health, "port_open", fake_port_open)
+    monkeypatch.setattr(devstream_health, "obs_surface_task_status", fake_obs_surface_task_status)
+    monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
+    monkeypatch.setattr(devstream_health, "recent_showdown_credential_failure", lambda root: {"found": False})
+    monkeypatch.setattr(devstream_health, "git_status", lambda: {"commit": "test", "dirty": False})
+    monkeypatch.setattr(devstream_health, "runtime_processes", lambda: [])
+
+    _write_json(tmp_path / "active_battles.json", {"battles": [], "count": 0})
+    _write_json(tmp_path / "stream_status.json", {"status": "Searching", "runtime_blocked": False})
+
+    payload = devstream_health.build_payload(check_http=False, http_handler_witness=True)
+
+    assert task_probe_modes == [False]
+    assert devstream_health.HTTP_PORT not in probed_ports
+    assert payload["ports"]["obsHttp"]["open"] is True
+    assert payload["ports"]["obsHttp"]["rawSocketOpen"] is True
+    assert payload["obsSurface"]["port8777Listening"] is True
+    assert payload["obsSurface"]["healthEndpointOk"] is True
+    assert payload["obsSurface"]["lifecycleHealthy"] is True
+    assert payload["obsSurface"]["healthWitness"] == "current-http-handler"
 
 
 def test_obs_task_port_reports_surface_running_without_claiming_battle_proof(tmp_path, monkeypatch):
@@ -661,6 +728,7 @@ def test_completed_cycle_proof_without_improvement_signal_is_not_handoff_ready(t
 
 def test_devstream_health_requires_three_public_battle_surfaces(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_health, "RUNTIME_LEASE_PATH", tmp_path / "devstream" / "truth" / "runtime-lease.json")
     monkeypatch.setattr(devstream_health, "port_open", lambda port, host="127.0.0.1": port == devstream_health.HTTP_PORT)
     monkeypatch.setattr(devstream_health, "systemctl_state", lambda unit: {"activeState": "unknown", "enabledState": "unknown", "active": False})
     monkeypatch.setattr(devstream_health, "fetch_endpoint", lambda path: {"url": path, "ok": True, "statusCode": 200, "json": {}})

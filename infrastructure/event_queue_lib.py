@@ -126,22 +126,76 @@ def _battle_result_key(fields: dict) -> str:
 def _read_queue_locked(f) -> list:
     """Read queue from an already-locked file handle."""
     f.seek(0)
-    raw = f.read().strip()
-    if not raw:
+    raw = f.read()
+    if not raw.strip():
         return []
     try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        logger.error("Corrupt queue file, resetting")
+        events = json.loads(raw)
+        return events if isinstance(events, list) else []
+    except json.JSONDecodeError as exc:
+        logger.error("Corrupt queue file, quarantining and attempting backup recovery: %s", exc)
+        _quarantine_corrupt_queue(raw)
+        recovered = _read_queue_backup()
+        if recovered is not None:
+            logger.warning("Recovered queue from last-good backup after corrupt live queue read")
+            return recovered
         return []
 
 
 def _write_queue_locked(f, events: list):
     """Write queue to an already-locked file handle."""
+    encoded = json.dumps(events, indent=2) + "\n"
     f.seek(0)
     f.truncate()
-    json.dump(events, f, indent=2)
+    f.write(encoded)
     f.flush()
+    try:
+        os.fsync(f.fileno())
+    except OSError as exc:
+        logger.warning("Failed to fsync queue file %s: %s", QUEUE_FILE, exc)
+    _write_queue_backup(encoded)
+
+
+def _queue_backup_file() -> Path:
+    return QUEUE_FILE.with_name(f"{QUEUE_FILE.name}.bak")
+
+
+def _write_queue_backup(encoded: str) -> None:
+    path = _queue_backup_file()
+    tmp = path.with_name(f"{path.name}.tmp-{uuid.uuid4().hex[:8]}")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp.write_text(encoded, encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError as exc:
+        logger.warning("Failed to update queue backup %s: %s", path, exc)
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _read_queue_backup() -> list | None:
+    path = _queue_backup_file()
+    try:
+        raw = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    try:
+        events = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return events if isinstance(events, list) else None
+
+
+def _quarantine_corrupt_queue(raw: str) -> None:
+    if not raw:
+        return
+    path = QUEUE_FILE.with_name(f"{QUEUE_FILE.name}.corrupt-{_utc_stamp()}")
+    try:
+        path.write_text(raw, encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Failed to quarantine corrupt queue %s: %s", path, exc)
 
 
 def _utc_stamp(now: float | None = None) -> str:

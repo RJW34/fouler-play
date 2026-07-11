@@ -574,7 +574,7 @@ def _queue_operational_loss_battle_result(
 # We match the "rating: OLD -> NEW" part here, then attribute it to a player by
 # inspecting the text that precedes the match (see parse_rating_transition).
 _RATING_TRANSITION_RE = re.compile(
-    r"rating:\s*(\d+)\s*(?:&rarr;|&#8594;|â†’|->|&gt;)\s*(?:<[^>]+>\s*)*(\d+)",
+    r"rating:\s*(\d+)\s*(?:&rarr;|&#8594;|\u2192|->|&gt;)\s*(?:<[^>]+>\s*)*(\d+)",
     re.IGNORECASE,
 )
 
@@ -1034,32 +1034,15 @@ async def _post_battle_to_discord(
 
     if battle_result_event_queue_enabled():
         logger.info(
-            "Skipping legacy direct Discord battle post for %s; structured event queue owns battle reports",
+            "Structured event queue owns the DEKU Discord report for %s",
             battle_tag,
         )
-        return elo_after
-
-    webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL")
-    if not webhook_url:
-        logger.debug("DISCORD_BATTLES_WEBHOOK_URL not configured, skipping Discord post")
-        return elo_after
-
-    # Send to Discord via the battles webhook only.
-    # Battle results are also queued elsewhere in the monitor/event system;
-    # direct mirroring here creates duplicate project-channel posts when the
-    # webhook already targets that same channel or when queued backlog flushes later.
-    try:
-        async with aiohttp.ClientSession() as session:
-            payload = {"content": message}
-            async with session.post(webhook_url, json=payload, timeout=aiohttp.ClientTimeout(total=5)) as resp:
-                if resp.status == 204:
-                    logger.info(f"Posted battle result to Discord: {result_word} vs {opponent_name} (ELO: {elo_after})")
-                else:
-                    logger.warning(f"Discord webhook returned status {resp.status}")
-    except asyncio.TimeoutError:
-        logger.warning("Discord webhook post timed out")
-    except Exception as e:
-        logger.warning(f"Failed to post to Discord webhook: {e}")
+    else:
+        logger.warning(
+            "Battle result queue is disabled for %s; withholding Discord delivery instead of "
+            "bypassing the DEKU authority path",
+            battle_tag,
+        )
     return elo_after
 
 
@@ -3912,4 +3895,3 @@ async def pokemon_battle(
             battle_tag,
             send_end_event=not battle_end_event_sent,
         )
-

@@ -843,7 +843,7 @@ def main():
         help="Disable the decision loop-breaker in the fouler arm (sets "
              "FOULER_LOOP_BREAK=0 so break_repeated_decision is a no-op and the "
              "search policy is trusted). Candidate arm for the 2026-07-04 "
-             "loop-breaker A/B: trace audit showed the breaker caused 94% of "
+             "loop-breaker A/B: trace audit showed the breaker caused 94%% of "
              "played-vs-policy inversions on stall teams. Recorded in the "
              "result JSON via extra_env.",
     )

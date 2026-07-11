@@ -284,6 +284,402 @@ def test_cmd_cleanup_stale_truth_archives_stale_stream_status_without_starting(t
     assert started == []
 
 
+def test_recover_abandoned_battle_results_from_backups_appends_operational_loss(tmp_path, monkeypatch):
+    backup_dir = tmp_path / "devstream" / "truth" / "stale-active-battles-backups"
+    backup_dir.mkdir(parents=True)
+    stats = tmp_path / "battle_stats.json"
+    stats.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-1",
+                        "timestamp": "2000-01-01T00:00:00+00:00",
+                        "team_file": "fat-team-2-balance",
+                        "result": "loss",
+                        "replay_id": "battle-gen9ou-1",
+                        "rating": None,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    backup = backup_dir / "active_battles-20260705T163311Z.json"
+    backup.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "id": "battle-gen9ou-2644396893",
+                        "opponent": "drafalgus",
+                        "url": "https://play.pokemonshowdown.com/battle-gen9ou-2644396893",
+                        "started": "2026-07-05T12:20:47.795584",
+                        "status": "active",
+                    }
+                ],
+                "updated": "2026-07-05T12:30:31.652897",
+            }
+        ),
+        encoding="utf-8",
+    )
+    new = time.time() + 60
+    os.utime(backup, (new, new))
+
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+
+    payload = devstream_session.recover_abandoned_battle_results_from_backups(
+        execute=True,
+        backup_dir=backup_dir,
+        battle_stats_file=stats,
+    )
+
+    battles = json.loads(stats.read_text(encoding="utf-8"))["battles"]
+    recovered = battles[-1]
+    assert payload["recovered"] is True
+    assert payload["rowsAdded"] == 1
+    assert payload["battleIds"] == ["battle-gen9ou-2644396893"]
+    assert recovered["battle_id"] == "battle-gen9ou-2644396893"
+    assert recovered["result"] == "loss"
+    assert recovered["operational_loss"] is True
+    assert recovered["outcome_detail"] == "abandoned-active-battle-without-result"
+    assert recovered["opponent"] == "drafalgus"
+    assert recovered["battle_url"].endswith("battle-gen9ou-2644396893")
+
+    second = devstream_session.recover_abandoned_battle_results_from_backups(
+        execute=True,
+        backup_dir=backup_dir,
+        battle_stats_file=stats,
+    )
+    assert second["rowsAdded"] == 0
+    assert len(json.loads(stats.read_text(encoding="utf-8"))["battles"]) == 2
+
+
+def test_recover_completed_battle_results_from_logs_appends_authoritative_row(tmp_path):
+    stats = tmp_path / "battle_stats.json"
+    stats.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-1",
+                        "timestamp": "2000-01-01T00:00:00+00:00",
+                        "team_file": "fat-team-2-balance",
+                        "result": "loss",
+                        "replay_id": "battle-gen9ou-1",
+                        "rating": 1153,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    log = log_dir / "battle-gen9ou-2644412138_OUBot2BeepBoop.log"
+    log.write_text(
+        "\n".join(
+            [
+                "|player|p2|thepeakmons|1|1145",
+                "INFO Battle finished: battle-gen9ou-2644412138 Winner: OUBot2BeepBoop",
+                "INFO Captured authoritative rating transition for battle-gen9ou-2644412138: 1145 -> 1124 (-21)",
+                "INFO Replay saved: https://replay.pokemonshowdown.com/gen9ou-2644412138",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    os.utime(log, (time.time() + 60, time.time() + 60))
+
+    replay_dir = tmp_path / "replay_analysis"
+    replay_dir.mkdir()
+    replay = replay_dir / "gen9ou-2644412138.json"
+    replay.write_text(
+        json.dumps(
+            {
+                "log": [
+                    "|player|p1|OUBot2BeepBoop|",
+                    "|player|p2|thepeakmons|",
+                    "|poke|p2|Gliscor, M|",
+                    "|poke|p2|Gholdengo|",
+                    "|poke|p2|Zamazenta|",
+                    "|poke|p2|Blissey, F|",
+                    "|poke|p2|Skarmory, F|",
+                    "|poke|p2|Pecharunt|",
+                    "|win|OUBot2BeepBoop",
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    teams_dir = tmp_path / "teams"
+    team_path = teams_dir / "gen9" / "ou" / "fat-team-1-stall"
+    team_path.parent.mkdir(parents=True)
+    team_path.write_text(
+        "\n".join(
+            [
+                "Gliscor @ Toxic Orb",
+                "Gholdengo @ Air Balloon",
+                "Zamazenta @ Leftovers",
+                "Blissey @ Heavy-Duty Boots",
+                "Skarmory @ Rocky Helmet",
+                "Pecharunt @ Heavy-Duty Boots",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    payload = devstream_session.recover_completed_battle_results_from_logs(
+        execute=True,
+        log_dir=log_dir,
+        battle_stats_file=stats,
+        account="thepeakmons",
+        replay_dir=replay_dir,
+        teams_dir=teams_dir,
+    )
+
+    battles = json.loads(stats.read_text(encoding="utf-8"))["battles"]
+    recovered = battles[-1]
+    assert payload["recovered"] is True
+    assert payload["rowsAdded"] == 1
+    assert payload["battleIds"] == ["battle-gen9ou-2644412138"]
+    assert recovered["battle_id"] == "battle-gen9ou-2644412138"
+    assert recovered["result"] == "loss"
+    assert recovered["team_file"] == "gen9/ou/fat-team-1-stall"
+    assert recovered["opponent"] == "OUBot2BeepBoop"
+    assert recovered["rating"] == 1124
+    assert recovered["elo_before"] == 1145
+    assert recovered["elo_after"] == 1124
+    assert recovered["rating_delta"] == -21
+    assert recovered["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2644412138"
+    assert recovered["account"] == "thepeakmons"
+
+    second = devstream_session.recover_completed_battle_results_from_logs(
+        execute=True,
+        log_dir=log_dir,
+        battle_stats_file=stats,
+        account="thepeakmons",
+        replay_dir=replay_dir,
+        teams_dir=teams_dir,
+    )
+    assert second["rowsAdded"] == 0
+    assert len(json.loads(stats.read_text(encoding="utf-8"))["battles"]) == 2
+
+
+def test_recover_completed_battle_results_from_logs_enriches_existing_sparse_row(tmp_path):
+    stats = tmp_path / "battle_stats.json"
+    stats.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-2644424166",
+                        "timestamp": "2026-07-05T17:32:25.828231+00:00",
+                        "team_file": "fat-team-2-balance",
+                        "result": "loss",
+                        "replay_id": "battle-gen9ou-2644424166",
+                        "rating": None,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    log = log_dir / "battle-gen9ou-2644424166_jzjzjzjzjs.log"
+    log.write_text(
+        "\n".join(
+            [
+                "|player|p2|thepeakmons|1|1124",
+                "INFO Battle finished: battle-gen9ou-2644424166 Winner: jzjzjzjzjs",
+                "INFO Captured authoritative rating transition for battle-gen9ou-2644424166: 1124 -> 1097 (-27)",
+                "INFO Replay saved: https://replay.pokemonshowdown.com/gen9ou-2644424166",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    payload = devstream_session.recover_completed_battle_results_from_logs(
+        execute=True,
+        log_dir=log_dir,
+        battle_stats_file=stats,
+        account="thepeakmons",
+    )
+
+    battles = json.loads(stats.read_text(encoding="utf-8"))["battles"]
+    recovered = battles[0]
+    assert payload["rowsAdded"] == 0
+    assert payload["rowsUpdated"] == 1
+    assert payload["updatedBattleIds"] == ["battle-gen9ou-2644424166"]
+    assert len(battles) == 1
+    assert recovered["rating"] == 1097
+    assert recovered["elo_before"] == 1124
+    assert recovered["elo_after"] == 1097
+    assert recovered["rating_delta"] == -27
+    assert recovered["replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2644424166"
+    assert recovered["result_enriched_from_log"] is True
+
+
+def test_recover_completed_battle_results_rejects_retired_account_log(tmp_path):
+    stats = tmp_path / "battle_stats.json"
+    stats.write_text('{"battles": []}', encoding="utf-8")
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / "battle-gen9ou-2644396893_drafalgus.log").write_text(
+        "\n".join(
+            [
+                "|player|p1|thepeakmons|1|1177",
+                "|player|p2|drafalgus|1|1204",
+                "INFO Battle finished: battle-gen9ou-2644396893 Winner: drafalgus",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    payload = devstream_session.recover_completed_battle_results_from_logs(
+        execute=True,
+        log_dir=log_dir,
+        battle_stats_file=stats,
+        account="DekuFoulerLab",
+        season_id="dekufoulerlab-gen9ou-20260710",
+    )
+
+    assert payload["rowsAdded"] == 0
+    assert payload["rowsUpdated"] == 0
+    assert json.loads(stats.read_text(encoding="utf-8"))["battles"] == []
+
+
+def test_recover_completed_battle_results_repairs_self_attributed_opponent(tmp_path):
+    stats = tmp_path / "battle_stats.json"
+    stats.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-2647386310-token",
+                        "timestamp": "2026-07-11T02:55:38+00:00",
+                        "team_file": "fat-team-2-balance",
+                        "result": "win",
+                        "winner": "DekuFoulerLab",
+                        "opponent": "DekuFoulerLab",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    (log_dir / "battle-gen9ou-2647386310-token_dbdhkkb.log").write_text(
+        "\n".join(
+            [
+                "INFO Battle finished: battle-gen9ou-2647386310-token Winner: DekuFoulerLab",
+                "INFO Replay saved: https://replay.pokemonshowdown.com/gen9ou-2647386310-token",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    payload = devstream_session.recover_completed_battle_results_from_logs(
+        execute=True,
+        log_dir=log_dir,
+        battle_stats_file=stats,
+        account="DekuFoulerLab",
+    )
+
+    recovered = json.loads(stats.read_text(encoding="utf-8"))["battles"][0]
+    assert payload["rowsUpdated"] == 1
+    assert recovered["opponent"] == "dbdhkkb"
+    assert recovered["result_enriched_from_log"] is True
+
+
+def test_cmd_cleanup_stale_truth_recovers_abandoned_active_battle_result_without_starting(
+    tmp_path, monkeypatch, capsys
+):
+    active = tmp_path / "active_battles.json"
+    active.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "id": "battle-gen9ou-2644396893",
+                        "opponent": "drafalgus",
+                        "url": "https://play.pokemonshowdown.com/battle-gen9ou-2644396893",
+                        "started": "2026-07-05T12:20:47.795584",
+                        "status": "active",
+                    }
+                ],
+                "count": 1,
+                "updated": "2026-07-05T12:30:31.652897",
+            }
+        ),
+        encoding="utf-8",
+    )
+    old = time.time() - 90000
+    os.utime(active, (old, old))
+    stats = tmp_path / "battle_stats.json"
+    stats.write_text(
+        json.dumps(
+            {
+                "battles": [
+                    {
+                        "battle_id": "battle-gen9ou-1",
+                        "timestamp": "2000-01-01T00:00:00+00:00",
+                        "team_file": "fat-team-2-balance",
+                        "result": "loss",
+                        "replay_id": "battle-gen9ou-1",
+                        "rating": None,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    started = []
+
+    monkeypatch.setattr(devstream_session, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_session, "STREAM_STATUS_FILE", tmp_path / "stream_status.json")
+    monkeypatch.setattr(devstream_session, "BATTLE_STATS_FILE", stats)
+    monkeypatch.setattr(
+        devstream_session,
+        "STALE_BATTLE_BACKUP_DIR",
+        tmp_path / "devstream" / "truth" / "stale-active-battles-backups",
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "STALE_STREAM_STATUS_BACKUP_DIR",
+        tmp_path / "devstream" / "truth" / "stream-backups",
+    )
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "start_process", lambda *args, **kwargs: started.append(args) or {"pid": 1})
+    runtime_lease = write_runtime_lease(
+        tmp_path / "runtime-lease.json",
+        allowed_purposes=[devstream_session.STALE_TRUTH_CLEANUP_PURPOSE],
+    )
+
+    args = argparse.Namespace(
+        runtime_lease=str(runtime_lease),
+        stale_after_seconds=180,
+        stream_stale_after_seconds=180,
+        execute=True,
+    )
+
+    assert devstream_session.cmd_cleanup_stale_truth(args) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    recovered = payload["abandonedBattleResultRecovery"]
+    battles = json.loads(stats.read_text(encoding="utf-8"))["battles"]
+    assert payload["activeBattleCleanup"]["cleared"] is True
+    assert recovered["rowsAdded"] == 1
+    assert recovered["battleIds"] == ["battle-gen9ou-2644396893"]
+    assert battles[-1]["battle_id"] == "battle-gen9ou-2644396893"
+    assert battles[-1]["operational_loss"] is True
+    assert json.loads(active.read_text(encoding="utf-8"))["battles"] == []
+    assert started == []
+
+
 def test_cmd_cleanup_stale_truth_dry_run_reports_stream_plan_without_mutation(tmp_path, monkeypatch, capsys):
     stream = tmp_path / "stream_status.json"
     original = {"status": "Searching", "streaming": False, "stream_pid": None}
@@ -551,6 +947,26 @@ def test_start_process_rejects_conflicting_battle_runner_owners_without_spawning
     assert payload["distinctPids"] == [1111, 2222]
 
 
+def test_bounded_session_command_wraps_run_py_for_truthful_idle_completion(monkeypatch):
+    monkeypatch.setattr(devstream_session, "runtime_python", lambda: "python")
+    command = devstream_session.shell_command_for_session(
+        1,
+        1,
+        {
+            "PS_USERNAME": "DekuFoulerLab",
+            "PS_BOT_MODE": "search_ladder",
+            "PS_FORMAT": "gen9ou",
+            "TEAM_NAMES": "gen9/ou/fat-team-2-balance",
+        },
+    )
+
+    assert command[:3] == ["python", "scripts/run_bounded_battle_session.py", "--"]
+    assert command[3:5] == ["python", "run.py"]
+    assert command[command.index("--run-count") + 1] == "1"
+    assert command[command.index("--max-concurrent-battles") + 1] == "1"
+    assert "DekuFoulerLab" in command
+
+
 def test_terminate_battle_runners_covers_all_known_pid_files(tmp_path, monkeypatch):
     bot_pid = tmp_path / ".bot.pid"
     session_pid = tmp_path / ".pids" / "devstream_battle_session.pid"
@@ -596,6 +1012,33 @@ def test_start_process_adopts_existing_matching_process_without_spawning(tmp_pat
     parsed = json.loads(pid_file.read_text(encoding="utf-8"))
     assert parsed["pid"] == 42208
     assert parsed["previousPid"] == 32900
+
+
+def test_start_process_adopts_healthy_obs_endpoint_owned_by_external_service(tmp_path, monkeypatch):
+    pid_file = tmp_path / ".pids" / "devstream_obs_http.pid"
+    pid_file.parent.mkdir(parents=True)
+    pid_file.write_text('{"pid": 6288}\n', encoding="utf-8")
+    command = ["python", "streaming/serve_obs_page.py"]
+
+    monkeypatch.setattr(devstream_session, "PID_DIR", pid_file.parent)
+    monkeypatch.setattr(devstream_session, "pid_alive", lambda path: (False, 6288))
+    monkeypatch.setattr(devstream_session, "_find_existing_process", lambda cmd: None)
+    monkeypatch.setattr(devstream_session, "obs_http_ready", lambda: True)
+
+    def fail_spawn(*args, **kwargs):
+        raise AssertionError("should not spawn over a healthy service-owned OBS endpoint")
+
+    monkeypatch.setattr(devstream_session.subprocess, "Popen", fail_spawn)
+
+    payload = devstream_session.start_process(command, pid_file, {})
+
+    assert payload["alreadyRunning"] is True
+    assert payload["pid"] is None
+    assert payload["previousPid"] == 6288
+    assert payload["adoptedHealthyEndpoint"] is True
+    assert payload["externalLifecycleOwner"] is True
+    assert payload["removedStalePidFile"] is True
+    assert not pid_file.exists()
 
 
 def test_start_process_refuses_stale_obs_http_adoption(tmp_path, monkeypatch):
@@ -1256,6 +1699,35 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
     assert "--continuous" not in commands[2]
 
 
+def test_run_supervisor_cycle_waits_for_result_persistence_grace(monkeypatch):
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: True)
+    monkeypatch.setattr(
+        devstream_session,
+        "idle_battle_runner_recovery_candidate",
+        lambda stale_after_seconds: {"shouldRecover": True, "staleAfterSeconds": stale_after_seconds},
+    )
+    monkeypatch.setattr(devstream_session, "active_battles_age_seconds", lambda: 5.0)
+    monkeypatch.setattr(devstream_session, "RESULT_PERSISTENCE_GRACE_SECONDS", 90)
+
+    def fail_recovery(*args, **kwargs):
+        raise AssertionError("stale runtime recovery must wait for result persistence grace")
+
+    monkeypatch.setattr(devstream_session, "recover_stale_battle_runtime", fail_recovery)
+
+    args = argparse.Namespace(
+        run_count=5,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=180,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1, start_next=False)
+
+    assert payload["state"] == "result-persistence-grace"
+    assert payload["resultPersistenceGrace"]["activeBattleTruthAgeSeconds"] == 5.0
+    assert payload["startNextBattleSession"] is False
+
+
 def test_supervisor_cycle_caps_legacy_unbounded_run_count(monkeypatch):
     commands = []
 
@@ -1669,6 +2141,11 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
     monkeypatch.setattr(devstream_session, "write_pid_value", lambda *args, **kwargs: None)
     monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(devstream_session, "supervisor_runtime_state", lambda: next(runtime_states))
+    monkeypatch.setattr(
+        devstream_session,
+        "idle_battle_runner_recovery_candidate",
+        lambda stale_after_seconds: {"shouldRecover": False},
+    )
 
     def fake_write_status(payload):
         statuses.append(json.loads(json.dumps(payload)))
@@ -1723,6 +2200,94 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
     assert final["bounds"]["maxCyclesSemantics"] == "completed bounded learning cycles, not supervisor polling heartbeats"
     assert final["lastCycle"]["learningCycleCompleted"] is True
     assert final["lastCycle"]["completedLearningCycles"] == 1
+
+
+def test_cmd_supervise_does_not_start_next_after_final_stale_idle_recovery(tmp_path, monkeypatch):
+    statuses = []
+    start_next_flags = []
+    runtime_states = iter(
+        [
+            {"activeBattleCount": 0, "battleRunnerAlive": False, "inFlight": False},
+            {"activeBattleCount": 1, "battleRunnerAlive": True, "inFlight": True},
+            {"activeBattleCount": 0, "battleRunnerAlive": True, "inFlight": True},
+        ]
+    )
+    idle_recovery_states = iter(
+        [
+            {"shouldRecover": False},
+            {"shouldRecover": False},
+            {"shouldRecover": True},
+        ]
+    )
+
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_PID_FILE", tmp_path / "supervisor.pid")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(devstream_session, "runtime_lease_guard", lambda **kwargs: {"ok": True})
+    monkeypatch.setattr(devstream_session, "write_pid_value", lambda *args, **kwargs: None)
+    monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(devstream_session, "supervisor_runtime_state", lambda: next(runtime_states))
+    monkeypatch.setattr(
+        devstream_session,
+        "idle_battle_runner_recovery_candidate",
+        lambda stale_after_seconds: next(idle_recovery_states),
+    )
+
+    def fake_write_status(payload):
+        statuses.append(json.loads(json.dumps(payload)))
+
+    def fake_cycle(args, cycle_index, *, start_next=True):
+        start_next_flags.append(start_next)
+        if cycle_index == 1:
+            return {
+                "state": "idle-restoring-runtime",
+                "proofRefreshed": True,
+                "battleRunnerAliveAfter": True,
+                "activeBattleCountAfter": 0,
+            }
+        if cycle_index == 2:
+            return {
+                "state": "battle-cycle-in-flight",
+                "proofRefreshed": False,
+            }
+        if cycle_index == 3:
+            return {
+                "state": "idle-restoring-runtime",
+                "proofRefreshed": True,
+                "staleBattleRuntimeRecovery": {"recovered": True},
+                "battleRunnerAliveAfter": False,
+                "activeBattleCountAfter": 0,
+            }
+        raise AssertionError("supervisor should stop after stale idle runner completes the final cycle")
+
+    monkeypatch.setattr(devstream_session, "write_supervisor_status", fake_write_status)
+    monkeypatch.setattr(devstream_session, "run_supervisor_cycle", fake_cycle)
+
+    args = argparse.Namespace(
+        run_count=1,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=1,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(tmp_path / "runtime-lease.json"),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 0
+
+    assert start_next_flags == [True, True, False]
+    final = statuses[-1]
+    assert final["state"] == "completed-max-cycles"
+    assert final["completedLearningCycles"] == 1
+    assert final["lastCycle"]["learningCycleCompleted"] is True
+    assert final["lastCycle"]["staleBattleRuntimeRecovery"]["recovered"] is True
 
 
 def test_supervisor_process_identity_requires_supervise_subcommand():

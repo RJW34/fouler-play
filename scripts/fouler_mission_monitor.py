@@ -30,9 +30,15 @@ SUPERVISOR_STATUS_FILE = TRUTH_DIR / "supervisor-status.json"
 RUNTIME_LEASE_FILE = TRUTH_DIR / "runtime-lease.json"
 LATEST_ELO_PROOF_FILE = TRUTH_DIR / "latest-elo-proof.json"
 ACTIVE_IMPROVEMENT_PROOF_FILE = TRUTH_DIR / "post-packet-eval.json"
+ACCOUNT_SEASON_FILE = TRUTH_DIR / "account-season.json"
 BATTLE_STATS_FILE = ROOT / "battle_stats.json"
+STALE_ACTIVE_BATTLE_BACKUP_DIR = TRUTH_DIR / "stale-active-battles-backups"
+DRAIN_FILE = ROOT / ".pids" / "drain.request"
 SUPERVISOR_STOP_FILE = ROOT / ".pids" / "supervisor.stop"
+RECOVERY_PROOF_WINDOW_FILE = ROOT / ".pids" / "recovery-proof-window.json"
 SUPERVISOR_STOP_FILE_ISSUE_ID = "fouler-supervisor-stop-file-present"
+ABANDONED_BATTLE_ISSUE_ID = "fouler-abandoned-battle-without-result"
+RATING_TRUTH_BUILDING_ISSUE_ID = "fouler-rating-truth-building"
 LOGS_DIR = ROOT / "logs"
 BATTLE_LOG_GLOB = "battle-*.log"
 SESSION_LOG_NAME = "init.log"
@@ -47,7 +53,7 @@ LIVE_SIGNAL_MAX_BATTLE_LOG_AGE_SECONDS = 3600
 SIGNAL_STATE_LIVE = "LIVE"
 SIGNAL_STATE_STALE = "STALE — bot not playing; do not trust gauges"
 
-DEFAULT_ACCOUNT = "LEBOTJAMESXD00N"
+DEFAULT_ACCOUNT = ""
 CANONICAL_TARGET_RATING = 1700
 DEFAULT_MONITOR_RUN_COUNT = 5
 DEFAULT_MONITOR_MAX_CYCLES = 1
@@ -118,12 +124,14 @@ LOSS_WORDS = {"loss", "lost", "timeout", "timed out", "disconnect", "disconnecte
 WIN_WORDS = {"win", "won"}
 KNOWN_ISSUE_IDS = {
     "fouler-health-stale",
+    ABANDONED_BATTLE_ISSUE_ID,
     "fouler-duplicate-ladder-runners",
     "fouler-runtime-idle",
     "fouler-supervisor-max-cycles-complete",
     "fouler-discord-reporting-unhealthy",
     "fouler-loss-streak",
     "fouler-low-recent-win-rate",
+    RATING_TRUTH_BUILDING_ISSUE_ID,
     "fouler-rating-truth-insufficient",
     "fouler-rating-drawdown",
     "fouler-elo-target-floor-breach",
@@ -148,6 +156,7 @@ SESSION_STOP_LOSS_ISSUE_IDS = {
 }
 START_GATE_BLOCKING_ISSUE_IDS = {
     "fouler-health-stale",
+    ABANDONED_BATTLE_ISSUE_ID,
     "fouler-duplicate-ladder-runners",
     "fouler-discord-reporting-unhealthy",
     "fouler-loss-streak",
@@ -209,9 +218,80 @@ def age_seconds(value: object, *, now: datetime | None = None) -> float | None:
     return max(0.0, (now - parsed).total_seconds())
 
 
+def recovery_proof_window_status(now: datetime | None = None) -> dict[str, Any]:
+    """Describe the one bounded stop-loss recovery proof window, if present."""
+
+    now = now or datetime.now(timezone.utc)
+    marker = load_json(RECOVERY_PROOF_WINDOW_FILE, {})
+    path = display_path(RECOVERY_PROOF_WINDOW_FILE)
+    if not isinstance(marker, dict) or not marker:
+        return {
+            "schemaVersion": "fouler-play-recovery-proof-window-status/v1",
+            "active": False,
+            "path": path,
+            "reason": "missing",
+            "noRuntimeActions": True,
+        }
+
+    blockers: list[str] = []
+    if marker.get("approved") is not True:
+        blockers.append("approved must be true")
+    if str(marker.get("purpose") or "") != "stop-loss-recovery-proof-window":
+        blockers.append("purpose must be stop-loss-recovery-proof-window")
+
+    try:
+        run_count = int(marker.get("runCount") or 0)
+    except (TypeError, ValueError):
+        run_count = 0
+    try:
+        max_cycles = int(marker.get("maxCycles") or 0)
+    except (TypeError, ValueError):
+        max_cycles = 0
+    try:
+        max_concurrent_battles = int(marker.get("maxConcurrentBattles") or 0)
+    except (TypeError, ValueError):
+        max_concurrent_battles = 0
+
+    if run_count < 1 or run_count > STOP_LOSS_RECOVERY_VALIDATION_MAX_RUN_COUNT:
+        blockers.append(
+            f"runCount must be 1-{STOP_LOSS_RECOVERY_VALIDATION_MAX_RUN_COUNT}; got {run_count}"
+        )
+    if max_cycles < 1 or max_cycles > STOP_LOSS_RECOVERY_VALIDATION_MAX_CYCLES:
+        blockers.append(
+            f"maxCycles must be 1-{STOP_LOSS_RECOVERY_VALIDATION_MAX_CYCLES}; got {max_cycles}"
+        )
+    if max_concurrent_battles != 1:
+        blockers.append("maxConcurrentBattles must be 1")
+    if str(marker.get("loopBreak") or "") != "1":
+        blockers.append("loopBreak must be 1")
+    if marker.get("noStreamStart") is not True:
+        blockers.append("noStreamStart must be true")
+
+    launched_at = parse_timestamp(marker.get("launchedAtUtc") or marker.get("createdAtUtc"))
+    expires_at = parse_timestamp(marker.get("expiresAtUtc") or marker.get("expiresAt"))
+    if expires_at is None:
+        blockers.append("expiresAtUtc missing/invalid")
+    elif expires_at <= now:
+        blockers.append("expired")
+
+    return {
+        "schemaVersion": "fouler-play-recovery-proof-window-status/v1",
+        "active": not blockers,
+        "path": path,
+        "marker": marker,
+        "blockers": blockers,
+        "runCount": run_count,
+        "maxCycles": max_cycles,
+        "maxConcurrentBattles": max_concurrent_battles,
+        "launchedAtUtc": launched_at.isoformat() if launched_at else None,
+        "expiresAtUtc": expires_at.isoformat() if expires_at else None,
+        "noRuntimeActions": True,
+    }
+
+
 def load_json(path: Path, default: Any) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     except Exception:
         return default
 
@@ -553,6 +633,120 @@ def read_battles(path: Path = BATTLE_STATS_FILE) -> list[dict[str, Any]]:
     else:
         rows = []
     return [dict(row) for row in rows if isinstance(row, dict)]
+
+
+def battle_identity_set(battles: list[dict[str, Any]]) -> set[str]:
+    identities: set[str] = set()
+    for row in battles:
+        for key in ("battle_id", "battleId", "replay_id", "battle_tag", "id"):
+            value = str(row.get(key) or "").strip()
+            if value:
+                identities.add(value)
+    return identities
+
+
+def newest_battle_stats_time(battles: list[dict[str, Any]]) -> datetime | None:
+    newest: datetime | None = None
+    for row in battles:
+        parsed = parse_timestamp(row.get("timestamp") or row.get("updated") or row.get("endedAt"))
+        if parsed is None:
+            continue
+        if newest is None or parsed > newest:
+            newest = parsed
+    return newest
+
+
+def abandoned_battle_cleanup_status(
+    battles: list[dict[str, Any]],
+    *,
+    backup_dir: Path | None = None,
+    max_backups: int = 20,
+    season_started_at: datetime | None = None,
+    season_account: str | None = None,
+) -> dict[str, Any]:
+    backup_dir = backup_dir or STALE_ACTIVE_BATTLE_BACKUP_DIR
+    status: dict[str, Any] = {
+        "policy": "fouler-abandoned-active-battle-cleanup/v2",
+        "ready": True,
+        "status": "clear",
+        "backupDir": display_path(backup_dir),
+        "latestBattleStatsAtUtc": None,
+        "sourceBackupPath": None,
+        "battleIds": [],
+        "missingBattleIds": [],
+        "checkedBackups": 0,
+        "skippedPreSeasonBackups": 0,
+        "seasonBoundaryAtUtc": season_started_at.isoformat() if season_started_at else None,
+        "seasonAccount": season_account,
+        "requiredAction": (
+            "root-cause why the ladder runner exited before writing a battle_stats result, "
+            "then prove the next bounded battle writes a completed result row before opening a larger proof window"
+        ),
+    }
+    if not backup_dir.is_dir():
+        status["status"] = "no-backups"
+        return status
+
+    known_battle_ids = battle_identity_set(battles)
+    latest_stats_time = newest_battle_stats_time(battles)
+    if latest_stats_time is not None:
+        status["latestBattleStatsAtUtc"] = latest_stats_time.isoformat()
+
+    try:
+        backups = sorted(
+            backup_dir.glob("active_battles-*.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )[:max_backups]
+    except OSError as exc:
+        status["ready"] = False
+        status["status"] = "backup-scan-error"
+        status["error"] = str(exc)
+        return status
+
+    for path in backups:
+        status["checkedBackups"] += 1
+        try:
+            backup_mtime = datetime.fromtimestamp(path.stat().st_mtime, timezone.utc)
+        except OSError:
+            continue
+        if season_started_at is not None and backup_mtime < season_started_at:
+            status["skippedPreSeasonBackups"] += 1
+            continue
+        if latest_stats_time is not None and backup_mtime <= latest_stats_time:
+            continue
+        payload = load_json(path, {})
+        entries = payload.get("battles") if isinstance(payload, dict) else []
+        if not isinstance(entries, list):
+            continue
+        battle_ids = [
+            str(item.get("id") or item.get("battle_id") or "").strip()
+            for item in entries
+            if isinstance(item, dict) and str(item.get("id") or item.get("battle_id") or "").strip()
+        ]
+        if not battle_ids:
+            continue
+        missing = [battle_id for battle_id in battle_ids if battle_id not in known_battle_ids]
+        if not missing:
+            continue
+        status.update(
+            {
+                "ready": False,
+                "status": "abandoned-active-battle-without-result",
+                "sourceBackupPath": display_path(path),
+                "sourceBackupMtimeUtc": backup_mtime.isoformat(),
+                "battleIds": battle_ids,
+                "missingBattleIds": missing,
+                "opponents": [
+                    str(item.get("opponent") or "").strip()
+                    for item in entries
+                    if isinstance(item, dict) and str(item.get("opponent") or "").strip()
+                ],
+                "sourceUpdated": payload.get("updated") if isinstance(payload, dict) else None,
+            }
+        )
+        break
+    return status
 
 
 def recent_result_summary(battles: list[dict[str, Any]], *, window: int = 20) -> dict[str, Any]:
@@ -913,6 +1107,49 @@ def normalize_account(value: object) -> str:
     return str(value or "").strip().lower()
 
 
+def account_season_status(
+    season: dict[str, Any],
+    *,
+    lease: dict[str, Any],
+    battles: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Validate the explicit account-season boundary used by fresh ladder runs."""
+
+    blockers: list[str] = []
+    warnings: list[str] = []
+    schema_version = str(season.get("schemaVersion") or "").strip()
+    account = str(season.get("account") or "").strip()
+    expected = expected_account(lease)
+    created_at = parse_timestamp(season.get("createdAtUtc"))
+    if schema_version != "fouler-play-account-season/v1":
+        blockers.append("account season schemaVersion must be fouler-play-account-season/v1")
+    if not account:
+        blockers.append("account season account is missing")
+    elif expected and normalize_account(account) != normalize_account(expected):
+        blockers.append(f"account season account {account} does not match expected account {expected}")
+    if created_at is None:
+        blockers.append("account season createdAtUtc is missing or invalid")
+    if battles and season.get("firstBattleStarted") is not True:
+        warnings.append("battle_stats contains season battles but firstBattleStarted is not yet true")
+    return {
+        "policy": "fouler-account-season-boundary/v1",
+        "active": not blockers,
+        "schemaVersion": schema_version or None,
+        "seasonId": season.get("seasonId"),
+        "account": account or None,
+        "expectedAccount": expected or None,
+        "createdAtUtc": created_at.isoformat() if created_at else None,
+        "baselineRating": season.get("baselineRating"),
+        "declaredFirstBattleStarted": season.get("firstBattleStarted") is True,
+        "firstBattleStarted": season.get("firstBattleStarted") is True or bool(battles),
+        "observedBattleCount": len(battles),
+        "runtimeStatus": season.get("runtimeStatus"),
+        "blockers": blockers,
+        "warnings": warnings,
+        "noRuntimeActions": True,
+    }
+
+
 def _mapping_value(data: Mapping[str, Any], path: tuple[str, ...]) -> object:
     current: object = data
     for key in path:
@@ -1182,6 +1419,7 @@ def elo_sustain_proof_status(
     target = proof.get("target") if isinstance(proof.get("target"), dict) else {}
     account = proof.get("account") if isinstance(proof.get("account"), dict) else {}
     summary = proof.get("summary") if isinstance(proof.get("summary"), dict) else {}
+    live_profile = proof.get("liveProfile") if isinstance(proof.get("liveProfile"), dict) else {}
     source = proof.get("source") if isinstance(proof.get("source"), dict) else {}
     source_commit = str(proof.get("sourceCommit") or source.get("sourceCommit") or "").strip()
     source_commit_matches_current = (
@@ -1466,6 +1704,9 @@ def elo_sustain_proof_status(
     completed_losses = sum(1 for row in games if normalize_result(row.get("result")) == "loss")
     overall_peak_rating = round(max(row["rating"] for row in rated_games), 2) if rated_games else None
     overall_final_rating = round(rated_games[-1]["rating"], 2) if rated_games else None
+    live_profile_rating = _as_float(live_profile.get("rating"))
+    summary_current_rating = _as_float(summary.get("currentRating"))
+    summary_live_profile_rating = _as_float(summary.get("liveProfileRating"))
     sustain_evidence_shape_complete = bool(
         len(games_at_or_above) >= minimum_games
         and not below_floor
@@ -1543,6 +1784,15 @@ def elo_sustain_proof_status(
     require_summary_bool("analysisEvidenceComplete", bool(analysis["ready"]))
     require_summary_bool("sustainEvidenceShapeComplete", sustain_evidence_shape_complete)
     require_summary_bool("sustainProofComplete", sustain_proof_complete)
+    if live_profile_rating is not None:
+        if not _numbers_match(summary.get("liveProfileRating"), live_profile_rating):
+            summary_mismatches.append(
+                "ELO proof summary.liveProfileRating does not match liveProfile.rating"
+            )
+        if not _numbers_match(summary.get("currentRating"), live_profile_rating):
+            summary_mismatches.append(
+                "ELO proof summary.currentRating must reflect liveProfile.rating when live profile proof is present"
+            )
     summary_team_coverage = summary.get("teamCoverage")
     if not isinstance(summary_team_coverage, dict):
         summary_mismatches.append("ELO proof summary.teamCoverage must be an object")
@@ -1636,6 +1886,13 @@ def elo_sustain_proof_status(
             "peakRating": peak_rating,
             "minSustainRating": min_sustain_rating,
             "finalRating": final_rating,
+            "currentRating": summary.get("currentRating"),
+            "currentRatingSource": summary.get("currentRatingSource"),
+            "liveProfileRating": live_profile_rating,
+            "liveProfileStatus": live_profile.get("status"),
+            "liveProfileCheckedAtUtc": live_profile.get("checkedAtUtc"),
+            "summaryCurrentRating": summary_current_rating,
+            "summaryLiveProfileRating": summary_live_profile_rating,
             "maxSustainDrawdown": max_sustain_drawdown,
             "maxPreTargetDrawdown": max_pre_target_drawdown,
             "preTargetDrawdownPeakRating": pre_target_drawdown["peakRating"],
@@ -1821,16 +2078,18 @@ def active_improvement_proof_status(
         )
     if proof.get("actionablePostPacketEval") is not True:
         blockers.append("active improvement proof actionablePostPacketEval must be true")
-    if status != "post-packet-eval-improving":
-        blockers.append("active improvement proof status must be post-packet-eval-improving")
+    if status not in {"post-packet-eval-improving", "post-packet-eval-accepted"}:
+        blockers.append("active improvement proof status must be post-packet-eval-improving or post-packet-eval-accepted")
     if packet.get("status") != "implemented":
         blockers.append("active improvement proof packet.status must be implemented")
     if proof_window.get("latestBattleAfterPacket") is not True:
         blockers.append("active improvement proof must include a battle after the packet timestamp")
     if proof_window.get("autoresearchCoversLatestBattle") is not True:
         blockers.append("active improvement proof autoresearch must cover the latest post-packet battle")
-    if latest_battle.get("performanceImprovementVerified") is not True and failure_class.get("status") != "reduced":
-        blockers.append("active improvement proof must show positive performance or a reduced failure class")
+    if latest_battle.get("performanceImprovementVerified") is not True:
+        blockers.append("active improvement proof must show a positive aggregate performance signal")
+    if failure_class.get("status") != "reduced":
+        blockers.append("active improvement proof must show the packet failure class is reduced")
     if evidence_integrity.get("ok") is not True:
         blockers.append("active improvement proof evidenceIntegrity.ok must be true")
     if proof.get("runtimeMutationTouched") is not False:
@@ -1864,7 +2123,8 @@ def active_improvement_proof_status(
             "devstream/truth/post-packet-eval.json uses schemaVersion fouler-play-post-packet-eval/v1",
             "the packet is implemented and evidenceIntegrity.ok is true",
             "a post-packet battle exists and fresh autoresearch consumed it",
-            "the failure class is reduced or the latest battle marks performanceImprovementVerified=true",
+            "the packet failure class is reduced and latestBattle.performanceImprovementVerified=true",
+            "status is post-packet-eval-improving or post-packet-eval-accepted",
             "runtimeMutationTouched=false and networkSendAllowed=false",
         ],
         "packet": {
@@ -2055,6 +2315,58 @@ def session_governance(
             "noRuntimeActions": True,
         },
     }
+
+
+def enforce_stop_loss_tripwire(classification: dict[str, Any], *, write: bool) -> dict[str, Any] | None:
+    """Turn a stop-loss classification into runner/supervisor tripwires."""
+
+    governance = classification.get("sessionGovernance") if isinstance(classification.get("sessionGovernance"), dict) else {}
+    trigger_ids = [
+        str(issue_id)
+        for issue_id in governance.get("blockingIssueIds") or []
+        if str(issue_id) in SESSION_STOP_LOSS_ISSUE_IDS
+    ]
+    if not trigger_ids and governance.get("stopLossBreached") is not True:
+        return None
+
+    proof_window = recovery_proof_window_status()
+    if proof_window.get("active") is True:
+        return {
+            "action": "stop-loss-tripwire-suppressed-for-recovery-proof-window",
+            "schemaVersion": "fouler-play-stop-loss-tripwire/v1",
+            "dryRun": not write,
+            "written": False,
+            "triggerIssueIds": trigger_ids,
+            "recoveryProofWindow": proof_window,
+            "reason": "stop-loss recovery proof window is active",
+            "effect": (
+                "leave the finite approved proof window running so post-packet evidence can be collected; "
+                "normal drain and supervisor stop remain enforced when the marker is absent, invalid, or expired"
+            ),
+        }
+
+    reason = "stop-loss breached: " + ", ".join(trigger_ids or ["unknown-stop-loss"])
+    payload = {
+        "action": "enforce-stop-loss-tripwire",
+        "schemaVersion": "fouler-play-stop-loss-tripwire/v1",
+        "dryRun": not write,
+        "written": False,
+        "triggerIssueIds": trigger_ids,
+        "drainFile": display_path(DRAIN_FILE),
+        "supervisorStopFile": display_path(SUPERVISOR_STOP_FILE),
+        "reason": reason,
+        "effect": (
+            "request the live runner to finish active battles without queueing new ones, "
+            "and block supervisor restarts until a fresh start gate clears"
+        ),
+    }
+    if write:
+        DRAIN_FILE.parent.mkdir(parents=True, exist_ok=True)
+        line = f"{iso_now()} {reason}\n"
+        DRAIN_FILE.write_text(line, encoding="utf-8")
+        SUPERVISOR_STOP_FILE.write_text(line, encoding="utf-8")
+        payload["written"] = True
+    return payload
 
 
 def start_gate_status(
@@ -2339,6 +2651,7 @@ def classify_mission(
     max_elo_proof_age_seconds: int = 86400,
     requested_run_count: int | None = None,
     requested_max_cycles: int | None = None,
+    account_season: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     issues: list[dict[str, Any]] = []
@@ -2350,6 +2663,17 @@ def classify_mission(
     active_battle_count = int(health.get("activeBattleCount") or 0)
     duplicate_runners = bool(runtime.get("duplicateBattleRunners"))
     checked_age = age_seconds(health.get("checkedAt"), now=now)
+    season = account_season_status(
+        account_season if isinstance(account_season, dict) else load_json(ACCOUNT_SEASON_FILE, {}),
+        lease=lease,
+        battles=battles,
+    )
+    season_boundary = parse_timestamp(season.get("createdAtUtc")) if season.get("active") else None
+    abandoned_cleanup = abandoned_battle_cleanup_status(
+        battles,
+        season_started_at=season_boundary,
+        season_account=str(season.get("account") or "") or None,
+    )
 
     if checked_age is None or checked_age > max_health_age_seconds:
         issues.append(
@@ -2359,6 +2683,17 @@ def classify_mission(
                 "Fouler health truth is stale or missing.",
                 {"checkedAt": health.get("checkedAt"), "ageSeconds": checked_age},
                 "refresh scripts/devstream_health.py --write and repair the scheduled health monitor",
+            )
+        )
+
+    if abandoned_cleanup.get("ready") is not True:
+        issues.append(
+            issue(
+                ABANDONED_BATTLE_ISSUE_ID,
+                "HARD_BLOCKER",
+                "Fouler archived an active battle without a completed battle_stats result row.",
+                abandoned_cleanup,
+                str(abandoned_cleanup.get("requiredAction") or "repair result capture before opening another ladder proof window"),
             )
         )
 
@@ -2484,7 +2819,30 @@ def classify_mission(
         )
 
     rating_truth = rating_truth_summary(battles, window=min(20, rating_drawdown_window))
-    if (
+    rating_truth_building = (
+        season.get("active") is True
+        and rating_truth["ratedDecisiveBattles"] < RATING_TRUTH_MIN_RATED_DECISIVE_BATTLES
+        and rating_truth["missingRatingBattles"] == 0
+        and rating_truth["ratedDecisiveBattles"] == rating_truth["decisiveBattles"]
+    )
+    if rating_truth_building:
+        issues.append(
+            issue(
+                RATING_TRUTH_BUILDING_ISSUE_ID,
+                "QUALITY_GAP",
+                "Fouler is building the current account season's initial rated truth window.",
+                {
+                    **rating_truth,
+                    "accountSeason": season,
+                    "remainingRatedDecisiveBattles": (
+                        RATING_TRUTH_MIN_RATED_DECISIVE_BATTLES
+                        - rating_truth["ratedDecisiveBattles"]
+                    ),
+                },
+                "continue bounded proof windows while preserving complete rating capture until the first 20 decisive battles are recorded",
+            )
+        )
+    elif (
         rating_truth["ratedDecisiveBattles"] < RATING_TRUTH_MIN_RATED_DECISIVE_BATTLES
         or rating_truth["missingRatingBattles"] > 0
         or rating_truth["ratingCoverage"] != 1.0
@@ -2689,7 +3047,9 @@ def classify_mission(
         "stopFilePresent": stop_file_present,
         "runtimeLeaseActive": active,
         "recentResults": trend,
+        "abandonedBattleCleanup": abandoned_cleanup,
         "ratingTruth": rating_truth,
+        "accountSeason": season,
         "ratingDrawdown": drawdown,
         "ladderStage": ladder_stage,
         "accountAuthority": account_authority,
@@ -2928,6 +3288,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     supervisor = load_json(SUPERVISOR_STATUS_FILE, {})
     lease = load_json(RUNTIME_LEASE_FILE, {})
     elo_proof = load_json(LATEST_ELO_PROOF_FILE, {})
+    account_season = load_json(ACCOUNT_SEASON_FILE, {})
     battles = read_battles()
     classification = classify_mission(
         health=health,
@@ -2943,7 +3304,29 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         max_elo_proof_age_seconds=args.max_elo_proof_age_seconds,
         requested_run_count=args.run_count,
         requested_max_cycles=args.max_cycles,
+        account_season=account_season,
     )
+
+    tripwire_action = enforce_stop_loss_tripwire(classification, write=args.write)
+    if tripwire_action is not None:
+        actions.append(tripwire_action)
+        if tripwire_action.get("written") is True:
+            classification = classify_mission(
+                health=health,
+                supervisor=supervisor,
+                lease=lease,
+                battles=battles,
+                max_health_age_seconds=args.max_health_age_seconds,
+                loss_streak_threshold=args.loss_streak_threshold,
+                low_win_rate_threshold=args.low_win_rate_threshold,
+                rating_drawdown_threshold=args.rating_drawdown_threshold,
+                rating_drawdown_window=args.rating_drawdown_window,
+                elo_proof=elo_proof,
+                max_elo_proof_age_seconds=args.max_elo_proof_age_seconds,
+                requested_run_count=args.run_count,
+                requested_max_cycles=args.max_cycles,
+                account_season=account_season,
+            )
 
     repair_actions = maybe_repair_runtime(args, classification, lease)
     actions.extend(repair_actions)
@@ -2955,6 +3338,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         supervisor = load_json(SUPERVISOR_STATUS_FILE, {})
         lease = load_json(RUNTIME_LEASE_FILE, {})
         elo_proof = load_json(LATEST_ELO_PROOF_FILE, {})
+        account_season = load_json(ACCOUNT_SEASON_FILE, {})
         classification = classify_mission(
             health=health,
             supervisor=supervisor,
@@ -2969,6 +3353,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
             max_elo_proof_age_seconds=args.max_elo_proof_age_seconds,
             requested_run_count=args.run_count,
             requested_max_cycles=args.max_cycles,
+            account_season=account_season,
         )
 
     active_issue_ids = {item["id"] for item in classification["issues"]}

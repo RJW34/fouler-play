@@ -287,6 +287,5 @@ vs the frozen fork engine, a stronger baseline (MaxDamage), or a monitored live-
 **Phase B (owner-gated live swap) needs, in order:** (1) a properly-powered (n~100-200,
 parallelism 4) AND discriminating gate on a QUIET box (streaming + cobblemon lanes idle so it is
 not starved and the live ladder is not disturbed); (2) resolve the single loss at full n; (3) build
-0.0.47 runtime deps on the live tree; (4) swap the live `thepeakmons` client; (5) pick a live
+0.0.47 runtime deps on the live tree; (4) swap the account-season-owned live client; (5) pick a live
 `--search-threads`; (6) watch ELO with a rollback ready. None of Phase B is done.
-

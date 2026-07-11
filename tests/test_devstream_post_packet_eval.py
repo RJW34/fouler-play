@@ -43,13 +43,15 @@ def autoresearch(
     *,
     latest_at: str = "2026-05-08T00:00:00+00:00",
     latest_id: str = "battle-gen9ou-post",
+    issue_id: str | None = None,
     issue_present: bool = True,
     shift_direction: str = "worse",
 ):
+    issue_id = issue_id or latest_id
     issue = {
         "key": "hazard_pressure",
         "title": "Hazard pressure is being lost",
-        "proof": [f"{latest_id}: bot never established Stealth Rock"],
+        "proof": [f"{issue_id}: bot never established Stealth Rock"],
     }
     issues = [issue] if issue_present else []
     return {
@@ -113,7 +115,7 @@ def test_post_packet_reduced_failure_class_counts_as_improving():
     latest_id = "battle-gen9ou-post"
     report = evaluator.build_report(
         packet=packet(status="implemented"),
-        elo_proof=elo_proof(latest_at=latest_at, latest_id=latest_id),
+        elo_proof=elo_proof(latest_at=latest_at, latest_id=latest_id, improving=True),
         autoresearch=autoresearch(
             latest_at="2026-05-08T00:01:00+00:00",
             latest_id=latest_id,
@@ -125,6 +127,189 @@ def test_post_packet_reduced_failure_class_counts_as_improving():
     assert report["status"] == "post-packet-eval-improving"
     assert report["actionablePostPacketEval"] is True
     assert report["failureClass"]["status"] == "reduced"
+
+
+def test_post_packet_reduced_failure_class_accepts_after_preservation_battle():
+    first_at = "2026-05-08T00:00:00+00:00"
+    latest_at = "2026-05-08T00:10:00+00:00"
+    latest_id = "battle-gen9ou-post-2"
+    proof = elo_proof(latest_at=latest_at, latest_id=latest_id, improving=True)
+    proof["games"].insert(
+        0,
+        {
+            "battleId": "battle-gen9ou-post-1",
+            "timestamp": first_at,
+            "result": "win",
+            "ratingAfter": 1090,
+        },
+    )
+
+    report = evaluator.build_report(
+        packet=packet(status="implemented"),
+        elo_proof=proof,
+        autoresearch=autoresearch(
+            latest_at="2026-05-08T00:11:00+00:00",
+            latest_id=latest_id,
+            issue_present=False,
+            shift_direction="better",
+        ),
+    )
+
+    assert report["status"] == "post-packet-eval-accepted"
+    assert report["actionablePostPacketEval"] is True
+    assert report["proofWindow"]["postPacketBattleCount"] == 2
+    assert report["proofWindow"]["preservationSatisfied"] is True
+    assert "next highest-ranked" in report["nextActions"][0]
+
+
+def test_post_packet_accepts_live_profile_rating_gain_when_battle_rows_lack_delta():
+    first_at = "2026-05-08T00:00:00+00:00"
+    latest_at = "2026-05-08T00:10:00+00:00"
+    latest_id = "battle-gen9ou-post-2"
+    proof = elo_proof(latest_at=latest_at, latest_id=latest_id, improving=False)
+    proof["summary"].update(
+        {
+            "performanceImprovementVerified": False,
+            "performanceTrendStatus": "flat",
+            "ratingDelta": None,
+            "finalRating": 1153,
+            "currentRating": 1197.25,
+            "currentRatingSource": "pokemonshowdown-user-api",
+            "liveProfileRating": 1197.25,
+        }
+    )
+    proof["games"].insert(
+        0,
+        {
+            "battleId": "battle-gen9ou-post-1",
+            "timestamp": first_at,
+            "result": "win",
+            "ratingAfter": 1153,
+        },
+    )
+
+    report = evaluator.build_report(
+        packet=packet(status="implemented"),
+        elo_proof=proof,
+        autoresearch=autoresearch(
+            latest_at="2026-05-08T00:11:00+00:00",
+            latest_id=latest_id,
+            issue_present=False,
+            shift_direction="better",
+        ),
+    )
+
+    assert report["status"] == "post-packet-eval-accepted"
+    assert report["latestBattle"]["performanceImprovementVerified"] is True
+    assert report["latestBattle"]["ratingDelta"] == 44.25
+    assert report["latestBattle"]["ratingDeltaSource"] == "summary.currentRating-minus-summary.finalRating"
+    assert report["latestBattle"]["currentRating"] == 1197.25
+
+
+def test_post_packet_preservation_rejects_target_evidence_from_any_post_packet_battle():
+    first_id = "battle-gen9ou-post-1"
+    latest_id = "battle-gen9ou-post-2"
+    proof = elo_proof(latest_at="2026-05-08T00:10:00+00:00", latest_id=latest_id, improving=True)
+    proof["games"].insert(
+        0,
+        {
+            "battleId": first_id,
+            "timestamp": "2026-05-08T00:00:00+00:00",
+            "result": "win",
+            "ratingAfter": 1090,
+        },
+    )
+
+    report = evaluator.build_report(
+        packet=packet(status="implemented"),
+        elo_proof=proof,
+        autoresearch=autoresearch(
+            latest_at="2026-05-08T00:11:00+00:00",
+            latest_id=latest_id,
+            issue_id=first_id,
+            issue_present=True,
+            shift_direction="worse",
+        ),
+    )
+
+    assert report["status"] == "post-packet-eval-improving"
+    assert report["failureClass"]["status"] == "reduced"
+    assert report["proofWindow"]["postPacketFailureEvidenceBattleIds"] == [first_id]
+    assert report["proofWindow"]["preservationSatisfied"] is False
+
+
+def test_post_packet_aggregate_improvement_without_targeted_reduction_is_not_closure():
+    latest_at = "2026-05-08T00:00:00+00:00"
+    latest_id = "battle-gen9ou-post"
+    report = evaluator.build_report(
+        packet=packet(status="implemented"),
+        elo_proof=elo_proof(latest_at=latest_at, latest_id=latest_id, improving=True),
+        autoresearch=autoresearch(
+            latest_at="2026-05-08T00:01:00+00:00",
+            latest_id=latest_id,
+            issue_present=True,
+            shift_direction="worse",
+        ),
+    )
+
+    assert report["status"] == "post-packet-eval-actionable-unresolved"
+    assert report["actionablePostPacketEval"] is True
+    assert report["latestBattle"]["performanceImprovementVerified"] is True
+    assert report["failureClass"]["status"] == "unresolved-with-fresh-evidence"
+    assert "packet failure class is still present" in report["warnings"][0]
+
+
+def test_stale_window_issue_evidence_does_not_block_fresh_improving_battle():
+    latest_at = "2026-05-08T00:00:00+00:00"
+    latest_id = "battle-gen9ou-post"
+    old_issue_id = "battle-gen9ou-old"
+    report = evaluator.build_report(
+        packet=packet(status="implemented"),
+        elo_proof=elo_proof(latest_at=latest_at, latest_id=latest_id, improving=True),
+        autoresearch=autoresearch(
+            latest_at="2026-05-08T00:01:00+00:00",
+            latest_id=latest_id,
+            issue_id=old_issue_id,
+            issue_present=True,
+            shift_direction="worse",
+        ),
+    )
+
+    assert report["status"] == "post-packet-eval-improving"
+    assert report["actionablePostPacketEval"] is True
+    assert report["failureClass"]["status"] == "reduced"
+    assert report["failureClass"]["freshEvidence"] == []
+    assert old_issue_id in report["failureClass"]["staleEvidenceBattleIds"]
+    assert "pre-packet evidence" in report["warnings"][0]
+
+
+def test_reduced_target_without_performance_gain_points_to_current_top_issue():
+    latest_at = "2026-05-08T00:00:00+00:00"
+    latest_id = "battle-gen9ou-post"
+    current_autoresearch = autoresearch(
+        latest_at="2026-05-08T00:01:00+00:00",
+        latest_id=latest_id,
+        issue_present=False,
+        shift_direction="better",
+    )
+    current_autoresearch["top_issue"] = {
+        "key": "endgame_conversion",
+        "title": "Long games are not being converted cleanly",
+        "recommendation": "Build the endgame conversion packet.",
+        "proof": ["battle-gen9ou-long: loss lasted 65 turns"],
+    }
+    current_autoresearch["issues"] = [current_autoresearch["top_issue"]]
+
+    report = evaluator.build_report(
+        packet=packet(status="implemented"),
+        elo_proof=elo_proof(latest_at=latest_at, latest_id=latest_id, improving=False),
+        autoresearch=current_autoresearch,
+    )
+
+    assert report["status"] == "post-packet-eval-actionable-unresolved"
+    assert report["failureClass"]["status"] == "reduced"
+    assert report["nextIssue"]["key"] == "endgame_conversion"
+    assert "Build the endgame conversion packet" in report["nextActions"][0]
 
 
 def test_waits_for_autoresearch_when_post_packet_battle_is_not_consumed():

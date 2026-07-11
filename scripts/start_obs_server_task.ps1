@@ -5,6 +5,30 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$LaunchProofPath = Join-Path $ProjectDir "devstream\truth\obs-server-launch.json"
+$LaunchProofLogPath = Join-Path $ProjectDir "devstream\truth\obs-server-launch.jsonl"
+
+function Write-LaunchPhase {
+    param(
+        [string]$Phase,
+        [int]$ExitCode = -1
+    )
+    $payload = [ordered]@{
+        schemaVersion = "fouler-obs-launch/v1"
+        updatedAt = (Get-Date).ToUniversalTime().ToString("o")
+        processId = $PID
+        phase = $Phase
+        foreground = [bool]$Foreground
+        lifecycleOwner = [Environment]::GetEnvironmentVariable("FOULER_OBS_LIFECYCLE_OWNER", "Process")
+        exitCode = if ($ExitCode -ge 0) { $ExitCode } else { $null }
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $LaunchProofPath) | Out-Null
+    $payload | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $LaunchProofPath -Encoding UTF8
+    $line = $payload | ConvertTo-Json -Depth 3 -Compress
+    [IO.File]::AppendAllText($LaunchProofLogPath, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+}
+
+Write-LaunchPhase -Phase "wrapper-started"
 
 function ConvertFrom-HermesEnvValue {
     param([string]$Value)
@@ -93,46 +117,10 @@ function Get-RuntimeLeaseAccount {
     return ""
 }
 
-function ConvertTo-CmdSetAssignment {
-    param([string]$Name, [string]$Value)
-    if ([string]::IsNullOrWhiteSpace($Name) -or [string]::IsNullOrWhiteSpace($Value)) {
-        return $null
-    }
-    if ($Value -match "[`r`n]") {
-        return $null
-    }
-    return "set $Name=$Value"
+if (-not $Foreground) {
+    throw "start_obs_server_task.ps1 is lifecycle-manager-owned and must run with -Foreground"
 }
-
-function Test-HealthEndpoint {
-    param([int]$Port = 8777)
-    try {
-        $response = Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 "http://127.0.0.1:$Port/health"
-        return [bool]($response.StatusCode -eq 200)
-    } catch {
-        return $false
-    }
-}
-
-function Get-ObsServerProcesses {
-    @(Get-CimInstance Win32_Process | Where-Object {
-        $_.CommandLine -and
-        $_.CommandLine -match "streaming[\\/]serve_obs_page\.py" -and
-        $_.CommandLine -match [regex]::Escape($ProjectDir) -and
-        $_.Name -match "python|py|cmd"
-    })
-}
-
-function Stop-ObsServerProcesses {
-    Get-ObsServerProcesses | Sort-Object ProcessId -Descending | ForEach-Object {
-        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
-    }
-}
-
-function Quote-BatchArg {
-    param([string]$Value)
-    '"' + ($Value -replace '"', '""') + '"'
-}
+Write-LaunchPhase -Phase "foreground-validated"
 
 @(
     @{ Target = "OBS_WS_PASSWORD"; Names = @("OBS_WS_PASSWORD", "OBS_WEBSOCKET_PASSWORD", "HERMES_OBS_WEBSOCKET_PASSWORD") },
@@ -144,11 +132,13 @@ function Quote-BatchArg {
         [Environment]::SetEnvironmentVariable($_.Target, $value, "Process")
     }
 }
+Write-LaunchPhase -Phase "obs-environment-loaded"
 
 $python = Join-Path $ProjectDir ".venv\Scripts\python.exe"
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     $python = "python.exe"
 }
+Write-LaunchPhase -Phase "python-resolved"
 
 Remove-Item Env:FP_PARENT_PID -ErrorAction SilentlyContinue
 [Environment]::SetEnvironmentVariable("FP_PARENT_PID", "0", "Process")
@@ -168,74 +158,21 @@ if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
     [Environment]::SetEnvironmentVariable("SHOWDOWN_ACCOUNTS", $leaseAccount, "Process")
     [Environment]::SetEnvironmentVariable("FOULER_ACTIVE_ACCOUNT", $leaseAccount, "Process")
 }
-
-Set-Location -LiteralPath $ProjectDir
-
-if ($Foreground) {
-    & $python -u "streaming\serve_obs_page.py"
-    exit $LASTEXITCODE
-}
+Write-LaunchPhase -Phase "runtime-authority-loaded"
 
 $pidDir = Join-Path $ProjectDir ".pids"
 $logDir = Join-Path $ProjectDir "logs"
 New-Item -ItemType Directory -Force -Path $pidDir | Out-Null
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-
 $stdoutLog = Join-Path $logDir "jigglypuff-obs-server.log"
 $stderrLog = Join-Path $logDir "jigglypuff-obs-server.err.log"
-Stop-ObsServerProcesses
-for ($i = 0; $i -lt 10; $i++) {
-    if (@(Get-ObsServerProcesses).Count -eq 0 -and -not (Test-HealthEndpoint -Port 8777)) {
-        break
-    }
-    Start-Sleep -Milliseconds 500
-}
 
-$cmdFile = Join-Path $pidDir "start_obs_server.cmd"
-$cmdLines = @(
-    "@echo off",
-    "cd /d $(Quote-BatchArg $ProjectDir)"
-)
-foreach ($envName in @(
-    "PYTHONUTF8",
-    "PYTHONIOENCODING",
-    "BOT_LOG_TO_FILE",
-    "OBS_SERVER_PORT",
-    "OBS_SYNC_INTERVAL_SEC",
-    "FOULER_OBS_WS_DISABLED",
-    "PS_FORMAT",
-    "FOULER_RUNTIME_LEASE_PATH",
-    "PS_USERNAME",
-    "SHOWDOWN_USER_ID",
-    "SHOWDOWN_ACCOUNTS",
-    "FOULER_ACTIVE_ACCOUNT"
-)) {
-    $assignment = ConvertTo-CmdSetAssignment -Name $envName -Value ([Environment]::GetEnvironmentVariable($envName, "Process"))
-    if (-not [string]::IsNullOrWhiteSpace($assignment)) {
-        $cmdLines += $assignment
-    }
-}
-$obsCommand = "$(Quote-BatchArg $python) -u `"streaming\serve_obs_page.py`" 1>>$(Quote-BatchArg $stdoutLog) 2>>$(Quote-BatchArg $stderrLog)"
-$cmdLines += "start `"FoulerOBS`" /min cmd.exe /d /c `"$obsCommand`""
-$cmdLines | Set-Content -LiteralPath $cmdFile -Encoding ASCII
-
-$launch = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-    CommandLine = "cmd.exe /d /c $(Quote-BatchArg $cmdFile)"
-    CurrentDirectory = $ProjectDir
-}
-if ($launch.ReturnValue -ne 0) {
-    Write-Error "Win32_Process.Create failed with return value $($launch.ReturnValue)"
-    exit 1
-}
-
-for ($i = 0; $i -lt 12; $i++) {
-    Start-Sleep -Seconds 1
-    $obsProcessCount = @(Get-ObsServerProcesses).Count
-    if (($obsProcessCount -gt 0) -and (Test-HealthEndpoint -Port 8777)) {
-        exit 0
-    }
-}
-
-Stop-ObsServerProcesses
-Write-Error "Fouler OBS server process started but /health did not become healthy on port 8777"
-exit 1
+Set-Location -LiteralPath $ProjectDir
+Write-LaunchPhase -Phase "starting-python"
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& $python -u "streaming\serve_obs_page.py" 1>> $stdoutLog 2>> $stderrLog
+$nativeExitCode = $LASTEXITCODE
+$ErrorActionPreference = $previousErrorActionPreference
+Write-LaunchPhase -Phase "python-exited" -ExitCode $nativeExitCode
+exit $nativeExitCode

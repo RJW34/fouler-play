@@ -11,12 +11,19 @@ gen9ou-2643766855 t20 where protect 0.751 was demoted to 0.039). It is now:
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from fp.search.main import (
     _position_fingerprint,
     _position_stagnant,
     _recent_action_history,
     break_repeated_decision,
 )
+
+
+@pytest.fixture(autouse=True)
+def _enable_loop_breaker(monkeypatch):
+    monkeypatch.setenv("FOULER_LOOP_BREAK", "1")
 
 
 def _pokemon(name="blissey", *, hp=100, fainted=False):

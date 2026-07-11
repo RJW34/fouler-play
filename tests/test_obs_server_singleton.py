@@ -12,6 +12,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 sys.path.insert(0, str(ROOT_DIR / "scripts"))
 
+import devstream_health
 from streaming import state_store
 from streaming import serve_obs_page
 
@@ -33,6 +34,14 @@ def test_same_repo_obs_server_duplicate_is_detected() -> None:
     assert [process["pid"] for process in duplicates] == [424242]
 
 
+def test_in_process_health_uses_current_request_as_http_witness(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(devstream_health, "build_payload", lambda **kwargs: calls.append(kwargs) or {"ok": True})
+
+    assert serve_obs_page._build_devstream_health_payload() == {"ok": True}
+    assert calls == [{"check_http": False, "http_handler_witness": True}]
+
+
 def test_other_repo_obs_server_is_not_a_duplicate() -> None:
     current = os.getpid()
     rows = [
@@ -47,7 +56,8 @@ def test_other_repo_obs_server_is_not_a_duplicate() -> None:
     assert serve_obs_page._find_duplicate_obs_servers(rows) == []
 
 
-def test_scheduled_task_cmd_wrapper_is_not_a_duplicate() -> None:
+@pytest.mark.parametrize("cmd_switches", ["/d /c", "/d /s /c"])
+def test_scheduled_task_cmd_wrapper_is_not_a_duplicate(cmd_switches: str) -> None:
     current = os.getpid()
     repo = str(serve_obs_page.ROOT_DIR)
     rows = [
@@ -56,7 +66,7 @@ def test_scheduled_task_cmd_wrapper_is_not_a_duplicate() -> None:
             "pid": 424242,
             "ppid": 1,
             "command": (
-                f'"C:\\Windows\\System32\\cmd.exe" /d /c ""{repo}\\.venv\\Scripts\\python.exe" '
+                f'"C:\\Windows\\System32\\cmd.exe" {cmd_switches} ""{repo}\\.venv\\Scripts\\python.exe" '
                 f'"streaming\\serve_obs_page.py" 1>>"{repo}\\logs\\jigglypuff-obs-server.log" '
                 f'2>>"{repo}\\logs\\jigglypuff-obs-server.err.log""'
             ),
@@ -71,7 +81,6 @@ def test_acquire_singleton_removes_stale_pid_file(tmp_path, monkeypatch) -> None
     pid_file.write_text(json.dumps({"pid": 999999, "name": "obs_server"}), encoding="utf-8")
     monkeypatch.setattr(serve_obs_page, "PID_FILE", pid_file)
     monkeypatch.setattr(serve_obs_page, "_pid_exists", lambda _pid: False)
-    monkeypatch.setattr(serve_obs_page, "_collect_process_rows", lambda: [])
     monkeypatch.delenv("FOULER_OBS_SERVER_ALLOW_DUPLICATE", raising=False)
 
     serve_obs_page._acquire_singleton_or_exit()
@@ -88,14 +97,8 @@ def test_acquire_singleton_refuses_live_pid_file(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(serve_obs_page, "_pid_exists", lambda _pid: True)
     monkeypatch.setattr(
         serve_obs_page,
-        "_collect_process_rows",
-        lambda: [
-            {
-                "pid": 12345,
-                "ppid": 1,
-                "command": f'py -3 "{serve_obs_page.ROOT_DIR}\\streaming\\serve_obs_page.py"',
-            }
-        ],
+        "_command_for_live_pid",
+        lambda _pid: f'py -3 "{serve_obs_page.ROOT_DIR}\\streaming\\serve_obs_page.py"',
     )
     monkeypatch.delenv("FOULER_OBS_SERVER_ALLOW_DUPLICATE", raising=False)
 
@@ -112,8 +115,8 @@ def test_acquire_singleton_replaces_pid_file_reused_by_unrelated_process(tmp_pat
     monkeypatch.setattr(serve_obs_page, "_pid_exists", lambda _pid: True)
     monkeypatch.setattr(
         serve_obs_page,
-        "_collect_process_rows",
-        lambda: [{"pid": 12345, "ppid": 1, "command": r"C:\Windows\System32\notepad.exe"}],
+        "_command_for_live_pid",
+        lambda _pid: r"C:\Windows\System32\notepad.exe",
     )
     monkeypatch.delenv("FOULER_OBS_SERVER_ALLOW_DUPLICATE", raising=False)
 
@@ -123,49 +126,50 @@ def test_acquire_singleton_replaces_pid_file_reused_by_unrelated_process(tmp_pat
     assert data["pid"] == os.getpid()
 
 
-def test_acquire_singleton_refuses_discovered_duplicate(tmp_path, monkeypatch) -> None:
+def test_acquire_singleton_does_not_scan_the_full_process_table(tmp_path, monkeypatch) -> None:
     pid_file = tmp_path / "obs_server.pid"
     monkeypatch.setattr(serve_obs_page, "PID_FILE", pid_file)
-    monkeypatch.setattr(serve_obs_page, "_pid_exists", lambda _pid: False)
     monkeypatch.setattr(
         serve_obs_page,
         "_collect_process_rows",
-        lambda: [
-            {
-                "pid": 424242,
-                "ppid": 1,
-                "command": f'py -3 "{serve_obs_page.ROOT_DIR}\\streaming\\serve_obs_page.py"',
-            }
-        ],
+        lambda: (_ for _ in ()).throw(AssertionError("startup must not scan every process")),
     )
     monkeypatch.delenv("FOULER_OBS_SERVER_ALLOW_DUPLICATE", raising=False)
 
-    with pytest.raises(SystemExit) as exc_info:
-        serve_obs_page._acquire_singleton_or_exit()
+    serve_obs_page._acquire_singleton_or_exit()
 
-    assert exc_info.value.code == 78
-    assert not pid_file.exists()
+    assert json.loads(pid_file.read_text(encoding="utf-8"))["pid"] == os.getpid()
+
+
+def test_pid_cleanup_does_not_remove_another_process_owner(tmp_path, monkeypatch) -> None:
+    pid_file = tmp_path / "obs_server.pid"
+    pid_file.write_text(json.dumps({"pid": os.getpid() + 1}), encoding="utf-8")
+    monkeypatch.setattr(serve_obs_page, "PID_FILE", pid_file)
+
+    serve_obs_page._cleanup_pid_file()
+
+    assert pid_file.exists()
 
 
 @pytest.mark.asyncio
 async def test_health_default_uses_fast_public_surface(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(serve_obs_page, "DEEP_HEALTH_DEFAULT", False)
     monkeypatch.setattr(serve_obs_page, "_build_singleton_status", lambda: {"duplicateCount": 0, "duplicates": []})
-    monkeypatch.setattr(serve_obs_page, "recent_showdown_credential_failure", lambda _root: {"found": False})
-    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
-    monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
-    monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
-
-    state_store.write_status({"status": "Searching"})
-    state_store.update_daily_stats(0, 0)
-    state_store.write_active_battles({"battles": [], "count": 0})
+    monkeypatch.setattr(
+        serve_obs_page,
+        "build_state_payload",
+        lambda: (_ for _ in ()).throw(KeyboardInterrupt),
+    )
 
     response = await serve_obs_page.handle_health(make_mocked_request("GET", "/health"))
     payload = json.loads(response.text)
 
     assert response.status == 200
+    assert payload["healthy"] is True
+    assert payload["running"] is True
     assert payload["devstreamHealthProbe"]["method"] == "skipped"
-    assert payload["readiness"]["streamReady"] is True
+    assert payload["readiness"]["httpReady"] is True
+    assert payload["readiness"]["streamReady"] is None
 
 
 @pytest.mark.asyncio

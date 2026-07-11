@@ -19,27 +19,32 @@ PURPOSE_DELEGATIONS: dict[str, tuple[str, ...]] = {
     # permission to invoke the outer SSH wrapper. The wrapper launches the
     # supervisor, and the supervisor launches the bounded battle session.
     "jigglypuff-runtime-start": (
+        "devstream-start-continuous-dry-run",
         "devstream-start-continuous",
         "devstream-supervise",
+        "devstream-start-dry-run",
         "devstream-start",
         "devstream-stale-truth-cleanup-dry-run",
         "devstream-stale-truth-cleanup",
         "run-py-battle-runner",
     ),
     "devstream-start-continuous": (
+        "devstream-start-continuous-dry-run",
         "devstream-supervise",
+        "devstream-start-dry-run",
         "devstream-start",
         "devstream-stale-truth-cleanup-dry-run",
         "devstream-stale-truth-cleanup",
         "run-py-battle-runner",
     ),
     "devstream-supervise": (
+        "devstream-start-dry-run",
         "devstream-start",
         "devstream-stale-truth-cleanup-dry-run",
         "devstream-stale-truth-cleanup",
         "run-py-battle-runner",
     ),
-    "devstream-start": ("run-py-battle-runner",),
+    "devstream-start": ("devstream-start-dry-run", "run-py-battle-runner"),
 }
 
 

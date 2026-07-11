@@ -18,7 +18,10 @@
 > Nothing in this repo is Claude-specific. Read `CLAUDE.md` as **provider-agnostic** intent
 > and history, not as a Claude-only manual. Everything below this block is older operational
 > detail kept for reference; where it disagrees with MISSION.md / the constitution /
-> ARCHITECTURE.md, **those three win.**
+> ARCHITECTURE.md, **those three win**. In particular, any section below that defines DONE
+> as "1700 on the three fat/stall pilot teams" is historical. The accepted mission is **any
+> supplied team at 1700+ with per-session data/replay reporting**; the three teams are only
+> the current benchmark harness.
 >
 > **The "2026-06-19 Codex Live Repair Hold" immediately below is VOID.** Per the constitution
 > (section 3): "Codex exclusive control and all prior competing-owner locks are void." If you
@@ -114,7 +117,10 @@ Note: `MAGNETON` mentioned in CLAUDE.md as a possible runtime hostname is RETIRE
 
 ## 1. MISSION & DEFINITION-OF-DONE  (verbatim canonical)
 
-Canonical source of truth: `~/projects/the-abso-citadel/docs/hermes/DEVSTREAM_MISSIONS.md` on ubunztu.
+Historical source quoted below: `~/projects/the-abso-citadel/docs/hermes/DEVSTREAM_MISSIONS.md`
+on ubunztu. This quote is **superseded for mission definition** by this repo's `MISSION.md`
+and `ARCHITECTURE.md`. It remains useful as the origin of the three-team pilot protocol, not
+as the product definition.
 
 > "Prove a top player's fat/stall gen9ou teams by climbing to and sustaining 1700 ELO, faster than
 > human testing, via a closed learn-from-loss-replays self-improvement loop. Do NOT redesign teams
@@ -125,14 +131,17 @@ Canonical source of truth: `~/projects/the-abso-citadel/docs/hermes/DEVSTREAM_MI
 > CONSTRAINTS: gen9ou only; account naming LEBOTJAMESXD00N; immutable Pokemon mechanics must never
 > be hallucinated."
 
-**Definition of Done:** reach AND sustain 1700 ELO in gen9ou on the 3 provided fat/stall teams,
-without redesigning the teams. ELO ~1164-1194 today; this is NOT done.
+**Historical pilot done-bar:** reach and sustain 1700 ELO in gen9ou on the 3 provided
+fat/stall teams, without redesigning the teams. This is **not** the full product done-bar.
+The current product definition is in `MISSION.md`: accept an arbitrary supplied team, ladder
+it at 1700+ level, and return per-session replay/data reporting without metric-gaming team
+selection.
 
 > Note: the mission text quotes the historical account name `LEBOTJAMESXD00N` (and `CLAUDE.md` /
 > `devstream.yaml` mention older thresholds 1700/1800 and an even older name `npctypebeat`). Those
-> account names are **RETIRED**. The **current live account is `thepeakmons`** (authoritative:
-> `.env` `PS_USERNAME`, `devstream/truth/runtime-lease.json`, `devstream/truth/health.json`). The
-> canonical target on any conflict is **1700 ELO**.
+> account names are **RETIRED**. The current live account is declared by
+> `devstream/truth/account-season.json` (currently `DekuFoulerLab`) and must match `.env`,
+> `runtime-lease.json`, and live health. The canonical target on any conflict is **1700 ELO**.
 
 ---
 
@@ -289,9 +298,9 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
    commit — the broken-gate-that-reverts-everything was the February failure.
 7. **Edit only allowed files.** Respect `guardrails.json allowed_modify` / `never_modify` and
    `improve_agent.ALLOWED_TARGETS`. Also: `min_games_between_deploys: 15`.
-8. **Account name:** current live account is **`thepeakmons`** (per `.env` / `runtime-lease.json` /
-   `health.json`). `LEBOTJAMESXD00N` and `npctypebeat` are retired names — do not treat them as
-   current. One self-registered account, up to 3 concurrent battles.
+8. **Account name:** `devstream/truth/account-season.json` owns the current account; `.env`,
+   `runtime-lease.json`, and health must agree. Historical account names are retired and must
+   not be treated as current. One self-registered account, up to 3 concurrent battles.
 
 ---
 

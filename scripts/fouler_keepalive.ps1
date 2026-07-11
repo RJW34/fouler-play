@@ -35,6 +35,8 @@ $logDir  = 'D:\Projects\fouler-play\logs'
 $kaLog   = Join-Path $logDir 'fouler_keepalive.log'
 $lockDir = Join-Path $repo '.pids'
 $lockFile = Join-Path $lockDir 'keepalive.lock'
+$missionStopFile = Join-Path $lockDir 'supervisor.stop'
+$drainFile = Join-Path $lockDir 'drain.request'
 
 New-Item -ItemType Directory -Force -Path $logDir  | Out-Null
 New-Item -ItemType Directory -Force -Path $lockDir | Out-Null
@@ -82,8 +84,26 @@ try {
   }
 
   $count = $top.Count
+  $missionStopPresent = Test-Path $missionStopFile
+
+  if ($missionStopPresent -and $count -ge 1) {
+    if (-not (Test-Path $drainFile)) {
+      try {
+        Set-Content -Path $drainFile -Value ("{0} keepalive observed supervisor.stop; draining live ladder client before repair-gated resume" -f [DateTime]::UtcNow.ToString('o')) -Encoding ASCII -ErrorAction Stop
+        Write-KA ("MISSION-STOP: supervisor.stop present; wrote drain request for {0} live top-level client(s)." -f $count)
+      } catch {
+        Write-KA ("MISSION-STOP: failed to write drain request while supervisor.stop is present: {0}" -f $_.Exception.Message)
+      }
+    } else {
+      Write-KA ("MISSION-STOP: supervisor.stop present and drain.request already exists; no relaunch.")
+    }
+  }
 
   if ($count -eq 1) {
+    if ($missionStopPresent) {
+      Write-KA ("BLOCKED: 1 top-level run.py client alive (PID {0}) but supervisor.stop is present; drain requested, no action." -f $top[0].ProcessId)
+      exit 0
+    }
     Write-KA ("OK: 1 top-level run.py client alive (PID {0}); no action." -f $top[0].ProcessId)
     exit 0
   }
@@ -109,6 +129,11 @@ try {
   }
 
   # ----- count -eq 0: launch exactly one -----
+  if ($missionStopPresent) {
+    Write-KA "BLOCKED: 0 clients and supervisor.stop is present; not launching a direct ladder client."
+    exit 0
+  }
+
   # IMPROVE-WINDOW PAUSE (2026-07-04, foreman): honor .pids\continuous-ladder.stop.
   # The improve window (scripts\run_improve_window.ps1) pauses laddering via this
   # stop file so offline evals run on a quiet box; previously only the retired
@@ -127,6 +152,44 @@ try {
     Write-KA ("STALE STOP FILE: age {0:N1}h >= 8h - orphaned pause (crashed improve window?); deleting it and relaunching the ladder." -f $stopAgeHours)
     Remove-Item $stopFile -Force -ErrorAction SilentlyContinue
   }
+  $allowLegacyDirectKeepalive = ($env:FOULER_ALLOW_LEGACY_DIRECT_KEEPALIVE -eq '1')
+  if (-not $allowLegacyDirectKeepalive) {
+    $launchStamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
+    $stdoutPath = Join-Path $logDir ("fouler_mission_keepalive_{0}.out.log" -f $launchStamp)
+    $stderrPath = Join-Path $logDir ("fouler_mission_keepalive_{0}.err.log" -f $launchStamp)
+    $monitorArgs = @(
+      'scripts\fouler_mission_monitor.py',
+      '--write',
+      '--repair-runtime',
+      '--run-count','5',
+      '--max-cycles','1',
+      '--max-concurrent-battles','1',
+      '--no-refresh-health-after-repair'
+    )
+    Write-KA ("DOWN: 0 top-level run.py clients. Delegating launch decision to fouler_mission_monitor.py start gate (out={0})." -f (Split-Path $stdoutPath -Leaf))
+    try {
+      $proc = Start-Process -FilePath $python -ArgumentList $monitorArgs -WorkingDirectory $repo `
+        -WindowStyle Hidden -Wait -PassThru -ErrorAction Stop `
+        -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+      Write-KA ("MISSION-MONITOR: completed with exit code {0}; keepalive will not direct-launch. See {1}." -f $proc.ExitCode, (Split-Path $stdoutPath -Leaf))
+      exit 0
+    } catch {
+      Write-KA ("MISSION-MONITOR-FAILED: {0}" -f $_.Exception.Message)
+      exit 1
+    }
+  }
+  Write-KA "LEGACY-DIRECT-OVERRIDE: FOULER_ALLOW_LEGACY_DIRECT_KEEPALIVE=1, using old direct run.py launch path."
+
+  $activeAccount = ''
+  try {
+    $season = Get-Content -LiteralPath (Join-Path $repo 'devstream\truth\account-season.json') -Raw | ConvertFrom-Json
+    $activeAccount = [string]$season.account
+  } catch {}
+  if ([string]::IsNullOrWhiteSpace($activeAccount)) {
+    Write-KA "BLOCKED: account-season authority is missing; refusing direct keepalive launch."
+    exit 1
+  }
+
   # cc stays 3 (mission-fixed). search-parallelism is env-overridable for the
   # oversubscription A/B (2026-06-24): this box is a 4-physical-core i7-7700HQ, so
   # cc=3 x sp=4 = 12 search workers oversubscribes 4 cores -> ~7% of moves drop to
@@ -138,7 +201,7 @@ try {
   $argList = @(
     'run.py',
     '--websocket-uri','wss://sim3.psim.us/showdown/websocket',
-    '--ps-username','thepeakmons',
+    '--ps-username',$activeAccount,
     '--bot-mode','search_ladder',
     '--pokemon-format','gen9ou',
     '--run-count','1000',

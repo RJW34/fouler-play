@@ -10,11 +10,33 @@ import asyncio
 import json
 from pathlib import Path
 
+import pytest
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
 state_store = __import__("streaming.state_store", fromlist=["state_store"])
 serve_obs_page = __import__("streaming.serve_obs_page", fromlist=["serve_obs_page"])
+
+
+@pytest.fixture(autouse=True)
+def isolate_account_season(monkeypatch, tmp_path):
+    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
+    monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
+    monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+    monkeypatch.setattr(state_store, "NEXT_FIX_PATH", tmp_path / "next_fix.txt")
+    monkeypatch.setattr(state_store, "STABILITY_REPORT_PATH", tmp_path / "stability_report.json")
+    monkeypatch.setattr(
+        state_store,
+        "STATE_STORE_WRITE_FAILURE_PATH",
+        tmp_path / "state-store-write-failure.json",
+    )
+    monkeypatch.setattr(serve_obs_page, "BATTLE_STATS_PATH", tmp_path / "battle_stats.json")
+    monkeypatch.setattr(
+        serve_obs_page,
+        "ACCOUNT_SEASON_PATH",
+        tmp_path / "missing-account-season.json",
+    )
 
 
 def test_status_reflects_active_battles():
@@ -128,6 +150,33 @@ def test_status_endpoint_clears_stale_battle_info_when_searching(tmp_path, monke
     assert payload["status"] == "Searching"
     assert payload["battle_info"] == "Searching..."
     assert payload["active_battles"] == []
+
+
+def test_idle_endpoints_preserve_bounded_session_complete_ready(monkeypatch):
+    monkeypatch.setattr(
+        serve_obs_page,
+        "recent_showdown_credential_failure",
+        lambda _root: {"found": False},
+    )
+    state_store.write_status(
+        {
+            "status": "Searching",
+            "battle_info": "Searching...",
+            "runtime_mode": "bounded_session_complete",
+        }
+    )
+    state_store.write_active_battles({"battles": [], "count": 0})
+
+    status_response = asyncio.run(serve_obs_page.handle_status(None))
+    status_payload = json.loads(status_response.text)
+    state_payload = serve_obs_page.build_state_payload()
+
+    assert status_payload["status"] == "Ready"
+    assert status_payload["battle_info"] == (
+        "Bounded session complete; ready for the next finite batch."
+    )
+    assert state_payload["status"]["status"] == "Ready"
+    assert state_payload["status"]["runtime_mode"] == "bounded_session_complete"
 
 
 def test_state_payload_filters_ladder_cache_to_active_account(tmp_path, monkeypatch):
@@ -336,6 +385,56 @@ def test_state_payload_uses_runtime_lease_account_while_searching(tmp_path, monk
     assert "npctypebeat" not in payload["accounts_elo"]
 
 
+def test_state_payload_uses_fresh_account_season_baseline(tmp_path, monkeypatch):
+    active_path = tmp_path / "active_battles.json"
+    status_path = tmp_path / "stream_status.json"
+    daily_path = tmp_path / "daily_stats.json"
+    stats_path = tmp_path / "battle_stats.json"
+    season_path = tmp_path / "account-season.json"
+    monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", active_path)
+    monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", status_path)
+    monkeypatch.setattr(state_store, "DAILY_STATS_PATH", daily_path)
+    monkeypatch.setattr(serve_obs_page, "BATTLE_STATS_PATH", stats_path)
+    monkeypatch.setattr(serve_obs_page, "ACCOUNT_SEASON_PATH", season_path)
+    monkeypatch.setattr(serve_obs_page, "SHOWDOWN_ACCOUNTS", ["thepeakmons"])
+    monkeypatch.setattr(serve_obs_page, "SHOWDOWN_USER_ID", "thepeakmons")
+    monkeypatch.setattr(
+        serve_obs_page,
+        "recent_showdown_credential_failure",
+        lambda _root: {"found": False},
+    )
+    serve_obs_page._ladder_cache["accounts"] = {}
+    serve_obs_page._ladder_cache["updated"] = 0.0
+    stats_path.write_text('{"battles": []}', encoding="utf-8")
+    season_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": "fouler-play-account-season/v1",
+                "seasonId": "dekufoulerlab-gen9ou-20260710",
+                "createdAtUtc": "2026-07-10T18:42:13Z",
+                "account": "DekuFoulerLab",
+                "format": "gen9ou",
+                "baselineRating": 1000,
+                "firstBattleStarted": False,
+                "runtimeStatus": "staged-at-baseline",
+            }
+        ),
+        encoding="utf-8",
+    )
+    state_store.write_active_battles({"battles": [], "count": 0, "max_slots": 1})
+    state_store.update_daily_stats(0, 0)
+
+    payload = serve_obs_page.build_state_payload()
+
+    assert payload["account"] == "DekuFoulerLab"
+    assert payload["account_season_id"] == "dekufoulerlab-gen9ou-20260710"
+    assert payload["staged_baseline"] is True
+    assert payload["status"]["status"] == "Staged"
+    assert payload["status"]["elo"] == 1000
+    assert payload["accounts_elo"] == {"DekuFoulerLab": 1000}
+    assert payload["battles"] == []
+
+
 def test_active_battle_atomic_write_retries_windows_replace_lock(tmp_path, monkeypatch):
     active_path = tmp_path / "active_battles.json"
     monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", active_path)
@@ -346,9 +445,10 @@ def test_active_battle_atomic_write_retries_windows_replace_lock(tmp_path, monke
     original_replace = state_store.os.replace
 
     def flaky_replace(src, dst):
-        calls["count"] += 1
-        if calls["count"] == 1:
-            raise PermissionError("simulated Windows file lock")
+        if Path(dst) == active_path:
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise PermissionError("simulated Windows file lock")
         return original_replace(src, dst)
 
     monkeypatch.setattr(state_store.os, "replace", flaky_replace)

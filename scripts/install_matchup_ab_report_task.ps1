@@ -7,6 +7,20 @@ $repo = 'D:\Projects\fouler-play'
 $wrapper = Join-Path $repo 'scripts\matchup_ab_report.ps1'
 if (-not (Test-Path $wrapper)) { throw "wrapper not found: $wrapper" }
 
+$biasEnabled = $true
+foreach ($envLine in (Get-Content (Join-Path $repo '.env') -ErrorAction SilentlyContinue)) {
+    if ($envLine -match '^\s*MATCHUP_MEMORY_ENABLED\s*=\s*([^#\s]+)') {
+        $biasEnabled = $Matches[1].Trim().ToLower() -in @('1', 'true', 'yes', 'on')
+    }
+}
+if (-not $biasEnabled) {
+    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
+        Disable-ScheduledTask -TaskName $taskName | Out-Null
+    }
+    Write-Output "DISABLED: $taskName because MATCHUP_MEMORY_ENABLED=0"
+    exit 0
+}
+
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
     -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $wrapper + '"') `
     -WorkingDirectory $repo

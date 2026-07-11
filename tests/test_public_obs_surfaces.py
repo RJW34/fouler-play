@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from aiohttp import web
 from aiohttp.test_utils import make_mocked_request
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -36,6 +37,27 @@ FORBIDDEN_PUBLIC_STRINGS = (
     "DEKU plays",
     "DEKU SIMULCAST",
 )
+
+
+def test_windows_service_leaves_signal_ownership_to_nssm(monkeypatch) -> None:
+    monkeypatch.setattr(serve_obs_page, "LIFECYCLE_OWNER", "windows-service")
+    assert serve_obs_page._use_process_signal_handlers() is False
+
+    monkeypatch.setattr(serve_obs_page, "LIFECYCLE_OWNER", "")
+    assert serve_obs_page._use_process_signal_handlers() is True
+
+
+@pytest.mark.asyncio
+async def test_small_html_pages_bypass_windows_native_sendfile(tmp_path, monkeypatch) -> None:
+    page = tmp_path / "test.html"
+    page.write_text("<html><body>OBS surface</body></html>", encoding="utf-8")
+    monkeypatch.setattr(serve_obs_page, "STREAMING_DIR", tmp_path)
+
+    response = await serve_obs_page._html_file_response(page.name)
+
+    assert isinstance(response, web.Response)
+    assert not isinstance(response, web.FileResponse)
+    assert response.text == "<html><body>OBS surface</body></html>"
 
 
 def test_public_scene_collection_excludes_operator_dashboard() -> None:

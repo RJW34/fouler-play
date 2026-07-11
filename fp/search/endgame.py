@@ -64,7 +64,7 @@ def get_speed(pokemon) -> int:
 
     # Apply paralysis
     status = getattr(pokemon, "status", None)
-    if status == constants.PARALYSIS:
+    if status == constants.PARALYZED:
         multiplier *= 0.5
 
     return int(base_speed * multiplier)

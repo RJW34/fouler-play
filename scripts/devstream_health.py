@@ -259,9 +259,23 @@ def runtime_lease_surface_expectation() -> dict[str, Any]:
     }
 
 
+def _child_creation_flags(platform_name: str | None = None) -> int:
+    platform_name = os.name if platform_name is None else platform_name
+    return int(getattr(subprocess, "CREATE_NO_WINDOW", 0)) if platform_name == "nt" else 0
+
+
 def run_command(command: list[str], *, timeout: int = 4) -> subprocess.CompletedProcess[str] | None:
     try:
-        return subprocess.run(command, cwd=str(ROOT), capture_output=True, text=True, timeout=timeout, check=False)
+        return subprocess.run(
+            command,
+            cwd=str(ROOT),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+            creationflags=_child_creation_flags(),
+        )
     except Exception:
         return None
 
@@ -545,17 +559,17 @@ def classify_obs_task_stderr(stderr_tail: Any) -> dict[str, Any]:
     }
 
 
-def obs_surface_task_status() -> dict[str, Any]:
-    script = ROOT / "scripts" / "install_obs_server_task.ps1"
+def obs_surface_task_status(*, check_http: bool = True) -> dict[str, Any]:
+    script = ROOT / "scripts" / "install_obs_server_service.ps1"
     if os.name != "nt":
         return {"available": False, "reason": "not-windows"}
     if not script.exists():
-        return {"available": False, "reason": "task-script-missing", "script": str(script)}
+        return {"available": False, "reason": "service-script-missing", "script": str(script)}
     powershell = os.getenv("HERMES_POWERSHELL", "powershell.exe")
-    result = run_command(
-        [powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "-Status"],
-        timeout=int(os.getenv("FP_OBS_TASK_STATUS_TIMEOUT_SECONDS", "8")),
-    )
+    command = [powershell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "-Status"]
+    if not check_http:
+        command.append("-SkipHttpProbe")
+    result = run_command(command, timeout=int(os.getenv("FP_OBS_TASK_STATUS_TIMEOUT_SECONDS", "8")))
     if result is None:
         return {"available": False, "reason": "status-command-failed", "script": str(script)}
     if result.returncode != 0:
@@ -1189,12 +1203,22 @@ def local_discord_proof_classified(discord_queue: dict[str, Any]) -> bool:
     )
 
 
-def build_payload(*, check_http: bool = True) -> dict[str, Any]:
+def build_payload(*, check_http: bool = True, http_handler_witness: bool = False) -> dict[str, Any]:
     services = {unit: systemctl_state(unit) for unit in SERVICES}
     truth = [truth_file_status(spec) for spec in TRUTH_FILES]
     active_services = [name for name, state in services.items() if state["active"]]
-    obs_surface = obs_surface_task_status()
-    raw_http_open = port_open(HTTP_PORT)
+    obs_surface = obs_surface_task_status(check_http=False) if http_handler_witness else obs_surface_task_status()
+    if http_handler_witness:
+        obs_surface = dict(obs_surface)
+        owner_state = str(obs_surface.get("serviceState") or obs_surface.get("taskState") or "").strip().lower()
+        process_count = int(obs_surface.get("processCount") or 0)
+        obs_surface["port8777Listening"] = True
+        obs_surface["healthEndpointOk"] = True
+        obs_surface["lifecycleHealthy"] = bool(
+            obs_surface.get("available") and owner_state == "running" and process_count == 1
+        )
+        obs_surface["healthWitness"] = "current-http-handler"
+    raw_http_open = True if http_handler_witness else port_open(HTTP_PORT)
     task_reports_http = bool(obs_surface.get("available") and obs_surface.get("port8777Listening"))
     http_open = bool(raw_http_open or task_reports_http)
     obs_surface_ready = http_open

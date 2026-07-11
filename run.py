@@ -150,6 +150,26 @@ def check_dictionaries_are_unmodified(original_pokedex, original_move_json):
 
 
 BATTLE_STATS_FILE = Path(__file__).resolve().parent / "battle_stats.json"
+ACCOUNT_SEASON_FILE = (
+    Path(__file__).resolve().parent / "devstream" / "truth" / "account-season.json"
+)
+
+
+def _normalized_account_id(value) -> str:
+    return "".join(char.lower() for char in str(value or "") if char.isalnum())
+
+
+def _active_account_scope() -> tuple[str, str]:
+    account = str(getattr(FoulPlayConfig, "username", "") or "").strip()
+    season_id = ""
+    try:
+        payload = json.loads(ACCOUNT_SEASON_FILE.read_text(encoding="utf-8"))
+        season_account = str(payload.get("account") or "").strip()
+        if _normalized_account_id(season_account) == _normalized_account_id(account):
+            season_id = str(payload.get("seasonId") or "").strip()
+    except (OSError, ValueError, TypeError):
+        pass
+    return account, season_id
 
 
 def _battle_stats_max_entries() -> int:
@@ -180,6 +200,32 @@ class BattleStats:
                 battles = data.get("battles", [])
                 if not isinstance(battles, list):
                     return []
+                account, season_id = _active_account_scope()
+                account_id = _normalized_account_id(account)
+                tagged_accounts_present = any(
+                    _normalized_account_id(row.get("account"))
+                    for row in battles
+                    if isinstance(row, dict)
+                )
+                if account_id and tagged_accounts_present:
+                    battles = [
+                        row
+                        for row in battles
+                        if isinstance(row, dict)
+                        and _normalized_account_id(row.get("account")) == account_id
+                    ]
+                tagged_seasons_present = any(
+                    str(row.get("season_id") or row.get("seasonId") or "").strip()
+                    for row in battles
+                    if isinstance(row, dict)
+                )
+                if season_id and tagged_seasons_present:
+                    battles = [
+                        row
+                        for row in battles
+                        if str(row.get("season_id") or row.get("seasonId") or "").strip()
+                        == season_id
+                    ]
                 if len(battles) > BATTLE_STATS_MAX_ENTRIES:
                     battles = battles[-BATTLE_STATS_MAX_ENTRIES:]
                 return battles
@@ -199,6 +245,7 @@ class BattleStats:
 
     def _record_battle(self, team_file_name, result, battle_tag=None, rating=None):
         from datetime import datetime, timezone
+        account, season_id = _active_account_scope()
         entry = {
             "battle_id": battle_tag or "unknown",
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -206,7 +253,11 @@ class BattleStats:
             "result": result,
             "replay_id": battle_tag or "",
             "rating": rating,
+            "account": account,
+            "format": str(getattr(FoulPlayConfig, "pokemon_format", "") or ""),
         }
+        if season_id:
+            entry["season_id"] = season_id
         self._battles.append(entry)
         if len(self._battles) > BATTLE_STATS_MAX_ENTRIES:
             del self._battles[:-BATTLE_STATS_MAX_ENTRIES]

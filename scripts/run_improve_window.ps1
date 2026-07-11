@@ -17,7 +17,7 @@ param(
   [double]$MinFreeGB = 3.5,
   [switch]$AutoImprove,
   [int]$LeaseMinutes = 180,
-  [string]$Account = 'LEBOTJAMESXD00N',
+  [string]$Account = '',
   [int]$MaxConcurrentBattles = 1
 )
 $ErrorActionPreference = 'Continue'
@@ -31,6 +31,14 @@ function say($m) { $l = ("{0} [window] {1}" -f (Get-Date -Format o), $m); $l | A
 function Get-LadderPids { (Get-CimInstance Win32_Process -Filter "Name='python.exe'" 2>$null | Where-Object { $_.CommandLine -match 'run\.py' -and $_.CommandLine -match 'search_ladder' }).ProcessId }
 function Get-WsCount($p) { if (-not $p) { return 0 }; (Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Where-Object { $_.RemotePort -eq 443 -and $p -contains $_.OwningProcess } | Measure-Object).Count }
 function Start-Daemon { Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', $daemon | Out-Null }
+
+if ([string]::IsNullOrWhiteSpace($Account)) {
+  try {
+    $season = Get-Content -LiteralPath (Join-Path $proj 'devstream\truth\account-season.json') -Raw | ConvertFrom-Json
+    $Account = [string]$season.account
+  } catch {}
+}
+if ([string]::IsNullOrWhiteSpace($Account)) { say "STOP: account-season authority is missing."; exit 2 }
 
 if ($Battles -le 0) { say "STOP: Battles must be positive."; exit 2 }
 if ($MaxConcurrentBattles -le 0) { say "STOP: MaxConcurrentBattles must be positive."; exit 2 }

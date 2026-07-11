@@ -761,9 +761,13 @@ class _SmogonSets(PokemonSets):
             ].items():
                 counter_name = normalize_name(counter_name)
                 if counter_name in pkmn_names:
-                    matchup_effectiveness[counter_name] = round(
-                        1 - counter_information[1], 2
+                    counter_win_probability = self._counter_win_probability(
+                        counter_information
                     )
+                    if counter_win_probability is not None:
+                        matchup_effectiveness[counter_name] = round(
+                            1 - counter_win_probability, 2
+                        )
 
             for spread, count in sorted(
                 pkmn_information["Spreads"].items(), key=lambda x: x[1], reverse=True
@@ -837,6 +841,22 @@ class _SmogonSets(PokemonSets):
         month = "{:02d}".format(previous_month.month)
 
         return smogon_url.format(year, month, game_mode)
+
+    @staticmethod
+    def _counter_win_probability(counter_information):
+        if isinstance(counter_information, dict):
+            value = counter_information.get("p")
+            if value is None:
+                value = counter_information.get(1, counter_information.get("1"))
+        else:
+            try:
+                value = counter_information[1]
+            except (KeyError, IndexError, TypeError):
+                value = None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
     def _pokemon_set_makes_sense(self, pkmn_set: PokemonSet):
         # Without a large amount in the supporting stat choice items don't make sense

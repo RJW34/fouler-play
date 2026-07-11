@@ -15,13 +15,19 @@ with WebSocket broadcasting to OBS.
 
 from __future__ import annotations
 
+import sys
+
+# This HTTP surface has no WMI dependency. Python 3.12's platform module otherwise
+# imports _wmi, which can block startup when the host WMI provider is saturated.
+if sys.platform == "win32":
+    sys.modules.setdefault("_wmi", None)
+
 import asyncio
 import contextlib
 import html
 import json
 import os
 import subprocess
-import sys
 import threading
 import time
 import traceback
@@ -151,6 +157,12 @@ SHOWDOWN_ACCOUNTS = [
 ]
 SHOWDOWN_FORMAT = os.getenv("PS_FORMAT", "gen9ou").strip().lower()
 RUNTIME_LEASE_PATH = Path(os.getenv("FOULER_RUNTIME_LEASE_PATH", ROOT_DIR / "devstream" / "truth" / "runtime-lease.json"))
+ACCOUNT_SEASON_PATH = Path(
+    os.getenv(
+        "FOULER_ACCOUNT_SEASON_PATH",
+        ROOT_DIR / "devstream" / "truth" / "account-season.json",
+    )
+)
 ELO_REFRESH_COOLDOWN_SEC = int(os.getenv("SHOWDOWN_ELO_COOLDOWN_SEC", "5"))
 ELO_EVENT_RETRY_SEC = int(os.getenv("SHOWDOWN_ELO_EVENT_RETRY_SEC", "8"))
 ELO_POLL_INTERVAL_SEC = int(os.getenv("SHOWDOWN_ELO_POLL_SEC", "60"))
@@ -162,6 +174,7 @@ REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
 LOOP_LAG_WARN_SEC = float(os.getenv("OBS_LOOP_LAG_WARN_SEC", "2.0") or "2.0")
+LIFECYCLE_OWNER = os.getenv("FOULER_OBS_LIFECYCLE_OWNER", "").strip().lower()
 
 ws_clients: set[web.WebSocketResponse] = set()
 _obs_client = None
@@ -171,6 +184,11 @@ _last_obs_urls: dict[int, str | None] = {}
 _last_obs_updates: dict[int, float] = {}
 _last_obs_status: dict[int, str] = {}
 _obs_sources: list[str] = []
+
+
+def _use_process_signal_handlers() -> bool:
+    """NSSM owns stop/restart signals for the Windows service process tree."""
+    return LIFECYCLE_OWNER != "windows-service"
 _ladder_cache = {"accounts": {}, "updated": 0.0}
 _ladder_lock = asyncio.Lock()
 _last_stats = {"wins": None, "losses": None}
@@ -213,9 +231,14 @@ def _write_pid_file() -> None:
         pass
 
 
-def _cleanup_pid_file() -> None:
+def _cleanup_pid_file(*, force: bool = False) -> None:
     try:
         if PID_FILE.exists():
+            if not force:
+                pid_data = _read_pid_file()
+                owner_pid = _safe_int(pid_data.get("pid"))
+                if owner_pid and owner_pid != os.getpid():
+                    return
             PID_FILE.unlink()
     except Exception:
         pass
@@ -271,7 +294,6 @@ def _same_repo_obs_command(command_line: object) -> bool:
 def _is_obs_server_launcher_wrapper(normalized_command: str) -> bool:
     return (
         "cmd.exe" in normalized_command
-        and "/d /c" in normalized_command
         and OBS_SERVER_SCRIPT_NAME in normalized_command
         and (">>" in normalized_command or "1>>" in normalized_command or "2>>" in normalized_command)
     )
@@ -281,36 +303,22 @@ def _collect_process_rows() -> list[dict]:
     """Return a small process table used to guard against duplicate OBS servers."""
     try:
         if sys.platform == "win32":
-            result = subprocess.run(
-                [
-                    "powershell",
-                    "-NoProfile",
-                    "-Command",
-                    (
-                        "Get-CimInstance Win32_Process | "
-                        "Select-Object ProcessId,ParentProcessId,CommandLine | "
-                        "ConvertTo-Json -Compress"
-                    ),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=PROCESS_SCAN_TIMEOUT_SEC,
-                check=False,
-            )
-            if result.returncode != 0 or not result.stdout.strip():
-                return []
-            parsed = json.loads(result.stdout)
-            if isinstance(parsed, dict):
-                parsed = [parsed]
-            return [
-                {
-                    "pid": _safe_int(row.get("ProcessId")),
-                    "ppid": _safe_int(row.get("ParentProcessId")),
-                    "command": row.get("CommandLine") or "",
-                }
-                for row in parsed
-                if isinstance(row, dict)
-            ]
+            import psutil
+
+            rows: list[dict] = []
+            for process in psutil.process_iter(["pid", "ppid", "cmdline"]):
+                try:
+                    info = process.info
+                    rows.append(
+                        {
+                            "pid": _safe_int(info.get("pid")),
+                            "ppid": _safe_int(info.get("ppid")),
+                            "command": subprocess.list2cmdline(info.get("cmdline") or []),
+                        }
+                    )
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    continue
+            return rows
 
         result = subprocess.run(
             ["ps", "-eo", "pid=,ppid=,args="],
@@ -384,6 +392,19 @@ def _command_for_pid(rows: list[dict], pid: int) -> str:
     return ""
 
 
+def _command_for_live_pid(pid: int) -> str:
+    if pid <= 0:
+        return ""
+    try:
+        if sys.platform == "win32":
+            import psutil
+
+            return subprocess.list2cmdline(psutil.Process(pid).cmdline())
+        return _command_for_pid(_collect_process_rows(), pid)
+    except Exception:
+        return ""
+
+
 def _build_singleton_status(rows: list[dict] | None = None) -> dict:
     pid_data = _read_pid_file()
     pid = _safe_int(pid_data.get("pid"))
@@ -406,16 +427,15 @@ def _acquire_singleton_or_exit() -> None:
 
     pid_data = _read_pid_file()
     existing_pid = _safe_int(pid_data.get("pid"))
-    rows = _collect_process_rows()
     if existing_pid and existing_pid != os.getpid():
         if _pid_exists(existing_pid):
-            command = _command_for_pid(rows, existing_pid)
-            if not _same_repo_obs_command(command):
+            command = _command_for_live_pid(existing_pid)
+            if command and not _same_repo_obs_command(command):
                 print(
                     f"[SERVER] Removing stale Fouler OBS pid file; pid {existing_pid} is alive but is not this repo's OBS server.",
                     file=sys.stderr,
                 )
-                _cleanup_pid_file()
+                _cleanup_pid_file(force=True)
             else:
                 print(
                     f"[SERVER] Existing Fouler OBS server pid {existing_pid} is alive; refusing duplicate start.",
@@ -423,16 +443,7 @@ def _acquire_singleton_or_exit() -> None:
                 )
                 sys.exit(78)
         else:
-            _cleanup_pid_file()
-
-    duplicates = _find_duplicate_obs_servers(rows)
-    if duplicates:
-        print(
-            "[SERVER] Existing Fouler OBS server process found; refusing duplicate start: "
-            + json.dumps({"duplicates": duplicates[:5]}, sort_keys=True),
-            file=sys.stderr,
-        )
-        sys.exit(78)
+            _cleanup_pid_file(force=True)
 
     _write_pid_file()
 
@@ -462,6 +473,7 @@ def build_state_payload() -> dict:
     status["today_wins"] = daily.get("wins", 0)
     status["today_losses"] = daily.get("losses", 0)
     credential_failure = recent_showdown_credential_failure(ROOT_DIR)
+    account_season = _account_season_authority()
     
     # Update status field based on active battles
     if credential_failure.get("found"):
@@ -478,12 +490,17 @@ def build_state_payload() -> dict:
         opponent = battles[0].get("opponent", "Opponent") if battles else "Opponent"
         status["battle_info"] = f"vs {opponent}"
     else:
-        status["status"] = "Searching"
-        status["battle_info"] = "Searching..."
+        status = state_store.status_without_active_battles(
+            status,
+            staged_baseline=account_season.get("stagedBaseline") is True,
+        )
     
     # Add accounts_elo to status (so overlay.html receives it via payload.status)
     accounts_elo, _accounts_source, _accounts_updated = _visible_ladder_accounts(current_accounts)
     status["accounts_elo"] = accounts_elo
+    status["account"] = account_season.get("account")
+    status["account_season_id"] = account_season.get("seasonId")
+    status["staged_baseline"] = account_season.get("stagedBaseline") is True
     
     return {
         "status": status,
@@ -492,6 +509,10 @@ def build_state_payload() -> dict:
         "max_slots": battles_data.get("max_slots"),
         "updated": battles_data.get("updated"),
         "accounts_elo": accounts_elo,  # Also keep at top-level for /state endpoint compat
+        "account": account_season.get("account"),
+        "account_season_id": account_season.get("seasonId"),
+        "staged_baseline": account_season.get("stagedBaseline") is True,
+        "runtime_status": account_season.get("runtimeStatus"),
         "runtime_blocked": bool(status.get("runtime_blocked")),
     }
 
@@ -920,6 +941,51 @@ def _runtime_lease_account() -> str:
     return ""
 
 
+def _account_season_authority() -> dict:
+    try:
+        season = json.loads(ACCOUNT_SEASON_PATH.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return {"ready": False, "stagedBaseline": False}
+    if not isinstance(season, dict):
+        return {"ready": False, "stagedBaseline": False}
+    account = str(season.get("account") or "").strip()
+    fmt = str(season.get("format") or "").strip().lower()
+    try:
+        baseline = int(round(float(season.get("baselineRating"))))
+    except (TypeError, ValueError):
+        baseline = None
+    ready = bool(
+        season.get("schemaVersion") == "fouler-play-account-season/v1"
+        and account
+        and fmt == "gen9ou"
+        and baseline is not None
+        and baseline > 0
+        and season.get("createdAtUtc")
+    )
+    stats_empty = False
+    try:
+        stats = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+        rows = stats.get("battles") if isinstance(stats, dict) else None
+        stats_empty = isinstance(rows, list) and not rows
+    except Exception:
+        pass
+    return {
+        "ready": ready,
+        "account": account or None,
+        "seasonId": season.get("seasonId"),
+        "createdAtUtc": season.get("createdAtUtc"),
+        "baselineRating": baseline,
+        "runtimeStatus": season.get("runtimeStatus"),
+        "firstBattleStarted": season.get("firstBattleStarted") is True,
+        "stagedBaseline": bool(
+            ready
+            and season.get("firstBattleStarted") is False
+            and stats_empty
+            and season.get("runtimeStatus") == "staged-at-baseline"
+        ),
+    }
+
+
 def _latest_battle_stats_account() -> str:
     try:
         raw = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
@@ -940,6 +1006,9 @@ def _latest_battle_stats_account() -> str:
 
 
 def _configured_showdown_accounts() -> list[str]:
+    season = _account_season_authority()
+    if season.get("ready") and season.get("account"):
+        return _dedupe_showdown_accounts([str(season["account"])])
     lease_account = _runtime_lease_account()
     if lease_account:
         return _dedupe_showdown_accounts([lease_account])
@@ -1003,6 +1072,17 @@ def _visible_ladder_accounts(accounts: list[str] | None = None) -> tuple[dict, s
         rating, timestamp = _latest_battle_stats_rating()
         if rating is not None:
             return {requested[0]: rating}, "battle_stats", timestamp
+        season = _account_season_authority()
+        if (
+            season.get("stagedBaseline") is True
+            and _normalize_showdown_id(requested[0])
+            == _normalize_showdown_id(str(season.get("account") or ""))
+        ):
+            return (
+                {str(season["account"]): int(season["baselineRating"])},
+                "account_season_baseline",
+                season.get("createdAtUtc"),
+            )
     return {}, None, None
 
 
@@ -1503,20 +1583,26 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 _last_obs_ids.pop(idx, None)
 
 
-async def handle_obs(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(str(STREAMING_DIR / "obs_battles.html"))
+async def _html_file_response(filename: str) -> web.Response:
+    """Serve small OBS HTML pages without Windows Proactor sendfile stalls."""
+    text = await asyncio.to_thread((STREAMING_DIR / filename).read_text, encoding="utf-8")
+    return web.Response(text=text, content_type="text/html")
 
 
-async def handle_overlay(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(str(STREAMING_DIR / "overlay.html"))
+async def handle_obs(request: web.Request) -> web.Response:
+    return await _html_file_response("obs_battles.html")
 
 
-async def handle_idle(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(str(STREAMING_DIR / "obs_idle.html"))
+async def handle_overlay(request: web.Request) -> web.Response:
+    return await _html_file_response("overlay.html")
 
 
-async def handle_debug(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(str(STREAMING_DIR / "obs_debug.html"))
+async def handle_idle(request: web.Request) -> web.Response:
+    return await _html_file_response("obs_idle.html")
+
+
+async def handle_debug(request: web.Request) -> web.Response:
+    return await _html_file_response("obs_debug.html")
 
 
 async def handle_battles(request: web.Request) -> web.Response:
@@ -1587,7 +1673,9 @@ def _public_surface_health_payload(singleton_status: dict, probe_failure: dict |
 def _build_devstream_health_payload() -> dict:
     from devstream_health import build_payload
 
-    return build_payload(check_http=False)
+    # The current /health?deep=1 request is the HTTP liveness witness. A nested
+    # request to this same process can time out while the deep probe is running.
+    return build_payload(check_http=False, http_handler_witness=True)
 
 
 def _probe_failure_payload(*, method: str, error: str = "", return_code: int | None = None) -> dict:
@@ -1647,28 +1735,42 @@ async def handle_health(request: web.Request) -> web.Response:
         "yes",
         "on",
     )
-    if deep_requested:
-        # Process-table scan shells out to PowerShell (seconds); keep it off the event loop.
-        singleton_status = await asyncio.to_thread(_build_singleton_status)
-    else:
-        singleton_status = {
-            "duplicateCount": 0,
-            "duplicates": [],
-            "skipped": True,
-            "reason": "default health is lightweight HTTP liveness; use /health?deep=1 for process proof",
-        }
-    if deep_requested:
-        payload, status_code = await _load_devstream_health_payload(singleton_status)
-    else:
-        payload, status_code = await asyncio.to_thread(
-            _public_surface_health_payload,
-            singleton_status,
+    if not deep_requested:
+        return web.json_response(
             {
-                "ok": None,
-                "method": "skipped",
-                "reason": "deep devstream proof health is available at /health?deep=1",
+                "schemaVersion": "fouler-obs-health/v1",
+                "projectId": "fouler-play",
+                "status": "running",
+                "healthy": True,
+                "running": True,
+                "readyForLiveFocus": False,
+                "readiness": {
+                    "httpReady": True,
+                    "streamReady": None,
+                    "runtimeReady": None,
+                    "proofHandoffReady": False,
+                },
+                "blockers": [],
+                "warnings": ["readiness was not evaluated; use /health?deep=1"],
+                "devstreamHealthProbe": {
+                    "ok": None,
+                    "method": "skipped",
+                    "reason": "deep devstream proof health is available at /health?deep=1",
+                },
+                "obsServerSingleton": {
+                    "duplicateCount": 0,
+                    "duplicates": [],
+                    "skipped": True,
+                    "reason": "plain health is constant-time HTTP liveness",
+                },
             },
+            status=200,
         )
+
+    if deep_requested:
+        # Native process-table enumeration still belongs off the event loop.
+        singleton_status = await asyncio.to_thread(_build_singleton_status)
+    payload, status_code = await _load_devstream_health_payload(singleton_status)
     if singleton_status.get("duplicateCount"):
         payload["status"] = "degraded"
         payload["healthy"] = False
@@ -1697,8 +1799,11 @@ def _build_status_payload() -> dict:
         status["status"] = "Active"
         status["battle_info"] = ", ".join(f"vs {b.get('opponent', 'Unknown')}" for b in battles)
     else:
-        status["status"] = "Searching"
-        status["battle_info"] = "Searching..."
+        account_season = _account_season_authority()
+        status = state_store.status_without_active_battles(
+            status,
+            staged_baseline=account_season.get("stagedBaseline") is True,
+        )
     # Add daily totals
     daily = state_store.read_daily_stats()
     status["today_wins"] = daily.get("wins", 0)
@@ -1913,7 +2018,7 @@ def _listener_self_check() -> None:
     Proven failure mode (2026-07-04): the 8777 listen socket can disappear while the
     event loop stays healthy ([POLL] heartbeats continue, loop-stall watcher silent).
     A deaf-but-alive server wedges the OBS page and tricks keepalives into taskkilling
-    a "healthy" process. Instead: self-probe the listener; after 4 consecutive failures
+    a "healthy" process. Instead: issue a valid lightweight HTTP request; after 4 consecutive failures
     (~80s) print loudly and exit(90) so the keepalive relaunch path sees a genuinely
     dead process and restarts one working instance.
     """
@@ -1923,13 +2028,20 @@ def _listener_self_check() -> None:
     while True:
         time.sleep(20)
         try:
-            with _socket.create_connection(("127.0.0.1", PORT), timeout=5):
-                pass
+            with _socket.create_connection(("127.0.0.1", PORT), timeout=5) as probe:
+                probe.sendall(
+                    b"GET /health HTTP/1.1\r\n"
+                    b"Host: 127.0.0.1\r\n"
+                    b"Connection: close\r\n\r\n"
+                )
+                first_line = probe.recv(128).split(b"\r\n", 1)[0]
+                if b" 200 " not in first_line:
+                    raise OSError(f"unexpected health response: {first_line!r}")
             failures = 0
         except OSError as exc:
             failures += 1
             print(
-                f"[LISTENER-CHECK] self-connect to 127.0.0.1:{PORT} failed ({failures}/4): {exc}",
+                f"[LISTENER-CHECK] HTTP self-probe on 127.0.0.1:{PORT} failed ({failures}/4): {exc}",
                 file=sys.stderr,
                 flush=True,
             )
@@ -1996,14 +2108,14 @@ async def cleanup_background_tasks(app: web.Application) -> None:
 
 # ── Grid Panel Handlers ──
 
-async def handle_fouler_stats(request: web.Request) -> web.FileResponse:
+async def handle_fouler_stats(request: web.Request) -> web.Response:
     """Serve the Fouler Stats panel HTML."""
-    return web.FileResponse(str(STREAMING_DIR / "fouler_stats.html"))
+    return await _html_file_response("fouler_stats.html")
 
 
-async def handle_emerald_brain(request: web.Request) -> web.FileResponse:
+async def handle_emerald_brain(request: web.Request) -> web.Response:
     """Serve the Emerald AI Brain panel HTML."""
-    return web.FileResponse(str(STREAMING_DIR / "emerald_brain.html"))
+    return await _html_file_response("emerald_brain.html")
 
 
 async def handle_emerald_brain_state(request: web.Request) -> web.Response:
@@ -2026,9 +2138,9 @@ async def handle_emerald_update(request: web.Request) -> web.Response:
         return web.json_response({"ok": False, "error": str(e)}, status=400)
 
 
-async def handle_firered_brain(request: web.Request) -> web.FileResponse:
+async def handle_firered_brain(request: web.Request) -> web.Response:
     """Serve the Fire Red AI Brain panel HTML."""
-    return web.FileResponse(str(STREAMING_DIR / "firered_brain.html"))
+    return await _html_file_response("firered_brain.html")
 
 
 async def handle_firered_brain_state(request: web.Request) -> web.Response:
@@ -2344,4 +2456,9 @@ if __name__ == "__main__":
     print()
     print("[SERVER] Waiting for requests...")
 
-    web.run_app(create_app(), host="0.0.0.0", port=PORT)
+    web.run_app(
+        create_app(),
+        host="0.0.0.0",
+        port=PORT,
+        handle_signals=_use_process_signal_handlers(),
+    )

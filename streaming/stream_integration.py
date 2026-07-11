@@ -77,7 +77,6 @@ async def stop_stream():
     print("[STREAM] Stream status set to stopped")
     return {"ok": True}
 
-
 async def update_stream_status(
     wins=None,
     losses=None,
@@ -146,7 +145,3 @@ async def update_stream_status(
     await send_stream_event("STATS_UPDATE", _state)
     
     return {"ok": True}
-
-
-# Initialize status file on import
-_write_status()

@@ -12,6 +12,7 @@ _FORCE_NO_SETSAMPLE = str(os.getenv("FOULER_FORCE_NO_SETSAMPLE", "0")).lower() i
 }
 
 import constants
+from config import FoulPlayConfig
 from data import all_move_json, pokedex
 from fp.search.helpers import populate_pkmn_from_set
 from fp.helpers import natures, normalize_name
@@ -91,6 +92,91 @@ def _pkmn_reveal_signature(pkmn: Pokemon):
         tuple(sorted(getattr(pkmn, "impossible_items", []) or [])),
         tuple(sorted(getattr(pkmn, "impossible_abilities", []) or [])),
     )
+
+
+def _battle_sampling_format(battle: Battle | None) -> str:
+    if battle is None:
+        return ""
+    return str(
+        getattr(battle, "pokemon_format", None)
+        or getattr(battle, "battle_type", None)
+        or ""
+    ).strip()
+
+
+def _battle_sampling_pokemon_names(pkmn: Pokemon, battle: Battle | None) -> set[str]:
+    names: set[str] = set()
+
+    def add(candidate: Pokemon | None) -> None:
+        if candidate is None:
+            return
+        for attr in ("name", "base_name", "mega_name"):
+            value = getattr(candidate, attr, None)
+            if value:
+                names.add(str(value))
+
+    add(pkmn)
+    if battle is None:
+        return names
+
+    for side_name in ("opponent", "user"):
+        side = getattr(battle, side_name, None)
+        if side is None:
+            continue
+        add(getattr(side, "active", None))
+        for reserve_pkmn in getattr(side, "reserve", []) or []:
+            add(reserve_pkmn)
+    return names
+
+
+def _dataset_has_sets_for_pokemon(dataset, pkmn: Pokemon) -> bool:
+    try:
+        if not getattr(dataset, "pkmn_sets", None):
+            return False
+        return bool(dataset.get_pkmn_sets_from_pkmn_name(pkmn))
+    except Exception:
+        return False
+
+
+def _ensure_standard_battle_sampling_datasets(pkmn: Pokemon, battle: Battle | None) -> None:
+    game_mode = _battle_sampling_format(battle)
+    if not game_mode or "random" in game_mode:
+        return
+
+    pkmn_names = _battle_sampling_pokemon_names(pkmn, battle)
+    if not pkmn_names:
+        return
+
+    if (
+        getattr(TeamDatasets, "pkmn_mode", None) != game_mode
+        or not _dataset_has_sets_for_pokemon(TeamDatasets, pkmn)
+    ):
+        try:
+            TeamDatasets.initialize(game_mode, pkmn_names)
+            logger.info(
+                "Rehydrated TeamDatasets for %s using %s (%d known pokemon)",
+                pkmn.name,
+                game_mode,
+                len(pkmn_names),
+            )
+        except Exception as exc:
+            logger.warning("Could not rehydrate TeamDatasets for %s: %s", pkmn.name, exc)
+
+    smogon_mode = FoulPlayConfig.smogon_stats or game_mode
+    if (
+        getattr(SmogonSets, "pkmn_mode", None) != smogon_mode
+        or not _dataset_has_sets_for_pokemon(SmogonSets, pkmn)
+    ):
+        try:
+            SmogonSets.initialize(smogon_mode, pkmn_names)
+            logger.info(
+                "Rehydrated SmogonSets for %s using %s (%d known pokemon)",
+                pkmn.name,
+                smogon_mode,
+                len(pkmn_names),
+            )
+        except Exception as exc:
+            logger.warning("Could not rehydrate SmogonSets for %s: %s", pkmn.name, exc)
 
 
 def bayesian_set_probabilities(pkmn: Pokemon, battle: Battle = None) -> list:
@@ -532,6 +618,7 @@ def sample_pokemon(pkmn: Pokemon, battle: Battle = None):
 
 
 def _sample_pokemon(pkmn: Pokemon, battle: Battle = None):
+    _ensure_standard_battle_sampling_datasets(pkmn, battle)
     pokemon_guaranteed_move(pkmn)
     set_most_likely_hidden_power(pkmn)
 
@@ -748,9 +835,9 @@ def prepare_battles(battle: Battle, num_battles: int, deadline: float | None = N
             if battle_copy.mega_evolve_possible():
                 sample_mega_evolution(battle_copy.opponent, index)
 
-            sample_pokemon(battle_copy.opponent.active)
+            sample_pokemon(battle_copy.opponent.active, battle_copy)
             for pkmn in filter(lambda x: x.is_alive(), battle_copy.opponent.reserve):
-                sample_pokemon(pkmn)
+                sample_pokemon(pkmn, battle_copy)
 
             if battle.generation in constants.NO_TEAM_PREVIEW_GENS:
                 populate_standardbattle_unrevealed_pkmn(battle_copy)

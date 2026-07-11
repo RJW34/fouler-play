@@ -3,7 +3,9 @@
 > **NEW AGENT? START AT `AGENTS.md`** (zero-context index: mission, launch path, architecture map,
 > current blockers, guardrails). Canonical mission: climb to and SUSTAIN **1700 ELO** in gen9ou on the
 > 3 provided fat/stall teams via the closed learn-from-loss self-improvement loop — **do NOT redesign
-> the teams**. Account `LEBOTJAMESXD00N`. Source of truth: `~/projects/the-abso-citadel/docs/hermes/DEVSTREAM_MISSIONS.md`.
+> the teams**. The current account is owned by `devstream/truth/account-season.json`; never
+> recover an account name from this historical document. Source of truth:
+> `~/projects/the-abso-citadel/docs/hermes/DEVSTREAM_MISSIONS.md`.
 
 ## Mission
 

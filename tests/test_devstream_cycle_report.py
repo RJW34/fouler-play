@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import sys
@@ -40,6 +41,149 @@ def _elo_cycle(generated_at: str | None = None) -> dict:
             "report": {"exists": True, "path": "replay_analysis/reports/autoresearch_latest.md"},
         },
     }
+
+
+def test_elo_proof_resolves_account_from_runtime_lease(tmp_path, monkeypatch):
+    truth_dir = tmp_path / "devstream" / "truth"
+    truth_dir.mkdir(parents=True)
+    (truth_dir / "runtime-lease.json").write_text(
+        json.dumps(
+            {
+                "schemaVersion": "fouler-play-runtime-lease/v1",
+                "status": "active",
+                "account": "thepeakmons",
+                "battleScope": {"account": "thepeakmons"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devstream_cycle_report, "ROOT", tmp_path)
+    monkeypatch.delenv("FOULER_ACTIVE_ACCOUNT", raising=False)
+    monkeypatch.delenv("PS_USERNAME", raising=False)
+    monkeypatch.delenv("SHOWDOWN_ACCOUNTS", raising=False)
+
+    proof = devstream_cycle_report.build_elo_proof_payload({"battles": []}, _elo_cycle())
+
+    assert proof["account"]["showdownUserId"] == "thepeakmons"
+    assert proof["account"]["authoritySource"] == "devstream/truth/runtime-lease.json"
+    assert proof["account"]["authorityReady"] is True
+
+
+def test_elo_proof_never_defaults_to_a_stale_account(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_cycle_report, "ROOT", tmp_path)
+    monkeypatch.delenv("FOULER_ACTIVE_ACCOUNT", raising=False)
+    monkeypatch.delenv("PS_USERNAME", raising=False)
+    monkeypatch.delenv("SHOWDOWN_ACCOUNTS", raising=False)
+
+    proof = devstream_cycle_report.build_elo_proof_payload({"battles": []}, _elo_cycle())
+
+    assert proof["account"]["showdownUserId"] == "unknown"
+    assert proof["account"]["authoritySource"] == "unresolved"
+    assert proof["account"]["authorityReady"] is False
+
+
+def test_elo_proof_records_live_profile_rating_without_sustain_credit(monkeypatch):
+    monkeypatch.setattr(devstream_cycle_report, "current_source_commit", lambda: "abc1234")
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {
+            "battles": [
+                _elo_battle(0, team="fat-team-1-stall", rating=1153, result="win"),
+            ]
+        },
+        _elo_cycle("2026-07-05T16:00:00+00:00"),
+        account="thepeakmons",
+        live_profile={
+            "status": "fetched",
+            "checkedAtUtc": "2026-07-05T16:00:01+00:00",
+            "showdownUserId": "thepeakmons",
+            "format": "gen9ou",
+            "rating": 1197.25,
+            "source": "https://pokemonshowdown.com/users/thepeakmons.json",
+            "noRuntimeActions": True,
+        },
+    )
+
+    assert proof["summary"]["finalRating"] == 1153
+    assert proof["summary"]["currentRating"] == 1197.25
+    assert proof["summary"]["currentRatingSource"] == "pokemonshowdown-user-api"
+    assert proof["summary"]["liveProfileRating"] == 1197.25
+    assert proof["liveProfile"]["rating"] == 1197.25
+    assert proof["summary"]["sustainWindowGames"] == 0
+    assert proof["summary"]["sustainProofComplete"] is False
+
+
+def test_elo_proof_scopes_stats_to_active_account_season(tmp_path, monkeypatch):
+    season_path = tmp_path / "account-season.json"
+    season_path.write_text(
+        json.dumps(
+            {
+                "account": "DekuFoulerLab",
+                "seasonId": "dekufoulerlab-gen9ou-20260710",
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(devstream_cycle_report, "ACCOUNT_SEASON_FILE", season_path)
+    retired = _elo_battle(0, team="fat-team-1-stall", rating=1177, result="loss")
+    retired.update({"account": "thepeakmons", "season_id": "thepeakmons-gen9ou-20260701"})
+    prior_season = _elo_battle(1, team="fat-team-1-stall", rating=1000, result="loss")
+    prior_season.update(
+        {"account": "DekuFoulerLab", "season_id": "dekufoulerlab-gen9ou-20260709"}
+    )
+    current = _elo_battle(2, team="fat-team-2-balance", rating=1045, result="win")
+    current.update(
+        {"account": "DekuFoulerLab", "season_id": "dekufoulerlab-gen9ou-20260710"}
+    )
+
+    proof = devstream_cycle_report.build_elo_proof_payload(
+        {"battles": [retired, prior_season, current]},
+        _elo_cycle(),
+        account="DekuFoulerLab",
+    )
+
+    assert [game["battleId"] for game in proof["games"]] == [
+        "battle-gen9ou-proof-2"
+    ]
+    assert proof["summary"]["completedGames"] == 1
+    assert proof["summary"]["wins"] == 1
+    assert proof["summary"]["losses"] == 0
+    assert proof["account"]["seasonId"] == "dekufoulerlab-gen9ou-20260710"
+
+
+def test_showdown_profile_fetch_accepts_rating_json_from_http_error(monkeypatch):
+    body = json.dumps(
+        {
+            "userid": "thepeakmons",
+            "ratings": {
+                "gen9ou": {
+                    "elo": 1197.253638433582,
+                    "gxe": 39,
+                    "rpr": 1415.3215656670823,
+                    "rprd": 25,
+                    "w": 1057,
+                    "l": 1229,
+                }
+            },
+        }
+    ).encode("utf-8")
+
+    def fake_urlopen(request, *, timeout):
+        raise devstream_cycle_report.urllib.error.HTTPError(
+            request.full_url,
+            404,
+            "Not Found",
+            hdrs=None,
+            fp=io.BytesIO(body),
+        )
+
+    monkeypatch.setattr(devstream_cycle_report.urllib.request, "urlopen", fake_urlopen)
+
+    profile = devstream_cycle_report.fetch_showdown_profile_rating("thepeakmons", "gen9ou")
+
+    assert profile["status"] == "fetched"
+    assert profile["rating"] == 1197.25
+    assert profile["httpStatus"] == 404
+    assert profile["noRuntimeActions"] is True
 
 
 def test_cycle_report_completion_payload_marks_fresh_learning_proof():
@@ -893,6 +1037,17 @@ def test_cycle_report_write_refreshes_redacted_discord_preview(tmp_path, monkeyp
         '{"schemaVersion":"fouler-play-discord-delivery/v1","status":"dry-run","eventId":"stale"}',
         encoding="utf-8",
     )
+    monkeypatch.setattr(
+        devstream_cycle_report,
+        "fetch_showdown_profile_rating",
+        lambda account, fmt="gen9ou": {
+            "status": "unresolved-account",
+            "showdownUserId": "unknown",
+            "format": fmt,
+            "rating": None,
+            "noRuntimeActions": True,
+        },
+    )
     monkeypatch.setattr(sys, "argv", ["devstream_cycle_report.py", "--write"])
 
     assert devstream_cycle_report.main() == 0
@@ -954,6 +1109,17 @@ def test_cycle_report_write_records_fresh_generated_artifact_metadata(tmp_path, 
     (truth_dir / "discord-delivery.json").write_text(
         '{"schemaVersion":"fouler-play-discord-delivery/v1","status":"idle","queue":{"pending":0,"pendingBattleResults":0},"secretValuesPrinted":false}',
         encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        devstream_cycle_report,
+        "fetch_showdown_profile_rating",
+        lambda account, fmt="gen9ou": {
+            "status": "unresolved-account",
+            "showdownUserId": "unknown",
+            "format": fmt,
+            "rating": None,
+            "noRuntimeActions": True,
+        },
     )
     monkeypatch.setattr(sys, "argv", ["devstream_cycle_report.py", "--write"])
 

@@ -43,6 +43,83 @@ def test_event_poster_loads_env_chain_for_webhooks(monkeypatch, tmp_path):
     assert url.endswith("/token")
 
 
+def test_post_to_discord_writes_structured_durable_deku_event(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(event_poster, "DEKU_EVENT_QUEUE_ROOT", tmp_path / "deku-events")
+    monkeypatch.setattr(event_poster.event_queue_lib, "QUEUE_FILE", queue_file)
+    monkeypatch.setattr(
+        event_poster,
+        "_post_via_deku_remote",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("direct SSH must not run")),
+    )
+    monkeypatch.setattr(
+        event_poster,
+        "_post_via_webhook",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("webhook must not run")),
+    )
+
+    result = event_poster.post_to_discord({
+        "id": "event-1",
+        "event_type": "status_update",
+        "channel": "battles",
+        "content": "Fouler runner is intentionally parked under stop-loss.",
+    })
+
+    assert result["ok"] is True
+    assert result["status"] == "queued"
+    assert result["transport"] == "deku_event_queue"
+    queued = json.loads((tmp_path / "deku-events" / "pending" / "fouler-event-1.json").read_text(encoding="utf-8"))
+    assert queued["schemaVersion"] == "deku-project-event/v1"
+    assert queued["id"] == "fouler-event-1"
+    assert queued["category"] == "fouler-play"
+    assert queued["proof"] == [str(queue_file)]
+    assert queued["payload"]["localEventId"] == "event-1"
+
+
+def test_deku_event_queue_handoff_is_idempotent(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+
+    monkeypatch.setattr(event_poster, "DEKU_EVENT_QUEUE_ROOT", tmp_path / "deku-events")
+    event = {
+        "id": "event-1",
+        "event_type": "status_update",
+        "channel": "battles",
+        "content": "Fouler runner is intentionally offline under stop-loss.",
+    }
+
+    first = event_poster.post_to_discord(event)
+    second = event_poster.post_to_discord(event)
+
+    assert first["ok"] is True
+    assert first["alreadyQueued"] is False
+    assert second["ok"] is True
+    assert second["alreadyQueued"] is True
+    assert len(list((tmp_path / "deku-events" / "pending").glob("*.json"))) == 1
+
+
+def test_deku_event_queue_fails_closed_on_id_collision(monkeypatch, tmp_path):
+    import infrastructure.event_poster as event_poster
+
+    pending = tmp_path / "deku-events" / "pending"
+    pending.mkdir(parents=True)
+    (pending / "fouler-event-2.json").write_text(json.dumps({"id": "different-id"}), encoding="utf-8")
+    monkeypatch.setattr(event_poster, "DEKU_EVENT_QUEUE_ROOT", tmp_path / "deku-events")
+
+    result = event_poster.post_to_discord({
+        "id": "event-2",
+        "event_type": "status_update",
+        "channel": "battles",
+        "content": "Fouler runner remains parked.",
+    })
+
+    assert result["ok"] is False
+    assert result["transport"] == "deku_event_queue"
+    assert result["errorCode"] == "deku_event_queue_collision"
+
+
 def test_event_poster_doctor_reports_redacted_transport(monkeypatch, tmp_path):
     import infrastructure.event_poster as event_poster
     import infrastructure.event_queue_lib as event_queue_lib
@@ -51,14 +128,24 @@ def test_event_poster_doctor_reports_redacted_transport(monkeypatch, tmp_path):
     queue_file.write_text("[]", encoding="utf-8")
     monkeypatch.setenv("EVENT_QUEUE_FILE", str(queue_file))
     monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
-    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/example/token")
+    monkeypatch.setattr(
+        event_poster,
+        "_deku_event_queue_status",
+        lambda alias: {
+            "ready": True,
+            "transport": "deku_event_queue",
+            "category": "fouler-play",
+            "credentialMaterialIncluded": False,
+        },
+    )
 
     payload = event_poster.build_doctor_payload()
 
     assert payload["ready"] is True
     assert payload["transportReady"] is True
     assert payload["queue"]["ready"] is True
-    assert payload["config"]["aliases"]["project"]["redactedUrl"].endswith("/api/webhooks/REDACTED")
+    assert payload["primaryTransportStatus"]["transport"] == "deku_event_queue"
+    assert payload["primaryTransportStatus"]["category"] == "fouler-play"
     assert payload["secretValuesPrinted"] is False
     assert "token" not in json.dumps(payload)
     json.dumps(payload)
@@ -74,7 +161,16 @@ def test_event_poster_doctor_is_not_ready_with_pending_backlog(monkeypatch, tmp_
         encoding="utf-8",
     )
     monkeypatch.setenv("EVENT_QUEUE_FILE", str(queue_file))
-    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "https://discord.com/api/webhooks/example/token")
+    monkeypatch.setattr(
+        event_poster,
+        "_deku_event_queue_status",
+        lambda alias: {
+            "ready": True,
+            "transport": "deku_event_queue",
+            "category": "fouler-play",
+            "credentialMaterialIncluded": False,
+        },
+    )
     monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
 
     payload = event_poster.build_doctor_payload()
@@ -145,7 +241,8 @@ def test_event_poster_dry_run_writes_redacted_delivery_proof(monkeypatch, tmp_pa
     assert delivery["reportSummary"]["secretLikeContentRedacted"] is True
     assert delivery["secretValuesPrinted"] is False
     assert reporting["schemaVersion"] == "fouler-play-discord-reporting/v1"
-    assert reporting["transport"]["redactedUrl"].endswith("/api/webhooks/REDACTED")
+    assert reporting["transport"]["type"] == "deku_event_queue"
+    assert reporting["transport"]["category"] == "fouler-play"
     assert reporting["queue"]["deliveryFailures"] == 0
     assert "token" not in rendered
     assert "secret-token-should-not-render" not in rendered
@@ -1110,6 +1207,23 @@ def test_read_queue_retries_transient_windows_file_lock(monkeypatch, tmp_path):
 
     assert event_queue_lib.read_queue() == [{"id": "event-1", "status": "pending"}]
     assert calls["count"] == 1
+
+
+def test_read_queue_recovers_from_last_good_backup_after_corrupt_live_file(monkeypatch, tmp_path):
+    import infrastructure.event_queue_lib as event_queue_lib
+
+    queue_file = tmp_path / "events_queue.json"
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
+
+    event_id = event_queue_lib.queue_event("mission_alert", "battles", "queue durability proof", dedup_window_sec=0)
+    expected = event_queue_lib.read_queue()
+    assert event_id is not None
+    assert event_queue_lib._queue_backup_file().exists()
+
+    queue_file.write_text("[", encoding="utf-8")
+
+    assert event_queue_lib.read_queue() == expected
+    assert list(tmp_path.glob("events_queue.json.corrupt-*"))
 
 
 def test_webhook_dns_failure_is_reported_without_posting(monkeypatch):

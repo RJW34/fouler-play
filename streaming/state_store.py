@@ -29,6 +29,7 @@ STATE_STORE_WRITE_FAILURE_PATH = ROOT_DIR / "devstream" / "truth" / "state-store
 
 DEFAULT_NEXT_FIX = "Pending replay review"
 DEFAULT_DEVSTREAM_BATTLE_SURFACES = 3
+IDLE_READY_RUNTIME_MODES = {"bounded_session_complete", "offline_rehearsal", "ready"}
 
 DEFAULT_STATUS = {
     "elo": "---",
@@ -49,6 +50,55 @@ def _status_with_cleared_blocker(status: dict[str, Any]) -> dict[str, Any]:
     for key in ("runtime_blocked", "blocker_code", "blocker_summary"):
         cleared.pop(key, None)
     return cleared
+
+
+def status_without_active_battles(
+    status: dict[str, Any],
+    *,
+    staged_baseline: bool = False,
+) -> dict[str, Any]:
+    idle = dict(status)
+    idle["active_battles"] = []
+    if idle.get("runtime_blocked"):
+        return idle
+    if staged_baseline:
+        idle.update(
+            {
+                "status": "Staged",
+                "battle_info": "Fresh 1000 ELO season - first bounded battle not started",
+                "streaming": False,
+            }
+        )
+        return idle
+
+    mode = str(idle.get("runtime_mode") or "").strip().lower()
+    current_status = str(idle.get("status") or "").strip().lower()
+    if mode in IDLE_READY_RUNTIME_MODES or current_status in {
+        "ready",
+        "offline rehearsal ready",
+    }:
+        if mode == "offline_rehearsal":
+            label = "Offline rehearsal ready"
+            detail = "Offline rehearsal ready; no live battle is running."
+        elif mode == "bounded_session_complete":
+            label = "Ready"
+            detail = "Bounded session complete; ready for the next finite batch."
+        else:
+            label = "Ready"
+            detail = "Runtime ready; no active battle is running."
+        idle.update(
+            {
+                "status": label,
+                "battle_info": detail,
+                "streaming": False,
+                "stream_pid": None,
+            }
+        )
+        return idle
+
+    idle["status"] = "Searching"
+    idle["battle_info"] = "Searching..."
+    return idle
 
 
 def _write_state_store_failure(path: Path, exc: BaseException, attempts: int) -> None:
@@ -278,8 +328,7 @@ def _sync_stream_status_with_active_battles(payload: dict[str, Any]) -> None:
             status["status"] = "Active"
             status["battle_info"] = _active_battle_summary(battles)
         else:
-            status["status"] = "Searching"
-            status["battle_info"] = "Searching..."
+            status = status_without_active_battles(status)
         write_status(status)
     except Exception as exc:
         _write_state_store_failure(STREAM_STATUS_PATH, exc, 1)
