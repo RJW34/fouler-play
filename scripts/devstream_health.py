@@ -1048,10 +1048,17 @@ def completed_cycle_proof_status() -> dict[str, Any]:
 
 def git_status() -> dict[str, Any]:
     commit = run_command(["git", "rev-parse", "--short", "HEAD"], timeout=3)
-    dirty = run_command(["git", "status", "--short"], timeout=3)
+    # Runtime health needs tracked source drift, not an exhaustive walk through
+    # generated proof artifacts. Optional locks can strand index.lock when a
+    # bounded probe is terminated on Windows.
+    dirty = run_command(
+        ["git", "--no-optional-locks", "status", "--short", "--untracked-files=no"],
+        timeout=3,
+    )
     return {
         "commit": commit.stdout.strip() if commit and commit.returncode == 0 else None,
         "dirty": bool(dirty and dirty.stdout.strip()),
+        "dirtyScope": "tracked",
     }
 
 
@@ -1562,9 +1569,17 @@ def build_payload(*, check_http: bool = True, http_handler_witness: bool = False
 def main() -> int:
     parser = argparse.ArgumentParser(description="Read-only fouler-play devstream health probe")
     parser.add_argument("--skip-http", action="store_true", help="skip local HTTP endpoint checks")
+    parser.add_argument(
+        "--http-handler-witness",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--write", action="store_true", help="also write devstream/truth/health.json")
     args = parser.parse_args()
-    payload = build_payload(check_http=not args.skip_http)
+    payload = build_payload(
+        check_http=not args.skip_http,
+        http_handler_witness=args.http_handler_witness,
+    )
     print(json.dumps(payload, indent=2, sort_keys=True))
     if args.write:
         output = ROOT / "devstream" / "truth" / "health.json"

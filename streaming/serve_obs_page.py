@@ -1670,14 +1670,6 @@ def _public_surface_health_payload(singleton_status: dict, probe_failure: dict |
     return payload, 503 if blockers else 200
 
 
-def _build_devstream_health_payload() -> dict:
-    from devstream_health import build_payload
-
-    # The current /health?deep=1 request is the HTTP liveness witness. A nested
-    # request to this same process can time out while the deep probe is running.
-    return build_payload(check_http=False, http_handler_witness=True)
-
-
 def _probe_failure_payload(*, method: str, error: str = "", return_code: int | None = None) -> dict:
     payload = {
         "ok": False,
@@ -1690,42 +1682,37 @@ def _probe_failure_payload(*, method: str, error: str = "", return_code: int | N
 
 
 async def _load_devstream_health_payload(singleton_status: dict) -> tuple[dict, int]:
-    try:
-        payload = await asyncio.to_thread(_build_devstream_health_payload)
-        payload["obsServerSingleton"] = singleton_status
-        payload["devstreamHealthProbe"] = {"ok": True, "method": "in-process"}
-        return payload, 200
-    except Exception as exc:
-        direct_failure = _probe_failure_payload(method="in-process", error=f"{type(exc).__name__}: {exc}")
-
     script = ROOT_DIR / "scripts" / "devstream_health.py"
-    if script.exists():
-        try:
-            result = await asyncio.to_thread(
-                subprocess.run,
-                [sys.executable, str(script), "--skip-http"],
-                cwd=str(ROOT_DIR),
-                capture_output=True,
-                text=True,
-                timeout=HEALTH_PROBE_TIMEOUT_SEC,
-                check=False,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                payload = json.loads(result.stdout)
-                payload["obsServerSingleton"] = singleton_status
-                payload["devstreamHealthProbe"] = {"ok": True, "method": "subprocess"}
-                return payload, 200
-            failure = _probe_failure_payload(
-                method="subprocess",
-                return_code=result.returncode,
-                error=result.stderr or direct_failure["error"],
-            )
-            return _public_surface_health_payload(singleton_status, failure)
-        except Exception as exc:
-            failure = _probe_failure_payload(method="subprocess", error=f"{type(exc).__name__}: {exc}")
-            return _public_surface_health_payload(singleton_status, failure)
+    if not script.exists():
+        failure = _probe_failure_payload(method="subprocess", error=f"health probe script not found: {script}")
+        return _public_surface_health_payload(singleton_status, failure)
 
-    return _public_surface_health_payload(singleton_status, direct_failure)
+    try:
+        # The full proof probe performs expensive process and filesystem inspection.
+        # Isolate it so a slow probe cannot starve this aiohttp liveness surface.
+        result = await asyncio.to_thread(
+            subprocess.run,
+            [sys.executable, str(script), "--skip-http", "--http-handler-witness"],
+            cwd=str(ROOT_DIR),
+            capture_output=True,
+            text=True,
+            timeout=HEALTH_PROBE_TIMEOUT_SEC,
+            check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            payload = json.loads(result.stdout)
+            payload["obsServerSingleton"] = singleton_status
+            payload["devstreamHealthProbe"] = {"ok": True, "method": "subprocess"}
+            return payload, 200
+        failure = _probe_failure_payload(
+            method="subprocess",
+            return_code=result.returncode,
+            error=result.stderr or "devstream health probe returned no JSON payload",
+        )
+        return _public_surface_health_payload(singleton_status, failure)
+    except Exception as exc:
+        failure = _probe_failure_payload(method="subprocess", error=f"{type(exc).__name__}: {exc}")
+        return _public_surface_health_payload(singleton_status, failure)
 
 
 async def handle_health(request: web.Request) -> web.Response:

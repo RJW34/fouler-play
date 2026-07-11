@@ -316,6 +316,25 @@ def test_windows_health_children_do_not_share_the_service_console(monkeypatch):
     assert calls[0][1]["timeout"] == 7
 
 
+def test_git_status_avoids_optional_locks_and_untracked_scan(monkeypatch):
+    calls = []
+
+    def fake_run_command(command, *, timeout=4):
+        calls.append((command, timeout))
+        stdout = "abc123\n" if "rev-parse" in command else " M tracked.py\n"
+        return SimpleNamespace(returncode=0, stdout=stdout, stderr="")
+
+    monkeypatch.setattr(devstream_health, "run_command", fake_run_command)
+
+    status = devstream_health.git_status()
+
+    assert calls == [
+        (["git", "rev-parse", "--short", "HEAD"], 3),
+        (["git", "--no-optional-locks", "status", "--short", "--untracked-files=no"], 3),
+    ]
+    assert status == {"commit": "abc123", "dirty": True, "dirtyScope": "tracked"}
+
+
 def test_http_handler_witness_skips_recursive_obs_health_probe(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     probed_ports = []

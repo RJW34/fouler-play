@@ -4,6 +4,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from aiohttp.test_utils import make_mocked_request
@@ -34,11 +35,16 @@ def test_same_repo_obs_server_duplicate_is_detected() -> None:
     assert [process["pid"] for process in duplicates] == [424242]
 
 
-def test_in_process_health_uses_current_request_as_http_witness(monkeypatch) -> None:
+def test_devstream_health_cli_accepts_http_handler_witness(monkeypatch) -> None:
     calls = []
     monkeypatch.setattr(devstream_health, "build_payload", lambda **kwargs: calls.append(kwargs) or {"ok": True})
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["devstream_health.py", "--skip-http", "--http-handler-witness"],
+    )
 
-    assert serve_obs_page._build_devstream_health_payload() == {"ok": True}
+    assert devstream_health.main() == 0
     assert calls == [{"check_http": False, "http_handler_witness": True}]
 
 
@@ -198,38 +204,56 @@ async def test_health_default_skips_singleton_subprocess_probe(monkeypatch, tmp_
 
 
 @pytest.mark.asyncio
-async def test_health_deep_query_uses_in_process_devstream_probe(monkeypatch) -> None:
+async def test_health_deep_query_uses_isolated_devstream_probe(monkeypatch, tmp_path) -> None:
+    script = tmp_path / "scripts" / "devstream_health.py"
+    script.parent.mkdir(parents=True)
+    script.write_text("# test probe\n", encoding="utf-8")
+    calls = []
+
+    def run_probe(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "schemaVersion": "devstream-health/v1",
+                    "projectId": "fouler-play",
+                    "status": "running",
+                    "healthy": True,
+                    "readiness": {
+                        "runtimeReady": True,
+                        "streamReady": True,
+                        "proofHandoffReady": False,
+                    },
+                }
+            ),
+            stderr="",
+        )
+
     monkeypatch.setattr(serve_obs_page, "DEEP_HEALTH_DEFAULT", False)
+    monkeypatch.setattr(serve_obs_page, "ROOT_DIR", tmp_path)
     monkeypatch.setattr(serve_obs_page, "_build_singleton_status", lambda: {"duplicateCount": 0, "duplicates": []})
-    monkeypatch.setattr(
-        serve_obs_page,
-        "_build_devstream_health_payload",
-        lambda: {
-            "schemaVersion": "devstream-health/v1",
-            "projectId": "fouler-play",
-            "status": "running",
-            "healthy": True,
-            "readiness": {"runtimeReady": True, "streamReady": True, "proofHandoffReady": False},
-        },
-    )
+    monkeypatch.setattr(serve_obs_page.subprocess, "run", run_probe)
 
     response = await serve_obs_page.handle_health(make_mocked_request("GET", "/health?deep=1"))
     payload = json.loads(response.text)
 
     assert response.status == 200
-    assert payload["devstreamHealthProbe"] == {"ok": True, "method": "in-process"}
+    assert payload["devstreamHealthProbe"] == {"ok": True, "method": "subprocess"}
     assert payload["healthy"] is True
+    assert calls[0][0] == [
+        sys.executable,
+        str(script),
+        "--skip-http",
+        "--http-handler-witness",
+    ]
+    assert calls[0][1]["timeout"] == serve_obs_page.HEALTH_PROBE_TIMEOUT_SEC
 
 
 @pytest.mark.asyncio
 async def test_health_fallback_keeps_serving_active_public_surface(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(serve_obs_page, "ROOT_DIR", tmp_path)
     monkeypatch.setattr(serve_obs_page, "_build_singleton_status", lambda: {"duplicateCount": 0, "duplicates": []})
-    monkeypatch.setattr(
-        serve_obs_page,
-        "_build_devstream_health_payload",
-        lambda: (_ for _ in ()).throw(RuntimeError("probe failed")),
-    )
     monkeypatch.setattr(serve_obs_page, "recent_showdown_credential_failure", lambda _root: {"found": False})
     monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
     monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
