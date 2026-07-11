@@ -1,0 +1,50 @@
+{
+  "activeBattleTelemetryIsCompletionProof": false,
+  "activeBattleTelemetryPresent": false,
+  "activeImprovementVerified": false,
+  "battleCount": 1,
+  "blockers": [
+    "fouler-play battle runner is idle; OBS HTTP alone is not active battle proof",
+    "performance improvement signal is missing or nonpositive; HERMES must not accept this cycle as progress"
+  ],
+  "checkedAtUtc": "2026-07-11T03:49:38.240234+00:00",
+  "evidenceIntegrity": {
+    "blocksCompletionProof": false,
+    "claimsWithoutEvidence": [],
+    "claimsWithoutEvidenceCount": 0,
+    "lossCount": 0,
+    "lossesWithDecisionTrace": 0,
+    "lossesWithReplayJson": 0,
+    "present": true
+  },
+  "finalRating": "---",
+  "improvementSignal": {
+    "ok": false,
+    "ratingDelta": null,
+    "status": "missing-or-nonpositive",
+    "trend": "unknown",
+    "winRateDelta": null
+  },
+  "improvementSignalStatus": "missing-or-nonpositive",
+  "latestBattleAt": "2026-07-11T02:55:38.368062+00:00",
+  "latestBattleId": "battle-gen9ou-2647386310-f5mho3ecfmck0vux9fsefv6m8fau61cpw",
+  "latestBattleLearningVerified": false,
+  "nextActions": [
+    "Continue bounded battle batches and keep completion.json fresh after each cycle proof."
+  ],
+  "performanceImprovementVerified": false,
+  "performanceTrendStatus": "unknown",
+  "projectId": "fouler-play",
+  "proofKind": "completed-cycle-proof",
+  "ratingDelta": null,
+  "reportPaths": {
+    "autoresearchJson": "replay_analysis\\autoresearch_latest.json",
+    "autoresearchMarkdown": "replay_analysis\\reports\\autoresearch_latest.md",
+    "cycleMarkdown": "devstream\\truth\\cycle-report.md",
+    "cycleReport": "devstream\\truth\\cycle-report.json"
+  },
+  "schemaVersion": "fouler-play-devstream-completion/v1",
+  "status": "cycle-proof-blocked",
+  "warnings": [],
+  "winRate": 1.0
+}
