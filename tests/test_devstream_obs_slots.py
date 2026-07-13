@@ -44,6 +44,9 @@ def test_battle_slot_translates_runtime_details_for_viewers_without_dom_flash() 
     assert "Decision: " in html
     assert "one use tracked" in html
     assert "is ruled out" in html
+    assert '<strong>GEN 9 OU</strong><span>Format</span>' in html
+    assert '<strong id="record">0-0</strong><span>Session</span>' in html
+    assert "text('elo'" not in html
     assert "Replay ready" in html
     assert "Replay processing" in html
     assert html.count("document.createDocumentFragment()") == 2

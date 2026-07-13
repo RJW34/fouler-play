@@ -44,8 +44,8 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     </div>
     <div class="status">
       <div class="pill"><strong id="turn">--</strong><span>Turn</span></div>
-      <div class="pill"><strong id="record">0-0</strong><span>Record</span></div>
-      <div class="pill"><strong id="elo">--</strong><span>ELO</span></div>
+      <div class="pill"><strong id="record">0-0</strong><span>Session</span></div>
+      <div class="pill"><strong>GEN 9 OU</strong><span>Format</span></div>
     </div>
   </section>
   <section class="main">
@@ -247,7 +247,6 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     text('headline',active?'Live Battle Lab':'Battle Lab ready');
     text('turn',lab.turn==null?'--':lab.turn);
     text('record',(lab.wins||0)+'-'+(lab.losses||0));
-    text('elo',lab.elo==null?'--':lab.elo);
     text('opponent',active?('vs '+(lab.opponent||'Opponent unavailable')):'Finding an opponent');
     text('status',friendlyStatus(lab.status,active));
     text('age',active?(lab.age_label||'--'):'--');

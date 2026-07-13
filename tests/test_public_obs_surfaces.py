@@ -156,7 +156,9 @@ async def test_public_slot_source_uses_local_viewer_overlay(monkeypatch) -> None
     assert "Pokemon Showdown / Ranked match 2" in html
     assert "Battle Lab" in html
     assert "Battle timeline" in html
-    assert "Record" in html
+    assert "Session" in html
+    assert "GEN 9 OU" in html
+    assert "Format" in html
     assert "Battle time" in html
     assert "NEXT MATCH LOADING" not in html
     assert "BATTLE QUEUE" not in html
