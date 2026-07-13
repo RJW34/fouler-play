@@ -90,6 +90,11 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     var clean=words(value).toLowerCase();
     return clean?clean.charAt(0).toUpperCase()+clean.slice(1):'';
   }
+  function friendlyToken(value){
+    var key=String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+    var known={nastyplot:'Nasty Plot',assaultvest:'Assault Vest'};
+    return known[key]||titleWords(value);
+  }
   function friendlyStatus(value,active){
     if(active){return 'In battle';}
     var clean=String(value||'').trim();
@@ -142,6 +147,17 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
 
     var move=value.match(/^(.+?) used (.+?) into (.+)$/i);
     if(move){return move[1]+' used '+move[2]+' on '+move[3];}
+
+    var trackedMove=value.match(/^(.+?) already has the move (.+?)\.\s*Decrementing the PP by 1$/i);
+    if(trackedMove){
+      return titleWords(trackedMove[1])+' used '+friendlyToken(trackedMove[2])+'; one use tracked';
+    }
+
+    var ruledOutItem=value.match(/^(.+?) used a status[- ]move\.\s*Adding (.+?) to impossible items$/i);
+    if(ruledOutItem){
+      var item=String(ruledOutItem[2]||'').replace(/[`'\"]/g,'');
+      return titleWords(ruledOutItem[1])+' used a status move; '+friendlyToken(item)+' is ruled out';
+    }
 
     var status=value.match(/^(.+?) status:\s*(brn|psn|tox|par|slp|frz)$/i);
     if(status){

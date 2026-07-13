@@ -42,6 +42,8 @@ def test_battle_slot_translates_runtime_details_for_viewers_without_dom_flash() 
     assert "function normalizeEvent(event)" in html
     assert "Battle read: " in html
     assert "Decision: " in html
+    assert "one use tracked" in html
+    assert "is ruled out" in html
     assert "Replay ready" in html
     assert "Replay processing" in html
     assert html.count("document.createDocumentFragment()") == 2
