@@ -23,6 +23,7 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 ACTIVE_BATTLES_PATH = ROOT_DIR / "active_battles.json"
 STREAM_STATUS_PATH = ROOT_DIR / "stream_status.json"
 DAILY_STATS_PATH = ROOT_DIR / "daily_stats.json"
+BATTLE_STATS_PATH = ROOT_DIR / "battle_stats.json"
 NEXT_FIX_PATH = ROOT_DIR / "next_fix.txt"
 STABILITY_REPORT_PATH = ROOT_DIR / "stability_report.json"
 STATE_STORE_WRITE_FAILURE_PATH = ROOT_DIR / "devstream" / "truth" / "state-store-write-failure.json"
@@ -278,6 +279,32 @@ def read_status() -> dict[str, Any]:
     return _read_json(STREAM_STATUS_PATH, DEFAULT_STATUS)
 
 
+def latest_battle_rating(*, account: str | None = None) -> int | float | None:
+    payload = _read_json(BATTLE_STATS_PATH, {"battles": []})
+    battles = payload.get("battles") if isinstance(payload.get("battles"), list) else []
+    active_account = (
+        account
+        or os.getenv("FOULER_ACTIVE_ACCOUNT")
+        or os.getenv("SHOWDOWN_USER_ID")
+        or os.getenv("PS_USERNAME")
+        or ""
+    ).strip().lower()
+    for battle in reversed(battles):
+        if not isinstance(battle, dict):
+            continue
+        row_account = str(battle.get("account") or "").strip().lower()
+        if active_account and row_account != active_account:
+            continue
+        for key in ("elo_after", "eloAfter", "rating", "elo"):
+            try:
+                value = float(battle.get(key))
+            except (TypeError, ValueError):
+                continue
+            if value > 0:
+                return int(value) if value.is_integer() else value
+    return None
+
+
 def read_next_fix() -> str:
     if not NEXT_FIX_PATH.exists():
         return DEFAULT_NEXT_FIX
@@ -399,6 +426,7 @@ def write_runtime_ready_status(*, summary: str, mode: str = "ready") -> dict[str
     }
     daily = update_daily_stats(0, 0)
     existing_status = _status_with_cleared_blocker(read_status())
+    latest_rating = latest_battle_rating()
     status_payload = {
         **existing_status,
         "wins": daily.get("wins", 0),
@@ -412,6 +440,8 @@ def write_runtime_ready_status(*, summary: str, mode: str = "ready") -> dict[str
         "runtime_mode": clean_mode,
         "next_fix": "Start a bounded devstream batch." if clean_mode != "offline_rehearsal" else "Offline rehearsal is available; live ladder still needs a successful executed login proof.",
     }
+    if latest_rating is not None:
+        status_payload["elo"] = latest_rating
     write_active_battles(active_payload)
     write_status(status_payload)
     stability_payload = {

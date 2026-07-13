@@ -10,7 +10,9 @@ def _load_state_store(monkeypatch, tmp_path):
     monkeypatch.setattr(module, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
     monkeypatch.setattr(module, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
     monkeypatch.setattr(module, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
+    monkeypatch.setattr(module, "BATTLE_STATS_PATH", tmp_path / "battle_stats.json")
     monkeypatch.setattr(module, "NEXT_FIX_PATH", tmp_path / "next_fix.txt")
+    monkeypatch.setattr(module, "STABILITY_REPORT_PATH", tmp_path / "stability_report.json")
     monkeypatch.setattr(
         module,
         "STATE_STORE_WRITE_FAILURE_PATH",
@@ -126,3 +128,22 @@ def test_expected_devstream_surface_count_can_be_overridden(monkeypatch, tmp_pat
 
     active = state_store.read_active_battles()
     assert active["max_slots"] == 4
+
+
+def test_runtime_ready_status_backfills_latest_active_account_rating(monkeypatch, tmp_path):
+    monkeypatch.setenv("FOULER_ACTIVE_ACCOUNT", "DekuFoulerLab")
+    state_store = _load_state_store(monkeypatch, tmp_path)
+    state_store.BATTLE_STATS_PATH.write_text(
+        '{"battles": ['
+        '{"account": "RetiredBot", "rating": 1500},'
+        '{"account": "DekuFoulerLab", "rating": 1333.1955887704783}'
+        ']}',
+        encoding="utf-8",
+    )
+
+    state_store.write_runtime_ready_status(
+        summary="Bounded ladder session completed; no active battles remain.",
+        mode="bounded_session_complete",
+    )
+
+    assert state_store.read_status()["elo"] == 1333.1955887704783

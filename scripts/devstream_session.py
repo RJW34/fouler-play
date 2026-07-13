@@ -2494,6 +2494,9 @@ def run_supervisor_cycle(
             return payload
 
     payload["state"] = "idle-restoring-runtime"
+    payload["completedBattleLogResultRecovery"] = recover_completed_battle_results_from_logs(
+        execute=True
+    )
     payload["proofRefreshed"] = True
     py = supervisor_child_python()
     payload["actions"].append(

@@ -1672,6 +1672,12 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    recovered = {"rowsUpdated": 2, "recovered": True}
+    monkeypatch.setattr(
+        devstream_session,
+        "recover_completed_battle_results_from_logs",
+        lambda **kwargs: recovered,
+    )
 
     def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
@@ -1693,6 +1699,7 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
     payload = devstream_session.run_supervisor_cycle(args, 1)
 
     assert payload["state"] == "idle-restoring-runtime"
+    assert payload["completedBattleLogResultRecovery"] == recovered
     assert commands[0][:4] == ["python", "pipeline.py", "autoresearch", "-n"]
     assert commands[1] == ["python", "scripts/devstream_cycle_report.py", "--write"]
     assert commands[2][:3] == ["python", "scripts/devstream_session.py", "start"]
