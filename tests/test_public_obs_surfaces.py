@@ -239,6 +239,7 @@ async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> No
 
     assert response.status == 200
     assert payload["battle_id"] == "battle-gen9ou-active"
+    assert payload["url"] == "http://localhost:8777/slot/2?slot_idle=public"
     assert payload["battle_lab"]["active"] is True
     assert payload["battle_lab"]["opponent"] == "Test Opponent"
     assert payload["battle_lab"]["turn"] == 4

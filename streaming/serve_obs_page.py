@@ -2313,11 +2313,10 @@ def _slot_state_payload(slot_num: int) -> dict:
 
     if battle:
         battle_id = battle.get("id")
-        url = _build_direct_battle_url(battle_id) if battle_id else None
         return {
             "slot": slot_num,
             "battle_id": battle_id,
-            "url": url,
+            "url": _build_public_slot_source_url(slot_num),
             "battle_lab": _build_battle_lab_payload(slot_num, battle, state=state),
         }
 
