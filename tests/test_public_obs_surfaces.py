@@ -320,9 +320,15 @@ def test_public_battle_view_falls_back_to_latest_matching_decision_trace(tmp_pat
     assert "max_hp" not in public["user"]["active"]
     assert public["user"]["active"]["tera"]["type"] is None
     assert public["user"]["active"]["sprite_url"].endswith("/ani-back/mrmime.gif")
+    assert public["user"]["active"]["sprite_urls"][1].endswith(
+        "/gen5-back/mrmime.png"
+    )
     assert public["opponent"]["active"]["display_name"] == "Weezing Galar"
     assert public["opponent"]["active"]["sprite_url"].endswith(
         "/ani/weezing-galar.gif"
+    )
+    assert public["opponent"]["active"]["sprite_urls"][1].endswith(
+        "/gen5/weezing-galar.png"
     )
     assert public["opponent"]["active"]["tera"]["type"] == "dark"
     serialized = json.dumps(public)

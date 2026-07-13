@@ -697,11 +697,15 @@ def _decorate_public_pokemon(raw: object, *, back: bool) -> dict | None:
     if not re.fullmatch(r"[a-z0-9-]{1,80}", slug):
         slug = ""
     pokemon["display_name"] = display_name.replace("-", " ").title() or "Unknown"
-    pokemon["sprite_url"] = (
-        f"https://play.pokemonshowdown.com/sprites/{'ani-back' if back else 'ani'}/{slug}.gif"
+    pokemon["sprite_urls"] = (
+        [
+            f"https://play.pokemonshowdown.com/sprites/{'ani-back' if back else 'ani'}/{slug}.gif",
+            f"https://play.pokemonshowdown.com/sprites/{'gen5-back' if back else 'gen5'}/{slug}.png",
+        ]
         if slug
-        else None
+        else []
     )
+    pokemon["sprite_url"] = pokemon["sprite_urls"][0] if pokemon["sprite_urls"] else None
     return pokemon
 
 

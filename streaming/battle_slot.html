@@ -299,10 +299,14 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
   }
   function hpClass(percent){return percent!=null&&percent<25?'low':(percent!=null&&percent<50?'mid':'');}
   function initials(pokemon){return String((pokemon||{}).display_name||(pokemon||{}).name||'?').replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase()||'?';}
+  function setupSpriteImage(img,pokemon,fallback){
+    var sources=((pokemon||{}).sprite_urls||[(pokemon||{}).sprite_url]).filter(Boolean);if(!sources.length){return false;}var index=0;
+    img.alt='';img.referrerPolicy='no-referrer';img.addEventListener('load',function(){fallback.hidden=true;});img.addEventListener('error',function(){index+=1;if(index<sources.length){img.src=sources[index];}else{img.hidden=true;}});img.src=sources[0];return true;
+  }
   function pokemonImage(pokemon,className){
     var wrap=make('div',className||'');
     var fallback=make('span','sprite-fallback',initials(pokemon));wrap.appendChild(fallback);
-    if(pokemon&&pokemon.sprite_url){var img=document.createElement('img');img.src=pokemon.sprite_url;img.alt='';img.referrerPolicy='no-referrer';img.addEventListener('load',function(){fallback.hidden=true;},{once:true});img.addEventListener('error',function(){img.hidden=true;},{once:true});wrap.appendChild(img);}
+    var img=document.createElement('img');if(setupSpriteImage(img,pokemon,fallback)){wrap.appendChild(img);}
     return wrap;
   }
   function renderSprite(id,pokemon){var root=document.getElementById(id);var image=pokemonImage(pokemon,'');root.replaceChildren(...Array.from(image.childNodes));}
@@ -322,7 +326,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     var team=[];if(side&&side.active)team.push(side.active);team=team.concat((side&&side.reserve)||[]);
     for(var index=0;index<6;index+=1){
       var pokemon=team[index];var cell=make('div','bench-mon'+(index===0?' active':'')+(pokemon&&pokemon.fainted?' fainted':''));
-      if(pokemon){var fallback=make('span','bench-fallback',initials(pokemon));cell.appendChild(fallback);if(pokemon.sprite_url){var img=document.createElement('img');img.src=pokemon.sprite_url;img.alt='';img.referrerPolicy='no-referrer';img.addEventListener('load',function(event){var node=event.currentTarget.parentNode.querySelector('.bench-fallback');if(node)node.hidden=true;},{once:true});img.addEventListener('error',function(event){event.currentTarget.hidden=true;},{once:true});cell.appendChild(img);}var track=make('span','bench-hp');var fill=make('i','');var pct=hpPercent(pokemon);fill.style.width=(pct==null?0:pct)+'%';track.appendChild(fill);cell.appendChild(track);}
+      if(pokemon){var fallback=make('span','bench-fallback',initials(pokemon));cell.appendChild(fallback);var img=document.createElement('img');if(setupSpriteImage(img,pokemon,fallback)){cell.appendChild(img);}var track=make('span','bench-hp');var fill=make('i','');var pct=hpPercent(pokemon);fill.style.width=(pct==null?0:pct)+'%';track.appendChild(fill);cell.appendChild(track);}
       else{cell.appendChild(make('span','bench-fallback','--'));}
       fragment.appendChild(cell);
     }
