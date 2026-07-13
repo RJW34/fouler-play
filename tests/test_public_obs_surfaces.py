@@ -152,6 +152,9 @@ async def test_public_slot_source_uses_local_viewer_overlay(monkeypatch) -> None
     html = response.text
 
     assert response.status == 200
+    assert response.headers["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
+    assert response.headers["Pragma"] == "no-cache"
+    assert response.headers["Expires"] == "0"
     assert "var SLOT=2;" in html
     assert "Pokemon Showdown / Ranked match 2" in html
     assert "Battle Lab" in html

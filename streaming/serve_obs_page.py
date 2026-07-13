@@ -2248,6 +2248,11 @@ async def handle_battle_slot(request: web.Request) -> web.Response:
     return web.Response(
         text=BATTLE_SLOT_HTML.replace("__SLOT__", str(slot_num)),
         content_type="text/html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
     )
 
 
