@@ -140,7 +140,6 @@ OBS_WS_DISABLED = os.getenv("FOULER_OBS_WS_DISABLED", "").strip().lower() in (
     "yes",
     "on",
 )
-OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
 HEALTH_PROBE_TIMEOUT_SEC = float(os.getenv("FOULER_HEALTH_PROBE_TIMEOUT_SEC", "20") or "20")
 DEEP_HEALTH_DEFAULT = os.getenv("FOULER_OBS_DEEP_HEALTH_DEFAULT", "").strip().lower() in (
     "1",
@@ -850,6 +849,13 @@ def _build_public_slot_source_url(slot: int, battle_id: str | None = None) -> st
     return url
 
 
+def _build_obs_slot_source_url(slot: int, battle_id: str | None = None) -> str:
+    """Show the real match while active and the local viewer page between matches."""
+    if battle_id:
+        return _build_direct_battle_url(battle_id)
+    return _build_public_slot_source_url(slot)
+
+
 def _build_slot_map(battles: list[dict]) -> dict[int, dict]:
     slot_map: dict[int, dict] = {}
     for idx, battle in enumerate(battles):
@@ -1533,23 +1539,9 @@ async def maybe_update_obs_sources(payload: dict) -> None:
             battle = slot_map.get(idx)
             desired_id = battle.get("id") if battle else None
             previous_id = _last_obs_ids.get(idx)
-            url = _build_public_slot_source_url(idx, desired_id)
+            url = _build_obs_slot_source_url(idx, desired_id)
             
             print(f"[OBS-UPDATE] Slot {idx} ({source_name}): previous={previous_id}, desired={desired_id}")
-
-            # Force stale battles to idle — if the same battle has been
-            # displayed for too long, the Showdown page is likely showing
-            # an empty post-game lobby.  Reset to the "SCANNING..." idle page.
-            if previous_id and previous_id == desired_id and OBS_STALE_BATTLE_SEC > 0:
-                last_update = _last_obs_updates.get(idx, 0)
-                age = time.time() - last_update if last_update else 0
-                if age > OBS_STALE_BATTLE_SEC:
-                    print(f"[OBS-UPDATE] Slot {idx}: Battle stale ({age:.0f}s > {OBS_STALE_BATTLE_SEC}s), forcing idle")
-                    await _obs_client.set_browser_source_url(source_name, url)
-                    _last_obs_ids[idx] = None
-                    _last_obs_urls[idx] = url
-                    _last_obs_updates[idx] = time.time()
-                    continue
 
             if previous_id == desired_id and _last_obs_urls.get(idx) == url:
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
@@ -1565,7 +1557,7 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 await asyncio.sleep(0.5)
 
             if desired_id:
-                print(f"[OBS-UPDATE] Slot {idx}: Loading public slot battle surface for battle {desired_id}")
+                print(f"[OBS-UPDATE] Slot {idx}: Loading live Showdown battle surface for battle {desired_id}")
             else:
                 print(f"[OBS-UPDATE] Slot {idx}: Keeping public slot ready surface")
 

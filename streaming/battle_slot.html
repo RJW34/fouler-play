@@ -26,6 +26,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
 .events{display:grid;grid-template-rows:auto 1fr;gap:12px}
 .event-list{display:flex;flex-direction:column;gap:8px;overflow:hidden;min-height:0}
 .event{display:grid;grid-template-columns:52px 1fr;gap:10px;min-height:48px;max-height:66px;padding:10px 12px;border-radius:6px;background:#171d28;border-left:4px solid #d56b5f;color:#f1f5f9;font-size:17px;line-height:23px;overflow:hidden}
+.event.win-row{border-left-color:#7bd88f}.event.loss-row{border-left-color:#d56b5f}
 .event em{font-style:normal;color:#d5c46a;font-weight:800}
 .event span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .empty{height:100%;display:flex;align-items:center;justify-content:center;border:1px dashed #3b4252;border-radius:8px;color:#a8b3c7;font-size:24px;font-weight:800;text-align:center;padding:24px}
@@ -35,6 +36,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
 .result .outcome{display:block;font-size:12px;text-transform:uppercase;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .result .result-meta{display:block;font-size:12px;color:#a8b3c7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .win{color:#7bd88f}.loss{color:#d56b5f}.pending{color:#d5c46a}
+.idle .shell{grid-template-rows:74px 1fr}.idle .bottom{display:none}.idle .main{grid-template-columns:1fr 1fr}
 </style></head><body>
 <main class="shell">
   <section class="top">
@@ -61,7 +63,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
       <div class="match-note" id="matchNote">Gen 9 OU ranked ladder</div>
     </div>
     <div class="panel events">
-      <div class="label">Battle timeline</div>
+      <div class="label" id="timelineLabel">Battle timeline</div>
       <div class="event-list" id="events"><div class="empty">Match updates will appear here.</div></div>
     </div>
   </section>
@@ -203,12 +205,20 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     }
     return outcome;
   }
-  function renderEvents(events,active){
+  function renderEvents(events,active,recentResults){
     var root=document.getElementById('events');
     var fragment=document.createDocumentFragment();
     var normalized=(events||[]).map(normalizeEvent).filter(function(event){return !!event;}).slice(-7);
+    if(!active&&!normalized.length){
+      (recentResults||[]).slice(0,6).forEach(function(result){
+        var row=make('div','event '+(resultClass(result.result)==='win'?'win-row':'loss-row'));
+        row.appendChild(make('em','',String(result.result||'').toUpperCase()));
+        row.appendChild(make('span','',(result.opponent?'vs '+result.opponent:'Opponent unavailable')+' / '+resultLabel(result.result,result.delta)));
+        fragment.appendChild(row);
+      });
+    }
     if(!normalized.length){
-      fragment.appendChild(make('div','empty',active?'Waiting for the first battle update.':'Match updates will appear here.'));
+      if(!fragment.childNodes.length){fragment.appendChild(make('div','empty',active?'Waiting for the first battle update.':'Searching the Gen 9 OU ladder.'));}
     }else{
       normalized.forEach(function(event,idx){
         var row=make('div','event');
@@ -244,6 +254,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
   function render(payload){
     var lab=payload.battle_lab||payload;
     var active=!!lab.active;
+    document.body.classList.toggle('idle',!active);
     text('headline',active?'Live Battle Lab':'Battle Lab ready');
     text('turn',lab.turn==null?'--':lab.turn);
     text('record',(lab.wins||0)+'-'+(lab.losses||0));
@@ -251,7 +262,8 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     text('status',friendlyStatus(lab.status,active));
     text('age',active?(lab.age_label||'--'):'--');
     text('matchNote',active?'Gen 9 OU ranked match in progress':'Gen 9 OU ranked ladder');
-    renderEvents(lab.events||[],active);
+    text('timelineLabel',active?'Battle timeline':'Recent form');
+    renderEvents(lab.events||[],active,lab.recent_results||[]);
     renderResults(lab.recent_results||[]);
   }
   function poll(){

@@ -126,6 +126,16 @@ def test_public_battle_slot_is_viewport_responsive_for_obs_browser_sources() -> 
     assert "play.pokemonshowdown.com" not in served_html
 
 
+def test_obs_slot_uses_real_showdown_surface_only_while_battle_is_active() -> None:
+    assert serve_obs_page._build_obs_slot_source_url(2) == (
+        "http://localhost:8777/slot/2?slot_idle=public"
+    )
+    assert serve_obs_page._build_obs_slot_source_url(
+        2, "battle-gen9ou-live"
+    ) == "https://play.pokemonshowdown.com/battle-gen9ou-live"
+    assert "OBS_STALE_BATTLE_SEC" not in serve_obs_page.__dict__
+
+
 def test_showdown_browser_css_keeps_battle_panel_uncropped() -> None:
     css = PUBLIC_BATTLE_INJECT_CSS.read_text(encoding="utf-8")
 
@@ -159,6 +169,7 @@ async def test_public_slot_source_uses_local_viewer_overlay(monkeypatch) -> None
     assert "Pokemon Showdown / Ranked match 2" in html
     assert "Battle Lab" in html
     assert "Battle timeline" in html
+    assert "Recent form" in html
     assert "Session" in html
     assert "GEN 9 OU" in html
     assert "Format" in html
