@@ -8,7 +8,8 @@ param(
     [switch]$AutoImprove,
     [switch]$ClearStopFile,
     [switch]$ClearDrainRequest,
-    [string]$LoopBreak = "1",
+    [ValidateSet("0", "1")]
+    [string]$LoopBreak = "0",
     [switch]$Foreground
 )
 
@@ -171,8 +172,8 @@ if ($ClearStopFile -and $ClearDrainRequest) {
     if ($MaxConcurrentBattles -ne 1) {
         $proofWindowErrors += "MaxConcurrentBattles must be 1 for a stop-loss recovery proof window"
     }
-    if ($LoopBreak -ne "1") {
-        $proofWindowErrors += "LoopBreak must be 1 for a stop-loss recovery proof window"
+    if ($LoopBreak -ne "0") {
+        $proofWindowErrors += "LoopBreak must be 0 for a stop-loss recovery proof window"
     }
     if ($proofWindowErrors.Count -gt 0) {
         Write-Error ("Refusing to open recovery proof window: " + ($proofWindowErrors -join "; "))
