@@ -57,6 +57,7 @@ DEFAULT_ACCOUNT = ""
 CANONICAL_TARGET_RATING = 1700
 DEFAULT_MONITOR_RUN_COUNT = 5
 DEFAULT_MONITOR_MAX_CYCLES = 1
+CANONICAL_LOOP_BREAK = "0"
 STOP_LOSS_RECOVERY_VALIDATION_MAX_RUN_COUNT = 5
 STOP_LOSS_RECOVERY_VALIDATION_MAX_CYCLES = 1
 REPAIR_QUEUE_SCHEMA_VERSION = "fouler-play-repair-queue/v1"
@@ -262,8 +263,8 @@ def recovery_proof_window_status(now: datetime | None = None) -> dict[str, Any]:
         )
     if max_concurrent_battles != 1:
         blockers.append("maxConcurrentBattles must be 1")
-    if str(marker.get("loopBreak") or "") != "1":
-        blockers.append("loopBreak must be 1")
+    if str(marker.get("loopBreak") or "") != CANONICAL_LOOP_BREAK:
+        blockers.append(f"loopBreak must be {CANONICAL_LOOP_BREAK}")
     if marker.get("noStreamStart") is not True:
         blockers.append("noStreamStart must be true")
 
@@ -2182,17 +2183,45 @@ def elo_sustain_stop_loss_issues(
 
     max_drawdown = ratings.get("maxSustainDrawdown")
     max_pre_target_drawdown = ratings.get("maxPreTargetDrawdown")
+    current_rating = next(
+        (
+            value
+            for value in (
+                _as_float(ratings.get("liveProfileRating")),
+                _as_float(ratings.get("currentRating")),
+                _as_float(ratings.get("finalRating")),
+                _as_float(ratings.get("summaryFinalRating")),
+            )
+            if value is not None
+        ),
+        None,
+    )
+    peak_rating = _as_float(ratings.get("peakRating"))
+    pre_target_peak_rating = _as_float(ratings.get("preTargetDrawdownPeakRating"))
+    first_target_battle_id = ratings.get("firstTargetBattleId")
+    active_sustain_drawdown = (
+        max(0.0, peak_rating - current_rating)
+        if first_target_battle_id and peak_rating is not None and current_rating is not None
+        else None
+    )
+    active_pre_target_drawdown = (
+        max(0.0, pre_target_peak_rating - current_rating)
+        if not first_target_battle_id
+        and pre_target_peak_rating is not None
+        and current_rating is not None
+        else None
+    )
     drawdown_threshold = target.get("maximumSustainDrawdown")
     pre_target_drawdown_threshold = target.get("maximumPreTargetDrawdown") or drawdown_threshold
     sustain_breach = (
-        isinstance(max_drawdown, (int, float))
+        isinstance(active_sustain_drawdown, (int, float))
         and isinstance(drawdown_threshold, (int, float))
-        and max_drawdown >= float(drawdown_threshold)
+        and active_sustain_drawdown >= float(drawdown_threshold)
     )
     pre_target_breach = (
-        isinstance(max_pre_target_drawdown, (int, float))
+        isinstance(active_pre_target_drawdown, (int, float))
         and isinstance(pre_target_drawdown_threshold, (int, float))
-        and max_pre_target_drawdown >= float(pre_target_drawdown_threshold)
+        and active_pre_target_drawdown >= float(pre_target_drawdown_threshold)
     )
     if (
         "fouler-rating-drawdown" not in existing_issue_ids
@@ -2208,6 +2237,9 @@ def elo_sustain_stop_loss_issues(
                     "source": display_path(LATEST_ELO_PROOF_FILE),
                     "maxSustainDrawdown": max_drawdown,
                     "maxPreTargetDrawdown": max_pre_target_drawdown,
+                    "activeSustainDrawdown": active_sustain_drawdown,
+                    "activePreTargetDrawdown": active_pre_target_drawdown,
+                    "currentRating": current_rating,
                     "threshold": drawdown_threshold,
                     "preTargetThreshold": pre_target_drawdown_threshold,
                     "sustainBreach": sustain_breach,
@@ -2366,6 +2398,61 @@ def enforce_stop_loss_tripwire(classification: dict[str, Any], *, write: bool) -
         DRAIN_FILE.write_text(line, encoding="utf-8")
         SUPERVISOR_STOP_FILE.write_text(line, encoding="utf-8")
         payload["written"] = True
+    return payload
+
+
+def reconcile_recovered_stop_loss_tripwire(
+    classification: dict[str, Any], *, write: bool
+) -> dict[str, Any] | None:
+    """Clear only monitor-owned stop markers after active risk has recovered."""
+
+    governance = (
+        classification.get("sessionGovernance")
+        if isinstance(classification.get("sessionGovernance"), dict)
+        else {}
+    )
+    if governance.get("stopLossBreached") is True or not SUPERVISOR_STOP_FILE.exists():
+        return None
+
+    try:
+        stop_text = SUPERVISOR_STOP_FILE.read_text(encoding="utf-8-sig")
+    except OSError as exc:
+        return {
+            "action": "stop-loss-tripwire-reconcile-failed",
+            "written": False,
+            "reason": f"could not read supervisor stop marker: {exc}",
+        }
+    if "stop-loss breached:" not in stop_text.lower():
+        return {
+            "action": "retain-non-stop-loss-supervisor-stop",
+            "written": False,
+            "reason": "supervisor.stop is not owned by the mission stop-loss tripwire",
+        }
+
+    payload = {
+        "action": "clear-recovered-stop-loss-tripwire",
+        "schemaVersion": "fouler-play-stop-loss-tripwire/v1",
+        "dryRun": not write,
+        "written": False,
+        "supervisorStopFile": display_path(SUPERVISOR_STOP_FILE),
+        "drainFile": display_path(DRAIN_FILE),
+        "reason": "active drawdown and other session stop-loss signals are below threshold",
+    }
+    if not write:
+        return payload
+
+    SUPERVISOR_STOP_FILE.unlink(missing_ok=True)
+    drain_cleared = False
+    if DRAIN_FILE.exists():
+        try:
+            drain_text = DRAIN_FILE.read_text(encoding="utf-8-sig")
+        except OSError:
+            drain_text = ""
+        if "stop-loss breached:" in drain_text.lower():
+            DRAIN_FILE.unlink(missing_ok=True)
+            drain_cleared = True
+    payload["written"] = True
+    payload["drainCleared"] = drain_cleared
     return payload
 
 
@@ -2858,18 +2945,19 @@ def classify_mission(
         )
 
     drawdown = rating_drawdown_summary(battles, window=rating_drawdown_window)
-    max_drawdown = drawdown.get("maxDrawdown")
-    if isinstance(max_drawdown, (int, float)) and max_drawdown >= rating_drawdown_threshold:
+    current_drawdown = drawdown.get("currentDrawdown")
+    if isinstance(current_drawdown, (int, float)) and current_drawdown >= rating_drawdown_threshold:
         evidence = {
             **drawdown,
             "threshold": rating_drawdown_threshold,
             "ratingWindow": rating_drawdown_window,
+            "triggerMetric": "currentDrawdown",
         }
         issues.append(
             issue(
                 "fouler-rating-drawdown",
                 "RELIABILITY_BLOCKER",
-                "Fouler recent rated ladder run has exceeded the drawdown safety valve.",
+                "Fouler active rated ladder drawdown has exceeded the safety valve.",
                 evidence,
                 "pause the ladder batch, analyze the drawdown window, and require a targeted fix plus evaluation gate before continuing",
             )
@@ -3223,6 +3311,8 @@ def start_supervisor(args: argparse.Namespace) -> dict[str, Any]:
         str(args.sleep_seconds),
         "-RuntimeLease",
         str(RUNTIME_LEASE_FILE.relative_to(ROOT)),
+        "-LoopBreak",
+        CANONICAL_LOOP_BREAK,
     ]
     if args.auto_improve:
         command.append("-AutoImprove")
@@ -3290,43 +3380,40 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
     elo_proof = load_json(LATEST_ELO_PROOF_FILE, {})
     account_season = load_json(ACCOUNT_SEASON_FILE, {})
     battles = read_battles()
-    classification = classify_mission(
-        health=health,
-        supervisor=supervisor,
-        lease=lease,
-        battles=battles,
-        max_health_age_seconds=args.max_health_age_seconds,
-        loss_streak_threshold=args.loss_streak_threshold,
-        low_win_rate_threshold=args.low_win_rate_threshold,
-        rating_drawdown_threshold=args.rating_drawdown_threshold,
-        rating_drawdown_window=args.rating_drawdown_window,
-        elo_proof=elo_proof,
-        max_elo_proof_age_seconds=args.max_elo_proof_age_seconds,
-        requested_run_count=args.run_count,
-        requested_max_cycles=args.max_cycles,
-        account_season=account_season,
-    )
+
+    def classify_current() -> dict[str, Any]:
+        return classify_mission(
+            health=health,
+            supervisor=supervisor,
+            lease=lease,
+            battles=battles,
+            max_health_age_seconds=args.max_health_age_seconds,
+            loss_streak_threshold=args.loss_streak_threshold,
+            low_win_rate_threshold=args.low_win_rate_threshold,
+            rating_drawdown_threshold=args.rating_drawdown_threshold,
+            rating_drawdown_window=args.rating_drawdown_window,
+            elo_proof=elo_proof,
+            max_elo_proof_age_seconds=args.max_elo_proof_age_seconds,
+            requested_run_count=args.run_count,
+            requested_max_cycles=args.max_cycles,
+            account_season=account_season,
+        )
+
+    classification = classify_current()
 
     tripwire_action = enforce_stop_loss_tripwire(classification, write=args.write)
     if tripwire_action is not None:
         actions.append(tripwire_action)
         if tripwire_action.get("written") is True:
-            classification = classify_mission(
-                health=health,
-                supervisor=supervisor,
-                lease=lease,
-                battles=battles,
-                max_health_age_seconds=args.max_health_age_seconds,
-                loss_streak_threshold=args.loss_streak_threshold,
-                low_win_rate_threshold=args.low_win_rate_threshold,
-                rating_drawdown_threshold=args.rating_drawdown_threshold,
-                rating_drawdown_window=args.rating_drawdown_window,
-                elo_proof=elo_proof,
-                max_elo_proof_age_seconds=args.max_elo_proof_age_seconds,
-                requested_run_count=args.run_count,
-                requested_max_cycles=args.max_cycles,
-                account_season=account_season,
-            )
+            classification = classify_current()
+
+    recovered_action = reconcile_recovered_stop_loss_tripwire(
+        classification, write=args.write
+    )
+    if recovered_action is not None:
+        actions.append(recovered_action)
+        if recovered_action.get("written") is True:
+            classification = classify_current()
 
     repair_actions = maybe_repair_runtime(args, classification, lease)
     actions.extend(repair_actions)

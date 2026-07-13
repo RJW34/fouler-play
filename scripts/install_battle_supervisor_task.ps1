@@ -14,6 +14,8 @@ param(
     [int]$QueueTimeoutSeconds = 180,
     [int]$SleepSeconds = 15,
     [string]$RuntimeLease = "",
+    [ValidateSet("0", "1")]
+    [string]$LoopBreak = "0",
     [switch]$AutoImprove
 )
 
@@ -31,7 +33,7 @@ $StderrLog = Join-Path $LogRoot "jigglypuff-battle-supervisor.err.log"
 $TaskExecute = if ($env:ComSpec) { $env:ComSpec } else { "cmd.exe" }
 $AutoImproveArg = if ($AutoImprove) { " -AutoImprove" } else { "" }
 $RuntimeLeaseArg = if ([string]::IsNullOrWhiteSpace($RuntimeLease)) { "" } else { ' -RuntimeLease "{0}"' -f ($RuntimeLease -replace '"', '\"') }
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -MaxCycles {4} -QueueTimeoutSeconds {5} -SleepSeconds {6}{7}{8} -Foreground"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $MaxCycles, $QueueTimeoutSeconds, $SleepSeconds, $RuntimeLeaseArg, $AutoImproveArg
+$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -MaxCycles {4} -QueueTimeoutSeconds {5} -SleepSeconds {6} -LoopBreak {7}{8}{9} -Foreground"' -f $PowerShell, $TaskWrapper, $RunCount, $MaxConcurrentBattles, $MaxCycles, $QueueTimeoutSeconds, $SleepSeconds, $LoopBreak, $RuntimeLeaseArg, $AutoImproveArg
 $PidFile = Join-Path $ProjectDir ".pids\devstream_battle_supervisor.pid"
 $StopFile = Join-Path $ProjectDir ".pids\supervisor.stop"
 
@@ -139,6 +141,8 @@ function Start-ForegroundWrapperProcess {
         "$QueueTimeoutSeconds",
         "-SleepSeconds",
         "$SleepSeconds",
+        "-LoopBreak",
+        "$LoopBreak",
         "-Foreground"
     )
     if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {

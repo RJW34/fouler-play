@@ -103,6 +103,15 @@ def test_runtime_account_authority_has_no_retired_operational_defaults():
     assert "account-season.json" in renew
 
 
+def test_keepalive_rechecks_monitor_owned_stop_loss_instead_of_parking_forever():
+    text = (ROOT / "scripts" / "fouler_keepalive.ps1").read_text(encoding="utf-8")
+
+    assert "function Invoke-MissionMonitorRepair" in text
+    assert "STOP-LOSS-RECOVERY-CHECK" in text
+    assert "A monitor-owned stop marker is a tripwire, not a permanent operator hold." in text
+    assert "BLOCKED: 0 clients and supervisor.stop is present" not in text
+
+
 def test_obs_server_task_runs_via_scheduler_owned_powershell_wrapper():
     text = (ROOT / "scripts" / "install_obs_server_task.ps1").read_text(encoding="utf-8")
 
@@ -360,6 +369,11 @@ def test_battle_supervisor_defaults_to_one_rated_battle():
     assert '$env:BATTLE_STATS_MAX_ENTRIES = "5000"' in wrapper
     assert '$env:BOT_LOG_TO_FILE = "1"' in wrapper
     assert '$env:FOULER_PLAY_ENABLE_AUTO_IMPROVE = if ($AutoImprove) { "1" } else { "0" }' in wrapper
+    assert '[string]$LoopBreak = "0"' in wrapper
+    assert '[string]$LoopBreak = "0"' in installer
+    assert "-LoopBreak {7}" in installer
+    assert '"-LoopBreak"' in installer
+    assert '$env:FOULER_LOOP_BREAK = $LoopBreak' in wrapper
 
 
 def test_legacy_player_loop_is_clearly_quarantined():

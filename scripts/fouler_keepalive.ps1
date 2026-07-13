@@ -46,6 +46,34 @@ function Write-KA([string]$msg) {
   try { Add-Content -Path $kaLog -Value ("[{0}] {1}" -f $ts, $msg) -ErrorAction SilentlyContinue } catch {}
 }
 
+function Invoke-MissionMonitorRepair {
+  param([string]$Reason = 'DOWN')
+
+  $launchStamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
+  $stdoutPath = Join-Path $logDir ("fouler_mission_keepalive_{0}.out.log" -f $launchStamp)
+  $stderrPath = Join-Path $logDir ("fouler_mission_keepalive_{0}.err.log" -f $launchStamp)
+  $monitorArgs = @(
+    'scripts\fouler_mission_monitor.py',
+    '--write',
+    '--repair-runtime',
+    '--run-count','5',
+    '--max-cycles','1',
+    '--max-concurrent-battles','1',
+    '--no-refresh-health-after-repair'
+  )
+  Write-KA ("{0}: delegating launch/recovery decision to fouler_mission_monitor.py (out={1})." -f $Reason, (Split-Path $stdoutPath -Leaf))
+  try {
+    $proc = Start-Process -FilePath $python -ArgumentList $monitorArgs -WorkingDirectory $repo `
+      -WindowStyle Hidden -Wait -PassThru -ErrorAction Stop `
+      -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+    Write-KA ("MISSION-MONITOR: completed with exit code {0}; keepalive will not direct-launch. See {1}." -f $proc.ExitCode, (Split-Path $stdoutPath -Leaf))
+    return [int]$proc.ExitCode
+  } catch {
+    Write-KA ("MISSION-MONITOR-FAILED: {0}" -f $_.Exception.Message)
+    return 1
+  }
+}
+
 # ----- Exclusive keepalive lock (prevents overlapping invocations racing a launch) -----
 $lockStream = $null
 try {
@@ -130,7 +158,11 @@ try {
 
   # ----- count -eq 0: launch exactly one -----
   if ($missionStopPresent) {
-    Write-KA "BLOCKED: 0 clients and supervisor.stop is present; not launching a direct ladder client."
+    # A monitor-owned stop marker is a tripwire, not a permanent operator hold.
+    # Re-run the deterministic mission gate so recovered active drawdown can
+    # clear its own marker and start the next bounded proof window. Manual stop
+    # markers remain blocked because the monitor only clears markers it wrote.
+    $null = Invoke-MissionMonitorRepair -Reason 'STOP-LOSS-RECOVERY-CHECK'
     exit 0
   }
 
@@ -154,29 +186,8 @@ try {
   }
   $allowLegacyDirectKeepalive = ($env:FOULER_ALLOW_LEGACY_DIRECT_KEEPALIVE -eq '1')
   if (-not $allowLegacyDirectKeepalive) {
-    $launchStamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
-    $stdoutPath = Join-Path $logDir ("fouler_mission_keepalive_{0}.out.log" -f $launchStamp)
-    $stderrPath = Join-Path $logDir ("fouler_mission_keepalive_{0}.err.log" -f $launchStamp)
-    $monitorArgs = @(
-      'scripts\fouler_mission_monitor.py',
-      '--write',
-      '--repair-runtime',
-      '--run-count','5',
-      '--max-cycles','1',
-      '--max-concurrent-battles','1',
-      '--no-refresh-health-after-repair'
-    )
-    Write-KA ("DOWN: 0 top-level run.py clients. Delegating launch decision to fouler_mission_monitor.py start gate (out={0})." -f (Split-Path $stdoutPath -Leaf))
-    try {
-      $proc = Start-Process -FilePath $python -ArgumentList $monitorArgs -WorkingDirectory $repo `
-        -WindowStyle Hidden -Wait -PassThru -ErrorAction Stop `
-        -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
-      Write-KA ("MISSION-MONITOR: completed with exit code {0}; keepalive will not direct-launch. See {1}." -f $proc.ExitCode, (Split-Path $stdoutPath -Leaf))
-      exit 0
-    } catch {
-      Write-KA ("MISSION-MONITOR-FAILED: {0}" -f $_.Exception.Message)
-      exit 1
-    }
+    $null = Invoke-MissionMonitorRepair -Reason 'DOWN'
+    exit 0
   }
   Write-KA "LEGACY-DIRECT-OVERRIDE: FOULER_ALLOW_LEGACY_DIRECT_KEEPALIVE=1, using old direct run.py launch path."
 
