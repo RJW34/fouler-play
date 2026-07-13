@@ -16,11 +16,37 @@ def test_battle_slot_polls_local_slot_state() -> None:
     html = serve_obs_page.BATTLE_SLOT_HTML.format(slot=2)
 
     assert "var STATE_URL='/slot/'+SLOT+'/state';" in html
-    assert "battle_id" in html
     assert "battle_lab" in html
+    assert "lab.battle_id" not in html
     assert "window.location.replace" not in html
     assert "play.pokemonshowdown.com" not in html
     assert "/magneton-state" not in html
+
+
+def test_battle_slot_translates_runtime_details_for_viewers_without_dom_flash() -> None:
+    html = serve_obs_page.BATTLE_SLOT_HTML.format(slot=2)
+    lowered = html.lower()
+
+    for forbidden in (
+        "mission proof",
+        "parsed battle events",
+        "proof slot open",
+        "archetypeenum.",
+        "fat-team-",
+    ):
+        assert forbidden not in lowered
+    assert "PUBLIC" not in html
+
+    assert "Pokemon Showdown / Ranked match 2" in html
+    assert "Battle timeline" in html
+    assert "function normalizeEvent(event)" in html
+    assert "Battle read: " in html
+    assert "Decision: " in html
+    assert "Replay ready" in html
+    assert "Replay processing" in html
+    assert html.count("document.createDocumentFragment()") == 2
+    assert html.count("root.replaceChildren(fragment);") == 2
+    assert "root.innerHTML=''" not in html
 
 
 def test_devstream_defaults_to_three_rated_showdown_battles() -> None:

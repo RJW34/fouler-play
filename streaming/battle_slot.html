@@ -1,246 +1,252 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Showdown Battle Feed</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+<head><meta charset="UTF-8"><title>Battle Lab Match __SLOT__</title>
 <style>
-:root {
-  --bg-dark: #0f0f1b;
-  --accent-blue: #08d9d6;
-  --accent-red: #ff2e63;
-  --accent-green: #4ade80;
-  --glass: rgba(255,255,255,0.05);
-  --glass-border: rgba(255,255,255,0.1);
-  --text-main: #eaeaea;
-  --text-dim: #888;
-}
 *{margin:0;padding:0;box-sizing:border-box}
-body{
-  width:100vw;height:100vh;overflow:hidden;
-  background:var(--bg-dark);
-  font-family:'Outfit',sans-serif;color:var(--text-main);
-  position:relative;
-}
-
-/* Battle iframe fills the cell */
-.battle-frame{
-  position:absolute;inset:0;
-  border:none;width:100%;height:100%;
-  opacity:0;transition:opacity 0.8s ease-in-out;
-  z-index:1;
-}
-.battle-frame.visible{opacity:1}
-
-/* Overlay badges */
-.ui-layer{
-  position:absolute;inset:0;z-index:10;pointer-events:none;
-}
-.slot-header{
-  position:absolute;top:8px;left:10px;
-  display:flex;align-items:center;gap:6px;
-}
-.badge{
-  padding:4px 10px;border-radius:16px;
-  font-size:10px;font-weight:800;letter-spacing:1px;
-  text-transform:uppercase;
-  background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);
-  border:1px solid var(--glass-border);
-}
-.badge.slot1{color:var(--accent-red);border-color:var(--accent-red);box-shadow:0 0 8px rgba(255,46,99,0.2)}
-.badge.slot2{color:var(--accent-blue);border-color:var(--accent-blue);box-shadow:0 0 8px rgba(8,217,214,0.2)}
-.badge.slot3{color:#bd93f9;border-color:#bd93f9;box-shadow:0 0 8px rgba(189,147,249,0.2)}
-.badge.live{color:var(--accent-green);border-color:var(--accent-green);box-shadow:0 0 8px rgba(74,222,128,0.2)}
-
-.battle-card{
-  position:absolute;bottom:8px;left:8px;right:8px;
-  background:rgba(0,0,0,0.65);backdrop-filter:blur(16px);
-  border:1px solid var(--glass-border);
-  padding:8px 14px;border-radius:12px;
-  display:flex;justify-content:space-between;align-items:center;
-  transform:translateY(120%);transition:transform 0.5s cubic-bezier(0.23,1,0.32,1);
-  pointer-events:auto;
-}
-.battle-card.show{transform:translateY(0)}
-.opp-info h4{font-size:9px;text-transform:uppercase;color:#888;margin-bottom:1px}
-.opp-info div{font-size:14px;font-weight:800;color:#fff}
-.match-stats{text-align:right}
-.match-stats .turn{font-size:12px;font-weight:600;color:var(--accent-blue)}
-
-/* Idle/searching state */
-.searching-overlay{
-  position:absolute;inset:0;z-index:5;
-  background:var(--bg-dark);
-  transition:opacity 0.5s;
-}
-.searching-overlay.hidden{opacity:0;pointer-events:none}
-
-.searching-panel{
-  position:absolute;left:280px;top:190px;transform:translate(-50%,-50%);
-  display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-}
-
-.sonar{width:140px;height:140px;position:relative;margin-bottom:20px}
-.sonar-circle{
-  position:absolute;top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  border:1px solid var(--accent-blue);
-  border-radius:50%;opacity:0;
-  animation:sonar-ping 4s infinite linear;
-}
-.sonar-circle:nth-child(2){animation-delay:1s}
-.sonar-circle:nth-child(3){animation-delay:2s}
-.sonar-circle:nth-child(4){animation-delay:3s}
-@keyframes sonar-ping{
-  0%{width:0;height:0;opacity:1}
-  100%{width:100%;height:100%;opacity:0}
-}
-.sonar-scanner{
-  position:absolute;inset:0;
-  background:conic-gradient(from 0deg,transparent 0deg,var(--accent-blue) 360deg);
-  opacity:0.08;border-radius:50%;
-  animation:rotate 4s linear infinite;
-}
-@keyframes rotate{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-
-.searching-text{
-  font-size:16px;font-weight:800;
-  letter-spacing:3px;text-transform:uppercase;
-  color:var(--accent-blue);
-  text-shadow:0 0 12px rgba(8,217,214,0.4);
-}
-.searching-sub{
-  margin-top:6px;font-size:11px;
-  color:var(--text-dim);letter-spacing:2px;
-}
-.slot-number{
-  font-size:60px;font-weight:900;
-  color:rgba(255,255,255,0.04);
-  position:absolute;bottom:20px;right:20px;
-}
-</style>
-</head>
-<body>
-<!-- Searching/idle state -->
-<div class="searching-overlay" id="searchingOverlay">
-  <div class="searching-panel">
-    <div class="sonar">
-      <div class="sonar-scanner"></div>
-      <div class="sonar-circle"></div>
-      <div class="sonar-circle"></div>
-      <div class="sonar-circle"></div>
-      <div class="sonar-circle"></div>
+body{width:100vw;height:100vh;overflow:hidden;background:#08090d;color:#f4f1e8;
+font-family:Inter,Segoe UI,system-ui,sans-serif}
+.shell{width:1280px;height:720px;padding:28px;display:grid;grid-template-rows:74px 1fr 76px;gap:18px}
+.top{display:grid;grid-template-columns:1fr auto;align-items:start;border-bottom:1px solid #2b3040;padding-bottom:16px}
+.kicker{font-size:14px;font-weight:800;color:#58c7d9;text-transform:uppercase}
+.title{font-size:42px;line-height:46px;font-weight:900;color:#fff;margin-top:2px}
+.status{display:flex;gap:10px;align-items:center;justify-content:flex-end}
+.pill{min-width:118px;padding:10px 14px;border:1px solid #3b4252;border-radius:7px;background:#121722;color:#f4f1e8;text-align:center}
+.pill strong{display:block;font-size:20px;line-height:24px}
+.pill span{display:block;font-size:11px;color:#a8b3c7;text-transform:uppercase}
+.main{display:grid;grid-template-columns:472px 1fr;gap:22px;min-height:0}
+.panel{border:1px solid #2b3040;border-radius:8px;background:#11151d;padding:20px;min-height:0}
+.match{display:grid;grid-template-rows:auto auto 1fr;gap:18px}
+.label{font-size:12px;color:#a8b3c7;text-transform:uppercase;font-weight:800;margin-bottom:8px}
+.opponent{font-size:38px;line-height:42px;font-weight:900;color:#fff;word-break:break-word}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.metric{border-left:4px solid #58c7d9;background:#171d28;padding:12px}
+.metric b{display:block;font-size:24px;line-height:30px;color:#fff}
+.metric span{font-size:12px;color:#a8b3c7;text-transform:uppercase}
+.match-note{align-self:end;font-size:15px;line-height:20px;color:#d5c46a}
+.events{display:grid;grid-template-rows:auto 1fr;gap:12px}
+.event-list{display:flex;flex-direction:column;gap:8px;overflow:hidden;min-height:0}
+.event{display:grid;grid-template-columns:52px 1fr;gap:10px;min-height:48px;max-height:66px;padding:10px 12px;border-radius:6px;background:#171d28;border-left:4px solid #d56b5f;color:#f1f5f9;font-size:17px;line-height:23px;overflow:hidden}
+.event em{font-style:normal;color:#d5c46a;font-weight:800}
+.event span{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.empty{height:100%;display:flex;align-items:center;justify-content:center;border:1px dashed #3b4252;border-radius:8px;color:#a8b3c7;font-size:24px;font-weight:800;text-align:center;padding:24px}
+.bottom{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.result{height:76px;border:1px solid #2b3040;border-radius:7px;background:#11151d;padding:10px 12px;min-width:0;overflow:hidden}
+.result b{display:block;font-size:18px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result .outcome{display:block;font-size:12px;text-transform:uppercase;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result .result-meta{display:block;font-size:12px;color:#a8b3c7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.win{color:#7bd88f}.loss{color:#d56b5f}.pending{color:#d5c46a}
+</style></head><body>
+<main class="shell">
+  <section class="top">
+    <div>
+      <div class="kicker">Pokemon Showdown / Ranked match __SLOT__</div>
+      <div class="title" id="headline">Battle Lab ready</div>
     </div>
-    <div class="searching-text">MATCHMAKING</div>
-    <div class="searching-sub" id="searchingSub">RANKED BATTLE FEED <span id="slotLabel">?</span></div>
-  </div>
-  <div class="slot-number" id="bigSlotNum"></div>
-</div>
-
-<!-- Battle iframe -->
-<iframe class="battle-frame" id="battleFrame"></iframe>
-
-<!-- UI overlay -->
-<div class="ui-layer">
-  <div class="slot-header">
-    <div class="badge" id="slotBadge">BATTLE</div>
-    <div class="badge live" id="liveBadge" style="display:none">LIVE</div>
-  </div>
-  <div class="battle-card" id="battleCard">
-    <div class="opp-info">
-      <h4>Opponent</h4>
-      <div id="oppName">----------</div>
+    <div class="status">
+      <div class="pill"><strong id="turn">--</strong><span>Turn</span></div>
+      <div class="pill"><strong id="record">0-0</strong><span>Record</span></div>
+      <div class="pill"><strong id="elo">--</strong><span>ELO</span></div>
     </div>
-    <div class="match-stats"><div class="turn" id="turnInfo">ACTIVE</div></div>
-  </div>
-</div>
-
+  </section>
+  <section class="main">
+    <div class="panel match">
+      <div>
+        <div class="label">Current matchup</div>
+        <div class="opponent" id="opponent">Finding an opponent</div>
+      </div>
+      <div class="meta">
+        <div class="metric"><b id="status">Matchmaking</b><span>State</span></div>
+        <div class="metric"><b id="age">--</b><span>Battle time</span></div>
+      </div>
+      <div class="match-note" id="matchNote">Gen 9 OU ranked ladder</div>
+    </div>
+    <div class="panel events">
+      <div class="label">Battle timeline</div>
+      <div class="event-list" id="events"><div class="empty">Match updates will appear here.</div></div>
+    </div>
+  </section>
+  <section class="bottom" id="results"></section>
+</main>
 <script>
-// Get slot number from URL path: /slot/1, /slot/2, /slot/3
-const pathParts = window.location.pathname.split('/');
-const SLOT_NUM = parseInt(pathParts[pathParts.length - 1]) || 1;
-const STATE_URL = '/slot/' + SLOT_NUM + '/state';
-const REFRESH_MS = 5000;
+(function(){
+  var SLOT=__SLOT__;
+  var STATE_URL='/slot/'+SLOT+'/state';
+  var POLL_MS=3000;
 
-const badgeColors = {1:'slot1', 2:'slot2', 3:'slot3'};
-const badgeLabels = {1:'BATTLE 01', 2:'BATTLE 02', 3:'BATTLE 03'};
-
-// Init labels
-document.getElementById('slotLabel').textContent = SLOT_NUM;
-document.getElementById('bigSlotNum').textContent = SLOT_NUM;
-document.getElementById('slotBadge').textContent = badgeLabels[SLOT_NUM] || ('BATTLE ' + SLOT_NUM);
-document.getElementById('slotBadge').classList.add(badgeColors[SLOT_NUM] || 'slot1');
-
-let currentBattleId = null;
-let currentBattleUrl = null;
-
-function buildBattleUrl(bid) {
-  return 'https://play.pokemonshowdown.com/' + bid + '?r=' + Date.now();
-}
-
-function stripCache(url) {
-  if (!url) return url;
-  try {
-    const u = new URL(url);
-    u.searchParams.delete('r');
-    return u.toString();
-  } catch(e) { return url; }
-}
-
-function getBattleUrl(battle) {
-  if (!battle) return null;
-  return stripCache(battle.url || ('https://play.pokemonshowdown.com/' + battle.id));
-}
-
-async function fetchState() {
-  try {
-    const resp = await fetch(STATE_URL + '?t=' + Date.now(), {cache:'no-store'});
-    if (!resp.ok) return;
-    const data = await resp.json();
-    if (data.error) return;
-    const battle = data.battle_id
-      ? {id: data.battle_id, url: data.url, opponent: data.opponent}
-      : null;
-    updateSlot(battle);
-  } catch(e) {}
-}
-
-function updateSlot(battle) {
-  const frame = document.getElementById('battleFrame');
-  const overlay = document.getElementById('searchingOverlay');
-  const card = document.getElementById('battleCard');
-  const liveBadge = document.getElementById('liveBadge');
-
-  if (battle) {
-    const bid = battle.id;
-    const bUrl = getBattleUrl(battle);
-
-    if (bid !== currentBattleId || bUrl !== currentBattleUrl) {
-      currentBattleId = bid;
-      currentBattleUrl = bUrl;
-      frame.src = buildBattleUrl(bid);
-      frame.classList.add('visible');
-      overlay.classList.add('hidden');
-      document.getElementById('oppName').textContent = battle.opponent || 'Unknown';
-      liveBadge.style.display = '';
-      setTimeout(() => card.classList.add('show'), 400);
-    }
-  } else if (currentBattleId) {
-    currentBattleId = null;
-    currentBattleUrl = null;
-    card.classList.remove('show');
-    liveBadge.style.display = 'none';
-    frame.classList.remove('visible');
-    setTimeout(() => {
-      frame.src = 'about:blank';
-      overlay.classList.remove('hidden');
-    }, 500);
+  function text(id,value){document.getElementById(id).textContent=value==null?'--':String(value);}
+  function make(tag,className,value){
+    var node=document.createElement(tag);
+    if(className){node.className=className;}
+    if(value!=null){node.textContent=String(value);}
+    return node;
   }
-}
+  function words(value){
+    return String(value||'').trim().replace(/[-_]+/g,' ').replace(/\s+/g,' ');
+  }
+  function titleWords(value){
+    return words(value).toLowerCase().replace(/\b[a-z]/g,function(letter){return letter.toUpperCase();});
+  }
+  function sentenceWords(value){
+    var clean=words(value).toLowerCase();
+    return clean?clean.charAt(0).toUpperCase()+clean.slice(1):'';
+  }
+  function friendlyStatus(value,active){
+    if(active){return 'In battle';}
+    var clean=String(value||'').trim();
+    var key=clean.toLowerCase();
+    if(!clean||/search|queue|matchmak|running|active battle/.test(key)){return 'Matchmaking';}
+    if(/ready|idle/.test(key)){return 'Ready';}
+    if(/complete|finish/.test(key)){return 'Complete';}
+    return titleWords(clean);
+  }
+  function normalizeEvent(event){
+    var value=String(event==null?'':event).trim().replace(/\s+/g,' ');
+    if(!value){return '';}
 
-fetchState();
-setInterval(fetchState, REFRESH_MS);
+    var archetype=value.match(/^Archetype=(?:[A-Za-z][A-Za-z0-9]*\.)?([A-Z0-9_]+)(?:,\s*Confidence=([0-9]*\.?[0-9]+))?$/i);
+    if(archetype){
+      var read='Battle read: '+sentenceWords(archetype[1]);
+      if(archetype[2]){
+        var confidence=Number(archetype[2]);
+        if(isFinite(confidence)){
+          read+=' ('+Math.round(confidence<=1?confidence*100:confidence)+'% confidence)';
+        }
+      }
+      return read;
+    }
+
+    var winCondition=value.match(/^Win Condition:\s*(.+)$/i);
+    if(winCondition){
+      var condition=winCondition[1]
+        .replace(/\bthrough defensive core\b/i,'through the defensive core')
+        .replace(/,\s*wear with\b/i,'; win with');
+      return 'Win condition: '+condition;
+    }
+
+    var decision=value.match(/^Bot selected\s+(.+)$/i);
+    if(decision){
+      var action=decision[1].replace(/^Move\s+/i,'').trim();
+      action=action.replace(/^Switch\s+(?!to\b)/i,'Switch to ');
+      return 'Decision: '+action;
+    }
+
+    var switched=value.match(/^(.+?) switched in(?:\s*\((.*?)\))?$/i);
+    if(switched){
+      var actor=switched[1].trim();
+      var details=String(switched[2]||'').trim();
+      if(!details||actor.toLowerCase()===details.toLowerCase()){
+        return actor+' switched in';
+      }
+      return actor+' switched in as '+details;
+    }
+
+    var move=value.match(/^(.+?) used (.+?) into (.+)$/i);
+    if(move){return move[1]+' used '+move[2]+' on '+move[3];}
+
+    var status=value.match(/^(.+?) status:\s*(brn|psn|tox|par|slp|frz)$/i);
+    if(status){
+      var statusNames={brn:'burned',psn:'poisoned',tox:'badly poisoned',par:'paralyzed',slp:'asleep',frz:'frozen'};
+      return status[1]+' is '+statusNames[status[2].toLowerCase()];
+    }
+
+    value=value.replace(/\b[A-Za-z][A-Za-z0-9]*\.([A-Z][A-Z0-9_]+)\b/g,function(_,token){
+      return sentenceWords(token);
+    });
+    return value.replace(/\s*\(\s*\)\s*$/,'').replace(/\s+/g,' ').trim();
+  }
+  function friendlyTeam(value){
+    var raw=String(value||'').trim().replace(/\\/g,'/');
+    var key=raw.split('/').pop().replace(/\.[^.]+$/,'');
+    key=key
+      .replace(/^(?:fat[-_\s]*)?team[-_\s]*\d+[-_\s]*/i,'')
+      .replace(/^team[-_\s]+/i,'');
+    var label=titleWords(key);
+    if(!label){return 'Current team';}
+    return /\bteam$/i.test(label)?label:label+' team';
+  }
+  function replayStatus(value){
+    var key=words(value).toLowerCase();
+    if(!key){return 'Replay pending';}
+    if(/pending/.test(key)&&/upload|public/.test(key)){return 'Replay processing';}
+    if(/public|verified|ready|uploaded|available/.test(key)){return 'Replay ready';}
+    if(/absent|missing|none/.test(key)){return 'No replay available';}
+    if(/private|failed|error|unavailable/.test(key)){return 'Replay unavailable';}
+    if(/not requested/.test(key)){return 'Replay not requested';}
+    return 'Replay '+sentenceWords(key);
+  }
+  function resultClass(result){
+    var key=String(result||'').toLowerCase();
+    return key==='win'?'win':(key==='loss'?'loss':'pending');
+  }
+  function resultLabel(result,delta){
+    var key=String(result||'').trim().toLowerCase();
+    var outcome=key==='win'?'WIN':(key==='loss'?'LOSS':(key?titleWords(key).toUpperCase():'RESULT'));
+    var number=Number(delta);
+    if(delta!=null&&delta!==''&&isFinite(number)){
+      outcome+=' / '+(number>0?'+':'')+number+' ELO';
+    }
+    return outcome;
+  }
+  function renderEvents(events,active){
+    var root=document.getElementById('events');
+    var fragment=document.createDocumentFragment();
+    var normalized=(events||[]).map(normalizeEvent).filter(function(event){return !!event;}).slice(-7);
+    if(!normalized.length){
+      fragment.appendChild(make('div','empty',active?'Waiting for the first battle update.':'Match updates will appear here.'));
+    }else{
+      normalized.forEach(function(event,idx){
+        var row=make('div','event');
+        row.appendChild(make('em','',String(idx+1).padStart(2,'0')));
+        row.appendChild(make('span','',event));
+        fragment.appendChild(row);
+      });
+    }
+    root.replaceChildren(fragment);
+  }
+  function resultCard(result){
+    var card=make('div','result');
+    card.appendChild(make('span','outcome '+resultClass(result.result),resultLabel(result.result,result.delta)));
+    card.appendChild(make('b','',result.opponent?'vs '+result.opponent:'Opponent unavailable'));
+    card.appendChild(make('span','result-meta',friendlyTeam(result.team)+' / '+replayStatus(result.replay)));
+    return card;
+  }
+  function pendingResultCard(){
+    var card=make('div','result');
+    card.appendChild(make('span','outcome pending','NEXT'));
+    card.appendChild(make('b','','Next result'));
+    card.appendChild(make('span','result-meta','Waiting for a completed battle'));
+    return card;
+  }
+  function renderResults(results){
+    var root=document.getElementById('results');
+    var fragment=document.createDocumentFragment();
+    var visible=(results||[]).slice(0,4);
+    visible.forEach(function(result){fragment.appendChild(resultCard(result));});
+    for(var idx=visible.length;idx<4;idx+=1){fragment.appendChild(pendingResultCard());}
+    root.replaceChildren(fragment);
+  }
+  function render(payload){
+    var lab=payload.battle_lab||payload;
+    var active=!!lab.active;
+    text('headline',active?'Live Battle Lab':'Battle Lab ready');
+    text('turn',lab.turn==null?'--':lab.turn);
+    text('record',(lab.wins||0)+'-'+(lab.losses||0));
+    text('elo',lab.elo==null?'--':lab.elo);
+    text('opponent',active?('vs '+(lab.opponent||'Opponent unavailable')):'Finding an opponent');
+    text('status',friendlyStatus(lab.status,active));
+    text('age',active?(lab.age_label||'--'):'--');
+    text('matchNote',active?'Gen 9 OU ranked match in progress':'Gen 9 OU ranked ladder');
+    renderEvents(lab.events||[],active);
+    renderResults(lab.recent_results||[]);
+  }
+  function poll(){
+    fetch(STATE_URL+'?t='+Date.now(),{cache:'no-store'})
+      .then(function(response){if(!response.ok){throw new Error('state unavailable');}return response.json();})
+      .then(render)
+      .catch(function(){text('status','Reconnecting');});
+  }
+  poll();
+  setInterval(poll,POLL_MS);
+})();
 </script>
-</body>
-</html>
+</body></html>

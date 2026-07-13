@@ -113,7 +113,9 @@ def test_public_battle_slot_is_viewport_responsive_for_obs_browser_sources() -> 
     html = PUBLIC_BATTLE_SLOT_HTML.read_text(encoding="utf-8")
     served_html = serve_obs_page.BATTLE_SLOT_HTML.replace("__SLOT__", "1")
 
+    assert html == str(serve_obs_page.BATTLE_SLOT_HTML)
     assert "width:100vw;height:100vh" in html.replace(" ", "")
+    assert "width:1280px;height:720px" in html.replace(" ", "")
     assert "width:640px;height:540px" not in html.replace(" ", "")
     assert "width:100vw;height:100vh" in served_html.replace(" ", "")
     assert "width:640px;height:540px" not in served_html.replace(" ", "")
@@ -151,8 +153,11 @@ async def test_public_slot_source_uses_local_viewer_overlay(monkeypatch) -> None
 
     assert response.status == 200
     assert "var SLOT=2;" in html
-    assert "Fouler live mission proof / slot 2" in html
+    assert "Pokemon Showdown / Ranked match 2" in html
     assert "Battle Lab" in html
+    assert "Battle timeline" in html
+    assert "Record" in html
+    assert "Battle time" in html
     assert "NEXT MATCH LOADING" not in html
     assert "BATTLE QUEUE" not in html
     assert "FEATURED MATCH" not in html
