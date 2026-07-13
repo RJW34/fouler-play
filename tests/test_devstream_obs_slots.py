@@ -49,8 +49,12 @@ def test_battle_slot_translates_runtime_details_for_viewers_without_dom_flash() 
     assert "text('elo'" not in html
     assert "Replay ready" in html
     assert "Replay processing" in html
-    assert html.count("document.createDocumentFragment()") == 2
-    assert html.count("root.replaceChildren(fragment);") == 2
+    assert "function renderEvents" in html
+    assert "function renderResults" in html
+    assert "function renderEffects" in html
+    assert "function renderBench" in html
+    assert html.count("document.createDocumentFragment()") >= 4
+    assert html.count("root.replaceChildren(fragment);") >= 4
     assert "root.innerHTML=''" not in html
 
 

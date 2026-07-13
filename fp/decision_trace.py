@@ -6,6 +6,7 @@ import hashlib
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+PUBLIC_BATTLE_VIEW_FILENAME = "latest-public-battle.json"
 
 
 def _live_request_evidence(battle):
@@ -120,6 +121,110 @@ def validate_trace_schema(trace: dict) -> bool:
     return required.issubset(set(trace.keys()))
 
 
+def _public_number(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return int(number) if number.is_integer() else round(number, 2)
+
+
+def _public_pokemon(raw):
+    if not isinstance(raw, dict):
+        return None
+    name = str(raw.get("name") or "").strip().lower()
+    if not name:
+        return None
+    tera = raw.get("tera") if isinstance(raw.get("tera"), dict) else {}
+    tera_active = bool(tera.get("active"))
+    hp = _public_number(raw.get("hp"))
+    max_hp = _public_number(raw.get("max_hp"))
+    hp_percent = None
+    if hp is not None and max_hp is not None and max_hp > 0:
+        hp_percent = round(max(0, min(100, (hp / max_hp) * 100)), 1)
+    elif bool(raw.get("fainted")):
+        hp_percent = 0
+    boosts = raw.get("boosts") if isinstance(raw.get("boosts"), dict) else {}
+    public_boosts = {}
+    for stat, value in boosts.items():
+        number = _public_number(value)
+        if number not in (None, 0):
+            public_boosts[str(stat)[:16]] = number
+    return {
+        "name": name[:80],
+        "hp_percent": hp_percent,
+        "fainted": bool(raw.get("fainted")),
+        "status": str(raw.get("status") or "").strip().lower()[:12] or None,
+        "types": [str(value).strip().lower()[:16] for value in (raw.get("types") or [])[:2] if value],
+        "tera": {
+            "active": tera_active,
+            "type": (
+                str(tera.get("type") or "").strip().lower()[:16] or None
+                if tera_active
+                else None
+            ),
+        },
+        "boosts": public_boosts,
+    }
+
+
+def _public_side(raw):
+    if not isinstance(raw, dict):
+        return None
+    active = _public_pokemon(raw.get("active"))
+    reserve = [
+        pokemon
+        for pokemon in (_public_pokemon(value) for value in (raw.get("reserve") or [])[:5])
+        if pokemon is not None
+    ]
+    conditions = raw.get("side_conditions") if isinstance(raw.get("side_conditions"), dict) else {}
+    public_conditions = {}
+    for name, value in conditions.items():
+        number = _public_number(value)
+        if number not in (None, 0):
+            public_conditions[str(name).strip().lower()[:24]] = number
+    return {
+        "account": str(raw.get("account") or "").strip()[:40] or None,
+        "active": active,
+        "reserve": reserve,
+        "side_conditions": public_conditions,
+    }
+
+
+def build_public_battle_view(trace: dict):
+    if not isinstance(trace, dict):
+        return None
+    snapshot = trace.get("snapshot") if isinstance(trace.get("snapshot"), dict) else {}
+    user = _public_side(snapshot.get("user"))
+    opponent = _public_side(snapshot.get("opponent"))
+    battle_id = str(trace.get("battle_tag") or snapshot.get("battle_tag") or "").strip()
+    if not battle_id or user is None or opponent is None:
+        return None
+    return {
+        "schema": "fouler-public-battle-view/v1",
+        # Kept only in the local file so the HTTP surface can reject a stale
+        # snapshot. The API removes this private room identifier.
+        "battle_id": battle_id,
+        "updated_at": str(trace.get("timestamp") or ""),
+        "turn": _public_number(trace.get("turn") or snapshot.get("turn")),
+        "format": str(trace.get("format") or "gen9ou").strip().lower()[:24],
+        "weather": str(snapshot.get("weather") or "").strip().lower()[:24] or None,
+        "field": str(snapshot.get("field") or "").strip().lower()[:24] or None,
+        "trick_room": bool(snapshot.get("trick_room")),
+        "user": user,
+        "opponent": opponent,
+    }
+
+
+def _write_public_battle_view(payload: dict, target_dir: str) -> None:
+    path = os.path.join(target_dir, PUBLIC_BATTLE_VIEW_FILENAME)
+    temporary = f"{path}.{os.getpid()}.tmp"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+    os.replace(temporary, path)
+
+
 def write_decision_trace(trace: dict, base_dir: str | None = None) -> str | None:
     if not trace:
         return None
@@ -134,6 +239,12 @@ def write_decision_trace(trace: dict, base_dir: str | None = None) -> str | None
         safe_trace = _make_json_safe(trace)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(safe_trace, f, indent=2, sort_keys=True)
+        public_view = build_public_battle_view(safe_trace)
+        if public_view:
+            try:
+                _write_public_battle_view(public_view, target_dir)
+            except Exception as e:
+                logger.debug(f"Public battle view write failed: {e}")
         return path
     except Exception as e:
         logger.debug(f"Decision trace write failed: {e}")

@@ -124,15 +124,18 @@ def test_public_battle_slot_is_viewport_responsive_for_obs_browser_sources() -> 
     assert "<title>Battle Slot" not in served_html
     assert "window.location.replace" not in served_html
     assert "play.pokemonshowdown.com" not in served_html
+    assert 'class="battle-board"' in served_html
+    assert "renderLiveBoard" in served_html
+    assert "private choices and hidden information omitted" in served_html
 
 
-def test_obs_slot_uses_real_showdown_surface_only_while_battle_is_active() -> None:
+def test_obs_slot_stays_on_reactive_local_surface_during_active_battles() -> None:
     assert serve_obs_page._build_obs_slot_source_url(2) == (
         "http://localhost:8777/slot/2?slot_idle=public"
     )
     assert serve_obs_page._build_obs_slot_source_url(
         2, "battle-gen9ou-live"
-    ) == "https://play.pokemonshowdown.com/battle-gen9ou-live"
+    ) == "http://localhost:8777/slot/2?slot_idle=public"
     assert "OBS_STALE_BATTLE_SEC" not in serve_obs_page.__dict__
 
 
@@ -241,6 +244,91 @@ async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> No
     assert payload["battle_lab"]["turn"] == 4
     assert payload["battle_lab"]["elo"] == 1234
     assert payload["battle_lab"]["events"] == ["Turn 4", "Bot selected Move Recover"]
+
+
+def test_public_battle_view_falls_back_to_latest_matching_decision_trace(tmp_path, monkeypatch) -> None:
+    battle_id = "battle-gen9ou-123-private-room-token"
+    trace_dir = tmp_path / "decision_traces"
+    trace_dir.mkdir()
+    trace = {
+        "battle_tag": battle_id,
+        "turn": 12,
+        "timestamp": "2026-07-13T18:00:00Z",
+        "format": "gen9ou",
+        "choice": "move recover",
+        "snapshot": {
+            "weather": "raindance",
+            "user": {
+                "account": "DekuFoulerLab",
+                "active": {
+                    "name": "mrmime",
+                    "hp": 120,
+                    "max_hp": 240,
+                    "types": ["psychic", "fairy"],
+                    "moves": ["recover"],
+                    "item": "leftovers",
+                    "ability": "filter",
+                    "tera": {"active": False, "type": "steel"},
+                    "boosts": {"spa": 1},
+                },
+                "reserve": [],
+                "side_conditions": {"reflect": 3},
+            },
+            "opponent": {
+                "account": "Opponent",
+                "active": {
+                    "name": "weezinggalar",
+                    "hp": 80,
+                    "max_hp": 200,
+                    "types": ["poison", "fairy"],
+                    "tera": {"active": True, "type": "dark"},
+                    "boosts": {},
+                },
+                "reserve": [],
+                "side_conditions": {"stealthrock": 1},
+            },
+        },
+    }
+    (trace_dir / f"{battle_id}_turn12_1.json").write_text(
+        json.dumps(trace), encoding="utf-8"
+    )
+    pokedex = tmp_path / "pokedex.json"
+    pokedex.write_text(
+        json.dumps(
+            {
+                "mrmime": {"name": "mr. mime"},
+                "weezinggalar": {"name": "weezing-galar"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        serve_obs_page, "PUBLIC_BATTLE_VIEW_PATH", trace_dir / "latest-public-battle.json"
+    )
+    monkeypatch.setattr(serve_obs_page, "POKEDEX_PATH", pokedex)
+    monkeypatch.setattr(serve_obs_page, "_public_pokedex", None)
+
+    public = serve_obs_page._public_battle_view({"id": battle_id})
+
+    assert public is not None
+    assert public["turn"] == 12
+    assert public["match_ref"] == "Match 123"
+    assert "battle_id" not in public
+    assert public["user"]["active"]["display_name"] == "Mr. Mime"
+    assert public["user"]["active"]["hp_percent"] == 50.0
+    assert "max_hp" not in public["user"]["active"]
+    assert public["user"]["active"]["tera"]["type"] is None
+    assert public["user"]["active"]["sprite_url"].endswith("/ani-back/mrmime.gif")
+    assert public["opponent"]["active"]["display_name"] == "Weezing Galar"
+    assert public["opponent"]["active"]["sprite_url"].endswith(
+        "/ani/weezing-galar.gif"
+    )
+    assert public["opponent"]["active"]["tera"]["type"] == "dark"
+    serialized = json.dumps(public)
+    assert "private-room-token" not in serialized
+    assert "leftovers" not in serialized
+    assert "recover" not in serialized
+    assert "filter" not in serialized
 
 
 def test_hybrid_scene_builder_prunes_operator_dashboard_sources() -> None:

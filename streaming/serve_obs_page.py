@@ -54,6 +54,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 from streaming import state_store
 from streaming.hybrid_dashboard import register_dashboard_routes
 from devstream_runtime_checks import recent_showdown_credential_failure
+from fp.decision_trace import build_public_battle_view
 
 HERMES_OBS_ENV_KEYS = {
     "OBS_WS_PASSWORD",
@@ -200,6 +201,14 @@ _emerald_brain_state: dict = {"status": "initializing", "objective": None, "last
 _firered_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Fire Red ROM", "status_text": "INITIALIZING"}
 BATTLE_STATS_PATH = ROOT_DIR / "battle_stats.json"
 BATTLE_LOG_DIR = ROOT_DIR / "logs"
+PUBLIC_BATTLE_VIEW_PATH = Path(
+    os.getenv(
+        "FOULER_PUBLIC_BATTLE_VIEW_PATH",
+        str(BATTLE_LOG_DIR / "decision_traces" / "latest-public-battle.json"),
+    )
+)
+POKEDEX_PATH = ROOT_DIR / "data" / "pokedex.json"
+_public_pokedex: dict[str, dict] | None = None
 
 PID_FILE = ROOT_DIR / ".pids" / "obs_server.pid"
 PROCESS_SCAN_TIMEOUT_SEC = float(os.getenv("FOULER_OBS_PROCESS_SCAN_TIMEOUT_SEC", "4") or "4")
@@ -667,6 +676,107 @@ def _battle_age_seconds(battle: dict | None) -> int | None:
     return max(0, int((now - started).total_seconds()))
 
 
+def _pokedex_entry(species_id: object) -> dict:
+    global _public_pokedex
+    if _public_pokedex is None:
+        try:
+            raw = json.loads(POKEDEX_PATH.read_text(encoding="utf-8"))
+            _public_pokedex = raw if isinstance(raw, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            _public_pokedex = {}
+    return _public_pokedex.get(str(species_id or "").strip().lower(), {})
+
+
+def _decorate_public_pokemon(raw: object, *, back: bool) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    pokemon = dict(raw)
+    entry = _pokedex_entry(pokemon.get("name"))
+    display_name = str(entry.get("name") or pokemon.get("name") or "").strip()
+    slug = re.sub(r"[^a-z0-9-]", "", display_name.lower())
+    if not re.fullmatch(r"[a-z0-9-]{1,80}", slug):
+        slug = ""
+    pokemon["display_name"] = display_name.replace("-", " ").title() or "Unknown"
+    pokemon["sprite_url"] = (
+        f"https://play.pokemonshowdown.com/sprites/{'ani-back' if back else 'ani'}/{slug}.gif"
+        if slug
+        else None
+    )
+    return pokemon
+
+
+def _decorate_public_side(raw: object, *, back: bool) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    side = dict(raw)
+    side["active"] = _decorate_public_pokemon(side.get("active"), back=back)
+    side["reserve"] = [
+        pokemon
+        for pokemon in (
+            _decorate_public_pokemon(value, back=back)
+            for value in (side.get("reserve") or [])[:5]
+        )
+        if pokemon is not None
+    ]
+    return side
+
+
+def _latest_trace_public_view(battle_id: str) -> tuple[dict | None, float | None]:
+    if not re.fullmatch(r"battle-[a-z0-9-]{1,160}", battle_id, re.IGNORECASE):
+        return None, None
+    trace_dir = PUBLIC_BATTLE_VIEW_PATH.parent
+    if not trace_dir.is_dir():
+        return None, None
+    candidates = []
+    for path in trace_dir.glob(f"{battle_id}_turn*.json"):
+        try:
+            candidates.append((path.stat().st_mtime, path))
+        except OSError:
+            continue
+    for modified, path in sorted(candidates, reverse=True)[:3]:
+        try:
+            trace = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        payload = build_public_battle_view(trace)
+        if payload and payload.get("battle_id") == battle_id:
+            return payload, modified
+    return None, None
+
+
+def _load_public_battle_view(battle_id: str) -> tuple[dict | None, float | None]:
+    try:
+        payload = json.loads(PUBLIC_BATTLE_VIEW_PATH.read_text(encoding="utf-8"))
+        modified = PUBLIC_BATTLE_VIEW_PATH.stat().st_mtime
+    except (OSError, json.JSONDecodeError):
+        payload = None
+        modified = None
+    if isinstance(payload, dict) and payload.get("battle_id") == battle_id:
+        return payload, modified
+
+    # The long-running battle worker may predate public-view publication. Read
+    # only its newest matching trace so an active match never needs interruption.
+    return _latest_trace_public_view(battle_id)
+
+
+def _public_battle_view(battle: dict | None) -> dict | None:
+    if not battle:
+        return None
+    battle_id = str(battle.get("id") or "").strip()
+    payload, modified = _load_public_battle_view(battle_id)
+    if not isinstance(payload, dict) or modified is None:
+        return None
+    age_seconds = max(0.0, time.time() - modified)
+    match = re.search(r"battle-[a-z0-9]+-(\d+)", str(payload.get("battle_id") or ""), re.IGNORECASE)
+    public = {key: value for key, value in payload.items() if key != "battle_id"}
+    public["match_ref"] = f"Match {match.group(1)}" if match else "Ranked match"
+    public["age_seconds"] = round(age_seconds, 1)
+    public["stale"] = age_seconds > 120
+    public["user"] = _decorate_public_side(public.get("user"), back=True)
+    public["opponent"] = _decorate_public_side(public.get("opponent"), back=False)
+    return public
+
+
 def _latest_battle_log_path(battle: dict | None) -> Path | None:
     if not battle:
         return None
@@ -813,6 +923,9 @@ def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | 
         state = build_state_payload()
     status = state.get("status") if isinstance(state.get("status"), dict) else {}
     events, turn, log_name = _recent_battle_events(battle)
+    battle_view = _public_battle_view(battle)
+    if battle_view and battle_view.get("turn") is not None:
+        turn = battle_view.get("turn")
     age_seconds = _battle_age_seconds(battle)
     accounts_elo = status.get("accounts_elo") or state.get("accounts_elo") or {}
     elo_value = None
@@ -837,6 +950,7 @@ def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | 
         "losses": status.get("today_losses", 0),
         "elo": elo_value,
         "events": events,
+        "battle_view": battle_view,
         "recent_results": _recent_battle_results(),
         "updated": state.get("updated"),
     }
@@ -850,9 +964,7 @@ def _build_public_slot_source_url(slot: int, battle_id: str | None = None) -> st
 
 
 def _build_obs_slot_source_url(slot: int, battle_id: str | None = None) -> str:
-    """Show the real match while active and the local viewer page between matches."""
-    if battle_id:
-        return _build_direct_battle_url(battle_id)
+    """Keep OBS on the reactive local surface for active and idle states."""
     return _build_public_slot_source_url(slot)
 
 

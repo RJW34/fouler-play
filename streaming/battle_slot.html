@@ -37,6 +37,19 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
 .result .result-meta{display:block;font-size:12px;color:#a8b3c7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .win{color:#7bd88f}.loss{color:#d56b5f}.pending{color:#d5c46a}
 .idle .shell{grid-template-rows:74px 1fr}.idle .bottom{display:none}.idle .main{grid-template-columns:1fr 1fr}
+.battle-board{display:none;width:1244px;height:684px;position:relative;overflow:hidden;background:#0b1118;border:1px solid #33404d;border-radius:8px}
+.has-view .shell{display:block;padding:18px}.has-view .top,.has-view .main,.has-view .bottom{display:none}.has-view .battle-board{display:block}
+.board-bar{position:absolute;left:0;right:0;top:0;height:68px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#111923;border-bottom:1px solid #33404d}
+.board-kicker{color:#e5b94e;font-size:13px;font-weight:900;text-transform:uppercase}.board-match{margin-top:3px;color:#f7f9fb;font-size:23px;font-weight:900}.board-turn{min-width:150px;text-align:right;color:#fff;font-size:30px;font-weight:900}.board-turn span{display:block;color:#8d9aac;font-size:10px;text-transform:uppercase}
+.arena{position:absolute;left:0;right:0;top:69px;bottom:0;overflow:hidden;background:#0d141d}
+.arena-line{position:absolute;left:50%;top:78px;bottom:74px;border-left:1px solid #263442}.arena-mark{position:absolute;left:50%;top:50%;width:128px;height:128px;transform:translate(-50%,-50%);border:2px solid #263442;border-radius:50%}.arena-mark:before{content:"";position:absolute;left:-2px;right:-2px;top:62px;border-top:2px solid #263442}.arena-mark:after{content:"";position:absolute;left:48px;top:48px;width:28px;height:28px;background:#0d141d;border:2px solid #263442;border-radius:50%}
+.side-card{position:absolute;width:438px;min-height:188px;padding:16px 18px;background:#151e29;border:1px solid #344352;border-left:5px solid #58c7d9;border-radius:6px;z-index:3}.side-card.opponent-side{left:28px;top:88px;border-left-color:#d56b5f}.side-card.user-side{right:28px;bottom:82px;border-left-color:#58c7d9}
+.side-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.account{min-width:0}.account-label{color:#8290a2;font-size:10px;font-weight:800;text-transform:uppercase}.account-name{margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#f4f7fb;font-size:17px;font-weight:800}.active-name{margin-top:10px;color:#fff;font-size:28px;font-weight:900;line-height:31px}.active-meta{margin-top:2px;color:#9eabba;font-size:12px;font-weight:700}.condition-badge{padding:4px 7px;border:1px solid #6d7785;border-radius:4px;color:#dce3eb;font-size:11px;font-weight:900;text-transform:uppercase}.condition-badge:empty{display:none}
+.active-hp{margin-top:10px}.active-hp-copy{display:flex;justify-content:space-between;color:#cdd6df;font-size:12px;font-weight:800}.active-hp-track{height:9px;margin-top:5px;overflow:hidden;background:#27323d;border-radius:5px}.active-hp-fill{display:block;height:100%;background:#55c984}.active-hp-fill.mid{background:#edc45a}.active-hp-fill.low{background:#ed6d68}
+.bench{height:52px;margin-top:13px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}.bench-mon{position:relative;min-width:0;overflow:hidden;background:#202a35;border:1px solid #344352;border-radius:4px}.bench-mon.fainted{opacity:.35}.bench-mon.active{border-color:#e5b94e}.bench-mon img{display:block;width:100%;height:45px;object-fit:contain;image-rendering:pixelated}.bench-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#778595;font-size:15px;font-weight:900}.bench-hp{position:absolute;left:3px;right:3px;bottom:2px;height:3px;background:#3a4651}.bench-hp i{display:block;height:100%;background:#55c984}
+.battle-sprite{position:absolute;z-index:2;width:330px;height:248px;display:flex;align-items:center;justify-content:center}.battle-sprite img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:auto}.battle-sprite.opponent-sprite{right:130px;top:62px}.battle-sprite.user-sprite{left:150px;bottom:34px}.sprite-fallback{color:#364453;font-size:72px;font-weight:900}
+.center-status{position:absolute;left:50%;top:50%;z-index:4;width:260px;transform:translate(-50%,-50%);padding:13px 16px;background:#111923;border:1px solid #344352;border-top:4px solid #e5b94e;border-radius:6px;text-align:center}.center-status strong{display:block;color:#fff;font-size:25px}.center-status span{display:block;margin-top:4px;color:#9da9b8;font-size:11px;font-weight:800;text-transform:uppercase}.center-detail{margin-top:8px!important;color:#d5c46a!important;font-size:12px!important;text-transform:none!important}
+.side-effects{height:24px;margin-top:8px;display:flex;gap:5px;overflow:hidden}.effect{padding:3px 6px;background:#222c37;border:1px solid #3a4754;border-radius:3px;color:#b9c3cf;font-size:9px;font-weight:800;text-transform:uppercase}.board-foot{position:absolute;left:20px;right:20px;bottom:16px;display:flex;justify-content:space-between;color:#748292;font-size:11px}.board-foot strong{color:#bfc8d2}
 </style></head><body>
 <main class="shell">
   <section class="top">
@@ -68,12 +81,34 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     </div>
   </section>
   <section class="bottom" id="results"></section>
+  <section class="battle-board" id="battleBoard" aria-live="polite">
+    <div class="board-bar"><div><div class="board-kicker">Battle Lab / live agent state</div><div class="board-match" id="boardMatch">Gen 9 OU ranked battle</div></div><div class="board-turn" id="boardTurn">--<span>Turn</span></div></div>
+    <div class="arena">
+      <div class="arena-line"></div><div class="arena-mark"></div>
+      <article class="side-card opponent-side">
+        <div class="side-head"><div class="account"><div class="account-label">Opponent</div><div class="account-name" id="opponentAccount">Opponent</div></div><span class="condition-badge" id="opponentCondition"></span></div>
+        <div class="active-name" id="opponentActiveName">Unknown</div><div class="active-meta" id="opponentActiveMeta"></div>
+        <div class="active-hp"><div class="active-hp-copy"><span>HP</span><span id="opponentHpCopy">--</span></div><div class="active-hp-track"><i class="active-hp-fill" id="opponentHpFill"></i></div></div>
+        <div class="side-effects" id="opponentEffects"></div><div class="bench" id="opponentBench"></div>
+      </article>
+      <div class="battle-sprite opponent-sprite" id="opponentSprite"><span class="sprite-fallback">?</span></div>
+      <div class="center-status"><strong id="centerTurn">Turn --</strong><span id="centerWeather">Standard field</span><span class="center-detail" id="centerDetail">Reading the live position</span></div>
+      <div class="battle-sprite user-sprite" id="userSprite"><span class="sprite-fallback">?</span></div>
+      <article class="side-card user-side">
+        <div class="side-head"><div class="account"><div class="account-label">DEKU agent</div><div class="account-name" id="userAccount">DekuFoulerLab</div></div><span class="condition-badge" id="userCondition"></span></div>
+        <div class="active-name" id="userActiveName">Unknown</div><div class="active-meta" id="userActiveMeta"></div>
+        <div class="active-hp"><div class="active-hp-copy"><span>HP</span><span id="userHpCopy">--</span></div><div class="active-hp-track"><i class="active-hp-fill" id="userHpFill"></i></div></div>
+        <div class="side-effects" id="userEffects"></div><div class="bench" id="userBench"></div>
+      </article>
+      <div class="board-foot"><span id="boardRef">Ranked match</span><span><strong id="boardFreshness">Live state</strong> / private choices and hidden information omitted</span></div>
+    </div>
+  </section>
 </main>
 <script>
 (function(){
   var SLOT=__SLOT__;
   var STATE_URL='/slot/'+SLOT+'/state';
-  var POLL_MS=3000;
+  var POLL_MS=2000;
 
   function text(id,value){document.getElementById(id).textContent=value==null?'--':String(value);}
   function make(tag,className,value){
@@ -251,10 +286,63 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     for(var idx=visible.length;idx<4;idx+=1){fragment.appendChild(pendingResultCard());}
     root.replaceChildren(fragment);
   }
+  function hpPercent(pokemon){
+    var raw=(pokemon||{}).hp_percent;if(raw==null||raw===''){return pokemon&&pokemon.fainted?0:null;}var percent=Number(raw);
+    if(!isFinite(percent)){return pokemon&&pokemon.fainted?0:null;}
+    return Math.max(0,Math.min(100,percent));
+  }
+  function hpText(pokemon){
+    var percent=hpPercent(pokemon);
+    if(percent==null){return pokemon&&pokemon.fainted?'Fainted':'HP unavailable';}
+    return pokemon&&pokemon.fainted?'Fainted':Math.round(percent)+'%';
+  }
+  function hpClass(percent){return percent!=null&&percent<25?'low':(percent!=null&&percent<50?'mid':'');}
+  function initials(pokemon){return String((pokemon||{}).display_name||(pokemon||{}).name||'?').replace(/[^A-Za-z0-9]/g,'').slice(0,2).toUpperCase()||'?';}
+  function pokemonImage(pokemon,className){
+    var wrap=make('div',className||'');
+    var fallback=make('span','sprite-fallback',initials(pokemon));wrap.appendChild(fallback);
+    if(pokemon&&pokemon.sprite_url){var img=document.createElement('img');img.src=pokemon.sprite_url;img.alt=pokemon.display_name||pokemon.name||'Pokemon';img.referrerPolicy='no-referrer';img.addEventListener('load',function(){fallback.hidden=true;},{once:true});wrap.appendChild(img);}
+    return wrap;
+  }
+  function renderSprite(id,pokemon){var root=document.getElementById(id);var image=pokemonImage(pokemon,'');root.replaceChildren(...Array.from(image.childNodes));}
+  function effectLabel(name,value){
+    var labels={stealthrock:'Stealth Rock',spikes:'Spikes',toxicspikes:'Toxic Spikes',stickyweb:'Sticky Web',reflect:'Reflect',lightscreen:'Light Screen',auroraveil:'Aurora Veil',tailwind:'Tailwind'};
+    var label=labels[name]||titleWords(name);return Number(value)>1?label+' x'+value:label;
+  }
+  function renderEffects(id,conditions,boosts,tera){
+    var root=document.getElementById(id),fragment=document.createDocumentFragment();
+    Object.keys(conditions||{}).slice(0,4).forEach(function(name){fragment.appendChild(make('span','effect',effectLabel(name,conditions[name])));});
+    Object.keys(boosts||{}).slice(0,3).forEach(function(stat){var value=Number(boosts[stat]);fragment.appendChild(make('span','effect',titleWords(stat)+' '+(value>0?'+':'')+value));});
+    if(tera&&tera.active){fragment.appendChild(make('span','effect','Tera '+titleWords(tera.type)));}
+    root.replaceChildren(fragment);
+  }
+  function renderBench(id,side){
+    var root=document.getElementById(id),fragment=document.createDocumentFragment();
+    var team=[];if(side&&side.active)team.push(side.active);team=team.concat((side&&side.reserve)||[]);
+    for(var index=0;index<6;index+=1){
+      var pokemon=team[index];var cell=make('div','bench-mon'+(index===0?' active':'')+(pokemon&&pokemon.fainted?' fainted':''));
+      if(pokemon){var fallback=make('span','bench-fallback',initials(pokemon));cell.appendChild(fallback);if(pokemon.sprite_url){var img=document.createElement('img');img.src=pokemon.sprite_url;img.alt=pokemon.display_name||pokemon.name||'Pokemon';img.referrerPolicy='no-referrer';img.addEventListener('load',function(event){var node=event.currentTarget.parentNode.querySelector('.bench-fallback');if(node)node.hidden=true;},{once:true});cell.appendChild(img);}var track=make('span','bench-hp');var fill=make('i','');var pct=hpPercent(pokemon);fill.style.width=(pct==null?0:pct)+'%';track.appendChild(fill);cell.appendChild(track);}
+      else{cell.appendChild(make('span','bench-fallback','--'));}
+      fragment.appendChild(cell);
+    }
+    root.replaceChildren(fragment);
+  }
+  function renderSide(prefix,side){
+    var pokemon=(side||{}).active||{};var pct=hpPercent(pokemon);
+    text(prefix+'Account',(side||{}).account||'Unknown trainer');text(prefix+'Condition',pokemon.status?String(pokemon.status).toUpperCase():'');text(prefix+'ActiveName',pokemon.display_name||titleWords(pokemon.name)||'Unknown Pokemon');
+    var types=(pokemon.types||[]).map(titleWords).join(' / ');text(prefix+'ActiveMeta',types+(pokemon.tera&&pokemon.tera.active?' / Tera '+titleWords(pokemon.tera.type):''));text(prefix+'HpCopy',hpText(pokemon));
+    var fill=document.getElementById(prefix+'HpFill');fill.style.width=(pct==null?0:pct)+'%';fill.className='active-hp-fill '+hpClass(pct);
+    renderEffects(prefix+'Effects',(side||{}).side_conditions||{},pokemon.boosts||{},pokemon.tera||{});renderBench(prefix+'Bench',side||{});renderSprite(prefix+'Sprite',pokemon);
+  }
+  function renderLiveBoard(view){
+    var ready=!!(view&&view.user&&view.user.active&&view.opponent&&view.opponent.active);document.body.classList.toggle('has-view',ready);document.getElementById('battleBoard').hidden=!ready;if(!ready){return false;}
+    var turn=view.turn==null?'--':view.turn;text('boardTurn',turn);text('centerTurn','Turn '+turn);text('boardMatch',(view.format||'GEN 9 OU').toUpperCase()+' / '+((view.user||{}).account||'DEKU')+' vs '+((view.opponent||{}).account||'Opponent'));text('centerWeather',view.weather?titleWords(view.weather):(view.trick_room?'Trick Room':'Standard field'));text('centerDetail',view.stale?'Waiting for the next verified decision':'DEKU is evaluating the live position');text('boardRef',view.match_ref||'Ranked match');text('boardFreshness',view.stale?'State update delayed':'Live state');renderSide('opponent',view.opponent);renderSide('user',view.user);return true;
+  }
   function render(payload){
     var lab=payload.battle_lab||payload;
     var active=!!lab.active;
     document.body.classList.toggle('idle',!active);
+    if(renderLiveBoard(active?lab.battle_view:null)){return;}
     text('headline',active?'Live Battle Lab':'Battle Lab ready');
     text('turn',lab.turn==null?'--':lab.turn);
     text('record',(lab.wins||0)+'-'+(lab.losses||0));
