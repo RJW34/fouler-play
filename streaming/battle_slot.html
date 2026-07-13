@@ -48,6 +48,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
 .active-hp{margin-top:10px}.active-hp-copy{display:flex;justify-content:space-between;color:#cdd6df;font-size:12px;font-weight:800}.active-hp-track{height:9px;margin-top:5px;overflow:hidden;background:#27323d;border-radius:5px}.active-hp-fill{display:block;height:100%;background:#55c984}.active-hp-fill.mid{background:#edc45a}.active-hp-fill.low{background:#ed6d68}
 .bench{height:52px;margin-top:13px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}.bench-mon{position:relative;min-width:0;overflow:hidden;background:#202a35;border:1px solid #344352;border-radius:4px}.bench-mon.fainted{opacity:.35}.bench-mon.active{border-color:#e5b94e}.bench-mon img{display:block;width:100%;height:45px;object-fit:contain;image-rendering:pixelated}.bench-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#778595;font-size:15px;font-weight:900}.bench-hp{position:absolute;left:3px;right:3px;bottom:2px;height:3px;background:#3a4651}.bench-hp i{display:block;height:100%;background:#55c984}
 .battle-sprite{position:absolute;z-index:2;width:330px;height:248px;display:flex;align-items:center;justify-content:center}.battle-sprite img{max-width:100%;max-height:100%;object-fit:contain;image-rendering:auto}.battle-sprite.opponent-sprite{right:130px;top:62px}.battle-sprite.user-sprite{left:150px;bottom:34px}.sprite-fallback{color:#364453;font-size:72px;font-weight:900}
+.bench-fallback[hidden],.sprite-fallback[hidden],img[hidden]{display:none!important}
 .center-status{position:absolute;left:50%;top:50%;z-index:4;width:260px;transform:translate(-50%,-50%);padding:13px 16px;background:#111923;border:1px solid #344352;border-top:4px solid #e5b94e;border-radius:6px;text-align:center}.center-status strong{display:block;color:#fff;font-size:25px}.center-status span{display:block;margin-top:4px;color:#9da9b8;font-size:11px;font-weight:800;text-transform:uppercase}.center-detail{margin-top:8px!important;color:#d5c46a!important;font-size:12px!important;text-transform:none!important}
 .side-effects{height:24px;margin-top:8px;display:flex;gap:5px;overflow:hidden}.effect{padding:3px 6px;background:#222c37;border:1px solid #3a4754;border-radius:3px;color:#b9c3cf;font-size:9px;font-weight:800;text-transform:uppercase}.board-foot{position:absolute;left:20px;right:20px;bottom:16px;display:flex;justify-content:space-between;color:#748292;font-size:11px}.board-foot strong{color:#bfc8d2}
 </style></head><body>
@@ -301,7 +302,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
   function pokemonImage(pokemon,className){
     var wrap=make('div',className||'');
     var fallback=make('span','sprite-fallback',initials(pokemon));wrap.appendChild(fallback);
-    if(pokemon&&pokemon.sprite_url){var img=document.createElement('img');img.src=pokemon.sprite_url;img.alt=pokemon.display_name||pokemon.name||'Pokemon';img.referrerPolicy='no-referrer';img.addEventListener('load',function(){fallback.hidden=true;},{once:true});wrap.appendChild(img);}
+    if(pokemon&&pokemon.sprite_url){var img=document.createElement('img');img.src=pokemon.sprite_url;img.alt='';img.referrerPolicy='no-referrer';img.addEventListener('load',function(){fallback.hidden=true;},{once:true});img.addEventListener('error',function(){img.hidden=true;},{once:true});wrap.appendChild(img);}
     return wrap;
   }
   function renderSprite(id,pokemon){var root=document.getElementById(id);var image=pokemonImage(pokemon,'');root.replaceChildren(...Array.from(image.childNodes));}
@@ -321,7 +322,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     var team=[];if(side&&side.active)team.push(side.active);team=team.concat((side&&side.reserve)||[]);
     for(var index=0;index<6;index+=1){
       var pokemon=team[index];var cell=make('div','bench-mon'+(index===0?' active':'')+(pokemon&&pokemon.fainted?' fainted':''));
-      if(pokemon){var fallback=make('span','bench-fallback',initials(pokemon));cell.appendChild(fallback);if(pokemon.sprite_url){var img=document.createElement('img');img.src=pokemon.sprite_url;img.alt=pokemon.display_name||pokemon.name||'Pokemon';img.referrerPolicy='no-referrer';img.addEventListener('load',function(event){var node=event.currentTarget.parentNode.querySelector('.bench-fallback');if(node)node.hidden=true;},{once:true});cell.appendChild(img);}var track=make('span','bench-hp');var fill=make('i','');var pct=hpPercent(pokemon);fill.style.width=(pct==null?0:pct)+'%';track.appendChild(fill);cell.appendChild(track);}
+      if(pokemon){var fallback=make('span','bench-fallback',initials(pokemon));cell.appendChild(fallback);if(pokemon.sprite_url){var img=document.createElement('img');img.src=pokemon.sprite_url;img.alt='';img.referrerPolicy='no-referrer';img.addEventListener('load',function(event){var node=event.currentTarget.parentNode.querySelector('.bench-fallback');if(node)node.hidden=true;},{once:true});img.addEventListener('error',function(event){event.currentTarget.hidden=true;},{once:true});cell.appendChild(img);}var track=make('span','bench-hp');var fill=make('i','');var pct=hpPercent(pokemon);fill.style.width=(pct==null?0:pct)+'%';track.appendChild(fill);cell.appendChild(track);}
       else{cell.appendChild(make('span','bench-fallback','--'));}
       fragment.appendChild(cell);
     }
@@ -329,14 +330,15 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
   }
   function renderSide(prefix,side){
     var pokemon=(side||{}).active||{};var pct=hpPercent(pokemon);
-    text(prefix+'Account',(side||{}).account||'Unknown trainer');text(prefix+'Condition',pokemon.status?String(pokemon.status).toUpperCase():'');text(prefix+'ActiveName',pokemon.display_name||titleWords(pokemon.name)||'Unknown Pokemon');
+    text(prefix+'Account',(side||{}).account||(prefix==='user'?'DEKU':'Opponent'));text(prefix+'Condition',pokemon.status?String(pokemon.status).toUpperCase():'');text(prefix+'ActiveName',pokemon.display_name||titleWords(pokemon.name)||'Unknown Pokemon');
     var types=(pokemon.types||[]).map(titleWords).join(' / ');text(prefix+'ActiveMeta',types+(pokemon.tera&&pokemon.tera.active?' / Tera '+titleWords(pokemon.tera.type):''));text(prefix+'HpCopy',hpText(pokemon));
     var fill=document.getElementById(prefix+'HpFill');fill.style.width=(pct==null?0:pct)+'%';fill.className='active-hp-fill '+hpClass(pct);
     renderEffects(prefix+'Effects',(side||{}).side_conditions||{},pokemon.boosts||{},pokemon.tera||{});renderBench(prefix+'Bench',side||{});renderSprite(prefix+'Sprite',pokemon);
   }
+  function formatLabel(value){var key=String(value||'gen9ou').toLowerCase();var labels={gen9ou:'GEN 9 OU'};return labels[key]||key.toUpperCase();}
   function renderLiveBoard(view){
     var ready=!!(view&&view.user&&view.user.active&&view.opponent&&view.opponent.active);document.body.classList.toggle('has-view',ready);document.getElementById('battleBoard').hidden=!ready;if(!ready){return false;}
-    var turn=view.turn==null?'--':view.turn;text('boardTurn',turn);text('centerTurn','Turn '+turn);text('boardMatch',(view.format||'GEN 9 OU').toUpperCase()+' / '+((view.user||{}).account||'DEKU')+' vs '+((view.opponent||{}).account||'Opponent'));text('centerWeather',view.weather?titleWords(view.weather):(view.trick_room?'Trick Room':'Standard field'));text('centerDetail',view.stale?'Waiting for the next verified decision':'DEKU is evaluating the live position');text('boardRef',view.match_ref||'Ranked match');text('boardFreshness',view.stale?'State update delayed':'Live state');renderSide('opponent',view.opponent);renderSide('user',view.user);return true;
+    var turn=view.turn==null?'--':view.turn;text('boardTurn',turn);text('centerTurn','Turn '+turn);text('boardMatch',formatLabel(view.format)+' / '+((view.user||{}).account||'DEKU')+' vs '+((view.opponent||{}).account||'Opponent'));text('centerWeather',view.weather?titleWords(view.weather):(view.trick_room?'Trick Room':'Standard field'));text('centerDetail',view.stale?'Waiting for the next verified decision':'DEKU is evaluating the live position');text('boardRef',view.match_ref||'Ranked match');text('boardFreshness',view.stale?'State update delayed':'Live state');renderSide('opponent',view.opponent);renderSide('user',view.user);return true;
   }
   function render(payload){
     var lab=payload.battle_lab||payload;

@@ -49,6 +49,11 @@ def test_battle_slot_translates_runtime_details_for_viewers_without_dom_flash() 
     assert "text('elo'" not in html
     assert "Replay ready" in html
     assert "Replay processing" in html
+    assert "function formatLabel(value)" in html
+    assert "gen9ou:'GEN 9 OU'" in html
+    assert "prefix==='user'?'DEKU':'Opponent'" in html
+    assert ".bench-fallback[hidden]" in html
+    assert "event.currentTarget.hidden=true" in html
     assert "function renderEvents" in html
     assert "function renderResults" in html
     assert "function renderEffects" in html
