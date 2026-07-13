@@ -771,9 +771,8 @@ def _public_battle_view(battle: dict | None) -> dict | None:
     if not isinstance(payload, dict) or modified is None:
         return None
     age_seconds = max(0.0, time.time() - modified)
-    match = re.search(r"battle-[a-z0-9]+-(\d+)", str(payload.get("battle_id") or ""), re.IGNORECASE)
     public = {key: value for key, value in payload.items() if key != "battle_id"}
-    public["match_ref"] = f"Match {match.group(1)}" if match else "Ranked match"
+    public["match_ref"] = "Ranked ladder battle"
     public["age_seconds"] = round(age_seconds, 1)
     public["stale"] = age_seconds > 120
     public["user"] = _decorate_public_side(public.get("user"), back=True)
@@ -804,13 +803,6 @@ def _tail_text(path: Path, max_bytes: int = 98304) -> str:
             return fh.read().decode("utf-8", errors="replace")
     except OSError:
         return ""
-
-
-def _format_move_name(value: str) -> str:
-    text = value.replace("-", " ").replace("_", " ").strip()
-    if not text:
-        return "unknown action"
-    return " ".join(part.capitalize() for part in re.split(r"\s+", text))
 
 
 def _parse_protocol_event(line: str) -> str | None:
@@ -864,17 +856,8 @@ def _clean_battle_log_line(raw: str) -> str | None:
     turn_match = re.search(r"\bTurn:\s*(\d+)", line)
     if turn_match:
         return f"Turn {turn_match.group(1)}"
-    choose_match = re.search(r"\|/choose\s+([^|]+)\|", line)
-    if choose_match:
-        return f"Bot selected {_format_move_name(choose_match.group(1))}"
     if line.startswith("|"):
         return _parse_protocol_event(line)
-    if "[STRATEGIC]" in line:
-        return line.split("[STRATEGIC]", 1)[1].strip()
-    if line.startswith("Win Condition:"):
-        return line
-    if " already has the move " in line or " used a " in line:
-        return line[:160]
     return None
 
 
@@ -926,7 +909,7 @@ def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | 
     if state is None:
         state = build_state_payload()
     status = state.get("status") if isinstance(state.get("status"), dict) else {}
-    events, turn, log_name = _recent_battle_events(battle)
+    events, turn, _ = _recent_battle_events(battle)
     battle_view = _public_battle_view(battle)
     if battle_view and battle_view.get("turn") is not None:
         turn = battle_view.get("turn")
@@ -940,31 +923,21 @@ def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | 
     return {
         "slot": slot_num,
         "active": bool(battle),
-        "battle_id": battle.get("id") if battle else None,
         "opponent": _format_battle_label(battle.get("opponent")) if battle else None,
-        "players": battle.get("players", []) if battle else [],
-        "started": battle.get("started") if battle else None,
-        "age_seconds": age_seconds,
         "age_label": _format_seconds(age_seconds),
         "turn": turn,
-        "log_name": log_name,
         "status": status.get("status") or ("Active" if battle else "Searching"),
-        "battle_info": status.get("battle_info") or "",
         "wins": status.get("today_wins", 0),
         "losses": status.get("today_losses", 0),
         "elo": elo_value,
         "events": events,
         "battle_view": battle_view,
         "recent_results": _recent_battle_results(),
-        "updated": state.get("updated"),
     }
 
 
-def _build_public_slot_source_url(slot: int, battle_id: str | None = None) -> str:
-    url = f"http://localhost:{PORT}/slot/{slot}?slot_idle=public"
-    if battle_id:
-        url += f"&battle_id={battle_id}"
-    return url
+def _build_public_slot_source_url(slot: int) -> str:
+    return f"http://localhost:{PORT}/slot/{slot}?slot_idle=public"
 
 
 def _build_obs_slot_source_url(slot: int, battle_id: str | None = None) -> str:
@@ -2290,12 +2263,7 @@ BATTLE_REDIRECT_HTML = BATTLE_SLOT_HTML  # deprecated alias
 
 
 async def handle_slot_state(request: web.Request) -> web.Response:
-    """Return JSON state for a specific battle slot.
-
-    Used by the client-side redirect page to poll for battle changes/endings.
-    Returns: {"slot": N, "battle_id": "...", "url": "..."} or
-             {"slot": N, "battle_id": null, "url": null}
-    """
+    """Return the audience-safe JSON state for a specific battle slot."""
     slot_str = request.match_info.get("slot", "1")
     try:
         slot_num = int(slot_str)
@@ -2316,17 +2284,14 @@ def _slot_state_payload(slot_num: int) -> dict:
     battle = _build_slot_map(battles).get(slot_num) if isinstance(battles, list) else None
 
     if battle:
-        battle_id = battle.get("id")
         return {
             "slot": slot_num,
-            "battle_id": battle_id,
             "url": _build_public_slot_source_url(slot_num),
             "battle_lab": _build_battle_lab_payload(slot_num, battle, state=state),
         }
 
     return {
         "slot": slot_num,
-        "battle_id": None,
         "url": None,
         "battle_lab": _build_battle_lab_payload(slot_num, None, state=state),
     }

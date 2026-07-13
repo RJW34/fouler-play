@@ -126,7 +126,8 @@ def test_public_battle_slot_is_viewport_responsive_for_obs_browser_sources() -> 
     assert "play.pokemonshowdown.com" not in served_html
     assert 'class="battle-board"' in served_html
     assert "renderLiveBoard" in served_html
-    assert "private choices and hidden information omitted" in served_html
+    assert "private strategy stays private" in served_html
+    assert "live agent state" not in served_html.lower()
 
 
 def test_obs_slot_stays_on_reactive_local_surface_during_active_battles() -> None:
@@ -229,7 +230,7 @@ async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> No
     monkeypatch.setattr(
         serve_obs_page,
         "_recent_battle_events",
-        lambda active_battle: (["Turn 4", "Bot selected Move Recover"], 4, "battle-gen9ou-active.log"),
+        lambda active_battle: (["Turn 4", "Blissey used Seismic Toss into Great Tusk"], 4, "battle-gen9ou-active.log"),
     )
     monkeypatch.setattr(serve_obs_page, "_recent_battle_results", lambda: [])
     request = make_mocked_request("GET", "/slot/2/state", match_info={"slot": "2"})
@@ -238,13 +239,36 @@ async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> No
     payload = json.loads(response.text)
 
     assert response.status == 200
-    assert payload["battle_id"] == "battle-gen9ou-active"
     assert payload["url"] == "http://localhost:8777/slot/2?slot_idle=public"
     assert payload["battle_lab"]["active"] is True
     assert payload["battle_lab"]["opponent"] == "Test Opponent"
     assert payload["battle_lab"]["turn"] == 4
     assert payload["battle_lab"]["elo"] == 1234
-    assert payload["battle_lab"]["events"] == ["Turn 4", "Bot selected Move Recover"]
+    assert payload["battle_lab"]["events"] == [
+        "Turn 4",
+        "Blissey used Seismic Toss into Great Tusk",
+    ]
+    rendered = json.dumps(payload)
+    assert "battle-gen9ou-active" not in rendered
+    assert "LEBOTJAMESXD00N" not in rendered
+    assert "log_name" not in payload["battle_lab"]
+    assert "players" not in payload["battle_lab"]
+
+
+def test_public_battle_log_events_exclude_private_decisions_and_inferences() -> None:
+    private_lines = (
+        "INFO |/choose move recover|",
+        "INFO [STRATEGIC] Archetype=STALL, Confidence=0.9",
+        "INFO Win Condition: preserve Blissey and exhaust Great Tusk",
+        "INFO Great Tusk already has the move Knock Off. Decrementing the PP by 1",
+        "INFO Great Tusk used a status move. Adding Choice Band to impossible items",
+    )
+
+    assert all(serve_obs_page._clean_battle_log_line(line) is None for line in private_lines)
+    assert serve_obs_page._clean_battle_log_line("|turn|4") == "Turn 4"
+    assert serve_obs_page._clean_battle_log_line(
+        "|move|p1a: Blissey|Seismic Toss|p2a: Great Tusk"
+    ) == "Blissey used Seismic Toss into Great Tusk"
 
 
 def test_public_battle_view_falls_back_to_latest_matching_decision_trace(tmp_path, monkeypatch) -> None:
@@ -313,7 +337,7 @@ def test_public_battle_view_falls_back_to_latest_matching_decision_trace(tmp_pat
 
     assert public is not None
     assert public["turn"] == 12
-    assert public["match_ref"] == "Match 123"
+    assert public["match_ref"] == "Ranked ladder battle"
     assert "battle_id" not in public
     assert public["user"]["active"]["display_name"] == "Mr. Mime"
     assert public["user"]["active"]["hp_percent"] == 50.0
