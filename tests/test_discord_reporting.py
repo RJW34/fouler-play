@@ -42,8 +42,8 @@ def _configure_battle_digest_test(monkeypatch, tmp_path):
     monkeypatch.setattr(event_poster, "DISCORD_DELIVERY_PROOF", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(event_poster, "DISCORD_DOCTOR_PROOF", truth_dir / "discord-reporting-doctor.json")
     monkeypatch.setattr(event_poster, "BATTLE_DIGEST_STATE", truth_dir / "battle-report-digest-state.json")
-    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_SIZE", 10)
-    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_MAX_AGE_SEC", 21600)
+    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_SIZE", 5)
+    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_MAX_AGE_SEC", 900)
     monkeypatch.setattr(event_poster, "BATTLE_DIGEST_REPORTED_ID_LIMIT", 100)
     monkeypatch.setattr(event_poster, "DEKU_EVENT_QUEUE_ROOT", tmp_path / "deku-events")
     return event_poster, event_queue_lib, queue_file, truth_dir
@@ -179,11 +179,11 @@ def test_deku_event_queue_fails_closed_on_id_collision(monkeypatch, tmp_path):
     assert result["errorCode"] == "deku_event_queue_collision"
 
 
-def test_battle_results_are_retained_locally_and_emit_one_ten_battle_digest(monkeypatch, tmp_path):
+def test_battle_results_are_retained_locally_and_emit_one_bounded_batch_digest(monkeypatch, tmp_path):
     event_poster, event_queue_lib, queue_file, truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
 
     local_event_ids = []
-    for index in range(9):
+    for index in range(4):
         local_event_ids.append(_queue_digest_test_battle(event_queue_lib, index))
         assert event_poster.process_one_event() is True
 
@@ -191,11 +191,11 @@ def test_battle_results_are_retained_locally_and_emit_one_ten_battle_digest(monk
     assert not pending_dir.exists() or list(pending_dir.glob("*.json")) == []
     local_events = json.loads(queue_file.read_text(encoding="utf-8"))
     state = json.loads((truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8"))
-    assert [event["status"] for event in local_events] == ["posted"] * 9
-    assert len(state["pendingBattles"]) == 9
+    assert [event["status"] for event in local_events] == ["posted"] * 4
+    assert len(state["pendingBattles"]) == 4
     assert state["reportedEventIds"] == []
 
-    local_event_ids.append(_queue_digest_test_battle(event_queue_lib, 9))
+    local_event_ids.append(_queue_digest_test_battle(event_queue_lib, 4))
     assert event_poster.process_one_event() is True
 
     queue_paths = list(pending_dir.glob("*.json"))
@@ -206,24 +206,24 @@ def test_battle_results_are_retained_locally_and_emit_one_ten_battle_digest(monk
     rendered = json.dumps(queued).lower()
 
     assert queued["eventType"] == "battle_digest"
-    assert queued["payload"]["battleDigest"]["battleCount"] == 10
-    assert queued["payload"]["battleDigest"]["wins"] == 5
-    assert queued["payload"]["battleDigest"]["losses"] == 5
+    assert queued["payload"]["battleDigest"]["battleCount"] == 5
+    assert queued["payload"]["battleDigest"]["wins"] == 3
+    assert queued["payload"]["battleDigest"]["losses"] == 2
     assert queued["payload"]["battleDigest"]["eloStart"] == 1000
-    assert queued["payload"]["battleDigest"]["eloEnd"] == 1040
-    assert queued["payload"]["battleDigest"]["eloDelta"] == 40
-    assert queued["payload"]["battleDigest"]["latestReplayUrl"].endswith("gen9ou-2600000009")
+    assert queued["payload"]["battleDigest"]["eloEnd"] == 1030
+    assert queued["payload"]["battleDigest"]["eloDelta"] == 30
+    assert queued["payload"]["battleDigest"]["latestReplayUrl"].endswith("gen9ou-2600000004")
     assert len(queued["summary"]) < 900
-    assert queued["proof"] == [str(queue_file), str(truth_dir / "battle-report-digest-state.json"), "https://replay.pokemonshowdown.com/gen9ou-2600000009"]
+    assert queued["proof"] == [str(queue_file), str(truth_dir / "battle-report-digest-state.json"), "https://replay.pokemonshowdown.com/gen9ou-2600000004"]
     assert "webhook" not in rendered
     assert "avatar_url" not in rendered
     assert "username" not in rendered
     assert [event["id"] for event in local_events] == local_event_ids
-    assert [event["status"] for event in local_events] == ["posted"] * 10
+    assert [event["status"] for event in local_events] == ["posted"] * 5
     assert all(event.get("proof") for event in local_events)
     assert state["pendingBattles"] == []
     assert state["reportedEventIds"] == local_event_ids
-    assert state["lastDigest"]["battleCount"] == 10
+    assert state["lastDigest"]["battleCount"] == 5
 
 
 def test_battle_digest_age_flush_recovers_idempotently_after_queue_before_state_crash(monkeypatch, tmp_path):

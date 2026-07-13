@@ -72,10 +72,10 @@ BATTLE_DIGEST_STATE = Path(
         str(TRUTH_DIR / "battle-report-digest-state.json"),
     )
 )
-BATTLE_DIGEST_SIZE = max(1, int(os.getenv("FOULER_BATTLE_DIGEST_SIZE", "10")))
+BATTLE_DIGEST_SIZE = max(1, int(os.getenv("FOULER_BATTLE_DIGEST_SIZE", "5")))
 BATTLE_DIGEST_MAX_AGE_SEC = max(
     60,
-    int(os.getenv("FOULER_BATTLE_DIGEST_MAX_AGE_SEC", "21600")),
+    int(os.getenv("FOULER_BATTLE_DIGEST_MAX_AGE_SEC", "900")),
 )
 BATTLE_DIGEST_REPORTED_ID_LIMIT = max(
     BATTLE_DIGEST_SIZE * 2,
