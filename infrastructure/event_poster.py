@@ -53,7 +53,6 @@ from infrastructure.discord_reporting import (
 
 # Configuration
 POLL_INTERVAL = float(os.getenv("EVENT_POSTER_POLL_SEC", "2"))
-EXPIRY_SEC = int(os.getenv("EVENT_POSTER_EXPIRY_SEC", "600"))  # 10 min
 CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
 REPLAY_RESOLVE_ATTEMPTS = max(1, int(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_ATTEMPTS", "1")))
 REPLAY_RESOLVE_DELAY_SEC = max(0.0, float(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_DELAY_SEC", "0")))
@@ -76,6 +75,11 @@ BATTLE_DIGEST_SIZE = max(1, int(os.getenv("FOULER_BATTLE_DIGEST_SIZE", "5")))
 BATTLE_DIGEST_MAX_AGE_SEC = max(
     60,
     int(os.getenv("FOULER_BATTLE_DIGEST_MAX_AGE_SEC", "900")),
+)
+# A pending event must remain eligible longer than the partial-digest timer.
+EXPIRY_SEC = max(
+    BATTLE_DIGEST_MAX_AGE_SEC + 60,
+    int(os.getenv("EVENT_POSTER_EXPIRY_SEC", str(event_queue_lib.DEFAULT_EXPIRY_SEC))),
 )
 BATTLE_DIGEST_REPORTED_ID_LIMIT = max(
     BATTLE_DIGEST_SIZE * 2,

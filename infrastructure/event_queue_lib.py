@@ -65,8 +65,8 @@ STATUS_POSTED = "posted"
 STATUS_FAILED = "failed"
 STATUS_EXPIRED = "expired"
 
-# Default expiry: 10 minutes
-DEFAULT_EXPIRY_SEC = 600
+# Retain events long enough for a bounded battle batch to finish and digest.
+DEFAULT_EXPIRY_SEC = _positive_int_env("EVENT_QUEUE_EXPIRY_SEC", 3600)
 MAX_RETRIES = 3
 BATTLE_RESULT_EVENT_TYPE = "battle_result"
 QUEUE_LOCK_RETRY_ATTEMPTS = int(os.getenv("EVENT_QUEUE_LOCK_RETRY_ATTEMPTS", "8"))

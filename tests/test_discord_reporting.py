@@ -85,6 +85,12 @@ def _queue_digest_test_battle(event_queue_lib, index: int) -> str:
     return event_id
 
 
+def test_event_retention_outlives_partial_digest_window():
+    import infrastructure.event_poster as event_poster
+
+    assert event_poster.EXPIRY_SEC > event_poster.BATTLE_DIGEST_MAX_AGE_SEC
+
+
 def test_event_poster_loads_env_chain_for_webhooks(monkeypatch, tmp_path):
     import infrastructure.event_poster as event_poster
 
@@ -697,7 +703,7 @@ def test_event_poster_quarantines_stale_battle_result_after_replay_resolution(mo
             [
                 {
                     "id": "event-stale-resolved",
-                    "timestamp": time.time() - 3600,
+                    "timestamp": time.time() - event_poster.EXPIRY_SEC - 60,
                     "event_type": "battle_result",
                     "channel": "battles",
                     "content": "[PROOF] battle `gen9ou-2626011055`; replay pending public upload `gen9ou-2626011055`",

@@ -55,7 +55,7 @@ def test_mixed_stale_queue_quarantine_then_generic_expiry(monkeypatch, tmp_path)
     import infrastructure.event_poster as event_poster
 
     event_queue_lib, queue_file, truth_dir = _bind_event_queue(monkeypatch, tmp_path)
-    stale_timestamp = time.time() - 3600
+    stale_timestamp = time.time() - event_poster.EXPIRY_SEC - 60
     queue_file.write_text(
         json.dumps(
             [

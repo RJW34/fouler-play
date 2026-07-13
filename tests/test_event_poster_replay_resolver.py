@@ -127,7 +127,7 @@ def test_event_poster_resolves_stale_pending_replay_before_quarantine(monkeypatc
     _queue_pending_battle_result(event_queue_lib)
 
     events = json.loads(queue_file.read_text(encoding="utf-8"))
-    events[0]["timestamp"] = time.time() - 3600
+    events[0]["timestamp"] = time.time() - event_poster.EXPIRY_SEC - 60
     events[0]["proof"]["replay"]["status"] = "pending-public-upload"
     queue_file.write_text(json.dumps(events), encoding="utf-8")
 
