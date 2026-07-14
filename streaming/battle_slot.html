@@ -62,7 +62,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     </div>
     <div class="status">
       <div class="pill"><strong id="turn">--</strong><span>Turn</span></div>
-      <div class="pill"><strong id="record">0-0</strong><span>Session</span></div>
+      <div class="pill"><strong id="record">0-0</strong><span>Season</span></div>
       <div class="pill"><strong>GEN 9 OU</strong><span>Format</span></div>
     </div>
   </section>
@@ -208,6 +208,15 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     }
     return outcome;
   }
+  function recentResultSummary(result){
+    var opponent=String(result.opponent||'').trim();
+    if(opponent&&!/^unknown$/i.test(opponent)){return 'vs '+opponent;}
+    var detail=[];
+    if(result.team){detail.push(friendlyTeam(result.team));}
+    var rating=Number(result.rating);
+    if(result.rating!=null&&result.rating!==''&&isFinite(rating)){detail.push(Math.round(rating)+' ELO');}
+    return detail.join(' / ')||'Completed ranked battle';
+  }
   function renderEvents(events,active,recentResults){
     var root=document.getElementById('events');
     var fragment=document.createDocumentFragment();
@@ -216,7 +225,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
       (recentResults||[]).slice(0,6).forEach(function(result){
         var row=make('div','event '+(resultClass(result.result)==='win'?'win-row':'loss-row'));
         row.appendChild(make('em','',String(result.result||'').toUpperCase()));
-        row.appendChild(make('span','',(result.opponent?'vs '+result.opponent:'Opponent unavailable')+' / '+resultLabel(result.result,result.delta)));
+        row.appendChild(make('span','',recentResultSummary(result)));
         fragment.appendChild(row);
       });
     }
@@ -235,7 +244,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
   function resultCard(result){
     var card=make('div','result');
     card.appendChild(make('span','outcome '+resultClass(result.result),resultLabel(result.result,result.delta)));
-    card.appendChild(make('b','',result.opponent?'vs '+result.opponent:'Opponent unavailable'));
+    card.appendChild(make('b','',recentResultSummary(result)));
     card.appendChild(make('span','result-meta',friendlyTeam(result.team)+' / '+replayStatus(result.replay)));
     return card;
   }
@@ -322,7 +331,7 @@ font-family:Inter,Segoe UI,system-ui,sans-serif}
     text('opponent',active?('vs '+(lab.opponent||'Opponent unavailable')):'Finding an opponent');
     text('status',friendlyStatus(lab.status,active));
     text('age',active?(lab.age_label||'--'):'--');
-    text('matchNote',active?'Gen 9 OU ranked match in progress':'Gen 9 OU ranked ladder');
+    text('matchNote',active?'Gen 9 OU ranked match in progress':('Current season / '+(lab.wins||0)+'-'+(lab.losses||0)+(lab.elo?' / '+Math.round(Number(lab.elo))+' ELO':'')));
     text('timelineLabel',active?'Battle timeline':'Recent form');
     renderEvents(lab.events||[],active,lab.recent_results||[]);
     renderResults(lab.recent_results||[]);

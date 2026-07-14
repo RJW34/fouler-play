@@ -174,7 +174,7 @@ async def test_public_slot_source_uses_local_viewer_overlay(monkeypatch) -> None
     assert "Battle Lab" in html
     assert "Battle timeline" in html
     assert "Recent form" in html
-    assert "Session" in html
+    assert "Season" in html
     assert "GEN 9 OU" in html
     assert "Format" in html
     assert "Battle time" in html
@@ -233,6 +233,7 @@ async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> No
         lambda active_battle: (["Turn 4", "Blissey used Seismic Toss into Great Tusk"], 4, "battle-gen9ou-active.log"),
     )
     monkeypatch.setattr(serve_obs_page, "_recent_battle_results", lambda: [])
+    monkeypatch.setattr(serve_obs_page, "_current_season_record", lambda: None)
     request = make_mocked_request("GET", "/slot/2/state", match_info={"slot": "2"})
 
     response = await serve_obs_page.handle_slot_state(request)
@@ -253,6 +254,43 @@ async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> No
     assert "LEBOTJAMESXD00N" not in rendered
     assert "log_name" not in payload["battle_lab"]
     assert "players" not in payload["battle_lab"]
+
+
+def test_battle_lab_record_and_recent_form_are_scoped_to_current_season(tmp_path, monkeypatch) -> None:
+    season_path = tmp_path / "account-season.json"
+    stats_path = tmp_path / "battle_stats.json"
+    season_path.write_text(json.dumps({
+        "schemaVersion": "fouler-play-account-season/v1",
+        "seasonId": "fresh-season",
+        "createdAtUtc": "2026-07-13T23:15:00Z",
+        "account": "DekuFoulerFresh",
+        "format": "gen9ou",
+        "baselineRating": 1000,
+        "firstBattleStarted": True,
+        "runtimeStatus": "bounded-session-complete",
+    }), encoding="utf-8")
+    stats_path.write_text(json.dumps({"battles": [
+        {"season_id": "retired-season", "account": "DekuFoulerLab", "result": "win", "rating": 1500},
+        {"season_id": "fresh-season", "account": "DekuFoulerFresh", "result": "win", "rating": 1043, "team_file": "fat-team-1-stall"},
+        {"season_id": "fresh-season", "account": "DekuFoulerFresh", "result": "loss", "rating": 1021, "team_file": "fat-team-2-balance"},
+        {"season_id": "fresh-season", "account": "DekuFoulerFresh", "result": "win", "rating": 1060, "team_file": "fat-team-3-dondozo"},
+    ]}), encoding="utf-8")
+    monkeypatch.setattr(serve_obs_page, "ACCOUNT_SEASON_PATH", season_path)
+    monkeypatch.setattr(serve_obs_page, "BATTLE_STATS_PATH", stats_path)
+
+    payload = serve_obs_page._build_battle_lab_payload(
+        1,
+        None,
+        {"status": {"status": "Ready", "today_wins": 45, "today_losses": 40, "elo": 1060}},
+    )
+
+    assert payload["wins"] == 2
+    assert payload["losses"] == 1
+    assert payload["record_scope"] == "account-season"
+    assert len(payload["recent_results"]) == 3
+    assert payload["recent_results"][0]["opponent"] is None
+    assert payload["recent_results"][0]["rating"] == 1060.0
+    assert payload["recent_results"][0]["delta"] == 39.0
 
 
 def test_public_battle_log_events_exclude_private_decisions_and_inferences() -> None:

@@ -882,7 +882,7 @@ def _recent_battle_events(battle: dict | None, limit: int = 10) -> tuple[list[st
     return list(seen), latest_turn, str(path.name)
 
 
-def _recent_battle_results(limit: int = 5) -> list[dict]:
+def _battle_stats_entries() -> list[dict]:
     try:
         raw = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
     except Exception:
@@ -890,15 +890,75 @@ def _recent_battle_results(limit: int = 5) -> list[dict]:
     entries = raw.get("battles") if isinstance(raw, dict) else raw
     if not isinstance(entries, list):
         return []
-    recent = []
-    for entry in reversed(entries[-limit:]):
-        if not isinstance(entry, dict):
+    return [entry for entry in entries if isinstance(entry, dict)]
+
+
+def _current_season_battle_rows(entries: list[dict] | None = None) -> list[dict]:
+    rows = list(entries if entries is not None else _battle_stats_entries())
+    season = _account_season_authority()
+    if season.get("ready") is not True:
+        return rows
+    season_id = str(season.get("seasonId") or "").strip().lower()
+    account = _normalize_showdown_id(str(season.get("account") or ""))
+    scoped = []
+    for entry in rows:
+        row_season = str(entry.get("season_id") or entry.get("seasonId") or "").strip().lower()
+        row_account = _normalize_showdown_id(str(entry.get("account") or entry.get("player") or ""))
+        if season_id and row_season:
+            if row_season == season_id:
+                scoped.append(entry)
             continue
+        if account and row_account:
+            if row_account == account:
+                scoped.append(entry)
+            continue
+        # Legacy rows without an account or season cannot prove membership in the current season.
+    return scoped
+
+
+def _current_season_record() -> tuple[int, int] | None:
+    season = _account_season_authority()
+    if season.get("ready") is not True:
+        return None
+    rows = _current_season_battle_rows()
+    wins = sum(1 for entry in rows if str(entry.get("result") or "").strip().lower() == "win")
+    losses = sum(1 for entry in rows if str(entry.get("result") or "").strip().lower() == "loss")
+    return wins, losses
+
+
+def _recent_battle_results(limit: int = 5) -> list[dict]:
+    entries = _current_season_battle_rows()
+    season = _account_season_authority()
+    try:
+        previous_rating = float(season.get("baselineRating"))
+    except (TypeError, ValueError):
+        previous_rating = None
+    enriched = []
+    for entry in entries:
+        rating = entry.get("rating") or entry.get("elo_after")
+        try:
+            rating_number = float(rating)
+        except (TypeError, ValueError):
+            rating_number = None
+        explicit_delta = entry.get("rating_delta")
+        try:
+            delta = float(explicit_delta)
+        except (TypeError, ValueError):
+            delta = (
+                round(rating_number - previous_rating, 1)
+                if rating_number is not None and previous_rating is not None
+                else None
+            )
+        enriched.append((entry, rating_number, delta))
+        if rating_number is not None:
+            previous_rating = rating_number
+    recent = []
+    for entry, rating, delta in reversed(enriched[-limit:]):
         recent.append({
             "result": entry.get("result") or "?",
-            "opponent": entry.get("opponent") or "unknown",
-            "rating": entry.get("rating") or entry.get("elo_after"),
-            "delta": entry.get("rating_delta"),
+            "opponent": entry.get("opponent") or entry.get("opponent_name") or None,
+            "rating": rating,
+            "delta": delta,
             "team": entry.get("team_file") or "",
             "replay": entry.get("replay_status") or "",
         })
@@ -920,6 +980,11 @@ def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | 
         elo_value = next(iter(accounts_elo.values()))
     elif status.get("elo"):
         elo_value = status.get("elo")
+    season_record = _current_season_record()
+    wins, losses = season_record or (
+        status.get("today_wins", 0),
+        status.get("today_losses", 0),
+    )
     return {
         "slot": slot_num,
         "active": bool(battle),
@@ -927,8 +992,9 @@ def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | 
         "age_label": _format_seconds(age_seconds),
         "turn": turn,
         "status": status.get("status") or ("Active" if battle else "Searching"),
-        "wins": status.get("today_wins", 0),
-        "losses": status.get("today_losses", 0),
+        "wins": wins,
+        "losses": losses,
+        "record_scope": "account-season" if season_record is not None else "daily-fallback",
         "elo": elo_value,
         "events": events,
         "battle_view": battle_view,
