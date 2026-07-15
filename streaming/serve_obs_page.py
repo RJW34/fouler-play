@@ -4,6 +4,7 @@ Simple HTTP server to serve OBS battle display on Windows.
 
 Provides:
 - /obs (battle layout)
+- /landscape (three-battle 1920x1080 layout)
 - /vertical (three-battle 1080x1920 layout)
 - /overlay (stats overlay)
 - /ws (real-time state updates)
@@ -1753,6 +1754,10 @@ async def handle_vertical(request: web.Request) -> web.Response:
     return response
 
 
+async def handle_landscape(request: web.Request) -> web.Response:
+    return await handle_vertical(request)
+
+
 async def handle_overlay(request: web.Request) -> web.Response:
     return await _html_file_response("overlay.html")
 
@@ -2414,6 +2419,7 @@ def create_app() -> web.Application:
     app.router.add_post("/event", handle_event)
     app.router.add_get("/obs", handle_obs)
     app.router.add_get("/vertical", handle_vertical)
+    app.router.add_get("/landscape", handle_landscape)
     app.router.add_get("/overlay", handle_overlay)
     app.router.add_get("/idle", handle_idle)
     app.router.add_get("/debug", handle_debug)
@@ -2449,6 +2455,7 @@ if __name__ == "__main__":
     print("  OBS Browser Source URLs:")
     print(f"    Battle Display (legacy iframes): http://localhost:{PORT}/obs")
     print(f"    Vertical Triple Battle: http://localhost:{PORT}/vertical")
+    print(f"    Landscape Triple Battle: http://localhost:{PORT}/landscape")
     print(f"    Stats Overlay:  http://localhost:{PORT}/overlay")
     if OBS_BATTLE_SOURCES:
         print()

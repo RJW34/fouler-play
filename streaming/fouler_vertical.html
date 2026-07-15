@@ -572,6 +572,87 @@
       text-transform: uppercase;
     }
 
+    @media (min-aspect-ratio: 4 / 3) {
+      body { min-width: 1920px; min-height: 1080px; }
+
+      .broadcast {
+        width: 1920px;
+        height: 1080px;
+        padding: 22px 28px 20px;
+        grid-template-rows: 100px minmax(0, 1fr) 64px;
+        gap: 12px;
+      }
+
+      .masthead { grid-template-columns: minmax(0, 1fr) 570px; }
+      .brand { padding: 11px 18px 8px 0; }
+      .brand h1 { font-size: 44px; line-height: 45px; }
+      .brand p { margin-top: 3px; font-size: 14px; line-height: 18px; }
+      .score { padding: 13px 12px 8px; }
+      .score strong { font-size: 31px; line-height: 34px; }
+
+      .matches {
+        grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .match:first-child { grid-row: 1 / span 2; }
+
+      .match:not(:first-child) { grid-template-columns: 50px minmax(0, 1fr); }
+      .match:not(:first-child) .match-rail { padding: 10px 0 9px; }
+      .match:not(:first-child) .match-number { font-size: 24px; line-height: 26px; }
+      .match:not(:first-child) .status-line { width: 4px; margin: 8px 0; }
+      .match:not(:first-child) .status-mark { width: 11px; height: 11px; border-width: 2px; }
+
+      .match:not(:first-child) .match-content {
+        grid-template-rows: 52px minmax(0, 1fr) 24px;
+        padding: 0 12px 7px;
+      }
+
+      .match:not(:first-child) .match-head { gap: 9px; }
+      .match:not(:first-child) .match-kicker { font-size: 9px; line-height: 13px; }
+      .match:not(:first-child) .match-title strong { font-size: 20px; line-height: 22px; }
+      .match:not(:first-child) .match-state { min-width: 90px; font-size: 9px; line-height: 13px; }
+      .match:not(:first-child) .match-state b { font-size: 16px; line-height: 18px; }
+
+      .match:not(:first-child) .arena { grid-template-rows: minmax(0, 1fr) 42px minmax(0, 1fr); }
+      .match:not(:first-child) .side {
+        grid-template-columns: 82px minmax(0, 1fr) 132px;
+        gap: 8px;
+        padding: 2px 0;
+      }
+      .match:not(:first-child) .side.agent { grid-template-columns: 132px minmax(0, 1fr) 82px; }
+      .match:not(:first-child) .sprite { width: 82px; height: 82px; }
+      .match:not(:first-child) .sprite img { width: 78px; height: 78px; }
+      .match:not(:first-child) .sprite-fallback { width: 54px; height: 54px; font-size: 21px; }
+      .match:not(:first-child) .side-label { font-size: 9px; line-height: 12px; }
+      .match:not(:first-child) .pokemon-name { font-size: 20px; line-height: 22px; }
+      .match:not(:first-child) .pokemon-meta { height: 14px; font-size: 10px; line-height: 14px; }
+      .match:not(:first-child) .hp-copy { margin-top: 4px; font-size: 9px; line-height: 11px; }
+      .match:not(:first-child) .hp-track { height: 5px; margin-top: 3px; }
+      .match:not(:first-child) .roster { width: 132px; height: 70px; gap: 3px; }
+      .match:not(:first-child) .roster-mon img { width: 39px; height: 29px; }
+      .match:not(:first-child) .roster-mon span { font-size: 9px; }
+      .match:not(:first-child) .roster-mon i { left: 2px; right: 2px; bottom: 1px; height: 2px; }
+
+      .match:not(:first-child) .turn-strip { grid-template-columns: 90px minmax(0, 1fr) 66px; gap: 7px; }
+      .match:not(:first-child) .turn-strip strong { padding-left: 9px; font-size: 18px; line-height: 21px; }
+      .match:not(:first-child) .turn-event { font-size: 11px; line-height: 15px; }
+      .match:not(:first-child) .turn-age { padding-right: 8px; font-size: 9px; }
+
+      .match:not(:first-child) .queue { padding: 18px 16px 12px; }
+      .match:not(:first-child) .queue-bars { width: 320px; height: 40px; gap: 5px; }
+      .match:not(:first-child) .queue-bars i { height: 12px; }
+      .match:not(:first-child) .queue strong { margin-top: 13px; font-size: 22px; line-height: 24px; }
+      .match:not(:first-child) .queue span { margin-top: 4px; font-size: 10px; line-height: 15px; }
+      .match:not(:first-child) .match-foot { font-size: 9px; line-height: 16px; }
+
+      .broadcast-foot { padding: 0 16px; }
+      .broadcast-foot strong { font-size: 18px; line-height: 21px; }
+      .broadcast-foot span { font-size: 11px; line-height: 15px; }
+      .format-mark { font-size: 12px !important; }
+    }
+
     @keyframes scan {
       0%, 48%, 100% { height: 16px; background: #31393e; }
       49%, 66% { height: 52px; background: var(--amber); }

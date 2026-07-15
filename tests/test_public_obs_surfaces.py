@@ -136,6 +136,9 @@ def test_public_vertical_surface_has_three_reactive_viewer_safe_matches() -> Non
 
     assert "width: 1080px" in html
     assert "height: 1920px" in html
+    assert "width: 1920px" in html
+    assert "height: 1080px" in html
+    assert "min-aspect-ratio: 4 / 3" in html
     assert "SLOT_COUNT = 3" in html
     assert 'fetch("/slot/" + slotNumber + "/state' in html
     assert "Three matches. One shared agent." in html
@@ -165,6 +168,19 @@ async def test_public_vertical_route_is_no_store() -> None:
     assert response.headers["Pragma"] == "no-cache"
     assert response.headers["Expires"] == "0"
     assert "Fouler Play - Three Battle Vertical" in response.text
+    assert "SLOT_COUNT = 3" in response.text
+
+
+@pytest.mark.asyncio
+async def test_public_landscape_route_uses_same_reactive_no_store_surface() -> None:
+    request = make_mocked_request("GET", "/landscape")
+
+    response = await serve_obs_page.handle_landscape(request)
+
+    assert response.status == 200
+    assert response.headers["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
+    assert "Fouler Play - Three Battle Vertical" in response.text
+    assert "min-aspect-ratio: 4 / 3" in response.text
     assert "SLOT_COUNT = 3" in response.text
 
 
