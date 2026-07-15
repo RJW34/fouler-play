@@ -1,6 +1,9 @@
+import logging
+
 from config import (
     BotModes,
     _coerce_ladder_search_time_ms,
+    configured_log_level,
     _env_int_prefer,
 )
 
@@ -39,3 +42,16 @@ def test_coerce_ladder_search_time_no_clamp_outside_ladder_ou():
     )
     assert clamped is False
     assert value == 500
+
+
+def test_file_log_levels_default_to_info_and_require_explicit_debug(monkeypatch):
+    monkeypatch.delenv("FOULER_FILE_LOG_LEVEL", raising=False)
+    assert configured_log_level("FOULER_FILE_LOG_LEVEL") == logging.INFO
+
+    monkeypatch.setenv("FOULER_FILE_LOG_LEVEL", "DEBUG")
+    assert configured_log_level("FOULER_FILE_LOG_LEVEL") == logging.DEBUG
+
+
+def test_invalid_file_log_level_fails_to_bounded_info(monkeypatch):
+    monkeypatch.setenv("FOULER_WORKER_LOG_LEVEL", "EVERYTHING")
+    assert configured_log_level("FOULER_WORKER_LOG_LEVEL") == logging.INFO

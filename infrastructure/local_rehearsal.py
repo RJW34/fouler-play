@@ -570,6 +570,8 @@ def build_rehearsal_env(
         "FOULER_RUNTIME_CACHE_ROOT": str(layout.cache),
         "FOULER_RUNTIME_TEMP_ROOT": str(layout.temp),
         "FOULER_LOG_DIR": str(layout.logs),
+        "FOULER_FILE_LOG_LEVEL": "INFO",
+        "FOULER_WORKER_LOG_LEVEL": "INFO",
         "DECISION_TRACE_DIR": str(layout.decision_traces),
         "FOULER_PUBLIC_BATTLE_VIEW_PATH": str(
             layout.decision_traces / "latest-public-battle.json"

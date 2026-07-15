@@ -135,7 +135,7 @@ def cleanup_old_logs(log_dir: str | None = None, trace_dir: str | None = None):
         _log.info(f"Log cleanup: removed {removed} old files")
 import constants
 from constants import BattleType
-from config import FoulPlayConfig, SaveReplay
+from config import FoulPlayConfig, SaveReplay, configured_log_level
 from fp.battle import LastUsedMove, Pokemon, Battle
 from fp.battle_modifier import async_update_battle, process_battle_updates
 from fp.helpers import normalize_name
@@ -302,11 +302,7 @@ def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
         backupCount=3,
         encoding="utf-8",
     )
-    worker_log_level = getattr(
-        logging,
-        os.getenv("FOULER_WORKER_LOG_LEVEL", "DEBUG").strip().upper(),
-        logging.DEBUG,
-    )
+    worker_log_level = configured_log_level("FOULER_WORKER_LOG_LEVEL")
     handler.setLevel(worker_log_level)
     from config import CustomFormatter
     handler.setFormatter(CustomFormatter())

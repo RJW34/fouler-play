@@ -29,6 +29,20 @@ def _configure_windows_stdio() -> None:
 _configure_windows_stdio()
 
 
+_NAMED_LOG_LEVELS = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
+
+def configured_log_level(env_name: str, default: int = logging.INFO) -> int:
+    raw = str(os.getenv(env_name) or "").strip().upper()
+    return _NAMED_LOG_LEVELS.get(raw, default)
+
+
 class CustomFormatter(logging.Formatter):
     def format(self, record):
         lvl = "{}".format(record.levelname)
@@ -93,7 +107,7 @@ def init_logging(level, log_to_file):
 
     if log_to_file:
         file_handler = CustomRotatingFileHandler("init.log")
-        file_handler.setLevel(logging.DEBUG)  # file logs are always debug
+        file_handler.setLevel(configured_log_level("FOULER_FILE_LOG_LEVEL"))
         file_handler.setFormatter(CustomFormatter())
         logger.addHandler(file_handler)
         FoulPlayConfig.file_log_handler = file_handler
@@ -303,7 +317,10 @@ class _FoulPlayConfig:
         parser.add_argument(
             "--log-to-file",
             action="store_true",
-            help="When enabled, DEBUG logs will be written to a file in the logs/ directory",
+            help=(
+                "Write bounded file logs at INFO by default; set "
+                "FOULER_FILE_LOG_LEVEL=DEBUG for a diagnostic run"
+            ),
         )
         parser.add_argument(
             "--playstyle",

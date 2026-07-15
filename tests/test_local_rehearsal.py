@@ -125,6 +125,8 @@ def test_rehearsal_environment_isolates_all_writes_and_secrets(tmp_path: Path) -
     assert env["FOULER_RUNTIME_LOG_ROOT"] == str(layout.logs)
     assert env["FOULER_RUNTIME_CACHE_ROOT"] == str(layout.cache)
     assert env["FOULER_RUNTIME_TEMP_ROOT"] == str(layout.temp)
+    assert env["FOULER_FILE_LOG_LEVEL"] == "INFO"
+    assert env["FOULER_WORKER_LOG_LEVEL"] == "INFO"
     assert env["FOULER_BATTLE_STATS_PATH"] == str(layout.battle_stats)
     assert env["FOULER_OFFLINE_ACTIVE_BATTLES_FILE"] == str(layout.active_battles)
     assert env["FOULER_OFFLINE_NETWORK_AUDIT_FILE"] == str(layout.fouler_network_audit)
