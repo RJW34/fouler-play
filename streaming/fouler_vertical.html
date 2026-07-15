@@ -17,6 +17,12 @@
       --amber: #f1c75b;
       --coral: #ef7067;
       --green: #6ed58b;
+      --ready: #8fc5ff;
+      --idle: #77838a;
+      --social-safe-top: 96px;
+      --social-safe-right: 120px;
+      --social-safe-bottom: 176px;
+      --social-safe-left: 56px;
     }
 
     * { box-sizing: border-box; }
@@ -38,9 +44,9 @@
     .broadcast {
       width: 1080px;
       height: 1920px;
-      padding: 28px 30px 24px;
+      padding: var(--social-safe-top) var(--social-safe-right) var(--social-safe-bottom) var(--social-safe-left);
       display: grid;
-      grid-template-rows: 116px minmax(0, 1fr) 74px;
+      grid-template-rows: 120px minmax(0, 1fr) 80px;
       gap: 16px;
       background: var(--ink);
     }
@@ -72,8 +78,8 @@
       margin: 6px 0 0;
       color: var(--muted);
       font-family: Consolas, monospace;
-      font-size: 15px;
-      line-height: 20px;
+      font-size: 16px;
+      line-height: 21px;
       text-transform: uppercase;
     }
 
@@ -96,7 +102,7 @@
       display: block;
       color: var(--muted);
       font-family: Consolas, monospace;
-      font-size: 12px;
+      font-size: 13px;
       line-height: 18px;
       text-transform: uppercase;
     }
@@ -114,6 +120,24 @@
     }
 
     .score.live strong { color: var(--teal); }
+
+    .metrics-state {
+      display: block;
+      min-height: 14px;
+      margin-top: 1px;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      font-style: normal;
+      line-height: 14px;
+      text-transform: uppercase;
+    }
+
+    .scoreboard.metrics-current .metrics-state { color: var(--teal); }
+    .scoreboard.metrics-stale .metrics-state { color: var(--amber); }
+    .scoreboard.metrics-unavailable .metrics-state { color: var(--coral); }
+    .scoreboard.metrics-stale .score.live strong { color: var(--amber); }
+    .scoreboard.metrics-unavailable .score.live strong { color: var(--muted); }
 
     .matches {
       min-height: 0;
@@ -166,10 +190,18 @@
 
     .match.live .status-line,
     .match.live .status-mark { border-color: var(--teal); background: var(--teal); }
+    .match.ready .status-line,
+    .match.ready .status-mark { border-color: var(--ready); background: var(--ready); }
+    .match.idle .status-line,
+    .match.idle .status-mark { border-color: var(--idle); background: var(--idle); }
     .match.delayed .status-line,
     .match.delayed .status-mark { border-color: var(--amber); background: var(--amber); }
     .match.reconnecting .status-line,
     .match.reconnecting .status-mark { border-color: var(--coral); background: var(--coral); }
+    .match.loading .status-line,
+    .match.loading .status-mark { border-color: var(--amber); background: var(--amber); }
+    .match.maintenance .status-line,
+    .match.maintenance .status-mark { border-color: var(--coral); background: var(--coral); }
 
     .match-content {
       min-width: 0;
@@ -193,7 +225,7 @@
     .match-kicker {
       color: var(--amber);
       font-family: Consolas, monospace;
-      font-size: 11px;
+      font-size: 12px;
       line-height: 16px;
       font-weight: 700;
       text-transform: uppercase;
@@ -214,8 +246,8 @@
       min-width: 128px;
       color: var(--muted);
       font-family: Consolas, monospace;
-      font-size: 12px;
-      line-height: 17px;
+      font-size: 13px;
+      line-height: 18px;
       font-weight: 700;
       text-align: right;
       text-transform: uppercase;
@@ -230,7 +262,11 @@
     }
 
     .match.live .match-state b { color: var(--teal); }
-    .match.reconnecting .match-state b { color: var(--coral); }
+    .match.ready .match-state b { color: var(--ready); }
+    .match.idle .match-state b { color: var(--idle); }
+    .match.delayed .match-state b { color: var(--amber); }
+    .match.reconnecting .match-state b,
+    .match.maintenance .match-state b { color: var(--coral); }
 
     .arena {
       min-height: 0;
@@ -304,7 +340,7 @@
       overflow: hidden;
       color: var(--muted);
       font-family: Consolas, monospace;
-      font-size: 11px;
+      font-size: 12px;
       line-height: 16px;
       text-overflow: ellipsis;
       text-transform: uppercase;
@@ -327,7 +363,7 @@
       height: 18px;
       overflow: hidden;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 13px;
       line-height: 18px;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -339,7 +375,7 @@
       margin-top: 7px;
       color: var(--muted);
       font-family: Consolas, monospace;
-      font-size: 11px;
+      font-size: 12px;
       line-height: 14px;
     }
 
@@ -440,8 +476,8 @@
       min-width: 0;
       overflow: hidden;
       color: var(--paper);
-      font-size: 15px;
-      line-height: 20px;
+      font-size: 16px;
+      line-height: 21px;
       text-align: center;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -451,7 +487,7 @@
       padding-right: 14px;
       color: var(--muted);
       font-family: Consolas, monospace;
-      font-size: 12px;
+      font-size: 13px;
       text-align: right;
     }
 
@@ -465,8 +501,16 @@
     }
 
     .match.searching .arena,
+    .match.ready .arena,
+    .match.idle .arena,
+    .match.loading .arena,
+    .match.maintenance .arena,
     .match.reconnecting .arena { display: none; }
     .match.searching .queue,
+    .match.ready .queue,
+    .match.idle .queue,
+    .match.loading .queue,
+    .match.maintenance .queue,
     .match.reconnecting .queue { display: grid; }
 
     .queue-bars {
@@ -510,12 +554,18 @@
       margin-top: 7px;
       color: var(--muted);
       font-family: Consolas, monospace;
-      font-size: 13px;
-      line-height: 20px;
+      font-size: 15px;
+      line-height: 21px;
       text-transform: uppercase;
     }
 
     .match.reconnecting .queue-bars i { animation-name: reconnect; }
+    .match.ready .queue-bars i,
+    .match.idle .queue-bars i,
+    .match.maintenance .queue-bars i {
+      height: 16px;
+      animation: none;
+    }
 
     .match-foot {
       min-width: 0;
@@ -526,8 +576,8 @@
       overflow: hidden;
       color: var(--muted);
       font-family: Consolas, monospace;
-      font-size: 11px;
-      line-height: 20px;
+      font-size: 13px;
+      line-height: 21px;
       text-transform: uppercase;
     }
 
@@ -559,8 +609,8 @@
       display: block;
       margin-top: 2px;
       color: var(--muted);
-      font-size: 12px;
-      line-height: 17px;
+      font-size: 14px;
+      line-height: 19px;
     }
 
     .format-mark {
@@ -578,7 +628,7 @@
       .broadcast {
         width: 1920px;
         height: 1080px;
-        padding: 22px 28px 20px;
+        padding: 26px 40px 24px;
         grid-template-rows: 100px minmax(0, 1fr) 64px;
         gap: 12px;
       }
@@ -586,9 +636,11 @@
       .masthead { grid-template-columns: minmax(0, 1fr) 570px; }
       .brand { padding: 11px 18px 8px 0; }
       .brand h1 { font-size: 44px; line-height: 45px; }
-      .brand p { margin-top: 3px; font-size: 14px; line-height: 18px; }
-      .score { padding: 13px 12px 8px; }
-      .score strong { font-size: 31px; line-height: 34px; }
+      .brand p { margin-top: 3px; font-size: 15px; line-height: 19px; }
+      .score { padding: 8px 12px 5px; }
+      .score span { font-size: 12px; line-height: 16px; }
+      .score strong { font-size: 29px; line-height: 31px; }
+      .metrics-state { min-height: 14px; font-size: 11px; line-height: 14px; }
 
       .matches {
         grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
@@ -610,10 +662,10 @@
       }
 
       .match:not(:first-child) .match-head { gap: 9px; }
-      .match:not(:first-child) .match-kicker { font-size: 9px; line-height: 13px; }
-      .match:not(:first-child) .match-title strong { font-size: 20px; line-height: 22px; }
-      .match:not(:first-child) .match-state { min-width: 90px; font-size: 9px; line-height: 13px; }
-      .match:not(:first-child) .match-state b { font-size: 16px; line-height: 18px; }
+      .match:not(:first-child) .match-kicker { font-size: 11px; line-height: 15px; }
+      .match:not(:first-child) .match-title strong { font-size: 21px; line-height: 23px; }
+      .match:not(:first-child) .match-state { min-width: 104px; font-size: 11px; line-height: 15px; }
+      .match:not(:first-child) .match-state b { font-size: 17px; line-height: 19px; }
 
       .match:not(:first-child) .arena { grid-template-rows: minmax(0, 1fr) 42px minmax(0, 1fr); }
       .match:not(:first-child) .side {
@@ -625,31 +677,31 @@
       .match:not(:first-child) .sprite { width: 82px; height: 82px; }
       .match:not(:first-child) .sprite img { width: 78px; height: 78px; }
       .match:not(:first-child) .sprite-fallback { width: 54px; height: 54px; font-size: 21px; }
-      .match:not(:first-child) .side-label { font-size: 9px; line-height: 12px; }
+      .match:not(:first-child) .side-label { font-size: 11px; line-height: 14px; }
       .match:not(:first-child) .pokemon-name { font-size: 20px; line-height: 22px; }
-      .match:not(:first-child) .pokemon-meta { height: 14px; font-size: 10px; line-height: 14px; }
-      .match:not(:first-child) .hp-copy { margin-top: 4px; font-size: 9px; line-height: 11px; }
+      .match:not(:first-child) .pokemon-meta { height: 16px; font-size: 12px; line-height: 16px; }
+      .match:not(:first-child) .hp-copy { margin-top: 4px; font-size: 11px; line-height: 13px; }
       .match:not(:first-child) .hp-track { height: 5px; margin-top: 3px; }
       .match:not(:first-child) .roster { width: 132px; height: 70px; gap: 3px; }
       .match:not(:first-child) .roster-mon img { width: 39px; height: 29px; }
-      .match:not(:first-child) .roster-mon span { font-size: 9px; }
+      .match:not(:first-child) .roster-mon span { font-size: 11px; }
       .match:not(:first-child) .roster-mon i { left: 2px; right: 2px; bottom: 1px; height: 2px; }
 
-      .match:not(:first-child) .turn-strip { grid-template-columns: 90px minmax(0, 1fr) 66px; gap: 7px; }
+      .match:not(:first-child) .turn-strip { grid-template-columns: 90px minmax(0, 1fr) 90px; gap: 7px; }
       .match:not(:first-child) .turn-strip strong { padding-left: 9px; font-size: 18px; line-height: 21px; }
-      .match:not(:first-child) .turn-event { font-size: 11px; line-height: 15px; }
-      .match:not(:first-child) .turn-age { padding-right: 8px; font-size: 9px; }
+      .match:not(:first-child) .turn-event { font-size: 13px; line-height: 17px; }
+      .match:not(:first-child) .turn-age { padding-right: 8px; font-size: 11px; }
 
       .match:not(:first-child) .queue { padding: 18px 16px 12px; }
       .match:not(:first-child) .queue-bars { width: 320px; height: 40px; gap: 5px; }
       .match:not(:first-child) .queue-bars i { height: 12px; }
       .match:not(:first-child) .queue strong { margin-top: 13px; font-size: 22px; line-height: 24px; }
-      .match:not(:first-child) .queue span { margin-top: 4px; font-size: 10px; line-height: 15px; }
-      .match:not(:first-child) .match-foot { font-size: 9px; line-height: 16px; }
+      .match:not(:first-child) .queue span { margin-top: 4px; font-size: 12px; line-height: 16px; }
+      .match:not(:first-child) .match-foot { font-size: 11px; line-height: 17px; }
 
       .broadcast-foot { padding: 0 16px; }
       .broadcast-foot strong { font-size: 18px; line-height: 21px; }
-      .broadcast-foot span { font-size: 11px; line-height: 15px; }
+      .broadcast-foot span { font-size: 12px; line-height: 16px; }
       .format-mark { font-size: 12px !important; }
     }
 
@@ -668,6 +720,9 @@
       .queue-bars i:nth-child(4),
       .queue-bars i:nth-child(8),
       .queue-bars i:nth-child(12) { height: 52px; background: var(--amber); }
+      .match.reconnecting .queue-bars i:nth-child(4),
+      .match.reconnecting .queue-bars i:nth-child(8),
+      .match.reconnecting .queue-bars i:nth-child(12) { background: var(--coral); }
     }
   </style>
 </head>
@@ -676,12 +731,15 @@
     <header class="masthead">
       <div class="brand">
         <h1>Fouler Play</h1>
-        <p>DEKU / three concurrent ranked battles</p>
+        <p>Three concurrent ranked battles</p>
       </div>
-      <div class="scoreboard" aria-label="Current season summary">
-        <div class="score"><span>Season</span><strong id="record">0-0</strong></div>
-        <div class="score"><span>ELO</span><strong id="elo">1000</strong></div>
-        <div class="score live"><span>Matches live</span><strong id="liveCount">0 / 3</strong></div>
+      <div class="scoreboard metrics-unavailable" id="scoreboard" aria-label="Current season summary">
+        <div class="score"><span>Season</span><strong id="record">--</strong></div>
+        <div class="score"><span>ELO</span><strong id="elo">--</strong></div>
+        <div class="score live">
+          <span>Matches live</span><strong id="liveCount">-- / 3</strong>
+          <small class="metrics-state" id="metricsState" role="status" aria-live="polite">Scores connecting</small>
+        </div>
       </div>
     </header>
 
@@ -689,8 +747,8 @@
 
     <footer class="broadcast-foot">
       <div>
-        <strong>Three matches. One shared agent.</strong>
-        <span>Public battle state updates automatically; private decision data stays off-screen.</span>
+        <strong>Three ranked matches. One battle bot.</strong>
+        <span>Battle positions refresh automatically. Move selection stays private.</span>
       </div>
       <span class="format-mark">Pokemon Showdown<br>Gen 9 OU</span>
     </footer>
@@ -703,6 +761,8 @@
       var SLOT_COUNT = 3;
       var POLL_MS = 2000;
       var slots = {};
+      var slotTruth = {};
+      var scoreboardSnapshot = { record: null, elo: null, liveCount: null };
 
       function escapeText(value, fallback) {
         var text = String(value == null ? "" : value).trim();
@@ -749,6 +809,151 @@
         return staticSources.length ? staticSources : sources;
       }
 
+      function usableBattleView(view) {
+        return !!(
+          view &&
+          view.user && view.user.active &&
+          view.opponent && view.opponent.active
+        );
+      }
+
+      function staleBattleTruth(lab) {
+        lab = lab || {};
+        return lab.stale === true || lab.freshness === "stale" || !!(lab.battle_view && lab.battle_view.stale);
+      }
+
+      function explicitSearchActivity(lab) {
+        lab = lab || {};
+        return lab.search_active === true ||
+          lab.searching === true ||
+          lab.queue_active === true ||
+          lab.matchmaking_active === true ||
+          Number(lab.search_count) > 0;
+      }
+
+      function timerLabel(label, value, fallback, appendAgo) {
+        var raw = String(value == null ? "" : value).trim().replace(/\s+ago$/i, "");
+        var timer = raw || fallback;
+        return label + ": " + timer + (raw && appendAgo ? " ago" : "");
+      }
+
+      function inactivePresentation(lab) {
+        var rawStatus = escapeText((lab || {}).status, "Idle");
+        var key = rawStatus.toLowerCase();
+
+        if (/ready|complete|staged/.test(key)) {
+          var firstMatch = /staged/.test(key);
+          return {
+            className: "ready",
+            live: false,
+            viewReady: false,
+            opponent: firstMatch ? "Ready for the first match" : "Next match ready",
+            state: "Ready",
+            stateDetail: "No active battle",
+            queueTitle: firstMatch ? "Ready for the first match" : "Ready for next match",
+            queueDetail: "No opponent search is active",
+            footLeft: "Gen 9 OU ranked ladder",
+            footRight: "Status: current",
+          };
+        }
+
+        if (/blocked|credential|error|unavailable|offline/.test(key)) {
+          return {
+            className: "maintenance",
+            live: false,
+            viewReady: false,
+            opponent: "Match feed unavailable",
+            state: "Unavailable",
+            stateDetail: "No active battle",
+            queueTitle: "Match feed unavailable",
+            queueDetail: "No match can be shown right now",
+            footLeft: "Gen 9 OU ranked ladder",
+            footRight: "Status: unavailable",
+          };
+        }
+
+        if (explicitSearchActivity(lab)) {
+          return {
+            className: "searching",
+            live: false,
+            viewReady: false,
+            opponent: "Looking for an opponent",
+            state: "Searching",
+            stateDetail: "Ranked matchmaking",
+            queueTitle: "Finding a ranked opponent",
+            queueDetail: "The match will appear as soon as it begins",
+            footLeft: "Gen 9 OU ranked ladder",
+            footRight: "Refresh: every 2 seconds",
+          };
+        }
+
+        var paused = /maint|held|paused|stopped/.test(key);
+
+        return {
+          className: "idle",
+          live: false,
+          viewReady: false,
+          opponent: paused ? "Battles paused" : "No match in progress",
+          state: "Idle",
+          stateDetail: "No active battle",
+          queueTitle: paused ? "Battles are paused" : "No match in progress",
+          queueDetail: "The ladder is not searching right now",
+          footLeft: "Gen 9 OU ranked ladder",
+          footRight: "Status: current",
+        };
+      }
+
+      function slotPresentation(lab) {
+        lab = lab || {};
+        var view = lab.battle_view || null;
+        if (staleBattleTruth(lab)) {
+          var staleViewReady = usableBattleView(view);
+          var staleAge = escapeText(lab.freshness_age_label, "Update delayed");
+          return {
+            className: staleViewReady ? "delayed" : "delayed loading",
+            live: false,
+            viewReady: staleViewReady,
+            delayed: true,
+            opponent: lab.opponent ? "vs " + escapeText(lab.opponent, "Opponent") : "Last known match",
+            state: "Stale",
+            stateDetail: "Latest confirmed view",
+            queueTitle: "Match update delayed",
+            queueDetail: "Waiting for a current match update",
+            footLeft: "Gen 9 OU ranked ladder",
+            footRight: timerLabel("Last update", staleAge, "delayed", true),
+          };
+        }
+        if (!lab.active) { return inactivePresentation(lab); }
+
+        if (!usableBattleView(view)) {
+          return {
+            className: "loading",
+            live: true,
+            viewReady: false,
+            opponent: "vs " + escapeText(lab.opponent, "Opponent pending"),
+            state: "Loading",
+            stateDetail: "Match in progress",
+            queueTitle: "Match feed is loading",
+            queueDetail: "The battle is active; details will appear shortly",
+            footLeft: "Gen 9 OU ranked ladder",
+            footRight: timerLabel("Battle time", lab.age_label, "starting", false),
+          };
+        }
+
+        return {
+          className: "live",
+          live: true,
+          viewReady: true,
+          opponent: "vs " + escapeText(lab.opponent, "Opponent"),
+          state: "Live",
+          stateDetail: "Ranked match in progress",
+          queueTitle: "Match in progress",
+          queueDetail: "Battle details are current",
+          footLeft: "Gen 9 OU ranked ladder",
+          footRight: timerLabel("Battle time", lab.age_label, "starting", false),
+        };
+      }
+
       function create(tag, className, text) {
         var node = document.createElement(tag);
         if (className) { node.className = className; }
@@ -774,7 +979,7 @@
         var name = create("div", "pokemon-name", "Pokemon pending");
         name.dataset.role = "name";
         copy.appendChild(name);
-        var meta = create("div", "pokemon-meta", "Public state loading");
+        var meta = create("div", "pokemon-meta", "Battle details loading");
         meta.dataset.role = "meta";
         copy.appendChild(meta);
         var hpCopy = create("div", "hp-copy");
@@ -804,7 +1009,7 @@
       }
 
       function buildSlot(slot) {
-        var match = create("article", "match searching");
+        var match = create("article", "match loading");
         match.id = "match-" + slot;
         match.dataset.slot = String(slot);
 
@@ -818,14 +1023,14 @@
         var head = create("header", "match-head");
         var title = create("div", "match-title");
         title.appendChild(create("span", "match-kicker", "Ranked match " + slot));
-        var opponent = create("strong", "", "Finding an opponent");
+        var opponent = create("strong", "", "Checking match status");
         opponent.dataset.role = "opponent";
         title.appendChild(opponent);
         var state = create("div", "match-state");
-        var stateStrong = create("b", "", "Searching");
+        var stateStrong = create("b", "", "Connecting");
         stateStrong.dataset.role = "state";
         state.appendChild(stateStrong);
-        var stateDetail = create("span", "", "Gen 9 OU queue");
+        var stateDetail = create("span", "", "Waiting for first update");
         stateDetail.dataset.role = "state-detail";
         state.appendChild(stateDetail);
         head.appendChild(title);
@@ -839,7 +1044,7 @@
         var turn = create("div", "turn-strip");
         var turnNumber = create("strong", "", "Turn --");
         turnNumber.dataset.role = "turn";
-        var turnEvent = create("span", "turn-event", "Waiting for verified battle state");
+        var turnEvent = create("span", "turn-event", "Waiting for match details");
         turnEvent.dataset.role = "event";
         var turnAge = create("span", "turn-age", "--");
         turnAge.dataset.role = "age";
@@ -847,25 +1052,25 @@
         turn.appendChild(turnEvent);
         turn.appendChild(turnAge);
         arena.appendChild(turn);
-        var agentSide = makeSide("agent", "DEKU agent");
+        var agentSide = makeSide("agent", "Fouler");
         agentSide.dataset.role = "agent-side";
         arena.appendChild(agentSide);
         content.appendChild(arena);
 
         var queue = create("div", "queue");
         queue.appendChild(makeQueueBars());
-        var queueTitle = create("strong", "", "Finding ranked opponent");
+        var queueTitle = create("strong", "", "Connecting to match feed");
         queueTitle.dataset.role = "queue-title";
-        var queueDetail = create("span", "", "Match slot ready / public state connected");
+        var queueDetail = create("span", "", "Waiting for the first update");
         queueDetail.dataset.role = "queue-detail";
         queue.appendChild(queueTitle);
         queue.appendChild(queueDetail);
         content.appendChild(queue);
 
         var foot = create("footer", "match-foot");
-        var footLeft = create("span", "", "Stall team / ranked ladder");
+        var footLeft = create("span", "", "Gen 9 OU ranked ladder");
         footLeft.dataset.role = "foot-left";
-        var footRight = create("span", "", "Updates every 2 seconds");
+        var footRight = create("span", "", "Status: connecting");
         footRight.dataset.role = "foot-right";
         foot.appendChild(footLeft);
         foot.appendChild(footRight);
@@ -959,7 +1164,7 @@
         first(root, "account").textContent = escapeText(side.account, fallbackAccount);
         first(root, "name").textContent = escapeText(pokemon.display_name || titleWords(pokemon.name), "Pokemon pending");
         var types = (pokemon.types || []).map(titleWords).join(" / ");
-        first(root, "meta").textContent = types || "Public combat state";
+        first(root, "meta").textContent = types || "Battle details unavailable";
         first(root, "hp-copy").textContent = hpLabel(pokemon);
         var fill = first(root, "hp-fill");
         fill.style.width = (hp == null ? 0 : hp) + "%";
@@ -978,43 +1183,95 @@
         var root = slots[slot];
         var lab = (payload && payload.battle_lab) || {};
         var view = lab.battle_view || null;
-        var live = !!lab.active;
-        var delayed = !!(view && view.stale);
-        root.className = "match " + (live ? (delayed ? "delayed" : "live") : "searching");
-        first(root, "opponent").textContent = live ? "vs " + escapeText(lab.opponent, "Opponent") : "Finding an opponent";
-        first(root, "state").textContent = live ? (delayed ? "Delayed" : "Live") : "Searching";
-        first(root, "state-detail").textContent = live ? "Ranked battle connected" : "Gen 9 OU queue";
-        first(root, "queue-title").textContent = live ? "Battle connected" : "Finding ranked opponent";
-        first(root, "queue-detail").textContent = live ? "Verified combat state is loading" : "Match slot ready / public state connected";
-        first(root, "foot-left").textContent = live ? "Public battle state / private strategy withheld" : "Stall team / ranked ladder";
-        first(root, "foot-right").textContent = live ? escapeText(lab.age_label, "Live") : "Updates every 2 seconds";
+        var presentation = slotPresentation(lab);
+        slotTruth[slot] = { active: presentation.live, viewReady: presentation.viewReady };
+        root.className = "match " + presentation.className;
+        first(root, "opponent").textContent = presentation.opponent;
+        first(root, "state").textContent = presentation.state;
+        first(root, "state-detail").textContent = presentation.stateDetail;
+        first(root, "queue-title").textContent = presentation.queueTitle;
+        first(root, "queue-detail").textContent = presentation.queueDetail;
+        first(root, "foot-left").textContent = presentation.footLeft;
+        first(root, "foot-right").textContent = presentation.footRight;
 
-        if (live && view && view.user && view.opponent) {
+        if (presentation.viewReady) {
           renderSide(first(root, "opponent-side"), view.opponent, "Opponent");
-          renderSide(first(root, "agent-side"), view.user, "DEKU");
+          renderSide(first(root, "agent-side"), view.user, "Fouler");
           first(root, "turn").textContent = "Turn " + escapeText(view.turn == null ? lab.turn : view.turn, "--");
           first(root, "event").textContent = latestEvent(lab);
-          first(root, "age").textContent = escapeText(lab.age_label, "Live");
+          first(root, "age").textContent = timerLabel("Battle time", lab.age_label, "starting", false);
         }
       }
 
       function renderReconnect(slot) {
         var root = slots[slot];
+        var previous = slotTruth[slot] || null;
+        if (previous) {
+          root.className = "match delayed" + (previous.viewReady ? "" : " loading");
+          first(root, "state").textContent = "Stale";
+          first(root, "state-detail").textContent = previous.active ? "Latest confirmed view" : "Latest confirmed status";
+          first(root, "queue-title").textContent = "Match update delayed";
+          first(root, "queue-detail").textContent = "Showing the latest confirmed information while reconnecting";
+          first(root, "foot-right").textContent = "Last update: delayed";
+          return;
+        }
         root.className = "match reconnecting";
-        first(root, "state").textContent = "Reconnecting";
-        first(root, "state-detail").textContent = "Public state retry";
-        first(root, "queue-title").textContent = "Restoring match feed";
-        first(root, "queue-detail").textContent = "The battle process continues while this view reconnects";
+        first(root, "state").textContent = "Unavailable";
+        first(root, "state-detail").textContent = "Match feed reconnecting";
+        first(root, "queue-title").textContent = "Match feed unavailable";
+        first(root, "queue-detail").textContent = "Waiting for the first successful update";
+        first(root, "foot-right").textContent = "Status: reconnecting";
       }
 
       function updateScoreboard(payloads) {
         var labs = payloads.map(function (payload) { return payload && payload.battle_lab; }).filter(Boolean);
-        var reference = labs[0] || {};
-        var liveCount = labs.filter(function (lab) { return !!lab.active; }).length;
-        document.getElementById("record").textContent = (reference.wins || 0) + "-" + (reference.losses || 0);
-        var elo = Number(reference.elo);
-        document.getElementById("elo").textContent = isFinite(elo) && elo > 0 ? Math.round(elo) : "1000";
-        document.getElementById("liveCount").textContent = liveCount + " / 3";
+        var recordSource = labs.find(function (lab) {
+          if (lab.wins == null || lab.losses == null || lab.wins === "" || lab.losses === "") { return false; }
+          var wins = Number(lab.wins);
+          var losses = Number(lab.losses);
+          return isFinite(wins) && wins >= 0 && isFinite(losses) && losses >= 0;
+        });
+        var eloSource = labs.find(function (lab) {
+          var elo = Number(lab.elo);
+          return isFinite(elo) && elo > 0;
+        });
+
+        if (recordSource) {
+          scoreboardSnapshot.record = Math.round(Number(recordSource.wins)) + "-" + Math.round(Number(recordSource.losses));
+        }
+        if (eloSource) { scoreboardSnapshot.elo = Math.round(Number(eloSource.elo)); }
+        if (labs.length === SLOT_COUNT) {
+          scoreboardSnapshot.liveCount = labs.filter(function (lab) {
+            return !!lab.active && !staleBattleTruth(lab);
+          }).length;
+        }
+
+        document.getElementById("record").textContent = scoreboardSnapshot.record == null ? "--" : scoreboardSnapshot.record;
+        document.getElementById("elo").textContent = scoreboardSnapshot.elo == null ? "--" : scoreboardSnapshot.elo;
+        document.getElementById("liveCount").textContent = scoreboardSnapshot.liveCount == null
+          ? "-- / 3"
+          : scoreboardSnapshot.liveCount + " / 3";
+
+        var completePoll = labs.length === SLOT_COUNT;
+        var staleCount = labs.filter(staleBattleTruth).length;
+        var hasSnapshot = scoreboardSnapshot.record != null || scoreboardSnapshot.elo != null || scoreboardSnapshot.liveCount != null;
+        var metricsClass = "metrics-current";
+        var metricsLabel = "Scores current";
+        if (!labs.length) {
+          metricsClass = hasSnapshot ? "metrics-stale" : "metrics-unavailable";
+          metricsLabel = hasSnapshot ? "Score update delayed" : "Scores unavailable";
+        } else if (!completePoll) {
+          metricsClass = "metrics-stale";
+          metricsLabel = "Score update delayed";
+        } else if (staleCount) {
+          metricsClass = "metrics-stale";
+          metricsLabel = staleCount + (staleCount === 1 ? " match stale" : " matches stale");
+        } else if (!recordSource || !eloSource) {
+          metricsClass = hasSnapshot ? "metrics-stale" : "metrics-unavailable";
+          metricsLabel = hasSnapshot ? "Score details delayed" : "Scores unavailable";
+        }
+        document.getElementById("scoreboard").className = "scoreboard " + metricsClass;
+        document.getElementById("metricsState").textContent = metricsLabel;
       }
 
       function poll() {

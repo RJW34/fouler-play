@@ -97,7 +97,7 @@ tests/test_strategic_filter.py
      Memory: 265.4M (peak: 271.2M)
         CPU: 1min 21.119s
      CGroup: /user.slice/user-1000.slice/user@1000.service/app.slice/fouler-play.service
-             └─1172104 /home/ryan/projects/fouler-play/venv/bin/python run.py --ps-username BugInTheCode --ps-password "HeracrossBattle2026!" --websocket-uri wss://sim3.psim.us/showdown/websocket --bot-mode search_ladder --pokemon-format gen9ou --team-list deku-team.list --search-time-ms 3000 --search-parallelism 2 --max-concurrent-battles 1 --max-mcts-battles 4 --run-count 999999 --save-replay always --log-to-file --log-level INFO --spectator-username CHUNGMIGHT
+             └─1172104 /home/ryan/projects/fouler-play/venv/bin/python run.py --ps-username BugInTheCode --ps-password "[REDACTED]" --websocket-uri wss://sim3.psim.us/showdown/websocket --bot-mode search_ladder --pokemon-format gen9ou --team-list deku-team.list --search-time-ms 3000 --search-parallelism 2 --max-concurrent-battles 1 --max-mcts-battles 4 --run-count 999999 --save-replay always --log-to-file --log-level INFO --spectator-username CHUNGMIGHT
 
 Feb 17 19:56:35 ubunztu python[1172104]: INFO     Battle finished: battle-gen9ou-2541845084 Winner: BugInTheCode
 Feb 17 19:56:35 ubunztu python[1172104]: INFO     Sending battle chat in battle-gen9ou-2541845084: gg
@@ -118,7 +118,7 @@ Type=simple
 WorkingDirectory=/home/ryan/projects/fouler-play
 ExecStart=/home/ryan/projects/fouler-play/venv/bin/python run.py \
     --ps-username "BugInTheCode" \
-    --ps-password "HeracrossBattle2026!" \
+    --ps-password "[REDACTED]" \
     --websocket-uri wss://sim3.psim.us/showdown/websocket \
     --bot-mode search_ladder \
     --pokemon-format gen9ou \

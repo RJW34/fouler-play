@@ -10,6 +10,7 @@ import os
 import json
 import logging
 import typing
+from pathlib import Path
 from typing import Tuple
 from typing import Optional
 
@@ -18,12 +19,14 @@ import constants
 from data import all_move_json, pokedex
 from fp.helpers import calculate_stats
 from fp.helpers import normalize_name
+from infrastructure.runtime_paths import resolve_runtime_paths
 
 PWD = os.path.dirname(os.path.abspath(__file__))
-SMOGON_CACHE_DIR = os.path.join(PWD, "smogon_stats_cache")
-os.makedirs(SMOGON_CACHE_DIR, exist_ok=True)
-PKMN_SETS_CACHE_DIR = os.path.join(PWD, "pkmn_sets_cache")
-os.makedirs(PKMN_SETS_CACHE_DIR, exist_ok=True)
+LEGACY_SMOGON_CACHE_DIR = os.path.join(PWD, "smogon_stats_cache")
+LEGACY_PKMN_SETS_CACHE_DIR = os.path.join(PWD, "pkmn_sets_cache")
+_RUNTIME_CACHE_ROOT = resolve_runtime_paths(Path(PWD).parent).cache_root
+SMOGON_CACHE_DIR = str(_RUNTIME_CACHE_ROOT / "smogon_stats_cache")
+PKMN_SETS_CACHE_DIR = str(_RUNTIME_CACHE_ROOT / "pkmn_sets_cache")
 
 PKMN_SETS_REMOTE_BASE_URL = "https://data.foulplay.cc/{}/{}"
 PS_SETS_REMOTE_BASE_URL = "https://play.pokemonshowdown.com/data/sets/{}"
@@ -48,11 +51,31 @@ logger = logging.getLogger(__name__)
 SETS_DOWNLOAD_TIMEOUT_SEC = float(os.getenv("FOULER_SETS_DOWNLOAD_TIMEOUT_SEC", "8"))
 
 
+def _legacy_cache_candidate(cache_path: str) -> str | None:
+    for current_root, legacy_root in (
+        (PKMN_SETS_CACHE_DIR, LEGACY_PKMN_SETS_CACHE_DIR),
+        (SMOGON_CACHE_DIR, LEGACY_SMOGON_CACHE_DIR),
+    ):
+        try:
+            relative = os.path.relpath(cache_path, current_root)
+        except ValueError:
+            continue
+        if relative != os.pardir and not relative.startswith(os.pardir + os.sep):
+            candidate = os.path.join(legacy_root, relative)
+            if os.path.abspath(candidate) != os.path.abspath(cache_path):
+                return candidate
+    return None
+
+
 def get_sets_file(cache_path: str, remote_url: str) -> dict:
-    if os.path.exists(cache_path):
-        with open(cache_path, "r") as f:
+    read_path = cache_path
+    legacy_path = _legacy_cache_candidate(cache_path)
+    if not os.path.exists(read_path) and legacy_path and os.path.exists(legacy_path):
+        read_path = legacy_path
+    if os.path.exists(read_path):
+        with open(read_path, "r") as f:
             sets = json.load(f)
-        logger.info(f"Loaded from cache: {cache_path}")
+        logger.info(f"Loaded from cache: {read_path}")
         return sets
 
     try:
@@ -700,8 +723,12 @@ class _SmogonSets(PokemonSets):
         )
         cache_file_name = "{}-{}".format(_month_tag, ntpath.basename(smogon_stats_url))
         cache_file = os.path.join(SMOGON_CACHE_DIR, cache_file_name)
-        if os.path.exists(cache_file):
-            with open(cache_file, "r") as f:
+        read_cache_file = cache_file
+        legacy_cache_file = _legacy_cache_candidate(cache_file)
+        if not os.path.exists(read_cache_file) and legacy_cache_file and os.path.exists(legacy_cache_file):
+            read_cache_file = legacy_cache_file
+        if os.path.exists(read_cache_file):
+            with open(read_cache_file, "r") as f:
                 infos = json.load(f)
         else:
             r = requests.get(smogon_stats_url)

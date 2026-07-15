@@ -21,12 +21,28 @@ produces the same id, so a record is appended only once per failure class
 per day.
 """
 from __future__ import annotations
-import hashlib, json, os
+import hashlib, json, os, sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-LEDGER_DIR = Path(os.environ.get("FOULER_HYPOTHESIS_LEDGER",
-                                 os.path.expanduser("~/.hermes/operator/fouler-hypotheses")))
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from infrastructure.runtime_paths import (
+    resolve_runtime_paths,
+    validate_external_runtime_path,
+)
+
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+LEDGER_DIR = validate_external_runtime_path(
+    os.environ.get(
+        "FOULER_HYPOTHESIS_LEDGER",
+        str(_RUNTIME_PATHS.state_root / "learning" / "hypotheses"),
+    ),
+    release_root=PROJECT_ROOT,
+    label="hypothesis ledger directory",
+)
 
 
 def _now_iso() -> str:

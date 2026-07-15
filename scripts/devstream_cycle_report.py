@@ -15,17 +15,30 @@ from pathlib import Path
 from typing import Any
 
 import devstream_health
+from devstream_runtime_lease import runtime_lease_path, validate_runtime_lease
 
 ROOT = Path(__file__).resolve().parents[1]
+SOURCE_ROOT = ROOT
 sys.path.insert(0, str(ROOT))
-OUTPUT_JSON = ROOT / "devstream" / "truth" / "cycle-report.json"
-OUTPUT_MD = ROOT / "devstream" / "truth" / "cycle-report.md"
-OUTPUT_COMPLETION = ROOT / "devstream" / "truth" / "completion.json"
-OUTPUT_PROOF_STATUS = ROOT / "devstream" / "truth" / "proof-status.json"
-OUTPUT_ELO_PROOF = ROOT / "devstream" / "truth" / "latest-elo-proof.json"
-ACCOUNT_SEASON_FILE = ROOT / "devstream" / "truth" / "account-season.json"
-DISCORD_REPORTING = ROOT / "devstream" / "truth" / "discord-reporting.json"
-DISCORD_DELIVERY = ROOT / "devstream" / "truth" / "discord-delivery.json"
+_runtime_state_root = str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip()
+RUNTIME_STATE_ROOT = (
+    Path(_runtime_state_root).expanduser().absolute()
+    if _runtime_state_root
+    else ROOT
+)
+RUNTIME_TRUTH_DIR = (
+    RUNTIME_STATE_ROOT / "truth"
+    if _runtime_state_root
+    else ROOT / "devstream" / "truth"
+)
+OUTPUT_JSON = RUNTIME_TRUTH_DIR / "cycle-report.json"
+OUTPUT_MD = RUNTIME_TRUTH_DIR / "cycle-report.md"
+OUTPUT_COMPLETION = RUNTIME_TRUTH_DIR / "completion.json"
+OUTPUT_PROOF_STATUS = RUNTIME_TRUTH_DIR / "proof-status.json"
+OUTPUT_ELO_PROOF = RUNTIME_TRUTH_DIR / "latest-elo-proof.json"
+ACCOUNT_SEASON_FILE = RUNTIME_TRUTH_DIR / "account-season.json"
+DISCORD_REPORTING = RUNTIME_TRUTH_DIR / "discord-reporting.json"
+DISCORD_DELIVERY = RUNTIME_TRUTH_DIR / "discord-delivery.json"
 IDLE_RUNTIME_BLOCKER = "fouler-play battle runner is idle; OBS HTTP alone is not active battle proof"
 TERMINAL_BATTLE_RESULTS = {"win", "loss", "tie", "draw", "forfeit", "timeout", "ended", "error"}
 UNKNOWN_ACCOUNT = "unknown"
@@ -36,6 +49,18 @@ ELO_SUSTAIN_MAX_DRAWDOWN = 75
 ELO_SUSTAIN_MINIMUM_WIN_RATE = 0.5
 ELO_REQUIRED_TEAMS = ("fat-team-1-stall", "fat-team-2-balance", "fat-team-3-dondozo")
 SHOWDOWN_PROFILE_TIMEOUT_SECONDS = 5.0
+
+
+def runtime_state_root() -> Path:
+    if ROOT != SOURCE_ROOT:
+        return ROOT
+    configured = str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip()
+    return Path(configured).expanduser().absolute() if configured else ROOT
+
+
+def event_queue_file() -> Path:
+    configured = str(os.getenv("EVENT_QUEUE_FILE") or "").strip()
+    return Path(configured).expanduser().absolute() if configured else runtime_state_root() / "events_queue.json"
 
 
 def current_source_commit() -> str | None:
@@ -57,7 +82,7 @@ def current_source_commit() -> str | None:
 
 def refresh_discord_proof_preview() -> dict[str, Any]:
     """Write a fresh local Discord proof preview without posting or draining."""
-    queue_file = ROOT / "events_queue.json"
+    queue_file = event_queue_file()
     try:
         from infrastructure import event_poster, event_queue_lib
 
@@ -82,8 +107,8 @@ def refresh_discord_proof_preview() -> dict[str, Any]:
                 "eventType": event.get("event_type"),
                 "pendingBacklog": (payload.get("queue") or {}).get("pending"),
                 "pendingBattleResults": (payload.get("queue") or {}).get("pendingBattleResults"),
-                "deliveryProof": str(DISCORD_DELIVERY.relative_to(ROOT)),
-                "reportingProof": str(DISCORD_REPORTING.relative_to(ROOT)),
+                "deliveryProof": rel_output_path(DISCORD_DELIVERY),
+                "reportingProof": rel_output_path(DISCORD_REPORTING),
                 "secretValuesPrinted": bool(payload.get("secretValuesPrinted")),
                 "note": "local proof preview only; queue events remain pending until approved transport or explicit archival",
             }
@@ -100,8 +125,8 @@ def refresh_discord_proof_preview() -> dict[str, Any]:
             "status": "idle",
             "pendingBacklog": (payload.get("queue") or {}).get("pending"),
             "pendingBattleResults": (payload.get("queue") or {}).get("pendingBattleResults"),
-            "deliveryProof": str(DISCORD_DELIVERY.relative_to(ROOT)),
-            "reportingProof": str(DISCORD_REPORTING.relative_to(ROOT)),
+            "deliveryProof": rel_output_path(DISCORD_DELIVERY),
+            "reportingProof": rel_output_path(DISCORD_REPORTING),
             "secretValuesPrinted": bool(payload.get("secretValuesPrinted")),
             "note": "no pending Discord events were available for preview",
         }
@@ -153,20 +178,28 @@ def _dotenv_value(path: Path, key: str) -> str:
 
 
 def account_from_runtime_lease(path: Path | None = None) -> tuple[str, str]:
-    lease_path = path or ROOT / "devstream" / "truth" / "runtime-lease.json"
-    lease = read_json(lease_path)
-    if not isinstance(lease, dict):
+    legacy_test_path = ROOT / "devstream" / "truth" / "runtime-lease.json"
+    lease_path = path or (
+        legacy_test_path
+        if ROOT != SOURCE_ROOT and legacy_test_path.exists()
+        else runtime_lease_path()
+    )
+    validation = validate_runtime_lease(
+        purpose="devstream-supervise",
+        lease_path=lease_path,
+    )
+    if not validation.get("ok"):
         return "", ""
-    for value in (
-        lease.get("account"),
-        lease.get("showdownUserId"),
-        (lease.get("battleScope") or {}).get("account") if isinstance(lease.get("battleScope"), dict) else "",
-        (lease.get("battleScope") or {}).get("showdownUserId") if isinstance(lease.get("battleScope"), dict) else "",
-    ):
-        account = _first_csv_value(value)
-        if account:
-            return account, str(lease_path.relative_to(ROOT)).replace("\\", "/") if lease_path.is_relative_to(ROOT) else str(lease_path)
-    return "", ""
+    summary = validation.get("lease") if isinstance(validation.get("lease"), dict) else {}
+    account = _first_csv_value(summary.get("account"))
+    if not account:
+        return "", ""
+    source = (
+        str(lease_path.relative_to(ROOT)).replace("\\", "/")
+        if lease_path.is_relative_to(ROOT)
+        else str(lease_path)
+    )
+    return account, source
 
 
 def resolve_showdown_account(explicit: str | None = None) -> dict[str, Any]:
@@ -823,7 +856,6 @@ def build_elo_proof_payload(
         if trace_id and sustain_decision_trace_ids.count(trace_id) > 1
     )
     sustain_wins = sum(1 for game in games_at_or_above if game["result"] == "win")
-    sustain_losses = sum(1 for game in games_at_or_above if game["result"] == "loss")
     sustain_win_rate = sustain_wins / len(games_at_or_above) if games_at_or_above else None
     sustain_ratings = [int(game["ratingAfter"]) for game in sustain_games if isinstance(game.get("ratingAfter"), int)]
     sustain_drawdown = max_drawdown(sustain_ratings)
@@ -1110,7 +1142,7 @@ def summarize_queue_backlog() -> dict[str, Any]:
     try:
         from infrastructure import event_queue_lib
 
-        queue_file = ROOT / "events_queue.json"
+        queue_file = event_queue_file()
         if queue_file.exists():
             events = json.loads(queue_file.read_text(encoding="utf-8", errors="replace") or "[]")
             if not isinstance(events, list):
@@ -1361,7 +1393,6 @@ def build_completion_payload(cycle: dict[str, Any], autoresearch: Any) -> dict[s
     autoresearch = autoresearch if isinstance(autoresearch, dict) else {}
     batch = autoresearch.get("batch") if isinstance(autoresearch.get("batch"), dict) else {}
     regression = autoresearch.get("regression") if isinstance(autoresearch.get("regression"), dict) else {}
-    trend = regression.get("status") or "unknown"
     report = cycle.get("autoresearch", {}).get("report", {}) if isinstance(cycle.get("autoresearch"), dict) else {}
     report_exists = bool(report.get("exists"))
     active_battles = int((cycle.get("activeBattles") or {}).get("battleCount") or 0)
@@ -1426,8 +1457,8 @@ def build_completion_payload(cycle: dict[str, Any], autoresearch: Any) -> dict[s
         "activeBattleTelemetryPresent": active_battles > 0,
         "activeBattleTelemetryIsCompletionProof": False,
         "reportPaths": {
-            "cycleReport": str(OUTPUT_JSON.relative_to(ROOT)),
-            "cycleMarkdown": str(OUTPUT_MD.relative_to(ROOT)),
+            "cycleReport": rel_output_path(OUTPUT_JSON),
+            "cycleMarkdown": rel_output_path(OUTPUT_MD),
             "autoresearchJson": (cycle.get("autoresearch") or {}).get("json", {}).get("path"),
             "autoresearchMarkdown": report.get("path"),
         },
@@ -1557,12 +1588,12 @@ def build_proof_status_payload(cycle: dict[str, Any], completion: dict[str, Any]
         "blockers": _limited_strings(cycle.get("blockers"), 12),
         "warnings": _limited_strings(cycle.get("warnings"), 12),
         "artifactPaths": {
-            "proofStatus": str(OUTPUT_PROOF_STATUS.relative_to(ROOT)),
-            "cycleReport": str(OUTPUT_JSON.relative_to(ROOT)),
-            "cycleMarkdown": str(OUTPUT_MD.relative_to(ROOT)),
-            "completion": str(OUTPUT_COMPLETION.relative_to(ROOT)),
-            "discordReporting": str(DISCORD_REPORTING.relative_to(ROOT)),
-            "discordDelivery": str(DISCORD_DELIVERY.relative_to(ROOT)),
+            "proofStatus": rel_output_path(OUTPUT_PROOF_STATUS),
+            "cycleReport": rel_output_path(OUTPUT_JSON),
+            "cycleMarkdown": rel_output_path(OUTPUT_MD),
+            "completion": rel_output_path(OUTPUT_COMPLETION),
+            "discordReporting": rel_output_path(DISCORD_REPORTING),
+            "discordDelivery": rel_output_path(DISCORD_DELIVERY),
             "eventQueue": "events_queue.json",
         },
     }
@@ -1642,12 +1673,13 @@ def _is_idle_runtime_blocker(value: object) -> bool:
 
 
 def build_payload() -> dict[str, Any]:
-    active_path = ROOT / "active_battles.json"
-    stream_path = ROOT / "stream_status.json"
-    daily_path = ROOT / "daily_stats.json"
-    stats_path = ROOT / "battle_stats.json"
-    autoresearch_json = ROOT / "replay_analysis" / "autoresearch_latest.json"
-    autoresearch_md = ROOT / "replay_analysis" / "reports" / "autoresearch_latest.md"
+    state_root = runtime_state_root()
+    active_path = state_root / "active_battles.json"
+    stream_path = state_root / "stream_status.json"
+    daily_path = state_root / "daily_stats.json"
+    stats_path = state_root / "battle_stats.json"
+    autoresearch_json = state_root / "replay_analysis" / "autoresearch_latest.json"
+    autoresearch_md = state_root / "replay_analysis" / "reports" / "autoresearch_latest.md"
     active = read_json(active_path)
     stream = read_json(stream_path)
     daily = read_json(daily_path)
@@ -1882,8 +1914,9 @@ def main() -> int:
         payload["discordProofRefresh"] = discord_proof_refresh
     if args.write:
         OUTPUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-        stats = read_json(ROOT / "battle_stats.json")
-        autoresearch = read_json(ROOT / "replay_analysis" / "autoresearch_latest.json")
+        state_root = runtime_state_root()
+        stats = read_json(state_root / "battle_stats.json")
+        autoresearch = read_json(state_root / "replay_analysis" / "autoresearch_latest.json")
         completion = write_completion(payload, autoresearch)
         write_proof_status(payload, completion)
         write_elo_proof(payload, stats, account=args.account, autoresearch=autoresearch)

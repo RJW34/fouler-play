@@ -5,10 +5,16 @@ from .team_converter import export_to_packed, export_to_dict
 TEAM_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-class TeamListIterator:
-    _INDEX_FILE = os.path.join(TEAM_DIR, ".team_iterator_index")
+def _team_rotation_index_file():
+    runtime_state_root = str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip()
+    if runtime_state_root:
+        return os.path.join(os.path.abspath(os.path.expanduser(runtime_state_root)), "team-rotation.index")
+    return os.path.join(TEAM_DIR, ".team_iterator_index")
 
+
+class TeamListIterator:
     def __init__(self, team_list_file_or_names):
+        self._index_file = _team_rotation_index_file()
         # Support both file path (str) and direct list of team names
         if isinstance(team_list_file_or_names, list):
             self.team_names = team_list_file_or_names
@@ -21,7 +27,7 @@ class TeamListIterator:
 
     def _load_index(self):
         try:
-            with open(self._INDEX_FILE, "r") as f:
+            with open(self._index_file, "r") as f:
                 idx = int(f.read().strip())
                 if 0 <= idx < len(self.team_names):
                     return idx
@@ -31,7 +37,8 @@ class TeamListIterator:
 
     def _save_index(self):
         try:
-            with open(self._INDEX_FILE, "w") as f:
+            os.makedirs(os.path.dirname(self._index_file), exist_ok=True)
+            with open(self._index_file, "w") as f:
                 f.write(str(self.index))
         except OSError:
             pass

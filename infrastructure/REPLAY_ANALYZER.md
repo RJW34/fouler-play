@@ -1,76 +1,17 @@
-# Replay Analyzer - Automated Loss Pattern Detection
+# Replay Analyzer (Retired Standalone Path)
 
-## Overview
-Automated system that analyzes loss replays every 10 battles to identify decision-making patterns and improvement opportunities.
+The historical cron-driven replay analyzer is not a production launcher.
+Managed Fouler supervisor cycles own bounded replay analysis and persist the
+result locally.
 
-## How It Works
+Production rules:
 
-### 1. State Tracking
-- Tracks last-analyzed battle count in `replay_analyzer_state.json`
-- Runs every hour (via cron)
-- Only analyzes when 10+ new battles have occurred
+- Do not install the historical cron entry or wrapper as a background service.
+- Do not add chat credentials or network-delivery code to replay analysis.
+- Per-battle analysis remains local evidence.
+- One bounded-session observation digest is written to the local DEKU outbox.
+- DEKU owns transport, identity, routing, throttling, and command-intake policy.
 
-### 2. Analysis Process
-For each batch of 10 battles:
-1. Identifies losses from `battle_stats.json`
-2. Loads local replay logs from `logs/` directory
-3. Analyzes for patterns:
-   - **Bad switches**: Excessive passivity, early faints
-   - **Missed KO lines**: Opportunities for damage
-   - **Status misplays**: Bad timing on status moves
-   - **Setup errors**: Setup vs phazers/Unaware
-   - **Hazard issues**: Not setting/removing hazards
-
-### 3. Output
-- Posts concise analysis to `#project-fouler-play` via webhook
-- Logs full output to `infrastructure/replay_analyzer.log`
-- Updates state file with progress
-
-## Files
-- **Script**: `infrastructure/replay_analyzer.py`
-- **Wrapper**: `infrastructure/run_replay_analyzer.sh`
-- **State**: `infrastructure/replay_analyzer_state.json`
-- **Logs**: `infrastructure/replay_analyzer.log`
-
-## Setup
-
-### Cron Job
-Add to crontab (`crontab -e`):
-```cron
-# Run replay analyzer every hour
-0 * * * * /home/ryan/projects/fouler-play/infrastructure/run_replay_analyzer.sh
-```
-
-### Manual Run
-```bash
-cd /home/ryan/projects/fouler-play
-./infrastructure/run_replay_analyzer.sh
-```
-
-Or directly:
-```bash
-/home/ryan/projects/fouler-play/venv/bin/python infrastructure/replay_analyzer.py
-```
-
-## Configuration
-- **Batch size**: 10 battles (hardcoded)
-- **Webhook**: Uses `DISCORD_BATTLES_WEBHOOK_URL` from `.env`
-- **Log source**: Local `logs/` directory
-
-## Monitoring
-Check logs:
-```bash
-tail -f /home/ryan/projects/fouler-play/infrastructure/replay_analyzer.log
-```
-
-Check state:
-```bash
-cat /home/ryan/projects/fouler-play/infrastructure/replay_analyzer_state.json
-```
-
-## Future Enhancements
-- [ ] Adjustable batch size
-- [ ] More sophisticated pattern detection (type matchups, move selection)
-- [ ] Historical trend tracking
-- [ ] Integration with improvement pipeline
-- [ ] Per-team analysis and recommendations
+The old analyzer files may remain useful as implementation reference, but any
+stale cron job, timer, task, container, or startup launcher invoking them must be
+disabled during machine cutover.

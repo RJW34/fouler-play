@@ -49,7 +49,6 @@ def _make_battle(time_remaining, *, force_switch=False, reserve=None):
 @pytest.fixture
 def patched_search(monkeypatch):
     """Stub the cheap pre-search helpers and make the search region fatal."""
-    monkeypatch.setattr(fp_main, "_maybe_hot_reload", lambda: None)
     monkeypatch.setattr(fp_main, "build_trace_base", lambda battle: {})
     monkeypatch.setattr(
         fp_main,

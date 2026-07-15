@@ -117,6 +117,144 @@ def _post_packet(*, status="post-packet-eval-improving", preservation=False):
     }
 
 
+def _head_to_head(*, accepted=True):
+    teams = (
+        "gen9/ou/fat-team-1-stall",
+        "gen9/ou/fat-team-2-balance",
+        "gen9/ou/fat-team-3-dondozo",
+    )
+    cells = []
+    index = 0
+    for candidate_team in teams:
+        for frozen_team in teams:
+            if candidate_team == frozen_team:
+                continue
+            for role in ("challenger", "accepter"):
+                index += 1
+                cell_id = f"cell-{index:02d}"
+                candidate_account = f"candidate-{index:02d}"
+                frozen_account = f"frozen-{index:02d}"
+                frozen_role = "accepter" if role == "challenger" else "challenger"
+                common = {
+                    "format": "gen9ou",
+                    "source_commit": "a" * 40,
+                    "h2h_run_id": "20260715T010203Z-deadbeef",
+                    "h2h_cell_id": cell_id,
+                    "h2h_baseline_commit": "a" * 40,
+                    "h2h_candidate_patch_sha256": "b" * 64,
+                    "h2h_change_id": "e" * 64,
+                }
+                cells.append(
+                    {
+                        "id": cell_id,
+                        "candidateTeam": candidate_team,
+                        "frozenTeam": frozen_team,
+                        "candidateRole": role,
+                        "requestedBattles": 5,
+                        "completedBattles": 5,
+                        "candidateWins": 4,
+                        "frozenWins": 1,
+                        "ties": 0,
+                        "candidateReturncode": 0,
+                        "frozenReturncode": 0,
+                        "battleIds": [f"battle-gen9ou-{index}-{battle}" for battle in range(1, 6)],
+                        "expectedProvenance": {
+                            "candidate": {
+                                **common,
+                                "account": candidate_account,
+                                "session_id": f"candidate-session-{index:02d}",
+                                "h2h_arm": "candidate",
+                                "h2h_role": role,
+                                "h2h_team": candidate_team,
+                                "h2h_account": candidate_account,
+                                "h2h_opponent": frozen_account,
+                                "h2h_engine_digest": "f" * 64,
+                            },
+                            "frozen": {
+                                **common,
+                                "account": frozen_account,
+                                "session_id": f"frozen-session-{index:02d}",
+                                "h2h_arm": "frozen",
+                                "h2h_role": frozen_role,
+                                "h2h_team": frozen_team,
+                                "h2h_account": frozen_account,
+                                "h2h_opponent": candidate_account,
+                                "h2h_engine_digest": "1" * 64,
+                            },
+                        },
+                        "logEvidence": {"candidate": {}, "frozen": {}},
+                        "error": "",
+                    }
+                )
+    run_id = "20260715T010203Z-deadbeef"
+    runtime_family = "c" * 64
+    protocol_digest = "d" * 64
+    change_id = "e" * 64
+    return {
+        "schemaVersion": "fouler-head-to-head-eval/v2",
+        "status": "promotion-ready" if accepted else "promotion-blocked",
+        "promotionAllowed": accepted,
+        "blockers": [] if accepted else ["candidate did not beat frozen"],
+        "requestedBattles": 60,
+        "completedBattles": 60,
+        "candidateWins": 48,
+        "frozenWins": 12,
+        "ties": 0,
+        "effectOverFrozen": 0.3,
+        "oneSidedExactP": 0.000002,
+        "baselineCommit": "a" * 40,
+        "candidatePatchSha256": "b" * 64,
+        "candidateFile": "fp/search/main.py",
+        "runId": run_id,
+        "runtimeFamilyId": runtime_family,
+        "candidateRuntimeDigest": "f" * 64,
+        "frozenRuntimeDigest": "1" * 64,
+        "protocolDigest": protocol_digest,
+        "runtimeEvidence": {
+            "relativePath": "runtime-manifest.json",
+            "sha256": "2" * 64,
+            "byteLength": 100,
+        },
+        "lineage": {
+            "changeId": change_id,
+            "baselineCommit": "a" * 40,
+            "candidatePatchSha256": "b" * 64,
+            "candidateFile": "fp/search/main.py",
+            "autoresearchSha256": "3" * 64,
+        },
+        "attemptBudget": {
+            "registered": True,
+            "schemaVersion": "fouler-head-to-head-attempt/v2",
+            "ledgerId": "deku-test-ledger",
+            "attemptId": "4" * 32,
+            "registrationSequence": 1,
+            "runId": run_id,
+            "runtimeFamilyId": runtime_family,
+            "protocolDigest": protocol_digest,
+            "changeId": change_id,
+            "baselineCommit": "a" * 40,
+            "candidatePatchSha256": "b" * 64,
+            "candidateFile": "fp/search/main.py",
+            "attemptOrdinal": 1,
+            "maximumAttempts": 5,
+            "perAttemptAlpha": 0.01,
+            "familyWiseAlpha": 0.05,
+        },
+        "configuration": {"battlesPerCell": 5},
+        "identicalSmoke": False,
+        "candidateTeamSummary": {
+            "fat-team-1-stall": {"wins": 16, "decisive": 20, "winRate": 0.8},
+            "fat-team-2-balance": {"wins": 16, "decisive": 20, "winRate": 0.8},
+            "fat-team-3-dondozo": {"wins": 16, "decisive": 20, "winRate": 0.8},
+        },
+        "roleSummary": {
+            "challenger": {"wins": 24, "decisive": 30, "winRate": 0.8},
+            "accepter": {"wins": 24, "decisive": 30, "winRate": 0.8},
+        },
+        "cells": cells,
+    }
+
+
 def _trace(root, *, choice="switch slowkinggalar", best="icebeam", regret=True):
     traces = root / "replay_analysis" / "evidence_traces"
     traces.mkdir(parents=True)
@@ -153,6 +291,8 @@ def test_gate_blocks_half_proven_packet_with_history_regressions(tmp_path):
         elo_proof=_elo_proof(live_rating=1186.68),
         battle_stats=_battle_stats(rating_gap=True),
         offline_eval={"accepted": True, "ready": True, "status": "accepted"},
+        head_to_head=_head_to_head(accepted=False),
+        head_to_head_provenance={"ready": False, "blockers": ["fixture mismatch"]},
         max_traces=20,
     )
     report = gate.build_gate(history)
@@ -164,6 +304,7 @@ def test_gate_blocks_half_proven_packet_with_history_regressions(tmp_path):
     assert any("decision_instability" in item for item in report["blockers"])
     assert any("rating truth incoherent" in item for item in report["blockers"])
     assert any("high-regret" in item for item in report["blockers"])
+    assert any("candidate-vs-frozen" in item for item in report["blockers"])
 
 
 def test_gate_allows_promotion_only_when_history_inputs_are_clean(tmp_path):
@@ -182,6 +323,8 @@ def test_gate_allows_promotion_only_when_history_inputs_are_clean(tmp_path):
         elo_proof=_elo_proof(live_rating=1282),
         battle_stats=_battle_stats(rating_gap=False, post_packet_record=("win", "win")),
         offline_eval={"accepted": True, "ready": True, "status": "accepted"},
+        head_to_head=_head_to_head(accepted=True),
+        head_to_head_provenance={"ready": True, "blockers": []},
         max_traces=20,
     )
     report = gate.build_gate(history)

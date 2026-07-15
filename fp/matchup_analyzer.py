@@ -21,12 +21,14 @@ from constants_pkg.strategy import SETUP_MOVES, PRIORITY_MOVES
 from fp.playstyle_config import HAZARD_MOVES, PIVOT_MOVES, RECOVERY_MOVES
 from fp.theknower_competitive import build_competitive_meta_context, build_pokedex_oracle_context
 from infrastructure.gen9_validation import Gen9Validator
+from infrastructure.runtime_paths import resolve_runtime_paths
 
 logger = logging.getLogger(__name__)
 
 # Cache directory for matchup analysis results
-CACHE_DIR = Path("data/matchup_cache")
-CACHE_DIR.mkdir(parents=True, exist_ok=True)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+LEGACY_CACHE_DIR = PROJECT_ROOT / "data" / "matchup_cache"
+CACHE_DIR = resolve_runtime_paths(PROJECT_ROOT).cache_root / "matchup"
 
 # Ollama API endpoint
 OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
@@ -76,11 +78,15 @@ def _hash_team(team_data: List[Dict]) -> str:
 def _load_cached_gameplan(our_hash: str, opp_hash: str) -> Optional[Gameplan]:
     """Load a cached gameplan if it exists."""
     cache_file = CACHE_DIR / f"{our_hash}_vs_{opp_hash}.json"
-    if not cache_file.exists():
+    read_file = cache_file
+    legacy_file = LEGACY_CACHE_DIR / cache_file.name
+    if not read_file.exists() and legacy_file != read_file and legacy_file.exists():
+        read_file = legacy_file
+    if not read_file.exists():
         return None
     
     try:
-        with open(cache_file, "r") as f:
+        with open(read_file, "r") as f:
             data = json.load(f)
         return Gameplan.from_dict(data)
     except Exception as e:
@@ -92,6 +98,7 @@ def _save_gameplan_cache(our_hash: str, opp_hash: str, gameplan: Gameplan) -> No
     """Save a gameplan to cache."""
     cache_file = CACHE_DIR / f"{our_hash}_vs_{opp_hash}.json"
     try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
         with open(cache_file, "w") as f:
             json.dump(gameplan.to_dict(), f, indent=2)
     except Exception as e:

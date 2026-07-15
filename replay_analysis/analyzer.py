@@ -19,6 +19,9 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.account_identity import resolve_bot_username
+from infrastructure.runtime_paths import resolve_runtime_paths
+
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
 
 
 @dataclass
@@ -81,11 +84,10 @@ class ReplayAnalyzer:
     }
     
     def __init__(self):
-        # Use path relative to this file
-        project_root = Path(__file__).parent.parent
-        self.losses_dir = project_root / "replay_analysis" / "losses"
-        self.reports_dir = project_root / "replay_analysis" / "reports"
-        self.patterns_dir = project_root / "replay_analysis" / "patterns"
+        replay_root = _RUNTIME_PATHS.state_root / "replay_analysis"
+        self.losses_dir = replay_root / "losses"
+        self.reports_dir = replay_root / "reports"
+        self.patterns_dir = replay_root / "patterns"
         
         # Ensure directories exist
         self.losses_dir.mkdir(parents=True, exist_ok=True)

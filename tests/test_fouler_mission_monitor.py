@@ -1,11 +1,19 @@
+import hashlib
 import json
 import os
+import shutil
+import subprocess
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
 from scripts import fouler_mission_monitor as monitor
+from tests.runtime_authority_testkit import sign_test_runtime_lease
+
+
+SOURCE_ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture(autouse=True)
@@ -14,11 +22,78 @@ def isolate_stale_active_battle_backup_dir(monkeypatch, tmp_path):
 
 
 def active_lease() -> dict:
+    now = datetime.now(timezone.utc)
     return {
         "status": "active",
         "account": "LEBOTJAMESXD00N",
-        "expiresAt": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+        "expiresAt": (now + timedelta(hours=1)).isoformat(),
+        "proofWindow": {
+            "startsAt": (now - timedelta(minutes=5)).isoformat(),
+            "expiresAt": (now + timedelta(hours=1)).isoformat(),
+        },
     }
+
+
+def build_runtime_renewal_fixture(tmp_path) -> tuple[Path, Path, Path, dict]:
+    from infrastructure import deployment_lineage
+    from scripts import devstream_runtime_lease
+
+    root = tmp_path / "release"
+    (root / "scripts").mkdir(parents=True)
+    (root / "infrastructure").mkdir(parents=True)
+    shutil.copy2(
+        SOURCE_ROOT / "scripts" / "devstream_runtime_lease.py",
+        root / "scripts" / "devstream_runtime_lease.py",
+    )
+    shutil.copy2(
+        SOURCE_ROOT / "infrastructure" / "deployment_lineage.py",
+        root / "infrastructure" / "deployment_lineage.py",
+    )
+    (root / "run.py").write_text("RUNTIME = 'fouler'\n", encoding="utf-8")
+    (root / ".gitignore").write_text(
+        "devstream/\nstate/\n__pycache__/\n*.pyc\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.email", "lease@test.invalid"], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.name", "Lease Test"], check=True)
+    subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-qm", "immutable release"], check=True)
+
+    receipt = deployment_lineage.build_deployment_receipt(
+        root=root,
+        machine="JIGGLYPUFF",
+        change_id="change-scheduled-recovery-0001",
+        authorization_type="owner-approved-release",
+        approval_ref="test-owner-approval",
+    )
+    receipt_path = root / "state" / "deployment-receipt.json"
+    deployment_lineage.write_immutable_receipt(receipt_path, receipt)
+    receipt_sha = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+    lease_payload = sign_test_runtime_lease(devstream_runtime_lease.build_runtime_lease_artifact(
+        purpose="devstream-supervise",
+        machine="JIGGLYPUFF",
+        account="DekuFoulerLab",
+        run_count=30,
+        max_cycles=2,
+        max_concurrent_battles=3,
+        replay_behavior="always",
+        valid_minutes=1,
+        source_commit=receipt["sourceCommit"],
+        change_id=receipt["changeId"],
+        deployment_id=receipt["deploymentId"],
+        source_tree=receipt["sourceTree"],
+        runtime_manifest_digest=receipt["runtimeManifestDigest"],
+        deployment_receipt_path=str(receipt_path.resolve()),
+        deployment_receipt_sha256=receipt_sha,
+        session_id="session-scheduled-recovery-0001",
+        lease_id="lease-scheduled-recovery-0001",
+        now=datetime.now(timezone.utc) - timedelta(hours=2),
+    ))
+    lease_path = root / "devstream" / "truth" / "runtime-lease.json"
+    lease_path.parent.mkdir(parents=True)
+    lease_path.write_text(json.dumps(lease_payload), encoding="utf-8")
+    return root, lease_path, receipt_path, lease_payload
 
 
 def clean_rated_battles(count: int = 20, *, start_rating: int = 1300) -> list[dict]:
@@ -413,39 +488,205 @@ def missing_offline_eval_resume_proof() -> dict:
     }
 
 
-def write_offline_eval_result_artifacts(root, *, battles: int = 200, accepted: bool = True) -> None:
-    results = root / "eval_results" / "offline"
+def write_offline_eval_result_artifacts(root, *, battles: int = 60, accepted: bool = True) -> dict:
+    engine_file = root / "fp" / "search" / "main.py"
+    engine_file.parent.mkdir(parents=True)
+    engine_file.write_text("BASELINE = 1\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.email", "proof@test.invalid"], check=True)
+    subprocess.run(["git", "-C", str(root), "config", "user.name", "Proof Test"], check=True)
+    subprocess.run(["git", "-C", str(root), "add", "fp/search/main.py"], check=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-qm", "baseline"], check=True)
+    baseline_commit = subprocess.check_output(
+        ["git", "-C", str(root), "rev-parse", "HEAD"], text=True
+    ).strip()
+    engine_file.write_text("BASELINE = 1\nCANDIDATE = 2\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(root), "add", "fp/search/main.py"], check=True)
+    subprocess.run(["git", "-C", str(root), "commit", "-qm", "candidate"], check=True)
+    patch = subprocess.check_output(
+        ["git", "-C", str(root), "diff", "--binary", baseline_commit, "HEAD", "--", "fp/search/main.py"]
+    )
+
+    results = root / "eval_results" / "head_to_head"
     results.mkdir(parents=True)
-    candidate = {
-        "label": "candidate",
-        "battles": battles,
-        "fouler_wins": 126,
-        "fouler_win_rate": 0.63,
-    }
-    compare = {
-        "candidate": {
-            "label": "candidate",
-            "battles": battles,
-            "fouler_wins": 126,
-            "fouler_win_rate": 0.63,
+    candidate_wins = int(battles * 0.8)
+    teams = (
+        "gen9/ou/fat-team-1-stall",
+        "gen9/ou/fat-team-2-balance",
+        "gen9/ou/fat-team-3-dondozo",
+    )
+    run_id = "20260715T010203Z-deadbeef"
+    runtime_family = "c" * 64
+    protocol_digest = "d" * 64
+    change_id = "e" * 64
+    patch_sha = hashlib.sha256(patch).hexdigest()
+    cells = []
+    index = 0
+    for candidate_team in teams:
+        for frozen_team in teams:
+            if candidate_team == frozen_team:
+                continue
+            for role in ("challenger", "accepter"):
+                index += 1
+                cell_id = f"cell-{index:02d}"
+                frozen_role = "accepter" if role == "challenger" else "challenger"
+                candidate_account = f"candidate-{index:02d}"
+                frozen_account = f"frozen-{index:02d}"
+                provenance_common = {
+                    "format": "gen9ou",
+                    "source_commit": baseline_commit,
+                    "h2h_run_id": run_id,
+                    "h2h_cell_id": cell_id,
+                    "h2h_baseline_commit": baseline_commit,
+                    "h2h_candidate_patch_sha256": patch_sha,
+                    "h2h_change_id": change_id,
+                }
+                cells.append(
+                    {
+                        "id": cell_id,
+                        "candidateTeam": candidate_team,
+                        "frozenTeam": frozen_team,
+                        "candidateRole": role,
+                        "requestedBattles": battles // 12,
+                        "completedBattles": battles // 12,
+                        "candidateWins": 4,
+                        "frozenWins": 1,
+                        "ties": 0,
+                        "candidateReturncode": 0,
+                        "frozenReturncode": 0,
+                        "battleIds": [
+                            f"battle-gen9ou-{index}-{battle}"
+                            for battle in range(1, battles // 12 + 1)
+                        ],
+                        "expectedProvenance": {
+                            "candidate": {
+                                **provenance_common,
+                                "account": candidate_account,
+                                "session_id": f"candidate-session-{index:02d}",
+                                "h2h_arm": "candidate",
+                                "h2h_role": role,
+                                "h2h_team": candidate_team,
+                                "h2h_account": candidate_account,
+                                "h2h_opponent": frozen_account,
+                                "h2h_engine_digest": "f" * 64,
+                            },
+                            "frozen": {
+                                **provenance_common,
+                                "account": frozen_account,
+                                "session_id": f"frozen-session-{index:02d}",
+                                "h2h_arm": "frozen",
+                                "h2h_role": frozen_role,
+                                "h2h_team": frozen_team,
+                                "h2h_account": frozen_account,
+                                "h2h_opponent": candidate_account,
+                                "h2h_engine_digest": "1" * 64,
+                            },
+                        },
+                        "logEvidence": {
+                            "candidate": {},
+                            "frozen": {},
+                        },
+                        "error": "",
+                    }
+                )
+    proof = {
+        "schemaVersion": monitor.HEAD_TO_HEAD_RESULT_PROOF_SCHEMA_VERSION,
+        "status": "promotion-ready" if accepted else "promotion-blocked",
+        "promotionAllowed": accepted,
+        "blockers": [] if accepted else ["candidate did not beat frozen"],
+        "requestedBattles": battles,
+        "completedBattles": battles,
+        "candidateWins": candidate_wins,
+        "frozenWins": battles - candidate_wins,
+        "ties": 0,
+        "effectOverFrozen": 0.3,
+        "oneSidedExactP": 0.000002,
+        "baselineCommit": baseline_commit,
+        "candidatePatchSha256": patch_sha,
+        "candidateFile": "fp/search/main.py",
+        "runId": run_id,
+        "runtimeFamilyId": runtime_family,
+        "candidateRuntimeDigest": "f" * 64,
+        "frozenRuntimeDigest": "1" * 64,
+        "protocolDigest": protocol_digest,
+        "runtimeEvidence": {
+            "relativePath": "runtime-manifest.json",
+            "sha256": "2" * 64,
+            "byteLength": 100,
         },
-        "ACCEPT": accepted,
+        "lineage": {
+            "changeId": change_id,
+            "baselineCommit": baseline_commit,
+            "candidatePatchSha256": patch_sha,
+            "candidateFile": "fp/search/main.py",
+            "autoresearchSha256": "3" * 64,
+        },
+        "attemptBudget": {
+            "registered": True,
+            "schemaVersion": "fouler-head-to-head-attempt/v2",
+            "ledgerId": "deku-test-ledger",
+            "attemptId": "4" * 32,
+            "registrationSequence": 1,
+            "runId": run_id,
+            "runtimeFamilyId": runtime_family,
+            "protocolDigest": protocol_digest,
+            "changeId": change_id,
+            "baselineCommit": baseline_commit,
+            "candidatePatchSha256": patch_sha,
+            "candidateFile": "fp/search/main.py",
+            "attemptOrdinal": 1,
+            "maximumAttempts": 5,
+            "perAttemptAlpha": 0.01,
+            "familyWiseAlpha": 0.05,
+        },
+        "configuration": {"battlesPerCell": battles // 12},
+        "identicalSmoke": False,
+        "candidateTeamSummary": {
+            "fat-team-1-stall": {"wins": 16, "decisive": 20, "winRate": 0.8},
+            "fat-team-2-balance": {"wins": 16, "decisive": 20, "winRate": 0.8},
+            "fat-team-3-dondozo": {"wins": 16, "decisive": 20, "winRate": 0.8},
+        },
+        "roleSummary": {
+            "challenger": {"wins": 24, "decisive": 30, "winRate": 0.8},
+            "accepter": {"wins": 24, "decisive": 30, "winRate": 0.8},
+        },
+        "cells": cells,
     }
-    (results / "candidate.json").write_text(json.dumps(candidate), encoding="utf-8")
-    (results / "compare-frozen-vs-candidate.json").write_text(json.dumps(compare), encoding="utf-8")
+    (results / "latest.json").write_text(json.dumps(proof), encoding="utf-8")
+    return proof
 
 
-def test_offline_eval_resume_proof_status_accepts_existing_result_artifacts(tmp_path):
-    write_offline_eval_result_artifacts(tmp_path)
+def test_offline_eval_resume_proof_status_accepts_existing_result_artifacts(tmp_path, monkeypatch):
+    proof = write_offline_eval_result_artifacts(tmp_path)
+    from infrastructure import head_to_head_proof
+
+    monkeypatch.setattr(head_to_head_proof, "load_latest_proof", lambda *args, **kwargs: (proof, []))
 
     status = monitor.offline_eval_resume_proof_status(root=tmp_path, env={})
 
     assert status["ready"] is True
     assert status["status"] == "accepted"
     assert status["blockers"] == []
-    assert status["resultProof"]["candidateBattles"] == 200
-    assert status["resultProof"]["compareCandidateBattles"] == 200
+    assert status["resultProof"]["completedBattles"] == 60
+    assert status["resultProof"]["requestedBattles"] == 60
     assert status["noRuntimeActions"] is True
+
+
+def test_offline_eval_resume_proof_status_rejects_stale_checkout(tmp_path, monkeypatch):
+    proof = write_offline_eval_result_artifacts(tmp_path)
+    from infrastructure import head_to_head_proof
+
+    monkeypatch.setattr(head_to_head_proof, "load_latest_proof", lambda *args, **kwargs: (proof, []))
+    (tmp_path / "fp" / "search" / "main.py").write_text(
+        "BASELINE = 1\nCANDIDATE = 3\n",
+        encoding="utf-8",
+    )
+
+    status = monitor.offline_eval_resume_proof_status(root=tmp_path, env={})
+
+    assert status["ready"] is False
+    assert any("working tree" in blocker for blocker in status["blockers"])
+    assert status["checkoutProvenance"]["ready"] is False
 
 
 def test_offline_eval_resume_proof_status_rejects_missing_artifacts(tmp_path):
@@ -453,8 +694,8 @@ def test_offline_eval_resume_proof_status_rejects_missing_artifacts(tmp_path):
 
     assert status["ready"] is False
     assert status["status"] == "blocked"
-    assert "offline eval result proof ready must be true" in status["blockers"]
-    assert status["resultProof"]["status"] == "missing"
+    assert "candidate-vs-frozen artifact: head-to-head latest pointer is missing or linked" in status["blockers"]
+    assert status["resultProof"] == {}
     assert status["noRuntimeActions"] is True
 
 
@@ -1667,7 +1908,7 @@ def test_recent_rating_drawdown_opens_mission_issue(monkeypatch, tmp_path):
     assert packet["status"] == "blocked"
     assert "fouler-rating-drawdown" in packet["issueIds"]
     assert monitor.OFFLINE_EVAL_RESUME_ISSUE_ID in packet["blockedBy"]
-    assert "produce-accepted-offline-eval-resume-proof" in packet["nextActions"]
+    assert "produce-accepted-candidate-vs-frozen-resume-proof" in packet["nextActions"]
     assert "produce-fresh-post-packet-active-improvement-proof" in packet["nextActions"]
     assert packet["authority"]["runtimeMutationAllowed"] is False
     assert packet["authority"]["streamKeyRequired"] is False
@@ -2506,20 +2747,191 @@ def test_session_stop_loss_blocks_runtime_repair_start(monkeypatch, tmp_path):
     ]
 
 
+def test_scheduled_recovery_cannot_mint_or_renew_owner_authority(monkeypatch, tmp_path):
+    root, lease_path, _receipt_path, original_lease = build_runtime_renewal_fixture(tmp_path)
+    monkeypatch.setattr(monitor, "ROOT", root)
+    monkeypatch.setattr(monitor, "RUNTIME_LEASE_FILE", lease_path)
+    for name in (
+        "FOULER_SOURCE_COMMIT",
+        "FOULER_SOURCE_TREE",
+        "FOULER_CHANGE_ID",
+        "FOULER_DEPLOYMENT_ID",
+        "FOULER_RUNTIME_MANIFEST_DIGEST",
+        "FOULER_DEPLOYMENT_RECEIPT_PATH",
+        "FOULER_DEPLOYMENT_RECEIPT_SHA256",
+        "FOULER_SESSION_ID",
+    ):
+        monkeypatch.setenv(name, "environment-must-not-authorize-renewal")
+
+    started: list[bool] = []
+    monkeypatch.setattr(
+        monitor,
+        "start_supervisor",
+        lambda args: started.append(True) or {"ok": True, "returnCode": 0},
+    )
+    args = monitor.parse_args(
+        [
+            "--repair-runtime",
+            "--renew-lease",
+            "--run-count",
+            "5",
+            "--max-cycles",
+            "1",
+            "--max-concurrent-battles",
+            "1",
+            "--lease-minutes",
+            "45",
+            "--no-refresh-health",
+            "--no-refresh-health-after-repair",
+        ]
+    )
+    classification = {
+        "runtimeIdle": True,
+        "duplicateRunners": False,
+        "stopFilePresent": False,
+        "runtimeLeaseActive": False,
+        "startGate": {"ready": True, "decision": "allow-next-proof-window"},
+        "sessionGovernance": {"allowLaddering": True},
+    }
+
+    actions = monitor.maybe_repair_runtime(args, classification, original_lease)
+
+    assert [item["action"] for item in actions] == ["renew-runtime-lease"]
+    assert actions[0]["ok"] is False
+    assert actions[0]["status"] == "blocked-runtime-lease-renewal-retired"
+    assert actions[0]["writeAttempted"] is False
+    assert actions[0]["ownerAuthorizationArtifactRequired"] is True
+    assert actions[0]["immutableLineageRequired"] is True
+    assert actions[0]["cumulativeExtensionCeilingRequired"] is True
+    assert started == []
+    assert json.loads(lease_path.read_text(encoding="utf-8")) == original_lease
+
+
+@pytest.mark.parametrize(
+    "identity_field",
+    (
+        "sourceCommit",
+        "sourceTree",
+        "changeId",
+        "deploymentId",
+        "runtimeManifestDigest",
+        "deploymentReceiptPath",
+        "deploymentReceiptSha256",
+        "sessionId",
+    ),
+)
+def test_runtime_lease_renewal_rejects_missing_identity_despite_environment(
+    monkeypatch,
+    tmp_path,
+    identity_field,
+):
+    root, lease_path, _receipt_path, lease_payload = build_runtime_renewal_fixture(tmp_path)
+    lease_payload.pop(identity_field)
+    monkeypatch.setattr(monitor, "ROOT", root)
+    monkeypatch.setattr(monitor, "RUNTIME_LEASE_FILE", lease_path)
+    environment_names = {
+        "sourceCommit": "FOULER_SOURCE_COMMIT",
+        "sourceTree": "FOULER_SOURCE_TREE",
+        "changeId": "FOULER_CHANGE_ID",
+        "deploymentId": "FOULER_DEPLOYMENT_ID",
+        "runtimeManifestDigest": "FOULER_RUNTIME_MANIFEST_DIGEST",
+        "deploymentReceiptPath": "FOULER_DEPLOYMENT_RECEIPT_PATH",
+        "deploymentReceiptSha256": "FOULER_DEPLOYMENT_RECEIPT_SHA256",
+        "sessionId": "FOULER_SESSION_ID",
+    }
+    monkeypatch.setenv(environment_names[identity_field], "environment-must-not-fill-missing-identity")
+    monkeypatch.setattr(
+        monitor,
+        "run_command",
+        lambda *args, **kwargs: pytest.fail("lease writer must not run after failed preflight"),
+    )
+    args = monitor.parse_args(["--run-count", "5", "--max-cycles", "1"])
+
+    result = monitor.renew_runtime_lease(args, lease_payload)
+
+    assert result["ok"] is False
+    assert result["writeAttempted"] is False
+    assert result["status"] == "blocked-runtime-lease-renewal-retired"
+    assert any(identity_field in blocker for blocker in result["blockers"])
+
+
+def test_runtime_lease_renewal_rejects_tampered_receipt_before_write(monkeypatch, tmp_path):
+    root, lease_path, receipt_path, lease_payload = build_runtime_renewal_fixture(tmp_path)
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    receipt["sourceCommit"] = "f" * 40
+    receipt_path.chmod(0o600)
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    monkeypatch.setattr(monitor, "ROOT", root)
+    monkeypatch.setattr(monitor, "RUNTIME_LEASE_FILE", lease_path)
+    monkeypatch.setattr(
+        monitor,
+        "run_command",
+        lambda *args, **kwargs: pytest.fail("lease writer must not run for tampered lineage"),
+    )
+    args = monitor.parse_args(["--run-count", "5", "--max-cycles", "1"])
+
+    result = monitor.renew_runtime_lease(args, lease_payload)
+
+    assert result["ok"] is False
+    assert result["writeAttempted"] is False
+    assert result["status"] == "blocked-runtime-lease-renewal-retired"
+    assert any("expired" in blocker for blocker in result["blockers"])
+
+
+def test_runtime_lease_renewal_rejects_checkout_drift_before_write(monkeypatch, tmp_path):
+    root, lease_path, _receipt_path, lease_payload = build_runtime_renewal_fixture(tmp_path)
+    (root / "run.py").write_text("RUNTIME = 'drifted'\n", encoding="utf-8")
+    monkeypatch.setattr(monitor, "ROOT", root)
+    monkeypatch.setattr(monitor, "RUNTIME_LEASE_FILE", lease_path)
+    monkeypatch.setattr(
+        monitor,
+        "run_command",
+        lambda *args, **kwargs: pytest.fail("lease writer must not run for checkout drift"),
+    )
+    args = monitor.parse_args(["--run-count", "5", "--max-cycles", "1"])
+
+    result = monitor.renew_runtime_lease(args, lease_payload)
+
+    assert result["ok"] is False
+    assert result["writeAttempted"] is False
+    assert result["status"] == "blocked-runtime-lease-renewal-retired"
+    assert any("expired" in blocker for blocker in result["blockers"])
+
+
+def test_runtime_lease_renewal_rejects_not_yet_valid_parent_without_write(monkeypatch, tmp_path):
+    root, _lease_path, _receipt_path, lease_payload = build_runtime_renewal_fixture(tmp_path)
+    future = datetime.now(timezone.utc) + timedelta(hours=1)
+    lease_payload["proofWindow"] = {
+        "startsAt": future.isoformat(),
+        "expiresAt": (future + timedelta(hours=1)).isoformat(),
+    }
+    monkeypatch.setattr(monitor, "ROOT", root)
+    monkeypatch.setattr(
+        monitor,
+        "run_command",
+        lambda *args, **kwargs: pytest.fail("retired renewal must never invoke a writer"),
+    )
+
+    result = monitor.renew_runtime_lease(
+        monitor.parse_args(["--run-count", "5", "--max-cycles", "1"]),
+        lease_payload,
+    )
+
+    assert result["ok"] is False
+    assert result["writeAttempted"] is False
+    assert any("has not started" in blocker for blocker in result["blockers"])
+
+
 def test_stop_loss_recovery_window_starts_bounded_supervisor(monkeypatch, tmp_path):
     monkeypatch.setattr(monitor, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop")
     monkeypatch.setattr(monitor, "offline_eval_resume_proof_status", accepted_offline_eval_resume_proof)
     monkeypatch.setattr(monitor, "active_improvement_proof_status", missing_active_improvement_proof)
     started: list[dict] = []
 
-    def fake_renew_runtime_lease(args, lease):
-        return {"ok": True, "returnCode": 0, "lease": {"status": "active"}}
-
     def fake_start_supervisor(args):
         started.append({"runCount": args.run_count, "maxCycles": args.max_cycles, "maxConcurrentBattles": args.max_concurrent_battles})
         return {"ok": True, "returnCode": 0}
 
-    monkeypatch.setattr(monitor, "renew_runtime_lease", fake_renew_runtime_lease)
     monkeypatch.setattr(monitor, "start_supervisor", fake_start_supervisor)
     health = {
         "checkedAt": datetime.now(timezone.utc).isoformat(),
@@ -2549,7 +2961,6 @@ def test_stop_loss_recovery_window_starts_bounded_supervisor(monkeypatch, tmp_pa
     args = monitor.parse_args(
         [
             "--repair-runtime",
-            "--renew-lease",
             "--run-count",
             "5",
             "--max-cycles",
@@ -2567,7 +2978,7 @@ def test_stop_loss_recovery_window_starts_bounded_supervisor(monkeypatch, tmp_pa
     assert payload["sessionGovernance"]["decision"] == "pause-laddering"
     assert payload["startGate"]["ready"] is True
     assert payload["startGate"]["decision"] == "allow-stop-loss-recovery-proof-window"
-    assert [item["action"] for item in actions] == ["renew-runtime-lease", "start-battle-supervisor"]
+    assert [item["action"] for item in actions] == ["start-battle-supervisor"]
     assert started == [{"runCount": 5, "maxCycles": 1, "maxConcurrentBattles": 1}]
 
 

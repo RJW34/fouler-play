@@ -1,7 +1,4 @@
 @echo off
-setlocal EnableExtensions
-cd /d "%~dp0"
-call "%~dp0start_one_touch.bat"
-set "EXIT_CODE=%ERRORLEVEL%"
-if not "%EXIT_CODE%"=="0" pause
-exit /b %EXIT_CODE%
+echo [RETIRED] start_bot.bat is disabled because the one-touch runtime authority was retired.
+echo [RETIRED] Use scripts\start_battle_supervisor_task.ps1 with a current runtime lease and deployment receipt.
+exit /b 2

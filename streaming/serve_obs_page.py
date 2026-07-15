@@ -26,7 +26,6 @@ if sys.platform == "win32":
 
 import asyncio
 import contextlib
-import html
 import json
 import os
 import subprocess
@@ -40,10 +39,25 @@ from collections import deque
 from aiohttp import web
 import aiohttp
 from pathlib import Path
+from urllib.parse import urlsplit
 try:
     from dotenv import load_dotenv
 except ImportError:  # pragma: no cover - optional dependency fallback
     load_dotenv = None
+
+
+def offline_rehearsal_requested(
+    environ: dict[str, str] | None = None,
+    argv: list[str] | None = None,
+) -> bool:
+    """Return whether the isolated, network-silent rehearsal mode was requested."""
+    environment = os.environ if environ is None else environ
+    arguments = sys.argv[1:] if argv is None else argv
+    enabled = str(environment.get("FOULER_OBS_OFFLINE_REHEARSAL") or "").strip().lower()
+    return enabled in {"1", "true", "yes", "on"} or "--offline-rehearsal" in arguments
+
+
+OFFLINE_REHEARSAL_MODE = offline_rehearsal_requested()
 
 # Ensure repo root is on sys.path so "streaming" is importable when run as a script
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -56,7 +70,12 @@ if str(SCRIPTS_DIR) not in sys.path:
 from streaming import state_store
 from streaming.hybrid_dashboard import register_dashboard_routes
 from devstream_runtime_checks import recent_showdown_credential_failure
+from devstream_runtime_lease import runtime_lease_path, validate_runtime_lease
 from fp.decision_trace import build_public_battle_view
+from infrastructure.runtime_paths import (
+    resolve_runtime_paths,
+    validate_external_runtime_path,
+)
 
 HERMES_OBS_ENV_KEYS = {
     "OBS_WS_PASSWORD",
@@ -102,14 +121,18 @@ def _load_hermes_obs_env() -> None:
             os.environ[key] = value
 
 
-# Load .env first, then the HERMES secret/config file so persistent OBS
-# WebSocket settings win over stale repo-local defaults without printing values.
-if load_dotenv:
-    load_dotenv()
-_load_hermes_obs_env()
+# Rehearsal mode must not load production secrets or persistent OBS settings.
+if not OFFLINE_REHEARSAL_MODE:
+    if load_dotenv:
+        load_dotenv()
+    _load_hermes_obs_env()
 
 PORT = int(os.getenv("OBS_SERVER_PORT", "8777"))
 STREAMING_DIR = Path(__file__).parent
+_RUNTIME_PATHS = resolve_runtime_paths(ROOT_DIR)
+RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
+RUNTIME_TRUTH_DIR = RUNTIME_STATE_ROOT / "truth"
+RUNTIME_LOG_ROOT = _RUNTIME_PATHS.log_root
 OBS_WS_HOST = (
     os.getenv("OBS_WS_HOST")
     or os.getenv("OBS_WEBSOCKET_HOST")
@@ -137,7 +160,7 @@ OBS_IDLE_URL = os.getenv("OBS_IDLE_URL", f"http://localhost:{PORT}/idle")
 OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in ("0", "false", "no", "off")
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
-OBS_WS_DISABLED = os.getenv("FOULER_OBS_WS_DISABLED", "").strip().lower() in (
+OBS_WS_DISABLED = OFFLINE_REHEARSAL_MODE or os.getenv("FOULER_OBS_WS_DISABLED", "").strip().lower() in (
     "1",
     "true",
     "yes",
@@ -151,23 +174,34 @@ DEEP_HEALTH_DEFAULT = os.getenv("FOULER_OBS_DEEP_HEALTH_DEFAULT", "").strip().lo
     "on",
 )
 GHOST_BATTLE_MAX_AGE_SEC = int(os.getenv("GHOST_BATTLE_MAX_AGE_SEC", "1800"))  # 30min: hard ghost removal (stall games can run 20+ min)
-GHOST_CHECK_INTERVAL_SEC = int(os.getenv("GHOST_CHECK_INTERVAL_SEC", "0"))  # Disabled: bot owns active_battles.json lifecycle
+GHOST_CHECK_INTERVAL_SEC = (
+    0
+    if OFFLINE_REHEARSAL_MODE
+    else int(os.getenv("GHOST_CHECK_INTERVAL_SEC", "0"))
+)  # Disabled: bot owns active_battles.json lifecycle
+PUBLIC_STATE_STALE_AFTER_SEC = max(
+    1,
+    int(os.getenv("FOULER_PUBLIC_STATE_STALE_AFTER_SEC", "120")),
+)
 SHOWDOWN_PROFILE_URL = os.getenv("SHOWDOWN_PROFILE_URL", "").strip()
 SHOWDOWN_USER_ID = os.getenv("SHOWDOWN_USER_ID", "").strip()
 SHOWDOWN_ACCOUNTS = [
     acc.strip() for acc in os.getenv("SHOWDOWN_ACCOUNTS", "").split(",") if acc.strip()
 ]
 SHOWDOWN_FORMAT = os.getenv("PS_FORMAT", "gen9ou").strip().lower()
-RUNTIME_LEASE_PATH = Path(os.getenv("FOULER_RUNTIME_LEASE_PATH", ROOT_DIR / "devstream" / "truth" / "runtime-lease.json"))
-ACCOUNT_SEASON_PATH = Path(
-    os.getenv(
-        "FOULER_ACCOUNT_SEASON_PATH",
-        ROOT_DIR / "devstream" / "truth" / "account-season.json",
-    )
+RUNTIME_LEASE_PATH = runtime_lease_path()
+ACCOUNT_SEASON_PATH = validate_external_runtime_path(
+    os.getenv("FOULER_ACCOUNT_SEASON_PATH", RUNTIME_TRUTH_DIR / "account-season.json"),
+    release_root=ROOT_DIR,
+    label="account season path",
 )
 ELO_REFRESH_COOLDOWN_SEC = int(os.getenv("SHOWDOWN_ELO_COOLDOWN_SEC", "5"))
 ELO_EVENT_RETRY_SEC = int(os.getenv("SHOWDOWN_ELO_EVENT_RETRY_SEC", "8"))
-ELO_POLL_INTERVAL_SEC = int(os.getenv("SHOWDOWN_ELO_POLL_SEC", "60"))
+ELO_POLL_INTERVAL_SEC = (
+    0
+    if OFFLINE_REHEARSAL_MODE
+    else int(os.getenv("SHOWDOWN_ELO_POLL_SEC", "60"))
+)
 PARENT_PID = int(os.getenv("FP_PARENT_PID", "0") or 0)
 PARENT_CHECK_SEC = int(os.getenv("FP_PARENT_CHECK_SEC", "5") or 5)
 REPLAY_CHECK_TTL_SEC = int(os.getenv("REPLAY_CHECK_TTL_SEC", "30"))
@@ -191,6 +225,12 @@ _obs_sources: list[str] = []
 def _use_process_signal_handlers() -> bool:
     """NSSM owns stop/restart signals for the Windows service process tree."""
     return LIFECYCLE_OWNER != "windows-service"
+
+
+def server_bind_host() -> str:
+    return "127.0.0.1" if OFFLINE_REHEARSAL_MODE else "0.0.0.0"
+
+
 _ladder_cache = {"accounts": {}, "updated": 0.0}
 _ladder_lock = asyncio.Lock()
 _last_stats = {"wins": None, "losses": None}
@@ -201,18 +241,20 @@ _elo_retry_task = None
 _replay_cache: dict[str, dict[str, float | bool]] = {}
 _emerald_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Emerald ROM", "status_text": "INITIALIZING"}
 _firered_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Fire Red ROM", "status_text": "INITIALIZING"}
-BATTLE_STATS_PATH = ROOT_DIR / "battle_stats.json"
-BATTLE_LOG_DIR = ROOT_DIR / "logs"
-PUBLIC_BATTLE_VIEW_PATH = Path(
+BATTLE_STATS_PATH = _RUNTIME_PATHS.battle_stats_path
+BATTLE_LOG_DIR = RUNTIME_LOG_ROOT
+PUBLIC_BATTLE_VIEW_PATH = validate_external_runtime_path(
     os.getenv(
         "FOULER_PUBLIC_BATTLE_VIEW_PATH",
-        str(BATTLE_LOG_DIR / "decision_traces" / "latest-public-battle.json"),
-    )
+        str(_RUNTIME_PATHS.decision_trace_root / "latest-public-battle.json"),
+    ),
+    release_root=ROOT_DIR,
+    label="public battle view path",
 )
 POKEDEX_PATH = ROOT_DIR / "data" / "pokedex.json"
 _public_pokedex: dict[str, dict] | None = None
 
-PID_FILE = ROOT_DIR / ".pids" / "obs_server.pid"
+PID_FILE = RUNTIME_STATE_ROOT / "pids" / "obs_server.pid"
 PROCESS_SCAN_TIMEOUT_SEC = float(os.getenv("FOULER_OBS_PROCESS_SCAN_TIMEOUT_SEC", "4") or "4")
 OBS_SERVER_SCRIPT_NAME = "serve_obs_page.py"
 OBS_SERVER_SCRIPT_TOKEN = "streaming/serve_obs_page.py"
@@ -475,15 +517,33 @@ def build_state_payload() -> dict:
     daily = state_store.read_daily_stats()
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
-    current_accounts = _current_showdown_accounts(battles)
-    status = _apply_ladder_status(
-        state_store.read_status(),
-        current_accounts=current_accounts,
+    current_accounts = [] if OFFLINE_REHEARSAL_MODE else _current_showdown_accounts(battles)
+    raw_status = state_store.read_status()
+    status = (
+        dict(raw_status)
+        if OFFLINE_REHEARSAL_MODE
+        else _apply_ladder_status(raw_status, current_accounts=current_accounts)
     )
     status["today_wins"] = daily.get("wins", 0)
     status["today_losses"] = daily.get("losses", 0)
-    credential_failure = recent_showdown_credential_failure(ROOT_DIR)
+    credential_failure = (
+        {"found": False}
+        if OFFLINE_REHEARSAL_MODE
+        else recent_showdown_credential_failure(ROOT_DIR)
+    )
     account_season = _account_season_authority()
+    if OFFLINE_REHEARSAL_MODE:
+        status.update(
+            {
+                "runtime_mode": "offline_rehearsal",
+                "offline_rehearsal": True,
+                "elo": "OFFLINE",
+                "elo_source": "offline-rehearsal",
+                "runtime_blocked": False,
+            }
+        )
+        for key in ("blocker_code", "blocker_summary"):
+            status.pop(key, None)
     
     # Update status field based on active battles
     if credential_failure.get("found"):
@@ -524,6 +584,8 @@ def build_state_payload() -> dict:
         "staged_baseline": account_season.get("stagedBaseline") is True,
         "runtime_status": account_season.get("runtimeStatus"),
         "runtime_blocked": bool(status.get("runtime_blocked")),
+        "runtime_mode": "offline_rehearsal" if OFFLINE_REHEARSAL_MODE else status.get("runtime_mode"),
+        "offline_rehearsal": OFFLINE_REHEARSAL_MODE,
     }
 
 
@@ -594,6 +656,8 @@ async def _merge_deku_battles(payload: dict) -> dict:
     environment.  Without it, the 3-second timeout fires every sync cycle
     and blocks source updates, causing visible flicker in OBS.
     """
+    if OFFLINE_REHEARSAL_MODE:
+        return payload
     deku_url = os.getenv("DEKU_STATE_URL", "")
     if not deku_url:
         return payload
@@ -644,6 +708,8 @@ def _build_direct_battle_url(bid: str) -> str:
     # OBS browser sources should be logged into the spectator account
     # (SPECTATOR_USERNAME in .env) so they can view any battle, with or
     # without a spectator hash.  The bot invites the spectator to each battle.
+    if OFFLINE_REHEARSAL_MODE:
+        return ""
     return f"https://play.pokemonshowdown.com/{bid}"
 
 
@@ -678,6 +744,13 @@ def _battle_age_seconds(battle: dict | None) -> int | None:
     return max(0, int((now - started).total_seconds()))
 
 
+def _timestamp_age_seconds(value: object) -> float | None:
+    parsed = _parse_started_iso(str(value or ""))
+    if parsed is None:
+        return None
+    return max(0.0, time.time() - parsed.timestamp())
+
+
 def _pokedex_entry(species_id: object) -> dict:
     global _public_pokedex
     if _public_pokedex is None:
@@ -704,7 +777,7 @@ def _decorate_public_pokemon(raw: object, *, back: bool) -> dict | None:
             f"https://play.pokemonshowdown.com/sprites/{'ani-back' if back else 'ani'}/{slug}.gif",
             f"https://play.pokemonshowdown.com/sprites/{'gen5-back' if back else 'gen5'}/{slug}.png",
         ]
-        if slug
+        if slug and not OFFLINE_REHEARSAL_MODE
         else []
     )
     pokemon["sprite_url"] = pokemon["sprite_urls"][0] if pokemon["sprite_urls"] else None
@@ -774,9 +847,13 @@ def _public_battle_view(battle: dict | None) -> dict | None:
         return None
     age_seconds = max(0.0, time.time() - modified)
     public = {key: value for key, value in payload.items() if key != "battle_id"}
-    public["match_ref"] = "Ranked ladder battle"
+    public["match_ref"] = (
+        "Private rehearsal battle"
+        if OFFLINE_REHEARSAL_MODE
+        else "Ranked ladder battle"
+    )
     public["age_seconds"] = round(age_seconds, 1)
-    public["stale"] = age_seconds > 120
+    public["stale"] = age_seconds > PUBLIC_STATE_STALE_AFTER_SEC
     public["user"] = _decorate_public_side(public.get("user"), back=True)
     public["opponent"] = _decorate_public_side(public.get("opponent"), back=False)
     return public
@@ -976,6 +1053,42 @@ def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | 
     if battle_view and battle_view.get("turn") is not None:
         turn = battle_view.get("turn")
     age_seconds = _battle_age_seconds(battle)
+    state_age_seconds = _timestamp_age_seconds(state.get("updated"))
+    view_age_seconds = None
+    if battle_view is not None:
+        try:
+            view_age_seconds = max(0.0, float(battle_view.get("age_seconds")))
+        except (TypeError, ValueError):
+            view_age_seconds = None
+
+    # Battle start time is duration, not freshness. The active-battle heartbeat
+    # and public-view modification time are the authoritative clocks here.
+    view_ready = bool(
+        battle_view
+        and isinstance(battle_view.get("user"), dict)
+        and battle_view["user"].get("active")
+        and isinstance(battle_view.get("opponent"), dict)
+        and battle_view["opponent"].get("active")
+    )
+    stale = bool(battle) and (
+        state_age_seconds is None
+        or state_age_seconds > PUBLIC_STATE_STALE_AFTER_SEC
+        or bool(battle_view and battle_view.get("stale"))
+    )
+    if not battle:
+        freshness = "idle"
+    elif stale:
+        freshness = "stale"
+    elif view_ready:
+        freshness = "current"
+    else:
+        freshness = "loading"
+    freshness_ages = [
+        value
+        for value in (state_age_seconds, view_age_seconds)
+        if value is not None
+    ]
+    freshness_age_seconds = max(freshness_ages) if freshness_ages else None
     accounts_elo = status.get("accounts_elo") or state.get("accounts_elo") or {}
     elo_value = None
     if isinstance(accounts_elo, dict) and accounts_elo:
@@ -989,7 +1102,30 @@ def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | 
     )
     return {
         "slot": slot_num,
-        "active": bool(battle),
+        "active": freshness in {"loading", "current"},
+        "stale": stale,
+        "freshness": freshness,
+        "freshness_age_seconds": (
+            round(freshness_age_seconds, 1)
+            if freshness_age_seconds is not None
+            else None
+        ),
+        "freshness_age_label": (
+            _format_seconds(freshness_age_seconds)
+            if freshness_age_seconds is not None
+            else None
+        ),
+        "state_age_seconds": (
+            round(state_age_seconds, 1)
+            if state_age_seconds is not None
+            else None
+        ),
+        "view_age_seconds": (
+            round(view_age_seconds, 1)
+            if view_age_seconds is not None
+            else None
+        ),
+        "stale_after_seconds": PUBLIC_STATE_STALE_AFTER_SEC,
         "opponent": _format_battle_label(battle.get("opponent")) if battle else None,
         "age_label": _format_seconds(age_seconds),
         "turn": turn,
@@ -1008,8 +1144,46 @@ def _build_public_slot_source_url(slot: int) -> str:
     return f"http://localhost:{PORT}/slot/{slot}?slot_idle=public"
 
 
-def _build_obs_slot_source_url(slot: int, battle_id: str | None = None) -> str:
-    """Keep OBS on the reactive local surface for active and idle states."""
+def _validated_battle_surface_url(
+    battle_id: str | None,
+    battle_url: str | None,
+) -> str | None:
+    candidate = str(battle_url or "").strip()
+    if not candidate or OFFLINE_REHEARSAL_MODE:
+        return None
+    try:
+        parsed = urlsplit(candidate)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.lower() != "https"
+        or (parsed.hostname or "").lower() != "play.pokemonshowdown.com"
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+    ):
+        return None
+    path_id = parsed.path.removeprefix("/")
+    if not re.fullmatch(r"battle-[A-Za-z0-9-]+", path_id):
+        return None
+    expected_id = str(battle_id or "").strip()
+    if expected_id and path_id != expected_id and not path_id.startswith(f"{expected_id}-"):
+        return None
+    return candidate
+
+
+def _build_obs_slot_source_url(
+    slot: int,
+    battle_id: str | None = None,
+    battle_url: str | None = None,
+) -> str:
+    """Show the real match while active and the local viewer page between matches."""
+    validated_url = _validated_battle_surface_url(battle_id, battle_url)
+    if validated_url:
+        return validated_url
+    if battle_id:
+        return _build_direct_battle_url(battle_id)
     return _build_public_slot_source_url(slot)
 
 
@@ -1084,27 +1258,30 @@ def _active_accounts_from_battles(battles: list[dict]) -> list[str]:
 
 
 def _runtime_lease_account() -> str:
-    try:
-        lease = json.loads(RUNTIME_LEASE_PATH.read_text(encoding="utf-8"))
-    except Exception:
+    if OFFLINE_REHEARSAL_MODE:
         return ""
-    if not isinstance(lease, dict):
+    validation = validate_runtime_lease(
+        purpose="devstream-supervise",
+        lease_path=RUNTIME_LEASE_PATH,
+    )
+    if not validation.get("ok"):
         return ""
-    battle_scope = lease.get("battleScope") if isinstance(lease.get("battleScope"), dict) else {}
-    for value in (
-        lease.get("account"),
-        lease.get("psUsername"),
-        lease.get("showdownAccount"),
-        battle_scope.get("account"),
-        battle_scope.get("psUsername"),
-    ):
-        text = str(value or "").strip()
-        if text:
-            return text
-    return ""
+    summary = validation.get("lease") if isinstance(validation.get("lease"), dict) else {}
+    return str(summary.get("account") or "").strip()
 
 
 def _account_season_authority() -> dict:
+    if OFFLINE_REHEARSAL_MODE:
+        account = str(os.getenv("PS_USERNAME") or "FoulerRehearsal").strip()
+        return {
+            "ready": False,
+            "account": account or None,
+            "seasonId": None,
+            "baselineRating": None,
+            "runtimeStatus": "offline-rehearsal",
+            "firstBattleStarted": False,
+            "stagedBaseline": False,
+        }
     try:
         season = json.loads(ACCOUNT_SEASON_PATH.read_text(encoding="utf-8-sig"))
     except Exception:
@@ -1227,6 +1404,8 @@ def _latest_battle_stats_rating() -> tuple[int | None, object]:
 
 
 def _visible_ladder_accounts(accounts: list[str] | None = None) -> tuple[dict, str | None, object]:
+    if OFFLINE_REHEARSAL_MODE:
+        return {}, "offline-rehearsal", None
     visible = _ladder_accounts_for(accounts)
     if visible:
         return visible, "showdown", _ladder_cache.get("updated")
@@ -1267,6 +1446,8 @@ def _parse_started_iso(value: str | None) -> datetime | None:
 
 
 def _resolve_showdown_profile_url() -> str:
+    if OFFLINE_REHEARSAL_MODE:
+        return ""
     if SHOWDOWN_PROFILE_URL:
         return SHOWDOWN_PROFILE_URL
     user_id = SHOWDOWN_USER_ID
@@ -1302,6 +1483,8 @@ def _extract_elo_from_profile(html: str, fmt: str) -> int | None:
 
 
 async def fetch_showdown_elo(user_id: str | None = None) -> int | None:
+    if OFFLINE_REHEARSAL_MODE:
+        return None
     # Prefer JSON user API (more reliable than HTML scraping).
     if not user_id:
         user_id = _resolve_showdown_user_id()
@@ -1388,6 +1571,8 @@ def _prune_replay_cache(now: float) -> None:
 
 
 async def _replay_exists(replay_id: str) -> bool:
+    if OFFLINE_REHEARSAL_MODE:
+        return False
     if not replay_id:
         return False
     now = time.time()
@@ -1418,6 +1603,8 @@ async def _replay_exists(replay_id: str) -> bool:
 
 
 async def _init_elo_cache() -> None:
+    if OFFLINE_REHEARSAL_MODE:
+        return
     try:
         battles_data = state_store.read_active_battles()
         accounts = _current_showdown_accounts(battles_data.get("battles", []))
@@ -1436,6 +1623,8 @@ async def _init_elo_cache() -> None:
 
 async def _refresh_elo(force: bool = False) -> bool:
     """Fetch ELO from Showdown and update cache. Returns True on success."""
+    if OFFLINE_REHEARSAL_MODE:
+        return False
     global _last_elo_refresh_ts
     now = time.time()
     if not force and ELO_REFRESH_COOLDOWN_SEC > 0 and (now - _last_elo_refresh_ts) < ELO_REFRESH_COOLDOWN_SEC:
@@ -1474,6 +1663,8 @@ async def _run_elo_refresh_task(*, force: bool, delay: int = 0) -> None:
 
 def _schedule_elo_refresh(*, force: bool, delay: int = 0) -> None:
     global _elo_refresh_task, _elo_retry_task
+    if OFFLINE_REHEARSAL_MODE:
+        return
     if delay <= 0:
         # Immediate event refresh: keep at most one in-flight to avoid piling up.
         if _elo_refresh_task and not _elo_refresh_task.done():
@@ -1490,6 +1681,8 @@ def _schedule_elo_refresh(*, force: bool, delay: int = 0) -> None:
 
 async def _filter_finished_battles(battles: list[dict]) -> list[dict]:
     """Filter out finished battles (replay exists). Removed stale-battle filter - most PS battles are 10-30min."""
+    if OFFLINE_REHEARSAL_MODE:
+        return list(battles)
     if not battles:
         return battles
     filtered: list[dict] = []
@@ -1528,6 +1721,8 @@ async def _cleanup_ghost_battles() -> None:
 
     Writes cleaned data back to active_battles.json so OBS transitions to idle.
     """
+    if OFFLINE_REHEARSAL_MODE:
+        return
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
     if not battles:
@@ -1560,6 +1755,8 @@ async def _cleanup_ghost_battles() -> None:
 
 async def maybe_refresh_elo_from_event(event_type: str, payload: dict) -> None:
     global _last_elo_event_ts
+    if OFFLINE_REHEARSAL_MODE:
+        return
     trigger = False
     if event_type == "BATTLE_END":
         trigger = True
@@ -1587,6 +1784,16 @@ async def maybe_refresh_elo_from_event(event_type: str, payload: dict) -> None:
 
 def _apply_ladder_status(status: dict, *, current_accounts: list[str] | None = None) -> dict:
     merged = dict(status)
+    if OFFLINE_REHEARSAL_MODE:
+        merged.update(
+            {
+                "elo": "OFFLINE",
+                "elo_source": "offline-rehearsal",
+                "runtime_mode": "offline_rehearsal",
+                "offline_rehearsal": True,
+            }
+        )
+        return merged
     accounts, source, updated = _visible_ladder_accounts(current_accounts)
     
     # Backward compat: if only one account, set top-level "elo" field
@@ -1659,10 +1866,10 @@ async def ensure_obs_sources() -> None:
 
 
 async def maybe_update_obs_sources(payload: dict) -> None:
-    print(f"[OBS-UPDATE] maybe_update_obs_sources() called")
+    print("[OBS-UPDATE] maybe_update_obs_sources() called")
     
     if not _obs_client:
-        print(f"[OBS-UPDATE] FAIL: No OBS client (_obs_client is None)")
+        print("[OBS-UPDATE] FAIL: No OBS client (_obs_client is None)")
         return
     
     obs_connected = False
@@ -1676,7 +1883,7 @@ async def maybe_update_obs_sources(payload: dict) -> None:
     if not _obs_sources:
         await ensure_obs_sources()
     if not _obs_sources:
-        print(f"[OBS-UPDATE] FAIL: No OBS sources configured")
+        print("[OBS-UPDATE] FAIL: No OBS sources configured")
         return
     
     # Trust active_battles.json as the single source of truth.
@@ -1696,7 +1903,8 @@ async def maybe_update_obs_sources(payload: dict) -> None:
             battle = slot_map.get(idx)
             desired_id = battle.get("id") if battle else None
             previous_id = _last_obs_ids.get(idx)
-            url = _build_obs_slot_source_url(idx, desired_id)
+            desired_url = battle.get("url") if battle else None
+            url = _build_obs_slot_source_url(idx, desired_id, desired_url)
             
             print(f"[OBS-UPDATE] Slot {idx} ({source_name}): previous={previous_id}, desired={desired_id}")
 
@@ -1803,32 +2011,76 @@ def _public_surface_health_payload(singleton_status: dict, probe_failure: dict |
     status = state.get("status") if isinstance(state.get("status"), dict) else {}
     runtime_blocked = bool(state.get("runtime_blocked") or status.get("runtime_blocked"))
     blockers: list[str] = []
+    warnings = ["devstream health probe failed; using OBS public surface liveness fallback"]
     if runtime_blocked:
         summary = status.get("blocker_summary") or status.get("status") or "runtime blocked"
         code = status.get("blocker_code")
         suffix = f" ({code})" if code else ""
         blockers.append(f"{summary}{suffix}")
 
-    active_battle_count = len(battles)
+    freshness_counts = {"current": 0, "loading": 0, "stale": 0}
+    for index, battle in enumerate(battles):
+        try:
+            slot = int(battle.get("slot") or index + 1)
+        except (AttributeError, TypeError, ValueError):
+            slot = index + 1
+        battle_health = _build_battle_lab_payload(slot, battle, state)
+        freshness = str(battle_health.get("freshness") or "stale")
+        if freshness in freshness_counts:
+            freshness_counts[freshness] += 1
+        else:
+            freshness_counts["stale"] += 1
+
+    current_battle_count = freshness_counts["current"]
+    loading_battle_count = freshness_counts["loading"]
+    stale_battle_count = freshness_counts["stale"]
+    active_battle_count = current_battle_count + loading_battle_count
+    if stale_battle_count:
+        blockers.append(
+            f"{stale_battle_count} stored battle surface(s) exceed the public freshness threshold"
+        )
+    if loading_battle_count:
+        warnings.append(
+            f"{loading_battle_count} active battle surface(s) are waiting for a complete public view"
+        )
+
     stream_ready = not blockers
+    live_focus_ready = bool(
+        stream_ready
+        and current_battle_count
+        and loading_battle_count == 0
+        and current_battle_count == len(battles)
+    )
+    if blockers:
+        public_status = "blocked"
+    elif current_battle_count:
+        public_status = "running"
+    elif loading_battle_count:
+        public_status = "loading"
+    else:
+        public_status = "ready"
     payload = {
         "schemaVersion": "fouler-obs-health/v1",
         "projectId": "fouler-play",
-        "status": "running" if active_battle_count else ("ready" if stream_ready else "blocked"),
+        "status": public_status,
         "healthy": stream_ready,
         "running": True,
-        "readyForLiveFocus": bool(stream_ready and active_battle_count),
+        "readyForLiveFocus": live_focus_ready,
         "readiness": {
             "streamReady": stream_ready,
-            "runtimeReady": bool(stream_ready and active_battle_count),
+            "runtimeReady": live_focus_ready,
             "proofHandoffReady": False,
         },
         "activeBattleCount": active_battle_count,
+        "storedBattleCount": len(battles),
+        "currentBattleCount": current_battle_count,
+        "loadingBattleCount": loading_battle_count,
+        "staleBattleCount": stale_battle_count,
         "proofBlockers": [
             "devstream health probe unavailable; HTTP surface liveness cannot certify completed proof handoff"
         ],
         "blockers": blockers,
-        "warnings": ["devstream health probe failed; using OBS public surface liveness fallback"],
+        "warnings": warnings,
         "devstreamHealthProbe": probe_failure or {"ok": False, "method": "fallback"},
         "obsServerSingleton": singleton_status,
     }
@@ -1847,6 +2099,20 @@ def _probe_failure_payload(*, method: str, error: str = "", return_code: int | N
 
 
 async def _load_devstream_health_payload(singleton_status: dict) -> tuple[dict, int]:
+    if OFFLINE_REHEARSAL_MODE:
+        payload, status_code = _public_surface_health_payload(
+            singleton_status,
+            {
+                "ok": True,
+                "method": "offline-rehearsal-local",
+                "reason": "production devstream proof probes are disabled",
+            },
+        )
+        payload["offlineRehearsal"] = True
+        payload["proofBlockers"] = [
+            "offline rehearsal cannot certify public ladder or production readiness"
+        ]
+        return payload, status_code
     script = ROOT_DIR / "scripts" / "devstream_health.py"
     if not script.exists():
         failure = _probe_failure_payload(method="subprocess", error=f"health probe script not found: {script}")
@@ -1919,7 +2185,14 @@ async def handle_health(request: web.Request) -> web.Response:
             status=200,
         )
 
-    if deep_requested:
+    if deep_requested and OFFLINE_REHEARSAL_MODE:
+        singleton_status = {
+            "duplicateCount": 0,
+            "duplicates": [],
+            "skipped": True,
+            "reason": "offline rehearsal does not inspect production processes",
+        }
+    elif deep_requested:
         # Native process-table enumeration still belongs off the event loop.
         singleton_status = await asyncio.to_thread(_build_singleton_status)
     payload, status_code = await _load_devstream_health_payload(singleton_status)
@@ -1936,6 +2209,10 @@ async def handle_health(request: web.Request) -> web.Response:
 
 
 def _build_status_payload() -> dict:
+    if OFFLINE_REHEARSAL_MODE:
+        payload = build_state_payload()
+        status = payload.get("status")
+        return status if isinstance(status, dict) else {}
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
     current_accounts = _current_showdown_accounts(battles)
@@ -1977,6 +2254,11 @@ MAGNETON_STATE_URL = os.getenv("MAGNETON_STATE_URL", "http://jigglypuff.tail4859
 
 async def handle_deku_state(request: web.Request) -> web.Response:
     """Proxy DEKU's state endpoint to avoid CORS issues in OBS browser."""
+    if OFFLINE_REHEARSAL_MODE:
+        return web.json_response(
+            {"error": "remote state proxy disabled in offline rehearsal"},
+            status=503,
+        )
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(DEKU_STATE_URL, timeout=aiohttp.ClientTimeout(total=5)) as resp:
@@ -2212,11 +2494,12 @@ async def start_background_tasks(app: web.Application) -> None:
     app["loop_lag_monitor"] = asyncio.create_task(monitor_loop_lag(app))
     threading.Thread(target=_loop_stall_watcher, name="loop-stall-watcher", daemon=True).start()
     threading.Thread(target=_listener_self_check, name="listener-self-check", daemon=True).start()
-    # Initialize ELO cache and broadcast once ready
-    async def init_and_broadcast_elo():
-        await _init_elo_cache()
-        await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
-    app["elo_init"] = asyncio.create_task(init_and_broadcast_elo())
+    if not OFFLINE_REHEARSAL_MODE:
+        # Initialize ELO cache and broadcast once ready.
+        async def init_and_broadcast_elo():
+            await _init_elo_cache()
+            await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
+        app["elo_init"] = asyncio.create_task(init_and_broadcast_elo())
     if _obs_client:
         async def init_obs_sources():
             await maybe_update_obs_sources(await asyncio.to_thread(build_state_payload))
@@ -2317,6 +2600,11 @@ async def handle_firered_update(request: web.Request) -> web.Response:
 
 async def handle_magneton_state(request: web.Request) -> web.Response:
     """Proxy MAGNETON state endpoint to avoid CORS issues in OBS browser sources."""
+    if OFFLINE_REHEARSAL_MODE:
+        return web.json_response(
+            {"error": "remote state proxy disabled in offline rehearsal"},
+            status=503,
+        )
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(MAGNETON_STATE_URL, timeout=aiohttp.ClientTimeout(total=5)) as resp:
@@ -2412,6 +2700,20 @@ async def handle_battle_slot(request: web.Request) -> web.Response:
     )
 
 
+async def _offline_rehearsal_response_headers(
+    request: web.Request,
+    response: web.StreamResponse,
+) -> None:
+    if not OFFLINE_REHEARSAL_MODE:
+        return
+    response.headers["X-Fouler-Offline-Rehearsal"] = "1"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; connect-src 'self'; img-src 'self' data:; "
+        "font-src 'self'; frame-src 'none'; script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'"
+    )
+
+
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/ws", handle_ws)
@@ -2441,6 +2743,7 @@ def create_app() -> web.Application:
     app.router.add_get("/magneton-state", handle_magneton_state)
     app.router.add_get("/slot/{slot}/state", handle_slot_state)
     app.router.add_get("/slot/{slot}", handle_battle_slot)
+    app.on_response_prepare.append(_offline_rehearsal_response_headers)
     app.on_startup.append(start_background_tasks)
     app.on_cleanup.append(cleanup_background_tasks)
     return app
@@ -2477,7 +2780,7 @@ if __name__ == "__main__":
 
     web.run_app(
         create_app(),
-        host="0.0.0.0",
+        host=server_bind_host(),
         port=PORT,
         handle_signals=_use_process_signal_handlers(),
     )

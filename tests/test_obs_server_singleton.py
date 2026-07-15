@@ -13,9 +13,9 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 sys.path.insert(0, str(ROOT_DIR / "scripts"))
 
-import devstream_health
-from streaming import state_store
-from streaming import serve_obs_page
+import devstream_health  # noqa: E402
+from streaming import serve_obs_page  # noqa: E402
+from streaming import state_store  # noqa: E402
 
 
 def test_same_repo_obs_server_duplicate_is_detected() -> None:
@@ -255,6 +255,11 @@ async def test_health_fallback_keeps_serving_active_public_surface(tmp_path, mon
     monkeypatch.setattr(serve_obs_page, "ROOT_DIR", tmp_path)
     monkeypatch.setattr(serve_obs_page, "_build_singleton_status", lambda: {"duplicateCount": 0, "duplicates": []})
     monkeypatch.setattr(serve_obs_page, "recent_showdown_credential_failure", lambda _root: {"found": False})
+    monkeypatch.setattr(
+        serve_obs_page,
+        "_build_battle_lab_payload",
+        lambda _slot, _battle, _state: {"freshness": "current"},
+    )
     monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", tmp_path / "active_battles.json")
     monkeypatch.setattr(state_store, "STREAM_STATUS_PATH", tmp_path / "stream_status.json")
     monkeypatch.setattr(state_store, "DAILY_STATS_PATH", tmp_path / "daily_stats.json")
@@ -287,3 +292,64 @@ async def test_health_fallback_keeps_serving_active_public_surface(tmp_path, mon
     assert payload["readiness"]["proofHandoffReady"] is False
     assert payload["devstreamHealthProbe"]["ok"] is False
     assert payload["activeBattleCount"] == 1
+    assert payload["currentBattleCount"] == 1
+    assert payload["staleBattleCount"] == 0
+
+
+def test_health_fallback_rejects_stale_stored_battles(monkeypatch) -> None:
+    monkeypatch.setattr(
+        serve_obs_page,
+        "build_state_payload",
+        lambda: {
+            "status": {},
+            "runtime_blocked": False,
+            "battles": [{"id": "battle-gen9ou-stale", "slot": 1}],
+        },
+    )
+    monkeypatch.setattr(
+        serve_obs_page,
+        "_build_battle_lab_payload",
+        lambda _slot, _battle, _state: {"freshness": "stale"},
+    )
+
+    payload, status = serve_obs_page._public_surface_health_payload(
+        {"duplicateCount": 0, "duplicates": []}
+    )
+
+    assert status == 503
+    assert payload["healthy"] is False
+    assert payload["readyForLiveFocus"] is False
+    assert payload["readiness"]["runtimeReady"] is False
+    assert payload["activeBattleCount"] == 0
+    assert payload["storedBattleCount"] == 1
+    assert payload["staleBattleCount"] == 1
+    assert "freshness threshold" in payload["blockers"][0]
+
+
+def test_health_fallback_does_not_certify_loading_surface(monkeypatch) -> None:
+    monkeypatch.setattr(
+        serve_obs_page,
+        "build_state_payload",
+        lambda: {
+            "status": {},
+            "runtime_blocked": False,
+            "battles": [{"id": "battle-gen9ou-loading", "slot": 1}],
+        },
+    )
+    monkeypatch.setattr(
+        serve_obs_page,
+        "_build_battle_lab_payload",
+        lambda _slot, _battle, _state: {"freshness": "loading"},
+    )
+
+    payload, status = serve_obs_page._public_surface_health_payload(
+        {"duplicateCount": 0, "duplicates": []}
+    )
+
+    assert status == 200
+    assert payload["healthy"] is True
+    assert payload["status"] == "loading"
+    assert payload["readyForLiveFocus"] is False
+    assert payload["readiness"]["runtimeReady"] is False
+    assert payload["activeBattleCount"] == 1
+    assert payload["loadingBattleCount"] == 1

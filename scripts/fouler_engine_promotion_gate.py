@@ -17,7 +17,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -436,6 +436,20 @@ def offline_eval_result(root: Path) -> dict[str, Any]:
         }
 
 
+def head_to_head_result(root: Path) -> dict[str, Any]:
+    from infrastructure.head_to_head_proof import load_latest_proof
+
+    payload, blockers = load_latest_proof(
+        root / "eval_results" / "head_to_head" / "latest.json",
+        project_root=root,
+    )
+    if blockers:
+        payload = dict(payload)
+        payload["independentValidationBlockers"] = blockers
+        payload["promotionAllowed"] = False
+    return payload
+
+
 def build_history(
     *,
     root: Path = ROOT,
@@ -445,6 +459,8 @@ def build_history(
     elo_proof: dict[str, Any] | None = None,
     battle_stats: Any | None = None,
     offline_eval: dict[str, Any] | None = None,
+    head_to_head: dict[str, Any] | None = None,
+    head_to_head_provenance: dict[str, Any] | None = None,
     max_traces: int = 500,
 ) -> dict[str, Any]:
     packet_dir = packet_dir or root / "devstream" / "work_packets" / "generated"
@@ -455,6 +471,11 @@ def build_history(
     elo_proof = elo_proof if elo_proof is not None else read_json(root / "devstream" / "truth" / "latest-elo-proof.json", {})
     battle_stats = battle_stats if battle_stats is not None else read_json(root / "battle_stats.json", {})
     offline_eval = offline_eval if offline_eval is not None else offline_eval_result(root)
+    head_to_head = head_to_head if head_to_head is not None else head_to_head_result(root)
+    if head_to_head_provenance is None:
+        from infrastructure.head_to_head_proof import checkout_provenance
+
+        head_to_head_provenance = checkout_provenance(root, head_to_head) if head_to_head else {}
     rows = battle_rows(battle_stats)
     return {
         "schemaVersion": "fouler-engine-history/v1",
@@ -478,6 +499,10 @@ def build_history(
         "ratingTruth": rating_truth(rows, elo_proof if isinstance(elo_proof, dict) else {}, latest),
         "decisionTraceHistory": decision_trace_summary(root, max_traces=max_traces),
         "offlineEval": offline_eval if isinstance(offline_eval, dict) else {},
+        "headToHeadEval": head_to_head if isinstance(head_to_head, dict) else {},
+        "headToHeadEvalProvenance": (
+            head_to_head_provenance if isinstance(head_to_head_provenance, dict) else {}
+        ),
     }
 
 
@@ -489,7 +514,12 @@ def promotion_blockers(history: Mapping[str, Any]) -> list[str]:
     post_packet = history.get("postPacketEval") if isinstance(history.get("postPacketEval"), dict) else {}
     autoresearch = history.get("autoresearch") if isinstance(history.get("autoresearch"), dict) else {}
     rating = history.get("ratingTruth") if isinstance(history.get("ratingTruth"), dict) else {}
-    offline = history.get("offlineEval") if isinstance(history.get("offlineEval"), dict) else {}
+    head_to_head = history.get("headToHeadEval") if isinstance(history.get("headToHeadEval"), dict) else {}
+    head_to_head_provenance = (
+        history.get("headToHeadEvalProvenance")
+        if isinstance(history.get("headToHeadEvalProvenance"), dict)
+        else {}
+    )
     traces = history.get("decisionTraceHistory") if isinstance(history.get("decisionTraceHistory"), dict) else {}
 
     if not latest:
@@ -509,8 +539,76 @@ def promotion_blockers(history: Mapping[str, Any]) -> list[str]:
     if post_packet.get("preservationSatisfied") is not True:
         blockers.append("post-packet preservation proof is not satisfied")
 
-    if offline.get("accepted") is not True and offline.get("ready") is not True:
-        blockers.append(f"offline eval result proof is {offline.get('status') or 'not accepted'}")
+    blockers.extend(
+        f"candidate-vs-frozen artifact invalid: {item}"
+        for item in head_to_head.get("independentValidationBlockers") or []
+    )
+    if head_to_head.get("schemaVersion") != "fouler-head-to-head-eval/v2":
+        blockers.append("candidate-vs-frozen head-to-head proof is missing")
+    elif head_to_head.get("promotionAllowed") is not True:
+        blockers.extend(
+            [
+                f"candidate-vs-frozen gate blocked: {item}"
+                for item in head_to_head.get("blockers") or [head_to_head.get("status") or "not accepted"]
+            ]
+        )
+    else:
+        requested = int(numeric(head_to_head.get("requestedBattles")) or 0)
+        completed = int(numeric(head_to_head.get("completedBattles")) or 0)
+        candidate_wins = int(numeric(head_to_head.get("candidateWins")) or 0)
+        frozen_wins = int(numeric(head_to_head.get("frozenWins")) or 0)
+        ties = int(numeric(head_to_head.get("ties")) or 0)
+        if requested < 60 or requested % 12:
+            blockers.append("candidate-vs-frozen proof must request a multiple of 12 and at least 60 battles")
+        if completed != requested:
+            blockers.append(f"candidate-vs-frozen proof completed {completed}/{requested} battles")
+        if ties or candidate_wins + frozen_wins + ties != completed:
+            blockers.append("candidate-vs-frozen proof has tie/disconnect or result-total gaps")
+        if head_to_head.get("identicalSmoke") is True:
+            blockers.append("identical-code smoke cannot authorize engine promotion")
+        if str(head_to_head.get("status") or "") != "promotion-ready":
+            blockers.append("candidate-vs-frozen proof status is not promotion-ready")
+        effect = numeric(head_to_head.get("effectOverFrozen"))
+        exact_p = numeric(head_to_head.get("oneSidedExactP"))
+        if effect is None or float(effect) < 0.10:
+            blockers.append("candidate-vs-frozen effect is below +10%")
+        if exact_p is None or float(exact_p) >= 0.01:
+            blockers.append("candidate-vs-frozen exact-binomial p-value is not below 0.01")
+        if len(str(head_to_head.get("baselineCommit") or "")) < 7:
+            blockers.append("candidate-vs-frozen proof is missing its frozen commit")
+        if len(str(head_to_head.get("candidatePatchSha256") or "")) != 64:
+            blockers.append("candidate-vs-frozen proof is missing its candidate patch hash")
+        candidate_file = str(head_to_head.get("candidateFile") or "").replace("\\", "/")
+        if candidate_file not in {
+            "fp/search/main.py",
+            "fp/search/eval.py",
+            "fp/search/forced_lines.py",
+            "fp/search/endgame.py",
+            "fp/playstyle_config.py",
+            "fp/team_analysis.py",
+            "fp/opponent_model.py",
+        }:
+            blockers.append("candidate-vs-frozen proof target is outside the engine allowlist")
+        team_summary = head_to_head.get("candidateTeamSummary") if isinstance(head_to_head.get("candidateTeamSummary"), dict) else {}
+        if set(team_summary) != {"fat-team-1-stall", "fat-team-2-balance", "fat-team-3-dondozo"}:
+            blockers.append("candidate-vs-frozen proof lacks exact three-team coverage")
+        role_summary = head_to_head.get("roleSummary") if isinstance(head_to_head.get("roleSummary"), dict) else {}
+        if set(role_summary) != {"challenger", "accepter"}:
+            blockers.append("candidate-vs-frozen proof lacks both connection roles")
+
+        from infrastructure.head_to_head_proof import structure_blockers
+
+        blockers.extend(
+            f"candidate-vs-frozen proof invalid: {item}" for item in structure_blockers(head_to_head)
+        )
+
+    if head_to_head_provenance.get("ready") is not True:
+        provenance_blockers = head_to_head_provenance.get("blockers") or [
+            "accepted artifact is not bound to the current checkout"
+        ]
+        blockers.extend(
+            f"candidate-vs-frozen provenance blocked: {item}" for item in provenance_blockers
+        )
 
     for shift in autoresearch.get("worseningIssueShifts") or []:
         if not isinstance(shift, dict):
@@ -543,7 +641,7 @@ def build_gate(history: Mapping[str, Any]) -> dict[str, Any]:
     else:
         action = "Repair the missing proof inputs, then rerun scripts/fouler_engine_promotion_gate.py --write."
     return {
-        "schemaVersion": "fouler-engine-promotion-gate/v1",
+        "schemaVersion": "fouler-engine-promotion-gate/v2",
         "checkedAt": iso_now(),
         "projectId": "fouler-play",
         "status": status,
@@ -563,6 +661,7 @@ def render_markdown(gate: Mapping[str, Any]) -> str:
     autoresearch = history.get("autoresearch") if isinstance(history.get("autoresearch"), dict) else {}
     rating = history.get("ratingTruth") if isinstance(history.get("ratingTruth"), dict) else {}
     traces = history.get("decisionTraceHistory") if isinstance(history.get("decisionTraceHistory"), dict) else {}
+    head_to_head = history.get("headToHeadEval") if isinstance(history.get("headToHeadEval"), dict) else {}
     lines = [
         "# Fouler Engine Promotion Gate",
         "",
@@ -589,6 +688,8 @@ def render_markdown(gate: Mapping[str, Any]) -> str:
             f"- Rating truth coherent: {rating.get('coherent')}",
             f"- Decision traces parsed: {traces.get('traceFilesParsed')}",
             f"- High-regret traces: {traces.get('highRegretCount')}",
+            f"- Candidate-vs-frozen promotion allowed: {head_to_head.get('promotionAllowed')}",
+            f"- Candidate-vs-frozen record: {head_to_head.get('candidateWins')}-{head_to_head.get('frozenWins')} over {head_to_head.get('completedBattles')} battles",
         ]
     )
     return "\n".join(lines) + "\n"

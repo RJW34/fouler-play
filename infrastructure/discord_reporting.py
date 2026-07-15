@@ -131,8 +131,6 @@ def format_elo_delta(
     if delta is None:
         delta = after_num - before_num
     result_norm = _normalize_result(result)
-    sign = "+" if delta > 0 else ""
-
     if (result_norm == "loss" and delta > 0) or (result_norm == "win" and delta < 0):
         return f"{label} unverified (cached {before_num}, fetched {after_num})"
 
@@ -268,19 +266,17 @@ def _compact_sentence_parts(parts: Sequence[str], limit: int = _MAX_FIELD_LEN) -
 # improve cycle" language below assumed a human/agent servicer that reviews each
 # replay and feeds an accepted improvement. That servicer does not exist: the
 # engine self-improvement loop (infrastructure/improve_agent.py) is off (no
-# FOULER_PLAY_ENABLE_AUTO_IMPROVE, no scheduled task), its only objective gate is
-# the weak "simple" offline baseline that constitution R5 forbids auto-accepting
-# engine changes on, and the deterministic replay classifier (replay_analysis)
-# has not run since 2026-02. A gate with no servicer is a permanent brake, not a
-# safeguard, and its per-battle "please review" prompts ask the owner to be the
-# analyst. Until a discriminating offline gate (or an autoresearch->eval
-# servicer) exists, the loop is honestly PARKED: report each battle as ladder
-# evidence and emit no dead review/classify prompt. Set
-# FOULER_IMPROVE_LOOP_ACTIVE=1 only once a real servicer exists, to restore the
-# review/classify prompts.
+# FOULER_PLAY_ENABLE_AUTO_IMPROVE and no scheduled servicer). A discriminating
+# candidate-vs-frozen gate now exists, but it still requires operational proof
+# before the managed supervisor may enable it. A gate with no servicer is a
+# permanent brake, not a safeguard, and per-battle "please review" prompts ask
+# the owner to be the analyst. Until the managed autoresearch->head-to-head
+# path is explicitly enabled, report each battle as ladder evidence and emit no
+# dead review/classify prompt. FOULER_IMPROVE_LOOP_ACTIVE=1 only restores those
+# prompts after that service path is actually live.
 IMPROVE_LOOP_PARKED_NOTE = (
-    "improve loop parked (no replay-review servicer; needs a discriminating "
-    "offline gate); logged as ladder evidence only"
+    "improve loop parked pending managed head-to-head servicer proof; "
+    "logged as ladder evidence only"
 )
 
 

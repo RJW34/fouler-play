@@ -1,23 +1,7 @@
 [Unit]
-Description=Fouler Play Autonomous Improvement Watcher
-After=network.target
-Wants=network-online.target
+Description=RETIRED Fouler analysis watcher
+RefuseManualStart=yes
 
 [Service]
-Type=simple
-User=ryan
-WorkingDirectory=/home/ryan/projects/fouler-play
-Environment="PATH=/home/ryan/projects/fouler-play/venv/bin:/usr/local/bin:/usr/bin:/bin"
-Environment="PYTHONUNBUFFERED=1"
-ExecStart=/home/ryan/projects/fouler-play/venv/bin/python3 /home/ryan/projects/fouler-play/pipeline.py watch
-Restart=always
-RestartSec=10
-StandardOutput=append:/home/ryan/projects/fouler-play/logs/watcher.log
-StandardError=append:/home/ryan/projects/fouler-play/logs/watcher.log
-
-# Security
-NoNewPrivileges=true
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
+Type=oneshot
+ExecStart=/bin/false

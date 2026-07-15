@@ -200,32 +200,3 @@ class ObsWebsocketClient:
             )
             await self.disconnect()
             return False
-
-
-    async def start_stream(self) -> bool:
-        """Start streaming via OBS WebSocket v5 StartStream request."""
-        try:
-            resp = await self._send_request("StartStream", {})
-            status = resp.get("requestStatus", {})
-            ok = bool(status.get("result", False))
-            if not ok:
-                logger.warning("[OBS-WS] StartStream failed: %s", status)
-            return ok
-        except Exception as e:
-            logger.warning("[OBS-WS] StartStream error: %s", e)
-            await self.disconnect()
-            return False
-
-    async def stop_stream(self) -> bool:
-        """Stop streaming via OBS WebSocket v5 StopStream request."""
-        try:
-            resp = await self._send_request("StopStream", {})
-            status = resp.get("requestStatus", {})
-            ok = bool(status.get("result", False))
-            if not ok:
-                logger.warning("[OBS-WS] StopStream failed: %s", status)
-            return ok
-        except Exception as e:
-            logger.warning("[OBS-WS] StopStream error: %s", e)
-            await self.disconnect()
-            return False

@@ -1,5 +1,13 @@
 # Codex Runtime Recovery Proof - 2026-06-14T20:35:16Z
 
+> **RETIRED SECURITY NOTICE (2026-07-15):** This is historical evidence, not an
+> operations runbook. Its former local `--write` lease commands described the
+> retired unsigned authority model and have been removed. Production now requires
+> an immutable `D:\Releases\fouler-play\<commit>` checkout, an exact deployment
+> receipt, and a finite DEKU-signed v3 lease staged through
+> `scripts/install_runtime_authority.ps1`. Never mint or renew a production lease
+> on JIGGLYPUFF.
+
 ## Verdict
 
 - Repo-side fix status: **GO**. The JIGGLYPUFF emergency fallback bug was fixed and replay JSON evidence capture was hardened.
@@ -171,21 +179,12 @@ From this repo on the control machine, first verify current live state without w
 py -3 scripts\jigglypuff_devstream_control.py status --read-only --timeout 60
 ```
 
-If JIGGLYPUFF is still running, do not run `start --execute`. Create a finite stop lease before any interruption:
-
-```powershell
-$Account = (Get-Content .env | Where-Object { $_ -match '^PS_USERNAME=' } | Select-Object -First 1) -replace '^PS_USERNAME=',''
-py -3 scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth\runtime-lease-stop.json --purpose jigglypuff-runtime-stop --machine JIGGLYPUFF --account $Account --run-count 1 --max-cycles 1 --max-concurrent-battles 1 --replay-behavior always --valid-minutes 45 --require-run-count --require-max-cycles --require-max-concurrent-battles --require-replay-behavior
-py -3 scripts\jigglypuff_devstream_control.py stop --runtime-lease devstream\truth\runtime-lease-stop.json --execute
-```
-
-The fallback patch is already committed on JIGGLYPUFF. To restart so the running Python process loads it, create a separate start lease locally and on JIGGLYPUFF, then use the lease-gated start:
-
-```powershell
-py -3 scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth\runtime-lease-start.json --purpose jigglypuff-runtime-start --machine JIGGLYPUFF --account $Account --run-count 1 --max-cycles 1 --max-concurrent-battles 1 --replay-behavior always --valid-minutes 45 --require-run-count --require-max-cycles --require-max-concurrent-battles --require-replay-behavior
-ssh -o BatchMode=yes Ryanj@JIGGLYPUFF 'Set-Location "D:\Projects\fouler-play"; $Account = (Get-Content .env | Where-Object { $_ -match "^PS_USERNAME=" } | Select-Object -First 1) -replace "^PS_USERNAME=",""; .\.venv\Scripts\python.exe scripts\devstream_runtime_lease.py --write --runtime-lease devstream\truth\runtime-lease-start.json --purpose jigglypuff-runtime-start --machine JIGGLYPUFF --account $Account --run-count 1 --max-cycles 1 --max-concurrent-battles 1 --replay-behavior always --valid-minutes 45 --require-run-count --require-max-cycles --require-max-concurrent-battles --require-replay-behavior | Out-Null'
-py -3 scripts\jigglypuff_devstream_control.py start --run-count 1 --max-concurrent-battles 1 --max-cycles 1 --runtime-lease devstream\truth\runtime-lease-start.json --execute
-```
+If JIGGLYPUFF is still running, do not start or interrupt it from this historical
+procedure. Use the current immutable-release workflow in `docs/DEVSTREAM_CONTRACT.md`:
+back up the effective task and process evidence, issue the appropriate signed
+capability on DEKU from the exact deployment receipt, stage it without starting
+anything, validate it on JIGGLYPUFF, and then invoke the current managed drain or
+start path.
 
 ## Remaining Risks
 

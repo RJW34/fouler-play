@@ -11,7 +11,14 @@ Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).
 
 1. Copy `.env.example` to `.env` and set `PS_USERNAME` and `PS_PASSWORD`
 2. Install requirements: `pip install -r requirements.txt`
-3. Run: `python run.py` or double-click `start_one_touch.bat` (Windows)
+3. Run local tests: `python -m pytest -q`
+4. Inspect a runtime plan: `python scripts/devstream_session.py doctor`
+
+Live laddering is never started directly. Production uses an immutable clean
+release, deployment receipt, finite v2 lease, and
+`HERMES-FoulerBattleSupervisor` via `scripts/install_battle_supervisor_task.ps1`.
+`start_one_touch.bat`, direct launchers, and legacy watchdogs are fail-closed
+tombstones retained only so stale tasks cannot revive old behavior.
 
 ## Architecture
 

@@ -36,10 +36,12 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.account_identity import resolve_bot_username
+from infrastructure.runtime_paths import resolve_runtime_paths
 
-BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+BATTLE_STATS_PATH = _RUNTIME_PATHS.battle_stats_path
 TEAMS_DIR = PROJECT_ROOT / "teams" / "teams"
-REPLAY_ANALYSIS_DIR = PROJECT_ROOT / "replay_analysis"
+REPLAY_ANALYSIS_DIR = _RUNTIME_PATHS.state_root / "replay_analysis"
 LOSSES_DIR = REPLAY_ANALYSIS_DIR / "losses"
 REPORT_OUTPUT_PATH = REPLAY_ANALYSIS_DIR / "team_report.json"
 

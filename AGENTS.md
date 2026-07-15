@@ -76,10 +76,13 @@ python -c "from fp.search.main import find_best_move; print('OK')"    # import s
 
 Runtime:
 ```bash
-python run.py                             # play one session
-python pipeline.py analyze -n 30          # batch analyze last 30 battles + autoresearch
-python pipeline.py autoresearch -n 30     # autoresearch only
+python scripts/devstream_session.py doctor      # read-only readiness
+python pipeline.py autoresearch -n 30 --no-discord  # local analysis only
 ```
+
+Do not start live play from onboarding. Live play requires the exact pushed immutable
+release, deployment receipt, finite DEKU-signed v3 lease, and
+`HERMES-FoulerBattleSupervisor` path.
 
 ## DO NOT modify
 
@@ -98,7 +101,7 @@ Per `infrastructure/guardrails.json` and CLAUDE.md "NEVER MODIFY" lines:
 ## Machine roles (proof-gated devstream as of 2026-06)
 
 - **DEKU on ubunztu** (Linux) = brains: decision-making improvements, replay analysis, dev loop, tests, upstream merges
-- **JIGGLYPUFF** (Windows) = optional remote runtime profile only after an explicit proof window and runtime lease
+- **JIGGLYPUFF** (Windows) = the production battle/OBS worker only after an exact deployment receipt and DEKU-signed v3 lease
 - Hostname detection is **OS-based not name-based** — see CLAUDE.md "How to identify your machine"
 - No Fouler runtime is safe to autostart from onboarding docs. Treat status/dry-run commands as safe; `--execute`, scheduled tasks, Discord posting, and laddering require a current proof window plus a lease naming the machine and battle scope.
 
@@ -154,37 +157,34 @@ selection.
 4. `infrastructure/guardrails.json` — the hard allow/deny edit list. **Obey before editing.**
 5. `git status --short` and `git log --oneline -10` — confirm branch reality (do NOT assume `master`).
 
-**ubunztu = code/dev home. No default live runtime is currently assigned.** You are almost
-certainly on ubunztu (Linux). Write code and docs here, commit here, and keep runtime work
-status-only unless a proof window and runtime lease explicitly authorize a bounded Showdown batch.
-JIGGLYPUFF remains an optional Windows runtime profile, not a default place to launch laddering.
+**ubunztu = DEKU control/signing plane; JIGGLYPUFF = production executor.** Code may be
+reviewed on a control checkout, but production runs only an exact pushed commit installed at
+`D:\Releases\fouler-play\<commit>`. Keep runtime work status-only unless the matching
+deployment receipt and a finite DEKU-signed v3 lease authorize a bounded Showdown batch.
 
 ### Runtime control path (status/dry-run by default)
-The committed control path can describe or inspect a remote Windows profile, but it must not launch
-from onboarding instructions. `--execute` is allowed only when a current proof window and lease both
-name Fouler, the machine, the account, run count, concurrency, replay/Discord behavior, and expiry.
+The committed control path may inspect JIGGLYPUFF, but it must not launch from onboarding
+instructions. Production activation is one immutable, receipt-bound transaction:
 
 ```
-devstream.yaml  runner.start
-   -> scripts/jigglypuff_devstream_control.py start --run-count 10 --max-concurrent-battles 1   (dry-run plan on ubunztu)
-      -> [Tailscale SSH to JIGGLYPUFF] D:\Projects\fouler-play\scripts\fouler_jigglypuff_runtime.ps1
-         -> scripts/devstream_session.py start    (bounded session planner; doctor|start|stop)
-            -> python run.py --bot-mode search_ladder --pokemon-format gen9ou --max-concurrent-battles N ...
+JIGGLYPUFF exact release + deployment receipt
+   -> DEKU signs a finite v3 lease from that receipt
+      -> scripts/install_runtime_authority.ps1 stages public keyring + lease (starts nothing)
+         -> scripts/install_battle_supervisor_task.ps1 validates before task mutation
+            -> scripts/start_battle_supervisor_task.ps1
+               -> scripts/devstream_session.py supervise
+                  -> python run.py --bot-mode search_ladder --pokemon-format gen9ou --max-concurrent-battles 3 ...
 ```
 
 `run.py` is the battle entry point. It acquires a singleton lock (`process_lock.py` -> `.bot.pid`),
 opens the Showdown websocket, ladders, collects `battle_stats.json` + replays, then exits after
 `--run-count` battles. The supervisor restarts batches.
 
-> **Runtime/branch caveat (IMPORTANT):** the task that commissioned this index referred to a
-> `supervise` subcommand and `start_battle_supervisor_task.ps1` driving
-> `autoresearch -> improve_agent -> elo_watchdog`. Those names live on the **JIGGLYPUFF runtime
-> branch** (`opus48/multisample-mcts`, fix commit `82dee164`), which is NOT synced to ubunztu.
-> On ubunztu's checked-out branches the closed loop is driven by `pipeline.py` +
-> `infrastructure/linux/developer_loop.sh` instead. The *concept* is identical (batch -> research ->
-> one fix -> test gate -> ELO-gated revert); only the launcher names differ between code-home and
-> runtime. When in doubt, trust `git log` on the machine you are on, and sync from JIGGLY before
-> assuming the supervisor wiring is present here.
+> **Runtime identity caveat (IMPORTANT):** a Git commit is not a deployment. JIGGLYPUFF must run a
+> clean immutable release with a deployment receipt and finite DEKU-signed v3 lease. The first completed battle
+> from that exact commit/tree/manifest/lease/session creates an activation receipt; only matching
+> rows can create the 30-battle judgment receipt. Never revive the old mutable-checkout player loop
+> or treat `infrastructure/deploy_log.json` as authority.
 
 ### How to run tests
 ```bash
@@ -220,8 +220,10 @@ python infrastructure/improve_agent.py --dry-run   # show the fix it WOULD make,
 | `teams/` | The 3 provided fat/stall teams. **Protected — never redesign.** `teams/gen9/ou/{fat-team-1-stall, fat-team-2-balance, fat-team-3-dondozo}`; loaders in `teams/load_team.py`, `teams/team_converter.py`. | `--team-names` / `TEAM_NAMES` |
 | `replay_analysis/autoresearch.py` (678) | **Autoresearch:** reads recent battle window + replays, ranks recurring-loss issues, writes report with grounded competitive context. | `run_autoresearch(last_n, queue_discord)` |
 | `infrastructure/improve_agent.py` (399) | **The one-fix step.** Reads `autoresearch_latest.json` top issue, prompts an LLM (via `claude` CLI, Max OAuth) for ONE targeted diff, applies it, runs the test gate, commits if green. | `python infrastructure/improve_agent.py` |
-| `infrastructure/elo_watchdog.py` (271) | **ELO-gated revert.** Watches post-deploy ELO; `git revert`s the last deploy if ELO drops past the guardrail threshold. | `check_and_revert()` |
-| `pipeline.py` | Batch orchestrator (ubunztu): detect batch completion -> autoresearch -> Discord report. | `python pipeline.py watch\|analyze\|autoresearch` |
+| `infrastructure/deployment_lineage.py` | Builds and validates immutable clean-release deployment receipts. | `deployment_receipt_blockers()` |
+| `infrastructure/deployment_state.py` | Binds activation and judgment to exact runtime battle provenance. | `current_deployment_context()` |
+| `infrastructure/elo_watchdog.py` | Writes or validates an immutable exact-identity judgment; never mutates the live release. | `check_and_judge()` |
+| `pipeline.py` | Batch analysis orchestrator; managed runs use `autoresearch --no-discord`, while DEKU owns delivery. | `python pipeline.py autoresearch -n 30 --no-discord` |
 | `scripts/devstream_session.py` | Bounded session planner: `doctor` / `start` / `stop`. Builds the `run.py` command line from `.env`. | `python scripts/devstream_session.py start` |
 | `scripts/jigglypuff_devstream_control.py` | Optional ubunztu->JIGGLY control profile (status/dry-run by default; execute requires proof window + lease). | `... control.py status` |
 | `scripts/fouler_jigglypuff_runtime.ps1` | JIGGLY-side PowerShell worker invoked only by a proof-gated control plane. | status/proof-window runs only |
@@ -250,8 +252,12 @@ are **never_modify**.
 **Working branch: `fix/clock-countdown-parse-79`** (pushed to `origin/fix/clock-countdown-parse-79`).
 This is a **long-lived local fork line that has NEVER been merged back to `origin/master`** — do
 not assume `master` is current; trust `git status` on the box you are on. The fork is 387 commits /
-992 files ahead of the upstream base `55fa9b4`. The self-improvement loop (crashing since February)
-now runs, gated behind an offline-eval acceptance gate + a played-vs-policy divergence monitor.
+992 files ahead of the upstream base `55fa9b4`. The self-improvement loop remains explicit opt-in.
+Engine promotion requires the balanced candidate-vs-frozen head-to-head gate plus the
+played-vs-policy divergence monitor; the older simple-opponent evaluator is smoke only.
+Each evaluated runtime family has five attempts pre-registered in the external
+DEKU-owned SQLite ledger at `p < 0.01`, which bounds family-wise error to 0.05.
+Unrelated Git commits do not reset this budget.
 
 **Engine identity (the thing most stale docs get wrong):** the bot is **MCTS-first**. The heuristic
 penalty pipeline, the decision loop-breaker, and matchup-memory bias are all currently **OFF**; the
@@ -287,9 +293,9 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
 2. **gen9ou only.** Format is fixed.
 3. **Single `run.py` per account (singleton lock).** `process_lock.py` enforces one bot instance;
    duplicate `run.py` processes are a known top failure mode. Verify single-process before launching.
-4. **ELO-gated revert.** `elo_watchdog` reverts any deploy that drops ELO past
-   `guardrails.json: safety.max_elo_drop_before_revert` (50). Improvements must survive on the ladder,
-   not just in tests.
+4. **Receipt-gated judgment and rollback.** `elo_watchdog` judges only rows matching the current
+   deployment/lease/session. A regressed judgment blocks the next batch and becomes input to a
+   separately authorized rollback deployment; it never dirties the immutable release with `git revert`.
 5. **Never hallucinate Pokemon mechanics.** Immutable mechanics (types, base power, abilities, speed
    tiers) must be grounded, not invented. autoresearch ships grounded competitive context for exactly
    this reason; use it.
@@ -297,7 +303,7 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
    true`. A fix only commits if `pytest tests/` passes. Do not weaken or bypass the gate to force a
    commit — the broken-gate-that-reverts-everything was the February failure.
 7. **Edit only allowed files.** Respect `guardrails.json allowed_modify` / `never_modify` and
-   `improve_agent.ALLOWED_TARGETS`. Also: `min_games_between_deploys: 15`.
+   `improve_agent.ALLOWED_TARGETS`. Also: `min_games_between_deploys: 30`.
 8. **Account name:** `devstream/truth/account-season.json` owns the current account; `.env`,
    `runtime-lease.json`, and health must agree. Historical account names are retired and must
    not be treated as current. One self-registered account, up to 3 concurrent battles.
@@ -313,8 +319,8 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
   never `git reset --hard` shared data.
 - **Commit discipline:** one focused, scoped change per commit. Run `python -m pytest tests/ -v`
   **before** committing. Prefer new commits over amends.
-- **Do not push to a public remote** unless explicitly told. `origin` is the shared repo; pushing
-  auto-deploys. The ELO watchdog also pushes its own reverts.
+- **Do not push to a public remote** unless explicitly told. `origin` is the shared repo. Pushing
+  does not itself prove activation or authorize a live runtime.
 - **ubunztu vs JIGGLY split:** write/test/commit code on **ubunztu** (Linux, code home). The bot
   does not have a default live runtime right now. Do not ladder from any machine, including
   JIGGLYPUFF, unless a proof window and runtime lease explicitly authorize the bounded run.
@@ -324,7 +330,8 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
   - `replay_analysis/autoresearch_latest.json` — **live** research input for improve_agent.
   - `replay_analysis/reports/autoresearch_latest.md` — human-readable research report.
   - `logs/decision_traces/*.json` — per-turn choice/fallback evidence.
-  - `infrastructure/.../deploy_log.json` — deploy + revert ledger (used by elo_watchdog).
+  - `%PROGRAMDATA%\HERMES\state\fouler\deployments\` — current activation pointer plus immutable
+    activation/judgment receipts. This is runtime authority, not a repo-local deploy log.
 
 ---
 
@@ -335,8 +342,8 @@ stale ops `.md`/`.log` files; `CLAUDE.md` + `TASKBOARD.md` + this file are the c
   conversion, decision instability) and emits a ranked `top_issue` with grounded context.
 - **improve_agent** — the "ONE targeted fix" step. Takes the autoresearch `top_issue`, asks an LLM
   for a single small diff to an allowed file, applies it, runs the test gate, commits if green.
-- **elo_watchdog** — the safety net. Reverts a deploy via `git revert` if post-deploy ELO drops past
-  the guardrail threshold. This is the "ELO-gated revert".
+- **elo_watchdog** — the judgment writer. It filters to exact deployment/lease/session battle rows,
+  writes one immutable result after 30 decisive battles, and blocks on regression without editing Git.
 - **Test gate** — `pytest tests/` must pass (plus syntax/import checks) before any fix commits.
   Currently the "decision instability" fix keeps failing this gate.
 - **Batch** — 30 battles (10 per team across the 3 teams). One batch -> one autoresearch -> at most

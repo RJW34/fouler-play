@@ -1,15 +1,21 @@
 # TASKBOARD.md - Fouler Play Coordination
 
-**This is the single source of truth for fouler-play operations.** If anything contradicts this file, this file wins. `fouler-play-v2` has been archived — it was a duplicate clone DEKU created. Only `/home/ryan/projects/fouler-play` exists now.
+**This is the repo-side operating contract for fouler-play.** Live process, task,
+receipt, signed-lease, and viewed-pixel evidence wins when a historical section
+below disagrees. `fouler-play-v2` remains an archived duplicate.
 
-## Current Live Hold - 2026-06-19
+## Current Pilot Authority - 2026-07-15
 
 Codex is the only code-changing repair owner for Fouler until the HERMES
 autonomy layer is proven safe. Runtime ladder supervision may run for evidence,
 but recursive self-improvement/builders are disabled by default and must stay
 off unless a new proof window explicitly opts into them.
 
-Live canonical runtime for this hold is `D:\Projects\fouler-play` on JIGGLYPUFF.
+There is no authorized live runtime until the reviewed commit is pushed, installed
+under `D:\Releases\fouler-play\<commit>` on JIGGLYPUFF, and bound to an exact
+deployment receipt plus a finite DEKU-signed v3 runtime lease. The mutable
+`D:\Projects\fouler-play` checkout is a legacy source/runtime tree and must not
+own a production task, service, or process.
 Older references to `/home/ryan/projects/fouler-play` or "no infrastructure /
 reporting edits" are historical guidance, not a block on operator-requested live
 repair. Reporting code was intentionally repaired on 2026-06-19 because Discord
@@ -27,21 +33,21 @@ Current live requirements:
 - Long loss streaks and poor recent win-rate windows must become
   machine-actionable Discord/HERMES alerts, not silent "normal" batches. Current
   live trigger: 5 straight losses or 20-game decisive WR below 45 percent.
-- Only one ladder client may run for the active runtime lease.
+- Only one supervised three-slot ladder batch may run for the active runtime lease.
 - Do not commit, push, deploy new auto-improve, or alter scheduled tasks without
   current owner approval.
 
 **Purpose:** Overnight team-testing service for a competitive Pokemon player (fat/stall teams in gen9ou)
 **Branch:** `master` is the live deployment/base branch and now contains the latest Codex-readiness/doc cleanup merged on 2026-03-09 (`a8b2d31`). Treat older branch-specific notes as historical unless a newer branch is explicitly called out here.
 **Bot Account Authority:** Use live `.env` / process truth plus the active runtime lease, not hard-coded names. Do not name a current account in this file. Windows machine hostname may vary; use OS detection and the current HERMES lease.
-**Updated:** 2026-06-19
+**Updated:** 2026-07-15
 
 ---
 
 ## Standing Rules (check every session — fix drift immediately)
 
-1. **DECISION ENGINE WORK ONLY.** Do not write infrastructure, reporting, Discord formatting, build manifests, or pipeline orchestration code. All of that is built (see "What's Already Built" below). Every commit must improve `fp/search/` or fix a documented bug in the decision engine. If you are about to create a new file outside `fp/search/` or `tests/`, STOP and reconsider.
-2. **Do not hard-code stale concurrency targets or runtime hosts.** Live launcher truth plus a current proof window wins. The current devstream posture is no-autostart: DEKU on ubunztu may run status/dry-run checks, while any JIGGLYPUFF batch through `scripts/jigglypuff_devstream_control.py` -> `scripts/fouler_jigglypuff_runtime.ps1` -> `start_one_touch.bat` requires an explicit proof window and runtime lease.
+1. **IMPROVE THE ENGINE AFTER THE PILOT IS SOUND.** Infrastructure, reporting, and orchestration changes require an explicit operator repair objective and focused proof. Routine autonomous work must improve `fp/search/` or fix a replay-backed decision bug; it must not rebuild the control plane.
+2. **Do not hard-code stale concurrency targets or runtime hosts.** Live lease and deployment truth wins. DEKU may run status/dry-run checks; a JIGGLYPUFF batch must use an immutable release and `HERMES-FoulerBattleSupervisor` through `scripts/install_battle_supervisor_task.ps1`, with an exact deployment receipt and finite DEKU-signed v3 runtime lease. Direct launchers are retired.
 3. **One source of truth.** This file plus current launcher/process evidence. If docs disagree with the running launcher or command line, fix the docs immediately.
 4. **Bot account:** Use live `.env` / process truth plus the active runtime lease, not hard-coded names or stale doc prose.
 

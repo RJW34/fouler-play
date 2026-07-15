@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-"""
-Event Poster Service for Fouler Play
+"""Validate Fouler observations and atomically hand them to DEKU's local outbox.
 
-Systemd service that polls the event queue and posts to Discord one at a time.
-Checks preconditions before posting, handles retries, and expires stale events.
-
-Run as: python3 /home/ryan/projects/fouler-play/infrastructure/event_poster.py
+This process has no network-delivery authority and owns no chat credentials.
+DEKU's separately managed relay is the only component allowed to transport the
+observation files written here.
 """
 
 import hashlib
@@ -14,11 +12,7 @@ import logging
 import os
 import re
 import signal
-import shutil
-import socket
-import subprocess
 import sys
-import tempfile
 import time
 import argparse
 import copy
@@ -50,6 +44,10 @@ from infrastructure.discord_reporting import (
     redacted_report_summary,
     structured_report_fields,
 )
+from infrastructure.runtime_paths import (
+    resolve_runtime_paths,
+    validate_external_runtime_path,
+)
 
 # Configuration
 POLL_INTERVAL = float(os.getenv("EVENT_POSTER_POLL_SEC", "2"))
@@ -57,33 +55,42 @@ CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
 REPLAY_RESOLVE_ATTEMPTS = max(1, int(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_ATTEMPTS", "1")))
 REPLAY_RESOLVE_DELAY_SEC = max(0.0, float(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_DELAY_SEC", "0")))
 REPLAY_RESOLVE_TIMEOUT_SEC = max(0.1, float(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_TIMEOUT_SEC", "3")))
-PID_DIR = PROJECT_ROOT / ".pids"
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
+PID_DIR = RUNTIME_STATE_ROOT / "pids"
 BOT_MAIN_PID_FILE = PID_DIR / "bot_main.pid"
-BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
-TRUTH_DIR = PROJECT_ROOT / "devstream" / "truth"
+BATTLE_STATS_FILE = RUNTIME_STATE_ROOT / "battle_stats.json"
+TRUTH_DIR = RUNTIME_STATE_ROOT / "truth"
 DISCORD_REPORTING_PROOF = TRUTH_DIR / "discord-reporting.json"
 DISCORD_DELIVERY_PROOF = TRUTH_DIR / "discord-delivery.json"
 DISCORD_DOCTOR_PROOF = TRUTH_DIR / "discord-reporting-doctor.json"
-DEKU_EVENT_QUEUE_ROOT = Path(os.getenv("DEKU_EVENT_QUEUE_ROOT", r"D:\DekuEvents"))
-BATTLE_DIGEST_STATE = Path(
+DEKU_EVENT_QUEUE_ROOT = validate_external_runtime_path(
+    os.getenv("DEKU_EVENT_QUEUE_ROOT", str(RUNTIME_STATE_ROOT / "deku-events")),
+    release_root=PROJECT_ROOT,
+    label="DEKU event queue root",
+)
+# Read-only compatibility for existing proof tooling. Production reporting no
+# longer buffers or emits cycle digests; every battle result goes to DEKU.
+BATTLE_DIGEST_STATE = validate_external_runtime_path(
     os.getenv(
         "FOULER_BATTLE_DIGEST_STATE",
         str(TRUTH_DIR / "battle-report-digest-state.json"),
-    )
+    ),
+    release_root=PROJECT_ROOT,
+    label="legacy battle digest state",
 )
-BATTLE_DIGEST_SIZE = max(1, int(os.getenv("FOULER_BATTLE_DIGEST_SIZE", "5")))
+BATTLE_DIGEST_SIZE = max(1, int(os.getenv("FOULER_CYCLE_DIGEST_BATTLE_COUNT", "30")))
 BATTLE_DIGEST_MAX_AGE_SEC = max(
     60,
     int(os.getenv("FOULER_BATTLE_DIGEST_MAX_AGE_SEC", "900")),
 )
-# A pending event must remain eligible longer than the partial-digest timer.
-EXPIRY_SEC = max(
-    BATTLE_DIGEST_MAX_AGE_SEC + 60,
-    int(os.getenv("EVENT_POSTER_EXPIRY_SEC", str(event_queue_lib.DEFAULT_EXPIRY_SEC))),
-)
 BATTLE_DIGEST_REPORTED_ID_LIMIT = max(
     BATTLE_DIGEST_SIZE * 2,
     int(os.getenv("FOULER_BATTLE_DIGEST_REPORTED_ID_LIMIT", "500")),
+)
+EXPIRY_SEC = max(
+    60,
+    int(os.getenv("EVENT_POSTER_EXPIRY_SEC", str(event_queue_lib.DEFAULT_EXPIRY_SEC))),
 )
 BATTLE_ID_RE = re.compile(r"\b(?:battle-)?gen9ou-[A-Za-z0-9-]+\b|battle `([^`]+)`")
 ELO_TRANSITION_RE = re.compile(
@@ -147,35 +154,23 @@ RECENT_RECORD_RE = re.compile(
     r"\blast\s+(?P<count>\d+)\s*:\s*(?P<wins>\d+)\s*-\s*(?P<losses>\d+)\s*\(\s*(?P<wr>\d+)%\s*WR\s*\)",
     re.IGNORECASE,
 )
-
-# Logging
-LOG_FILE = Path(os.getenv(
-    "EVENT_POSTER_LOG",
-    str(PROJECT_ROOT / "logs" / "event_poster.log")
-))
-ENV_FILES = (
-    PROJECT_ROOT / ".env",
-    Path.home() / "hermes" / ".env",
-    Path("/home/ryan/projects/polymarket-copytrade/.env"),
-)
-WEBHOOK_ENV_BY_CHANNEL = {
-    "battles": ("DISCORD_BATTLES_WEBHOOK_URL", "DISCORD_WEBHOOK_URL"),
-    "feedback": ("DISCORD_FEEDBACK_WEBHOOK_URL", "DISCORD_WEBHOOK_URL"),
-    "project": ("DISCORD_WEBHOOK_URL", "DISCORD_BATTLES_WEBHOOK_URL"),
-    "workspace": ("DISCORD_WEBHOOK_URL", "DISCORD_BATTLES_WEBHOOK_URL"),
+ROUTINE_LOCAL_ONLY_EVENT_TYPES = {
+    "autoresearch_summary",
+    "autoresearch_deep_dive",
+    "batch_analyzed",
+    "batch_complete",
+    "batch_report",
+    "mission_alert",
+    "pipeline_report",
 }
-DEKU_DISCORD_REMOTE_HOST = os.getenv("DEKU_DISCORD_REMOTE_HOST", "ubunztu")
-DEKU_DISCORD_REMOTE_BIN = os.getenv(
-    "DEKU_DISCORD_REMOTE_BIN",
-    "/home/ryan/bin/deku-discord-post",
-)
-DEKU_DISCORD_REMOTE_CONNECT_TIMEOUT_S = max(
-    1,
-    int(os.getenv("DEKU_DISCORD_REMOTE_CONNECT_TIMEOUT_S", "8")),
-)
-DEKU_DISCORD_REMOTE_COMMAND_TIMEOUT_S = max(
-    DEKU_DISCORD_REMOTE_CONNECT_TIMEOUT_S + 2,
-    int(os.getenv("DEKU_DISCORD_REMOTE_COMMAND_TIMEOUT_S", "30")),
+
+# Logging is configured only by the CLI entry point. Importers such as the
+# cycle reporter must not create files inside an immutable release.
+RUNTIME_LOG_ROOT = _RUNTIME_PATHS.log_root
+LOG_FILE = validate_external_runtime_path(
+    os.getenv("EVENT_POSTER_LOG", str(RUNTIME_LOG_ROOT / "event_poster.log")),
+    release_root=PROJECT_ROOT,
+    label="event poster log",
 )
 DEKU_CATEGORY_BY_CHANNEL = {
     "battles": "fouler-play",
@@ -183,17 +178,21 @@ DEKU_CATEGORY_BY_CHANNEL = {
     "project": "fouler-play",
     "workspace": "devstream",
 }
-LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-        logging.StreamHandler(),
-    ],
-)
 logger = logging.getLogger("event_poster")
+logger.addHandler(logging.NullHandler())
+
+
+def _configure_cli_logging() -> None:
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(LOG_FILE, encoding="utf-8"),
+            logging.StreamHandler(),
+        ],
+        force=True,
+    )
 
 # Graceful shutdown
 _running = True
@@ -207,34 +206,6 @@ def _signal_handler(signum, frame):
 
 signal.signal(signal.SIGTERM, _signal_handler)
 signal.signal(signal.SIGINT, _signal_handler)
-
-
-def load_env_chain() -> list[str]:
-    """Load project/HERMES env files without overwriting real service env."""
-    loaded: list[str] = []
-    for env_file in ENV_FILES:
-        try:
-            if not env_file.exists():
-                continue
-            loaded.append(str(env_file))
-            for raw in env_file.read_text(encoding="utf-8", errors="replace").splitlines():
-                line = raw.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, _, value = line.partition("=")
-                os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
-        except Exception as exc:
-            logger.debug("Failed to load env file %s: %s", env_file, exc)
-    return loaded
-
-
-def _redact_url(value: str) -> str:
-    if not value:
-        return ""
-    if "discord" in value and "/api/webhooks/" in value:
-        prefix = value.split("/api/webhooks/", 1)[0]
-        return f"{prefix}/api/webhooks/REDACTED"
-    return "<configured>"
 
 
 def _iso_now() -> str:
@@ -363,116 +334,12 @@ def _proof_report_paths() -> dict[str, str]:
         "discordDoctor": _relative(DISCORD_DOCTOR_PROOF),
         "discordBacklogArchive": _relative(TRUTH_DIR / "discord-backlog-archive.json"),
         "eventPosterLog": _relative(LOG_FILE),
-        "queueFile": _relative(Path(os.getenv("EVENT_QUEUE_FILE", str(PROJECT_ROOT / "events_queue.json")))),
+        "queueFile": _relative(event_queue_lib.QUEUE_FILE),
     }
-
-
-def _truthy_env(name: str) -> bool:
-    return str(os.getenv(name, "")).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _deku_category(destination_alias: str) -> str:
     return DEKU_CATEGORY_BY_CHANNEL.get(str(destination_alias or "").strip(), "fouler-play")
-
-
-def _deku_remote_configured() -> bool:
-    return bool(
-        shutil.which("ssh")
-        and str(DEKU_DISCORD_REMOTE_HOST or "").strip()
-        and str(DEKU_DISCORD_REMOTE_BIN or "").strip()
-    )
-
-
-def _deku_remote_command(destination_alias: str, *, status: bool = False) -> list[str]:
-    command = [
-        "ssh",
-        "-o",
-        "BatchMode=yes",
-        "-o",
-        "ConnectTimeout=%d" % DEKU_DISCORD_REMOTE_CONNECT_TIMEOUT_S,
-        DEKU_DISCORD_REMOTE_HOST,
-        DEKU_DISCORD_REMOTE_BIN,
-        "--category",
-        _deku_category(destination_alias),
-    ]
-    command.append("--status" if status else "--stdin")
-    return command
-
-
-def _decode_deku_result(stdout: str) -> dict[str, Any]:
-    text = str(stdout or "").strip()
-    if not text:
-        return {}
-    try:
-        payload = json.loads(text)
-    except json.JSONDecodeError:
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def _run_deku_remote(command: list[str], stdin_text: str | None = None) -> tuple[int, str, str]:
-    """Run Windows OpenSSH with file-backed stdio; PIPE-backed output hangs on this host."""
-    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stdout_file:
-        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stderr_file:
-            if stdin_text is None:
-                result = subprocess.run(
-                    command,
-                    stdin=subprocess.DEVNULL,
-                    stdout=stdout_file,
-                    stderr=stderr_file,
-                    text=True,
-                    timeout=DEKU_DISCORD_REMOTE_COMMAND_TIMEOUT_S,
-                )
-            else:
-                with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stdin_file:
-                    stdin_file.write(stdin_text)
-                    stdin_file.seek(0)
-                    result = subprocess.run(
-                        command,
-                        stdin=stdin_file,
-                        stdout=stdout_file,
-                        stderr=stderr_file,
-                        text=True,
-                        timeout=DEKU_DISCORD_REMOTE_COMMAND_TIMEOUT_S,
-                    )
-            stdout_file.seek(0)
-            stderr_file.seek(0)
-            return result.returncode, stdout_file.read(), stderr_file.read()
-
-
-def _deku_remote_status(destination_alias: str) -> dict[str, Any]:
-    if not _deku_remote_configured():
-        return {
-            "ready": False,
-            "transport": "deku_bot_remote",
-            "category": _deku_category(destination_alias),
-            "error": "SSH DEKU transport is not configured",
-            "credentialMaterialIncluded": False,
-        }
-    try:
-        return_code, stdout, stderr = _run_deku_remote(
-            _deku_remote_command(destination_alias, status=True)
-        )
-    except Exception as exc:
-        return {
-            "ready": False,
-            "transport": "deku_bot_remote",
-            "category": _deku_category(destination_alias),
-            "error": "%s: %s" % (type(exc).__name__, exc),
-            "credentialMaterialIncluded": False,
-        }
-    payload = _decode_deku_result(stdout)
-    return {
-        "ready": bool(return_code == 0 and payload.get("ready")),
-        "transport": "deku_bot_remote",
-        "category": _deku_category(destination_alias),
-        "remoteTransport": payload.get("transport"),
-        "channelId": payload.get("channelId"),
-        "channelSource": payload.get("channelSource"),
-        "returnCode": return_code,
-        "error": None if return_code == 0 else (stderr or payload.get("error") or "remote status failed")[:300],
-        "credentialMaterialIncluded": False,
-    }
 
 
 def _transport_summary(destination_alias: str) -> dict[str, Any]:
@@ -482,8 +349,8 @@ def _transport_summary(destination_alias: str) -> dict[str, Any]:
         "configured": pending.is_dir(),
         "source": str(pending),
         "category": _deku_category(destination_alias),
-        "legacyWebhookFallbackEnabled": False,
-        "redactedUrl": "",
+        "networkDeliveryOwnedByProject": False,
+        "authority": "none",
         "credentialMaterialIncluded": False,
     }
 
@@ -515,12 +382,59 @@ def _deku_event_queue_status(destination_alias: str) -> dict[str, Any]:
 
 def _deku_event_proof(event: dict[str, Any]) -> list[str]:
     proof = [str(Path(event_queue_lib.QUEUE_FILE))]
-    if str(event.get("event_type") or "") == "battle_digest":
-        proof.append(str(BATTLE_DIGEST_STATE))
+    proof.extend(
+        str(item).strip()
+        for item in event.get("evidence_refs") or []
+        if str(item).strip()
+    )
     replay_url = str(event.get("replay_url") or "").strip()
     if replay_url.startswith(("https://", "http://")):
         proof.append(replay_url)
-    return proof
+    return list(dict.fromkeys(proof))
+
+
+def _recommended_next_action(event: dict[str, Any], report: dict[str, Any]) -> str:
+    explicit = str(event.get("recommended_next_action") or "").strip()
+    if explicit:
+        return explicit[:500]
+    inferred = str(report.get("nextAction") or "").strip()
+    if inferred and inferred.lower() not in {"none", "pending"}:
+        return inferred[:500]
+    return "Review the referenced local evidence during the next DEKU planning pass."
+
+
+def _observation_dedup_key(event: dict[str, Any], event_type: str, local_event_id: str) -> str:
+    battle_key = _battle_observation_key(event) if event_type == "battle_result" else ""
+    if battle_key:
+        return f"fouler-play:battle-result:{battle_key}"[:240]
+    explicit = str(event.get("dedup_key") or "").strip()
+    if explicit:
+        return explicit[:240]
+    digest = hashlib.sha256(
+        f"{event_type}:{local_event_id}".encode("utf-8")
+    ).hexdigest()
+    return f"fouler-play:{event_type}:{digest}"[:240]
+
+
+def _battle_observation_key(event: dict[str, Any]) -> str:
+    value = event.get("battle_id")
+    if not value and isinstance(event.get("proof"), dict):
+        battle_ids = event["proof"].get("battleIds") or []
+        value = battle_ids[0] if battle_ids else None
+    text = str(value or "").strip().lower()
+    public_id = public_replay_id_candidate(text)
+    if public_id:
+        text = public_id.lower()
+    elif text.startswith("battle-"):
+        text = text.removeprefix("battle-")
+    return re.sub(r"[^a-z0-9._-]+", "-", text).strip("-.")[:120]
+
+
+def _deku_project_event_id(event: dict[str, Any], event_type: str, local_event_id: str) -> str:
+    battle_key = _battle_observation_key(event) if event_type == "battle_result" else ""
+    if battle_key:
+        return f"fouler-battle-result-{battle_key}"[:120]
+    return ("fouler-%s" % local_event_id)[:120]
 
 
 def _deku_project_event(event: dict[str, Any], content: str) -> dict[str, Any]:
@@ -528,43 +442,41 @@ def _deku_project_event(event: dict[str, Any], content: str) -> dict[str, Any]:
     destination_alias = str(event.get("channel") or "battles")
     local_event_id = str(event.get("id") or "").strip()
     status = "warn" if any(marker in event_type.lower() for marker in ("error", "failed", "alert", "stop")) else "done"
+    report_summary = redacted_report_summary(content)
+    recommended_next_action = _recommended_next_action(event, report_summary)
+    report_summary = {
+        key: value
+        for key, value in report_summary.items()
+        if key not in {"nextHermesAction", "actionRequired", "command", "instruction"}
+    }
+    report_summary["recommendedNextAction"] = recommended_next_action
+    evidence_refs = _deku_event_proof(event)
     payload = {
         "schemaVersion": "deku-project-event/v1",
-        "id": "fouler-%s" % local_event_id,
+        "id": _deku_project_event_id(event, event_type, local_event_id),
         "source": "fouler-play.event-poster",
+        "kind": "observation",
+        "authority": "none",
+        "producer": "fouler-play",
         "eventType": event_type,
+        "dedupKey": _observation_dedup_key(event, event_type, local_event_id),
         "status": status,
         "severity": "warning" if status == "warn" else "info",
         "title": "Fouler Play: %s" % event_type.replace("_", " "),
-        "summary": content[:3000],
-        "proof": _deku_event_proof(event),
+        "summary": str(report_summary.get("viewerSummary") or report_summary.get("headline") or event_type)[:600],
+        "proof": evidence_refs,
+        "evidenceRefs": evidence_refs,
+        "recommendedNextAction": recommended_next_action,
         "category": _deku_category(destination_alias),
         "payload": {
             "localEventId": local_event_id,
             "destinationAlias": destination_alias,
-            "reportSummary": redacted_report_summary(content),
-            "actionRequired": status == "warn",
+            "reportSummary": report_summary,
+            "sessionId": str(event.get("session_id") or "").strip() or None,
+            "cycleId": str(event.get("cycle_id") or "").strip() or None,
+            "edgeState": str(event.get("edge_state") or "").strip() or None,
         },
     }
-    digest = event.get("digest")
-    if isinstance(digest, dict):
-        payload["payload"]["battleDigest"] = {
-            key: digest.get(key)
-            for key in (
-                "battleCount",
-                "wins",
-                "losses",
-                "ties",
-                "unknown",
-                "totalTurns",
-                "eloStart",
-                "eloEnd",
-                "eloDelta",
-                "firstBattleId",
-                "latestBattleId",
-                "latestReplayUrl",
-            )
-        }
     return payload
 
 
@@ -605,9 +517,15 @@ def _queue_deku_project_event(event: dict[str, Any], content: str) -> dict[str, 
             "alreadyQueued": True,
             "blockers": [],
         }
-    temporary = pending / (".%s.%s.tmp" % (safe_id, os.getpid()))
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(temporary, destination)
+    temporary = pending / (".%s.%s.%s.tmp" % (safe_id, os.getpid(), time.time_ns()))
+    try:
+        with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, destination)
+    finally:
+        temporary.unlink(missing_ok=True)
     return {
         "ok": True,
         "status": "queued",
@@ -626,6 +544,7 @@ def _empty_battle_digest_state() -> dict[str, Any]:
         "updatedAtUtc": _iso_now(),
         "pendingBattles": [],
         "reportedEventIds": [],
+        "reportedCycleIds": [],
         "lastDigest": None,
     }
 
@@ -645,6 +564,10 @@ def _read_battle_digest_state() -> dict[str, Any]:
         raise RuntimeError("battle digest pendingBattles is not a list")
     if not isinstance(payload.get("reportedEventIds"), list):
         raise RuntimeError("battle digest reportedEventIds is not a list")
+    if "reportedCycleIds" not in payload:
+        payload["reportedCycleIds"] = []
+    if not isinstance(payload.get("reportedCycleIds"), list):
+        raise RuntimeError("battle digest reportedCycleIds is not a list")
     return payload
 
 
@@ -705,6 +628,9 @@ def _battle_digest_entry(event: dict[str, Any], *, now: float) -> dict[str, Any]
         "replayUrl": replay_url or None,
         "eventTimestamp": event.get("timestamp"),
         "bufferedAtEpoch": now,
+        "sessionId": _clean_digest_text(event.get("session_id"), 160) or None,
+        "cycleId": _clean_digest_text(event.get("cycle_id"), 220) or None,
+        "sessionExpectedBattles": event.get("session_expected_battles"),
     }
     elo = ELO_TRANSITION_RE.search(content)
     if elo:
@@ -718,7 +644,10 @@ def _battle_digest_entry(event: dict[str, Any], *, now: float) -> dict[str, Any]
 
 def _battle_digest_event(entries: list[dict[str, Any]]) -> dict[str, Any]:
     local_ids = [str(entry.get("localEventId") or "") for entry in entries]
-    digest_key = hashlib.sha256("|".join(local_ids).encode("utf-8")).hexdigest()[:20]
+    session_id = str(entries[0].get("sessionId") or "").strip()
+    cycle_id = str(entries[0].get("cycleId") or "").strip()
+    digest_identity = cycle_id or session_id or "|".join(local_ids)
+    digest_key = hashlib.sha256(digest_identity.encode("utf-8")).hexdigest()[:20]
     result_counts = {
         result: sum(1 for entry in entries if entry.get("result") == result)
         for result in ("win", "loss", "tie", "unknown")
@@ -752,6 +681,8 @@ def _battle_digest_event(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "firstBattleId": first_battle_id,
         "latestBattleId": latest_battle_id,
         "latestReplayUrl": latest_replay,
+        "sessionId": session_id or None,
+        "cycleId": cycle_id or None,
     }
     parts = [
         "Fouler ladder digest: "
@@ -770,11 +701,15 @@ def _battle_digest_event(entries: list[dict[str, Any]]) -> dict[str, Any]:
     if latest_replay:
         parts.append(f"Latest replay: {latest_replay}")
     return {
-        "id": f"battle-digest-{digest_key}",
-        "event_type": "battle_digest",
+        "id": f"cycle-digest-{digest_key}",
+        "event_type": "fouler-cycle-digest",
         "channel": "battles",
         "content": " ".join(parts),
         "replay_url": latest_replay,
+        "session_id": session_id or None,
+        "cycle_id": cycle_id or None,
+        "dedup_key": f"fouler-play:cycle-digest:{cycle_id or session_id or digest_key}",
+        "recommended_next_action": "Review the bounded session evidence before authorizing another cycle.",
         "digest": digest,
     }
 
@@ -805,10 +740,27 @@ def _flush_battle_digest_if_due(*, now: float | None = None) -> dict[str, Any]:
                 "blockers": [],
                 "flushed": False,
             }
-        first_buffered = float(pending[0].get("bufferedAtEpoch") or now)
-        count_due = len(pending) >= BATTLE_DIGEST_SIZE
+        first_session = str(pending[0].get("sessionId") or "").strip()
+        first_cycle = str(pending[0].get("cycleId") or "").strip()
+        batch = []
+        for item in pending:
+            if str(item.get("cycleId") or "").strip() != first_cycle:
+                break
+            batch.append(item)
+        expected_count = next(
+            (
+                int(item.get("sessionExpectedBattles"))
+                for item in batch
+                if str(item.get("sessionExpectedBattles") or "").isdigit()
+                and int(item.get("sessionExpectedBattles")) > 0
+            ),
+            BATTLE_DIGEST_SIZE,
+        )
+        first_buffered = float(batch[0].get("bufferedAtEpoch") or now)
+        count_due = len(batch) >= expected_count
         age_due = (now - first_buffered) >= BATTLE_DIGEST_MAX_AGE_SEC
-        if not count_due and not age_due:
+        session_changed_due = len(batch) < len(pending)
+        if not count_due and not age_due and not session_changed_due:
             return {
                 "ok": True,
                 "status": "digested",
@@ -816,9 +768,11 @@ def _flush_battle_digest_if_due(*, now: float | None = None) -> dict[str, Any]:
                 "destinationAlias": "battles",
                 "blockers": [],
                 "flushed": False,
-                "digestPendingCount": len(pending),
+                "digestPendingCount": len(batch),
+                "sessionId": first_session or None,
+                "cycleId": first_cycle or None,
+                "expectedBattleCount": expected_count,
             }
-        batch = pending[:BATTLE_DIGEST_SIZE] if count_due else pending
         digest_event = _battle_digest_event(batch)
         result = _queue_deku_project_event(digest_event, digest_event["content"])
         if not result.get("ok"):
@@ -828,11 +782,17 @@ def _flush_battle_digest_if_due(*, now: float | None = None) -> dict[str, Any]:
         reported_ids = [str(item) for item in state["reportedEventIds"] if item]
         reported_ids.extend(flushed_ids)
         state["reportedEventIds"] = reported_ids[-BATTLE_DIGEST_REPORTED_ID_LIMIT:]
+        reported_cycles = [str(item) for item in state["reportedCycleIds"] if item]
+        if first_cycle:
+            reported_cycles.append(first_cycle)
+        state["reportedCycleIds"] = list(dict.fromkeys(reported_cycles))[-100:]
         state["lastDigest"] = {
             "digestId": digest_event["id"],
             "queuedEventId": result.get("eventId"),
             "queuedAtUtc": _iso_now(),
             "battleCount": len(batch),
+            "sessionId": first_session or None,
+            "cycleId": first_cycle or None,
             "firstBattleId": batch[0].get("battleId"),
             "latestBattleId": batch[-1].get("battleId"),
         }
@@ -851,6 +811,21 @@ def _buffer_battle_result(event: dict[str, Any]) -> dict[str, Any]:
         if not event_id:
             raise ValueError("battle result event is missing id")
         reported_ids = {str(item) for item in state["reportedEventIds"] if item}
+        session_id = str(event.get("session_id") or "").strip()
+        cycle_id = str(event.get("cycle_id") or "").strip()
+        reported_cycles = {str(item) for item in state["reportedCycleIds"] if item}
+        if cycle_id and cycle_id in reported_cycles:
+            return {
+                "ok": True,
+                "status": "retained-local-after-session-digest",
+                "transport": "deku_event_digest_buffer",
+                "destinationAlias": "battles",
+                "blockers": [],
+                "flushed": False,
+                "alreadyDigested": True,
+                "sessionId": session_id,
+                "cycleId": cycle_id,
+            }
         pending_ids = {
             str(item.get("localEventId") or "")
             for item in state["pendingBattles"]
@@ -1294,36 +1269,23 @@ def resolve_pending_battle_result_replays_before_expiry(max_age_sec: int = EXPIR
     return changed
 
 
-def resolve_webhook_url(channel: str) -> tuple[str, str]:
-    """Resolve a channel alias to a webhook URL and the env var that supplied it."""
-    keys = WEBHOOK_ENV_BY_CHANNEL.get(channel, ("DISCORD_WEBHOOK_URL",))
-    for key in keys:
-        value = os.getenv(key, "").strip()
-        if value:
-            return value, key
-    return os.getenv("DISCORD_WEBHOOK_URL", "").strip(), "DISCORD_WEBHOOK_URL"
-
-
 def discord_config_status() -> dict[str, Any]:
-    loaded = load_env_chain()
-    aliases = {}
-    for alias in ("battles", "feedback", "project", "workspace"):
-        url, key = resolve_webhook_url(alias)
-        aliases[alias] = {"configured": bool(url), "source": key if url else None, "redactedUrl": _redact_url(url)}
+    """Return the credential-free project-side handoff configuration."""
+
+    pending = DEKU_EVENT_QUEUE_ROOT / "pending"
     return {
-        "loadedEnvFiles": loaded,
         "primaryTransport": {
             "type": "deku_event_queue",
-            "configured": (DEKU_EVENT_QUEUE_ROOT / "pending").is_dir(),
-            "source": str(DEKU_EVENT_QUEUE_ROOT / "pending"),
+            "configured": pending.is_dir(),
+            "source": str(pending),
             "category": _deku_category("battles"),
+            "kind": "observation",
+            "authority": "none",
             "credentialMaterialIncluded": False,
         },
-        "aliases": aliases,
-        "anyWebhookConfigured": any(item["configured"] for item in aliases.values()),
-        "openclawAvailable": shutil.which("openclaw") is not None,
-        "legacyWebhookFallbackEnabled": False,
-        "legacyWebhooksDetected": any(item["configured"] for item in aliases.values()),
+        "projectNetworkSenderEnabled": False,
+        "projectCredentialDiscoveryEnabled": False,
+        "relayOwner": "DEKU",
     }
 
 
@@ -1500,8 +1462,9 @@ def report_quality_findings(event: dict[str, Any]) -> list[str]:
     return findings
 
 
-def post_to_discord(event: dict) -> dict[str, Any]:
-    """Validate and durably queue an event for the sole DEKU Discord transport."""
+def write_deku_observation(event: dict) -> dict[str, Any]:
+    """Validate an observation and write only to DEKU's local atomic outbox."""
+
     event = dict(event)
     channel = event["channel"]
     content = format_payload_or_message(str(event.get("content") or ""))
@@ -1510,7 +1473,7 @@ def post_to_discord(event: dict) -> dict[str, Any]:
     # Validate before posting
     is_valid, error_reason = validate_event_content(event)
     if not is_valid:
-        logger.error(f"Blocking post: {event['id']} - {error_reason}")
+        logger.error("Blocking observation %s: %s", event["id"], error_reason)
         return {
             "ok": False,
             "status": "failed",
@@ -1519,242 +1482,35 @@ def post_to_discord(event: dict) -> dict[str, Any]:
             "errorCode": "validation_failed",
         }
 
-    if str(event.get("event_type") or "") == "battle_result":
-        return _buffer_battle_result(event)
+    event_type = str(event.get("event_type") or "")
+    if event_type == "battle_result":
+        return _queue_deku_project_event(event, content)
+    if event_type in ROUTINE_LOCAL_ONLY_EVENT_TYPES:
+        return {
+            "ok": True,
+            "status": "retained-local",
+            "transport": "local_event_queue",
+            "destinationAlias": channel,
+            "blockers": [],
+            "outboxWritten": False,
+        }
     return _queue_deku_project_event(event, content)
 
 
-def _is_dns_exception(exc: BaseException) -> bool:
-    reason = getattr(exc, "reason", exc)
-    if isinstance(reason, socket.gaierror):
-        return True
-    text = str(reason or exc).lower()
-    return any(
-        marker in text
-        for marker in (
-            "gaierror",
-            "getaddrinfo",
-            "name or service not known",
-            "temporary failure in name resolution",
-            "nodename nor servname",
-        )
+def post_to_discord(event: dict) -> dict[str, Any]:
+    """Compatibility alias; performs no network operation."""
+
+    return write_deku_observation(event)
+
+
+class RetiredDirectTransportError(RuntimeError):
+    """Raised when stale code asks Fouler to perform network delivery."""
+
+
+def retired_direct_transport(*_args: object, **_kwargs: object) -> None:
+    raise RetiredDirectTransportError(
+        "Fouler has observation authority only; DEKU owns all network delivery"
     )
-
-
-def _post_via_deku_remote(event, destination_alias, content):
-    """Send message content on stdin to the credential-owning DEKU hub."""
-    if not _deku_remote_configured():
-        return {
-            "ok": False,
-            "status": "failed",
-            "transport": "deku_bot_remote",
-            "destinationAlias": destination_alias,
-            "blockers": ["central DEKU bot transport is not configured"],
-            "errorCode": "deku_bot_remote_unconfigured",
-        }
-    try:
-        command = _deku_remote_command(destination_alias)
-        logger.info(
-            "Posting %s id=%s through central DEKU bot category=%s",
-            event.get("event_type"),
-            event.get("id"),
-            _deku_category(destination_alias),
-        )
-        return_code, stdout, stderr = _run_deku_remote(command, stdin_text=content)
-        payload = _decode_deku_result(stdout)
-        if return_code == 0 and payload.get("ok"):
-            return {
-                "ok": True,
-                "status": "posted",
-                "transport": "deku_bot_remote",
-                "destinationAlias": destination_alias,
-                "category": _deku_category(destination_alias),
-                "httpStatus": payload.get("httpStatus"),
-                "messageId": payload.get("messageId"),
-                "blockers": [],
-            }
-        detail = str(payload.get("error") or stderr or "central DEKU post failed").strip()[:300]
-        return {
-            "ok": False,
-            "status": "failed",
-            "transport": "deku_bot_remote",
-            "destinationAlias": destination_alias,
-            "category": _deku_category(destination_alias),
-            "httpStatus": payload.get("httpStatus"),
-            "blockers": [detail],
-            "errorCode": "deku_bot_remote_failed",
-        }
-    except subprocess.TimeoutExpired:
-        return {
-            "ok": False,
-            "status": "failed",
-            "transport": "deku_bot_remote",
-            "destinationAlias": destination_alias,
-            "blockers": ["central DEKU bot transport timed out"],
-            "errorCode": "deku_bot_remote_timeout",
-        }
-    except Exception as exc:
-        return {
-            "ok": False,
-            "status": "failed",
-            "transport": "deku_bot_remote",
-            "destinationAlias": destination_alias,
-            "blockers": ["central DEKU bot transport error: %s" % type(exc).__name__],
-            "errorCode": "deku_bot_remote_error",
-        }
-
-
-def _post_via_webhook(event, webhook_url, content, suppress=False):
-    """Post to Discord via webhook URL."""
-    import urllib.request
-    import urllib.error
-
-    try:
-        payload = {"content": content[:2000]}
-        if suppress:
-            payload["flags"] = 4
-
-        data = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            webhook_url,
-            data=data,
-            headers={"Content-Type": "application/json", "User-Agent": "DiscordBot (https://github.com/fouler-play, 1.0)"},
-            method="POST",
-        )
-
-        logger.info(f"Posting {event['event_type']} id={event['id']} via webhook")
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            status = resp.status
-            if status in (200, 204):
-                logger.info(f"Posted successfully: {event['event_type']} id={event['id']} (HTTP {status})")
-                return {
-                    "ok": True,
-                    "status": "posted",
-                    "destinationAlias": event.get("channel"),
-                    "httpStatus": status,
-                    "blockers": [],
-                }
-            else:
-                body = resp.read().decode("utf-8", errors="replace")[:200]
-                logger.error(f"Webhook returned HTTP {status}: {body}")
-                return {
-                    "ok": False,
-                    "status": "failed",
-                    "destinationAlias": event.get("channel"),
-                    "httpStatus": status,
-                    "blockers": [f"webhook returned HTTP {status}"],
-                    "errorCode": "webhook_http_error",
-                }
-
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")[:200] if e.fp else ""
-        if e.code == 429:
-            retry_after = e.headers.get("Retry-After") or e.headers.get("retry-after") or "unknown"
-            logger.error(f"Webhook rate limited; retry-after={retry_after}: {body}")
-            return {
-                "ok": False,
-                "status": "rate-limited",
-                "destinationAlias": event.get("channel"),
-                "httpStatus": e.code,
-                "retryAfter": retry_after,
-                "blockers": [f"Discord webhook rate limited; retry-after={retry_after}"],
-                "errorCode": "rate_limited",
-            }
-        else:
-            logger.error(f"Webhook HTTP error {e.code}: {body}")
-        return {
-            "ok": False,
-            "status": "failed",
-            "destinationAlias": event.get("channel"),
-            "httpStatus": e.code,
-            "blockers": [f"webhook HTTP error {e.code}"],
-            "errorCode": "webhook_http_error",
-        }
-    except urllib.error.URLError as e:
-        if _is_dns_exception(e):
-            logger.error("Webhook DNS failure: %s", e)
-            return {
-                "ok": False,
-                "status": "failed",
-                "destinationAlias": event.get("channel"),
-                "blockers": ["webhook DNS resolution failed"],
-                "errorCode": "dns_failure",
-            }
-        logger.error(f"Webhook URL error: {e}")
-        return {
-            "ok": False,
-            "status": "failed",
-            "destinationAlias": event.get("channel"),
-            "blockers": [f"webhook network error: {type(e.reason).__name__ if getattr(e, 'reason', None) else type(e).__name__}"],
-            "errorCode": "webhook_network_error",
-        }
-    except Exception as e:
-        if _is_dns_exception(e):
-            logger.error("Webhook DNS failure: %s", e)
-            return {
-                "ok": False,
-                "status": "failed",
-                "destinationAlias": event.get("channel"),
-                "blockers": ["webhook DNS resolution failed"],
-                "errorCode": "dns_failure",
-            }
-        logger.error(f"Webhook error: {e}")
-        return {
-            "ok": False,
-            "status": "failed",
-            "destinationAlias": event.get("channel"),
-            "blockers": [f"webhook error: {type(e).__name__}"],
-            "errorCode": "webhook_error",
-        }
-
-
-def _post_via_cli(event, channel, content):
-    """Fallback: post via OpenClaw CLI (for non-Docker environments)."""
-    try:
-        cmd = [
-            "openclaw", "message", "send",
-            "--target", channel,
-            "--channel", "discord",
-            "--message", content,
-        ]
-        logger.info(f"Posting {event['event_type']} id={event['id']} via CLI to {channel}")
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            logger.info(f"Posted successfully: {event['event_type']} id={event['id']}")
-            return {
-                "ok": True,
-                "status": "posted",
-                "destinationAlias": channel,
-                "blockers": [],
-            }
-        else:
-            error = result.stderr.strip() or result.stdout.strip()
-            logger.error(f"Post failed (rc={result.returncode}): {error[:200]}")
-            return {
-                "ok": False,
-                "status": "failed",
-                "destinationAlias": channel,
-                "blockers": [f"OpenClaw post failed with rc={result.returncode}"],
-                "errorCode": "openclaw_failed",
-            }
-    except subprocess.TimeoutExpired:
-        logger.error(f"Post timed out: {event['event_type']} id={event['id']}")
-        return {
-            "ok": False,
-            "status": "failed",
-            "destinationAlias": channel,
-            "blockers": ["OpenClaw post timed out"],
-            "errorCode": "openclaw_timeout",
-        }
-    except Exception as e:
-        logger.error(f"Post error: {e}")
-        return {
-            "ok": False,
-            "status": "failed",
-            "destinationAlias": channel,
-            "blockers": [f"OpenClaw post error: {type(e).__name__}"],
-            "errorCode": "openclaw_error",
-        }
 
 
 # ── Main Loop ───────────────────────────────────────────────────────
@@ -1815,29 +1571,6 @@ def process_one_event(dry_run: bool = False) -> bool:
             )
             return False
 
-    digest_flush = _flush_battle_digest_if_due()
-    if not digest_flush.get("ok"):
-        write_delivery_proof(
-            status=str(digest_flush.get("status") or "failed"),
-            event=None,
-            destination_alias="battles",
-            blockers=[str(item) for item in digest_flush.get("blockers") or []],
-            error_code=digest_flush.get("errorCode"),
-            transport=digest_flush.get("transport"),
-        )
-        return False
-    if digest_flush.get("flushed"):
-        digest_event = digest_flush.get("digestEvent")
-        write_delivery_proof(
-            status=str(digest_flush.get("status") or "queued"),
-            event=digest_event if isinstance(digest_event, dict) else None,
-            destination_alias="battles",
-            blockers=[str(item) for item in digest_flush.get("blockers") or []],
-            error_code=digest_flush.get("errorCode"),
-            transport=digest_flush.get("transport"),
-        )
-        return True
-
     pending = get_pending_events()
     if not pending:
         write_delivery_proof(
@@ -1881,9 +1614,9 @@ def process_one_event(dry_run: bool = False) -> bool:
         )
         return False
 
-    # Post to Discord
+    # Commit the observation to the project-local DEKU handoff.
     event = prepare_battle_result_replay_for_post(event)
-    result = post_to_discord(event)
+    result = write_deku_observation(event)
     if result.get("ok"):
         mark_posted(event_id)
     else:
@@ -1903,9 +1636,74 @@ def process_one_event(dry_run: bool = False) -> bool:
     return True
 
 
+def process_pending_events(
+    *,
+    max_events: int = 50,
+    required_event_id: str | None = None,
+) -> dict[str, Any]:
+    """Advance the local journal into DEKU's outbox with a finite bound."""
+
+    limit = max(1, min(int(max_events), 200))
+    required_id = str(required_event_id or "").strip()
+    attempts: list[dict[str, Any]] = []
+
+    for _ in range(limit):
+        pending_before = get_pending_events()
+        if not pending_before:
+            break
+        current_id = str(pending_before[0].get("id") or "")
+        retry_before = int(pending_before[0].get("retry_count") or 0)
+        process_one_event()
+
+        queue_after = event_queue_lib.read_queue()
+        current_after = next(
+            (event for event in queue_after if str(event.get("id") or "") == current_id),
+            None,
+        )
+        status_after = str((current_after or {}).get("status") or "missing")
+        retry_after = int((current_after or {}).get("retry_count") or 0)
+        pending_after = [
+            event for event in queue_after if event.get("status") == event_queue_lib.STATUS_PENDING
+        ]
+        attempts.append(
+            {
+                "eventId": current_id,
+                "status": status_after,
+                "retryCount": retry_after,
+            }
+        )
+
+        progressed = (
+            status_after != event_queue_lib.STATUS_PENDING
+            or retry_after > retry_before
+            or len(pending_after) < len(pending_before)
+        )
+        if not progressed:
+            break
+
+    final_queue = event_queue_lib.read_queue()
+    required = next(
+        (event for event in final_queue if str(event.get("id") or "") == required_id),
+        None,
+    ) if required_id else None
+    required_status = str((required or {}).get("status") or ("missing" if required_id else "not-requested"))
+    pending_remaining = sum(
+        1 for event in final_queue if event.get("status") == event_queue_lib.STATUS_PENDING
+    )
+    return {
+        "ok": required_status == event_queue_lib.STATUS_POSTED if required_id else pending_remaining == 0,
+        "processed": len(attempts),
+        "attempts": attempts,
+        "requiredEventId": required_id or None,
+        "requiredStatus": required_status,
+        "pendingRemaining": pending_remaining,
+        "networkDeliveryOwnedByProject": False,
+    }
+
+
 def main_loop():
-    """Main service loop: poll, process, expire, cleanup."""
-    logger.info("Event poster service starting")
+    """Poll the local journal and write eligible DEKU observations."""
+    logger.info("DEKU observation handoff starting")
     logger.info(f"Poll interval: {POLL_INTERVAL}s, Expiry: {EXPIRY_SEC}s")
 
     last_cleanup = time.time()
@@ -1943,7 +1741,7 @@ def main_loop():
             logger.error(f"Main loop error: {e}", exc_info=True)
             time.sleep(5)  # Back off on errors
 
-    logger.info("Event poster service stopped")
+    logger.info("DEKU observation handoff stopped")
 
 
 def build_doctor_payload() -> dict[str, Any]:
@@ -1964,19 +1762,20 @@ def build_doctor_payload() -> dict[str, Any]:
         "queueFile": _relative(Path(os.getenv("EVENT_QUEUE_FILE", str(PROJECT_ROOT / "events_queue.json")))),
         "logFile": _relative(LOG_FILE),
         "secretValuesPrinted": False,
-        "note": "Read-only doctor; it checks the local durable DEKU queue and relay status without posting to Discord.",
+        "note": "Read-only doctor; it checks the local durable DEKU outbox and relay status without network delivery.",
     }
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Post queued fouler-play Discord events")
-    parser.add_argument("--doctor", action="store_true", help="print read-only Discord queue/poster readiness")
+    _configure_cli_logging()
+    parser = argparse.ArgumentParser(description="Write Fouler observations to the local DEKU outbox")
+    parser.add_argument("--doctor", action="store_true", help="print read-only local queue/outbox readiness")
     parser.add_argument("--once", action="store_true", help="process at most one event and exit")
-    parser.add_argument("--dry-run", action="store_true", help="write redacted Discord proof for the oldest pending event without posting")
+    parser.add_argument("--dry-run", action="store_true", help="write redacted local proof for the oldest pending event")
     parser.add_argument(
         "--archive-terminal-failures",
         action="store_true",
-        help="archive stale failed queue events as local proof without posting to Discord",
+        help="archive stale failed queue events as local proof without handoff",
     )
     parser.add_argument("--require-ready", action="store_true", help="with --doctor, exit non-zero if no transport is configured")
     args = parser.parse_args()
@@ -1995,7 +1794,6 @@ def main() -> int:
         )
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 1 if args.require_ready and not payload["ready"] else 0
-    load_env_chain()
     if args.archive_terminal_failures:
         archived_failed = archive_stale_failed_events(EXPIRY_SEC)
         status = "archived" if archived_failed else "idle"

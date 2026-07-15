@@ -1,87 +1,195 @@
-# Offline Eval Readiness
+# Fouler Evaluation Readiness
 
-`infrastructure/improve_agent.py` fails closed when the offline eval harness is
-missing or unusable. Do not bypass that gate. Use the read-only doctor first:
+Fouler has two local evaluation surfaces with different authority:
+
+1. `infrastructure/offline_eval.py` plays against a simple, max-base-power, or
+   random poke-env opponent. It is useful for transport and gross-regression
+   smoke only. It can never authorize an engine promotion.
+2. `infrastructure/head_to_head_eval.py` plays the candidate engine directly
+   against the exact frozen Git checkout. This is the only local battle result
+   that can authorize promotion or reopen a stop-loss recovery window.
+
+Do not substitute one proof for the other.
+
+## Read-Only Doctor
+
+Run the weak-baseline infrastructure doctor without starting ladder battles or
+Discord reporting:
 
 ```powershell
 python infrastructure/offline_eval_readiness.py --require-ready
 ```
 
-The command prints JSON and does not start Pokemon Showdown, Discord posting,
-ladder battles, HERMES/DEKU, or services. Recursive improvement may resume only
-when `recursiveImprovementReady` is `true`.
+The doctor verifies the eval Python, runtime imports, Node/npm/git, the local
+Pokemon Showdown checkout, team file, frozen smoke artifact, stale status files,
+and process-lock state. Unless cleanup is explicitly requested under a valid
+lease, it does not mutate files, start Pokemon Showdown, launch Fouler, or post
+events.
 
-By default the doctor also performs a read-only TCP probe against
-`EVAL_SHOWDOWN_PORT` so a missing local eval server is reported before the
-baseline command launches Fouler. Use `--skip-server-check` only when producing
-static documentation/proof that should not touch the network.
+`recursiveImprovementReady=true` means the local harness prerequisites are
+available. It does not mean an engine candidate has passed promotion.
 
-The doctor also verifies Node/npm/git and the configured Pokemon Showdown
-checkout by metadata only. It does not run `npm`, start Showdown, launch
-Discord, start ladder battles, or manage services.
+## Weak-Baseline Smoke
 
-## HERMES No-Runtime Useful-Work Proof
+The legacy smoke commands remain useful for confirming end-to-end transport:
 
-When no live battle runner is leased, HERMES should prove whether Fouler is
-still producing useful work through offline analysis instead of treating stale
-runtime truth as progress.
+```powershell
+.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label frozen --no-setsample --search-time-ms 100 --concurrency 3 --manage-showdown-server
+.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label candidate --search-time-ms 100 --concurrency 3 --manage-showdown-server
+.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --compare frozen candidate
+```
 
-Use this no-start status command for handoff reports:
+The comparison artifact always emits:
+
+- `promotion_eligible=false`
+- `ACCEPT=false`
+- a `smoke_passed` transport/gross-regression signal
+
+`infrastructure/offline_eval_readiness.py` maps older `ACCEPT=true` artifacts to
+legacy smoke evidence only. Its result proof always reports `accepted=false` and
+`promotionEligible=false`.
+
+## Candidate-Vs-Frozen Gate
+
+The discriminating gate requires exactly one unstaged change to an allowlisted
+engine file. Staged changes and unrelated tracked changes fail closed.
+
+```powershell
+python infrastructure/head_to_head_eval.py `
+  --candidate-file fp/search/main.py `
+  --battles 60 `
+  --require-promotion
+```
+
+The 60-battle default is a balanced matrix:
+
+- three mission teams: stall, balance, and Dondozo
+- every ordered non-mirror team pairing
+- candidate as challenger and accepter
+- five battles in each of 12 cells
+
+Promotion requires all of the following:
+
+- exactly 60 or more completed battles in a multiple of 12
+- no ties, disconnect truth gaps, duplicate battle IDs, underfilled cells, or
+  nonzero agent exits
+- candidate effect at least `+10%` over frozen
+- one-sided exact-binomial `p < 0.01`
+- one durably pre-registered attempt from a maximum of five candidate trials for
+  the evaluated runtime family; Bonferroni bounds the family to `alpha <= 0.05`
+- no below-50% candidate result by connection role or candidate team
+- exact frozen commit, candidate file, binary patch SHA-256, raw arm files,
+  Python/package set, Showdown checkout, controller, and runtime provenance
+- all temporary agents, Showdown sidecars, and Git worktrees cleaned
+
+`eval_results/head_to_head/latest.json` is only a hash-addressed pointer to the
+canonical `<runId>/result.json`. It is written only after temporary-worktree
+cleanup and durable attempt-ledger finalization succeed.
+
+For an operational identical-code smoke, use one battle per cell:
+
+```powershell
+python infrastructure/head_to_head_eval.py `
+  --candidate-file fp/search/main.py `
+  --battles 12 `
+  --allow-identical-smoke
+```
+
+An identical or sub-60 smoke is always `promotion-blocked`, even when all 12
+cells execute cleanly.
+
+## Checkout Provenance
+
+`infrastructure/head_to_head_proof.py` validates both artifact structure and
+the current checkout. A previously accepted artifact becomes unusable when:
+
+- its frozen commit is missing or is not an ancestor of `HEAD`
+- a different engine file changed after the frozen commit
+- the proven candidate file has a different binary patch hash
+- the current declared runtime closure has tracked or untracked changes
+- matrix cell, battle-ID, team, role, result, effect, or p-value evidence is
+  incomplete
+
+This prevents stale `latest.json` state from reopening laddering after newer
+engine code replaces the proven candidate.
+
+## Stop-Loss Recovery
+
+After a ladder stop-loss, `scripts/fouler_mission_monitor.py` reports the
+compatibility field `offlineEvalResumeProof`, but policy
+`fouler-head-to-head-resume-proof/v1` now reads only the candidate-vs-frozen
+artifact and checkout provenance. The weak-baseline candidate/compare files do
+not satisfy this gate.
+
+One bounded live recovery window still requires a fresh implemented work packet,
+post-packet battle evidence, autoresearch coverage, and a valid finite runtime
+lease in addition to the accepted head-to-head proof.
+
+## Health Output
 
 ```powershell
 python scripts/devstream_health.py --skip-http
 ```
 
-The health payload includes:
+The health payload exposes weak smoke separately:
 
-- `offlineEvalReadiness`: summarized output from the offline eval doctor in
-  no-start mode.
-- `readiness.offlineEvalReady`: whether the offline recursive-improvement gate
-  is ready without considering a live Showdown server probe.
-- `usefulWorkProof`: one combined HERMES signal that is ready only if a live
-  bounded battle runtime, completed cycle proof, or offline eval harness can
-  prove current work.
-- `usefulWorkProof.offlineEvalResultProof`: read-only summary of existing
-  `eval_results/offline/candidate.json` and
-  `eval_results/offline/compare-frozen-vs-candidate.json` result artifacts.
-  It does not run evals, start Showdown, or create artifacts.
+- `offlineEvalReadiness`: read-only harness prerequisite status
+- `usefulWorkProof.offlineEvalResultProof`: weak-baseline smoke artifact
+- `usefulWorkProof.weakBaselineSmokeProofReady`: smoke passed, never promotion
+- `usefulWorkProof.status=offline-eval-smoke-passed`: useful offline evidence,
+  not permission to deploy or resume laddering
 
-`offlineEvalResultProof` fields are intentionally structured for no-start
-handoff:
+## Configuration
 
-- `status`: `missing`, `malformed`, `insufficient`, `stale`, `accepted`, or
-  `rejected`.
-- `ready`: `true` only when the candidate result has enough battles and the
-  compare verdict accepts it.
-- `accepted`: `true` only when the compare proof accepted the candidate after
-  battle-count and freshness validation.
-- `candidateBattles` and `requiredBattles`: battle-count proof for the
-  candidate artifact.
-- `verdict`: normalized compare verdict when available.
-- `missingPaths`, `malformedPaths`, `staleReasons`, and `reasons`: explicit
-  blockers or evidence strings for handoff reports.
+Candidate-vs-frozen gate settings:
 
-The mission monitor also consumes this same result proof as
-`fouler-offline-eval-resume-proof/v1`. After any ladder stop-loss condition
-(`fouler-loss-streak`, `fouler-low-recent-win-rate`,
-`fouler-rating-drawdown` from runtime or ELO-proof pre-target/sustain skid,
-or `fouler-ladder-batch-too-large-for-stage`),
-`scripts/fouler_mission_monitor.py --start-gate-only` blocks with
-`fouler-offline-eval-resume-proof-missing` until the read-only result proof is
-`accepted` and both candidate battle counts meet `IMPROVE_AGENT_EVAL_BATTLES`.
-This gate does not run evals or start Pokemon Showdown; it only reads the
-existing candidate and compare artifacts.
+- `IMPROVE_AGENT_EVAL_BATTLES`, default `60`; must be at least 60 and a
+  multiple of 12
+- `IMPROVE_AGENT_EVAL_TEAMS`, fixed to the three mission benchmark paths
+- `IMPROVE_AGENT_EVAL_SHOWDOWN_PORT`, default `8791`
+- `IMPROVE_AGENT_EVAL_SEARCH_TIME_MS`, default `1200`
+- `IMPROVE_AGENT_EVAL_PER_BATTLE_TIMEOUT`, default `240`
+- `IMPROVE_AGENT_TEST_TIMEOUT_SECONDS`, default `360`
 
-For completion-level proof, run the stricter gate:
+The attempt ledger is not environment-configurable. Production eval and proof
+always read the immutable authority file at
+`~/.deku/state/fouler-h2h-ledger-authority.json`. That file pins the absolute
+SQLite path and ledger ID and is cross-bound to matching metadata in the
+database. Legacy `FOULER_H2H_LEDGER_PATH` and `FOULER_H2H_LEDGER_ID` values are
+ignored.
+
+Provision the authority and ledger explicitly once:
 
 ```powershell
-python infrastructure/offline_eval_readiness.py --require-ready
+$ledgerId = [guid]::NewGuid().ToString("N")
+python infrastructure/head_to_head_eval.py `
+  --initialize-ledger `
+  --ledger-id $ledgerId
 ```
 
-Do not archive stale runtime truth, clean dead offline status files with
-`--execute-cleanup`, start Showdown, run ladder battles, post to Discord, or
-touch JIGGLYPUFF scheduled tasks unless a current finite HERMES proof-window
-lease authorizes that action.
+`--ledger-path <absolute-path>` may select the SQLite location only during this
+one-time initialization. Both files are created exclusively; initialization
+refuses to replace either one. Normal evaluation opens the pinned database
+read/write but never creates or replaces it, while proof opens it read-only. A
+killed or failed attempt still spends its slot. The budget is keyed by the
+frozen runtime, controller, Python/package set, Showdown checkout, and closed
+child environment, so unrelated Git commits do not reset the family. A missing,
+malformed, moved, writable, or replaced authority, or mismatched database
+identity, blocks evaluation and proof instead of silently resetting history.
+
+The supervisor defaults `--improve-timeout-seconds` to 18000 and refuses an
+explicit timeout below the matrix-derived floor. Its improve-agent runtime lease
+uses the evaluation battle count, not the live ladder batch size.
+
+Weak-smoke doctor settings remain independent:
+
+- `IMPROVE_AGENT_EVAL_CONCURRENCY`
+- `IMPROVE_AGENT_EVAL_MANAGE_SHOWDOWN`
+- `EVAL_SHOWDOWN_ADOPT_EXISTING`
+- `IMPROVE_AGENT_EVAL_TEAM`
+- `IMPROVE_AGENT_EVAL_BASELINE`
+- `EVAL_SHOWDOWN_PORT`, default `8765`
+- `POKEMON_SHOWDOWN_DIR`, default sibling `..\pokemon-showdown`
 
 ## Provisioning
 
@@ -93,16 +201,6 @@ py -3 -m venv .venv-eval
 .venv-eval\Scripts\python.exe -m pip install -r infrastructure\requirements-eval.txt
 ```
 
-`.venv-eval` is only the poke-env challenger environment. The Fouler side of
-the harness runs `run.py` with a separate runtime Python that can import
-`requirements.txt` dependencies such as `aiohttp` and `poke-engine`. By default
-the harness probes the current interpreter, `.venv`, and the system Python
-launcher. Override it when needed:
-
-```powershell
-$env:FOULER_RUNTIME_PYTHON = 'py -3'
-```
-
 On Linux:
 
 ```bash
@@ -111,110 +209,7 @@ python3 -m venv .venv-eval
 .venv-eval/bin/python -m pip install -r infrastructure/requirements-eval.txt
 ```
 
-### Pokemon Showdown
-
-The default checkout location is a sibling of this repo:
-
-```text
-..\pokemon-showdown
-```
-
-Override it with `POKEMON_SHOWDOWN_DIR` when the checkout lives elsewhere. The
-readiness doctor expects that directory to contain `package.json`, the
-`pokemon-showdown` launcher file, and installed `node_modules`.
-
-Provision or repair the checkout without starting it:
-
-```powershell
-$showdown = 'C:\Users\mtoli\Documents\Code\pokemon-showdown'
-if (!(Test-Path -LiteralPath $showdown)) {
-  git clone https://github.com/smogon/pokemon-showdown.git $showdown
-}
-Push-Location -LiteralPath $showdown
-npm ci
-Pop-Location
-```
-
-On Linux:
-
-```bash
-showdown=/home/ryan/pokemon-showdown
-test -d "$showdown" || git clone https://github.com/smogon/pokemon-showdown.git "$showdown"
-cd "$showdown"
-npm ci
-```
-
-Only after provisioning, an operator can start a local no-security eval server on the
-configured eval port. The doctor reports the cwd under
-`commands.showdownServerCwd` and the command under `commands.showdownServer`;
-default command:
-
-```bash
-node pokemon-showdown --no-security start 8765
-```
-
-## Eval Commands
-
-The recursive gate candidate command is reported under
-`commands.candidateEval`. By default it is equivalent to:
-
-```powershell
-.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label candidate --search-time-ms 100 --concurrency 3 --manage-showdown-server
-```
-
-Create the frozen proof baseline first:
-
-```powershell
-.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label frozen --no-setsample --search-time-ms 100 --concurrency 3 --manage-showdown-server
-```
-
-After the improve gate runs a candidate, the compare proof command is:
-
-```powershell
-.venv-eval\Scripts\python.exe infrastructure\offline_eval.py --compare frozen candidate
-```
-
-Environment knobs consumed by both the doctor and improve gate:
-
-- `IMPROVE_AGENT_EVAL_BATTLES`, default `200`
-- `IMPROVE_AGENT_EVAL_SEARCH_TIME_MS`, default `100`
-- `IMPROVE_AGENT_EVAL_CONCURRENCY`, default `1`; use `3` for bounded local no-security proof windows when the machine can sustain three simultaneous battles
-- `IMPROVE_AGENT_EVAL_MANAGE_SHOWDOWN`, default enabled; set to `0` only if a
-  resident no-security Showdown server is deliberately managed elsewhere
-- `EVAL_SHOWDOWN_ADOPT_EXISTING`, default disabled; set to `1` only after
-  verifying the listener on `EVAL_SHOWDOWN_PORT` is already the intended
-  no-security eval server
-- `IMPROVE_AGENT_EVAL_TEAM`, default `gen9/ou/fat-team-1-stall`
-- `IMPROVE_AGENT_EVAL_BASELINE`, default `simple`
-- `EVAL_SHOWDOWN_PORT`, default `8765`
-- `POKEMON_SHOWDOWN_DIR`, default sibling `..\pokemon-showdown`
-
-## Required Proof
-
-The readiness doctor requires:
-
-- `.venv-eval` Python exists and can import `poke_env` and `websockets`
-- Fouler runtime Python can import the `run.py` dependencies from
-  `requirements.txt`
-- `node`, `npm`, and `git` are available for reproducible Showdown provisioning
-- configured Pokemon Showdown checkout has `package.json`, `pokemon-showdown`,
-  and installed `node_modules`
-- local no-security Pokemon Showdown is reachable on `EVAL_SHOWDOWN_PORT`, or
-  the managed sidecar command is enabled so each bounded eval starts/stops its
-  own local server
-- `infrastructure/offline_eval.py` exists
-- `infrastructure/_offline_baseline.py` exists
-- configured team file exists
-- `eval_results/offline/frozen.json` exists, has at least
-  `IMPROVE_AGENT_EVAL_BATTLES` battles, and contains `label`, `battles`,
-  `fouler_wins`, `fouler_win_rate`, and `fouler_wilson_lcb`
-
-After a candidate run, improvement acceptance proof is:
-
-- `eval_results/offline/candidate.json`
-- `eval_results/offline/compare-frozen-vs-candidate.json`
-
-The no-start result proof validates the candidate battle count against
-`IMPROVE_AGENT_EVAL_BATTLES`, normalizes the compare verdict from fields such
-as `ACCEPT`, `accepted`, `ready`, or `verdict`, and marks the compare artifact
-`stale` if its nested candidate summary no longer matches `candidate.json`.
+The sibling Pokemon Showdown checkout must contain `package.json`, the
+`pokemon-showdown` launcher, and installed `node_modules`. Managed evaluation
+starts its own local `--no-security` sidecar and must stop it before publishing
+the proof artifact.

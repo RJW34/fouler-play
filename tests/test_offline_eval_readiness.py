@@ -3,6 +3,8 @@ import socket
 from pathlib import Path
 
 from infrastructure import offline_eval_readiness
+from scripts import devstream_runtime_lease
+from tests.runtime_authority_testkit import sign_test_runtime_lease
 
 
 def _write_minimal_harness(root: Path) -> None:
@@ -79,24 +81,43 @@ def _write_result_artifacts(
 
 
 def _write_cleanup_lease(path: Path, purpose: str) -> Path:
+    host_binding = devstream_runtime_lease.physical_host_binding()
     payload = {
-        "schemaVersion": "fouler-play-runtime-lease/v1",
+        "schemaVersion": "fouler-play-runtime-lease/v3",
         "projectId": "fouler-play",
         "leaseId": "offline-cleanup-test",
+        "sourceCommit": "a" * 40,
+        "changeId": "change-test-0001",
+        "deploymentId": "deployment-test-0001",
+        "sourceTree": "b" * 40,
+        "runtimeManifestDigest": "c" * 64,
+        "deploymentReceiptPath": "C:\\ProgramData\\HERMES\\state\\fouler\\deployment-test.json",
+        "deploymentReceiptSha256": "d" * 64,
+        "sessionId": "session-test-0001",
         "status": "active",
         "approved": True,
-        "machine": "MIRAIDON",
+        **host_binding,
         "account": "bot",
         "allowedPurposes": [purpose],
         "maxRunCount": 1,
         "maxCycles": 1,
         "maxConcurrentBattles": 1,
         "replayBehavior": "never",
+        "battleScope": {
+            **host_binding,
+            "account": "bot",
+            "runCount": 1,
+            "maxRunCount": 1,
+            "maxConcurrentBattles": 1,
+            "replayBehavior": "never",
+        },
+        "cycleScope": {"maxCycles": 1},
         "proofWindow": {
             "startsAt": "2026-06-08T00:00:00+00:00",
             "expiresAt": "2099-01-01T00:00:00+00:00",
         },
     }
+    payload = sign_test_runtime_lease(payload)
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path
 
@@ -233,31 +254,50 @@ def test_readiness_payload_can_disable_managed_showdown_command(tmp_path):
     assert "--manage-showdown-server" not in payload["commands"]["candidateEval"]
 
 
-def test_offline_eval_result_proof_reports_accepted_artifacts(tmp_path):
+def test_offline_eval_result_proof_treats_legacy_acceptance_as_smoke_only(tmp_path):
     _write_result_artifacts(tmp_path, accepted=True)
 
     payload = offline_eval_readiness.offline_eval_result_proof(root=tmp_path, env={})
 
-    assert payload["status"] == "accepted"
+    assert payload["status"] == "smoke-passed"
     assert payload["ready"] is True
-    assert payload["accepted"] is True
-    assert payload["verdict"] == "accepted"
+    assert payload["smokePassed"] is True
+    assert payload["accepted"] is False
+    assert payload["promotionEligible"] is False
+    assert payload["verdict"] == "passed"
     assert payload["candidateBattles"] == 200
     assert payload["requiredBattles"] == 200
     assert payload["missingPaths"] == []
-    assert payload["artifacts"]["compare"]["accepted"] is True
+    assert payload["artifacts"]["compare"]["accepted"] is False
+    assert payload["artifacts"]["compare"]["legacyReportedAcceptance"] is True
 
 
-def test_offline_eval_result_proof_reports_rejected_artifacts(tmp_path):
+def test_offline_eval_result_proof_reports_failed_smoke_artifacts(tmp_path):
     _write_result_artifacts(tmp_path, accepted=False)
 
     payload = offline_eval_readiness.offline_eval_result_proof(root=tmp_path, env={})
 
-    assert payload["status"] == "rejected"
+    assert payload["status"] == "smoke-failed"
     assert payload["ready"] is False
     assert payload["accepted"] is False
-    assert payload["verdict"] == "rejected"
-    assert "compare verdict rejected candidate" in payload["reasons"]
+    assert payload["verdict"] == "failed"
+    assert "weak-baseline transport or gross-regression smoke failed" in payload["reasons"]
+
+
+def test_offline_eval_result_proof_prefers_explicit_smoke_over_forced_accept_false(tmp_path):
+    _write_result_artifacts(tmp_path, accepted=False)
+    compare_path = tmp_path / "eval_results" / "offline" / "compare-frozen-vs-candidate.json"
+    compare = json.loads(compare_path.read_text(encoding="utf-8"))
+    compare["smoke_passed"] = True
+    compare["promotion_eligible"] = False
+    compare_path.write_text(json.dumps(compare), encoding="utf-8")
+
+    payload = offline_eval_readiness.offline_eval_result_proof(root=tmp_path, env={})
+
+    assert payload["status"] == "smoke-passed"
+    assert payload["ready"] is True
+    assert payload["accepted"] is False
+    assert payload["artifacts"]["compare"]["verdictSource"] == "smoke_passed"
 
 
 def test_offline_eval_result_proof_reports_missing_artifacts(tmp_path):

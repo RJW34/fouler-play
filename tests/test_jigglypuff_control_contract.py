@@ -4,6 +4,11 @@ from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
+IMMUTABLE_REMOTE_SCRIPT = (
+    "D:\\Releases\\fouler-play\\"
+    + "a" * 40
+    + "\\scripts\\fouler_jigglypuff_runtime.ps1"
+)
 
 
 def load_module():
@@ -15,35 +20,7 @@ def load_module():
     return module
 
 
-def write_runtime_lease(
-    module,
-    path: Path,
-    *,
-    account: str = "bot",
-    allowed_purposes: list[str] | None = None,
-) -> Path:
-    payload = {
-        "schemaVersion": "fouler-play-runtime-lease/v1",
-        "projectId": "fouler-play",
-        "leaseId": "lease-test",
-        "status": "active",
-        "machine": "JIGGLYPUFF",
-        "account": account,
-        "allowedPurposes": allowed_purposes or [module.JIGGLYPUFF_RUNTIME_START_PURPOSE],
-        "maxRunCount": 10,
-        "maxCycles": 2,
-        "maxConcurrentBattles": 3,
-        "replayBehavior": "save",
-        "proofWindow": {
-            "startsAt": "2026-06-08T00:00:00+00:00",
-            "expiresAt": "2099-01-01T00:00:00+00:00",
-        },
-    }
-    path.write_text(module.json.dumps(payload), encoding="utf-8")
-    return path
-
-
-def test_control_mirrors_jigglypuff_live_battle_state(monkeypatch, tmp_path):
+def test_control_never_mirrors_jigglypuff_live_battle_state(monkeypatch, tmp_path):
     module = load_module()
     monkeypatch.setattr(module, "ROOT", tmp_path)
     monkeypatch.setattr(module, "TRUTH_DIR", tmp_path / "devstream" / "truth")
@@ -60,12 +37,13 @@ def test_control_mirrors_jigglypuff_live_battle_state(monkeypatch, tmp_path):
 
     mirrored = module.mirror_status({"ok": True, "status": "running"}, action="status", raw={})
 
-    active = module.json.loads((tmp_path / "active_battles.json").read_text(encoding="utf-8"))
-    assert active["count"] == 1
-    assert active["battles"][0]["id"] == "battle-gen9ou-1"
-    assert active["observedAt"]
-    assert mirrored["liveStateMirror"]["activeBattlesMirrored"] is True
+    assert not (tmp_path / "active_battles.json").exists()
+    assert not (tmp_path / "devstream" / "truth" / "jigglypuff-runtime.json").exists()
+    assert mirrored["mirrorSkipped"] is True
+    assert mirrored["liveStateMirror"]["activeBattlesMirrored"] is False
+    assert mirrored["liveStateMirror"]["skipped"] is True
     assert mirrored["liveStateMirror"]["observedAt"]
+    assert "write_mirror was ignored" in " ".join(mirrored["warnings"])
 
 
 def test_status_read_only_skips_mirror_writes(monkeypatch, tmp_path):
@@ -232,16 +210,17 @@ def test_status_synthesizes_degraded_live_from_public_runtime_when_control_json_
         raw={"returnCode": None, "stderr": "ssh closed", "stdout": ""},
     )
 
-    active = module.json.loads((tmp_path / "active_battles.json").read_text(encoding="utf-8"))
     assert mirrored["status"] == "degraded-live"
-    assert mirrored["running"] is True
+    assert mirrored["running"] is False
     assert mirrored["healthy"] is False
     assert mirrored["readiness"]["runtimeReady"] is False
     assert mirrored["activeBattleCount"] == 3
     assert "did not return JSON" not in " ".join(mirrored["blockers"])
-    assert "drain/adopt" in mirrored["blockers"][0]
-    assert mirrored["liveStateMirror"]["battleCount"] == 3
-    assert active["count"] == 3
+    assert "exact-release control proof is unavailable" in mirrored["blockers"][0]
+    assert mirrored["liveStateMirror"]["activeBattlesMirrored"] is False
+    assert mirrored["liveStateMirror"]["skipped"] is True
+    assert not (tmp_path / "active_battles.json").exists()
+    assert not (tmp_path / "devstream" / "truth" / "jigglypuff-runtime.json").exists()
 
 
 def test_remote_command_prefers_resident_worker_when_fouler_endpoint_exists(monkeypatch):
@@ -270,6 +249,7 @@ def test_remote_command_prefers_resident_worker_when_fouler_endpoint_exists(monk
 
 
 def test_remote_command_falls_back_to_ssh_when_resident_fouler_endpoint_is_missing(monkeypatch):
+    monkeypatch.setenv("FOULER_JIGGLYPUFF_SCRIPT", IMMUTABLE_REMOTE_SCRIPT)
     module = load_module()
     captured = {}
 
@@ -302,6 +282,7 @@ def test_remote_command_falls_back_to_ssh_when_resident_fouler_endpoint_is_missi
 def test_status_tries_lan_ssh_when_tailnet_remote_does_not_return_json(monkeypatch):
     monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH", raising=False)
     monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH_FALLBACKS", raising=False)
+    monkeypatch.setenv("FOULER_JIGGLYPUFF_SCRIPT", IMMUTABLE_REMOTE_SCRIPT)
     module = load_module()
     calls = []
 
@@ -339,6 +320,7 @@ def test_status_tries_lan_ssh_when_tailnet_remote_does_not_return_json(monkeypat
 
 
 def test_read_only_remote_status_uses_ssh_no_write_and_skips_resident_worker(monkeypatch):
+    monkeypatch.setenv("FOULER_JIGGLYPUFF_SCRIPT", IMMUTABLE_REMOTE_SCRIPT)
     module = load_module()
     captured = {}
 
@@ -513,47 +495,26 @@ def test_status_compares_process_start_to_runtime_code_commit_not_repo_head():
     assert mirrored["runtimeCodeFreshness"]["processStartPredatesRuntimeCode"] is False
 
 
-def test_start_runtime_lease_guard_uses_jiggly_runtime_purpose_and_account(monkeypatch, tmp_path):
+def test_start_runtime_lease_guard_refuses_local_host_validation():
     module = load_module()
-    captured = {}
-
-    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "claudechamp"})
-
-    def fake_validate_runtime_lease(**kwargs):
-        captured.update(kwargs)
-        return {"ok": True, "purpose": kwargs["purpose"], "requested": {"account": kwargs["requested_account"]}}
-
-    monkeypatch.setattr(module, "validate_runtime_lease", fake_validate_runtime_lease)
 
     guard = module.start_runtime_lease_guard(
         SimpleNamespace(
             run_count=1,
             max_concurrent_battles=1,
             max_cycles=1,
-            runtime_lease=str(tmp_path / "runtime-lease.json"),
+            runtime_lease="runtime-lease.json",
         )
     )
 
     assert guard["purpose"] == "jigglypuff-runtime-start"
-    assert captured["purpose"] == module.JIGGLYPUFF_RUNTIME_START_PURPOSE
-    assert captured["requested_account"] == "claudechamp"
-    assert captured["require_run_count"] is True
-    assert captured["require_max_cycles"] is True
-    assert captured["require_max_concurrent_battles"] is True
-    assert captured["require_replay_behavior"] is True
+    assert guard["ok"] is False
+    assert guard["status"] == "retired-control-path"
+    assert "exact release on JIGGLYPUFF" in " ".join(guard["blockers"])
 
 
-def test_stop_runtime_lease_guard_uses_stop_purpose(monkeypatch):
+def test_stop_runtime_lease_guard_refuses_local_host_validation():
     module = load_module()
-    captured = {}
-
-    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "runtimebot"})
-
-    def fake_validate_runtime_lease(**kwargs):
-        captured.update(kwargs)
-        return {"ok": True, "purpose": kwargs["purpose"]}
-
-    monkeypatch.setattr(module, "validate_runtime_lease", fake_validate_runtime_lease)
 
     guard = module.runtime_lease_guard_for_action(
         "stop",
@@ -561,26 +522,12 @@ def test_stop_runtime_lease_guard_uses_stop_purpose(monkeypatch):
     )
 
     assert guard["purpose"] == module.JIGGLYPUFF_RUNTIME_STOP_PURPOSE
-    assert captured["purpose"] == module.JIGGLYPUFF_RUNTIME_STOP_PURPOSE
-    assert captured["requested_run_count"] == 1
-    assert captured["requested_max_cycles"] == 1
-    assert captured["requested_max_concurrent_battles"] == 1
-    assert captured["requested_account"] == "runtimebot"
-    assert captured["require_replay_behavior"] is True
+    assert guard["ok"] is False
+    assert guard["status"] == "retired-control-path"
 
 
-def test_stop_execute_is_blocked_without_runtime_lease(monkeypatch):
+def test_stop_execute_is_always_blocked_on_retired_remote_path(monkeypatch):
     module = load_module()
-    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "runtimebot"})
-    monkeypatch.setattr(
-        module,
-        "validate_runtime_lease",
-        lambda **kwargs: {
-            "ok": False,
-            "purpose": kwargs["purpose"],
-            "blockers": ["missing lease"],
-        },
-    )
     monkeypatch.setattr(
         module,
         "remote_command",
@@ -593,14 +540,14 @@ def test_stop_execute_is_blocked_without_runtime_lease(monkeypatch):
     )
 
     assert code == 2
-    assert payload["status"] == "blocked-runtime-lease"
-    assert payload["runtimeLease"]["purpose"] == module.JIGGLYPUFF_RUNTIME_STOP_PURPOSE
-    assert payload["blockers"] == ["missing lease"]
+    assert payload["status"] == "retired-control-path"
+    assert payload["blocked"] is True
+    assert payload["executeRequested"] is True
+    assert "remote mutation is retired" in " ".join(payload["blockers"])
 
 
-def test_start_execute_fails_closed_without_runtime_lease(monkeypatch, tmp_path):
+def test_start_execute_fails_closed_on_retired_remote_path(monkeypatch, tmp_path):
     module = load_module()
-    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "bot"})
     monkeypatch.setattr(
         module,
         "remote_command",
@@ -622,15 +569,15 @@ def test_start_execute_fails_closed_without_runtime_lease(monkeypatch, tmp_path)
     )
 
     assert code == 2
-    assert payload["status"] == "blocked-runtime-lease"
-    assert payload["runtimeLease"]["ok"] is False
+    assert payload["status"] == "retired-control-path"
+    assert payload["blocked"] is True
+    assert payload["executeRequested"] is True
 
 
-def test_start_execute_blocks_runtime_lease_account_mismatch(monkeypatch, tmp_path):
+def test_start_execute_does_not_inspect_or_trust_local_runtime_lease(monkeypatch, tmp_path):
     module = load_module()
-    lease_path = write_runtime_lease(module, tmp_path / "runtime-lease.json", account="wrongbot")
-
-    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "claudechamp"})
+    lease_path = tmp_path / "runtime-lease.json"
+    lease_path.write_text('{"approved":true}', encoding="utf-8")
     monkeypatch.setattr(
         module,
         "remote_command",
@@ -652,24 +599,21 @@ def test_start_execute_blocks_runtime_lease_account_mismatch(monkeypatch, tmp_pa
     )
 
     assert code == 2
-    assert payload["status"] == "blocked-runtime-lease"
-    assert payload["runtimeLease"]["requested"]["account"] == "claudechamp"
-    assert "does not match requested account claudechamp" in " ".join(payload["blockers"])
+    assert payload["status"] == "retired-control-path"
+    assert payload["runtimeLease"]["path"] == str(lease_path)
+    assert "remote mutation is retired" in " ".join(payload["blockers"])
 
 
-def test_start_execute_passes_max_cycles_after_runtime_lease(monkeypatch, tmp_path):
+def test_start_execute_never_calls_remote_command_even_with_bounded_inputs(monkeypatch, tmp_path):
     module = load_module()
-    lease_path = write_runtime_lease(module, tmp_path / "runtime-lease.json")
-    captured = {}
-
-    def fake_remote_command(action, **kwargs):
-        captured["action"] = action
-        captured["kwargs"] = kwargs
-        return {"returnCode": 0, "json": {"ok": True, "status": "ready-idle"}, "stderr": ""}
-
-    monkeypatch.setattr(module, "remote_command", fake_remote_command)
-    monkeypatch.setattr(module, "mirror_status", lambda payload, **kwargs: dict(payload))
-    monkeypatch.setattr(module, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    lease_path = tmp_path / "runtime-lease.json"
+    monkeypatch.setattr(
+        module,
+        "remote_command",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("retired mutation path must not invoke remote command")
+        ),
+    )
 
     code, payload = module.action_mutating(
         "start",
@@ -685,11 +629,11 @@ def test_start_execute_passes_max_cycles_after_runtime_lease(monkeypatch, tmp_pa
         ),
     )
 
-    assert code == 0
-    assert captured["action"] == "start"
-    assert captured["kwargs"]["max_cycles"] == 1
-    assert captured["kwargs"]["runtime_lease"] == str(lease_path)
-    assert payload["status"] == "ready-idle"
+    assert code == 2
+    assert payload["status"] == "retired-control-path"
+    assert payload["bounds"]["maxCycles"] == 1
+    assert payload["bounds"]["runCount"] == 2
+    assert payload["bounds"]["maxConcurrentBattles"] == 3
 
 
 def test_gitignore_excludes_generated_runtime_lease_artifacts():

@@ -11,6 +11,9 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.turn_review import TurnReviewer
 from replay_analysis.account_identity import resolve_bot_username
+from infrastructure.runtime_paths import resolve_runtime_paths
+
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
 
 def analyze_replay_for_issues(replay_file: Path, reviewer) -> dict:
     """Analyze a single replay for specific issue patterns."""
@@ -101,11 +104,11 @@ def analyze_replay_for_issues(replay_file: Path, reviewer) -> dict:
 
 def main():
     reviewer = TurnReviewer(bot_username=resolve_bot_username())
-    replay_dir = Path(__file__).parent
+    replay_dir = _RUNTIME_PATHS.state_root / "replay_analysis"
     replay_files = sorted(replay_dir.glob("gen9ou-*.json"))[-30:]  # Last 30 battles
     
     # Load battle_stats for team info
-    battle_stats_file = PROJECT_ROOT / "battle_stats.json"
+    battle_stats_file = _RUNTIME_PATHS.battle_stats_path
     team_map = {}
     if battle_stats_file.exists():
         with open(battle_stats_file, 'r') as f:

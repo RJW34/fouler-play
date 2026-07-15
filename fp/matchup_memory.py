@@ -3,13 +3,14 @@
 This module is the single connection point between the loss-analysis pipeline and
 the live decision path. It does NOT generate or apply code diffs. It only:
 
-  1. READS ``fp/matchup_weights.json`` (loss-derived ``bad_matchups`` /
+  1. READS external runtime weights, with ``fp/matchup_weights.json`` as a
+     read-only seed (loss-derived ``bad_matchups`` /
      ``problem_pokemon``) and exposes a bounded, multiplicative bias over the
      engine's own candidate policy dict (``{decision: score}``). The bias never
      adds candidates and never removes legality - it only nudges the engine's
      existing legal candidates, mirroring the proven ``forced_line_bias`` pattern.
 
-  2. POPULATES ``fp/matchup_weights.json`` from deterministic loss artifacts
+  2. POPULATES the external runtime weights file from deterministic loss artifacts
      (see ``replay_analysis/loss_learning.py``). Observed losses -> weights ->
      biased play. This is reviewable data, not generated code.
 
@@ -32,10 +33,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from infrastructure.runtime_paths import resolve_runtime_paths
+
 logger = logging.getLogger(__name__)
 
-# Canonical weights file (read by live path, written by the updater).
-WEIGHTS_PATH = Path(__file__).resolve().parent / "matchup_weights.json"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+WEIGHTS_SEED_PATH = Path(__file__).resolve().parent / "matchup_weights.json"
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+# The updater writes only external state. The source-tree file is an optional,
+# immutable seed used when no learned runtime weights exist yet.
+WEIGHTS_PATH = _RUNTIME_PATHS.matchup_weights_path
 
 # --- Tunables (env-overridable, all bounded) -------------------------------
 # Master switch. Default ON; set MATCHUP_MEMORY_ENABLED=0 to fall back to the
@@ -82,7 +89,7 @@ STAY_DAMP = min(1.0, max(0.7, float(os.getenv("MATCHUP_MEMORY_STAY_DAMP", "0.92"
 # ladder. This is the only honest way to prove the matchup-memory lever actually
 # climbs ELO rather than just churning. Off by default (pure always-on behavior).
 AB_ENABLED = os.getenv("MATCHUP_MEMORY_AB", "0").lower() in {"1", "true", "yes", "on"}
-AB_LOG_PATH = Path(os.getenv("MATCHUP_MEMORY_AB_LOG", str(Path(__file__).resolve().parent.parent / "logs" / "matchup_ab_log.jsonl")))
+AB_LOG_PATH = _RUNTIME_PATHS.matchup_ab_log_path
 _ab_logged_battles: set[str] = set()
 
 
@@ -152,6 +159,8 @@ def load_weights(path: Path | None = None) -> dict[str, Any]:
     target = path or WEIGHTS_PATH
     empty = {"bad_matchups": {}, "problem_pokemon": {}, "updated_at": None}
     try:
+        if path is None and not target.exists() and WEIGHTS_SEED_PATH.exists():
+            target = WEIGHTS_SEED_PATH
         if not target.exists():
             return empty
         with target.open("r", encoding="utf-8") as handle:
@@ -380,8 +389,11 @@ def update_weights_from_artifacts(
 
 
 def write_weights(weights: dict[str, Any], path: Path | None = None) -> None:
-    """Atomically write the weights JSON."""
+    """Atomically write learned weights outside the immutable release."""
     target = path or WEIGHTS_PATH
+    if target.resolve(strict=False) == WEIGHTS_SEED_PATH.resolve(strict=False):
+        raise RuntimeError("the source-tree matchup weights seed is read-only")
+    target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_suffix(target.suffix + ".tmp")
     tmp.write_text(json.dumps(weights, indent=2, ensure_ascii=False), encoding="utf-8")
     tmp.replace(target)

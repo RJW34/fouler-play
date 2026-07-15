@@ -222,7 +222,7 @@ def test_digest_flags_discord_noise(monkeypatch, tmp_path):
 
     assert payload["rankedBreakages"][0]["area"] == "discord"
     assert payload["rankedBreakages"][0]["status"] == "noisy"
-    assert payload["singleNextAction"].startswith("Archive stale non-battle events")
+    assert payload["singleNextAction"].startswith("Retain routine analysis locally")
 
 
 def test_digest_uses_post_packet_preservation_action_after_active_improvement(monkeypatch, tmp_path):

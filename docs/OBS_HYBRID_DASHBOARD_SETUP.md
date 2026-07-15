@@ -1,17 +1,18 @@
 # OBS Hybrid Dashboard Setup
 
-## 1) Start the local server
+## 1) Verify the managed local server
 
-For spectator-mode battle slots, use `serve_obs_page` (it updates OBS Browser
-Source URLs via OBS WebSocket). `stream_server` can serve dashboard pages, but
-does not drive battle-slot URL switching.
+For spectator-mode battle slots, `HERMES-FoulerObsServer` runs
+`streaming/run_obs_server_service.py`, which hosts the overlays and updates OBS
+Browser Source URLs. The retired `stream_server.py` cannot start or serve output.
 
-```bash
-py -m streaming.serve_obs_page
+```powershell
+Get-Service HERMES-FoulerObsServer
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8777/health
 ```
 
 Default port is `8777` unless `OBS_SERVER_PORT` is set.
-`start_one_touch.bat` now auto-starts this helper server by default.
+Battle launchers never start a second helper server.
 
 ## 1.5) Install the Hybrid Scene Collection (local OBS)
 

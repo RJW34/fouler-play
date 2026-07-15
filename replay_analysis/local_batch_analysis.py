@@ -13,10 +13,12 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from replay_analysis.account_identity import resolve_bot_username
 from replay_analysis.turn_review import TurnReviewer
+from infrastructure.runtime_paths import resolve_runtime_paths
 
 MAGNETON_HOST = os.getenv("MAGNETON_HOST", "Ryanj@jigglypuff.tail4859dd.ts.net")
 OLLAMA_MODEL = "qwen2.5-coder:7b"
-REPLAY_DIR = Path(__file__).parent
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+REPLAY_DIR = _RUNTIME_PATHS.state_root / "replay_analysis"
 REPORTS_DIR = REPLAY_DIR / "reports"
 
 def analyze_local_replays(max_count: int = 20):
@@ -151,7 +153,7 @@ def query_ollama(prompt: str) -> str:
         return ""
 
 if __name__ == "__main__":
-    REPORTS_DIR.mkdir(exist_ok=True)
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     
     print("Analyzing local replays...")
     reviews, stats = analyze_local_replays(max_count=20)

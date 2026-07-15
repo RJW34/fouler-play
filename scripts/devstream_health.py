@@ -22,14 +22,29 @@ except ModuleNotFoundError:  # pragma: no cover - exercised by doctor subprocess
 
 from devstream_runtime_checks import recent_showdown_credential_failure
 from devstream_session import DEFAULT_MAX_CONCURRENT as DEFAULT_DEVSTREAM_BATTLE_SURFACES
+from devstream_runtime_lease import runtime_lease_path, validate_runtime_lease
 
 ROOT = Path(__file__).resolve().parents[1]
+SOURCE_ROOT = ROOT
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 HTTP_PORT = 8777
 OBS_WS_PORT = 4455
-RUNTIME_LEASE_PATH = ROOT / "devstream" / "truth" / "runtime-lease.json"
-LOGS_DIR = ROOT / "logs"
+_runtime_state_root = str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip()
+RUNTIME_STATE_ROOT = (
+    Path(_runtime_state_root).expanduser().absolute()
+    if _runtime_state_root
+    else ROOT
+)
+RUNTIME_TRUTH_DIR = (
+    RUNTIME_STATE_ROOT / "truth"
+    if _runtime_state_root
+    else ROOT / "devstream" / "truth"
+)
+RUNTIME_LEASE_PATH = runtime_lease_path()
+LOGS_DIR = Path(
+    os.getenv("FOULER_RUNTIME_LOG_ROOT", str(RUNTIME_STATE_ROOT / "logs"))
+).expanduser().absolute()
 BATTLE_LOG_GLOB = "battle-*.log"
 SESSION_LOG_NAME = "init.log"
 LIVE_SIGNAL_MAX_BATTLE_LOG_AGE_SECONDS = 3600
@@ -45,6 +60,33 @@ FINITE_RUNTIME_LEASE_PRECONDITIONS = [
     "requested --run-count and --max-concurrent-battles are positive finite bounds within the lease",
     "archive/adopt/clear actions run only through devstream_session.py start/stop --execute after lease validation",
 ]
+
+
+def runtime_state_root() -> Path:
+    if ROOT != SOURCE_ROOT:
+        return ROOT
+    configured = str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip()
+    return Path(configured).expanduser().absolute() if configured else ROOT
+
+
+def runtime_truth_dir() -> Path:
+    configured = str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip()
+    if ROOT != SOURCE_ROOT:
+        return ROOT / "devstream" / "truth"
+    return runtime_state_root() / "truth" if configured else ROOT / "devstream" / "truth"
+
+
+def event_queue_file() -> Path:
+    configured = str(os.getenv("EVENT_QUEUE_FILE") or "").strip()
+    return Path(configured).expanduser().absolute() if configured else runtime_state_root() / "events_queue.json"
+
+
+def battle_pid_path(relative_path: str) -> Path:
+    state_root = runtime_state_root()
+    if state_root != ROOT or str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip():
+        name = Path(relative_path).name
+        return state_root / "pids" / ("bot.pid" if name == ".bot.pid" else name)
+    return ROOT / relative_path
 
 
 def offline_eval_readiness_snapshot() -> dict[str, Any]:
@@ -203,42 +245,19 @@ def parse_payload_timestamp(value: Any) -> float | None:
 
 
 def runtime_lease_surface_expectation() -> dict[str, Any]:
-    try:
-        lease = json.loads(RUNTIME_LEASE_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {
-            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
-            "source": "default",
-            "path": str(RUNTIME_LEASE_PATH),
-        }
-    if not isinstance(lease, dict):
-        return {
-            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
-            "source": "default",
-            "path": str(RUNTIME_LEASE_PATH),
-        }
-    status = str(lease.get("status") or "").strip().lower()
-    if status and status not in {"active", "approved", "current", "open"}:
-        return {
-            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
-            "source": f"inactive-runtime-lease:{status}",
-            "path": str(RUNTIME_LEASE_PATH),
-        }
-    proof_window = lease.get("proofWindow") if isinstance(lease.get("proofWindow"), dict) else {}
-    expires_at = parse_payload_timestamp(proof_window.get("expiresAt") or proof_window.get("endsAt"))
-    if expires_at is not None and expires_at <= time.time():
-        return {
-            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
-            "source": "expired-runtime-lease",
-            "path": str(RUNTIME_LEASE_PATH),
-        }
-    battle_scope = lease.get("battleScope") if isinstance(lease.get("battleScope"), dict) else {}
-    bounds = lease.get("bounds") if isinstance(lease.get("bounds"), dict) else {}
-    raw_expected = (
-        lease.get("maxConcurrentBattles")
-        or battle_scope.get("maxConcurrentBattles")
-        or bounds.get("maxConcurrentBattles")
+    validation = validate_runtime_lease(
+        purpose="devstream-supervise",
+        lease_path=RUNTIME_LEASE_PATH,
     )
+    if not validation.get("ok"):
+        return {
+            "expected": EXPECTED_DEVSTREAM_BATTLE_SURFACES,
+            "source": "default-invalid-runtime-lease",
+            "path": str(RUNTIME_LEASE_PATH),
+            "leaseValid": False,
+        }
+    lease = validation.get("lease") if isinstance(validation.get("lease"), dict) else {}
+    raw_expected = lease.get("maxConcurrentBattles")
     try:
         expected = int(raw_expected)
     except (TypeError, ValueError):
@@ -255,7 +274,9 @@ def runtime_lease_surface_expectation() -> dict[str, Any]:
         "expected": expected,
         "source": "runtime-lease",
         "path": str(RUNTIME_LEASE_PATH),
-        "leaseId": lease.get("leaseId") or lease.get("id"),
+        "leaseId": lease.get("id"),
+        "authorizationSha256": lease.get("authorizationSha256"),
+        "leaseValid": True,
     }
 
 
@@ -315,7 +336,7 @@ def runtime_processes() -> list[dict[str, Any]]:
     root = os.path.abspath(ROOT)
     if psutil is None:
         for rel in BATTLE_PID_FILES:
-            path = ROOT / rel
+            path = battle_pid_path(rel)
             pid = read_pid_file(path)
             item: dict[str, Any] = {
                 "pidFile": rel,
@@ -331,7 +352,7 @@ def runtime_processes() -> list[dict[str, Any]]:
             processes.append(item)
         return processes
     for rel in BATTLE_PID_FILES:
-        path = ROOT / rel
+        path = battle_pid_path(rel)
         pid_payload = read_pid_payload(path)
         pid = read_pid_file(path)
         item: dict[str, Any] = {
@@ -599,7 +620,7 @@ def obs_surface_task_status(*, check_http: bool = True) -> dict[str, Any]:
 
 def truth_file_status(spec: dict[str, Any]) -> dict[str, Any]:
     rel = str(spec["path"])
-    path = ROOT / rel
+    path = runtime_state_root() / rel
     exists = path.exists()
     mtime = path.stat().st_mtime if exists else None
     parsed: Any = None
@@ -816,7 +837,7 @@ def runtime_truth_disposition(
 
 
 def active_battle_entries() -> list[dict[str, Any]]:
-    path = ROOT / "active_battles.json"
+    path = runtime_state_root() / "active_battles.json"
     if not path.exists():
         return []
     try:
@@ -832,7 +853,7 @@ def battle_entry_id(entry: dict[str, Any]) -> str:
 
 
 def terminal_battle_ids_from_stats() -> set[str]:
-    path = ROOT / "battle_stats.json"
+    path = runtime_state_root() / "battle_stats.json"
     parsed = read_json_file(path)
     battles = parsed.get("battles") if isinstance(parsed, dict) else parsed
     if not isinstance(battles, list):
@@ -1002,7 +1023,7 @@ def read_json_file(path: Path) -> Any:
 
 
 def completed_cycle_proof_status() -> dict[str, Any]:
-    path = ROOT / "devstream" / "truth" / "proof-status.json"
+    path = runtime_truth_dir() / "proof-status.json"
     parsed = read_json_file(path)
     generated_at = parse_payload_timestamp(parsed.get("generatedAt")) if isinstance(parsed, dict) else None
     age = time.time() - generated_at if generated_at is not None else None
@@ -1063,7 +1084,7 @@ def git_status() -> dict[str, Any]:
 
 
 def discord_queue_health() -> dict[str, Any]:
-    queue_file = ROOT / "events_queue.json"
+    queue_file = event_queue_file()
     if not queue_file.exists():
         return {
             "available": False,
@@ -1285,7 +1306,11 @@ def build_payload(*, check_http: bool = True, http_handler_witness: bool = False
             "reasons": ["offline eval result proof is unavailable"],
         }
     )
-    offline_eval_result_proof_ready = bool(offline_eval_result_proof.get("ready"))
+    weak_baseline_smoke_ready = bool(
+        offline_eval_result_proof.get("ready")
+        and offline_eval_result_proof.get("smokePassed")
+        and offline_eval_result_proof.get("promotionEligible") is False
+    )
     discord_reporting_ready = bool(discord_queue.get("ready", True) or local_discord_proof)
     proof_blockers = [] if local_discord_proof else [str(item) for item in discord_queue.get("blockers") or []]
     if battle_count:
@@ -1441,7 +1466,7 @@ def build_payload(*, check_http: bool = True, http_handler_witness: bool = False
     useful_work_proof_ready = (
         runtime_ready
         or completed_proof["readyForProofHandoff"]
-        or offline_eval_result_proof_ready
+        or weak_baseline_smoke_ready
         or offline_eval_readiness["recursiveImprovementReady"]
     )
     useful_work_proof = {
@@ -1449,17 +1474,22 @@ def build_payload(*, check_http: bool = True, http_handler_witness: bool = False
         "status": (
             "live-runtime-ready" if runtime_ready else
             "completed-cycle-proof-ready" if completed_proof["readyForProofHandoff"] else
-            "offline-eval-result-accepted" if offline_eval_result_proof_ready else
+            "offline-eval-smoke-passed" if weak_baseline_smoke_ready else
             "offline-eval-ready" if offline_eval_readiness["recursiveImprovementReady"] else
             "blocked"
         ),
         "runtimeReady": runtime_ready,
         "completedCycleProofReady": completed_proof["readyForProofHandoff"],
         "offlineEvalReady": offline_eval_readiness["recursiveImprovementReady"],
-        "offlineEvalResultProofReady": offline_eval_result_proof_ready,
+        "offlineEvalResultProofReady": weak_baseline_smoke_ready,
+        "weakBaselineSmokeProofReady": weak_baseline_smoke_ready,
         "offlineEvalResultProof": offline_eval_result_proof,
         "blockers": [] if useful_work_proof_ready else useful_work_proof_blockers,
-        "note": "HERMES-useful work can be proven by a live bounded battle runtime, a completed cycle proof, or a ready offline eval harness; this health probe does not start any of them.",
+        "note": (
+            "HERMES-useful work can be proven by a live bounded battle runtime, a completed cycle proof, "
+            "or a ready offline harness/smoke artifact. Weak-baseline smoke never authorizes engine promotion; "
+            "this health probe does not start any runtime."
+        ),
     }
     newest_log = newest_battle_log()
     ladder_client = ladder_client_liveness()
@@ -1582,7 +1612,7 @@ def main() -> int:
     )
     print(json.dumps(payload, indent=2, sort_keys=True))
     if args.write:
-        output = ROOT / "devstream" / "truth" / "health.json"
+        output = runtime_truth_dir() / "health.json"
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return 0

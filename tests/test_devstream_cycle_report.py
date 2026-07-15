@@ -12,6 +12,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import devstream_cycle_report
 import fouler_mission_monitor
+import devstream_runtime_lease
+from tests.runtime_authority_testkit import sign_test_runtime_lease
 
 
 def _active_lease() -> dict:
@@ -46,15 +48,25 @@ def _elo_cycle(generated_at: str | None = None) -> dict:
 def test_elo_proof_resolves_account_from_runtime_lease(tmp_path, monkeypatch):
     truth_dir = tmp_path / "devstream" / "truth"
     truth_dir.mkdir(parents=True)
+    runtime_lease = devstream_runtime_lease.build_runtime_lease_artifact(
+        purpose="devstream-supervise",
+        machine="MIRAIDON",
+        account="thepeakmons",
+        run_count=1,
+        max_cycles=1,
+        max_concurrent_battles=1,
+        replay_behavior="always",
+        valid_minutes=30,
+        source_commit="a" * 40,
+        source_tree="b" * 40,
+        change_id="change-cycle-report-0001",
+        deployment_id="deployment-cycle-report-0001",
+        runtime_manifest_digest="c" * 64,
+        deployment_receipt_path=r"C:\ProgramData\HERMES\state\fouler\deployment-test.json",
+        deployment_receipt_sha256="d" * 64,
+    )
     (truth_dir / "runtime-lease.json").write_text(
-        json.dumps(
-            {
-                "schemaVersion": "fouler-play-runtime-lease/v1",
-                "status": "active",
-                "account": "thepeakmons",
-                "battleScope": {"account": "thepeakmons"},
-            }
-        ),
+        json.dumps(sign_test_runtime_lease(runtime_lease)),
         encoding="utf-8",
     )
     monkeypatch.setattr(devstream_cycle_report, "ROOT", tmp_path)
@@ -1031,7 +1043,6 @@ def test_cycle_report_write_refreshes_redacted_discord_preview(tmp_path, monkeyp
     monkeypatch.setattr(event_poster, "DISCORD_DELIVERY_PROOF", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(event_poster, "DISCORD_DOCTOR_PROOF", truth_dir / "discord-reporting-doctor.json")
     monkeypatch.setattr(event_poster, "LOG_FILE", tmp_path / "logs" / "event_poster.log")
-    monkeypatch.setattr(event_poster, "ENV_FILES", ())
 
     (truth_dir / "discord-delivery.json").write_text(
         '{"schemaVersion":"fouler-play-discord-delivery/v1","status":"dry-run","eventId":"stale"}',

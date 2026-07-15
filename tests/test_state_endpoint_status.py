@@ -435,6 +435,51 @@ def test_state_payload_uses_fresh_account_season_baseline(tmp_path, monkeypatch)
     assert payload["battles"] == []
 
 
+def test_slot_state_marks_stale_battle_truth_inactive(monkeypatch):
+    now = 1_800_000_000.0
+    monkeypatch.setattr(serve_obs_page, "PUBLIC_STATE_STALE_AFTER_SEC", 120)
+    monkeypatch.setattr(serve_obs_page.time, "time", lambda: now)
+    monkeypatch.setattr(
+        serve_obs_page,
+        "recent_showdown_credential_failure",
+        lambda _root: {"found": False},
+    )
+    monkeypatch.setattr(serve_obs_page, "_public_battle_view", lambda _battle: None)
+    monkeypatch.setattr(
+        serve_obs_page,
+        "_recent_battle_events",
+        lambda _battle: ([], None, None),
+    )
+    monkeypatch.setattr(serve_obs_page, "_recent_battle_results", lambda: [])
+
+    state_store.write_status({"status": "Active", "battle_info": "vs StaleOpponent"})
+    state_store.update_daily_stats(4, 3)
+    state_store.write_active_battles(
+        {
+            "battles": [
+                {
+                    "id": "battle-gen9ou-stale",
+                    "opponent": "StaleOpponent",
+                    "started": "2027-01-15T07:57:59+00:00",
+                    "status": "active",
+                    "slot": 1,
+                }
+            ],
+            "count": 1,
+            "updated": "2027-01-15T07:57:59+00:00",
+        }
+    )
+
+    payload = serve_obs_page._slot_state_payload(1)["battle_lab"]
+
+    assert payload["freshness"] == "stale"
+    assert payload["stale"] is True
+    assert payload["active"] is False
+    assert payload["state_age_seconds"] == 121.0
+    assert payload["freshness_age_seconds"] == 121.0
+    assert payload["stale_after_seconds"] == 120
+
+
 def test_active_battle_atomic_write_retries_windows_replace_lock(tmp_path, monkeypatch):
     active_path = tmp_path / "active_battles.json"
     monkeypatch.setattr(state_store, "ACTIVE_BATTLES_PATH", active_path)

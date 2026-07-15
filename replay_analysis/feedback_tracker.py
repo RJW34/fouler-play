@@ -5,19 +5,26 @@ Converts feedback into actionable heuristic improvements
 """
 
 import json
+import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from infrastructure.runtime_paths import resolve_runtime_paths
+
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
 
 
 class FeedbackTracker:
     """Tracks and analyzes expert feedback on bot decisions"""
     
     def __init__(self):
-        # Use path relative to this file
-        project_root = Path(__file__).parent.parent
-        self.feedback_dir = project_root / "replay_analysis" / "feedback"
-        self.feedback_dir.mkdir(exist_ok=True)
+        self.feedback_dir = _RUNTIME_PATHS.state_root / "replay_analysis" / "feedback"
+        self.feedback_dir.mkdir(parents=True, exist_ok=True)
         self.feedback_file = self.feedback_dir / "feedback_log.jsonl"
         
     def record_feedback(

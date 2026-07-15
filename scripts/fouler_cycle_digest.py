@@ -142,12 +142,16 @@ def event_queue_summary(events: list[dict[str, Any]]) -> dict[str, Any]:
     status_counts = Counter(str(event.get("status") or "unknown") for event in events if isinstance(event, dict))
     type_counts = Counter(str(event.get("event_type") or event.get("type") or "unknown") for event in events if isinstance(event, dict))
     pending = [event for event in events if isinstance(event, dict) and event.get("status") == "pending"]
+    pending_battle_results = [event for event in pending if event.get("event_type") == "battle_result"]
+    pending_other = [event for event in pending if event.get("event_type") != "battle_result"]
     return {
         "eventCount": len(events),
         "pendingCount": len(pending),
         "statusCounts": dict(sorted(status_counts.items())),
         "eventTypeCounts": dict(type_counts.most_common(12)),
-        "noisePolicy": "no live Discord posting from this digest; use this single artifact as the operator handoff",
+        "pendingBattleResultCount": len(pending_battle_results),
+        "pendingNonBattleCount": len(pending_other),
+        "noisePolicy": "one DEKU observation per completed battle; routine analysis remains local",
     }
 
 
@@ -378,26 +382,26 @@ def ranked_breakages(
         elo_item["rank"] = len(items) + 1
         items.append(elo_item)
 
-    if queue.get("pendingCount", 0) > 1:
+    if queue.get("pendingNonBattleCount", 0) > 0:
         items.append(
             {
                 "rank": len(items) + 1,
                 "area": "discord",
                 "status": "noisy",
-                "whatIsBroken": "Discord queue has more than one pending event, which is not a single digest.",
-                "evidence": [f"pendingCount={queue.get('pendingCount')}", f"eventCount={queue.get('eventCount')}"],
-                "singleNextAction": "Archive stale non-battle events locally and queue only fouler-cycle-digest for the next operator-facing update.",
+                "whatIsBroken": "The DEKU journal contains pending non-battle chatter outside the reporting policy.",
+                "evidence": [f"pendingNonBattleCount={queue.get('pendingNonBattleCount')}", f"eventCount={queue.get('eventCount')}"],
+                "singleNextAction": "Retain routine analysis locally and advance only battle results or edge-triggered operational alerts.",
             }
         )
-    elif queue.get("pendingCount", 0) == 1:
+    elif queue.get("pendingBattleResultCount", 0) > 0:
         items.append(
             {
                 "rank": len(items) + 1,
                 "area": "discord",
-                "status": "bounded",
-                "whatIsBroken": "Discord transport is not the authority for readiness.",
-                "evidence": [f"pendingCount={queue.get('pendingCount')}", "digest artifact is local proof"],
-                "singleNextAction": "Use this digest as the one operator update; do not queue additional routine chatter.",
+                "status": "relay-pending",
+                "whatIsBroken": "Completed battle observations are waiting for the DEKU relay.",
+                "evidence": [f"pendingBattleResultCount={queue.get('pendingBattleResultCount')}", "cycle digest remains local proof"],
+                "singleNextAction": "Verify the singleton HERMES relay advances every pending battle observation exactly once.",
             }
         )
 

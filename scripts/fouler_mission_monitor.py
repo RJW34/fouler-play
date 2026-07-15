@@ -62,8 +62,11 @@ STOP_LOSS_RECOVERY_VALIDATION_MAX_RUN_COUNT = 5
 STOP_LOSS_RECOVERY_VALIDATION_MAX_CYCLES = 1
 REPAIR_QUEUE_SCHEMA_VERSION = "fouler-play-repair-queue/v1"
 REPAIR_PACKET_SCHEMA_VERSION = "fouler-play-skid-repair-packet/v1"
-OFFLINE_EVAL_RESULT_PROOF_SCHEMA_VERSION = "fouler-play-offline-eval-result-proof/v1"
-OFFLINE_EVAL_RESUME_PROOF_POLICY = "fouler-offline-eval-resume-proof/v1"
+HEAD_TO_HEAD_RESULT_PROOF_SCHEMA_VERSION = "fouler-head-to-head-eval/v2"
+# Compatibility name retained for existing monitor consumers; the proof itself
+# is now the discriminating candidate-vs-frozen matrix, never the weak baseline.
+OFFLINE_EVAL_RESULT_PROOF_SCHEMA_VERSION = HEAD_TO_HEAD_RESULT_PROOF_SCHEMA_VERSION
+OFFLINE_EVAL_RESUME_PROOF_POLICY = "fouler-head-to-head-resume-proof/v1"
 ACTIVE_IMPROVEMENT_PROOF_POLICY = "fouler-active-improvement-proof/v1"
 ACTIVE_IMPROVEMENT_PROOF_SCHEMA_VERSION = "fouler-play-post-packet-eval/v1"
 ACTIVE_IMPROVEMENT_PROOF_MAX_AGE_SECONDS = 21600
@@ -1969,75 +1972,109 @@ def offline_eval_resume_proof_status(
     root: Path = ROOT,
     env: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Read existing offline eval result artifacts before allowing stop-loss recovery."""
+    """Read the candidate-vs-frozen matrix before allowing stop-loss recovery."""
 
-    env = os.environ if env is None else env
-    try:
-        from infrastructure.offline_eval_readiness import offline_eval_result_proof
-
-        proof = offline_eval_result_proof(root=root, env=env)
-    except Exception as exc:
-        proof = {
-            "schemaVersion": OFFLINE_EVAL_RESULT_PROOF_SCHEMA_VERSION,
-            "ready": False,
-            "accepted": False,
-            "status": "unavailable",
-            "verdict": "unavailable",
-            "reasons": [f"{type(exc).__name__}: {exc}"],
-            "noRuntimeActions": True,
-        }
-
+    del env  # The proof path is intentionally fixed and cannot be redirected by env.
+    result_path = root / "eval_results" / "head_to_head" / "latest.json"
     blockers: list[str] = []
-    if not isinstance(proof, dict):
-        proof = {
-            "schemaVersion": OFFLINE_EVAL_RESULT_PROOF_SCHEMA_VERSION,
+    from infrastructure.head_to_head_proof import load_latest_proof
+
+    proof, independent_blockers = load_latest_proof(result_path, project_root=root)
+    blockers.extend(f"candidate-vs-frozen artifact: {item}" for item in independent_blockers)
+
+    required_proof = [
+        "eval_results/head_to_head/latest.json is promotion-ready",
+        "at least 60 completed candidate-vs-frozen battles cover all three teams and both roles",
+        "the candidate has no per-team or per-role regression and no tie/disconnect truth gaps",
+        "the proof names the exact frozen commit, candidate file, and patch SHA-256",
+    ]
+    if not proof:
+        return {
+            "policy": OFFLINE_EVAL_RESUME_PROOF_POLICY,
             "ready": False,
-            "accepted": False,
-            "status": "malformed",
-            "verdict": "malformed",
-            "reasons": ["offline eval result proof did not return a JSON object"],
+            "status": "blocked",
+            "blockers": blockers,
+            "artifactPath": display_path(result_path),
+            "requiredProof": required_proof,
+            "resultProof": {},
             "noRuntimeActions": True,
         }
 
-    if proof.get("schemaVersion") != OFFLINE_EVAL_RESULT_PROOF_SCHEMA_VERSION:
+    if proof.get("schemaVersion") != HEAD_TO_HEAD_RESULT_PROOF_SCHEMA_VERSION:
         blockers.append(
-            f"offline eval result proof schemaVersion must be {OFFLINE_EVAL_RESULT_PROOF_SCHEMA_VERSION}"
+            f"candidate-vs-frozen schemaVersion must be {HEAD_TO_HEAD_RESULT_PROOF_SCHEMA_VERSION}"
         )
-    if proof.get("ready") is not True:
-        blockers.append("offline eval result proof ready must be true")
-    if proof.get("accepted") is not True:
-        blockers.append("offline eval compare proof must accept the candidate")
-    if str(proof.get("status") or "").strip().lower() != "accepted":
-        blockers.append("offline eval result proof status must be accepted")
+    if proof.get("promotionAllowed") is not True:
+        blockers.append("candidate-vs-frozen promotionAllowed must be true")
+    if str(proof.get("status") or "").strip().lower() != "promotion-ready":
+        blockers.append("candidate-vs-frozen status must be promotion-ready")
+    if proof.get("identicalSmoke") is True:
+        blockers.append("identical-code smoke cannot authorize stop-loss recovery")
+    reported_blockers = [str(item) for item in proof.get("blockers") or []]
+    if reported_blockers:
+        blockers.extend(f"candidate-vs-frozen gate blocker: {item}" for item in reported_blockers)
 
-    required_battles = _as_int(proof.get("requiredBattles"))
-    candidate_battles = _as_int(proof.get("candidateBattles"))
-    compare_candidate_battles = _as_int(proof.get("compareCandidateBattles"))
-    if required_battles is None or required_battles <= 0:
-        blockers.append("offline eval result proof requiredBattles must be a positive integer")
-    if required_battles is not None:
-        if candidate_battles is None or candidate_battles < required_battles:
-            blockers.append(
-                f"offline eval candidateBattles {candidate_battles} is below required {required_battles}"
-            )
-        if compare_candidate_battles is None or compare_candidate_battles < required_battles:
-            blockers.append(
-                f"offline eval compareCandidateBattles {compare_candidate_battles} is below required {required_battles}"
-            )
-    if proof.get("noRuntimeActions") is not True:
-        blockers.append("offline eval resume proof must be read-only with noRuntimeActions=true")
+    requested_battles = _as_int(proof.get("requestedBattles"))
+    completed_battles = _as_int(proof.get("completedBattles"))
+    candidate_wins = _as_int(proof.get("candidateWins"))
+    frozen_wins = _as_int(proof.get("frozenWins"))
+    ties = _as_int(proof.get("ties"))
+    if requested_battles is None or requested_battles < 60 or requested_battles % 12:
+        blockers.append("candidate-vs-frozen requestedBattles must be a multiple of 12 and at least 60")
+    if completed_battles != requested_battles:
+        blockers.append(
+            f"candidate-vs-frozen completedBattles {completed_battles} does not equal requested {requested_battles}"
+        )
+    if ties != 0:
+        blockers.append(f"candidate-vs-frozen proof contains {ties} tie/disconnect result(s)")
+    if None in {candidate_wins, frozen_wins, ties, completed_battles} or (
+        (candidate_wins or 0) + (frozen_wins or 0) + (ties or 0) != (completed_battles or 0)
+    ):
+        blockers.append("candidate-vs-frozen result totals do not equal completedBattles")
+
+    baseline_commit = str(proof.get("baselineCommit") or "")
+    patch_sha = str(proof.get("candidatePatchSha256") or "")
+    candidate_file = str(proof.get("candidateFile") or "").replace("\\", "/")
+    if not re.fullmatch(r"[0-9a-fA-F]{7,64}", baseline_commit):
+        blockers.append("candidate-vs-frozen baselineCommit is missing or malformed")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", patch_sha):
+        blockers.append("candidate-vs-frozen candidatePatchSha256 is missing or malformed")
+    if candidate_file not in {
+        "fp/search/main.py",
+        "fp/search/eval.py",
+        "fp/search/forced_lines.py",
+        "fp/search/endgame.py",
+        "fp/playstyle_config.py",
+        "fp/team_analysis.py",
+        "fp/opponent_model.py",
+    }:
+        blockers.append("candidate-vs-frozen candidateFile is outside the promotable engine allowlist")
+
+    required_teams = {"fat-team-1-stall", "fat-team-2-balance", "fat-team-3-dondozo"}
+    team_summary = proof.get("candidateTeamSummary") if isinstance(proof.get("candidateTeamSummary"), dict) else {}
+    if set(team_summary) != required_teams:
+        blockers.append("candidate-vs-frozen proof does not cover all three mission benchmark teams")
+    role_summary = proof.get("roleSummary") if isinstance(proof.get("roleSummary"), dict) else {}
+    if set(role_summary) != {"challenger", "accepter"}:
+        blockers.append("candidate-vs-frozen proof does not cover both connection roles")
+
+    from infrastructure.head_to_head_proof import checkout_provenance, structure_blockers
+
+    blockers.extend(f"candidate-vs-frozen proof: {item}" for item in structure_blockers(proof))
+    provenance = checkout_provenance(root, proof)
+    blockers.extend(
+        f"candidate-vs-frozen checkout: {item}" for item in provenance.get("blockers") or []
+    )
+    blockers = list(dict.fromkeys(blockers))
 
     return {
         "policy": OFFLINE_EVAL_RESUME_PROOF_POLICY,
         "ready": not blockers,
         "status": "accepted" if not blockers else "blocked",
         "blockers": blockers,
-        "requiredProof": [
-            "eval_results/offline/candidate.json exists and has enough candidate battles",
-            "eval_results/offline/compare-frozen-vs-candidate.json accepts the candidate",
-            "candidate and compare candidate battle counts match the configured offline eval bound",
-            "the proof was produced by the read-only offline eval result checker",
-        ],
+        "artifactPath": display_path(result_path),
+        "checkoutProvenance": provenance,
+        "requiredProof": required_proof,
         "resultProof": proof,
         "noRuntimeActions": True,
     }
@@ -2146,11 +2183,15 @@ def lease_active(lease: dict[str, Any], *, now: datetime | None = None) -> bool:
     status = str(lease.get("status") or "").strip().lower()
     if status and status not in {"active", "approved", "current", "open"}:
         return False
-    expires_at = parse_timestamp(lease.get("expiresAt") or (lease.get("proofWindow") or {}).get("expiresAt"))
-    if expires_at is None:
+    proof_window = lease.get("proofWindow") if isinstance(lease.get("proofWindow"), dict) else {}
+    starts_at = parse_timestamp(proof_window.get("startsAt") or proof_window.get("validFrom"))
+    expires_at = parse_timestamp(
+        lease.get("expiresAt") or proof_window.get("expiresAt") or proof_window.get("endsAt")
+    )
+    if starts_at is None or expires_at is None:
         return False
     now = now or datetime.now(timezone.utc)
-    return expires_at > now
+    return starts_at <= now < expires_at
 
 
 def issue(
@@ -2249,7 +2290,7 @@ def elo_sustain_stop_loss_issues(
                     "freshness": freshness,
                     "proofBlockers": blockers,
                 },
-                "pause the ladder batch, analyze the ELO proof drawdown window, and require a targeted fix plus offline evaluation before continuing",
+                "pause the ladder batch, analyze the ELO proof drawdown window, and require a targeted fix plus candidate-vs-frozen evaluation before continuing",
             )
         )
 
@@ -2273,7 +2314,7 @@ def elo_sustain_stop_loss_issues(
                     "freshness": freshness,
                     "proofBlockers": blockers,
                 },
-                "pause the ladder batch, analyze the post-target floor breach, and require a targeted fix plus offline evaluation before continuing",
+                "pause the ladder batch, analyze the post-target floor breach, and require a targeted fix plus candidate-vs-frozen evaluation before continuing",
             )
         )
 
@@ -2300,7 +2341,7 @@ def elo_sustain_stop_loss_issues(
                     "freshness": freshness,
                     "proofBlockers": blockers,
                 },
-                "pause the ladder batch, analyze the ELO proof loss window, and require a targeted fix plus offline evaluation before continuing",
+                "pause the ladder batch, analyze the ELO proof loss window, and require a targeted fix plus candidate-vs-frozen evaluation before continuing",
             )
         )
 
@@ -2326,11 +2367,11 @@ def session_governance(
         "requiredAction": (
             "continue bounded monitoring under the active lease"
             if allow_laddering
-            else "pause ladder starts, analyze the failing window, land one targeted fix, and pass offline/live evaluation before resuming"
+            else "pause ladder starts, analyze the failing window, land one targeted fix, and pass candidate-vs-frozen/live evaluation before resuming"
         ),
         "resumeCriteria": [
             "fresh health proof with exactly one ladder runner and no stop file",
-            "fresh offline evaluation readiness with candidate and compare proof",
+            "fresh promotion-ready candidate-vs-frozen matrix proof",
             "fresh active improvement proof from an implemented packet, post-packet battle, and autoresearch review",
             "recent 20 decisive battles at or above the configured win-rate threshold",
             "recent rated-window drawdown below the configured threshold",
@@ -2529,7 +2570,7 @@ def stop_loss_recovery_validation_window(
     if governance.get("stopLossBreached") is not True:
         blockers.append("session stop-loss has not been breached; use the normal start gate")
     if offline_eval_resume_proof.get("ready") is not True:
-        blockers.append("offline eval resume proof must be accepted before recovery validation")
+        blockers.append("candidate-vs-frozen resume proof must be accepted before recovery validation")
     if active_improvement_recovery_window_failed(active_improvement_proof):
         blockers.append("completed recovery proof window did not produce an accepted active improvement proof")
     if run_count > STOP_LOSS_RECOVERY_VALIDATION_MAX_RUN_COUNT:
@@ -2629,7 +2670,7 @@ def build_repair_queue(
                 "blockedBy": blocking_issue_ids,
                 "objective": (
                     "Convert the failing ladder window into one constrained code-eval packet, "
-                    "prove it offline, then prove a fresh post-packet battle improved before "
+                    "prove it against the frozen engine, then prove a fresh post-packet battle improved before "
                     "any further ladder start."
                 ),
                 "evidence": {
@@ -2653,7 +2694,7 @@ def build_repair_queue(
                     "run-autoresearch-on-the-failing-rated-window",
                     "generate-or-select-one-constrained-devstream-work-packet",
                     "implement-one-allowed-code-fix-with-tests",
-                    "produce-accepted-offline-eval-resume-proof",
+                    "produce-accepted-candidate-vs-frozen-resume-proof",
                     "produce-fresh-post-packet-active-improvement-proof",
                     "rerun-start-gate-for-one-bounded-proof-window",
                     "produce-fresh-latest-elo-proof-after-the-bounded-window",
@@ -2986,7 +3027,7 @@ def classify_mission(
                 "RELIABILITY_BLOCKER",
                 "Fouler dropped below a previously proven ladder floor.",
                 floor_regression,
-                "pause the ladder batch, analyze the floor-breach window, and require a targeted fix plus offline evaluation before continuing",
+                "pause the ladder batch, analyze the floor-breach window, and require a targeted fix plus candidate-vs-frozen evaluation before continuing",
             )
         )
 
@@ -3026,12 +3067,12 @@ def classify_mission(
             issue(
                 OFFLINE_EVAL_RESUME_ISSUE_ID,
                 "RELIABILITY_BLOCKER",
-                "Fouler stop-loss recovery lacks accepted offline evaluation proof.",
+                "Fouler stop-loss recovery lacks accepted candidate-vs-frozen evaluation proof.",
                 {
                     "blockingIssueIds": governance["blockingIssueIds"],
                     "offlineEvalResumeProof": offline_eval_resume_proof,
                 },
-                "produce an accepted offline candidate/compare proof before opening another ladder proof window after stop-loss",
+                "produce a promotion-ready 60+ battle candidate-vs-frozen matrix before opening another ladder proof window after stop-loss",
             )
         )
         governance = session_governance(
@@ -3222,70 +3263,195 @@ def reconcile_cleared_tickets(
     return cleared
 
 
-def queue_discord_alert(issues: list[dict[str, Any]], classification: dict[str, Any]) -> dict[str, Any]:
-    if not issues:
-        return {"queued": False, "reason": "no issues"}
-    try:
-        from infrastructure.event_queue_lib import queue_event
-    except Exception as exc:
-        return {"queued": False, "error": f"{type(exc).__name__}: {exc}"}
+def runtime_lease_renewal_preflight(
+    lease: dict[str, Any],
+    *,
+    run_count: int,
+    max_cycles: int,
+    max_concurrent_battles: int,
+    root: Path | None = None,
+) -> dict[str, Any]:
+    """Validate immutable signed identity before rejecting local renewal."""
 
-    leading = issues[0]
-    content = (
-        f"[ALERT] **Fouler mission monitor: {leading['id']}**\n"
-        f"What happened: {leading['summary']}\n"
-        "Why it matters: Fouler is supposed to keep producing bounded ladder proof; stale health or idle runtime means HERMES is not closing the loop.\n"
-        "Proof: `devstream/truth/mission-monitor.json` and `devstream/tickets/fouler-play/`.\n"
-        f"Remaining: {leading['nextHermesAction']}"
+    from infrastructure.deployment_lineage import deployment_receipt_blockers
+    from scripts.devstream_runtime_lease import (
+        ACTIVE_STATUSES,
+        GIT_COMMIT_RE,
+        LEASE_SCHEMA_VERSION,
+        PROJECT_ID,
+        RUNTIME_ID_RE,
+        lease_summary,
+        parse_timestamp,
+        positive_int,
     )
-    event_id = queue_event(
-        "mission_alert",
-        "project",
-        content,
-        dedup_window_sec=900,
-        project_id="fouler-play",
-        issue_ids=[item["id"] for item in issues],
-        runtime_idle=classification.get("runtimeIdle"),
-        duplicate_runners=classification.get("duplicateRunners"),
+    from infrastructure.runtime_authorization import verify_runtime_lease_authorization
+
+    checkout_root = ROOT if root is None else root
+    blockers: list[str] = []
+    if not isinstance(lease, dict) or not lease:
+        return {
+            "ok": False,
+            "blockers": ["existing runtime lease is missing or not a JSON object"],
+            "identity": {},
+        }
+
+    summary = lease_summary(lease)
+    authorization = verify_runtime_lease_authorization(
+        lease,
+        env={},
+        require_protected_trust_store=True,
     )
-    return {"queued": True, "eventId": event_id, "issueIds": [item["id"] for item in issues]}
+    if not authorization.get("ok"):
+        blockers.extend(
+            "controller authorization: "
+            + str(item.get("message") or item.get("code") or "verification failed")
+            for item in authorization.get("blockers", [])
+            if isinstance(item, dict)
+        )
+    if lease.get("schemaVersion") != LEASE_SCHEMA_VERSION:
+        blockers.append(f"existing runtime lease schemaVersion must be {LEASE_SCHEMA_VERSION}")
+    if lease.get("projectId") != PROJECT_ID:
+        blockers.append(f"existing runtime lease projectId must be {PROJECT_ID}")
+    if not RUNTIME_ID_RE.fullmatch(str(lease.get("leaseId") or "").strip()):
+        blockers.append("existing runtime lease leaseId is missing or malformed")
+
+    identity = {
+        "sourceCommit": str(summary.get("sourceCommit") or "").strip().lower(),
+        "sourceTree": str(summary.get("sourceTree") or "").strip().lower(),
+        "changeId": str(summary.get("changeId") or "").strip(),
+        "deploymentId": str(summary.get("deploymentId") or "").strip(),
+        "runtimeManifestDigest": str(summary.get("runtimeManifestDigest") or "").strip().lower(),
+        "deploymentReceiptPath": str(summary.get("deploymentReceiptPath") or "").strip(),
+        "deploymentReceiptSha256": str(summary.get("deploymentReceiptSha256") or "").strip().lower(),
+        "sessionId": str(summary.get("sessionId") or "").strip(),
+        "machine": str(lease.get("machine") or "").strip(),
+        "account": str(lease.get("account") or "").strip(),
+        "replayBehavior": str(lease.get("replayBehavior") or "").strip(),
+    }
+    for field in ("sourceCommit", "sourceTree"):
+        if not GIT_COMMIT_RE.fullmatch(identity[field]):
+            blockers.append(f"existing runtime lease {field} is missing or malformed")
+    for field in ("changeId", "deploymentId", "sessionId"):
+        if not RUNTIME_ID_RE.fullmatch(identity[field]):
+            blockers.append(f"existing runtime lease {field} is missing or malformed")
+    if not re.fullmatch(r"[0-9a-f]{64}", identity["runtimeManifestDigest"]):
+        blockers.append("existing runtime lease runtimeManifestDigest is missing or malformed")
+    if not re.fullmatch(r"[0-9a-f]{64}", identity["deploymentReceiptSha256"]):
+        blockers.append("existing runtime lease deploymentReceiptSha256 is missing or malformed")
+
+    receipt_path = Path(identity["deploymentReceiptPath"])
+    if not identity["deploymentReceiptPath"] or not receipt_path.is_absolute():
+        blockers.append("existing runtime lease deploymentReceiptPath must be absolute")
+    if not identity["machine"]:
+        blockers.append("existing runtime lease machine is missing")
+    if not identity["account"]:
+        blockers.append("existing runtime lease account is missing")
+    if not identity["replayBehavior"]:
+        blockers.append("existing runtime lease replayBehavior is missing")
+    if str(lease.get("status") or "").strip().lower() not in ACTIVE_STATUSES:
+        blockers.append("existing runtime lease status is not active/approved")
+    if lease.get("approved") is not True:
+        blockers.append("existing runtime lease approved flag must be true")
+
+    battle_scope = lease.get("battleScope") if isinstance(lease.get("battleScope"), dict) else {}
+    scope_pairs = {
+        "machine": identity["machine"],
+        "account": identity["account"],
+        "replayBehavior": identity["replayBehavior"],
+    }
+    for field, expected in scope_pairs.items():
+        if str(battle_scope.get(field) or "").strip() != expected:
+            blockers.append(f"existing runtime lease battleScope.{field} does not match {field}")
+
+    allowed_purposes = lease.get("allowedPurposes")
+    normalized_purposes = (
+        {str(item).strip().lower() for item in allowed_purposes if str(item).strip()}
+        if isinstance(allowed_purposes, list)
+        else set()
+    )
+    if "*" not in normalized_purposes and "devstream-supervise" not in normalized_purposes:
+        blockers.append("existing runtime lease does not authorize devstream-supervise renewal")
+
+    proof_window = lease.get("proofWindow") if isinstance(lease.get("proofWindow"), dict) else {}
+    starts_at = parse_timestamp(proof_window.get("startsAt"))
+    expires_at = parse_timestamp(proof_window.get("expiresAt"))
+    if starts_at is None or expires_at is None or expires_at <= starts_at:
+        blockers.append(
+            "existing runtime lease proofWindow must contain an ordered startsAt/expiresAt session window"
+        )
+    else:
+        current = datetime.now(timezone.utc)
+        if starts_at > current:
+            blockers.append("existing runtime lease proofWindow has not started")
+        if expires_at <= current:
+            blockers.append("existing runtime lease proofWindow is expired")
+
+    requested_bounds = {
+        "maxRunCount": positive_int(run_count),
+        "maxCycles": positive_int(max_cycles),
+        "maxConcurrentBattles": positive_int(max_concurrent_battles),
+    }
+    for field, requested in requested_bounds.items():
+        existing = positive_int(summary.get(field))
+        if requested is None:
+            blockers.append(f"requested renewal {field} must be positive")
+        elif existing is None:
+            blockers.append(f"existing runtime lease {field} must be positive")
+        elif requested > existing:
+            blockers.append(
+                f"requested renewal {field} {requested} exceeds existing lease bound {existing}"
+            )
+
+    if not blockers:
+        try:
+            receipt, lineage_blockers = deployment_receipt_blockers(
+                receipt_path,
+                root=checkout_root,
+                expected=identity,
+                verify_checkout=True,
+            )
+        except Exception as exc:
+            receipt = {}
+            lineage_blockers = [f"{type(exc).__name__}: {exc}"]
+        blockers.extend(f"deployment lineage: {item}" for item in lineage_blockers)
+        if (
+            receipt
+            and str(receipt.get("machine") or "").strip().lower()
+            != identity["machine"].lower()
+        ):
+            blockers.append("deployment lineage: deployment receipt machine does not match runtime lease")
+
+    return {
+        "ok": not blockers,
+        "blockers": list(dict.fromkeys(blockers)),
+        "identity": identity,
+    }
 
 
 def renew_runtime_lease(args: argparse.Namespace, lease: dict[str, Any]) -> dict[str, Any]:
-    account = (
-        str(lease.get("account") or "")
-        or str((lease.get("battleScope") or {}).get("account") or "")
-        or os.getenv("FOULER_ACTIVE_ACCOUNT", "")
-        or os.getenv("PS_USERNAME", "")
-        or DEFAULT_ACCOUNT
-    ).strip()
-    return run_command(
-        [
-            runtime_python(),
-            "scripts/devstream_runtime_lease.py",
-            "--purpose",
-            "devstream-supervise",
-            "--write",
-            "--machine",
-            "JIGGLYPUFF",
-            "--run-count",
-            str(args.run_count),
-            "--max-cycles",
-            str(args.max_cycles),
-            "--max-concurrent-battles",
-            str(args.max_concurrent_battles),
-            "--account",
-            account,
-            "--replay-behavior",
-            "always",
-            "--valid-minutes",
-            str(args.lease_minutes),
-            "--approved",
-            "--runtime-lease",
-            str(RUNTIME_LEASE_FILE.relative_to(ROOT)),
-        ],
-        timeout=60,
+    preflight = runtime_lease_renewal_preflight(
+        lease,
+        run_count=args.run_count,
+        max_cycles=args.max_cycles,
+        max_concurrent_battles=args.max_concurrent_battles,
+        root=ROOT,
     )
+    blockers = list(preflight.get("blockers") or [])
+    blockers.append(
+        "mission-monitor runtime lease renewal is retired: no safe external owner authorizer is configured"
+    )
+    return {
+        "ok": False,
+        "returnCode": None,
+        "blocked": True,
+        "status": "blocked-runtime-lease-renewal-retired",
+        "blockers": list(dict.fromkeys(blockers)),
+        "writeAttempted": False,
+        "ownerAuthorizationArtifactRequired": True,
+        "immutableLineageRequired": True,
+        "cumulativeExtensionCeilingRequired": True,
+        "preservedIdentity": preflight.get("identity") or {},
+    }
 
 
 def start_supervisor(args: argparse.Namespace) -> dict[str, Any]:
@@ -3352,16 +3518,39 @@ def maybe_repair_runtime(args: argparse.Namespace, classification: dict[str, Any
             }
         )
         return actions
-    if args.renew_lease or not classification.get("runtimeLeaseActive"):
+    if args.renew_lease:
         renew = renew_runtime_lease(args, lease)
         renew["action"] = "renew-runtime-lease"
         actions.append(renew)
-        if not renew.get("ok"):
-            return actions
+        return actions
+    if not classification.get("runtimeLeaseActive"):
+        actions.append(
+            {
+                "action": "repair-skipped",
+                "reason": (
+                    "scheduled mission monitor cannot mint or renew owner authority; "
+                    "a fresh explicit owner-authorized runtime lease is required"
+                ),
+            }
+        )
+        return actions
     start = start_supervisor(args)
     start["action"] = "start-battle-supervisor"
     actions.append(start)
     return actions
+
+
+def validated_runtime_lease(path: Path = RUNTIME_LEASE_FILE) -> tuple[dict[str, Any], dict[str, Any]]:
+    from scripts.devstream_runtime_lease import validate_runtime_lease
+
+    validation = validate_runtime_lease(
+        purpose="devstream-supervise",
+        lease_path=path,
+    )
+    if not validation.get("ok"):
+        return {}, validation
+    payload = load_json(path, {})
+    return (payload if isinstance(payload, dict) else {}), validation
 
 
 def build_payload(args: argparse.Namespace) -> dict[str, Any]:
@@ -3376,7 +3565,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
 
     health = load_json(HEALTH_FILE, {})
     supervisor = load_json(SUPERVISOR_STATUS_FILE, {})
-    lease = load_json(RUNTIME_LEASE_FILE, {})
+    lease, lease_authority = validated_runtime_lease(RUNTIME_LEASE_FILE)
     elo_proof = load_json(LATEST_ELO_PROOF_FILE, {})
     account_season = load_json(ACCOUNT_SEASON_FILE, {})
     battles = read_battles()
@@ -3423,7 +3612,7 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         actions.append(refresh)
         health = load_json(HEALTH_FILE, {})
         supervisor = load_json(SUPERVISOR_STATUS_FILE, {})
-        lease = load_json(RUNTIME_LEASE_FILE, {})
+        lease, lease_authority = validated_runtime_lease(RUNTIME_LEASE_FILE)
         elo_proof = load_json(LATEST_ELO_PROOF_FILE, {})
         account_season = load_json(ACCOUNT_SEASON_FILE, {})
         classification = classify_mission(
@@ -3454,7 +3643,6 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         if args.write
         else []
     )
-    discord_alert = queue_discord_alert(classification["issues"], classification) if args.queue_alerts else {"queued": False, "reason": "disabled"}
     repair_action_failures = [
         action
         for action in actions
@@ -3479,9 +3667,16 @@ def build_payload(args: argparse.Namespace) -> dict[str, Any]:
         "repairQueue": classification.get("repairQueue"),
         "ticketsWritten": tickets,
         "ticketsCleared": tickets_cleared,
-        "discordAlert": discord_alert,
+        "observationHandoff": {
+            "mode": "local-state-only",
+            "authority": "none",
+            "producer": "fouler-play.mission-monitor",
+            "outboxWritten": False,
+            "reason": "DEKU derives cycle observations from this local mission state",
+        },
         "classification": {key: value for key, value in classification.items() if key != "issues"},
         "decisionDivergence": decision_divergence,
+        "runtimeLeaseAuthority": lease_authority,
         "actions": actions,
         "paths": {
             "health": str(HEALTH_FILE.relative_to(ROOT)),
@@ -3525,8 +3720,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--no-refresh-health", action="store_false", dest="refresh_health", help="classify existing health truth without refreshing devstream_health.py")
     parser.add_argument("--skip-http", action="store_true", help="skip HTTP checks in devstream_health")
     parser.add_argument("--repair-runtime", action="store_true", help="start a bounded supervisor when runtime is safely idle")
-    parser.add_argument("--renew-lease", action="store_true", help="write a fresh finite runtime lease before supervisor start")
-    parser.add_argument("--queue-alerts", action="store_true", help="queue mission alerts through Discord event queue")
+    parser.add_argument(
+        "--renew-lease",
+        action="store_true",
+        help="retired compatibility flag; always fails closed without an external owner authorizer",
+    )
     parser.add_argument("--start-gate-only", action="store_true", help="return success when the next bounded ladder proof window is safe, even if final 1700 sustain proof is still incomplete")
     parser.add_argument("--refresh-health-after-repair", action="store_true", default=True)
     parser.add_argument("--no-refresh-health-after-repair", action="store_false", dest="refresh_health_after_repair", help="skip health refresh after a repair action")

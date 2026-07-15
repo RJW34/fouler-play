@@ -8,22 +8,34 @@ import ctypes
 import os
 import subprocess
 import time
+import uuid
 from copy import deepcopy
 from pathlib import Path
+from types import MappingProxyType
 
 # Load .env so webhook URLs and other config are available to submodules
 _dotenv_loaded = False
 try:
     from dotenv import load_dotenv
-    _dotenv_loaded = load_dotenv(Path(__file__).resolve().parent / ".env")
+    _default_env_file = (
+        Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData"))
+        / "HERMES"
+        / "secrets"
+        / "fouler.env"
+        if os.name == "nt"
+        else Path.home() / ".config" / "deku-devstream" / "secrets" / "fouler.env"
+    )
+    _dotenv_loaded = load_dotenv(
+        Path(os.getenv("FOULER_ENV_FILE", str(_default_env_file))).expanduser()
+    )
 except ImportError:
     pass  # dotenv not installed; rely on systemd EnvironmentFile
 
-from config import FoulPlayConfig, init_logging, BotModes
-import constants
+from config import FoulPlayConfig, init_logging, BotModes  # noqa: E402
+import constants  # noqa: E402
 
-from teams import load_team, TeamListIterator
-from fp.run_battle import (
+from teams import load_team, TeamListIterator  # noqa: E402
+from fp.run_battle import (  # noqa: E402
     pokemon_battle,
     get_active_battle_count,
     get_resume_pending_count,
@@ -33,20 +45,24 @@ from fp.run_battle import (
     cleanup_old_logs,
     _current_worker_id,
 )
-from fp.websocket_client import PSWebsocketClient
+from fp.websocket_client import PSWebsocketClient  # noqa: E402
 
-from data import all_move_json
-from data import pokedex
-from data.mods.apply_mods import apply_mods
+from data import all_move_json  # noqa: E402
+from data import pokedex  # noqa: E402
+from data.mods.apply_mods import apply_mods  # noqa: E402
 
 logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parent
+RUNTIME_STATE_ROOT = Path(
+    os.getenv("FOULER_RUNTIME_STATE_ROOT", str(PROJECT_ROOT))
+).expanduser().absolute()
 
 try:
     faulthandler.enable(all_threads=True)
 except Exception:
     pass
 
-DRAIN_FILE = Path(__file__).resolve().parent / ".pids" / "drain.request"
+DRAIN_FILE = RUNTIME_STATE_ROOT / "pids" / "drain.request"
 PARENT_PID = int(os.getenv("FP_PARENT_PID", "0") or 0)
 PARENT_CHECK_SEC = int(os.getenv("FP_PARENT_CHECK_SEC", "5") or 5)
 def _strip_env_inline_comment(value: str) -> str:
@@ -132,7 +148,8 @@ def check_dictionaries_are_unmodified(original_pokedex, original_move_json):
         logger.critical(
             "Move JSON changed!\nDumping modified version to `modified_moves.json`"
         )
-        with open("modified_moves.json", "w") as f:
+        RUNTIME_STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        with (RUNTIME_STATE_ROOT / "modified_moves.json").open("w", encoding="utf-8") as f:
             json.dump(all_move_json, f, indent=4)
         exit(1)
     else:
@@ -142,33 +159,133 @@ def check_dictionaries_are_unmodified(original_pokedex, original_move_json):
         logger.critical(
             "Pokedex JSON changed!\nDumping modified version to `modified_pokedex.json`"
         )
-        with open("modified_pokedex.json", "w") as f:
+        RUNTIME_STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        with (RUNTIME_STATE_ROOT / "modified_pokedex.json").open("w", encoding="utf-8") as f:
             json.dump(pokedex, f, indent=4)
         exit(1)
     else:
         logger.debug("Pokedex JSON unmodified!")
 
 
-BATTLE_STATS_FILE = Path(__file__).resolve().parent / "battle_stats.json"
-ACCOUNT_SEASON_FILE = (
-    Path(__file__).resolve().parent / "devstream" / "truth" / "account-season.json"
+BATTLE_STATS_FILE = RUNTIME_STATE_ROOT / "battle_stats.json"
+_DEFAULT_ACCOUNT_SEASON_FILE = (
+    Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData"))
+    / "HERMES"
+    / "authority"
+    / "fouler"
+    / "account-season.json"
+    if os.name == "nt"
+    else Path.home()
+    / ".config"
+    / "deku-devstream"
+    / "authority"
+    / "fouler"
+    / "account-season.json"
 )
+ACCOUNT_SEASON_FILE = Path(
+    os.getenv("FOULER_ACCOUNT_SEASON_PATH", str(_DEFAULT_ACCOUNT_SEASON_FILE))
+).expanduser().absolute()
+
+_OPTIONAL_BATTLE_PROVENANCE_ENV = (
+    ("FOULER_CHANGE_ID", "change_id"),
+    ("FOULER_DEPLOYMENT_ID", "deployment_id"),
+    ("FOULER_RUNTIME_LEASE_ID", "runtime_lease_id"),
+    ("FOULER_RUNTIME_AUTHORIZATION_SHA256", "runtime_authorization_sha256"),
+    ("FOULER_SOURCE_TREE", "source_tree"),
+    ("FOULER_RUNTIME_MANIFEST_DIGEST", "runtime_manifest_digest"),
+    ("FOULER_DEPLOYMENT_RECEIPT_SHA256", "deployment_receipt_sha256"),
+    ("FOULER_PHYSICAL_HOSTNAME", "physical_hostname"),
+    ("FOULER_PHYSICAL_HOST_ID_SHA256", "physical_host_id_sha256"),
+    ("FOULER_H2H_RUN_ID", "h2h_run_id"),
+    ("FOULER_H2H_CELL_ID", "h2h_cell_id"),
+    ("FOULER_H2H_ARM", "h2h_arm"),
+    ("FOULER_H2H_ROLE", "h2h_role"),
+    ("FOULER_H2H_TEAM", "h2h_team"),
+    ("FOULER_H2H_ACCOUNT", "h2h_account"),
+    ("FOULER_H2H_OPPONENT", "h2h_opponent"),
+    ("FOULER_H2H_BASELINE_COMMIT", "h2h_baseline_commit"),
+    ("FOULER_H2H_CANDIDATE_PATCH_SHA256", "h2h_candidate_patch_sha256"),
+    ("FOULER_H2H_ENGINE_DIGEST", "h2h_engine_digest"),
+    ("FOULER_H2H_CHANGE_ID", "h2h_change_id"),
+)
+
+
+def _provenance_env_value(name: str) -> str:
+    return str(os.getenv(name) or "").strip()
+
+
+def _git_head_source_commit() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=Path(__file__).resolve().parent,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+
+    if result.returncode != 0:
+        return "unknown"
+    return str(result.stdout or "").strip() or "unknown"
+
+
+def _build_process_battle_provenance() -> dict[str, str]:
+    source_commit = _provenance_env_value("FOULER_SOURCE_COMMIT")
+    if not source_commit:
+        source_commit = _git_head_source_commit()
+
+    provenance = {
+        "source_commit": source_commit,
+        "session_id": _provenance_env_value("FOULER_SESSION_ID") or str(uuid.uuid4()),
+    }
+    for env_name, row_key in _OPTIONAL_BATTLE_PROVENANCE_ENV:
+        value = _provenance_env_value(env_name)
+        if value:
+            provenance[row_key] = value
+    return provenance
+
+
+BATTLE_ROW_PROVENANCE = MappingProxyType(_build_process_battle_provenance())
 
 
 def _normalized_account_id(value) -> str:
     return "".join(char.lower() for char in str(value or "") if char.isalnum())
 
 
-def _active_account_scope() -> tuple[str, str]:
+def _active_account_scope(*, require_authority: bool = False) -> tuple[str, str]:
     account = str(getattr(FoulPlayConfig, "username", "") or "").strip()
-    season_id = ""
     try:
         payload = json.loads(ACCOUNT_SEASON_FILE.read_text(encoding="utf-8"))
-        season_account = str(payload.get("account") or "").strip()
-        if _normalized_account_id(season_account) == _normalized_account_id(account):
-            season_id = str(payload.get("seasonId") or "").strip()
-    except (OSError, ValueError, TypeError):
-        pass
+    except (OSError, ValueError, TypeError) as exc:
+        if require_authority:
+            raise RuntimeError(
+                f"protected account-season authority is unavailable: {exc}"
+            ) from exc
+        return account, ""
+
+    if not isinstance(payload, dict):
+        if require_authority:
+            raise RuntimeError("protected account-season authority must be a JSON object")
+        return account, ""
+    schema_version = payload.get("schemaVersion")
+    season_account = str(payload.get("account") or "").strip()
+    season_id = str(payload.get("seasonId") or "").strip()
+    authority_valid = (
+        schema_version == "fouler-play-account-season/v1"
+        and bool(_normalized_account_id(season_account))
+        and bool(season_id)
+        and _normalized_account_id(season_account) == _normalized_account_id(account)
+    )
+    if not authority_valid:
+        if require_authority:
+            raise RuntimeError(
+                "protected account-season authority does not match the configured account"
+            )
+        return account, ""
     return account, season_id
 
 
@@ -258,6 +375,7 @@ class BattleStats:
         }
         if season_id:
             entry["season_id"] = season_id
+        entry.update(BATTLE_ROW_PROVENANCE)
         self._battles.append(entry)
         if len(self._battles) > BATTLE_STATS_MAX_ENTRIES:
             del self._battles[:-BATTLE_STATS_MAX_ENTRIES]
@@ -674,9 +792,50 @@ async def battle_worker(
     logger.info(f"Battle worker {worker_id} stopped")
 
 
-async def run_foul_play():
+def _battle_worker_quotas(
+    *,
+    bot_mode: BotModes,
+    max_concurrent_battles: int,
+    run_count: int,
+) -> list[int]:
+    """Return a bounded worker plan without zero-quota live workers."""
+    if run_count <= 0:
+        raise ValueError("run_count must be positive")
+    requested_workers = (
+        max(1, int(max_concurrent_battles))
+        if bot_mode == BotModes.search_ladder
+        else 1
+    )
+    finite_run = run_count <= 999999
+    num_workers = min(requested_workers, run_count) if finite_run else requested_workers
+    if num_workers == 1:
+        return [0]
+    if not finite_run:
+        return [0] * num_workers
+    base, remainder = divmod(run_count, num_workers)
+    return [base + (1 if index < remainder else 0) for index in range(num_workers)]
+
+
+async def run_foul_play(*, offline_eval_authority: object | None = None):
     FoulPlayConfig.configure()
     init_logging(FoulPlayConfig.log_level, FoulPlayConfig.log_to_file)
+
+    if offline_eval_authority is None:
+        _active_account_scope(require_authority=True)
+
+    from process_lock import acquire_lock, set_runtime_reservation_outcome
+
+    if not acquire_lock(
+        username=FoulPlayConfig.username,
+        bot_mode=FoulPlayConfig.bot_mode,
+        websocket_uri=FoulPlayConfig.websocket_uri,
+        run_count=FoulPlayConfig.run_count,
+        max_concurrent_battles=FoulPlayConfig.max_concurrent_battles,
+        search_parallelism=FoulPlayConfig.parallelism,
+        replay_behavior=FoulPlayConfig.save_replay,
+        offline_eval_authority=offline_eval_authority,
+    ):
+        raise RuntimeError("runtime authority or singleton process lock was not acquired")
 
     # Prune old logs before they eat the disk
     try:
@@ -906,13 +1065,12 @@ async def run_foul_play():
                 logger.warning(f"Drain file watcher error: {e}")
             await asyncio.sleep(1)
 
-    # Determine number of workers
-    # For ladder mode, use MAX_CONCURRENT_BATTLES
-    # For challenge modes, use 1 (can only have one pending challenge at a time)
-    if FoulPlayConfig.bot_mode == BotModes.search_ladder:
-        num_workers = FoulPlayConfig.max_concurrent_battles
-    else:
-        num_workers = 1
+    per_worker_quotas = _battle_worker_quotas(
+        bot_mode=FoulPlayConfig.bot_mode,
+        max_concurrent_battles=FoulPlayConfig.max_concurrent_battles,
+        run_count=FoulPlayConfig.run_count,
+    )
+    num_workers = len(per_worker_quotas)
 
     logger.info(f"Starting {num_workers} battle worker(s)")
     if FoulPlayConfig.team_names:
@@ -922,16 +1080,8 @@ async def run_foul_play():
     # Create and run workers â€” assign fixed teams when team_names are available
     team_names_list = FoulPlayConfig.team_names or []
 
-    # Compute per-worker quotas for even distribution
-    per_worker_quotas = []
-    if num_workers > 1 and FoulPlayConfig.run_count <= 999999:
-        base = FoulPlayConfig.run_count // num_workers
-        remainder = FoulPlayConfig.run_count % num_workers
-        for i in range(num_workers):
-            per_worker_quotas.append(base + (1 if i < remainder else 0))
+    if any(per_worker_quotas):
         logger.info(f"Per-worker quotas: {per_worker_quotas} (total={FoulPlayConfig.run_count})")
-    else:
-        per_worker_quotas = [0] * num_workers  # 0 = no per-worker limit
 
     workers = [
         asyncio.create_task(
@@ -1012,6 +1162,7 @@ async def run_foul_play():
                     pass
             # Allow workers to finish naturally
             await wait_task
+            set_runtime_reservation_outcome("aborted")
             return
             
         # Cancel workers
@@ -1152,20 +1303,12 @@ async def run_foul_play():
         "Round complete: W:%d L:%d DC:%d Total:%d WinRate:%.1f%%",
         wins, losses, disconnects, total, win_rate,
     )
+    set_runtime_reservation_outcome(
+        "completed" if total >= FoulPlayConfig.run_count else "aborted"
+    )
 
 
 if __name__ == "__main__":
-    # Prevent duplicate bot instances
-    try:
-        from process_lock import acquire_lock
-        if not acquire_lock(username=getattr(FoulPlayConfig, "username", "unknown")):
-            logger.error("Another bot instance is already running. Exiting.")
-            sys.exit(1)
-    except ImportError as e:
-        logger.warning("Process lock unavailable (%s); continuing without singleton lock.", e)
-    except Exception as e:
-        logger.warning("Process lock failed (%s); continuing without singleton lock.", e)
-
     try:
         asyncio.run(run_foul_play())
     except Exception:

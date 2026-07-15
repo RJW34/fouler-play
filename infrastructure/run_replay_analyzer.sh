@@ -1,5 +1,5 @@
-#!/bin/bash
-# Wrapper script for replay analyzer cron job
+#!/usr/bin/env bash
+set -euo pipefail
 
-cd /home/ryan/projects/fouler-play
-/home/ryan/projects/fouler-play/venv/bin/python infrastructure/replay_analyzer.py >> infrastructure/replay_analyzer.log 2>&1
+echo "[RETIRED] run_replay_analyzer.sh is disabled; analysis reporting must enter the DEKU event queue." >&2
+exit 2

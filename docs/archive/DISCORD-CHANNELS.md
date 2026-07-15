@@ -35,13 +35,13 @@
 
 ```bash
 # Project updates
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/1467010283741384849/...
+DISCORD_WEBHOOK_URL=<REDACTED_DISCORD_WEBHOOK>
 
 # Battle notifications
-DISCORD_BATTLES_WEBHOOK_URL=https://discord.com/api/webhooks/1467011637885145190/...
+DISCORD_BATTLES_WEBHOOK_URL=<REDACTED_DISCORD_WEBHOOK>
 
 # Turn reviews and feedback
-DISCORD_FEEDBACK_WEBHOOK_URL=https://discord.com/api/webhooks/1467251085092851856/...
+DISCORD_FEEDBACK_WEBHOOK_URL=<REDACTED_DISCORD_WEBHOOK>
 ```
 
 ## Usage in bot_monitor.py
@@ -62,17 +62,17 @@ await self.send_discord_message("Turn review", channel="feedback")
 Test webhooks:
 ```bash
 # Test project webhook
-curl -X POST "https://discord.com/api/webhooks/1467010283741384849/..." \
+curl -X POST "<REDACTED_DISCORD_WEBHOOK>" \
   -H "Content-Type: application/json" \
   -d '{"content": "Test from #project-fouler-play"}'
 
 # Test battles webhook
-curl -X POST "https://discord.com/api/webhooks/1467011637885145190/..." \
+curl -X POST "<REDACTED_DISCORD_WEBHOOK>" \
   -H "Content-Type: application/json" \
   -d '{"content": "Test from #fouler-play-battles"}'
 
 # Test feedback webhook
-curl -X POST "https://discord.com/api/webhooks/1467251085092851856/..." \
+curl -X POST "<REDACTED_DISCORD_WEBHOOK>" \
   -H "Content-Type: application/json" \
   -d '{"content": "Test from #fouler-play-feedback"}'
 ```

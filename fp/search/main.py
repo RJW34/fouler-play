@@ -2,12 +2,10 @@ import logging
 import os
 import random
 import re
-import threading
 import time
 from copy import deepcopy
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from pathlib import Path
 
 import constants
 from constants import (
@@ -253,38 +251,6 @@ STALL_SURVIVAL_MOVES_NORM = {
     "obstruct",
     "endure",
 }
-
-# =============================================================================
-# HOT-RELOAD: pick up eval.py / forced_lines.py changes without restarting
-# =============================================================================
-_reload_lock = threading.Lock()
-
-
-def _maybe_hot_reload():
-    signal = Path(__file__).resolve().parent.parent.parent / ".reload"
-    if not signal.exists():
-        return
-    with _reload_lock:
-        if not signal.exists():
-            return
-        try:
-            import importlib
-            import fp.search.eval
-            import fp.search.forced_lines
-            importlib.reload(fp.search.eval)
-            importlib.reload(fp.search.forced_lines)
-            globals()['evaluate_position'] = fp.search.eval.evaluate_position
-            globals()['_eval_opponent_best_damage'] = fp.search.eval._opponent_best_damage
-            globals()['detect_forced_line'] = fp.search.forced_lines.detect_forced_line
-            signal.unlink()
-            logger.info("HOT RELOAD: eval.py + forced_lines.py reloaded successfully")
-        except Exception as e:
-            logger.error(f"HOT RELOAD FAILED (keeping old code): {e}")
-            try:
-                signal.unlink()
-            except Exception:
-                pass
-
 
 # =============================================================================
 # DECISION PROFILES (variance control)
@@ -8323,7 +8289,6 @@ def _get_fallback_move(battle: Battle) -> str:
 
 
 def find_best_move(battle: Battle) -> tuple[str, dict]:
-    _maybe_hot_reload()
     start_time = time.time()
     if not getattr(battle, "_isolation_copy", False):
         battle = deepcopy(battle)

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -22,6 +24,7 @@ PUBLIC_BATTLE_INJECT_CSS = ROOT_DIR / "streaming" / "battle_inject.css"
 PUBLIC_BATTLE_SLOT_HTML = ROOT_DIR / "streaming" / "battle_slot.html"
 PUBLIC_VERTICAL_HTML = ROOT_DIR / "streaming" / "fouler_vertical.html"
 PUBLIC_DEVSTREAM_CONTRACT = ROOT_DIR / "devstream.yaml"
+NODE = shutil.which("node")
 
 FORBIDDEN_PUBLIC_STRINGS = (
     "Debug Overlay",
@@ -38,6 +41,34 @@ FORBIDDEN_PUBLIC_STRINGS = (
     "DEKU plays",
     "DEKU SIMULCAST",
 )
+
+
+def _javascript_function(html: str, name: str) -> str:
+    start = html.index(f"function {name}(")
+    signature_end = html.index(")", start)
+    opening_brace = html.index("{", signature_end)
+    depth = 0
+    for index in range(opening_brace, len(html)):
+        if html[index] == "{":
+            depth += 1
+        elif html[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return html[start : index + 1]
+    raise AssertionError(f"unterminated JavaScript function: {name}")
+
+
+def _run_javascript(source: str) -> dict:
+    assert NODE is not None
+    completed = subprocess.run(
+        [NODE, "-"],
+        input=source,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    return json.loads(completed.stdout)
 
 
 def test_windows_service_leaves_signal_ownership_to_nssm(monkeypatch) -> None:
@@ -93,13 +124,85 @@ def test_public_overlay_copy_is_viewer_facing() -> None:
 
     assert "FEATURED MATCH 1" in html
     assert "FEATURED MATCH 2" in html
-    assert "SHOWDOWN BATTLE LAB" in html
+    assert "FOULER PLAY / GEN 9 OU RANKED" in html
     assert "Next match ready" in html
     assert "Next matchup ready" in html
+    assert '<span class="meta-label">Updated</span>' in html
+    assert "No match in progress" in html
+    assert "function explicitSearchActivity" in html
+    assert "function updateBattleSnapshot" in html
+    assert "NEXT FIX" not in html
+    assert "Pending replay review" not in html
+    assert "Bounded battles" not in html
     assert "BATTLE SLOT" not in html
     assert "Match lane ready" not in html
     assert "Awaiting battle" not in html
     assert "waiting for the next slot assignment" not in html
+
+
+@pytest.mark.skipif(NODE is None, reason="Node.js is required to execute the overlay state machine")
+def test_public_overlay_requires_search_evidence_and_clears_empty_battle_truth() -> None:
+    html = PUBLIC_OVERLAY_HTML.read_text(encoding="utf-8")
+    source = "\n".join(
+        _javascript_function(html, name)
+        for name in (
+            "normalizeBattles",
+            "explicitSearchActivity",
+            "timestampAgeSeconds",
+            "surfacePresentation",
+            "aggregatePresentation",
+            "updateBattleSnapshot",
+        )
+    )
+    result = _run_javascript(
+        "const STATUS_STALE_AFTER_SECONDS = 120;\n"
+        "let lastActiveBattles = [{id: 'old-battle'}];\n"
+        + source
+        + r"""
+const now = Date.parse("2026-07-15T12:00:00Z");
+const current = "2026-07-15T11:59:30Z";
+const stale = "2026-07-15T11:57:59Z";
+const first = updateBattleSnapshot({battles: [{id: "new-battle"}]}).length;
+const cleared = updateBattleSnapshot({battles: []}).length;
+const retained = updateBattleSnapshot({status: {status: "Idle"}}).length;
+process.stdout.write(JSON.stringify({
+  held: surfacePresentation({status: "Held"}, [], {updated: current, now_ms: now}),
+  impliedSearch: surfacePresentation({status: "Searching"}, [], {updated: current, now_ms: now}),
+  explicitSearch: surfacePresentation(
+    {status: "Searching", search_active: true},
+    [],
+    {updated: current, now_ms: now}
+  ),
+  ready: surfacePresentation({status: "Ready"}, [], {updated: current, now_ms: now}),
+  live: surfacePresentation({status: "Active"}, [{id: "battle"}], {updated: current, now_ms: now}),
+  stale: surfacePresentation({status: "Active"}, [{id: "battle"}], {updated: stale, now_ms: now}),
+  aggregateLive: aggregatePresentation([
+    surfacePresentation({status: "Held"}, [], {updated: current, now_ms: now}),
+    surfacePresentation({status: "Active"}, [{id: "battle"}], {updated: current, now_ms: now})
+  ]),
+  first,
+  cleared,
+  retained
+}));
+"""
+    )
+
+    assert result["held"]["key"] == "idle"
+    assert result["held"]["label"] == "IDLE"
+    assert result["held"]["emptyTitle"] == "Battles paused"
+    assert result["impliedSearch"]["key"] == "idle"
+    assert result["explicitSearch"]["key"] == "searching"
+    assert result["explicitSearch"]["label"] == "SEARCHING"
+    assert result["ready"]["key"] == "ready"
+    assert result["ready"]["label"] == "READY"
+    assert result["live"]["key"] == "live"
+    assert result["live"]["label"] == "LIVE"
+    assert result["stale"]["key"] == "stale"
+    assert result["stale"]["label"] == "STALE"
+    assert result["aggregateLive"]["key"] == "live"
+    assert result["first"] == 1
+    assert result["cleared"] == 0
+    assert result["retained"] == 0
 
 
 def test_showdown_browser_css_hides_privacy_chrome_without_crop() -> None:
@@ -141,10 +244,15 @@ def test_public_vertical_surface_has_three_reactive_viewer_safe_matches() -> Non
     assert "min-aspect-ratio: 4 / 3" in html
     assert "SLOT_COUNT = 3" in html
     assert 'fetch("/slot/" + slotNumber + "/state' in html
-    assert "Three matches. One shared agent." in html
-    assert "private decision data stays off-screen" in html
-    assert "Finding ranked opponent" in html
-    assert "Restoring match feed" in html
+    assert "Three ranked matches. One battle bot." in html
+    assert "Move selection stays private." in html
+    assert "Finding a ranked opponent" in html
+    assert "Match update delayed" in html
+    assert "function explicitSearchActivity" in html
+    assert "Battle time" in html
+    assert "Last update" in html
+    assert "--social-safe-right: 120px" in html
+    assert "--social-safe-bottom: 176px" in html
     assert "function imageSources" in html
     assert "root.dataset.spriteKey" in html
     assert "root.dataset.rosterKey" in html
@@ -184,13 +292,23 @@ async def test_public_landscape_route_uses_same_reactive_no_store_surface() -> N
     assert "SLOT_COUNT = 3" in response.text
 
 
-def test_obs_slot_stays_on_reactive_local_surface_during_active_battles() -> None:
+def test_obs_slot_uses_real_showdown_surface_during_active_battles() -> None:
     assert serve_obs_page._build_obs_slot_source_url(2) == (
         "http://localhost:8777/slot/2?slot_idle=public"
     )
     assert serve_obs_page._build_obs_slot_source_url(
         2, "battle-gen9ou-live"
-    ) == "http://localhost:8777/slot/2?slot_idle=public"
+    ) == "https://play.pokemonshowdown.com/battle-gen9ou-live"
+    assert serve_obs_page._build_obs_slot_source_url(
+        2,
+        "battle-gen9ou-live",
+        "https://play.pokemonshowdown.com/battle-gen9ou-live-privatehash#spectator",
+    ) == "https://play.pokemonshowdown.com/battle-gen9ou-live-privatehash#spectator"
+    assert serve_obs_page._build_obs_slot_source_url(
+        2,
+        "battle-gen9ou-live",
+        "https://example.com/battle-gen9ou-live",
+    ) == "https://play.pokemonshowdown.com/battle-gen9ou-live"
     assert "OBS_STALE_BATTLE_SEC" not in serve_obs_page.__dict__
 
 
@@ -264,6 +382,13 @@ async def test_public_slot_source_loads_battle_surface_when_active(monkeypatch) 
 
 @pytest.mark.asyncio
 async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> None:
+    updated = "2026-06-22T00:01:00+00:00"
+    monkeypatch.setattr(serve_obs_page, "PUBLIC_STATE_STALE_AFTER_SEC", 120)
+    monkeypatch.setattr(
+        serve_obs_page.time,
+        "time",
+        lambda: serve_obs_page._parse_started_iso(updated).timestamp() + 60,
+    )
     battle = {
         "id": "battle-gen9ou-active",
         "slot": 2,
@@ -278,7 +403,7 @@ async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> No
             "battles": [battle],
             "status": {"status": "Active", "today_wins": 3, "today_losses": 2, "accounts_elo": {"LEBOTJAMESXD00N": 1234}},
             "accounts_elo": {"LEBOTJAMESXD00N": 1234},
-            "updated": "2026-06-22T00:01:00",
+            "updated": updated,
         },
     )
     monkeypatch.setattr(
@@ -296,6 +421,8 @@ async def test_slot_state_exposes_obs_safe_battle_lab_payload(monkeypatch) -> No
     assert response.status == 200
     assert payload["url"] == "http://localhost:8777/slot/2?slot_idle=public"
     assert payload["battle_lab"]["active"] is True
+    assert payload["battle_lab"]["freshness"] == "loading"
+    assert payload["battle_lab"]["stale"] is False
     assert payload["battle_lab"]["opponent"] == "Test Opponent"
     assert payload["battle_lab"]["turn"] == 4
     assert payload["battle_lab"]["elo"] == 1234

@@ -17,11 +17,15 @@ if str(PROJECT_ROOT) not in sys.path:
 from data.pokedex_oracle import oracle as _oracle
 from infrastructure.discord_reporting import build_contract_payload
 from infrastructure.event_queue_lib import queue_event
+from infrastructure.runtime_paths import resolve_runtime_paths
 from replay_analysis.account_identity import resolve_bot_username
 
-BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
-REPLAY_DIR = PROJECT_ROOT / "replay_analysis"
-TRACE_DIR = PROJECT_ROOT / "logs" / "decision_traces"
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
+RUNTIME_LOG_ROOT = _RUNTIME_PATHS.log_root
+BATTLE_STATS_PATH = _RUNTIME_PATHS.battle_stats_path
+REPLAY_DIR = RUNTIME_STATE_ROOT / "replay_analysis"
+TRACE_DIR = RUNTIME_LOG_ROOT / "decision_traces"
 REPORTS_DIR = REPLAY_DIR / "reports"
 AUTORESEARCH_JSON_PATH = REPLAY_DIR / "autoresearch_latest.json"
 AUTORESEARCH_MD_PATH = REPLAY_DIR / "reports" / "autoresearch_latest.md"
@@ -63,11 +67,31 @@ class ResearchIssue:
 
 class AutoResearcher:
     def __init__(self, *, project_root: Path | None = None):
-        self.project_root = project_root or PROJECT_ROOT
-        self.battle_stats_path = self.project_root / "battle_stats.json"
-        self.elo_proof_path = self.project_root / "devstream" / "truth" / "latest-elo-proof.json"
-        self.replay_dir = self.project_root / "replay_analysis"
-        self.trace_dir = self.project_root / "logs" / "decision_traces"
+        self.project_root = (project_root or PROJECT_ROOT).resolve()
+        runtime_paths = resolve_runtime_paths(self.project_root)
+        explicit_fixture_root = (
+            project_root is not None
+            and not runtime_paths.production
+            and not str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip()
+        )
+        self._fixture_root_mode = explicit_fixture_root
+        if explicit_fixture_root:
+            # Tests and offline fixture analysis intentionally pass a synthetic
+            # project root. Production never takes this compatibility branch.
+            self.runtime_state_root = self.project_root
+            self.runtime_log_root = self.project_root / "logs"
+            self.battle_stats_path = self.runtime_state_root / "battle_stats.json"
+        else:
+            self.runtime_state_root = runtime_paths.state_root
+            self.runtime_log_root = runtime_paths.log_root
+            self.battle_stats_path = runtime_paths.battle_stats_path
+        self.elo_proof_path = (
+            self.project_root / "devstream" / "truth" / "latest-elo-proof.json"
+            if explicit_fixture_root
+            else self.runtime_state_root / "truth" / "latest-elo-proof.json"
+        )
+        self.replay_dir = self.runtime_state_root / "replay_analysis"
+        self.trace_dir = self.runtime_log_root / "decision_traces"
         self.reports_dir = self.replay_dir / "reports"
         self.batch_history_dir = self.replay_dir / "batches"
         self.trace_evidence_dir = self.replay_dir / "evidence_traces"
@@ -75,6 +99,23 @@ class AutoResearcher:
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         self.batch_history_dir.mkdir(parents=True, exist_ok=True)
         self.trace_evidence_dir.mkdir(parents=True, exist_ok=True)
+
+    def _evidence_path(self, path: Path) -> str:
+        if self._fixture_root_mode:
+            try:
+                return path.relative_to(self.project_root).as_posix()
+            except ValueError:
+                return str(path)
+        for prefix, root in (
+            ("logs", self.runtime_log_root),
+            ("state", self.runtime_state_root),
+            ("release", self.project_root),
+        ):
+            try:
+                return (Path(prefix) / path.relative_to(root)).as_posix()
+            except ValueError:
+                continue
+        return str(path)
 
     def _detect_team_paths(self, window: list[dict[str, Any]]) -> list[str]:
         """Extract unique team file paths from the battle window."""
@@ -269,8 +310,8 @@ class AutoResearcher:
                 trace = json.loads(raw)
                 if isinstance(trace, dict):
                     snapshot_path, snapshot_sha = self._snapshot_trace_evidence(path, raw_bytes)
-                    trace["_source_trace_path"] = path.relative_to(self.project_root).as_posix()
-                    trace["_trace_path"] = snapshot_path.relative_to(self.project_root).as_posix()
+                    trace["_source_trace_path"] = self._evidence_path(path)
+                    trace["_trace_path"] = self._evidence_path(snapshot_path)
                     trace["_trace_sha256"] = snapshot_sha
                     traces.append(trace)
             except Exception:

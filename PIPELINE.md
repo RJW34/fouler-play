@@ -1,5 +1,10 @@
 # Fouler Play Autonomous Improvement Pipeline
 
+> **Operational status:** the old `pipeline.py watch` systemd services are
+> retired. Managed supervisor cycles invoke bounded `autoresearch --no-discord`;
+> reports stay local and one bounded-session digest may enter the DEKU outbox.
+> Do not reinstall the watcher units.
+
 An automated system that analyzes battle replays, identifies patterns, and provides AI-powered insights to improve the bot's performance.
 
 > **Migration drift warning (2026-03):** this file documents an older Ollama-on-MAGNETON pipeline. Current project intent in `TASKBOARD.md` says batch analysis should use Claude-quality external reasoning rather than local qwen analysis. Treat this document as historical/implementation reference until the pipeline docs are refreshed to match the live workflow.
@@ -7,7 +12,7 @@ An automated system that analyzes battle replays, identifies patterns, and provi
 ## Architecture
 
 ```
-Battle Completion → Watcher → Batch Analyzer → AI Analysis Backend → Report → Discord Notification
+Battle Completion -> Managed Supervisor -> Analysis Backend -> Local Report -> DEKU Cycle Observation
 ```
 
 ### Components
@@ -34,7 +39,7 @@ Battle Completion → Watcher → Batch Analyzer → AI Analysis Backend → Rep
 
 - Bot is running and generating battles
 - The configured analysis backend is reachable
-- Discord delivery path is configured if notifications are enabled
+- The local DEKU observation outbox is writable by the managed runtime
 - Confirm current intent in `TASKBOARD.md` before assuming Ollama/MAGNETON is still the production path
 
 ### Installation
@@ -54,43 +59,24 @@ python pipeline.py analyze -n 10
 python pipeline.py report
 ```
 
-### Running as a Service
+### Service Status
 
-```bash
-# Install systemd service
-sudo cp fouler-pipeline.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable fouler-pipeline
-sudo systemctl start fouler-pipeline
-
-# Check status
-sudo systemctl status fouler-pipeline
-
-# View logs
-tail -f logs/pipeline.log
-```
+The historical watcher service is retired. The managed bounded supervisor owns
+cycle timing. Any stale service, timer, task, container, or startup entry that
+invokes `pipeline.py watch` must be disabled and removed.
 
 ## Configuration
 
 Environment variables (in .env):
 
-- `FOULER_BATCH_SIZE` - Number of battles before triggering analysis (default: 10)
-- `DISCORD_WEBHOOK_URL` - Webhook for notifications (required)
+- `FOULER_BATCH_SIZE` - Number of battles included in local analysis (default: 10)
 
 ## Usage
 
-### Automatic Mode (Recommended)
+### Managed Mode
 
-```bash
-# Start the watcher daemon
-python pipeline.py watch
-```
-
-The watcher will:
-1. Check battle_stats.json every 60 seconds
-2. Trigger analysis after N new battles (default: 10)
-3. Generate a report using the configured analysis backend
-4. Post summary to Discord #project-fouler-play
+The bounded supervisor triggers analysis after a completed cycle. Do not start
+the historical watcher daemon manually.
 
 ### Manual Mode
 
@@ -129,13 +115,12 @@ Each report includes:
   - Loss patterns
   - Top 3 actionable improvements (ranked by impact)
 
-## Discord Notifications
+## DEKU Observation Handoff
 
-Notifications are posted to #project-fouler-play (1466691161363054840) with:
-- Batch number and record
-- Win rate
-- Top 3 issues found
-- Link to full report
+Analysis details remain in local proof files. Each completed battle emits one
+typed, observation-only event through the local DEKU outbox. Stable Showdown
+battle IDs make retries idempotent. Fouler does not own chat credentials,
+network delivery, channel routing, or command intake.
 
 ## Files
 
@@ -160,10 +145,10 @@ Notifications are posted to #project-fouler-play (1466691161363054840) with:
 - Test Ollama: `ssh Ryan@192.168.1.181 "curl http://localhost:11434/api/version"`
 - Check if model is loaded: `ssh Ryan@192.168.1.181 "ollama list"`
 
-### "Discord notification failed"
-- Verify DISCORD_WEBHOOK_URL is set in .env
-- Test webhook manually with curl
-- Check webhook hasn't been deleted/revoked
+### "DEKU observation handoff failed"
+- Check local queue and outbox permissions.
+- Run `python infrastructure/event_poster.py --doctor --require-ready`.
+- Verify the separately managed DEKU relay status without adding a project-side sender.
 
 ## Development
 

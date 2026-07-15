@@ -1,5 +1,6 @@
-"""Unit tests for the offline-eval acceptance statistics (the real gate's math)."""
+"""Unit tests for weak-baseline smoke statistics and isolation."""
 import importlib.util
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -75,6 +76,7 @@ def test_resolve_fouler_python_skips_eval_venv_without_runtime_imports(monkeypat
 
 def test_build_eval_env_disables_discord_battle_result_queue(monkeypatch):
     monkeypatch.setenv("FOULER_BATTLE_RESULT_QUEUE", "1")
+    monkeypatch.setenv("PS_PASSWORD", "inherited-live-secret")
 
     env = offline_eval.build_eval_env(
         label="frozen",
@@ -85,6 +87,8 @@ def test_build_eval_env_disables_discord_battle_result_queue(monkeypatch):
 
     assert env["FOULER_OFFLINE_EVAL"] == "1"
     assert env["FOULER_OFFLINE_EVAL_LABEL"] == "frozen"
+    assert env["PS_PASSWORD"] == ""
+    assert env["FOULER_NO_SECURITY_LOGIN"] == "1"
     assert env["FOULER_PROCESS_LOCK_FILE"].replace("/", "\\").endswith(
         "eval_results\\offline\\frozen.bot.pid"
     )
@@ -114,6 +118,25 @@ def test_build_eval_env_allows_explicit_queue_override():
     )
 
     assert env["FOULER_BATTLE_RESULT_QUEUE"] == "1"
+
+
+def test_build_eval_env_does_not_allow_security_boundary_override():
+    env = offline_eval.build_eval_env(
+        label="candidate",
+        showdown_port=8765,
+        search_time_ms=250,
+        extra_env={
+            "PS_PASSWORD": "live-secret",
+            "SHOWDOWN_PASSWORD": "alternate-secret",
+            "FOULER_NO_SECURITY_LOGIN": "0",
+            "FOULER_OFFLINE_EVAL": "0",
+        },
+    )
+
+    assert env["PS_PASSWORD"] == ""
+    assert env["SHOWDOWN_PASSWORD"] == ""
+    assert env["FOULER_NO_SECURITY_LOGIN"] == "1"
+    assert env["FOULER_OFFLINE_EVAL"] == "1"
 
 
 def test_build_fouler_command_uses_offline_runner_with_run_py_sentinel():
@@ -230,3 +253,109 @@ def test_managed_showdown_can_explicitly_adopt_existing_listener(monkeypatch):
     monkeypatch.setattr(offline_eval, "showdown_server_reachable", lambda port: True)
 
     assert offline_eval.start_managed_showdown_server(8765) is None
+
+
+def test_eval_terminates_fouler_when_baseline_cannot_start(tmp_path, monkeypatch):
+    class FakeProcess:
+        pid = 1234
+
+    fouler = FakeProcess()
+    popen_calls = 0
+    terminated = []
+
+    def fake_popen(*_args, **_kwargs):
+        nonlocal popen_calls
+        popen_calls += 1
+        if popen_calls == 1:
+            return fouler
+        raise FileNotFoundError("missing baseline runtime")
+
+    monkeypatch.setattr(offline_eval, "RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(offline_eval, "VENV_PY", tmp_path / "missing-python")
+    monkeypatch.setattr(offline_eval, "build_fouler_command", lambda **_kwargs: ["fouler"])
+    monkeypatch.setattr(offline_eval.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(offline_eval.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(
+        offline_eval,
+        "write_process_owner_status",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        offline_eval,
+        "_terminate_process_tree",
+        lambda proc, *, reason: terminated.append((proc, reason)) or {},
+    )
+
+    with pytest.raises(FileNotFoundError, match="missing baseline runtime"):
+        offline_eval._run_eval_with_ready_server(
+            battles=1,
+            team="gen9/ou/fat-team-1-stall",
+            baseline="simple",
+            label="startup-failure",
+            showdown_port=8765,
+            search_time_ms=100,
+            fouler_user="fouler",
+            baseline_user="baseline",
+            env={},
+            extra_env=None,
+            fouler_python=["python"],
+            owner_command=["owner"],
+            per_battle_timeout=30,
+            concurrency=1,
+        )
+
+    assert terminated == [(fouler, "baseline-start-failed")]
+
+
+@pytest.mark.parametrize(
+    ("username", "message"),
+    [
+        ("", "must not be empty"),
+        ("patchedTraceBaseline", "at most 18 characters"),
+        ("bad-name", "only ASCII letters and digits"),
+    ],
+)
+def test_showdown_username_validation_fails_before_startup(username, message):
+    with pytest.raises(ValueError, match=message):
+        offline_eval.validate_showdown_username(username, field="baseline_user")
+
+
+def test_showdown_username_validation_accepts_protocol_sized_identity():
+    assert (
+        offline_eval.validate_showdown_username("TraceBaseline18", field="baseline_user")
+        == "TraceBaseline18"
+    )
+
+
+def test_weak_baseline_comparison_can_never_authorize_promotion(tmp_path, monkeypatch):
+    monkeypatch.setattr(offline_eval, "RESULTS_DIR", tmp_path)
+    (tmp_path / "frozen.json").write_text(
+        json.dumps(
+            {
+                "label": "frozen",
+                "fouler_wins": 100,
+                "battles": 200,
+                "fouler_win_rate": 0.5,
+                "fouler_wilson_lcb": 0.431,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "candidate.json").write_text(
+        json.dumps(
+            {
+                "label": "candidate",
+                "fouler_wins": 190,
+                "battles": 200,
+                "fouler_win_rate": 0.95,
+                "fouler_wilson_lcb": 0.91,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = offline_eval.compare("frozen", "candidate")
+
+    assert result["smoke_passed"] is True
+    assert result["promotion_eligible"] is False
+    assert result["ACCEPT"] is False

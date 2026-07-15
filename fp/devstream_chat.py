@@ -1,4 +1,4 @@
-"""Devstream-aware Pokemon Showdown chat policy."""
+"""Rate-limited, live-aware Pokemon Showdown battle chat policy."""
 from __future__ import annotations
 
 import json
@@ -10,41 +10,37 @@ import urllib.request
 
 logger = logging.getLogger(__name__)
 
-POST_BATTLE_GG_MESSAGE = os.getenv("POST_BATTLE_GG_MESSAGE", "gg").strip() or "gg"
-POST_BATTLE_LIVE_PROMO_MESSAGE = os.getenv("POST_BATTLE_LIVE_PROMO_MESSAGE", "twitch.tv/thepeakmos").strip()
-POST_BATTLE_MESSAGES = [POST_BATTLE_GG_MESSAGE, POST_BATTLE_LIVE_PROMO_MESSAGE]
-STREAM_STATUS_JSON = os.getenv("FOULER_DEVSTREAM_STATUS_JSON", "").strip()
-STREAM_STATUS_URL = os.getenv("FOULER_DEVSTREAM_STATUS_URL", "").strip()
-POST_BATTLE_CHAT_ENABLED = os.getenv("FOULER_POST_BATTLE_CHAT_ENABLED", "0").strip().lower() in {
-    "1",
-    "true",
-    "yes",
-    "on",
-}
-POST_BATTLE_CHAT_COOLDOWN_BATTLES = int(os.getenv("FOULER_POST_BATTLE_CHAT_COOLDOWN_BATTLES", "12"))
-_post_battle_chat_calls = 0
 
-
-def _env_bool(name: str) -> bool | None:
+def _env_bool(name: str, *, default: bool = False) -> bool:
     raw = os.getenv(name)
     if raw is None or not raw.strip():
-        return None
-    value = raw.strip().lower()
-    if value in {"1", "true", "yes", "y", "on", "live", "active"}:
-        return True
-    if value in {"0", "false", "no", "n", "off", "offline", "inactive"}:
-        return False
-    return None
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "y", "on", "live", "active"}
+
+
+POST_BATTLE_GG_MESSAGE = os.getenv("POST_BATTLE_GG_MESSAGE", "gg").strip() or "gg"
+POST_BATTLE_LIVE_PROMO_MESSAGE = os.getenv(
+    "POST_BATTLE_LIVE_PROMO_MESSAGE", "twitch.tv/thepeakmos"
+).strip()
+POST_BATTLE_CHAT_ENABLED = _env_bool("FOULER_POST_BATTLE_CHAT_ENABLED")
+# This extra, newly named gate prevents stale launchers that set the historical
+# live-state variables from re-enabling promotional chat by accident.
+POST_BATTLE_PROMO_AUTHORIZED = _env_bool("FOULER_POST_BATTLE_PROMO_AUTHORIZED")
+POST_BATTLE_CHAT_COOLDOWN_BATTLES = int(
+    os.getenv("FOULER_POST_BATTLE_CHAT_COOLDOWN_BATTLES", "12")
+)
+STREAM_STATUS_JSON = os.getenv("FOULER_DEVSTREAM_STATUS_JSON", "").strip()
+STREAM_STATUS_URL = os.getenv("FOULER_DEVSTREAM_STATUS_URL", "").strip()
+_post_battle_chat_calls = 0
 
 
 def _load_json_file(path_text: str) -> dict | None:
     if not path_text:
         return None
     try:
-        path = Path(path_text).expanduser()
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(Path(path_text).expanduser().read_text(encoding="utf-8"))
         return payload if isinstance(payload, dict) else None
-    except Exception as exc:
+    except (OSError, ValueError, TypeError) as exc:
         logger.debug("Could not read devstream status JSON %s: %s", path_text, exc)
         return None
 
@@ -55,8 +51,8 @@ def _load_json_url(url: str) -> dict | None:
     try:
         with urllib.request.urlopen(url, timeout=2.5) as response:
             payload = json.loads(response.read().decode("utf-8"))
-            return payload if isinstance(payload, dict) else None
-    except Exception as exc:
+        return payload if isinstance(payload, dict) else None
+    except (OSError, ValueError, TypeError) as exc:
         logger.debug("Could not fetch devstream status URL %s: %s", url, exc)
         return None
 
@@ -94,33 +90,39 @@ def _extract_stream_active(payload: dict | None) -> bool | None:
 
 
 def devstream_is_live() -> bool:
-    """Return True only when a trusted live signal says OBS is streaming.
-
-    Missing or unreadable signals intentionally fall back to offline so the bot
-    never advertises the Twitch handle during private/off-stream test battles.
-    """
-    explicit = _env_bool("FOULER_DEVSTREAM_LIVE")
-    if explicit is not None:
-        return explicit
+    """Return true only when a configured stream-truth source says live."""
     file_signal = _extract_stream_active(
         _load_json_file(os.getenv("FOULER_DEVSTREAM_STATUS_JSON", STREAM_STATUS_JSON).strip())
     )
     if file_signal is not None:
         return file_signal
-    url_signal = _extract_stream_active(_load_json_url(os.getenv("FOULER_DEVSTREAM_STATUS_URL", STREAM_STATUS_URL).strip()))
-    if url_signal is not None:
-        return url_signal
-    return False
+    url_signal = _extract_stream_active(
+        _load_json_url(os.getenv("FOULER_DEVSTREAM_STATUS_URL", STREAM_STATUS_URL).strip())
+    )
+    return bool(url_signal) if url_signal is not None else False
 
 
 def post_battle_messages() -> list[str]:
+    """Return rate-limited chat, adding the promo only when both gates pass.
+
+    The live-only behavior is retained for compatibility with the established
+    devstream workflow. Production leaves the authorization gate disabled until
+    the platform explicitly approves promotional battle chat.
+    """
     global _post_battle_chat_calls
     if not POST_BATTLE_CHAT_ENABLED:
         return []
     _post_battle_chat_calls += 1
-    if POST_BATTLE_CHAT_COOLDOWN_BATTLES > 1 and (_post_battle_chat_calls - 1) % POST_BATTLE_CHAT_COOLDOWN_BATTLES:
+    if (
+        POST_BATTLE_CHAT_COOLDOWN_BATTLES > 1
+        and (_post_battle_chat_calls - 1) % POST_BATTLE_CHAT_COOLDOWN_BATTLES
+    ):
         return []
     messages = [POST_BATTLE_GG_MESSAGE]
-    if devstream_is_live() and POST_BATTLE_LIVE_PROMO_MESSAGE:
+    if (
+        POST_BATTLE_PROMO_AUTHORIZED
+        and POST_BATTLE_LIVE_PROMO_MESSAGE
+        and devstream_is_live()
+    ):
         messages.append(POST_BATTLE_LIVE_PROMO_MESSAGE)
     return messages

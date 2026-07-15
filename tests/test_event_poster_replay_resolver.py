@@ -72,7 +72,7 @@ def test_event_poster_upgrades_pending_replay_before_discord_post(monkeypatch, t
 
     monkeypatch.setattr(event_poster, "REPLAY_RESOLVE_ATTEMPTS", 1)
     monkeypatch.setattr(event_poster, "_replay_json_is_live", fake_replay_json_is_live)
-    monkeypatch.setattr(event_poster, "post_to_discord", fake_post_to_discord)
+    monkeypatch.setattr(event_poster, "write_deku_observation", fake_post_to_discord)
 
     assert event_poster.process_one_event() is True
 
@@ -107,7 +107,7 @@ def test_event_poster_preserves_pending_replay_when_json_is_not_live(monkeypatch
 
     monkeypatch.setattr(event_poster, "REPLAY_RESOLVE_ATTEMPTS", 2)
     monkeypatch.setattr(event_poster, "_replay_json_is_live", fake_replay_json_is_live)
-    monkeypatch.setattr(event_poster, "post_to_discord", fake_post_to_discord)
+    monkeypatch.setattr(event_poster, "write_deku_observation", fake_post_to_discord)
 
     assert event_poster.process_one_event() is True
 
@@ -144,7 +144,7 @@ def test_event_poster_resolves_stale_pending_replay_before_quarantine(monkeypatc
 
     monkeypatch.setattr(event_poster, "REPLAY_RESOLVE_ATTEMPTS", 1)
     monkeypatch.setattr(event_poster, "_replay_json_is_live", fake_replay_json_is_live)
-    monkeypatch.setattr(event_poster, "post_to_discord", fake_post_to_discord)
+    monkeypatch.setattr(event_poster, "write_deku_observation", fake_post_to_discord)
 
     assert event_poster.process_one_event() is False
 

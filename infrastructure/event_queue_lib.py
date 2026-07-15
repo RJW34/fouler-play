@@ -1,14 +1,14 @@
 ﻿#!/usr/bin/env python3
-"""
-Event Queue Library for Fouler Play Discord Notifications
+"""Local observation queue for Fouler Play.
 
-Thread-safe event queuing with file-based locking, deduplication,
-and precondition support. All Discord messages flow through this queue.
+The queue is a project-local journal. It never owns network delivery or operator
+command authority. A separate DEKU-owned relay may consume typed observations
+written by ``infrastructure.event_poster``.
 
 Usage:
     from infrastructure.event_queue_lib import queue_event, read_queue, mark_posted, mark_failed
     
-    queue_event("batch_complete", "battles", "ðŸ“Š Batch Report...", 
+    queue_event("batch_complete", "battles", "Batch report complete",
                 precondition_check_fn="bot_is_alive", dedup_window_sec=10)
 """
 
@@ -26,6 +26,10 @@ from pathlib import Path
 from typing import Optional, Callable
 
 from infrastructure.discord_reporting import format_payload_or_message, public_replay_id_candidate, structured_report_fields
+from infrastructure.runtime_paths import (
+    resolve_runtime_paths,
+    validate_external_runtime_path,
+)
 
 # Cross-platform file locking
 if sys.platform == "win32":
@@ -34,6 +38,9 @@ else:
     import fcntl
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
+RUNTIME_LOG_ROOT = _RUNTIME_PATHS.log_root
 
 
 def _positive_int_env(name: str, default: int) -> int:
@@ -44,15 +51,19 @@ def _positive_int_env(name: str, default: int) -> int:
     return parsed if parsed > 0 else default
 
 
-QUEUE_FILE = Path(os.getenv(
-    "EVENT_QUEUE_FILE",
-    str(PROJECT_ROOT / "events_queue.json")
-))
+QUEUE_FILE = validate_external_runtime_path(
+    os.getenv("EVENT_QUEUE_FILE", str(RUNTIME_STATE_ROOT / "events_queue.json")),
+    release_root=PROJECT_ROOT,
+    label="event queue file",
+)
 
-LOG_DIR = PROJECT_ROOT / "logs"
-LOG_DIR.mkdir(parents=True, exist_ok=True)
-TRUTH_DIR = PROJECT_ROOT / "devstream" / "truth"
-BACKLOG_ARCHIVE_DIR = Path(os.getenv("EVENT_QUEUE_BACKLOG_ARCHIVE_DIR", str(LOG_DIR / "discord-events")))
+LOG_DIR = RUNTIME_LOG_ROOT
+TRUTH_DIR = RUNTIME_STATE_ROOT / "truth"
+BACKLOG_ARCHIVE_DIR = validate_external_runtime_path(
+    os.getenv("EVENT_QUEUE_BACKLOG_ARCHIVE_DIR", str(LOG_DIR / "discord-events")),
+    release_root=PROJECT_ROOT,
+    label="event backlog archive directory",
+)
 BACKLOG_ARCHIVE_LATEST = TRUTH_DIR / "discord-backlog-archive.json"
 BACKLOG_ARCHIVE_KEEP_LAST = _positive_int_env("EVENT_QUEUE_BACKLOG_ARCHIVE_KEEP_LAST", 200)
 BACKLOG_ARCHIVE_MAX_BYTES = _positive_int_env("EVENT_QUEUE_BACKLOG_ARCHIVE_MAX_BYTES", 1_000_000)
@@ -71,6 +82,7 @@ MAX_RETRIES = 3
 BATTLE_RESULT_EVENT_TYPE = "battle_result"
 QUEUE_LOCK_RETRY_ATTEMPTS = int(os.getenv("EVENT_QUEUE_LOCK_RETRY_ATTEMPTS", "8"))
 QUEUE_LOCK_RETRY_DELAY_SEC = float(os.getenv("EVENT_QUEUE_LOCK_RETRY_DELAY_SEC", "0.05"))
+PROCESS_CYCLE_TOKEN = f"process-{os.getpid()}-{time.time_ns()}"
 
 DNS_ERROR_MARKERS = (
     "dns",
@@ -100,12 +112,103 @@ DEDUP_WINDOWS = {
     "bot_started": 30,
 }
 NON_BATTLE_STRUCTURED_EVENT_TYPES = {"hermes_status", "mission_alert", "ops_alert"}
+PERFORMANCE_EDGE_EVENT_TYPES = {
+    "performance_alert": "open",
+    "performance_recovered": "resolved",
+}
+PERFORMANCE_TRIGGER_RE = re.compile(r"\btrigger\s*=\s*([A-Za-z0-9_-]+)", re.IGNORECASE)
 
 
 def _content_hash(event_type: str, channel: str, content: str) -> str:
     """MD5 hash for deduplication."""
     raw = f"{event_type}:{channel}:{content}"
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
+
+
+def _positive_int(value: object) -> int | None:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _runtime_session_context() -> tuple[str, str, int | None]:
+    """Return non-secret session metadata for cycle-level digesting.
+
+    The explicit environment value wins. The signed runtime lease is a
+    read-only fallback because older launchers do not forward the battle bound
+    as a separate variable.
+    """
+
+    session_id = str(os.getenv("FOULER_SESSION_ID") or "").strip()
+    cycle_id = str(
+        os.getenv("FOULER_PLAY_CYCLE_ID")
+        or os.getenv("DEVSTREAM_CYCLE_ID")
+        or (f"{session_id}:{PROCESS_CYCLE_TOKEN}" if session_id else PROCESS_CYCLE_TOKEN)
+    ).strip()
+    lease_path = str(os.getenv("FOULER_RUNTIME_LEASE_PATH") or "").strip()
+    if not lease_path:
+        return session_id, cycle_id, None
+    try:
+        lease = json.loads(Path(lease_path).read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return session_id, cycle_id, None
+    if not isinstance(lease, dict):
+        return session_id, cycle_id, None
+    proof_window = lease.get("proofWindow") if isinstance(lease.get("proofWindow"), dict) else {}
+    battle_scope = lease.get("battleScope") if isinstance(lease.get("battleScope"), dict) else {}
+    bounds = lease.get("bounds") if isinstance(lease.get("bounds"), dict) else {}
+    expected = next(
+        (
+            parsed
+            for parsed in (
+                _positive_int(lease.get("maxRunCount")),
+                _positive_int(proof_window.get("maxRunCount")),
+                _positive_int(battle_scope.get("maxRunCount") or battle_scope.get("runCount")),
+                _positive_int(bounds.get("maxRunCount")),
+            )
+            if parsed is not None
+        ),
+        None,
+    )
+    return session_id, cycle_id, expected
+
+
+def _performance_trigger(content: str) -> str:
+    match = PERFORMANCE_TRIGGER_RE.search(content or "")
+    if match:
+        return match.group(1).strip().lower()
+    fields = structured_report_fields(content, event_type="performance_alert")
+    analysis = fields.get("analysis") if isinstance(fields.get("analysis"), dict) else {}
+    headline = re.sub(r"\([^)]*\)", "", str(analysis.get("headline") or "").lower())
+    normalized = re.sub(r"[^a-z0-9]+", "-", headline).strip("-")
+    return normalized[:80] or "unclassified-performance-condition"
+
+
+def _semantic_dedup_key(
+    event_type: str,
+    channel: str,
+    content: str,
+    structured_fields: dict,
+    *,
+    explicit: str | None = None,
+    edge_state: str | None = None,
+) -> tuple[str, str | None]:
+    normalized_type = str(event_type or "status_update").strip().lower()
+    state = str(edge_state or PERFORMANCE_EDGE_EVENT_TYPES.get(normalized_type) or "").strip().lower() or None
+    if normalized_type in PERFORMANCE_EDGE_EVENT_TYPES:
+        trigger = _performance_trigger(content)
+        return f"fouler-play:performance:{trigger}:{state}", state
+    if explicit:
+        clean = re.sub(r"[^A-Za-z0-9:._-]+", "-", str(explicit)).strip("-")
+        if clean:
+            return clean[:200], state
+    if normalized_type == BATTLE_RESULT_EVENT_TYPE:
+        battle_key = _battle_result_key(structured_fields)
+        if battle_key:
+            return f"fouler-play:battle-result:{battle_key}", state
+    return f"fouler-play:{normalized_type}:{_content_hash(normalized_type, channel, content)}", state
 
 
 def _battle_result_key(fields: dict) -> str:
@@ -452,17 +555,25 @@ def queue_event(
     precondition_check_fn: Optional[str] = None,
     dedup_window_sec: Optional[int] = None,
     suppress_embeds: bool = False,
+    *,
+    dedup_key: str | None = None,
+    edge_state: str | None = None,
+    evidence_refs: Optional[list[str]] = None,
+    recommended_next_action: str | None = None,
+    session_id: str | None = None,
+    cycle_id: str | None = None,
+    session_expected_battles: int | None = None,
 ) -> Optional[str]:
     """
-    Queue a Discord event for posting.
+    Append a non-command observation to the local queue.
     
     Args:
         event_type: Type identifier (batch_complete, process_crash, etc.)
-        channel: Discord channel target - channel ID or webhook alias ("battles", "project", "feedback")
+        channel: Logical observation category retained for compatibility.
         content: Message content
         precondition_check_fn: Name of precondition function the poster must check before posting
         dedup_window_sec: Seconds within which duplicate content is rejected (None = use default per type)
-        suppress_embeds: If True, poster will set Discord suppress_embeds flag
+        suppress_embeds: Legacy presentation hint retained as inert metadata.
     
     Returns:
         Event ID if queued, None if deduplicated
@@ -475,17 +586,48 @@ def queue_event(
     if event_type not in NON_BATTLE_STRUCTURED_EVENT_TYPES and not structured_fields.get("analysis"):
         structured_fields = structured_report_fields(content, event_type=event_type)
     content_md5 = _content_hash(event_type, channel, content)
+    semantic_key, normalized_edge_state = _semantic_dedup_key(
+        event_type,
+        channel,
+        content,
+        structured_fields,
+        explicit=dedup_key,
+        edge_state=edge_state,
+    )
+    runtime_session_id, runtime_cycle_id, runtime_expected_battles = _runtime_session_context()
+    effective_session_id = str(session_id or runtime_session_id or "").strip() or None
+    effective_cycle_id = str(cycle_id or runtime_cycle_id or "").strip()
+    effective_expected_battles = (
+        _positive_int(session_expected_battles)
+        or runtime_expected_battles
+    )
+    clean_evidence_refs = list(
+        dict.fromkeys(
+            str(item).strip()
+            for item in (evidence_refs or [])
+            if str(item).strip()
+        )
+    )
     now = time.time()
 
     def _do_queue(f):
         events = _read_queue_locked(f)
 
-        # Dedup check: reject if same hash exists within window
+        # Performance conditions are edge-triggered: one observation when an
+        # edge opens and one when it resolves, independent of battle IDs.
         for ev in events:
-            if (ev.get("content_hash") == content_md5
-                    and ev["status"] in (STATUS_PENDING, STATUS_POSTED)
-                    and (now - ev["timestamp"]) < dedup_window_sec):
-                logger.info(f"Dedup rejected: {event_type} (hash={content_md5[:8]})")
+            same_edge = (
+                normalized_edge_state is not None
+                and ev.get("dedup_key") == semantic_key
+                and ev.get("status") in (STATUS_PENDING, STATUS_POSTED)
+            )
+            same_content_in_window = (
+                ev.get("content_hash") == content_md5
+                and ev.get("status") in (STATUS_PENDING, STATUS_POSTED)
+                and (now - float(ev.get("timestamp") or 0)) < dedup_window_sec
+            )
+            if same_edge or same_content_in_window:
+                logger.info("Dedup rejected: %s (key=%s)", event_type, semantic_key)
                 return None
 
         battle_key = _battle_result_key(structured_fields) if event_type == "battle_result" else ""
@@ -502,8 +644,17 @@ def queue_event(
                             "channel": channel,
                             "content": content,
                             "content_hash": content_md5,
+                            "dedup_key": semantic_key,
                             "precondition_check": precondition_check_fn,
                             "suppress_embeds": suppress_embeds,
+                            "kind": "observation",
+                            "authority": "none",
+                            "producer": "fouler-play",
+                            "evidence_refs": clean_evidence_refs,
+                            "recommended_next_action": str(recommended_next_action or "").strip() or None,
+                            "session_id": effective_session_id,
+                            "cycle_id": effective_cycle_id,
+                            "session_expected_battles": effective_expected_battles,
                             "updated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                             "update_count": int(ev.get("update_count") or 0) + 1,
                             **structured_fields,
@@ -525,8 +676,18 @@ def queue_event(
             "channel": channel,
             "content": content,
             "content_hash": content_md5,
+            "dedup_key": semantic_key,
+            "edge_state": normalized_edge_state,
             "precondition_check": precondition_check_fn,
             "suppress_embeds": suppress_embeds,
+            "kind": "observation",
+            "authority": "none",
+            "producer": "fouler-play",
+            "evidence_refs": clean_evidence_refs,
+            "recommended_next_action": str(recommended_next_action or "").strip() or None,
+            "session_id": effective_session_id,
+            "cycle_id": effective_cycle_id,
+            "session_expected_battles": effective_expected_battles,
             "status": STATUS_PENDING,
             "retry_count": 0,
             "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),

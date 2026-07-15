@@ -42,6 +42,12 @@ gen9ou teams and learn from loss replays. Runtime is bounded by proof windows + 
 lease; recursive self-improvement runs through an offline-eval gate before anything is
 trusted live.
 
+Production runtime authority is asymmetric. DEKU keeps the Ed25519 private key and issues
+finite `fouler-play-runtime-lease/v3` capabilities from an exact JIGGLYPUFF deployment
+receipt. JIGGLYPUFF receives only the protected public keyring and signed lease, and runs
+the exact pushed commit from `D:\Releases\fouler-play\<commit>`. Mutable source checkouts,
+unsigned leases, and locally minted renewals cannot authorize a battle or improvement.
+
 ---
 
 ## 2. The real decision pipeline (as it executes)
@@ -173,8 +179,8 @@ it. None of this changes how a move is chosen; it governs HOW the bot is run and
   quota or the global `--run-count` is hit, sharing one Showdown account via a singleton
   lock (`process_lock.py` → `.bot.pid`). Bot modes: `search_ladder` (live default, `.env`
   `PS_BOT_MODE`), `challenge_user`, `accept_challenge` (`run.py:508`+).
-- **Keepalive / lease / monitor** — `scripts/fouler_keepalive.ps1`,
-  `scripts/fouler_daemon_keepalive.ps1` (restart on stall); `scripts/devstream_runtime_lease.py`
+- **Supervisor / lease / monitor** — `scripts/devstream_session.py supervise` under
+  `HERMES-FoulerBattleSupervisor`; `scripts/devstream_runtime_lease.py`
   + `devstream/truth/runtime-lease.json` (bounded proof window: account, machine, run count,
   concurrency, expiry — nothing runs without it); `scripts/fouler_mission_monitor.py` +
   `devstream/truth/health.json`.
@@ -186,8 +192,8 @@ it. None of this changes how a move is chosen; it governs HOW the bot is run and
 - **Self-improvement loop** — `pipeline.py` (batch → autoresearch) →
   `replay_analysis/autoresearch.py` (rank recurring-loss issues) →
   `infrastructure/improve_agent.py` (LLM proposes ONE targeted diff, runs the pytest gate,
-  commits if green) → `infrastructure/elo_watchdog.py` (`git revert` if live ELO drops past
-  the guardrail). NOTE: this loop is what *added* the harmful loop-breaker (it chased an
+  commits if green) → `infrastructure/elo_watchdog.py` (writes or validates an immutable
+  exact-identity judgment and blocks a regressing deployment without mutating Git). NOTE: this loop is what *added* the harmful loop-breaker (it chased an
   "instability" label its own patch created) — hence the offline-eval gate + divergence
   monitor now sit in front of it. **DORMANT (2026-07-04): this loop is PARKED -- no scheduled servicer, and its only objective gate is the weak "simple" offline baseline (R5: cannot discriminate engine quality), so engine changes are not auto-accepted. The per-battle "replay review required" prompts it fed are now suppressed at the reporting layer (`_improve_loop_active()` / `IMPROVE_LOOP_PARKED_NOTE` in `infrastructure/discord_reporting.py`, default parked). Re-arm via `FOULER_IMPROVE_LOOP_ACTIVE=1` only once a discriminating gate or an autoresearch->eval servicer exists.**
 
@@ -254,7 +260,7 @@ tree, not that in-progress re-baseline.
 | `fp/battle_decision.py` | StrategicDecisionLayer cluster (dormant/log-only). |
 | `fp/search/{eval,forced_lines,endgame,standard_battles,random_battles}.py`, `fp/bayesian_sets.py` | Eval, forced-line, endgame, opponent-set sampling used by `find_best_move`. |
 | `infrastructure/{offline_eval,offline_eval_readiness,improve_agent,elo_watchdog}.py`, `pipeline.py` | Offline-eval gate + self-improvement loop. |
-| `scripts/{devstream_runtime_lease,devstream_session,fouler_mission_monitor}.py`, `scripts/fouler_keepalive.ps1` | Runtime lease, session planner, monitor, keepalive. |
+| `scripts/{devstream_runtime_lease,devstream_session,fouler_mission_monitor}.py` | Runtime lease, canonical supervisor, and monitor. Legacy keepalives are retired. |
 | `.env` | Deployed config; source of the flag values in §4. **Protected.** |
 | `docs/archive/` | Frozen Feb-2026 snapshots and superseded reports. |
 

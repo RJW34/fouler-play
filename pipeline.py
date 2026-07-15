@@ -14,10 +14,8 @@ Usage:
 import argparse
 import json
 import os
-import subprocess
 import sys
 import time
-import requests
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -34,12 +32,13 @@ except ImportError:
 
 from replay_analysis.batch_analyzer import ANALYSIS_MODEL, ANALYSIS_PROVIDER, BatchAnalyzer
 from replay_analysis.autoresearch import run_autoresearch
-from infrastructure.event_queue_lib import queue_event
-from infrastructure.discord_reporting import build_contract_payload
 
 # Configuration
-BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
-STATE_FILE = PROJECT_ROOT / ".pipeline_state"
+RUNTIME_STATE_ROOT = Path(
+    os.getenv("FOULER_RUNTIME_STATE_ROOT", str(PROJECT_ROOT))
+).expanduser().absolute()
+BATTLE_STATS_FILE = RUNTIME_STATE_ROOT / "battle_stats.json"
+STATE_FILE = RUNTIME_STATE_ROOT / "pipeline-state.json"
 
 
 def env_int(name: str, default: int) -> int:
@@ -56,9 +55,6 @@ def env_int(name: str, default: int) -> int:
 
 
 BATCH_SIZE = env_int("FOULER_BATCH_SIZE", 30)  # 30 battles = 10 per team (3 teams)
-DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "")
-DISCORD_CHANNEL_ID = "1466691161363054840"  # #project-fouler-play (where analysis belongs)
-OPENCLAW_SESSION = "agent:main:discord:channel:1466691161363054840"  # fouler-play project channel
 
 
 class Pipeline:
@@ -80,7 +76,7 @@ class Pipeline:
                     self.last_battle_count = state.get("last_battle_count", 0)
                     self.current_batch = state.get("current_batch", 0)
                     self.last_analysis_time = state.get("last_analysis_timestamp")
-            except:
+            except Exception:
                 pass
 
     def _save_state(self, battle_count: int, batch_num: Optional[int] = None):
@@ -105,7 +101,7 @@ class Pipeline:
             with open(BATTLE_STATS_FILE, 'r') as f:
                 data = json.load(f)
                 return len(data.get("battles", []))
-        except:
+        except Exception:
             return 0
 
     def should_analyze(self) -> bool:
@@ -126,7 +122,7 @@ class Pipeline:
         print(f"{'='*60}\n")
         
         report = self.analyzer.generate_report(last_n=BATCH_SIZE)
-        autoresearch_report = run_autoresearch(last_n=BATCH_SIZE, queue_discord=True)
+        autoresearch_report = run_autoresearch(last_n=BATCH_SIZE, queue_discord=False)
         if autoresearch_report.get("top_issue"):
             print(f"🧠 Autoresearch top issue: {autoresearch_report['top_issue']['title']}")
         
@@ -134,132 +130,17 @@ class Pipeline:
             # Update state
             current_count = self.get_battle_count()
             self._save_state(current_count, batch_num)
-            print(f"\n✅ Analysis complete!")
+            print("\n✅ Analysis complete!")
         else:
-            print(f"\n❌ Analysis failed")
+            print("\n❌ Analysis failed")
         
         return report
 
-    def send_discord_notification(self, report_path: Path):
-        """Send clean batch analysis report to Discord via Lucario webhook.
-        
-        Format:
-            📊 **Batch #N Analysis** (30 battles)
-            Record: 18-12 (60% WR) | ELO: 1050 → 1095
-            
-            **Team Performance:**
-            • fat-team-1-stall: 7-3 (70%) ✅
-            • fat-team-2-balance: 6-4 (60%)
-            ...
-            
-            **Top Issues Found:**
-            1. 🟢 Issue description
-            ...
-        """
-        webhook_url = os.getenv("DISCORD_BATTLES_WEBHOOK_URL") or DISCORD_WEBHOOK_URL
-        if not webhook_url:
-            print("⚠️  No Discord webhook configured, skipping notification")
-            return
-
-        try:
-            report_content = report_path.read_text()
-            battles = self._get_recent_battles(BATCH_SIZE)
-
-            # Extract metadata
-            batch_num = self._extract_batch_number(report_content)
-            record = self._extract_record(report_content)
-            try:
-                wins, losses = map(int, record.split("-"))
-            except Exception:
-                wins, losses = 0, 0
-            total = wins + losses
-            wr = (wins / total * 100) if total > 0 else 0
-
-            # Team performance breakdown
-            team_stats: dict = {}
-            for b in battles:
-                team = b.get("team_file", "unknown")
-                result = b.get("result", "unknown")
-                if team not in team_stats:
-                    team_stats[team] = {"wins": 0, "losses": 0}
-                if result == "win":
-                    team_stats[team]["wins"] += 1
-                elif result == "loss":
-                    team_stats[team]["losses"] += 1
-
-            team_lines = []
-            for team, stats in sorted(team_stats.items()):
-                t_total = stats["wins"] + stats["losses"]
-                t_wr = (stats["wins"] / t_total * 100) if t_total > 0 else 0
-                flag = " ✅" if t_wr >= 60 else (" ⚠️" if t_wr < 40 else "")
-                team_lines.append(f"• {team}: {stats['wins']}-{stats['losses']} ({t_wr:.0f}%){flag}")
-
-            # Extract AI analysis issues
-            analysis_section = report_content.split("## AI Analysis")[-1] if "## AI Analysis" in report_content else report_content
-            issues = self._parse_issues(analysis_section, battles)
-
-            issue_lines = []
-            for i, issue in enumerate(issues[:3], 1):
-                badge = issue.get("effort_badge", "🟡")
-                # Extract just the emoji badge character
-                if "🟢" in badge:
-                    icon = "🟢"
-                elif "🔴" in badge:
-                    icon = "🔴"
-                else:
-                    icon = "🟡"
-                title = issue.get("title", "Unknown issue")[:80]
-                issue_lines.append(f"{i}. {icon} {title}")
-
-            if not issue_lines:
-                # Fallback: extract first few lines from analysis
-                for line in analysis_section.split("\n")[:5]:
-                    line = line.strip()
-                    if line and len(line) > 20:
-                        issue_lines.append(f"• {line[:100]}")
-                        if len(issue_lines) >= 3:
-                            break
-
-            # Build the message
-            lines = [
-                f"📊 **Batch #{batch_num} Analysis** ({total} battles)",
-                f"Record: {wins}-{losses} ({wr:.0f}% WR)",
-            ]
-            if team_lines:
-                lines.append("")
-                lines.append("**Team Performance:**")
-                lines.extend(team_lines)
-            if issue_lines:
-                lines.append("")
-                lines.append("**Top Issues Found:**")
-                lines.extend(issue_lines)
-
-            message = "\n".join(lines)
-            # Discord has a 2000 char limit
-            if len(message) > 1900:
-                message = message[:1897] + "..."
-
-            response = requests.post(
-                webhook_url,
-                json={"content": message},
-                timeout=10,
-            )
-            if response.status_code == 204:
-                print(f"✅ Discord batch report sent (Batch #{batch_num}, {len(issues)} issues)")
-            else:
-                print(f"⚠️  Discord webhook returned {response.status_code}: {response.text[:200]}")
-
-        except Exception as e:
-            print(f"⚠️  Failed to send Discord notification: {e}")
-            import traceback
-            traceback.print_exc()
-
-    def send_wake_notification(self, report_path: Path, top_issues: str):
-        """Send wake notification to main DEKU session via separate Discord webhook if configured."""
-        # For now, the Discord webhook already notifies the channel
-        # The main session monitors #project-fouler-play
-        # Future: could use openclaw cron or agent API for more direct notification
-        print(f"✅ Wake notification sent via Discord webhook (batch #{self.current_batch})")
+    def send_discord_notification(self, _report_path: Path) -> None:
+        """Fail closed for callers of the retired direct delivery API."""
+        raise RuntimeError(
+            "direct Discord delivery is retired; queue the report through the DEKU event contract"
+        )
 
     def _extract_top_issues(self, analysis_text: str, max_length: int = 500) -> str:
         """Extract top 3 issues from analysis text."""
@@ -277,7 +158,7 @@ class Pipeline:
         
         if not issues:
             # Fallback: take first few lines of analysis
-            issues = [l.strip() for l in lines[:3] if l.strip()]
+            issues = [line.strip() for line in lines[:3] if line.strip()]
         
         result = '\n'.join(issues[:3])
         if len(result) > max_length:
@@ -341,10 +222,14 @@ class Pipeline:
         
         # Look for diff-like patterns (+ and -)
         lines = analysis_text.split('\n')
-        diff_lines = [l for l in lines if l.strip().startswith(('+', '-')) and not l.strip().startswith('---')]
+        diff_lines = [
+            line
+            for line in lines
+            if line.strip().startswith(("+", "-")) and not line.strip().startswith("---")
+        ]
         
         if len(diff_lines) >= 3:
-            return f"```diff\n" + '\n'.join(diff_lines[:10]) + "\n```"
+            return "```diff\n" + '\n'.join(diff_lines[:10]) + "\n```"
         
         return ""
     
@@ -357,7 +242,7 @@ class Pipeline:
                 data = json.load(f)
                 battles = data.get("battles", [])
                 return battles[-n:] if len(battles) > n else battles
-        except:
+        except Exception:
             return []
     
     def _extract_batch_number(self, content: str) -> str:
@@ -418,7 +303,7 @@ class Pipeline:
     def _parse_issue_section(self, section: str, battles: list) -> Optional[dict]:
         """Parse a single issue section into structured data."""
         # Extract title (first line or heading)
-        lines = [l.strip() for l in section.split('\n') if l.strip()]
+        lines = [line.strip() for line in section.split("\n") if line.strip()]
         if not lines:
             return None
         
@@ -584,9 +469,9 @@ class Pipeline:
         
         # Recommendation
         if issue['auto_apply']:
-            desc_parts.append(f"\n✅ **Will auto-apply next cycle** (react 🛑 to block)")
+            desc_parts.append("\n✅ **Will auto-apply next cycle** (react 🛑 to block)")
         else:
-            desc_parts.append(f"\n⚠️ **Needs manual review** before applying")
+            desc_parts.append("\n⚠️ **Needs manual review** before applying")
         
         # Color based on effort/impact
         if "🟢" in issue['effort_badge']:
@@ -630,10 +515,10 @@ class Pipeline:
         """Daemon mode: watch for batch completions. Spawns analysis as background subprocess."""
         import subprocess
         
-        print(f"👁️  Pipeline watcher started")
+        print("👁️  Pipeline watcher started")
         print(f"📊 Batch size: {BATCH_SIZE} battles")
         print(f"📍 Current batch: {self.current_batch}")
-        print(f"🔄 Checking every 60 seconds...\n")
+        print("🔄 Checking every 60 seconds...\n")
         
         active_analysis = None  # Track background analysis process
         
@@ -660,17 +545,17 @@ class Pipeline:
                         stderr=subprocess.PIPE,
                         text=True
                     )
-                    print(f"   Background task started. Watcher continues monitoring...\n")
+                    print("   Background task started. Watcher continues monitoring...\n")
                 
                 time.sleep(60)  # Check every minute (does NOT wait for analysis)
                 
         except KeyboardInterrupt:
-            print(f"\n\n👋 Pipeline watcher stopped")
+            print("\n\n👋 Pipeline watcher stopped")
             if active_analysis:
                 active_analysis.terminate()
                 try:
                     active_analysis.wait(timeout=5)
-                except:
+                except Exception:
                     active_analysis.kill()
 
     def show_latest_report(self):
@@ -713,7 +598,7 @@ Examples:
     parser.add_argument(
         "--no-discord",
         action="store_true",
-        help="Skip queueing autoresearch Discord events (autoresearch command only)"
+        help="Deprecated compatibility flag; analysis is always retained locally"
     )
     
     args = parser.parse_args()
@@ -725,33 +610,9 @@ Examples:
     elif args.command == "analyze":
         report = pipeline.run_analysis()
         if report:
-            # Get top issues for wake message
-            content = report.read_text()
-            analysis_section = content.split("## AI Analysis")[-1] if "## AI Analysis" in content else ""
-            top_issues = pipeline._extract_top_issues(analysis_section)
-            
-            # Queue notification via event queue using the reporting contract
-            queue_event(
-                "batch_analyzed",
-                DISCORD_CHANNEL_ID,
-                build_contract_payload(
-                    "PROOF",
-                    f"batch analysis #{pipeline.current_batch} ready",
-                    f"pipeline analyzed the latest {BATCH_SIZE}-battle batch and prepared the channel summary.",
-                    "Batch analysis only helps if the report callout is compact, proof-backed, and easy to scan before opening the full report.",
-                    f"report={report.name}; top_issues={top_issues[:280]}",
-                    "Open the report if the lead issue still needs a concrete fix after the summary.",
-                    source="pipeline.analyze",
-                    report=report.name,
-                    top_issues=top_issues[:280],
-                ),
-            )
-            # Also send rich webhook notification
-            pipeline.send_discord_notification(report)
-            pipeline.send_wake_notification(report, top_issues)
             print(f"\n📄 View report: cat {report}")
     elif args.command == "autoresearch":
-        report = run_autoresearch(last_n=args.num_battles, queue_discord=not args.no_discord)
+        report = run_autoresearch(last_n=args.num_battles, queue_discord=False)
         print(json.dumps(report, indent=2))
     elif args.command == "report":
         pipeline.show_latest_report()

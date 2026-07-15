@@ -1,16 +1,13 @@
 from __future__ import annotations
 
-import json
 import os
 import re
-from pathlib import Path
+
+from scripts.devstream_runtime_lease import runtime_lease_path, validate_runtime_lease
 
 
 UNKNOWN_BOT_USERNAME = "unknown-bot"
-ROOT_DIR = Path(__file__).resolve().parents[1]
-RUNTIME_LEASE_PATH = Path(
-    os.getenv("FOULER_RUNTIME_LEASE_PATH", ROOT_DIR / "devstream" / "truth" / "runtime-lease.json")
-)
+RUNTIME_LEASE_PATH = runtime_lease_path()
 
 # Canonical, single-source-of-truth list of every Showdown account the bot has
 # ever laddered under. This MATTERS for loss-learning: the live lease only knows
@@ -42,24 +39,14 @@ def _norm_account(value: object) -> str:
 
 
 def _runtime_lease_account() -> str:
-    try:
-        lease = json.loads(RUNTIME_LEASE_PATH.read_text(encoding="utf-8"))
-    except Exception:
+    validation = validate_runtime_lease(
+        purpose="run-py-battle-runner",
+        lease_path=RUNTIME_LEASE_PATH,
+    )
+    if not validation.get("ok"):
         return ""
-    if not isinstance(lease, dict):
-        return ""
-    battle_scope = lease.get("battleScope") if isinstance(lease.get("battleScope"), dict) else {}
-    for value in (
-        lease.get("account"),
-        lease.get("psUsername"),
-        lease.get("showdownAccount"),
-        battle_scope.get("account"),
-        battle_scope.get("psUsername"),
-    ):
-        account = str(value or "").strip()
-        if account:
-            return account
-    return ""
+    summary = validation.get("lease") if isinstance(validation.get("lease"), dict) else {}
+    return str(summary.get("account") or "").strip()
 
 
 def resolve_bot_username(default: str = UNKNOWN_BOT_USERNAME) -> str:

@@ -15,8 +15,10 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from replay_analysis.batch_analyzer import BatchAnalyzer
 from replay_analysis.turn_review import TurnReviewer
 from replay_analysis.account_identity import resolve_bot_username
+from infrastructure.runtime_paths import resolve_runtime_paths
 
-REPLAY_DIR = PROJECT_ROOT / "replay_analysis"
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+REPLAY_DIR = _RUNTIME_PATHS.state_root / "replay_analysis"
 
 
 def load_local_replays(num_replays: int = 5) -> List[tuple[str, Dict]]:
@@ -129,6 +131,7 @@ def analyze_local_replays(num_replays: int = 5):
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     report_file = REPLAY_DIR / "reports" / f"test_local_{timestamp}.md"
+    report_file.parent.mkdir(parents=True, exist_ok=True)
     
     report_content = f"""# Fouler Play Test Analysis (Local Replays)
 

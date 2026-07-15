@@ -18,6 +18,26 @@ $LogDir = Join-Path $RepoRoot "logs"
 $PidDir = Join-Path $RepoRoot ".pids"
 $RemoteTruthPath = Join-Path $TruthDir "jigglypuff-runtime.json"
 
+# Retired mutation surface. Exact-release service/task installers own lifecycle;
+# allowing this mutable-checkout helper to start or stop processes would restore
+# the legacy duplicate-owner path. Status remains read-only for diagnostics.
+if ($Command -ne "status") {
+    [pscustomobject]@{
+        schemaVersion = "fouler-play-retired-launcher/v1"
+        ok = $false
+        retired = $true
+        command = $Command
+        startsProcesses = $false
+        mutatesProcesses = $false
+        replacement = @(
+            "scripts/install_obs_server_service.ps1",
+            "scripts/install_battle_supervisor_task.ps1"
+        )
+    } | ConvertTo-Json -Depth 4
+    exit 2
+}
+$NoWrite = $true
+
 function Get-IsoNow {
     return [DateTimeOffset]::UtcNow.ToString("o")
 }
@@ -59,39 +79,6 @@ function Read-JsonFile {
     } catch {
         return $null
     }
-}
-
-function Resolve-RuntimeLeasePath {
-    param([string]$RuntimeLease)
-    if ([string]::IsNullOrWhiteSpace($RuntimeLease)) {
-        return (Join-Path $RepoRoot "devstream\truth\runtime-lease.json")
-    }
-    if ([System.IO.Path]::IsPathRooted($RuntimeLease)) {
-        return $RuntimeLease
-    }
-    return (Join-Path $RepoRoot $RuntimeLease)
-}
-
-function Get-RuntimeLeaseAccount {
-    param([string]$RuntimeLease)
-    $lease = Read-JsonFile -Path (Resolve-RuntimeLeasePath -RuntimeLease $RuntimeLease)
-    if ($null -eq $lease) {
-        return ""
-    }
-    $candidates = @(
-        $lease.account,
-        $lease.psUsername,
-        $lease.showdownAccount,
-        $lease.battleScope.account,
-        $lease.battleScope.psUsername
-    )
-    foreach ($candidate in $candidates) {
-        $value = "$candidate".Trim()
-        if (-not [string]::IsNullOrWhiteSpace($value)) {
-            return $value
-        }
-    }
-    return ""
 }
 
 function ConvertTo-CmdSetAssignment {
@@ -176,7 +163,10 @@ function Test-RuntimeLease {
         "--require-run-count",
         "--require-max-cycles",
         "--require-max-concurrent-battles",
-        "--require-replay-behavior"
+        "--require-replay-behavior",
+        "--replay-behavior", "always",
+        "--require-deployment-receipt",
+        "--verify-deployment-checkout"
     )
     if (-not [string]::IsNullOrWhiteSpace($RuntimeLease)) {
         $args += @("--runtime-lease", $RuntimeLease)
@@ -186,7 +176,8 @@ function Test-RuntimeLease {
     if ($result.stdout) {
         try { $payload = $result.stdout | ConvertFrom-Json } catch {}
     }
-    return @{ ok = [bool]$result.ok; result = $result; payload = $payload }
+    $valid = [bool]($result.ok -and $null -ne $payload -and $payload.ok)
+    return @{ ok = $valid; result = $result; payload = $payload }
 }
 
 function Get-GitInfo {
@@ -574,7 +565,14 @@ function Start-ObsServer {
 }
 
 function Start-BattleSession {
-    param([int]$RunCount, [int]$MaxConcurrentBattles, [int]$MaxCycles, [string]$RuntimeLease, [switch]$AutoImprove)
+    param(
+        [int]$RunCount,
+        [int]$MaxConcurrentBattles,
+        [int]$MaxCycles,
+        [string]$RuntimeLease,
+        [string]$LeaseAccount,
+        [switch]$AutoImprove
+    )
     if (-not (Test-Path (Join-Path $RepoRoot ".env"))) {
         return @{ ok = $false; error = ".env is missing; refusing to queue Showdown battles" }
     }
@@ -609,13 +607,11 @@ function Start-BattleSession {
         "set AUTO_START_OBS_SERVER=0",
         "set LOSS_TRIGGERED_DRAIN=0",
         "set FOULER_PLAY_ENABLE_AUTO_IMPROVE=$autoImproveEnv",
-        "set BATTLE_STATS_MAX_ENTRIES=5000",
-        "set FOULER_DEVSTREAM_STATUS_URL=http://ubunztu.tail4859dd.ts.net:8799/deku-metrics.json"
+        "set BATTLE_STATS_MAX_ENTRIES=5000"
     )
-    $leaseAccount = Get-RuntimeLeaseAccount -RuntimeLease $RuntimeLease
-    if (-not [string]::IsNullOrWhiteSpace($leaseAccount)) {
+    if (-not [string]::IsNullOrWhiteSpace($LeaseAccount)) {
         foreach ($envName in @("PS_USERNAME", "SHOWDOWN_USER_ID", "SHOWDOWN_ACCOUNTS", "FOULER_ACTIVE_ACCOUNT")) {
-            $assignment = ConvertTo-CmdSetAssignment -Name $envName -Value $leaseAccount
+            $assignment = ConvertTo-CmdSetAssignment -Name $envName -Value $LeaseAccount
             if (-not [string]::IsNullOrWhiteSpace($assignment)) {
                 $envAssignments += $assignment
             }
@@ -803,7 +799,8 @@ if ($Command -eq "bootstrap") {
             $actions += @{ name = "stop-stale-processes"; result = Stop-FoulerProcesses }
             $actions += @{ name = "start-obs-server"; result = Start-ObsServer }
             if (-not $ObsOnly) {
-                $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -RuntimeLease $RuntimeLease -AutoImprove:$AutoImprove }
+                $leaseAccount = [string]$lease.payload.lease.account
+                $actions += @{ name = "start-battle-supervisor"; result = Start-BattleSession -RunCount $RunCount -MaxConcurrentBattles $MaxConcurrentBattles -MaxCycles $MaxCycles -RuntimeLease $RuntimeLease -LeaseAccount $leaseAccount -AutoImprove:$AutoImprove }
             }
         }
     } else {

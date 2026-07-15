@@ -17,8 +17,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_runtime_lease
-
 TRUTH_DIR = ROOT / "devstream" / "truth"
 ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
 JIGGLYPUFF_RUNTIME_START_PURPOSE = "jigglypuff-runtime-start"
@@ -36,9 +34,9 @@ TAILNET_REMOTE = f"Ryanj@{JIGGLYPUFF_TAILNET_HOST}"
 LAN_REMOTE = f"Ryanj@{JIGGLYPUFF_LAN_HOST}"
 DIRECT_REMOTE = f"Ryanj@{JIGGLYPUFF_DIRECT_IP}"
 REMOTE = os.environ.get("FOULER_JIGGLYPUFF_SSH", TAILNET_REMOTE)
-REMOTE_SCRIPT = os.environ.get(
-    "FOULER_JIGGLYPUFF_SCRIPT",
-    r"D:\Projects\fouler-play\scripts\fouler_jigglypuff_runtime.ps1",
+REMOTE_SCRIPT = os.environ.get("FOULER_JIGGLYPUFF_SCRIPT", "").strip()
+IMMUTABLE_REMOTE_SCRIPT_RE = re.compile(
+    r"(?i)^D:\\Releases\\fouler-play\\[0-9a-f]{40,64}\\scripts\\fouler_jigglypuff_runtime\.ps1$"
 )
 OBS_HTTP = os.environ.get("FOULER_JIGGLYPUFF_OBS_HTTP", DEFAULT_OBS_HTTP).rstrip("/")
 WORKER_HTTP = os.environ.get("FOULER_JIGGLYPUFF_WORKER_HTTP", DEFAULT_WORKER_HTTP).rstrip("/")
@@ -69,6 +67,11 @@ def remote_candidates(primary: str, fallback_env: str, defaults: list[str]) -> l
         seen.add(remote)
         candidates.append(remote)
     return candidates
+
+
+def immutable_remote_script() -> str:
+    """Return the configured exact-release status script, never a mutable checkout."""
+    return REMOTE_SCRIPT if IMMUTABLE_REMOTE_SCRIPT_RE.fullmatch(REMOTE_SCRIPT) else ""
 
 
 OBS_HTTP_CANDIDATES = endpoint_candidates(
@@ -457,6 +460,22 @@ def resident_command(
     enable_auto_improve: bool = False,
     timeout: int = 90,
 ) -> dict[str, Any]:
+    if action != "status":
+        return {
+            "ok": False,
+            "returnCode": None,
+            "json": {
+                "ok": False,
+                "status": "retired-control-path",
+                "blockers": [
+                    "DEKU-side resident Fouler mutation is retired; operate the exact release on JIGGLYPUFF"
+                ],
+            },
+            "workerStatus": None,
+            "workerUrl": "",
+            "stdout": "",
+            "stderr": "retired-control-path",
+        }
     if action == "status":
         return worker_request("/fouler/status", timeout=min(timeout, STATUS_WORKER_TIMEOUT_SECONDS))
     body = {"execute": bool(execute)}
@@ -491,6 +510,21 @@ def remote_command(
     no_remote_write: bool = False,
     timeout: int = 90,
 ) -> dict[str, Any]:
+    if action != "status":
+        return {
+            "ok": False,
+            "returnCode": None,
+            "json": {
+                "ok": False,
+                "status": "retired-control-path",
+                "blockers": [
+                    "remote Fouler mutation is retired; run the receipt-bound launcher locally on JIGGLYPUFF"
+                ],
+            },
+            "stdout": "",
+            "stderr": "retired-control-path",
+            "transport": "none",
+        }
     if no_remote_write and action == "status":
         resident = {
             "attempted": False,
@@ -516,13 +550,34 @@ def remote_command(
             resident["transport"] = "resident-worker-http"
             return resident
 
+    remote_script = immutable_remote_script()
+    if not remote_script:
+        return {
+            "ok": False,
+            "returnCode": None,
+            "json": None,
+            "stdout": "",
+            "stderr": "no immutable exact-release status script is configured",
+            "transport": "public-runtime-fallback",
+            "residentWorker": {
+                "attempted": not bool(resident.get("skippedNoWrite")),
+                "skippedNoWrite": bool(resident.get("skippedNoWrite")),
+                "workerStatus": resident.get("workerStatus"),
+                "workerUrl": resident.get("workerUrl"),
+                "workerAttempts": resident.get("workerAttempts")
+                if isinstance(resident.get("workerAttempts"), list)
+                else [],
+                "stderrTail": redact_text(resident.get("stderr"), limit=1000),
+            },
+        }
+
     powershell_args = [
         "powershell",
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        REMOTE_SCRIPT,
+        remote_script,
         "-Command",
         action,
     ]
@@ -641,7 +696,7 @@ def synthesize_public_runtime_status(
     state = fetch_live_state()
     health = fetch_live_health()
     live = live_battle_summary(state, health)
-    if int(live["activeBattleCount"]) <= 0:
+    if not isinstance(state, dict) and not isinstance(health, dict):
         return None
     health_readiness = health.get("readiness") if isinstance(health, dict) and isinstance(health.get("readiness"), dict) else {}
     health_blockers = health.get("blockers") if isinstance(health, dict) and isinstance(health.get("blockers"), list) else []
@@ -651,9 +706,17 @@ def synthesize_public_runtime_status(
         "machine": "JIGGLYPUFF",
         "ok": False,
         "healthy": False,
-        "running": True,
+        "running": bool(
+            health.get("running")
+            if isinstance(health, dict)
+            else int(live["activeBattleCount"]) > 0
+        ),
         "readyForLiveFocus": False,
-        "status": "degraded-live",
+        "status": (
+            "degraded-live"
+            if int(live["activeBattleCount"]) > 0
+            else "read-only-idle"
+        ),
         "action": action,
         "remote": raw.get("remote") or REMOTE,
         "activeBattleCount": live["activeBattleCount"],
@@ -665,8 +728,7 @@ def synthesize_public_runtime_status(
             "proofHandoffReady": False,
         },
         "blockers": [
-            "JIGGLYPUFF control-plane JSON unavailable while public runtime shows "
-            f"{live['activeBattleCount']} active battle(s); HERMES must drain/adopt live runtime before claiming ready"
+            "JIGGLYPUFF exact-release control proof is unavailable; public runtime is read-only observation"
         ],
         "warnings": [
             "status synthesized from public /state or /health?deep=1 because resident worker/SSH status JSON was unavailable"
@@ -722,51 +784,31 @@ def mirror_status(
         mirrored["remote"] = raw.get("remote") or REMOTE
         mirrored["action"] = action
         mirrored = annotate_runtime_code_freshness(mirrored)
-    if not write_mirror:
-        mirrored["mirrorSkipped"] = True
-        mirrored["remoteStatusWriteSkipped"] = bool(raw.get("remoteStatusWriteSkipped"))
-        mirrored["liveStateMirror"] = {
-            "ok": True,
-            "url": _LAST_LIVE_STATE_URL or f"{OBS_HTTP}/state",
-            "activeBattlesMirrored": False,
-            "skipped": True,
-            "reason": "read-only status mode",
-            "observedAt": iso_now(),
-        }
-        return mirrored
-    mirrored["liveStateMirror"] = mirror_live_state()
-    write_json(TRUTH_DIR / "jigglypuff-runtime.json", mirrored)
+    mirrored["mirrorSkipped"] = True
+    mirrored["remoteStatusWriteSkipped"] = True
+    mirrored["liveStateMirror"] = {
+        "ok": True,
+        "url": _LAST_LIVE_STATE_URL or f"{OBS_HTTP}/state",
+        "activeBattlesMirrored": False,
+        "skipped": True,
+        "reason": "DEKU-side Fouler truth mirroring is retired",
+        "observedAt": iso_now(),
+    }
+    if write_mirror:
+        mirrored.setdefault("warnings", []).append(
+            "write_mirror was ignored because JIGGLYPUFF owns Fouler runtime truth"
+        )
     return mirrored
 
 
 def mirror_live_state() -> dict[str, Any]:
-    observed_at = iso_now()
-    state = fetch_live_state()
-    if not isinstance(state, dict):
-        return {
-            "ok": False,
-            "url": _LAST_LIVE_STATE_URL or f"{OBS_HTTP}/state",
-            "activeBattlesMirrored": False,
-            "observedAt": observed_at,
-        }
-    battles = state.get("battles")
-    if not isinstance(battles, list):
-        battles = []
-    payload = {
-        "battles": battles,
-        "count": int(state.get("count") or len(battles)),
-        "max_slots": int(state.get("max_slots") or max(len(battles), 3)),
-        "updated": state.get("updated") or iso_now(),
-        "observedAt": observed_at,
-    }
-    write_json(ROOT / "active_battles.json", payload)
     return {
         "ok": True,
         "url": _LAST_LIVE_STATE_URL or f"{OBS_HTTP}/state",
-        "activeBattlesMirrored": True,
-        "battleCount": payload["count"],
-        "updated": payload["updated"],
-        "observedAt": observed_at,
+        "activeBattlesMirrored": False,
+        "skipped": True,
+        "reason": "DEKU-side Fouler truth mirroring is retired",
+        "observedAt": iso_now(),
     }
 
 
@@ -781,7 +823,8 @@ def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
         "action": action,
         "execute": False,
         "planned": True,
-        "message": "Pass --execute to mutate the JIGGLYPUFF fouler-play runtime.",
+        "status": "retired-control-path",
+        "message": "DEKU-side mutation is retired; operate the receipt-bound exact release on JIGGLYPUFF.",
     }
     if action == "start":
         payload["bounds"] = {
@@ -793,32 +836,31 @@ def planned(action: str, args: argparse.Namespace) -> dict[str, Any]:
         }
         payload["runtimeLease"] = {
             "requiredForExecute": True,
-            "path": str(getattr(args, "runtime_lease", "") or f"${RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json"),
+            "path": str(getattr(args, "runtime_lease", "") or "target-host exact release only"),
         }
     elif action == "stop":
         payload["runtimeLease"] = {
             "requiredForExecute": True,
             "purpose": JIGGLYPUFF_RUNTIME_STOP_PURPOSE,
-            "path": str(getattr(args, "runtime_lease", "") or f"${RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json"),
+            "path": str(getattr(args, "runtime_lease", "") or "target-host exact release only"),
         }
     return payload
 
 
 def runtime_lease_guard_for_action(action: str, args: argparse.Namespace) -> dict[str, Any]:
-    env = load_env_files()
-    purpose = JIGGLYPUFF_RUNTIME_STOP_PURPOSE if action == "stop" else JIGGLYPUFF_RUNTIME_START_PURPOSE
-    return validate_runtime_lease(
-        purpose=purpose,
-        lease_path=getattr(args, "runtime_lease", None),
-        requested_run_count=getattr(args, "run_count", 1),
-        requested_max_cycles=getattr(args, "max_cycles", 1),
-        requested_max_concurrent_battles=getattr(args, "max_concurrent_battles", 1),
-        requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
-        require_run_count=True,
-        require_max_cycles=True,
-        require_max_concurrent_battles=True,
-        require_replay_behavior=True,
+    purpose = (
+        JIGGLYPUFF_RUNTIME_STOP_PURPOSE
+        if action == "stop"
+        else JIGGLYPUFF_RUNTIME_START_PURPOSE
     )
+    return {
+        "ok": False,
+        "purpose": purpose,
+        "status": "retired-control-path",
+        "blockers": [
+            "a host-bound runtime lease must be validated by the exact release on JIGGLYPUFF"
+        ],
+    }
 
 
 def start_runtime_lease_guard(args: argparse.Namespace) -> dict[str, Any]:
@@ -848,38 +890,20 @@ def action_status(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     result = remote_command(
         "status",
         timeout=args.timeout,
-        no_remote_write=not bool(getattr(args, "mirror", True)),
+        no_remote_write=True,
     )
-    payload = mirror_status(result.get("json"), action="status", raw=result, write_mirror=getattr(args, "mirror", True))
+    payload = mirror_status(result.get("json"), action="status", raw=result, write_mirror=False)
     return (0 if payload.get("ok") or payload.get("status") in {"ready-idle", "running"} else 1, payload)
 
 
 def action_mutating(action: str, args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
-    if not args.execute:
-        payload = planned(action, args)
-        return 0, payload
-    if action in {"start", "stop"}:
-        guard = runtime_lease_guard_for_action(action, args)
-        if not guard.get("ok"):
-            return 2, runtime_lease_blocked_payload(action, args, guard)
-    result = remote_command(
-        action,
-        execute=True,
-        run_count=getattr(args, "run_count", 0),
-        max_concurrent_battles=getattr(args, "max_concurrent_battles", 3),
-        max_cycles=getattr(args, "max_cycles", 0),
-        runtime_lease=getattr(args, "runtime_lease", None),
-        obs_only=getattr(args, "obs_only", False),
-        enable_auto_improve=getattr(args, "enable_auto_improve", False),
-        timeout=args.timeout,
-    )
-    payload = mirror_status(result.get("json"), action=action, raw=result)
-    payload.setdefault("control", {})
-    payload["control"] = {
-        "returnCode": result.get("returnCode"),
-        "stderrTail": redact_text(result.get("stderr")),
-    }
-    return (0 if result.get("returnCode") == 0 and payload.get("status") != "blocked" else 1, payload)
+    payload = planned(action, args)
+    payload["executeRequested"] = bool(getattr(args, "execute", False))
+    payload["blocked"] = True
+    payload["blockers"] = [
+        "DEKU-side remote mutation is retired; use the exact-release JIGGLYPUFF activation path"
+    ]
+    return 2, payload
 
 
 def main() -> int:
@@ -899,8 +923,8 @@ def main() -> int:
         "--no-mirror",
         dest="mirror",
         action="store_false",
-        default=True,
-        help="Fetch status without writing devstream truth or active battle mirror files.",
+        default=False,
+        help="Compatibility flag; status is always read-only and never mirrors runtime truth.",
     )
 
     bootstrap = sub.add_parser("bootstrap")
@@ -914,7 +938,7 @@ def main() -> int:
     start.add_argument("--max-cycles", type=int, default=0)
     start.add_argument(
         "--runtime-lease",
-        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+        help="Retired compatibility option; activation occurs on JIGGLYPUFF.",
     )
     start.add_argument("--obs-only", action="store_true")
     start.add_argument("--enable-auto-improve", action="store_true")
@@ -924,7 +948,7 @@ def main() -> int:
     stop.add_argument("--execute", action="store_true")
     stop.add_argument(
         "--runtime-lease",
-        help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
+        help="Retired compatibility option; activation occurs on JIGGLYPUFF.",
     )
     stop.add_argument("--timeout", type=int, default=120)
 

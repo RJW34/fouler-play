@@ -39,7 +39,9 @@ if ($QueueAlerts) {
 }
 
 if (-not $NoRepair) {
-    $argsList += @("--repair-runtime", "--renew-lease")
+    # Scheduled monitoring may consume an already-active owner lease, but it
+    # must never mint or extend authority.
+    $argsList += "--repair-runtime"
 }
 
 try {
@@ -48,7 +50,7 @@ try {
     & $Py @argsList 1>> $LogPath 2>> $ErrPath
     $code = $LASTEXITCODE
     "$((Get-Date).ToString('o')) mission-monitor exit=$code" | Add-Content -LiteralPath $LogPath -Encoding ASCII
-    exit 0
+    exit $code
 } catch {
     "$((Get-Date).ToString('o')) mission-monitor exception=$($_.Exception.Message)" | Add-Content -LiteralPath $ErrPath -Encoding ASCII
     exit 1

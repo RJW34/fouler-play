@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Scheduled refresher for fp/matchup_weights.json (ongoing learning loop).
+"""Scheduled refresher for external runtime matchup weights.
 
 Deterministic, no LLM, no code-gen: scans recent local replays, runs the
-mechanics-backed loss pipeline (replay_analysis.loss_learning), and rewrites
-fp/matchup_weights.json with observed bad_matchups / problem_pokemon.
+mechanics-backed loss pipeline (replay_analysis.loss_learning), and rewrites the
+external runtime weights file with observed bad_matchups / problem_pokemon.
 
 Intended to run on a schedule (e.g. every 30 min) so observed losses keep
 feeding the live policy bias. Named without an ``update_`` prefix to avoid a
@@ -22,14 +22,28 @@ ROOT = Path(__file__).resolve()
 REPO = ROOT.parent.parent
 sys.path.insert(0, str(REPO))
 
-LOG_PATH = REPO / "logs" / "matchup_weights_refresh.log"
-LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-    handlers=[logging.FileHandler(LOG_PATH, encoding="utf-8"), logging.StreamHandler()],
-)
+from infrastructure.runtime_paths import resolve_runtime_paths  # noqa: E402
+
+LOG_PATH = resolve_runtime_paths(REPO).log_root / "matchup_weights_refresh.log"
 log = logging.getLogger("refresh_matchup_weights")
+
+
+def configure_logging(log_path: Path = LOG_PATH) -> None:
+    """Attach external runtime handlers when the refresher is executed."""
+    if any(getattr(handler, "_fouler_matchup_refresh", False) for handler in log.handlers):
+        return
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    file_handler._fouler_matchup_refresh = True  # type: ignore[attr-defined]
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    stream_handler._fouler_matchup_refresh = True  # type: ignore[attr-defined]
+    log.setLevel(logging.INFO)
+    log.addHandler(file_handler)
+    log.addHandler(stream_handler)
+    log.propagate = False
 
 try:
     from replay_analysis.loss_learning import build_loss_artifact, load_replay
@@ -120,5 +134,6 @@ def main(window: int = DEFAULT_WINDOW) -> int:
 
 
 if __name__ == "__main__":
+    configure_logging()
     requested_window = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_WINDOW
     raise SystemExit(main(requested_window))

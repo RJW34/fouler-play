@@ -218,7 +218,7 @@ from obswebsocket.exceptions import ConnectionFailure
 # Configuration
 OBS_HOST = "192.168.1.181"
 OBS_PORT = 4455
-OBS_PASSWORD = "4Dswd1gtixEnGuK1"
+OBS_WEBSOCKET_PASSWORD=<REDACTED>
 
 class OBSController:
     def __init__(self, host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD):

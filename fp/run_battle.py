@@ -10,12 +10,14 @@ import logging
 from logging.handlers import RotatingFileHandler
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 import aiohttp
 from datetime import datetime
 
 from data import all_move_json
 from data.pkmn_sets import RandomBattleTeamDatasets, TeamDatasets
 from data.pkmn_sets import SmogonSets
+from infrastructure.runtime_paths import resolve_runtime_paths
 
 try:
     faulthandler.enable(all_threads=True)
@@ -29,16 +31,23 @@ except Exception:
 LOG_KEEP_BATTLE_FILES = int(os.getenv("LOG_KEEP_BATTLE_FILES", "60"))
 LOG_KEEP_TRACE_FILES = int(os.getenv("LOG_KEEP_TRACE_FILES", "500"))
 LOG_KEEP_STDOUT_FILES = int(os.getenv("LOG_KEEP_STDOUT_FILES", "3"))
-BATTLE_STATS_PATH = Path(__file__).resolve().parent.parent / "battle_stats.json"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
+RUNTIME_LOG_ROOT = _RUNTIME_PATHS.log_root
+BATTLE_STATS_PATH = _RUNTIME_PATHS.battle_stats_path
 _battle_stats_enrichment_lock = asyncio.Lock()
+_deku_event_drain_lock = asyncio.Lock()
 _battle_stats_authoritative_facts: dict[str, dict[str, object]] = {}
 
 
-def cleanup_old_logs(log_dir: str = "logs", trace_dir: str | None = None):
+def cleanup_old_logs(log_dir: str | None = None, trace_dir: str | None = None):
     """Prune old battle logs, rotated backups, phantom logs, decision traces,
     and stdout logs on startup.  Keeps the most recent files by mtime."""
     _log = logging.getLogger(__name__)
+    log_dir = log_dir or str(RUNTIME_LOG_ROOT)
     trace_dir = trace_dir or os.path.join(log_dir, "decision_traces")
+    os.makedirs(log_dir, exist_ok=True)
     removed = 0
 
     # --- 1. Phantom _None.log files (always delete all â€” they're from dead rooms) ---
@@ -137,7 +146,7 @@ from fp.opponent_model import OPPONENT_MODEL
 from fp.hybrid_policy import run_hybrid_rerank
 from fp.helpers import type_effectiveness_modifier
 from fp.battle_decision import StrategicDecisionLayer, clear_battle_strategy
-from fp.devstream_chat import POST_BATTLE_MESSAGES, post_battle_messages
+from fp.devstream_chat import post_battle_messages
 
 from fp.websocket_client import PSWebsocketClient
 from streaming.state_store import (
@@ -152,6 +161,7 @@ from fp.playstyle_config import PlaystyleConfig, Playstyle, HAZARD_MOVES, PIVOT_
 from fp.gameplan_integration import generate_and_store_gameplan, get_gameplan, clear_gameplan
 from constants_pkg.strategy import SETUP_MOVES
 from infrastructure.event_queue_lib import queue_event
+from infrastructure.event_poster import process_pending_events
 from infrastructure.discord_reporting import (
     build_contract_payload,
     canonical_replay_url,
@@ -284,7 +294,7 @@ def _get_or_create_worker_handler(worker_id: int) -> RotatingFileHandler:
     global _shared_handler_filtered
     if worker_id in _worker_handlers:
         return _worker_handlers[worker_id]
-    log_dir = os.getenv("FOULER_LOG_DIR", "logs")
+    log_dir = os.getenv("FOULER_LOG_DIR", str(RUNTIME_LOG_ROOT))
     os.makedirs(log_dir, exist_ok=True)
     handler = RotatingFileHandler(
         os.path.join(log_dir, f"worker_{worker_id}_init.log"),
@@ -328,7 +338,7 @@ def _safe_log_filename_part(value: object, *, fallback: str = "unknown", max_len
 def _worker_battle_log_path(worker_id: int, battle_tag: str, opponent_name: str) -> str:
     safe_battle_tag = _safe_log_filename_part(battle_tag, fallback=f"worker_{worker_id}")
     safe_opponent_name = _safe_log_filename_part(opponent_name)
-    log_dir = os.getenv("FOULER_LOG_DIR", "logs")
+    log_dir = os.getenv("FOULER_LOG_DIR", str(RUNTIME_LOG_ROOT))
     return os.path.join(log_dir, f"{safe_battle_tag}_{safe_opponent_name}.log")
 
 
@@ -504,12 +514,12 @@ def _queue_operational_loss_battle_result(
     reason: str,
     elapsed_seconds: float | None = None,
     timeout_strikes: int | None = None,
-) -> bool:
+) -> str | None:
     """Queue Discord proof for a bot-side timeout/disconnect loss."""
 
     if not battle_result_event_queue_enabled():
         logger.info("Skipping operational-loss battle_result for %s: queue disabled", battle_tag)
-        return False
+        return None
     opponent = opponent_name or "unknown opponent"
     reason_label = str(reason or "timeout").replace("_", " ")
     elapsed_note = ""
@@ -522,7 +532,7 @@ def _queue_operational_loss_battle_result(
         "Loss came from inactivity/disconnect behavior, so this looks operational "
         "before it looks strategic."
     )
-    queue_event(
+    event_id = queue_event(
         "battle_result",
         "battles",
         build_contract_payload(
@@ -554,7 +564,7 @@ def _queue_operational_loss_battle_result(
         ),
         dedup_window_sec=5,
     )
-    return True
+    return event_id
 
 
 # Authoritative per-battle rating transition emitted by Showdown to the battle
@@ -779,7 +789,7 @@ async def _save_replay_json_locally(replay_id: str) -> dict | None:
         clean_id = clean_id[len("battle-"):]
     
     # Check if already saved
-    replay_dir = Path(__file__).resolve().parent.parent / "replay_analysis"
+    replay_dir = RUNTIME_STATE_ROOT / "replay_analysis"
     replay_dir.mkdir(parents=True, exist_ok=True)
     local_path = replay_dir / f"{clean_id}.json"
     if local_path.exists():
@@ -1526,6 +1536,30 @@ def battle_result_event_queue_enabled() -> bool:
     return override in {"1", "true", "yes", "on"}
 
 
+async def _handoff_battle_result_to_deku(event_id: str | None) -> bool:
+    """Move one queued battle result into DEKU's outbox without network authority."""
+
+    if not event_id:
+        logger.error("Battle result was not journaled; DEKU handoff cannot run")
+        return False
+    async with _deku_event_drain_lock:
+        result = await asyncio.to_thread(
+            process_pending_events,
+            max_events=50,
+            required_event_id=event_id,
+        )
+    if not result.get("ok"):
+        logger.error(
+            "DEKU handoff failed for battle event %s: status=%s pending=%s",
+            event_id,
+            result.get("requiredStatus"),
+            result.get("pendingRemaining"),
+        )
+        return False
+    logger.info("Queued battle result %s for the DEKU relay", event_id)
+    return True
+
+
 async def update_active_battles_file():
     """Write active battles to JSON file for stream overlay integration.
 
@@ -1638,6 +1672,24 @@ async def update_active_battles_file():
         except Exception as e:
             logger.error(f"Failed to write active_battles.json: {e}")
 
+def _validated_loopback_stream_event_url(value: object) -> str:
+    url = str(value or "").strip()
+    if not url:
+        return ""
+    try:
+        parsed = urlsplit(url)
+        _ = parsed.port
+    except (TypeError, ValueError):
+        return ""
+    if parsed.scheme.lower() not in {"http", "https"}:
+        return ""
+    if parsed.username is not None or parsed.password is not None:
+        return ""
+    if (parsed.hostname or "").lower() not in {"127.0.0.1", "localhost", "::1"}:
+        return ""
+    return url
+
+
 async def send_stream_event(event_type, payload):
     """Send a real-time event signal to the stream server."""
     stream_events = os.getenv("FOULER_STREAM_EVENTS", "").strip().lower()
@@ -1647,10 +1699,14 @@ async def send_stream_event(event_type, payload):
     if os.getenv("FOULER_OFFLINE_EVAL", "").strip().lower() in {"1", "true", "yes", "on"}:
         logger.debug("Stream event %s skipped for offline eval", event_type)
         return {"skipped": True, "reason": "offline-eval"}
-    url = os.getenv("STREAM_EVENT_URL", "http://localhost:8777/event")
-    if not url:
+    configured_url = os.getenv("STREAM_EVENT_URL", "http://localhost:8777/event").strip()
+    if not configured_url:
         logger.debug("Stream event %s skipped: STREAM_EVENT_URL is empty", event_type)
         return {"skipped": True, "reason": "stream-event-url-empty"}
+    url = _validated_loopback_stream_event_url(configured_url)
+    if not url:
+        logger.warning("Stream event %s skipped: STREAM_EVENT_URL must be loopback HTTP(S)", event_type)
+        return {"skipped": True, "reason": "stream-event-url-not-loopback"}
     for attempt in range(3):  # Try 3 times: initial + 2 retries
         try:
             timeout = aiohttp.ClientTimeout(total=5)
@@ -3225,7 +3281,7 @@ async def pokemon_battle(
                         battle_tag,
                         len(_dead_battle_blacklist),
                     )
-                    _queue_operational_loss_battle_result(
+                    operational_event_id = _queue_operational_loss_battle_result(
                         battle_tag,
                         opponent_name=opponent_name,
                         team_name=getattr(FoulPlayConfig, "team_name", None),
@@ -3233,6 +3289,7 @@ async def pokemon_battle(
                         reason="hard_timeout",
                         elapsed_seconds=elapsed,
                     )
+                    await _handoff_battle_result_to_deku(operational_event_id)
                     await send_stream_event(
                         "BATTLE_END",
                         _operational_loss_stream_payload(
@@ -3288,7 +3345,7 @@ async def pokemon_battle(
                         f"({timeout_strikes * message_timeout}s) - declaring disconnect"
                     )
                     _blacklist_battle_tag(battle_tag)
-                    _queue_operational_loss_battle_result(
+                    operational_event_id = _queue_operational_loss_battle_result(
                         battle_tag,
                         opponent_name=opponent_name,
                         team_name=getattr(FoulPlayConfig, "team_name", None),
@@ -3297,6 +3354,7 @@ async def pokemon_battle(
                         elapsed_seconds=time.time() - battle_start_time,
                         timeout_strikes=timeout_strikes,
                     )
+                    await _handoff_battle_result_to_deku(operational_event_id)
                     await send_stream_event(
                         "BATTLE_END",
                         _operational_loss_stream_payload(
@@ -3717,7 +3775,7 @@ async def pokemon_battle(
                         elif _result_str == "win":
                             _why_it_matters_ev += "; keep proof focused on repeatable win conditions, not flavor text"
 
-                        queue_event(
+                        _battle_result_event_id = queue_event(
                             "battle_result",
                             "battles",
                             build_contract_payload(
@@ -3794,6 +3852,7 @@ async def pokemon_battle(
                                 ),
                                 dedup_window_sec=900,
                             )
+                        await _handoff_battle_result_to_deku(_battle_result_event_id)
                     except Exception as _qe_err:
                         logger.warning(f"Failed to queue battle_result event: {_qe_err}")
 

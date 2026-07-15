@@ -66,6 +66,7 @@ def test_battle_slot_translates_runtime_details_for_viewers_without_dom_flash() 
 
 def test_devstream_defaults_to_three_rated_showdown_battles() -> None:
     assert devstream_session.DEFAULT_MAX_CONCURRENT == 3
+    assert devstream_session.PILOT_SEARCH_PARALLELISM == 2
 
     command = devstream_session.shell_command_for_session(
         run_count=25,
@@ -74,6 +75,8 @@ def test_devstream_defaults_to_three_rated_showdown_battles() -> None:
     )
     flag_index = command.index("--max-concurrent-battles")
     assert command[flag_index + 1] == "3"
+    search_index = command.index("--search-parallelism")
+    assert command[search_index + 1] == "2"
 
 
 def test_devstream_health_checks_all_default_battle_slot_states() -> None:

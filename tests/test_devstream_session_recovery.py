@@ -1,16 +1,67 @@
 import json
 import argparse
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import devstream_session
+import devstream_session  # noqa: E402
+from scripts import devstream_runtime_lease as runtime_lease_impl  # noqa: E402
+from tests.runtime_authority_testkit import sign_test_runtime_lease  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def stable_runtime_source_commit(monkeypatch, tmp_path):
+    identity_names = (*devstream_session.RUNTIME_PROVENANCE_ENV_NAMES, devstream_session.RUNTIME_LEASE_PATH_ENV)
+    original_identity = {name: os.environ.get(name) for name in identity_names}
+    monkeypatch.setattr(devstream_session, "current_source_commit", lambda: "a" * 40)
+    monkeypatch.setattr(
+        devstream_session,
+        "RUNTIME_LEASE_CONSUMPTION_ROOT_OVERRIDE",
+        tmp_path.parent / f"{tmp_path.name}-runtime-lease-consumption",
+    )
+    monkeypatch.setattr(
+        runtime_lease_impl,
+        "deployment_receipt_blockers",
+        lambda *args, **kwargs: ({"schemaVersion": "fouler-deployment-receipt/v1"}, []),
+    )
+    yield
+    for name, value in original_identity.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
+
+
+def apply_test_runtime_identity(env, _guard):
+    updated = dict(env)
+    updated.update(
+        {
+            "FOULER_SOURCE_COMMIT": "a" * 40,
+            "FOULER_CHANGE_ID": "change-test-0001",
+            "FOULER_DEPLOYMENT_ID": "deployment-test-0001",
+            "FOULER_SESSION_ID": "session-test-0001",
+            "FOULER_RUNTIME_LEASE_ID": "lease-test",
+            "FOULER_RUNTIME_AUTHORIZATION_SHA256": "f" * 64,
+            "FOULER_SOURCE_TREE": "b" * 40,
+            "FOULER_RUNTIME_MANIFEST_DIGEST": "c" * 64,
+            "FOULER_DEPLOYMENT_RECEIPT_SHA256": "d" * 64,
+            "FOULER_DEPLOYMENT_RECEIPT_PATH": "C:\\ProgramData\\HERMES\\state\\fouler\\deployment-test.json",
+        }
+    )
+    return updated, {
+        "ok": True,
+        "runtimeLeaseId": "lease-test",
+        "blockers": [],
+    }
 
 
 def write_runtime_lease(
@@ -18,28 +69,293 @@ def write_runtime_lease(
     *,
     account: str = "bot",
     max_cycles: int = 2,
+    max_run_count: int = 30,
+    replay_behavior: str = "always",
     allowed_purposes: list[str] | None = None,
 ) -> Path:
+    host_binding = runtime_lease_impl.physical_host_binding()
+    purposes = allowed_purposes or [
+        "devstream-start",
+        "devstream-start-dry-run",
+        "devstream-start-continuous",
+        "devstream-supervise",
+        devstream_session.STALE_TRUTH_CLEANUP_PURPOSE,
+        devstream_session.STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE,
+    ]
     payload = {
-        "schemaVersion": "fouler-play-runtime-lease/v1",
+        "schemaVersion": "fouler-play-runtime-lease/v3",
         "projectId": "fouler-play",
         "leaseId": "lease-test",
+        "sourceCommit": "a" * 40,
+        "changeId": "change-test-0001",
+        "deploymentId": "deployment-test-0001",
+        "sourceTree": "b" * 40,
+        "runtimeManifestDigest": "c" * 64,
+        "deploymentReceiptPath": "C:\\ProgramData\\HERMES\\state\\fouler\\deployment-test.json",
+        "deploymentReceiptSha256": "d" * 64,
+        "sessionId": "session-test-0001",
         "status": "active",
-        "machine": "JIGGLYPUFF",
+        "approved": True,
+        **host_binding,
+        "machine": host_binding["hostName"],
         "account": account,
-        "maxRunCount": 30,
+        "maxRunCount": max_run_count,
         "maxCycles": max_cycles,
         "maxConcurrentBattles": 3,
-        "replayBehavior": "save",
+        "replayBehavior": replay_behavior,
+        "allowedPurposes": purposes,
         "proofWindow": {
             "startsAt": "2026-06-08T00:00:00+00:00",
             "expiresAt": "2099-01-01T00:00:00+00:00",
         },
+        "battleScope": {
+            **host_binding,
+            "machine": host_binding["hostName"],
+            "account": account,
+            "runCount": max_run_count,
+            "maxRunCount": max_run_count,
+            "maxConcurrentBattles": 3,
+            "replayBehavior": replay_behavior,
+        },
+        "cycleScope": {"maxCycles": max_cycles},
     }
-    if allowed_purposes is not None:
-        payload["allowedPurposes"] = allowed_purposes
+    payload = sign_test_runtime_lease(payload)
     path.write_text(json.dumps(payload), encoding="utf-8")
     return path
+
+
+def successful_lifecycle_result(command: list[str]) -> dict:
+    result = {"command": command, "returnCode": 0}
+    if "scripts/fouler_deployment_state.py" in command:
+        result["json"] = {"ok": True, "status": "active"}
+    elif "infrastructure/elo_watchdog.py" in command:
+        result["json"] = {"ok": True, "status": "passed"}
+    return result
+
+
+def run_authorized_supervisor_cycle(monkeypatch, args, cycle_index, **kwargs):
+    lease_path = str((ROOT / "devstream" / "truth" / "runtime-lease.json").resolve())
+    runtime_env = {
+        "FOULER_SOURCE_COMMIT": "a" * 40,
+        "FOULER_CHANGE_ID": "change-test-0001",
+        "FOULER_DEPLOYMENT_ID": "deployment-test-0001",
+        "FOULER_SESSION_ID": "session-test-0001",
+        "FOULER_RUNTIME_LEASE_ID": "lease-test",
+        "FOULER_RUNTIME_AUTHORIZATION_SHA256": "f" * 64,
+        "FOULER_SOURCE_TREE": "b" * 40,
+        "FOULER_RUNTIME_MANIFEST_DIGEST": "c" * 64,
+        "FOULER_DEPLOYMENT_RECEIPT_SHA256": "d" * 64,
+        "FOULER_DEPLOYMENT_RECEIPT_PATH": r"C:\ProgramData\HERMES\state\fouler\deployment-test.json",
+        "FOULER_PHYSICAL_HOSTNAME": "test-host",
+        "FOULER_PHYSICAL_HOST_ID_SHA256": "e" * 64,
+        devstream_session.RUNTIME_LEASE_PATH_ENV: lease_path,
+    }
+    guard = {
+        "ok": True,
+        "path": lease_path,
+        "lease": {
+            "id": "lease-test",
+            "deploymentReceiptPath": runtime_env["FOULER_DEPLOYMENT_RECEIPT_PATH"],
+        },
+    }
+    monkeypatch.setattr(devstream_session, "lease_environment", lambda validation: dict(runtime_env))
+    if (
+        getattr(devstream_session.improvement_checkout_guard, "__module__", "")
+        == devstream_session.__name__
+    ):
+        monkeypatch.setattr(
+            devstream_session,
+            "improvement_checkout_guard",
+            lambda: {"ready": True, "blockers": []},
+        )
+    if (
+        getattr(devstream_session.runtime_launch_preflight, "__module__", "")
+        == devstream_session.__name__
+    ):
+        monkeypatch.setattr(
+            devstream_session,
+            "runtime_launch_preflight",
+            lambda _args: {"ok": True, "blockers": [], "secretValuesPrinted": False},
+        )
+    if (
+        getattr(devstream_session.reserve_runtime_lease_consumption, "__module__", "")
+        == devstream_session.__name__
+    ):
+        monkeypatch.setattr(
+            devstream_session,
+            "reserve_runtime_lease_consumption",
+            lambda lease_guard, **reserve_kwargs: {
+                "ok": True,
+                "reserved": True,
+                "reservation": {
+                    "reservationId": "res-" + "1" * 32,
+                    "kind": "runtime",
+                    "purpose": devstream_session.RUNTIME_RESERVATION_PURPOSE,
+                    "battleCount": reserve_kwargs["run_count"],
+                    "cycleCount": 1,
+                    "maxConcurrentBattles": reserve_kwargs["max_concurrent_battles"],
+                    "supervisorProcessId": os.getpid(),
+                    "supervisorProcessCreationFiletime": 133_801_234_567_890_000,
+                    "launchNonce": "9" * 64,
+                    "runtimeLeaseId": "lease-test",
+                    "supervisorInstanceId": reserve_kwargs["supervisor_instance_id"],
+                    "runCount": reserve_kwargs["run_count"],
+                },
+            },
+        )
+    return devstream_session.run_supervisor_cycle(
+        args,
+        cycle_index,
+        lease_guard=guard,
+        supervisor_instance_id="test-supervisor-instance",
+        **kwargs,
+    )
+
+
+def install_supervisor_authority_fixture(monkeypatch, tmp_path, *, run_count: int) -> Path:
+    lease_path = write_runtime_lease(
+        tmp_path / "runtime-lease.json",
+        max_cycles=1,
+        allowed_purposes=["devstream-supervise"],
+    )
+    guard = devstream_session.validate_runtime_lease(
+        purpose="devstream-supervise",
+        lease_path=lease_path,
+        requested_run_count=run_count,
+        requested_max_cycles=1,
+        requested_max_concurrent_battles=3,
+        requested_account="bot",
+        requested_source_commit="a" * 40,
+        require_deployment_receipt=True,
+        verify_deployment_checkout=True,
+        require_run_count=True,
+        require_max_cycles=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
+    assert guard["ok"] is True, guard
+    monkeypatch.setattr(devstream_session, "runtime_lease_guard", lambda **kwargs: guard)
+    monkeypatch.setattr(
+        devstream_session,
+        "initialize_runtime_lease_consumption",
+        lambda *args, **kwargs: {
+            "ok": True,
+            "exhausted": False,
+            "consumed": {"reservedRunCount": 0, "reservedCycles": 0},
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "complete_runtime_lease_consumption",
+        lambda lease_guard, *, reservation, outcome, env=None: {
+            "ok": bool(
+                lease_guard.get("ok")
+                and reservation.get("reservationId")
+                and reservation.get("supervisorInstanceId")
+            ),
+            "completed": True,
+            "state": "completed",
+            "outcome": outcome,
+            "reservation": {
+                "reservationId": reservation.get("reservationId"),
+                "supervisorInstanceId": reservation.get("supervisorInstanceId"),
+            },
+        },
+    )
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "clear_dead_battle_pid_files", lambda **kwargs: [])
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_launch_preflight",
+        lambda *args, **kwargs: {
+            "ok": True,
+            "blockers": [],
+            "secretValuesPrinted": False,
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "account_season_authority_check",
+        lambda *args, **kwargs: {
+            "schemaVersion": "fouler-account-season-authority-check/v1",
+            "ok": True,
+            "blockers": [],
+            "account": "bot",
+            "seasonId": "test-season",
+            "runtimeMirrorAuthoritative": False,
+        },
+    )
+    return lease_path
+
+
+def test_consumption_root_ignores_environment_redirect(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        devstream_session,
+        "RUNTIME_LEASE_CONSUMPTION_ROOT_OVERRIDE",
+        None,
+    )
+
+    resolved = devstream_session.runtime_lease_consumption_root(
+        {"FOULER_RUNTIME_LEASE_CONSUMPTION_DIR": str(tmp_path / "attacker-selected")}
+    )
+
+    assert resolved != (tmp_path / "attacker-selected").resolve()
+    assert "HERMES-LeaseBroker" in str(resolved)
+
+
+def test_consumption_initialization_is_structural_and_never_creates_mutable_ledger(
+    monkeypatch,
+    tmp_path,
+):
+    monkeypatch.setattr(
+        devstream_session,
+        "RUNTIME_LEASE_CONSUMPTION_ROOT_OVERRIDE",
+        tmp_path / "broker-store",
+    )
+    guard = {
+        "ok": True,
+        "lease": {
+            "id": "lease-test-0001",
+            "authorizationSha256": "f" * 64,
+        },
+    }
+
+    result = devstream_session.initialize_runtime_lease_consumption(guard)
+
+    assert result["ok"] is True
+    assert result["authority"] == "windows-named-pipe-lease-broker"
+    assert result["runtimeLeaseId"] == "lease-test-0001"
+    assert not (tmp_path / "broker-store").exists()
+
+
+def test_runtime_process_identity_comes_only_from_validated_lease(tmp_path, monkeypatch):
+    path = write_runtime_lease(tmp_path / "runtime-lease.json")
+    guard = devstream_session.validate_runtime_lease(
+        purpose="devstream-start",
+        lease_path=path,
+        requested_run_count=1,
+        requested_max_concurrent_battles=1,
+        requested_account="bot",
+        require_run_count=True,
+        require_max_concurrent_battles=True,
+        require_replay_behavior=True,
+    )
+
+    env, identity = devstream_session.apply_runtime_process_identity({"PS_USERNAME": "bot"}, guard)
+
+    assert identity["ok"] is True
+    assert env["FOULER_SOURCE_COMMIT"] == "a" * 40
+    assert env["FOULER_DEPLOYMENT_ID"] == "deployment-test-0001"
+    assert env["FOULER_RUNTIME_LEASE_ID"] == "lease-test"
+    assert env["FOULER_RUNTIME_LEASE_PATH"] == str(path.resolve())
+
+    _env, blocked = devstream_session.apply_runtime_process_identity(
+        {"FOULER_DEPLOYMENT_ID": "different-deployment"},
+        guard,
+    )
+    assert blocked["ok"] is False
+    assert "FOULER_DEPLOYMENT_ID does not match" in "; ".join(blocked["blockers"])
 
 
 def test_recover_stale_battle_runtime_replaces_idle_singleton(tmp_path, monkeypatch):
@@ -61,7 +377,14 @@ def test_recover_stale_battle_runtime_replaces_idle_singleton(tmp_path, monkeypa
 
     def fake_terminate(path, *, force=False):
         calls.append((path, force))
-        return {"pidFile": str(path), "pid": 1234 if path == bot_pid else 36084, "wasRunning": path == bot_pid}
+        was_running = path == bot_pid
+        return {
+            "pidFile": str(path),
+            "pid": 1234 if was_running else 36084,
+            "wasRunning": was_running,
+            "stopped": was_running,
+            "treeVerified": was_running,
+        }
 
     monkeypatch.setattr(devstream_session, "terminate_pid_file", fake_terminate)
     monkeypatch.setattr(devstream_session, "read_pid", lambda path: None)
@@ -807,7 +1130,7 @@ def test_showdown_account_authority_check_ignores_historical_mission_prose(tmp_p
     assert check["distinctAccounts"] == ["claudechamp"]
 
 
-def test_runtime_lease_account_overrides_stale_inherited_env(tmp_path):
+def test_runtime_lease_account_does_not_rewrite_stale_inherited_env(tmp_path):
     runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json", account="LEBOTJAMESXD00N")
 
     env = devstream_session.apply_runtime_lease_account(
@@ -815,10 +1138,10 @@ def test_runtime_lease_account_overrides_stale_inherited_env(tmp_path):
         argparse.Namespace(runtime_lease=str(runtime_lease)),
     )
 
-    assert env["PS_USERNAME"] == "LEBOTJAMESXD00N"
-    assert env["SHOWDOWN_USER_ID"] == "LEBOTJAMESXD00N"
-    assert env["SHOWDOWN_ACCOUNTS"] == "LEBOTJAMESXD00N"
-    assert env["FOULER_ACTIVE_ACCOUNT"] == "LEBOTJAMESXD00N"
+    assert env["PS_USERNAME"] == "npctypebeat"
+    assert env["SHOWDOWN_USER_ID"] == "npctypebeat"
+    assert "SHOWDOWN_ACCOUNTS" not in env
+    assert "FOULER_ACTIVE_ACCOUNT" not in env
     assert env["FOULER_RUNTIME_LEASE_ACCOUNT"] == "LEBOTJAMESXD00N"
 
 
@@ -964,6 +1287,7 @@ def test_bounded_session_command_wraps_run_py_for_truthful_idle_completion(monke
     assert command[3:5] == ["python", "run.py"]
     assert command[command.index("--run-count") + 1] == "1"
     assert command[command.index("--max-concurrent-battles") + 1] == "1"
+    assert command[command.index("--search-parallelism") + 1] == "2"
     assert "DekuFoulerLab" in command
 
 
@@ -1281,6 +1605,30 @@ def test_cmd_start_refreshes_stale_empty_active_truth_before_spawning(tmp_path, 
     monkeypatch.setattr(devstream_session, "existing_battle_runner_start_result", lambda command: None)
     monkeypatch.setattr(devstream_session, "run_json", lambda command: ({"healthy": True}, None))
     monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {"ready": True, "blockers": []},
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_launch_preflight",
+        lambda *args, **kwargs: {"ok": True, "blockers": []},
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "validate_runtime_lease_reservation",
+        lambda *args, **kwargs: {
+            "ok": True,
+            "valid": True,
+            "reservation": {
+                "reservationId": "lease-test-reservation-1",
+                "runtimeLeaseId": "lease-test",
+                "supervisorInstanceId": "test-supervisor-instance",
+                "runCount": 25,
+            },
+        },
+    )
 
     def fake_start(command, pid_file, env):
         started.append((command, pid_file))
@@ -1355,6 +1703,53 @@ def test_cmd_start_execute_fails_closed_without_runtime_lease(tmp_path, monkeypa
     assert started == []
 
 
+def test_cmd_start_fails_closed_on_interrupted_improvement_checkout(tmp_path, monkeypatch, capsys):
+    started = []
+
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(
+        devstream_session,
+        "prepare_runtime_env",
+        lambda env: {"PS_USERNAME": "bot", "PS_PASSWORD": "secret"},
+    )
+    monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {
+            "ready": False,
+            "blockers": ["improve-agent lock exists", "engine checkout has uncommitted changes"],
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "start_process",
+        lambda *args, **kwargs: started.append(args) or {"pid": 1},
+    )
+    runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json")
+    args = argparse.Namespace(
+        run_count=1,
+        max_concurrent_battles=1,
+        max_runtime_minutes=180,
+        queue_timeout_seconds=180,
+        turn_timeout_seconds=90,
+        supervisor_sleep_seconds=15,
+        replace_stale_runner=True,
+        continuous=False,
+        execute=True,
+        enable_auto_improve=False,
+        max_cycles=0,
+        runtime_lease=str(runtime_lease),
+    )
+
+    assert devstream_session.cmd_start(args) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "blocked-improvement-checkout"
+    assert payload["improvementCheckoutGuard"]["ready"] is False
+    assert started == []
+
+
 def test_cmd_start_dry_run_reports_runtime_lease_blocker(tmp_path, monkeypatch, capsys):
     started = []
 
@@ -1399,6 +1794,11 @@ def test_cmd_start_dry_run_reports_runtime_lease_blocker(tmp_path, monkeypatch, 
 
 def test_cmd_start_dry_run_includes_valid_runtime_lease_preflight(tmp_path, monkeypatch, capsys):
     started = []
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {"ready": True, "blockers": []},
+    )
 
     monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
     monkeypatch.setattr(
@@ -1441,6 +1841,11 @@ def test_cmd_start_dry_run_includes_valid_runtime_lease_preflight(tmp_path, monk
 
 def test_cmd_start_dry_run_only_lease_does_not_authorize_execute(tmp_path, monkeypatch, capsys):
     started = []
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {"ready": True, "blockers": []},
+    )
 
     monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
     monkeypatch.setattr(
@@ -1565,8 +1970,9 @@ def test_pid_alive_rejects_process_created_before_pid_file_start(tmp_path, monke
 def test_pid_alive_accepts_matching_repo_process(tmp_path, monkeypatch):
     pid_file = tmp_path / "devstream_battle_session.pid"
     started = time.time() - 5
+    command = ["python", "run.py", "--bot-mode", "search_ladder"]
     pid_file.write_text(
-        json.dumps({"pid": 1234, "command": ["python", "run.py"], "started_at": started}),
+        json.dumps({"pid": 1234, "command": command, "started_at": started}),
         encoding="utf-8",
     )
 
@@ -1576,7 +1982,7 @@ def test_pid_alive_accepts_matching_repo_process(tmp_path, monkeypatch):
         "_process_snapshot",
         lambda pid: {
             "running": True,
-            "cmdline": ["python", "run.py", "--bot-mode", "search_ladder"],
+            "cmdline": command,
             "cwd": str(devstream_session.ROOT),
             "createTime": started + 1,
         },
@@ -1588,7 +1994,7 @@ def test_pid_alive_accepts_matching_repo_process(tmp_path, monkeypatch):
     assert alive is True
 
 
-def test_pid_alive_uses_process_snapshot_when_signal_zero_fails(tmp_path, monkeypatch):
+def test_pid_alive_rejects_legacy_bare_pid_when_signal_zero_fails(tmp_path, monkeypatch):
     pid_file = tmp_path / ".bot.pid"
     pid_file.write_text("29852", encoding="utf-8")
 
@@ -1608,12 +2014,22 @@ def test_pid_alive_uses_process_snapshot_when_signal_zero_fails(tmp_path, monkey
     alive, pid = devstream_session.pid_alive(pid_file)
 
     assert pid == 29852
-    assert alive is True
+    assert alive is False
 
 
 def test_continuous_start_spawns_supervisor_not_direct_battle_runner(monkeypatch, capsys, tmp_path):
     calls = []
     supervisor_calls = []
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {"ready": True, "blockers": []},
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_launch_preflight",
+        lambda *args, **kwargs: {"ok": True, "blockers": []},
+    )
 
     monkeypatch.setattr(devstream_session, "PID_DIR", tmp_path / ".pids")
     monkeypatch.setattr(devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / ".pids" / "supervisor.stop")
@@ -1681,7 +2097,7 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
 
     def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
-        return {"command": command, "returnCode": 0}
+        return successful_lifecycle_result(command)
 
     monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
 
@@ -1692,18 +2108,89 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
         autoresearch_count=30,
         proof_timeout_seconds=300,
         start_timeout_seconds=60,
-        improve_timeout_seconds=240,
+        improve_timeout_seconds=devstream_session.DEFAULT_IMPROVE_TIMEOUT_SECONDS,
         skip_improve=True,
     )
 
-    payload = devstream_session.run_supervisor_cycle(args, 1)
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
 
     assert payload["state"] == "idle-restoring-runtime"
     assert payload["completedBattleLogResultRecovery"] == recovered
-    assert commands[0][:4] == ["python", "pipeline.py", "autoresearch", "-n"]
-    assert commands[1] == ["python", "scripts/devstream_cycle_report.py", "--write"]
-    assert commands[2][:3] == ["python", "scripts/devstream_session.py", "start"]
-    assert "--continuous" not in commands[2]
+    pipeline_command = next(command for command in commands if "pipeline.py" in command)
+    report_command = next(command for command in commands if "scripts/devstream_cycle_report.py" in command)
+    start_command = next(
+        command
+        for command in commands
+        if command[:3] == ["python", "scripts/devstream_session.py", "start"]
+    )
+    assert pipeline_command[:4] == ["python", "pipeline.py", "autoresearch", "-n"]
+    assert report_command == ["python", "scripts/devstream_cycle_report.py", "--write"]
+    assert "--continuous" not in start_command
+
+
+def test_supervisor_command_timeout_terminates_process_tree(monkeypatch):
+    class FakeProcess:
+        pid = 4321
+        returncode = None
+
+        def __init__(self):
+            self.communicate_calls = 0
+
+        def communicate(self, timeout):
+            self.communicate_calls += 1
+            if self.communicate_calls == 1:
+                raise subprocess.TimeoutExpired(["python", "slow.py"], timeout, output="partial")
+            return "after-cleanup", ""
+
+        def poll(self):
+            return self.returncode
+
+    process = FakeProcess()
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(devstream_session.subprocess, "Popen", lambda *args, **kwargs: process)
+    monkeypatch.setattr(
+        devstream_session,
+        "terminate_supervisor_process_tree",
+        lambda observed: {"pid": observed.pid, "stopped": True},
+    )
+
+    result = devstream_session.run_supervisor_command(["python", "slow.py"], timeout=1)
+
+    assert result["timedOut"] is True
+    assert result["processTreeCleanup"]["stopped"] is True
+    assert "partial" in result["stdoutTail"]
+    assert "after-cleanup" in result["stdoutTail"]
+
+
+def test_improvement_checkout_guard_detects_dirty_engine_and_recovery_ownership(tmp_path, monkeypatch):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.email", "guard@test.invalid"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "Guard Test"], check=True)
+    target = tmp_path / "fp" / "search" / "main.py"
+    target.parent.mkdir(parents=True)
+    target.write_text("VALUE = 1\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "fp/search/main.py"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "baseline"], check=True)
+    lock = tmp_path / ".pids" / "improve-agent.lock"
+    recovery = tmp_path / ".pids" / "improve-agent-recovery-block.json"
+    monkeypatch.setattr(devstream_session, "ROOT", tmp_path)
+    monkeypatch.setattr(devstream_session, "IMPROVE_AGENT_LOCK_FILE", lock)
+    monkeypatch.setattr(devstream_session, "IMPROVE_AGENT_RECOVERY_BLOCK_FILE", recovery)
+
+    assert devstream_session.improvement_checkout_guard()["ready"] is True
+
+    lock.parent.mkdir(parents=True)
+    lock.write_text("{}\n", encoding="utf-8")
+    guarded = devstream_session.improvement_checkout_guard()
+    assert guarded["ready"] is False
+    assert "improve-agent lock exists" in guarded["blockers"]
+
+    lock.unlink()
+    target.write_text("VALUE = 2\n", encoding="utf-8")
+    guarded = devstream_session.improvement_checkout_guard()
+    assert guarded["ready"] is False
+    assert "engine checkout has uncommitted or untracked changes" in guarded["blockers"]
 
 
 def test_run_supervisor_cycle_waits_for_result_persistence_grace(monkeypatch):
@@ -1745,7 +2232,7 @@ def test_supervisor_cycle_caps_legacy_unbounded_run_count(monkeypatch):
 
     def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
-        return {"command": command, "returnCode": 0}
+        return successful_lifecycle_result(command)
 
     monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
 
@@ -1760,12 +2247,193 @@ def test_supervisor_cycle_caps_legacy_unbounded_run_count(monkeypatch):
         skip_improve=True,
     )
 
-    payload = devstream_session.run_supervisor_cycle(args, 1)
-    start_command = commands[-1]
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
+    start_command = next(
+        command
+        for command in commands
+        if command[:3] == ["python", "scripts/devstream_session.py", "start"]
+    )
 
     assert payload["requestedRunCount"] == 1000000
     assert payload["effectiveRunCount"] == 7
     assert start_command[start_command.index("--run-count") + 1] == "7"
+
+
+def test_supervisor_launch_preflight_blocks_before_reservation(monkeypatch):
+    commands = []
+    reserve_calls = []
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_launch_preflight",
+        lambda _args: {
+            "ok": False,
+            "blockers": ["recent Showdown credential failure is unresolved"],
+            "secretValuesPrinted": False,
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "reserve_runtime_lease_consumption",
+        lambda *args, **kwargs: reserve_calls.append((args, kwargs))
+        or (_ for _ in ()).throw(AssertionError("reserve must not run")),
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "run_supervisor_command",
+        lambda command, *, timeout, env_overrides=None: commands.append(command)
+        or successful_lifecycle_result(command),
+    )
+    args = argparse.Namespace(
+        run_count=3,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        skip_improve=True,
+        enable_auto_improve=False,
+    )
+
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
+
+    assert payload["state"] == "blocked-runtime-launch-preflight"
+    assert reserve_calls == []
+    assert "leaseConsumptionReservation" not in payload
+
+
+def test_failed_launch_is_durably_aborted_and_does_not_leak_nonce(monkeypatch):
+    reservation_state = {}
+    completion_calls = []
+    binding = {
+        "reservationId": "res-" + "2" * 32,
+        "kind": "runtime",
+        "purpose": devstream_session.RUNTIME_RESERVATION_PURPOSE,
+        "battleCount": 3,
+        "cycleCount": 1,
+        "maxConcurrentBattles": 3,
+        "supervisorProcessId": os.getpid(),
+        "supervisorProcessCreationFiletime": 133_801_234_567_890_000,
+        "supervisorInstanceId": "test-supervisor-instance",
+        "launchNonce": "8" * 64,
+    }
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "reserve_runtime_lease_consumption",
+        lambda *args, **kwargs: {
+            "ok": True,
+            "reserved": True,
+            "reservation": dict(binding),
+        },
+    )
+
+    def fake_run(command, *, timeout, env_overrides=None):
+        if command[:3] == ["python", "scripts/devstream_session.py", "start"]:
+            assert env_overrides[devstream_session.RUNTIME_LAUNCH_NONCE_ENV] == "8" * 64
+            return {"command": command, "returnCode": 2, "error": "launch failed"}
+        return successful_lifecycle_result(command)
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+    monkeypatch.setattr(
+        devstream_session,
+        "complete_runtime_lease_consumption",
+        lambda lease_guard, *, reservation, outcome, env=None: completion_calls.append(
+            (dict(reservation), outcome)
+        )
+        or {
+            "ok": True,
+            "completed": True,
+            "state": "completed",
+            "reservationId": reservation["reservationId"],
+            "outcome": outcome,
+            "capacityReturned": False,
+        },
+    )
+    args = argparse.Namespace(
+        run_count=3,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        skip_improve=True,
+        enable_auto_improve=False,
+    )
+
+    payload = run_authorized_supervisor_cycle(
+        monkeypatch, args, 1, reservation_state=reservation_state
+    )
+
+    assert payload["state"] == "blocked-battle-launch"
+    assert completion_calls == [(binding, "aborted")]
+    assert reservation_state == {}
+    assert "launchNonce" not in payload["leaseConsumptionReservation"]["reservation"]
+    assert payload["leaseConsumptionReservation"]["reservation"]["launchNoncePresent"] is True
+
+
+def test_outstanding_reservation_is_reconciled_before_any_new_reserve(monkeypatch):
+    reservation_state = {
+        "reservationId": "res-" + "3" * 32,
+        "kind": "runtime",
+        "purpose": devstream_session.RUNTIME_RESERVATION_PURPOSE,
+        "battleCount": 3,
+        "cycleCount": 1,
+        "maxConcurrentBattles": 3,
+        "supervisorProcessId": os.getpid(),
+        "supervisorProcessCreationFiletime": 133_801_234_567_890_000,
+        "supervisorInstanceId": "test-supervisor-instance",
+        "launchNonce": "7" * 64,
+    }
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_reservation_status",
+        lambda lease_guard, reservation: {
+            "ok": True,
+            "status": {"state": "claimed", "reservationId": reservation["reservationId"]},
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "complete_runtime_lease_consumption",
+        lambda lease_guard, *, reservation, outcome, env=None: {
+            "ok": True,
+            "completed": True,
+            "state": "completed",
+            "reservationId": reservation["reservationId"],
+            "outcome": outcome,
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "reserve_runtime_lease_consumption",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("new reserve must not run while reconciling")
+        ),
+    )
+    args = argparse.Namespace(
+        run_count=3,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(
+        args,
+        2,
+        lease_guard={"ok": True},
+        supervisor_instance_id="test-supervisor-instance",
+        reservation_state=reservation_state,
+    )
+
+    assert payload["state"] == "reconciled-orphaned-runtime"
+    assert payload["leaseConsumptionTerminal"]["outcome"] == "failed"
+    assert reservation_state == {}
 
 
 def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
@@ -1778,7 +2446,7 @@ def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
 
     def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
-        return {"command": command, "returnCode": 0}
+        return successful_lifecycle_result(command)
 
     monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
 
@@ -1794,27 +2462,166 @@ def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
         enable_auto_improve=False,
     )
 
-    payload = devstream_session.run_supervisor_cycle(args, 1)
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
 
     assert payload["autoImprove"]["enabled"] is False
-    assert devstream_session.AUTO_IMPROVE_SENTINEL in payload["autoImprove"]["reason"]
-    assert commands[0][:4] == ["python", "pipeline.py", "autoresearch", "-n"]
-    assert commands[1] == ["python", "scripts/devstream_cycle_report.py", "--write"]
-    assert commands[2][:3] == ["python", "scripts/devstream_session.py", "start"]
+    assert "DEKU control plane" in payload["autoImprove"]["reason"]
+    assert payload["autoImprove"]["delegatedTo"] == "DEKU external control plane"
+    assert any(command[:4] == ["python", "pipeline.py", "autoresearch", "-n"] for command in commands)
+    assert ["python", "scripts/devstream_cycle_report.py", "--write"] in commands
+    assert any(
+        command[:3] == ["python", "scripts/devstream_session.py", "start"]
+        for command in commands
+    )
+    assert not any("infrastructure/improve_agent.py" in command for command in commands)
+    assert sum("infrastructure/elo_watchdog.py" in command for command in commands) == 1
+
+
+def test_supervisor_cycle_invalid_parent_authority_cannot_mint_improve_lease(monkeypatch):
+    commands = []
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(
+        devstream_session,
+        "run_supervisor_command",
+        lambda command, *, timeout, env_overrides=None: commands.append(command)
+        or {"command": command, "returnCode": 0},
+    )
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        enable_auto_improve=True,
+        skip_improve=False,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(
+        args,
+        2,
+        start_next=False,
+        authority_ok=False,
+    )
+
+    assert payload["state"] == "blocked-runtime-lease"
+    assert payload["parentRuntimeAuthorityValid"] is False
+    assert payload["autoImprove"]["enabled"] is False
+    assert commands == []
+
+
+def test_supervisor_cycle_waits_for_first_identity_row_without_deadlocking_start(monkeypatch):
+    commands = []
+    monkeypatch.setenv("FOULER_DEPLOYMENT_RECEIPT_PATH", r"C:\ProgramData\HERMES\state\deployment.json")
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {"ready": True, "blockers": []},
+    )
+
+    def fake_run(command, *, timeout, env_overrides=None):
+        commands.append(command)
+        if "scripts/fouler_deployment_state.py" in command:
+            return {
+                "command": command,
+                "returnCode": 0,
+                "json": {"ok": True, "status": "waiting-for-first-battle"},
+            }
+        return successful_lifecycle_result(command)
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=devstream_session.DEFAULT_IMPROVE_TIMEOUT_SECONDS,
+        skip_improve=False,
+        enable_auto_improve=True,
+        runtime_lease="devstream/truth/runtime-lease.json",
+    )
+
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
+
+    assert payload["deploymentActivation"]["json"]["status"] == "waiting-for-first-battle"
+    assert payload["autoImprove"]["enabled"] is False
+    assert any(command[:3] == ["python", "scripts/devstream_session.py", "start"] for command in commands)
     assert not any("infrastructure/improve_agent.py" in command for command in commands)
     assert not any("infrastructure/elo_watchdog.py" in command for command in commands)
 
 
-def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
+def test_supervisor_cycle_blocks_next_batch_when_activation_proof_fails(monkeypatch):
     commands = []
+    monkeypatch.setenv("FOULER_DEPLOYMENT_RECEIPT_PATH", r"C:\ProgramData\HERMES\state\deployment.json")
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {"ready": True, "blockers": []},
+    )
+
+    def fake_run(command, *, timeout, env_overrides=None):
+        commands.append(command)
+        if "scripts/fouler_deployment_state.py" in command:
+            return {
+                "command": command,
+                "returnCode": 2,
+                "json": {"ok": False, "status": "blocked", "blockers": ["identity mismatch"]},
+            }
+        return successful_lifecycle_result(command)
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=devstream_session.DEFAULT_IMPROVE_TIMEOUT_SECONDS,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease="devstream/truth/runtime-lease.json",
+    )
+
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 2)
+
+    assert payload["state"] == "blocked-improvement-checkout"
+    assert "deployment activation proof failed" in payload["startSkipped"]["blockers"]
+    assert not any(command[:3] == ["python", "scripts/devstream_session.py", "start"] for command in commands)
+
+
+def test_supervisor_cycle_delegates_explicit_improve_request_to_deku(monkeypatch, tmp_path):
+    commands = []
+    improve_lease = write_runtime_lease(
+        tmp_path / "improve-runtime-lease.json",
+        max_cycles=1,
+        max_run_count=60,
+        replay_behavior="never",
+        allowed_purposes=["improve-agent"],
+    )
 
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
 
+    monkeypatch.setattr(
+        devstream_session,
+        "load_env_files",
+        lambda: {
+            devstream_session.IMPROVE_RUNTIME_LEASE_PATH_ENV: str(improve_lease),
+            "IMPROVE_AGENT_ACCOUNT": "bot",
+        },
+    )
+
     def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
-        return {"command": command, "returnCode": 0}
+        return successful_lifecycle_result(command)
 
     monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
 
@@ -1825,31 +2632,37 @@ def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
         autoresearch_count=30,
         proof_timeout_seconds=300,
         start_timeout_seconds=60,
-        improve_timeout_seconds=240,
+        improve_timeout_seconds=devstream_session.DEFAULT_IMPROVE_TIMEOUT_SECONDS,
         skip_improve=False,
         enable_auto_improve=True,
     )
 
-    payload = devstream_session.run_supervisor_cycle(args, 1)
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
 
-    assert payload["autoImprove"] == {
-        "enabled": True,
-        "reason": "--enable-auto-improve",
-        "sentinel": devstream_session.AUTO_IMPROVE_SENTINEL,
-    }
-    assert commands[2][:3] == ["python", "scripts/devstream_runtime_lease.py", "--purpose"]
-    assert "improve-agent" in commands[2]
-    assert commands[3][:2] == [
-        "python",
-        "infrastructure/improve_agent.py",
-    ]
-    assert "--runtime-lease" in commands[3]
-    assert commands[4] == ["python", "infrastructure/elo_watchdog.py"]
-    assert commands[5][:3] == ["python", "scripts/devstream_session.py", "start"]
+    assert payload["autoImprove"]["enabled"] is False
+    assert payload["autoImprove"]["requested"] is True
+    assert "DEKU control plane" in payload["autoImprove"]["reason"]
+    assert payload["autoImprove"]["sentinel"] == devstream_session.AUTO_IMPROVE_SENTINEL
+    start_command = next(
+        command
+        for command in commands
+        if command[:3] == ["python", "scripts/devstream_session.py", "start"]
+    )
+    assert "improveLease" not in payload
+    assert not any("infrastructure/improve_agent.py" in command for command in commands)
+    assert sum(command == ["python", "infrastructure/elo_watchdog.py"] for command in commands) == 1
+    assert start_command[:3] == ["python", "scripts/devstream_session.py", "start"]
 
 
-def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag(monkeypatch):
+def test_runtime_never_launches_improve_agent_even_when_requested(monkeypatch, tmp_path):
     commands = []
+    improve_lease = write_runtime_lease(
+        tmp_path / "improve-runtime-lease.json",
+        max_cycles=1,
+        max_run_count=60,
+        replay_behavior="never",
+        allowed_purposes=["improve-agent"],
+    )
 
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
@@ -1857,12 +2670,104 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
     monkeypatch.setattr(
         devstream_session,
         "load_env_files",
-        lambda: {devstream_session.AUTO_IMPROVE_SENTINEL: "1"},
+        lambda: {
+            devstream_session.IMPROVE_RUNTIME_LEASE_PATH_ENV: str(improve_lease),
+            "IMPROVE_AGENT_ACCOUNT": "bot",
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {"ready": True, "blockers": []},
     )
 
     def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
-        return {"command": command, "returnCode": 0}
+        if "infrastructure/improve_agent.py" in command:
+            return {"command": command, "returnCode": 2, "error": "candidate recovery blocked"}
+        return successful_lifecycle_result(command)
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=devstream_session.DEFAULT_IMPROVE_TIMEOUT_SECONDS,
+        skip_improve=False,
+        enable_auto_improve=True,
+    )
+
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
+
+    assert payload["autoImprove"]["enabled"] is False
+    assert payload["autoImprove"]["requested"] is True
+    assert not any("infrastructure/improve_agent.py" in command for command in commands)
+    assert any(command[:3] == ["python", "scripts/devstream_session.py", "start"] for command in commands)
+
+
+def test_supervisor_cycle_blocks_live_start_on_stale_improve_ownership(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "improvement_checkout_guard",
+        lambda: {"ready": False, "blockers": ["improve-agent recovery block exists"]},
+    )
+    def fake_run(command, *, timeout, env_overrides=None):
+        commands.append(command)
+        return successful_lifecycle_result(command)
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=devstream_session.DEFAULT_IMPROVE_TIMEOUT_SECONDS,
+        skip_improve=True,
+    )
+
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
+
+    assert payload["state"] == "blocked-improvement-checkout"
+    assert payload["startSkipped"]["blockers"] == ["improve-agent recovery block exists"]
+    assert not any(command[:3] == ["python", "scripts/devstream_session.py", "start"] for command in commands)
+
+
+def test_supervisor_cycle_delegates_env_improve_sentinel_to_deku(monkeypatch, tmp_path):
+    commands = []
+    improve_lease = write_runtime_lease(
+        tmp_path / "improve-runtime-lease.json",
+        max_cycles=1,
+        max_run_count=60,
+        replay_behavior="never",
+        allowed_purposes=["improve-agent"],
+    )
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "load_env_files",
+        lambda: {
+            devstream_session.AUTO_IMPROVE_SENTINEL: "1",
+            devstream_session.IMPROVE_RUNTIME_LEASE_PATH_ENV: str(improve_lease),
+            "IMPROVE_AGENT_ACCOUNT": "bot",
+        },
+    )
+
+    def fake_run(command, *, timeout, env_overrides=None):
+        commands.append(command)
+        return successful_lifecycle_result(command)
 
     monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
 
@@ -1873,26 +2778,21 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
         autoresearch_count=30,
         proof_timeout_seconds=300,
         start_timeout_seconds=60,
-        improve_timeout_seconds=240,
+        improve_timeout_seconds=devstream_session.DEFAULT_IMPROVE_TIMEOUT_SECONDS,
         skip_improve=False,
         enable_auto_improve=False,
     )
 
-    payload = devstream_session.run_supervisor_cycle(args, 1)
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
 
-    assert payload["autoImprove"]["enabled"] is True
-    assert payload["autoImprove"]["reason"] == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
-    assert commands[2][:3] == ["python", "scripts/devstream_runtime_lease.py", "--purpose"]
-    assert "improve-agent" in commands[2]
-    assert commands[3][:2] == [
-        "python",
-        "infrastructure/improve_agent.py",
-    ]
-    assert "--runtime-lease" in commands[3]
-    assert commands[4] == ["python", "infrastructure/elo_watchdog.py"]
+    assert payload["autoImprove"]["enabled"] is False
+    assert payload["autoImprove"]["requested"] is True
+    assert "DEKU control plane" in payload["autoImprove"]["reason"]
+    assert not any("infrastructure/improve_agent.py" in command for command in commands)
+    assert sum(command == ["python", "infrastructure/elo_watchdog.py"] for command in commands) == 1
 
 
-def test_supervisor_auto_improve_accepts_env_sentinel():
+def test_supervisor_auto_improve_rejects_env_sentinel_in_runtime():
     args = argparse.Namespace(skip_improve=False, enable_auto_improve=False)
 
     enabled, reason = devstream_session.supervisor_auto_improve_enabled(
@@ -1900,20 +2800,53 @@ def test_supervisor_auto_improve_accepts_env_sentinel():
         {devstream_session.AUTO_IMPROVE_SENTINEL: "1"},
     )
 
-    assert enabled is True
-    assert reason == f"{devstream_session.AUTO_IMPROVE_SENTINEL}=1"
+    assert enabled is False
+    assert "DEKU control plane" in reason
 
 
-def test_auto_improve_supervisor_gets_default_cycle_lease():
+def test_improve_authority_environment_does_not_replace_battle_identity(monkeypatch):
+    monkeypatch.setattr(
+        devstream_session,
+        "lease_environment",
+        lambda _guard: {
+            "FOULER_RUNTIME_LEASE_ID": "improve-lease-test",
+            "FOULER_RUNTIME_AUTHORIZATION_SHA256": "i" * 64,
+            "FOULER_SOURCE_COMMIT": "b" * 40,
+            devstream_session.RUNTIME_LEASE_PATH_ENV: r"C:\authority\improve.json",
+        },
+    )
+
+    namespaced = devstream_session.improve_authority_environment({"ok": True})
+    merged = {
+        "FOULER_RUNTIME_LEASE_ID": "battle-lease-test",
+        "FOULER_RUNTIME_AUTHORIZATION_SHA256": "a" * 64,
+        **namespaced,
+    }
+
+    assert merged["FOULER_RUNTIME_LEASE_ID"] == "battle-lease-test"
+    assert merged["FOULER_RUNTIME_AUTHORIZATION_SHA256"] == "a" * 64
+    assert merged["FOULER_IMPROVE_RUNTIME_LEASE_ID"] == "improve-lease-test"
+    assert merged["FOULER_IMPROVE_RUNTIME_AUTHORIZATION_SHA256"] == "i" * 64
+    assert merged[devstream_session.IMPROVE_RUNTIME_LEASE_PATH_ENV] == r"C:\authority\improve.json"
+
+
+def test_improve_eval_battles_cannot_collapse_to_live_batch_size():
+    assert devstream_session.improve_eval_battle_count({}) == 60
+    assert devstream_session.improve_eval_battle_count({"IMPROVE_AGENT_EVAL_BATTLES": "5"}) == 60
+    assert devstream_session.improve_eval_battle_count({"IMPROVE_AGENT_EVAL_BATTLES": "72"}) == 72
+    assert devstream_session.improve_eval_battle_count({"IMPROVE_AGENT_EVAL_BATTLES": "61"}) == 60
+
+
+def test_auto_improve_request_does_not_mint_runtime_cycle_lease():
     args = argparse.Namespace(skip_improve=False, enable_auto_improve=True, max_cycles=0)
 
     limit, reason = devstream_session.supervisor_cycle_limit(args, {})
 
-    assert limit == devstream_session.DEFAULT_AUTO_IMPROVE_MAX_CYCLES
-    assert reason == "auto-improve lease via --enable-auto-improve"
+    assert limit == 0
+    assert reason == "unbounded supervisor without auto-improve"
 
 
-def test_auto_improve_supervisor_lease_allows_explicit_cycle_override():
+def test_auto_improve_environment_cannot_mint_runtime_cycle_lease():
     args = argparse.Namespace(skip_improve=False, enable_auto_improve=True, max_cycles=0)
 
     limit, reason = devstream_session.supervisor_cycle_limit(
@@ -1921,8 +2854,8 @@ def test_auto_improve_supervisor_lease_allows_explicit_cycle_override():
         {devstream_session.AUTO_IMPROVE_MAX_CYCLES_ENV: "2"},
     )
 
-    assert limit == 2
-    assert reason == "auto-improve lease via --enable-auto-improve"
+    assert limit == 0
+    assert reason == "unbounded supervisor without auto-improve"
 
 
 def test_supervisor_explicit_max_cycles_wins_over_auto_improve_lease():
@@ -1967,7 +2900,7 @@ def test_cmd_supervise_fails_closed_without_runtime_lease_or_cycle_bound(tmp_pat
     assert "requested max cycles" in " ".join(payload["runtimeLease"]["blockers"])
 
 
-def test_cmd_supervise_validates_against_runtime_lease_account_not_stale_env(tmp_path, monkeypatch):
+def test_cmd_supervise_preserves_stale_env_for_lease_mismatch_detection(tmp_path, monkeypatch):
     captured = {}
     runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json", account="LEBOTJAMESXD00N")
 
@@ -1989,7 +2922,7 @@ def test_cmd_supervise_validates_against_runtime_lease_account_not_stale_env(tmp
 
     args = argparse.Namespace(
         run_count=30,
-        max_concurrent_battles=1,
+        max_concurrent_battles=3,
         queue_timeout_seconds=180,
         sleep_seconds=15,
         max_cycles=1,
@@ -2003,8 +2936,8 @@ def test_cmd_supervise_validates_against_runtime_lease_account_not_stale_env(tmp
     )
 
     assert devstream_session.cmd_supervise(args) == 2
-    assert captured["env"]["PS_USERNAME"] == "LEBOTJAMESXD00N"
-    assert captured["env"]["SHOWDOWN_USER_ID"] == "LEBOTJAMESXD00N"
+    assert captured["env"]["PS_USERNAME"] == "npctypebeat"
+    assert "FOULER_RUNTIME_LEASE_ACCOUNT" not in captured["env"]
 
 
 def test_supervisor_commands_propagate_auto_improve_to_task_installer():
@@ -2055,7 +2988,7 @@ def test_supervisor_cycle_clears_stale_active_truth_when_runner_is_dead(monkeypa
 
     def fake_run(command, *, timeout, env_overrides=None):
         commands.append(command)
-        return {"command": command, "returnCode": 0}
+        return successful_lifecycle_result(command)
 
     monkeypatch.setattr(devstream_session, "clear_stale_active_battles", fake_clear)
     monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
@@ -2071,14 +3004,18 @@ def test_supervisor_cycle_clears_stale_active_truth_when_runner_is_dead(monkeypa
         skip_improve=True,
     )
 
-    payload = devstream_session.run_supervisor_cycle(args, 2)
+    payload = run_authorized_supervisor_cycle(monkeypatch, args, 2)
 
     assert payload["state"] == "idle-restoring-runtime"
     assert payload["staleActiveBattleClear"]["cleared"] is True
     assert payload["staleActiveBattleClear"]["staleAfterSeconds"] == 180
     assert payload["activeBattleCountAfterClear"] == 0
-    assert commands[2][:3] == ["python", "scripts/devstream_session.py", "start"]
-    assert commands[2][commands[2].index("--max-concurrent-battles") + 1] == "3"
+    start_command = next(
+        command
+        for command in commands
+        if command[:3] == ["python", "scripts/devstream_session.py", "start"]
+    )
+    assert start_command[start_command.index("--max-concurrent-battles") + 1] == "3"
 
 
 def test_supervisor_cycle_waits_when_battle_runner_alive(monkeypatch):
@@ -2131,6 +3068,7 @@ def test_supervisor_cycle_can_refresh_proof_without_starting_next_batch(monkeypa
 def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_path, monkeypatch):
     statuses = []
     start_next_flags = []
+    runtime_lease = install_supervisor_authority_fixture(monkeypatch, tmp_path, run_count=30)
     runtime_states = iter(
         [
             {"activeBattleCount": 0, "battleRunnerAlive": False, "inFlight": False},
@@ -2144,7 +3082,6 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
     monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
     monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
     monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
-    monkeypatch.setattr(devstream_session, "runtime_lease_guard", lambda **kwargs: {"ok": True})
     monkeypatch.setattr(devstream_session, "write_pid_value", lambda *args, **kwargs: None)
     monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(devstream_session, "supervisor_runtime_state", lambda: next(runtime_states))
@@ -2157,14 +3094,50 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
     def fake_write_status(payload):
         statuses.append(json.loads(json.dumps(payload)))
 
-    def fake_cycle(args, cycle_index, *, start_next=True):
+    def fake_cycle(
+        args,
+        cycle_index,
+        *,
+        start_next=True,
+        authority_ok=True,
+        lease_guard=None,
+        supervisor_instance_id=None,
+        reservation_state=None,
+    ):
+        assert authority_ok is True
+        assert lease_guard["lease"]["id"] == "lease-test"
+        assert supervisor_instance_id
         start_next_flags.append(start_next)
         if cycle_index == 1:
+            reservation_state.update(
+                {
+                    "reservationId": "res-" + "1" * 32,
+                    "kind": "runtime",
+                    "purpose": devstream_session.RUNTIME_RESERVATION_PURPOSE,
+                    "battleCount": 30,
+                    "cycleCount": 1,
+                    "maxConcurrentBattles": 3,
+                    "supervisorProcessId": os.getpid(),
+                    "supervisorProcessCreationFiletime": 133_801_234_567_890_000,
+                    "supervisorInstanceId": supervisor_instance_id,
+                    "launchNonce": "9" * 64,
+                }
+            )
             return {
                 "state": "idle-restoring-runtime",
                 "proofRefreshed": True,
                 "battleRunnerAliveAfter": True,
                 "activeBattleCountAfter": 0,
+                "leaseConsumptionReservation": {
+                    "ok": True,
+                    "reserved": True,
+                    "reservation": {
+                        "reservationId": "lease-test-reservation-1",
+                        "runtimeLeaseId": "lease-test",
+                        "supervisorInstanceId": supervisor_instance_id,
+                        "runCount": 30,
+                    },
+                },
             }
         if cycle_index == 2:
             return {
@@ -2172,11 +3145,17 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
                 "proofRefreshed": False,
             }
         if cycle_index == 3:
+            reservation_state.clear()
             return {
                 "state": "idle-restoring-runtime",
                 "proofRefreshed": True,
                 "battleRunnerAliveAfter": False,
                 "activeBattleCountAfter": 0,
+                "leaseConsumptionTerminal": {
+                    "state": "completed",
+                    "outcome": "completed",
+                    "reservationId": "res-" + "1" * 32,
+                },
             }
         raise AssertionError("supervisor should stop after one completed learning cycle")
 
@@ -2185,7 +3164,7 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
 
     args = argparse.Namespace(
         run_count=30,
-        max_concurrent_battles=1,
+        max_concurrent_battles=3,
         queue_timeout_seconds=180,
         sleep_seconds=15,
         max_cycles=1,
@@ -2195,7 +3174,7 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
         improve_timeout_seconds=240,
         skip_improve=True,
         enable_auto_improve=False,
-        runtime_lease=str(tmp_path / "runtime-lease.json"),
+        runtime_lease=str(runtime_lease),
     )
 
     assert devstream_session.cmd_supervise(args) == 0
@@ -2212,6 +3191,7 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
 def test_cmd_supervise_does_not_start_next_after_final_stale_idle_recovery(tmp_path, monkeypatch):
     statuses = []
     start_next_flags = []
+    runtime_lease = install_supervisor_authority_fixture(monkeypatch, tmp_path, run_count=1)
     runtime_states = iter(
         [
             {"activeBattleCount": 0, "battleRunnerAlive": False, "inFlight": False},
@@ -2232,7 +3212,6 @@ def test_cmd_supervise_does_not_start_next_after_final_stale_idle_recovery(tmp_p
     monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
     monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
     monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
-    monkeypatch.setattr(devstream_session, "runtime_lease_guard", lambda **kwargs: {"ok": True})
     monkeypatch.setattr(devstream_session, "write_pid_value", lambda *args, **kwargs: None)
     monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(devstream_session, "supervisor_runtime_state", lambda: next(runtime_states))
@@ -2245,14 +3224,50 @@ def test_cmd_supervise_does_not_start_next_after_final_stale_idle_recovery(tmp_p
     def fake_write_status(payload):
         statuses.append(json.loads(json.dumps(payload)))
 
-    def fake_cycle(args, cycle_index, *, start_next=True):
+    def fake_cycle(
+        args,
+        cycle_index,
+        *,
+        start_next=True,
+        authority_ok=True,
+        lease_guard=None,
+        supervisor_instance_id=None,
+        reservation_state=None,
+    ):
+        assert authority_ok is True
+        assert lease_guard["lease"]["id"] == "lease-test"
+        assert supervisor_instance_id
         start_next_flags.append(start_next)
         if cycle_index == 1:
+            reservation_state.update(
+                {
+                    "reservationId": "res-" + "1" * 32,
+                    "kind": "runtime",
+                    "purpose": devstream_session.RUNTIME_RESERVATION_PURPOSE,
+                    "battleCount": 1,
+                    "cycleCount": 1,
+                    "maxConcurrentBattles": 3,
+                    "supervisorProcessId": os.getpid(),
+                    "supervisorProcessCreationFiletime": 133_801_234_567_890_000,
+                    "supervisorInstanceId": supervisor_instance_id,
+                    "launchNonce": "9" * 64,
+                }
+            )
             return {
                 "state": "idle-restoring-runtime",
                 "proofRefreshed": True,
                 "battleRunnerAliveAfter": True,
                 "activeBattleCountAfter": 0,
+                "leaseConsumptionReservation": {
+                    "ok": True,
+                    "reserved": True,
+                    "reservation": {
+                        "reservationId": "lease-test-reservation-1",
+                        "runtimeLeaseId": "lease-test",
+                        "supervisorInstanceId": supervisor_instance_id,
+                        "runCount": 1,
+                    },
+                },
             }
         if cycle_index == 2:
             return {
@@ -2260,12 +3275,18 @@ def test_cmd_supervise_does_not_start_next_after_final_stale_idle_recovery(tmp_p
                 "proofRefreshed": False,
             }
         if cycle_index == 3:
+            reservation_state.clear()
             return {
                 "state": "idle-restoring-runtime",
                 "proofRefreshed": True,
                 "staleBattleRuntimeRecovery": {"recovered": True},
                 "battleRunnerAliveAfter": False,
                 "activeBattleCountAfter": 0,
+                "leaseConsumptionTerminal": {
+                    "state": "completed",
+                    "outcome": "completed",
+                    "reservationId": "res-" + "1" * 32,
+                },
             }
         raise AssertionError("supervisor should stop after stale idle runner completes the final cycle")
 
@@ -2274,7 +3295,7 @@ def test_cmd_supervise_does_not_start_next_after_final_stale_idle_recovery(tmp_p
 
     args = argparse.Namespace(
         run_count=1,
-        max_concurrent_battles=1,
+        max_concurrent_battles=3,
         queue_timeout_seconds=180,
         sleep_seconds=15,
         max_cycles=1,
@@ -2284,7 +3305,7 @@ def test_cmd_supervise_does_not_start_next_after_final_stale_idle_recovery(tmp_p
         improve_timeout_seconds=240,
         skip_improve=True,
         enable_auto_improve=False,
-        runtime_lease=str(tmp_path / "runtime-lease.json"),
+        runtime_lease=str(runtime_lease),
     )
 
     assert devstream_session.cmd_supervise(args) == 0

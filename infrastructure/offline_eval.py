@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-offline_eval.py -- REAL offline battle eval harness for fouler-play.
+offline_eval.py -- weak-baseline transport and gross-regression smoke harness.
 
-This is the acceptance gate the SOTA audit calls for. It plays the ACTUAL fouler
+This is a transport and gross-regression smoke harness. It plays the ACTUAL fouler
 decision engine (via run.py accept_challenge) against a FROZEN poke-env baseline
 (SimpleHeuristicsPlayer by default, or MaxBasePowerPlayer) on a LOCAL
 pokemon-showdown server, over N battles, and reports win-rate with a Wilson lower
 confidence bound and a two-proportion z-test vs a reference win-rate.
 
-A candidate change is ACCEPTED only if its win-rate beats the frozen baseline by a
-statistically significant margin (Wilson LCB of the candidate-vs-baseline win-rate
-> 0.50, i.e. we are confident fouler beats the dumb baseline more than half the
-time, AND a two-proportion z-test vs a stored reference run is not a regression).
+The simple/max-base-power/random opponents saturate too easily to discriminate
+strong engine changes. Results from this file therefore cannot authorize promotion;
+use infrastructure/head_to_head_eval.py for candidate-vs-frozen acceptance proof.
 
 Why this design: bridging fouler's bespoke Battle parser into poke-env's Player is
 large and fragile. Instead we run fouler END-TO-END exactly as it plays on ladder
@@ -55,6 +54,21 @@ if not VENV_PY.exists():
     VENV_PY = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
 FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
 PROCESS_OWNER_SCHEMA = "fouler-play-offline-eval-process-owner/v1"
+SHOWDOWN_USERNAME_MAX_LENGTH = 18
+
+
+def validate_showdown_username(username: str, *, field: str) -> str:
+    value = str(username).strip()
+    if not value:
+        raise ValueError(f"{field} must not be empty")
+    if len(value) > SHOWDOWN_USERNAME_MAX_LENGTH:
+        raise ValueError(
+            f"{field} must be at most {SHOWDOWN_USERNAME_MAX_LENGTH} characters "
+            f"for Pokemon Showdown; got {len(value)}"
+        )
+    if not value.isascii() or not value.isalnum():
+        raise ValueError(f"{field} must contain only ASCII letters and digits")
+    return value
 
 
 def configured_showdown_dir() -> Path:
@@ -160,7 +174,6 @@ def build_eval_env(
 ) -> dict[str, str]:
     """Build the child-process environment for an offline eval run."""
     env = os.environ.copy()
-    env.setdefault("PS_PASSWORD", "")
     # Local eval server: skip HTTP assertion entirely (/trn user,0,).
     env["FOULER_NO_SECURITY_LOGIN"] = "1"
     env["SEARCH_TIME_MS"] = str(search_time_ms)
@@ -189,8 +202,22 @@ def build_eval_env(
     env["REPLAY_UPLOAD_RESOLVE_DELAY_SEC"] = "0"
     env["FOULER_STREAM_EVENTS"] = "0"
     env["STREAM_EVENT_URL"] = ""
+    env["ENABLE_STREAM_HOOKS"] = "0"
+    env["SPECTATOR_USERNAME"] = ""
+    env["ENABLE_SPECTATOR_INVITES"] = "0"
+    env["FOULER_POST_BATTLE_CHAT_ENABLED"] = "0"
+    env["FOULER_DEVSTREAM_LIVE"] = "0"
+    env["FOULER_DEVSTREAM_STATUS_JSON"] = ""
+    env["FOULER_DEVSTREAM_STATUS_URL"] = ""
+    env["POST_BATTLE_LIVE_PROMO_MESSAGE"] = ""
     if extra_env:
         env.update({k: str(v) for k, v in extra_env.items()})
+    # These values define the offline trust boundary and cannot be inherited or
+    # overridden by an eval matrix cell.
+    for name in ("PS_PASSWORD", "SHOWDOWN_PASSWORD", "FOULER_SHOWDOWN_PASSWORD"):
+        env[name] = ""
+    env["FOULER_NO_SECURITY_LOGIN"] = "1"
+    env["FOULER_OFFLINE_EVAL"] = "1"
     return env
 
 
@@ -526,11 +553,10 @@ def run_eval(
     manage_showdown_server: bool,
     concurrency: int,
 ) -> dict:
+    fouler_user = validate_showdown_username(fouler_user, field="fouler_user")
+    baseline_user = validate_showdown_username(baseline_user, field="baseline_user")
     concurrency = max(1, int(concurrency))
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    ws_uri = f"ws://localhost:{showdown_port}/showdown/websocket"
-    fmt = "gen9ou"
-
     env = build_eval_env(
         label=label,
         showdown_port=showdown_port,
@@ -674,11 +700,15 @@ def _run_eval_with_ready_server(
         "--concurrency", str(concurrency),
     ]
     print(f"[eval:{label}] starting baseline ({baseline}) challenger")
-    with open(baseline_log, "w", encoding="utf-8") as blog:
-        baseline_proc = subprocess.Popen(
-            baseline_cmd, cwd=str(PROJECT_ROOT),
-            stdout=blog, stderr=subprocess.STDOUT,
-        )
+    try:
+        with open(baseline_log, "w", encoding="utf-8") as blog:
+            baseline_proc = subprocess.Popen(
+                baseline_cmd, cwd=str(PROJECT_ROOT),
+                stdout=blog, stderr=subprocess.STDOUT,
+            )
+    except BaseException:
+        _terminate_process_tree(fouler_proc, reason="baseline-start-failed")
+        raise
     write_process_owner_status(
         label=label,
         stage="baseline-started",
@@ -801,7 +831,10 @@ def compare(label_frozen: str, label_candidate: str) -> dict:
         "p_value": round(p, 4),
         "candidate_beats_baseline_lcb_gt_50": c["fouler_wilson_lcb"] > 0.5,
         "statistically_significant_improvement": significant,
-        "ACCEPT": bool(significant or (improved and c["fouler_wilson_lcb"] > 0.5)),
+        "smoke_passed": bool(significant or (improved and c["fouler_wilson_lcb"] > 0.5)),
+        "promotion_eligible": False,
+        "promotion_blocker": "weak heuristic baseline cannot discriminate Fouler engine quality",
+        "ACCEPT": False,
     }
     (RESULTS_DIR / f"compare-{label_frozen}-vs-{label_candidate}.json").write_text(
         json.dumps(verdict, indent=2), encoding="utf-8"

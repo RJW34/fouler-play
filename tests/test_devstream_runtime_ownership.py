@@ -1,13 +1,18 @@
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from scripts import devstream_health, devstream_session
+from scripts import (  # noqa: E402
+    devstream_health,
+    devstream_runtime_lease,
+    devstream_session,
+)
+from tests.runtime_authority_testkit import sign_test_runtime_lease  # noqa: E402
 
 
 def test_health_groups_parent_child_battle_runner_as_one_logical_runner():
@@ -125,23 +130,26 @@ def test_active_unrecovered_runner_does_not_count_as_completed_learning_cycle():
 def test_health_surface_expectation_uses_current_runtime_lease(tmp_path, monkeypatch):
     lease_path = tmp_path / "runtime-lease.json"
     now = datetime.now(timezone.utc)
+    payload = devstream_runtime_lease.build_runtime_lease_artifact(
+        purpose="devstream-supervise",
+        machine="MIRAIDON",
+        account="bot",
+        run_count=1,
+        max_cycles=1,
+        max_concurrent_battles=1,
+        replay_behavior="always",
+        valid_minutes=10,
+        source_commit="a" * 40,
+        source_tree="b" * 40,
+        change_id="change-health-test-0001",
+        deployment_id="deployment-health-test-0001",
+        runtime_manifest_digest="c" * 64,
+        deployment_receipt_path=r"C:\ProgramData\HERMES\state\fouler\deployment-test.json",
+        deployment_receipt_sha256="d" * 64,
+        now=now,
+    )
     lease_path.write_text(
-        """
-{
-  "projectId": "fouler-play",
-  "leaseId": "test-lease",
-  "status": "active",
-  "maxConcurrentBattles": 1,
-  "proofWindow": {
-    "startsAt": "%s",
-    "expiresAt": "%s"
-  }
-}
-""".strip()
-        % (
-            now.isoformat(),
-            (now + timedelta(minutes=10)).isoformat(),
-        ),
+        devstream_runtime_lease.json.dumps(sign_test_runtime_lease(payload)),
         encoding="utf-8",
     )
     monkeypatch.setattr(devstream_health, "RUNTIME_LEASE_PATH", lease_path)

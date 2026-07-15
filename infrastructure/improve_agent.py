@@ -7,14 +7,12 @@ Called after each batch completes.  Reads the latest autoresearch report
 Claude to write ONE targeted fix, applies it, runs tests, and commits
 if passing.  The ELO watchdog reverts if the fix hurts.
 
-DORMANT (2026-07-04): this engine self-improvement loop is PARKED. It has no
-scheduled servicer (no FOULER_PLAY_ENABLE_AUTO_IMPROVE, no scheduled task) and
-its only objective gate is the weak "simple" offline baseline, which per the
-venture constitution R5 cannot discriminate engine quality -- so engine changes
-MUST NOT be auto-accepted on it. Re-activating requires a discriminating offline
-gate or a human/agent audit of each diff; until then the per-battle "replay
-review required" prompts it fed are suppressed (see IMPROVE_LOOP_PARKED_NOTE in
-infrastructure/discord_reporting.py).
+DORMANT (2026-07-15): this engine self-improvement loop remains explicit opt-in
+and has no scheduled servicer. A discriminating candidate-vs-frozen gate is now
+installed, but automatic operation stays parked until that harness passes its
+operational smoke proof and the owner intentionally enables the supervisor
+sentinel. Per-battle "replay review required" prompts remain suppressed (see
+IMPROVE_LOOP_PARKED_NOTE in infrastructure/discord_reporting.py).
 
 Usage:
     python infrastructure/improve_agent.py --enable-auto-improve
@@ -24,19 +22,36 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import textwrap
+import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from typing import Any, Callable, Iterator
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_runtime_lease
+from scripts.devstream_runtime_lease import (  # noqa: E402
+    RUNTIME_LEASE_PATH_ENV,
+    validate_runtime_lease,
+)
+from infrastructure.deployment_state import current_deployment_context  # noqa: E402
+from infrastructure.head_to_head_authority import (  # noqa: E402
+    DEFAULT_AUTHORITY_PATH,
+    consume_improve_authorization,
+    load_ledger_authority,
+)
+from infrastructure.head_to_head_proof import load_latest_proof  # noqa: E402
+from infrastructure.offline_eval import resolve_fouler_python  # noqa: E402
 
 try:
     from dotenv import load_dotenv
@@ -48,7 +63,7 @@ AUTORESEARCH_PATH = PROJECT_ROOT / "replay_analysis" / "autoresearch_latest.json
 GUARDRAILS_PATH = PROJECT_ROOT / "infrastructure" / "guardrails.json"
 
 # Files the agent is allowed to modify
-ALLOWED_TARGETS = [
+ALLOWED_TARGETS = (
     "fp/search/main.py",
     "fp/search/eval.py",
     "fp/search/forced_lines.py",
@@ -56,7 +71,7 @@ ALLOWED_TARGETS = [
     "fp/playstyle_config.py",
     "fp/team_analysis.py",
     "fp/opponent_model.py",
-]
+)
 
 # Max lines of code context to send (keep prompt focused)
 MAX_CODE_LINES = 500
@@ -98,22 +113,42 @@ LEGAL_OPTION_EVIDENCE_RE = re.compile(
 REQUEST_HASH_RE = re.compile(r"\brequestHash=([a-f0-9]{64})\b", re.IGNORECASE)
 LEGAL_COUNT_RE = re.compile(r"\blegal(?:Moves|Switches)=(\d+)\b")
 
-# --- Deploy-spacing + deploy-record (Phase D improvement-loop hardening) ---
-# The bot applies a diff to live files at commit time, so each accepted change is
-# immediately in play. Without spacing, multiple unvalidated changes stack faster
-# than elo_watchdog can attribute ELO to any one of them -> the loop "changes a lot
-# but never learns". We (a) refuse to ship a new change until the previous one has
-# had min_games_between_deploys live games, and (b) record a deploy entry so the
-# watchdog has something to revert.
+# --- Accepted-change and deployment lineage ---
+# A commit is not a deployment. Accepted candidates carry their H2H proof identity
+# in Git trailers and an immutable receipt. Deploy spacing continues to read only
+# immutable activation and judgment receipts written by the runtime operator.
 BATTLE_STATS_PATH = PROJECT_ROOT / "battle_stats.json"
-DEPLOY_LOG_PATH = PROJECT_ROOT / "infrastructure" / "deploy_log.json"
 IMPROVE_LEDGER_PATH = PROJECT_ROOT / "eval_results" / "improve_ledger.jsonl"
+IMPROVE_LOCK_PATH = PROJECT_ROOT / ".pids" / "improve-agent.lock"
+IMPROVE_RECOVERY_BLOCK_PATH = PROJECT_ROOT / ".pids" / "improve-agent-recovery-block.json"
+ACCEPTED_COMMIT_RECEIPT_ROOT_ENV = "FOULER_ACCEPTED_COMMIT_RECEIPT_ROOT"
+ACCEPTED_COMMIT_RECEIPT_ROOT = Path(
+    os.getenv(
+        ACCEPTED_COMMIT_RECEIPT_ROOT_ENV,
+        str(Path.home() / ".deku" / "state" / "fouler" / "accepted-commits"),
+    )
+).expanduser()
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
 AUTO_PUSH_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_PUSH"
 PUSH_REMOTE_ENV = "IMPROVE_AGENT_PUSH_REMOTE"
 PUSH_BRANCH_ENV = "IMPROVE_AGENT_PUSH_BRANCH"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 DEPLOY_WIN_RATE_SAMPLE_BATTLES = 30
+CONTROL_PLANE_NAMES = ("deku", "ubunztu")
+REQUIRED_NEVER_MODIFY = frozenset(
+    {
+        "config.py",
+        "run.py",
+        ".env",
+        "CREDENTIALS.md",
+        "teams/**/*",
+    }
+)
+MIN_EVAL_SEARCH_TIME_MS = 1200
+MIN_EVAL_PER_BATTLE_TIMEOUT_SECONDS = 240.0
+IMMUTABLE_JIGGLY_RELEASE_RE = re.compile(
+    r"(?i)(?:^|[\\/])releases[\\/]fouler-play[\\/][0-9a-f]{40,64}(?:$|[\\/])"
+)
 
 
 def env_flag_enabled(name: str) -> bool:
@@ -126,6 +161,142 @@ def auto_improve_enabled(cli_enabled: bool = False) -> bool:
 
 def auto_push_enabled(cli_enabled: bool = False) -> bool:
     return bool(cli_enabled or env_flag_enabled(AUTO_PUSH_SENTINEL))
+
+
+def _atomic_write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _canonical_json_bytes(payload: dict) -> bytes:
+    return (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+
+
+def _write_immutable_json(path: Path, payload: dict) -> None:
+    """Create a receipt once; never replace an existing lineage artifact."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = json.dumps(payload, indent=2, sort_keys=True).encode("utf-8") + b"\n"
+    descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    try:
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            handle.write(data)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    try:
+        os.chmod(path, 0o444)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+
+
+def write_improve_recovery_block(reason: str, detail: dict | None = None) -> dict:
+    payload = {
+        "schemaVersion": "fouler-improve-recovery-block/v1",
+        "blockedAt": datetime.now(timezone.utc).isoformat(),
+        "reason": reason,
+        "detail": detail or {},
+        "requiredAction": "inspect the candidate checkout and explicitly clear this block before any live battle start",
+    }
+    _atomic_write_json(IMPROVE_RECOVERY_BLOCK_PATH, payload)
+    return payload
+
+
+def improvement_checkout_guard() -> dict:
+    """Fail closed when an interrupted improvement may own or have changed engine code."""
+    blockers: list[str] = []
+    try:
+        status = subprocess.run(
+            ["git", "status", "--porcelain=v1", "--untracked-files=all", "--", "fp"],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        status = None
+        blockers.append(f"engine checkout status failed: {type(exc).__name__}: {exc}")
+    dirty_engine = []
+    if status is not None:
+        dirty_engine = [line for line in status.stdout.splitlines() if line.strip()]
+        if status.returncode:
+            blockers.append("engine checkout status command failed")
+        elif dirty_engine:
+            blockers.append("engine checkout has uncommitted or untracked changes")
+    if IMPROVE_LOCK_PATH.exists():
+        blockers.append("improve-agent lock exists")
+    if IMPROVE_RECOVERY_BLOCK_PATH.exists():
+        blockers.append("improve-agent recovery block exists")
+    patch_artifact = PROJECT_ROOT / ".agent_diff.patch"
+    if patch_artifact.exists():
+        blockers.append("stale improve-agent patch artifact exists")
+    return {
+        "ready": not blockers,
+        "blockers": blockers,
+        "dirtyEngineEntries": dirty_engine,
+        "lockPath": str(IMPROVE_LOCK_PATH),
+        "lockExists": IMPROVE_LOCK_PATH.exists(),
+        "recoveryBlockPath": str(IMPROVE_RECOVERY_BLOCK_PATH),
+        "recoveryBlockExists": IMPROVE_RECOVERY_BLOCK_PATH.exists(),
+        "patchArtifactExists": patch_artifact.exists(),
+    }
+
+
+def acquire_improve_lock(target_file: str) -> tuple[str | None, dict]:
+    token = uuid.uuid4().hex
+    payload = {
+        "schemaVersion": "fouler-improve-lock/v1",
+        "pid": os.getpid(),
+        "token": token,
+        "targetFile": target_file.replace("\\", "/"),
+        "acquiredAt": datetime.now(timezone.utc).isoformat(),
+    }
+    IMPROVE_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        descriptor = os.open(IMPROVE_LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        return None, {"error": "improve_agent_lock_exists", "path": str(IMPROVE_LOCK_PATH)}
+    except OSError as exc:
+        return None, {"error": "improve_agent_lock_failed", "detail": str(exc)}
+    try:
+        os.write(descriptor, (json.dumps(payload, sort_keys=True) + "\n").encode("utf-8"))
+    finally:
+        os.close(descriptor)
+    return token, payload
+
+
+def release_improve_lock(token: str) -> bool:
+    try:
+        payload = json.loads(IMPROVE_LOCK_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        write_improve_recovery_block("improve lock could not be verified during release", {"detail": str(exc)})
+        return False
+    if payload.get("token") != token:
+        write_improve_recovery_block(
+            "improve lock ownership changed during candidate transaction",
+            {"expectedToken": token, "observedToken": payload.get("token")},
+        )
+        return False
+    try:
+        IMPROVE_LOCK_PATH.unlink()
+    except OSError as exc:
+        write_improve_recovery_block("improve lock could not be released", {"detail": str(exc)})
+        return False
+    return True
 
 
 def explicit_push_target(push_remote: str | None = None, push_branch: str | None = None) -> tuple[str, str]:
@@ -148,6 +319,156 @@ def load_guardrails() -> dict:
         return {}
 
 
+def _normalized_target(target_file: str) -> str:
+    raw = str(target_file or "").strip().replace("\\", "/")
+    path = PurePosixPath(raw)
+    if not raw or path.is_absolute() or ".." in path.parts or raw != path.as_posix():
+        raise ValueError("candidate target must be a normalized repository-relative path")
+    return raw
+
+
+def _guardrail_match(path: str, pattern: object) -> bool:
+    normalized = str(pattern or "").strip().replace("\\", "/")
+    return bool(normalized) and (path == normalized or PurePosixPath(path).match(normalized))
+
+
+def mutation_policy_blockers(target_file: str) -> list[str]:
+    """Return immutable policy blockers for every autonomous source mutation."""
+
+    try:
+        target = _normalized_target(target_file)
+    except ValueError as exc:
+        return [str(exc)]
+    blockers: list[str] = []
+    if target not in ALLOWED_TARGETS:
+        blockers.append(f"candidate target is outside the autonomous allowlist: {target}")
+
+    guardrails = load_guardrails()
+    allowed = guardrails.get("allowed_modify") if isinstance(guardrails, dict) else None
+    denied = guardrails.get("never_modify") if isinstance(guardrails, dict) else None
+    safety = guardrails.get("safety") if isinstance(guardrails, dict) else None
+    if not isinstance(allowed, list) or not any(_guardrail_match(target, item) for item in allowed):
+        blockers.append(f"candidate target is not allowed by {GUARDRAILS_PATH.name}: {target}")
+    if not isinstance(denied, list):
+        blockers.append("guardrail never_modify policy is missing")
+    else:
+        normalized_denied = {
+            str(item).strip().replace("\\", "/")
+            for item in denied
+            if str(item).strip()
+        }
+        missing_denials = sorted(REQUIRED_NEVER_MODIFY - normalized_denied)
+        if missing_denials:
+            blockers.append(
+                "guardrail never_modify policy is weakened; missing: "
+                + ", ".join(missing_denials)
+            )
+        if any(_guardrail_match(target, item) for item in denied):
+            blockers.append(f"candidate target is protected by never_modify: {target}")
+    if not isinstance(safety, dict):
+        blockers.append("guardrail safety policy is missing")
+    else:
+        if safety.get("require_test_pass") is not True:
+            blockers.append("guardrail test gate must remain explicitly enabled")
+        if safety.get("require_syntax_check") is not True:
+            blockers.append("guardrail syntax gate must remain explicitly enabled")
+        try:
+            minimum_games = int(safety.get("min_games_between_deploys"))
+        except (TypeError, ValueError):
+            minimum_games = 0
+        if minimum_games < 30:
+            blockers.append("guardrail deployment spacing must remain at least 30 decisive battles")
+        try:
+            maximum_elo_drop = float(safety.get("max_elo_drop_before_revert"))
+        except (TypeError, ValueError):
+            maximum_elo_drop = 0.0
+        if not 0 < maximum_elo_drop <= 50.0:
+            blockers.append("guardrail ELO stop-loss must remain within (0, 50]")
+
+    root_text = str(PROJECT_ROOT.resolve(strict=False))
+    if IMMUTABLE_JIGGLY_RELEASE_RE.search(root_text):
+        blockers.append("immutable JIGGLYPUFF release checkout cannot be mutated")
+    candidate_path = PROJECT_ROOT / target
+    full_path = candidate_path.resolve(strict=False)
+    try:
+        full_path.relative_to(PROJECT_ROOT.resolve(strict=False))
+    except ValueError:
+        blockers.append("candidate target escapes the control checkout")
+    path_cursor = PROJECT_ROOT
+    linked_component = False
+    for part in PurePosixPath(target).parts:
+        path_cursor /= part
+        linked_component = linked_component or path_cursor.is_symlink()
+    if linked_component:
+        blockers.append("candidate target and its parent directories must not be symlinks")
+    return list(dict.fromkeys(blockers))
+
+
+def _git_identity(root: Path) -> tuple[str, str, str]:
+    values: list[str] = []
+    for arguments in (("rev-parse", "--show-toplevel"), ("rev-parse", "HEAD"), ("rev-parse", "HEAD^{tree}")):
+        result = subprocess.run(
+            ["git", "-C", str(root), *arguments],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        if result.returncode:
+            raise RuntimeError(f"git {' '.join(arguments)} failed: {(result.stderr or result.stdout).strip()}")
+        values.append(result.stdout.strip())
+    return values[0], values[1], values[2]
+
+
+def _is_deku_control_name(value: object) -> bool:
+    normalized = str(value or "").strip().lower().rstrip(".")
+    first_label = normalized.split(".", 1)[0]
+    return first_label in CONTROL_PLANE_NAMES
+
+
+def improvement_control_checkout_guard(lease_guard: dict, *, requested_max_cycles: int) -> dict:
+    """Bind mutation to one clean mutable DEKU checkout, never the JIGGLY runtime."""
+
+    blockers: list[str] = []
+    lease = lease_guard.get("lease") if isinstance(lease_guard.get("lease"), dict) else {}
+    if not lease_guard.get("ok"):
+        blockers.append("runtime lease validation did not succeed")
+    if requested_max_cycles != 1 or lease.get("maxCycles") != 1:
+        blockers.append("improve authorization must cover exactly one cycle")
+    for field in ("machine", "hostName"):
+        value = lease.get(field)
+        if not value or not _is_deku_control_name(value):
+            blockers.append(f"improve authorization {field} must bind the DEKU/ubunztu control plane")
+
+    root = PROJECT_ROOT.resolve(strict=False)
+    if IMMUTABLE_JIGGLY_RELEASE_RE.search(str(root)):
+        blockers.append("improve agent refuses to run inside an immutable JIGGLYPUFF release")
+    try:
+        git_root, head, tree = _git_identity(root)
+    except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        git_root, head, tree = "", "", ""
+        blockers.append(f"DEKU control checkout identity is unavailable: {exc}")
+    if git_root and Path(git_root).resolve(strict=False) != root:
+        blockers.append("improve agent PROJECT_ROOT is not the Git control checkout root")
+    if head and lease.get("sourceCommit") != head:
+        blockers.append("improve authorization sourceCommit does not match DEKU control HEAD")
+    if tree and lease.get("sourceTree") != tree:
+        blockers.append("improve authorization sourceTree does not match DEKU control tree")
+    if not os.access(root, os.W_OK):
+        blockers.append("DEKU control checkout is not mutable by the improve agent")
+    return {
+        "ready": not blockers,
+        "blockers": list(dict.fromkeys(blockers)),
+        "controlCheckout": str(root),
+        "controlHead": head or None,
+        "controlTree": tree or None,
+        "leaseId": lease.get("id"),
+        "authorizationDigest": lease.get("authorizationSha256"),
+    }
+
+
 def min_games_between_deploys() -> int:
     safety = load_guardrails().get("safety", {})
     try:
@@ -166,36 +487,44 @@ def _load_battles() -> list:
     return data if isinstance(data, list) else []
 
 
-def _latest_deploy_timestamp() -> str | None:
-    try:
-        log = json.loads(DEPLOY_LOG_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-    if not isinstance(log, list):
-        return None
-    deploys = [e for e in log if isinstance(e, dict) and e.get("type") == "deploy"]
-    return deploys[-1].get("timestamp") if deploys else None
+def deployment_spacing_status() -> dict:
+    """Return exact-identity activation/judgment state; missing proof fails closed."""
+    context = current_deployment_context(
+        battle_stats_path=BATTLE_STATS_PATH,
+        verify_checkout=True,
+        expected_runtime_identity={
+            "sourceCommit": os.getenv("FOULER_SOURCE_COMMIT", ""),
+            "changeId": os.getenv("FOULER_CHANGE_ID", ""),
+            "deploymentId": os.getenv("FOULER_DEPLOYMENT_ID", ""),
+            "runtimeLeaseId": os.getenv("FOULER_RUNTIME_LEASE_ID", ""),
+            "runtimeAuthorizationSha256": os.getenv("FOULER_RUNTIME_AUTHORIZATION_SHA256", ""),
+            "sessionId": os.getenv("FOULER_SESSION_ID", ""),
+        },
+    )
+    minimum = min_games_between_deploys()
+    games = int(context.get("gamesSinceActivation") or 0)
+    blockers = list(context.get("blockers") or [])
+    if not context.get("readyForImprovement"):
+        blockers.append(
+            "current deployment lacks a verified passing judgment receipt"
+        )
+    if games < minimum:
+        blockers.append(
+            f"current deployment has only {games}/{minimum} exact-identity decisive battles"
+        )
+    return {
+        **context,
+        "minimumGames": minimum,
+        "gamesSinceActivation": games,
+        "ready": not blockers,
+        "blockers": list(dict.fromkeys(blockers)),
+    }
 
 
 def games_since_last_deploy() -> int:
-    """Count battles recorded after the most recent deploy entry."""
-    battles = _load_battles()
-    ts = _latest_deploy_timestamp()
-    if not ts:
-        return len(battles)  # no prior deploy on record -> nothing gating us
-    try:
-        cutoff = datetime.fromisoformat(ts)
-    except (ValueError, TypeError):
-        return len(battles)
-    count = 0
-    for b in battles:
-        bt = b.get("timestamp") or b.get("time") or ""
-        try:
-            if datetime.fromisoformat(bt) > cutoff:
-                count += 1
-        except (ValueError, TypeError):
-            continue
-    return count
+    """Compatibility helper backed only by the verified current activation."""
+    status = deployment_spacing_status()
+    return int(status.get("gamesSinceActivation") or 0) if status.get("activation") else 0
 
 
 def current_win_rate_snapshot(battles: list, sample_size: int = DEPLOY_WIN_RATE_SAMPLE_BATTLES) -> tuple[float | None, int]:
@@ -259,40 +588,129 @@ def append_improve_ledger(
 
 
 def record_deploy(pre_commit: str, post_commit: str) -> None:
-    """Append a deploy entry so elo_watchdog can attribute/revert and spacing is tracked."""
+    """Reject the legacy mutable writer; activation is proven by runtime evidence."""
+    raise RuntimeError(
+        "record_deploy is retired: create an immutable deployment activation receipt "
+        "after an exact-identity battle row is observed"
+    )
+
+
+def validated_promotion_artifact_context(
+    promotion_proof: dict,
+    *,
+    result_pointer_path: Path | None = None,
+    project_root: Path | None = None,
+) -> dict:
+    """Revalidate and pin the canonical H2H artifact before creating a commit."""
+    pointer_path = result_pointer_path or HEAD_TO_HEAD_RESULT_PATH
+    canonical_proof, blockers = load_latest_proof(
+        pointer_path,
+        project_root=(project_root or PROJECT_ROOT),
+    )
+    if blockers:
+        raise ValueError(f"promotion proof no longer validates: {'; '.join(blockers)}")
+
+    identity_fields = ("runId", "baselineCommit", "candidateFile", "candidatePatchSha256")
+    mismatched = [field for field in identity_fields if promotion_proof.get(field) != canonical_proof.get(field)]
+    promotion_lineage = promotion_proof.get("lineage") or {}
+    canonical_lineage = canonical_proof.get("lineage") or {}
+    if promotion_lineage.get("changeId") != canonical_lineage.get("changeId"):
+        mismatched.append("lineage.changeId")
+    if mismatched:
+        raise ValueError(f"promotion proof changed before commit: {', '.join(mismatched)}")
+
+    pointer_bytes = pointer_path.read_bytes()
+    pointer = json.loads(pointer_bytes)
+    result_relative = str(pointer.get("resultRelativePath") or "").replace("\\", "/")
+    result_path = pointer_path.parent / result_relative
+    result_bytes = result_path.read_bytes()
+    result_sha256 = hashlib.sha256(result_bytes).hexdigest()
+    if result_sha256 != pointer.get("resultSha256"):
+        raise ValueError("canonical promotion result changed after independent validation")
+    return {
+        "pointerPath": str(pointer_path),
+        "pointerSha256": hashlib.sha256(pointer_bytes).hexdigest(),
+        "resultPath": str(result_path),
+        "resultRelativePath": result_relative,
+        "resultSha256": result_sha256,
+        "runId": canonical_proof.get("runId"),
+        "changeId": canonical_lineage.get("changeId"),
+        "autoresearchSha256": canonical_lineage.get("autoresearchSha256"),
+    }
+
+
+def promotion_artifact_unchanged(context: dict) -> bool:
     try:
-        log = []
-        if DEPLOY_LOG_PATH.exists():
-            try:
-                log = json.loads(DEPLOY_LOG_PATH.read_text(encoding="utf-8"))
-            except Exception:
-                log = []
-        if not isinstance(log, list):
-            log = []
-        battles = _load_battles()
-        elo = None
-        if battles:
-            last = battles[-1]
-            elo = last.get("elo", last.get("rating"))
-        win_rate_at_deploy, win_rate_sample = current_win_rate_snapshot(battles)
-        log.append({
-            "timestamp": datetime.now().isoformat(),
-            "type": "deploy",
-            "pre_commit": pre_commit or "unknown",
-            "post_commit": post_commit or "unknown",
-            "elo_at_deploy": elo,
-            "win_rate_at_deploy": win_rate_at_deploy,
-            "win_rate_sample_at_deploy": win_rate_sample,
-            "source": "improve_agent",
-        })
-        DEPLOY_LOG_PATH.write_text(json.dumps(log, indent=2), encoding="utf-8")
-        wr_text = f"{win_rate_at_deploy:.1%}" if win_rate_at_deploy is not None else "unknown"
-        print(
-            f"[AGENT] Recorded deploy entry (post={str(post_commit)[:8]}, "
-            f"elo_at_deploy={elo}, win_rate_at_deploy={wr_text}, sample={win_rate_sample})."
+        pointer_path = Path(str(context["pointerPath"]))
+        result_path = Path(str(context["resultPath"]))
+        return (
+            not pointer_path.is_symlink()
+            and not result_path.is_symlink()
+            and _file_sha256(pointer_path) == context["pointerSha256"]
+            and _file_sha256(result_path) == context["resultSha256"]
         )
-    except Exception as e:
-        print(f"[AGENT] WARN: failed to record deploy entry: {e}")
+    except (KeyError, OSError, TypeError):
+        return False
+
+
+def record_accepted_commit(
+    *,
+    issue_title: str,
+    target_file: str,
+    pre_commit: str,
+    post_commit: str,
+    promotion_proof: dict,
+    artifact_context: dict,
+    commit_provenance: dict,
+) -> dict:
+    """Write an immutable receipt that binds proof, candidate bytes, and commit."""
+    policy_blockers = mutation_policy_blockers(target_file)
+    if policy_blockers:
+        raise ValueError("accepted commit target violates mutation policy: " + "; ".join(policy_blockers))
+    normalized_target = _normalized_target(target_file)
+    blob = subprocess.run(
+        ["git", "show", f"{post_commit}:{normalized_target}"],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        timeout=60,
+        check=True,
+    ).stdout
+    tree = subprocess.run(
+        ["git", "rev-parse", f"{post_commit}^{{tree}}"],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=60,
+        check=True,
+    ).stdout.strip()
+    lineage = promotion_proof.get("lineage") or {}
+    payload = {
+        "schemaVersion": "fouler-accepted-commit/v1",
+        "recordedAt": datetime.now(timezone.utc).isoformat(),
+        "issueTitle": issue_title,
+        "changeId": lineage.get("changeId"),
+        "candidate": {
+            "baselineCommit": pre_commit,
+            "postCommit": post_commit,
+            "commitTree": tree,
+            "file": normalized_target,
+            "blobSha256": hashlib.sha256(blob).hexdigest(),
+            "patchSha256": promotion_proof.get("candidatePatchSha256"),
+            "changedFiles": commit_provenance.get("changedFiles"),
+        },
+        "proof": {
+            "runId": artifact_context.get("runId"),
+            "resultRelativePath": artifact_context.get("resultRelativePath"),
+            "resultSha256": artifact_context.get("resultSha256"),
+            "pointerSha256": artifact_context.get("pointerSha256"),
+            "autoresearchSha256": artifact_context.get("autoresearchSha256"),
+        },
+    }
+    payload["receiptSha256"] = hashlib.sha256(_canonical_json_bytes(payload)).hexdigest()
+    receipt_path = ACCEPTED_COMMIT_RECEIPT_ROOT / f"{post_commit}.json"
+    _write_immutable_json(receipt_path, payload)
+    return {**payload, "receiptPath": str(receipt_path)}
 
 
 def load_autoresearch() -> dict:
@@ -593,9 +1011,9 @@ def _extract_functions_from_source(source: str, wanted: list[str]) -> str:
     return "\n\n".join(chunks)
 
 
-def read_code_file(rel_path: str, report: dict | None = None) -> str:
+def _prompt_code_view(rel_path: str, source: str, report: dict | None = None) -> str:
     """
-    Read a code file for the agent prompt.
+    Build prompt context from an already captured complete source snapshot.
 
     For small files, return the whole file. For large files (e.g. the 7k-line
     fp/search/main.py), extract the SPECIFIC functions implicated by the report
@@ -603,13 +1021,9 @@ def read_code_file(rel_path: str, report: dict | None = None) -> str:
     region -- the penalty pipeline tail -- regardless of the actual issue).
     Falls back to the tail only if no implicated function is found.
     """
-    full_path = PROJECT_ROOT / rel_path
-    if not full_path.exists():
-        return f"# File not found: {rel_path}"
-    source = full_path.read_text(encoding="utf-8")
     lines = source.splitlines()
     if len(lines) <= MAX_CODE_LINES:
-        return "\n".join(lines)
+        return source
 
     if report is not None:
         wanted = _implicated_symbols(report)
@@ -629,6 +1043,38 @@ def read_code_file(rel_path: str, report: dict | None = None) -> str:
 
     # Fallback: last MAX_CODE_LINES.
     return "\n".join(lines[-MAX_CODE_LINES:])
+
+
+def capture_target_snapshot(rel_path: str, *, root: Path | None = None) -> dict[str, Any]:
+    """Capture the immutable full-source precondition independently of prompt truncation."""
+
+    policy_blockers = mutation_policy_blockers(rel_path)
+    if policy_blockers:
+        raise ValueError("candidate source violates mutation policy: " + "; ".join(policy_blockers))
+    normalized = _normalized_target(rel_path)
+    project_root = (root or PROJECT_ROOT).resolve()
+    full_path = project_root / normalized
+    if not full_path.is_file() or full_path.is_symlink():
+        raise FileNotFoundError(full_path)
+    source_bytes = full_path.read_bytes()
+    try:
+        source_text = source_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"candidate source is not UTF-8: {normalized}") from exc
+    return {
+        "targetFile": normalized,
+        "path": full_path,
+        "sourceBytes": source_bytes,
+        "sourceText": source_text,
+        "sourceSha256": hashlib.sha256(source_bytes).hexdigest(),
+    }
+
+
+def read_code_file(rel_path: str, report: dict | None = None) -> str:
+    """Read one exact source snapshot and derive only its prompt representation."""
+
+    snapshot = capture_target_snapshot(rel_path)
+    return _prompt_code_view(str(snapshot["targetFile"]), str(snapshot["sourceText"]), report)
 
 
 def build_prompt(report: dict, code: str, target_file: str) -> str:
@@ -855,8 +1301,11 @@ def _diff_header_path(line: str) -> str | None:
 
 def validate_diff_scope(diff_text: str, target_file: str) -> list[str]:
     """Fail closed unless a unified diff only modifies target_file."""
-    target = target_file.replace("\\", "/").strip()
-    blockers: list[str] = []
+    try:
+        target = _normalized_target(target_file)
+    except ValueError as exc:
+        return [str(exc)]
+    blockers: list[str] = mutation_policy_blockers(target)
     paths: set[str] = set()
     changed_lines = 0
     has_hunk = False
@@ -887,21 +1336,120 @@ def validate_diff_scope(diff_text: str, target_file: str) -> list[str]:
     return blockers
 
 
-def apply_diff(diff_text: str, target_file: str) -> bool:
-    """Apply a unified diff to the target file. Returns True on success."""
+def source_precondition_blockers(
+    snapshot: dict[str, Any],
+    *,
+    transaction_head: str,
+    autoresearch_sha256: str,
+) -> list[str]:
+    """Revalidate the exact full-source bytes and transaction inputs."""
+
+    blockers: list[str] = []
+    try:
+        current = capture_target_snapshot(str(snapshot["targetFile"]))
+    except (OSError, TypeError, ValueError) as exc:
+        return [f"candidate source precondition could not be read: {type(exc).__name__}: {exc}"]
+    if current["sourceBytes"] != snapshot.get("sourceBytes"):
+        blockers.append("candidate full-source bytes changed after prompt construction")
+    if current["sourceSha256"] != snapshot.get("sourceSha256"):
+        blockers.append("candidate full-source SHA-256 changed after prompt construction")
+    if _git_head() != transaction_head:
+        blockers.append("candidate checkout HEAD changed after prompt construction")
+    if not AUTORESEARCH_PATH.is_file() or _file_sha256(AUTORESEARCH_PATH) != autoresearch_sha256:
+        blockers.append("autoresearch evidence changed after prompt construction")
+    return list(dict.fromkeys(blockers))
+
+
+def generate_authorized_response(
+    *,
+    prompt: str,
+    snapshot: dict[str, Any],
+    transaction_head: str,
+    autoresearch_sha256: str,
+    consume_authorization: Callable[[], dict[str, Any]],
+    model_call: Callable[[str], str] = call_claude,
+) -> dict[str, Any]:
+    """Consume one authorization and call the model only for exact source bytes."""
+
+    blockers = source_precondition_blockers(
+        snapshot,
+        transaction_head=transaction_head,
+        autoresearch_sha256=autoresearch_sha256,
+    )
+    if blockers:
+        return {"generated": False, "authorizationConsumed": False, "blockers": blockers}
+    consumption = consume_authorization()
+    if not consumption.get("consumed"):
+        return {
+            "generated": False,
+            "authorizationConsumed": False,
+            "blockers": [str(consumption.get("blocker") or "improve authorization was not consumed")],
+            "consumption": consumption,
+        }
+    blockers = source_precondition_blockers(
+        snapshot,
+        transaction_head=transaction_head,
+        autoresearch_sha256=autoresearch_sha256,
+    )
+    if blockers:
+        return {
+            "generated": False,
+            "authorizationConsumed": True,
+            "blockers": blockers,
+            "consumption": consumption,
+        }
+    response = model_call(prompt)
+    return {
+        "generated": True,
+        "authorizationConsumed": True,
+        "response": response,
+        "consumption": consumption,
+    }
+
+
+@contextmanager
+def prepared_candidate_workspace(
+    diff_text: str,
+    target_file: str,
+    *,
+    source_snapshot: dict[str, Any],
+    transaction_head: str,
+) -> Iterator[dict[str, Any]]:
+    """Apply a candidate only inside a unique detached worktree."""
+
     scope_blockers = validate_diff_scope(diff_text, target_file)
     if scope_blockers:
-        print("[AGENT] Diff scope validation failed:")
-        for blocker in scope_blockers:
-            print(f"[AGENT] BLOCKER: {blocker}")
-        return False
-    diff_path = PROJECT_ROOT / ".agent_diff.patch"
-    diff_path.write_text(diff_text, encoding="utf-8")
+        raise ValueError("diff scope validation failed: " + "; ".join(scope_blockers))
+    normalized_target = _normalized_target(target_file)
+    if normalized_target != source_snapshot.get("targetFile"):
+        raise ValueError("candidate source snapshot does not match the diff target")
+    temporary_parent = Path(tempfile.mkdtemp(prefix="fouler-improve-candidate-"))
+    workspace = temporary_parent / f"worktree-{uuid.uuid4().hex}"
+    diff_path = temporary_parent / f"candidate-{uuid.uuid4().hex}.patch"
+    worktree_added = False
     try:
+        add = subprocess.run(
+            ["git", "worktree", "add", "--detach", str(workspace), transaction_head],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
+            check=False,
+        )
+        if add.returncode:
+            raise RuntimeError(f"candidate worktree creation failed: {(add.stderr or add.stdout).strip()}")
+        worktree_added = True
+        baseline_path = workspace / normalized_target
+        baseline_bytes = baseline_path.read_bytes()
+        if baseline_bytes != source_snapshot.get("sourceBytes"):
+            raise RuntimeError("detached candidate baseline does not match the full-source precondition")
+        diff_path.write_bytes(diff_text.encode("utf-8"))
         apply_flags = ["--recount", "--whitespace=nowarn"]
         result = subprocess.run(
             ["git", "apply", "--check", *apply_flags, str(diff_path)],
-            cwd=str(PROJECT_ROOT),
+            cwd=str(workspace),
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -910,202 +1458,386 @@ def apply_diff(diff_text: str, target_file: str) -> bool:
         if result.returncode != 0:
             result = subprocess.run(
                 ["git", "apply", "--check", *apply_flags, "-C1", str(diff_path)],
-                cwd=str(PROJECT_ROOT),
+                cwd=str(workspace),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
             )
             if result.returncode != 0:
-                print(f"[AGENT] Diff doesn't apply cleanly: {result.stderr}")
-                return False
+                raise RuntimeError(f"candidate diff does not apply cleanly: {result.stderr.strip()}")
             apply_flags = [*apply_flags, "-C1"]
         subprocess.run(
             ["git", "apply", *apply_flags, str(diff_path)],
-            cwd=str(PROJECT_ROOT),
+            cwd=str(workspace),
+            capture_output=True,
             check=True,
         )
-        return True
-    except Exception as e:
-        print(f"[AGENT] Failed to apply diff: {e}")
-        return False
+        candidate_bytes = baseline_path.read_bytes()
+        if candidate_bytes == baseline_bytes:
+            raise RuntimeError("candidate diff did not change target bytes")
+        yield {
+            "root": workspace,
+            "targetFile": normalized_target,
+            "baselineSha256": hashlib.sha256(baseline_bytes).hexdigest(),
+            "candidateSha256": hashlib.sha256(candidate_bytes).hexdigest(),
+            "candidateBytes": candidate_bytes,
+            "transactionHead": transaction_head,
+        }
     finally:
         diff_path.unlink(missing_ok=True)
+        cleanup_error = ""
+        if worktree_added:
+            remove = subprocess.run(
+                ["git", "worktree", "remove", "--force", str(workspace)],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+                check=False,
+            )
+            if remove.returncode:
+                cleanup_error = (remove.stderr or remove.stdout).strip()
+        shutil.rmtree(temporary_parent, ignore_errors=True)
+        if workspace.exists() or temporary_parent.exists() or cleanup_error:
+            write_improve_recovery_block(
+                "private candidate worktree cleanup failed",
+                {"workspace": str(workspace), "detail": cleanup_error},
+            )
+            raise RuntimeError("private candidate worktree cleanup could not be proven")
 
 
-def restore_file_snapshot(target_file: str, snapshot: str) -> None:
-    """Restore the one file this agent was allowed to edit without touching other dirty work."""
+def apply_diff(diff_text: str, target_file: str) -> bool:
+    """The legacy shared-checkout patch writer is intentionally retired."""
+
+    del diff_text, target_file
+    raise RuntimeError("apply_diff is retired; use prepared_candidate_workspace")
+
+
+def restore_file_snapshot(target_file: str, snapshot: str, expected_candidate_sha256: str) -> bool:
+    """Restore only when the target still contains the candidate bytes this process wrote."""
     full_path = PROJECT_ROOT / target_file
-    full_path.write_text(snapshot, encoding="utf-8")
+    try:
+        observed_sha = _file_sha256(full_path)
+    except OSError as exc:
+        write_improve_recovery_block(
+            "candidate target could not be read for compare-and-swap recovery",
+            {"targetFile": target_file, "detail": str(exc)},
+        )
+        return False
+    if observed_sha != expected_candidate_sha256:
+        write_improve_recovery_block(
+            "candidate target changed outside the improve-agent transaction",
+            {
+                "targetFile": target_file,
+                "expectedCandidateSha256": expected_candidate_sha256,
+                "observedSha256": observed_sha,
+            },
+        )
+        return False
+    temporary = full_path.with_name(f".{full_path.name}.restore-{uuid.uuid4().hex}.tmp")
+    try:
+        temporary.write_text(snapshot, encoding="utf-8")
+        os.replace(temporary, full_path)
+    except OSError as exc:
+        write_improve_recovery_block(
+            "candidate target restore failed",
+            {"targetFile": target_file, "detail": str(exc)},
+        )
+        return False
+    finally:
+        temporary.unlink(missing_ok=True)
+    return True
 
 
-def run_tests() -> bool:
+def run_owned_command(command: list[str], *, timeout: float, cwd: Path | None = None) -> dict:
+    """Run a child in an owned process group and prove its tree is gone on timeout."""
+    options: dict = {}
+    if os.name == "nt":
+        options["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    else:
+        options["start_new_session"] = True
+    process: subprocess.Popen | None = None
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=str(cwd or PROJECT_ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            **options,
+        )
+        stdout, stderr = process.communicate(timeout=timeout)
+        return {
+            "returncode": process.returncode,
+            "stdout": stdout or "",
+            "stderr": stderr or "",
+            "timedOut": False,
+        }
+    except subprocess.TimeoutExpired as exc:
+        from infrastructure.offline_eval import _terminate_process_tree
+
+        cleanup = (
+            _terminate_process_tree(process, reason="improve-agent-owned-command-timeout")
+            if process is not None
+            else {"returncodeAfter": None, "method": "process-not-started"}
+        )
+        remainder_stdout = ""
+        remainder_stderr = ""
+        if process is not None:
+            try:
+                remainder_stdout, remainder_stderr = process.communicate(timeout=5)
+            except (OSError, subprocess.SubprocessError):
+                pass
+        if cleanup.get("returncodeAfter") is None:
+            write_improve_recovery_block(
+                "timed-out improve-agent child process tree could not be proven stopped",
+                {"command": command, "cleanup": cleanup},
+            )
+        return {
+            "returncode": None,
+            "stdout": _output_text(exc.stdout) + _output_text(remainder_stdout),
+            "stderr": _output_text(exc.stderr) + _output_text(remainder_stderr),
+            "timedOut": True,
+            "timeout": exc.timeout,
+            "processTreeCleanup": cleanup,
+        }
+    except Exception as exc:
+        cleanup = None
+        if process is not None and process.poll() is None:
+            from infrastructure.offline_eval import _terminate_process_tree
+
+            cleanup = _terminate_process_tree(process, reason="improve-agent-owned-command-error")
+        return {
+            "returncode": None,
+            "stdout": "",
+            "stderr": "",
+            "timedOut": False,
+            "error": f"{type(exc).__name__}: {exc}",
+            "processTreeCleanup": cleanup,
+        }
+
+
+def _output_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def run_tests(*, project_root: Path | None = None) -> bool:
     """Run the test suite. Returns True if all pass."""
-    result = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/", "-q", "--tb=short"],
-        cwd=str(PROJECT_ROOT),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=120,
+    try:
+        test_python = resolve_fouler_python()
+    except Exception as exc:
+        print(f"[AGENT] Tests could not resolve a complete Fouler runtime Python: {exc}")
+        return False
+    result = run_owned_command(
+        [*test_python, "-m", "pytest", "tests/", "-q", "--tb=short"],
+        timeout=int(os.getenv("IMPROVE_AGENT_TEST_TIMEOUT_SECONDS", "360")),
+        cwd=project_root,
     )
-    print(f"[AGENT] Tests: {result.stdout.strip().splitlines()[-1] if result.stdout.strip() else 'no output'}")
-    return result.returncode == 0
+    if result.get("timedOut"):
+        print(f"[AGENT] Tests timed out after {result.get('timeout')}s; candidate is rejected.")
+        return False
+    if result.get("error"):
+        print(f"[AGENT] Tests could not complete: {result['error']}")
+        return False
+    stdout = str(result.get("stdout") or "")
+    print(f"[AGENT] Tests: {stdout.strip().splitlines()[-1] if stdout.strip() else 'no output'}")
+    return result.get("returncode") == 0
 
 
 EVAL_GATE_ENABLED = str(os.getenv("IMPROVE_AGENT_EVAL_GATE", "1")).lower() in {
     "1", "true", "yes", "on",
 }
-EVAL_GATE_BATTLES = int(os.getenv("IMPROVE_AGENT_EVAL_BATTLES", "200"))
-EVAL_GATE_BASELINE = os.getenv("IMPROVE_AGENT_EVAL_BASELINE", "simple")
-EVAL_GATE_TEAM = os.getenv("IMPROVE_AGENT_EVAL_TEAM", "gen9/ou/fat-team-1-stall")
-FROZEN_BASELINE_PATH = PROJECT_ROOT / "eval_results" / "offline" / "frozen.json"
+EVAL_GATE_BATTLES = int(os.getenv("IMPROVE_AGENT_EVAL_BATTLES", "60"))
+EVAL_GATE_SHOWDOWN_PORT = int(os.getenv("IMPROVE_AGENT_EVAL_SHOWDOWN_PORT", "8791"))
+EVAL_GATE_SEARCH_TIME_MS = int(os.getenv("IMPROVE_AGENT_EVAL_SEARCH_TIME_MS", "1200"))
+EVAL_GATE_PER_BATTLE_TIMEOUT = float(os.getenv("IMPROVE_AGENT_EVAL_PER_BATTLE_TIMEOUT", "240"))
+EVAL_GATE_TEAMS = os.getenv(
+    "IMPROVE_AGENT_EVAL_TEAMS",
+    "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-balance,gen9/ou/fat-team-3-dondozo",
+)
+HEAD_TO_HEAD_RESULT_PATH = PROJECT_ROOT / "eval_results" / "head_to_head" / "latest.json"
 
 
-def offline_eval_gate() -> tuple[bool, dict]:
-    """
-    The REAL acceptance gate (P1): a candidate change is accepted only if it beats
-    a FROZEN baseline by a statistically significant win-rate margin over
-    N>=200-400 battles on a local poke-env + pokemon-showdown harness.
-
-    pytest is only a cheap pre-filter (run earlier in main()); THIS is the gate.
-
-    Returns (accepted, detail). Requires a stored frozen baseline at
-    eval_results/offline/frozen.json (produce it once with offline_eval.py).
-    If the eval harness is unavailable or unusable, the gate fails closed rather
-    than silently passing a change to live.
-    """
-    import importlib.util
-
+def offline_eval_gate(
+    target_file: str | None = None,
+    autoresearch_sha256: str | None = None,
+    *,
+    project_root: Path | None = None,
+) -> tuple[bool, dict]:
+    """Run the symmetric candidate-vs-frozen gate and fail closed on every gap."""
+    if not target_file:
+        return False, {"error": "candidate_target_missing", "promotionAllowed": False}
+    policy_blockers = mutation_policy_blockers(target_file)
+    if policy_blockers:
+        return False, {
+            "error": "candidate_target_policy_blocked",
+            "blockers": policy_blockers,
+            "promotionAllowed": False,
+        }
+    target_file = _normalized_target(target_file)
     if not EVAL_GATE_ENABLED:
-        return True, {"skipped": "IMPROVE_AGENT_EVAL_GATE disabled"}
+        return False, {"error": "head_to_head_gate_disabled", "promotionAllowed": False}
 
-    eval_script = PROJECT_ROOT / "infrastructure" / "offline_eval.py"
-    venv_py = PROJECT_ROOT / ".venv-eval" / "Scripts" / "python.exe"
-    if not venv_py.exists():
-        venv_py = PROJECT_ROOT / ".venv-eval" / "bin" / "python"
-    if not eval_script.exists() or not venv_py.exists():
-        detail = {
+    root = (project_root or PROJECT_ROOT).resolve()
+    eval_script = root / "infrastructure" / "head_to_head_eval.py"
+    result_pointer_path = root / "eval_results" / "head_to_head" / "latest.json"
+    if not eval_script.exists():
+        return False, {
             "error": "eval_harness_unavailable",
-            "eval_script_exists": eval_script.exists(),
-            "venv_python_exists": venv_py.exists(),
             "eval_script": str(eval_script),
-            "venv_python": str(venv_py),
-            "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
+            "readiness_command": f"{sys.executable} infrastructure/head_to_head_eval.py --help",
         }
-        print("[AGENT] ERROR: offline eval harness/venv missing; eval gate FAIL-CLOSED "
-              "(run infrastructure/offline_eval_readiness.py --require-ready for provisioning proof).")
-        return False, detail
+    if EVAL_GATE_BATTLES < 60 or EVAL_GATE_BATTLES % 12:
+        return False, {
+            "error": "invalid_head_to_head_matrix_size",
+            "battles": EVAL_GATE_BATTLES,
+            "requirement": "a multiple of 12 and at least 60",
+        }
+    if (
+        EVAL_GATE_SEARCH_TIME_MS < MIN_EVAL_SEARCH_TIME_MS
+        or EVAL_GATE_PER_BATTLE_TIMEOUT < MIN_EVAL_PER_BATTLE_TIMEOUT_SECONDS
+    ):
+        return False, {
+            "error": "weakened_head_to_head_runtime_limits",
+            "searchTimeMs": EVAL_GATE_SEARCH_TIME_MS,
+            "minimumSearchTimeMs": MIN_EVAL_SEARCH_TIME_MS,
+            "perBattleTimeoutSeconds": EVAL_GATE_PER_BATTLE_TIMEOUT,
+            "minimumPerBattleTimeoutSeconds": MIN_EVAL_PER_BATTLE_TIMEOUT_SECONDS,
+            "promotionAllowed": False,
+        }
+    configured_teams = tuple(team.strip().replace("\\", "/") for team in EVAL_GATE_TEAMS.split(",") if team.strip())
+    required_teams = {
+        "gen9/ou/fat-team-1-stall",
+        "gen9/ou/fat-team-2-balance",
+        "gen9/ou/fat-team-3-dondozo",
+    }
+    if len(configured_teams) != 3 or set(configured_teams) != required_teams:
+        return False, {
+            "error": "invalid_head_to_head_team_matrix",
+            "configuredTeams": list(configured_teams),
+            "requiredTeams": sorted(required_teams),
+        }
 
     try:
-        probe = subprocess.run(
-            [str(venv_py), "--version"],
-            cwd=str(PROJECT_ROOT),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=15,
-        )
+        result_pointer_path.unlink(missing_ok=True)
+    except OSError as exc:
+        return False, {"error": "stale_head_to_head_result_cannot_be_removed", "detail": str(exc)}
+    try:
+        eval_python = resolve_fouler_python()
     except Exception as exc:
-        print(f"[AGENT] ERROR: eval venv python is unusable; eval gate FAIL-CLOSED: {exc}")
+        return False, {"error": "fouler_runtime_python_unavailable", "detail": str(exc)}
+    command = [
+        *eval_python,
+        str(eval_script),
+        "--candidate-file",
+        target_file,
+        "--battles",
+        str(EVAL_GATE_BATTLES),
+        "--teams",
+        EVAL_GATE_TEAMS,
+        "--showdown-port",
+        str(EVAL_GATE_SHOWDOWN_PORT),
+        "--search-time-ms",
+        str(EVAL_GATE_SEARCH_TIME_MS),
+        "--per-battle-timeout",
+        str(EVAL_GATE_PER_BATTLE_TIMEOUT),
+        "--require-promotion",
+    ]
+    evidence_sha = autoresearch_sha256 or (
+        _file_sha256(AUTORESEARCH_PATH) if AUTORESEARCH_PATH.is_file() else ""
+    )
+    if not re.fullmatch(r"[0-9a-f]{64}", evidence_sha):
+        return False, {"error": "autoresearch_digest_missing", "promotionAllowed": False}
+    command.extend(["--autoresearch-sha256", evidence_sha])
+    print(
+        "[AGENT] Running symmetric candidate-vs-frozen gate: "
+        f"{EVAL_GATE_BATTLES} battles across three teams and both challenge roles."
+    )
+    process = run_owned_command(
+        command,
+        timeout=EVAL_GATE_BATTLES * EVAL_GATE_PER_BATTLE_TIMEOUT + 1800,
+        cwd=root,
+    )
+    if process.get("timedOut"):
         return False, {
-            "error": "eval_python_unusable",
-            "venv_python": str(venv_py),
-            "detail": str(exc),
-            "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
+            "error": "head_to_head_eval_timed_out",
+            "timeout": process.get("timeout"),
+            "processTreeCleanup": process.get("processTreeCleanup"),
         }
-    if probe.returncode != 0:
-        print("[AGENT] ERROR: eval venv python failed --version; eval gate FAIL-CLOSED.")
+    if process.get("error"):
         return False, {
-            "error": "eval_python_unusable",
-            "venv_python": str(venv_py),
-            "returncode": probe.returncode,
-            "stderr": (probe.stderr or "")[-500:],
-            "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
+            "error": "head_to_head_eval_process_failed",
+            "detail": process.get("error"),
+            "processTreeCleanup": process.get("processTreeCleanup"),
+        }
+    if not result_pointer_path.exists():
+        return False, {
+            "error": "head_to_head_result_missing",
+            "returncode": process.get("returncode"),
+            "stdoutTail": str(process.get("stdout") or "")[-1000:],
+            "stderrTail": str(process.get("stderr") or "")[-1000:],
         }
 
-    if not FROZEN_BASELINE_PATH.exists():
-        bootstrap = (
-            f"{sys.executable} infrastructure/offline_eval.py --battles {EVAL_GATE_BATTLES} "
-            f"--team {EVAL_GATE_TEAM} --baseline {EVAL_GATE_BASELINE} --label frozen"
-        )
-        print("[AGENT] ERROR: missing eval_results/offline/frozen.json; eval gate FAIL-CLOSED "
-              "until the current deployed engine has a frozen reference run.")
+    result, proof_blockers = load_latest_proof(result_pointer_path, project_root=root)
+    if proof_blockers:
         return False, {
-            "error": "missing_frozen_baseline",
-            "path": str(FROZEN_BASELINE_PATH),
-            "bootstrap_command": bootstrap,
-            "readiness_command": f"{sys.executable} infrastructure/offline_eval_readiness.py --require-ready",
+            **result,
+            "error": "head_to_head_result_failed_independent_validation",
+            "independentValidationBlockers": proof_blockers,
+            "promotionAllowed": False,
         }
-
-    # Run the candidate arm.
-    print(f"[AGENT] Running offline eval gate: {EVAL_GATE_BATTLES} battles vs "
-          f"{EVAL_GATE_BASELINE} on {EVAL_GATE_TEAM} ...")
-    cand_path = PROJECT_ROOT / "eval_results" / "offline" / "candidate.json"
-    cand_path.unlink(missing_ok=True)
+    current_head = _git_head(root)
     try:
-        proc = subprocess.run(
-            [
-                str(venv_py), str(eval_script),
-                "--battles", str(EVAL_GATE_BATTLES),
-                "--team", EVAL_GATE_TEAM,
-                "--baseline", EVAL_GATE_BASELINE,
-                "--label", "candidate",
-            ],
-            cwd=str(PROJECT_ROOT),
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
-            timeout=EVAL_GATE_BATTLES * 220 + 300,
-        )
-    except subprocess.TimeoutExpired as exc:
-        print("[AGENT] Eval gate timed out; treating as FAIL.")
-        return False, {"error": "candidate eval timed out", "timeout": exc.timeout}
-    print(proc.stdout[-1500:] if proc.stdout else "(no eval stdout)")
-    if proc.returncode != 0:
-        print("[AGENT] Eval gate command failed; treating as FAIL.")
-        if proc.stderr:
-            print(proc.stderr[-1500:])
-        return False, {
-            "error": "candidate eval failed",
-            "returncode": proc.returncode,
-            "stderr": (proc.stderr or "")[-1000:],
-        }
-    if not cand_path.exists():
-        print("[AGENT] Eval gate produced no candidate result; treating as FAIL.")
-        return False, {"error": "no candidate result"}
-
-    cand = json.loads(cand_path.read_text(encoding="utf-8"))
-    # If we have a frozen reference, do the two-proportion comparison.
-    if FROZEN_BASELINE_PATH.exists():
-        cmp_proc = subprocess.run(
-            [str(venv_py), str(eval_script), "--compare", "frozen", "candidate"],
-            cwd=str(PROJECT_ROOT),
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        patch = subprocess.run(
+            ["git", "diff", "--binary", "--", target_file],
+            cwd=str(root),
+            capture_output=True,
+            check=True,
             timeout=60,
-        )
-        print(cmp_proc.stdout)
-        if cmp_proc.returncode != 0:
-            print("[AGENT] Eval comparison failed; treating as FAIL.")
-            return False, {
-                "error": "frozen comparison failed",
-                "returncode": cmp_proc.returncode,
-                "stderr": (cmp_proc.stderr or "")[-1000:],
-            }
-        verdict_path = PROJECT_ROOT / "eval_results" / "offline" / "compare-frozen-vs-candidate.json"
-        if verdict_path.exists():
-            verdict = json.loads(verdict_path.read_text(encoding="utf-8"))
-            return bool(verdict.get("ACCEPT", False)), verdict
-        return False, {"error": "frozen comparison produced no verdict"}
+        ).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        return False, {"error": "candidate_patch_hash_failed", "detail": str(exc)}
+    if not patch:
+        return False, {"error": "candidate_patch_empty", "promotionAllowed": False}
+    patch_sha = hashlib.sha256(patch).hexdigest()
+    exact = (
+        result.get("baselineCommit") == current_head
+        and result.get("candidatePatchSha256") == patch_sha
+        and str(result.get("candidateFile") or "").replace("\\", "/") == target_file.replace("\\", "/")
+    )
+    if not exact:
+        return False, {
+            "error": "head_to_head_provenance_mismatch",
+            "expectedBaselineCommit": current_head,
+            "reportedBaselineCommit": result.get("baselineCommit"),
+            "expectedCandidatePatchSha256": patch_sha,
+            "reportedCandidatePatchSha256": result.get("candidatePatchSha256"),
+            "expectedCandidateFile": target_file.replace("\\", "/"),
+            "reportedCandidateFile": result.get("candidateFile"),
+        }
+    accepted = process.get("returncode") == 0 and not proof_blockers
+    return accepted, result
 
-    return False, {"error": "unreachable_missing_frozen_baseline"}
 
-
-def syntax_check(target_file: str) -> bool:
+def syntax_check(target_file: str, *, project_root: Path | None = None) -> bool:
     """AST parse check on the modified file."""
     import ast
     try:
-        full_path = PROJECT_ROOT / target_file
+        policy_blockers = mutation_policy_blockers(target_file)
+        if policy_blockers:
+            print(f"[AGENT] Syntax gate target blocked: {'; '.join(policy_blockers)}")
+            return False
+        target_file = _normalized_target(target_file)
+        full_path = (project_root or PROJECT_ROOT) / target_file
         ast.parse(full_path.read_text(encoding="utf-8"))
         return True
     except SyntaxError as e:
@@ -1113,62 +1845,246 @@ def syntax_check(target_file: str) -> bool:
         return False
 
 
-def _git_head() -> str:
+def _git_head(root: Path | None = None) -> str:
     try:
         return subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=str(PROJECT_ROOT), capture_output=True, text=True,
+            cwd=str(root or PROJECT_ROOT), capture_output=True, text=True,
         ).stdout.strip()
     except Exception:
         return "unknown"
+
+
+def committed_candidate_provenance(
+    *,
+    target_file: str,
+    pre_commit: str,
+    post_commit: str,
+    promotion_proof: dict,
+) -> tuple[bool, dict]:
+    """Verify that Git committed exactly the candidate bytes that won the gate."""
+    try:
+        normalized_target = _normalized_target(target_file)
+    except ValueError as exc:
+        return False, {"ok": False, "blockers": [str(exc)], "candidateFile": str(target_file)}
+    blockers: list[str] = mutation_policy_blockers(normalized_target)
+    if promotion_proof.get("baselineCommit") != pre_commit:
+        blockers.append("promotion baseline does not match pre-commit HEAD")
+    if str(promotion_proof.get("candidateFile") or "").replace("\\", "/") != normalized_target:
+        blockers.append("promotion candidate file does not match commit target")
+
+    parent = subprocess.run(
+        ["git", "rev-parse", f"{post_commit}^"],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+        check=False,
+    )
+    if parent.returncode or parent.stdout.strip() != pre_commit:
+        blockers.append("candidate commit is not a single child of the proven baseline")
+
+    changed = subprocess.run(
+        ["git", "diff", "--name-only", pre_commit, post_commit],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+        check=False,
+    )
+    changed_files = [line.replace("\\", "/") for line in changed.stdout.splitlines() if line]
+    if changed.returncode or changed_files != [normalized_target]:
+        blockers.append("candidate commit does not change exactly the proven target file")
+
+    patch = subprocess.run(
+        ["git", "diff", "--binary", pre_commit, post_commit, "--", normalized_target],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+    actual_patch_sha = hashlib.sha256(patch.stdout).hexdigest() if patch.returncode == 0 else ""
+    expected_patch_sha = str(promotion_proof.get("candidatePatchSha256") or "")
+    if patch.returncode or actual_patch_sha != expected_patch_sha:
+        blockers.append("candidate commit patch SHA-256 does not match the promotion proof")
+
+    tracked_status = subprocess.run(
+        ["git", "status", "--porcelain=v1", "--untracked-files=no"],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+        check=False,
+    )
+    if tracked_status.returncode or tracked_status.stdout.strip():
+        blockers.append("tracked checkout is dirty after candidate commit")
+    engine_status = subprocess.run(
+        ["git", "status", "--porcelain=v1", "--untracked-files=all", "--", "fp"],
+        cwd=str(PROJECT_ROOT),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+        check=False,
+    )
+    if engine_status.returncode or engine_status.stdout.strip():
+        blockers.append("engine checkout has uncommitted or untracked files after candidate commit")
+    return not blockers, {
+        "ok": not blockers,
+        "blockers": blockers,
+        "preCommit": pre_commit,
+        "postCommit": post_commit,
+        "candidateFile": normalized_target,
+        "changedFiles": changed_files,
+        "expectedCandidatePatchSha256": expected_patch_sha,
+        "actualCandidatePatchSha256": actual_patch_sha or None,
+    }
 
 
 def commit_and_push(
     target_file: str,
     issue_title: str,
     *,
+    candidate_root: Path | None = None,
+    source_snapshot: dict[str, Any] | None = None,
+    transaction_head: str | None = None,
     push_enabled: bool = False,
     push_remote: str | None = None,
     push_branch: str | None = None,
+    promotion_proof: dict | None = None,
 ) -> bool:
-    """Commit the accepted change and optionally push to an explicit target."""
+    """Commit from a detached candidate tree without writing the control checkout."""
+
+    candidate_ref: str | None = None
+    post_commit: str | None = None
     try:
+        policy_blockers = mutation_policy_blockers(target_file)
+        if policy_blockers:
+            print(f"[AGENT] Git commit blocked by mutation policy: {'; '.join(policy_blockers)}")
+            return False
+        target_file = _normalized_target(target_file)
         push_target = explicit_push_target(push_remote, push_branch) if push_enabled else None
-        pre_commit = _git_head()
-        subprocess.run(
-            ["git", "add", target_file],
-            cwd=str(PROJECT_ROOT),
-            check=True,
+        if candidate_root is None or source_snapshot is None or not transaction_head:
+            print("[AGENT] Git commit blocked: private candidate workspace provenance is missing.")
+            return False
+        candidate_root = candidate_root.resolve()
+        pre_commit = _git_head(candidate_root)
+        if pre_commit != transaction_head:
+            print("[AGENT] Git commit blocked: private candidate parent differs from the source transaction.")
+            return False
+        current_source = capture_target_snapshot(target_file)
+        if (
+            _git_head() != transaction_head
+            or current_source["sourceBytes"] != source_snapshot.get("sourceBytes")
+            or current_source["sourceSha256"] != source_snapshot.get("sourceSha256")
+        ):
+            print("[AGENT] Git commit blocked: control source changed during private candidate evaluation.")
+            return False
+        if not isinstance(promotion_proof, dict):
+            print("[AGENT] Git commit blocked: candidate promotion proof is missing.")
+            return False
+        artifact_context = validated_promotion_artifact_context(
+            promotion_proof,
+            result_pointer_path=candidate_root / "eval_results" / "head_to_head" / "latest.json",
+            project_root=candidate_root,
         )
+        lineage = promotion_proof.get("lineage") or {}
         msg = (
             f"auto: {issue_title[:60]}\n\n"
             f"Automated fix from improve_agent.py based on autoresearch report.\n"
             f"Target: {target_file}\n"
             f"Timestamp: {datetime.now().isoformat()}\n\n"
+            f"Fouler-Change-Id: {lineage.get('changeId')}\n"
+            f"Fouler-H2H-Run-Id: {artifact_context.get('runId')}\n"
+            f"Fouler-H2H-Result-SHA256: {artifact_context.get('resultSha256')}\n"
+            f"Fouler-Candidate-Patch-SHA256: {promotion_proof.get('candidatePatchSha256')}\n"
+            f"Fouler-Autoresearch-SHA256: {artifact_context.get('autoresearchSha256')}\n\n"
             f"Co-Authored-By: Claude Sonnet 4 <noreply@anthropic.com>"
         )
+        # The full suite and head-to-head gate already ran against these exact
+        # bytes. Commit hooks are bypassed so they cannot rewrite the candidate
+        # after proof; the commit diff is hashed again immediately below.
         subprocess.run(
-            ["git", "commit", "-m", msg],
-            cwd=str(PROJECT_ROOT),
+            ["git", "commit", "--no-verify", "--only", "-m", msg, "--", target_file],
+            cwd=str(candidate_root),
             check=True,
         )
-        post_commit = _git_head()
-        # Record the deploy BEFORE the push: the diff is already applied to live
-        # files, so the change is in play regardless of whether the push succeeds.
-        record_deploy(pre_commit, post_commit)
+        post_commit = _git_head(candidate_root)
+        provenance_ok, provenance = committed_candidate_provenance(
+            target_file=target_file,
+            pre_commit=pre_commit,
+            post_commit=post_commit,
+            promotion_proof=promotion_proof,
+        )
+        if not provenance_ok:
+            print(f"[AGENT] Committed candidate failed exact-proof verification: {json.dumps(provenance)}")
+            return False
+        if not promotion_artifact_unchanged(artifact_context):
+            print("[AGENT] Canonical H2H artifact changed during commit; candidate is rejected.")
+            return False
+        change_id = str(lineage.get("changeId") or "")
+        if not re.fullmatch(r"[0-9a-f]{64}", change_id):
+            print("[AGENT] Candidate change ID is malformed; local candidate ref was not created.")
+            return False
+        candidate_ref = f"refs/heads/auto-improve/{change_id}"
+        create_ref = subprocess.run(
+            ["git", "update-ref", candidate_ref, post_commit, "0" * 40],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        if create_ref.returncode:
+            print(f"[AGENT] Candidate ref creation failed closed: {(create_ref.stderr or create_ref.stdout).strip()}")
+            candidate_ref = None
+            return False
+        try:
+            receipt = record_accepted_commit(
+                issue_title=issue_title,
+                target_file=target_file,
+                pre_commit=pre_commit,
+                post_commit=post_commit,
+                promotion_proof=promotion_proof,
+                artifact_context=artifact_context,
+                commit_provenance=provenance,
+            )
+        except (OSError, subprocess.SubprocessError, ValueError, TypeError) as exc:
+            print(f"[AGENT] Accepted-commit receipt failed: {type(exc).__name__}: {exc}")
+            subprocess.run(
+                ["git", "update-ref", "-d", candidate_ref, post_commit],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                check=False,
+            )
+            candidate_ref = None
+            return False
+        print(
+            f"[AGENT] Recorded accepted commit receipt "
+            f"{receipt['receiptSha256'][:12]} for {post_commit[:12]}; runtime is not deployed."
+        )
         if push_target is None:
             print(
-                f"[AGENT] Committed locally. Git push disabled; set {AUTO_PUSH_SENTINEL}=1 "
+                f"[AGENT] Recorded local candidate {candidate_ref}. Git push disabled; set {AUTO_PUSH_SENTINEL}=1 "
                 f"or pass --enable-git-push with an explicit push target."
             )
             return True
         remote, branch = push_target
         subprocess.run(
-            ["git", "push", remote, f"HEAD:{branch}"],
+            ["git", "push", remote, f"{post_commit}:{branch}"],
             cwd=str(PROJECT_ROOT),
             check=True,
         )
-        print(f"[AGENT] Committed and pushed successfully to {remote} HEAD:{branch}.")
+        print(f"[AGENT] Committed and pushed candidate {post_commit} to {remote} {branch}.")
         return True
     except ValueError as e:
         print(f"[AGENT] Git push blocked: {e}")
@@ -1186,7 +2102,12 @@ def main() -> int:
         action="store_true",
         help=f"Allow this agent to mutate files and commit. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
     )
-    parser.add_argument("--max-cycles", type=int, default=0, help="Explicit recursive-improvement cycle bound covered by the runtime lease.")
+    parser.add_argument(
+        "--max-cycles",
+        type=int,
+        default=1,
+        help="Single recursive-improvement cycle covered by one single-use DEKU authorization.",
+    )
     parser.add_argument(
         "--runtime-lease",
         help=f"Path to proof-window runtime lease JSON. Default: {RUNTIME_LEASE_PATH_ENV} or devstream/truth/runtime-lease.json.",
@@ -1219,7 +2140,18 @@ def main() -> int:
             returncode=2,
         )
         return 2
+    lease_guard: dict[str, Any] = {}
+    control_guard: dict[str, Any] = {}
+    lease: dict[str, Any] = {}
     if not args.dry_run:
+        if args.max_cycles != 1:
+            print("[AGENT] BLOCKED: each signed improve authorization is single-use and covers exactly one cycle.")
+            append_improve_ledger(
+                "blocked",
+                detail={"reason": "improve_authorization_not_single_cycle", "requestedMaxCycles": args.max_cycles},
+                returncode=2,
+            )
+            return 2
         lease_guard = validate_runtime_lease(
             purpose="improve-agent",
             lease_path=args.runtime_lease,
@@ -1232,10 +2164,13 @@ def main() -> int:
                 or os.getenv("PS_USERNAME")
                 or None
             ),
+            requested_replay_behavior="never",
             require_run_count=True,
             require_max_cycles=True,
             require_max_concurrent_battles=True,
             require_replay_behavior=True,
+            require_deployment_receipt=True,
+            verify_deployment_checkout=True,
         )
         if not lease_guard.get("ok"):
             print("[AGENT] BLOCKED: runtime lease/proof window is required for recursive improvement.")
@@ -1247,6 +2182,23 @@ def main() -> int:
                 returncode=2,
             )
             return 2
+
+        control_guard = improvement_control_checkout_guard(
+            lease_guard,
+            requested_max_cycles=args.max_cycles,
+        )
+        if not control_guard["ready"]:
+            print("[AGENT] BLOCKED: recursive improvement must run from the mutable DEKU control checkout.")
+            for blocker in control_guard["blockers"]:
+                print(f"[AGENT] BLOCKER: {blocker}")
+            append_improve_ledger(
+                "blocked",
+                detail={"reason": "deku_control_checkout_invalid", "controlGuard": control_guard},
+                returncode=2,
+            )
+            return 2
+
+        lease = lease_guard.get("lease") if isinstance(lease_guard.get("lease"), dict) else {}
 
     # 1. Load autoresearch report
     report = load_autoresearch()
@@ -1273,22 +2225,32 @@ def main() -> int:
                 returncode=0,
             )
         return 0
+    autoresearch_sha256 = _file_sha256(AUTORESEARCH_PATH)
 
     # Deploy-spacing gate: don't ship another change until the previous one has had
     # enough live games to be judged by elo_watchdog. Prevents unvalidated changes
     # from stacking (the root of "edits constantly but ELO never climbs").
-    min_games = min_games_between_deploys()
-    since = games_since_last_deploy()
-    if since < min_games:
+    spacing = deployment_spacing_status()
+    min_games = int(spacing["minimumGames"])
+    since = int(spacing["gamesSinceActivation"])
+    if not spacing["ready"]:
         print(
-            f"[AGENT] Deferring: only {since}/{min_games} games since last deploy. "
-            f"Letting the previous change be validated (elo_watchdog) before shipping another."
+            f"[AGENT] Deferring: deployment transaction is not judged and ready "
+            f"({since}/{min_games} exact-identity games)."
         )
+        for blocker in spacing["blockers"]:
+            print(f"[AGENT] BLOCKER: {blocker}")
         if not args.dry_run:
             append_improve_ledger(
                 "no_change",
                 issue=(report.get("top_issue") or {}).get("title"),
-                detail={"reason": "deploy_spacing", "games_since_last_deploy": since, "min_games_between_deploys": min_games},
+                detail={
+                    "reason": "deployment_not_judged",
+                    "games_since_activation": since,
+                    "min_games_between_deploys": min_games,
+                    "judgment_status": spacing.get("judgmentStatus"),
+                    "blockers": spacing["blockers"],
+                },
                 returncode=0,
             )
         return 0
@@ -1302,7 +2264,21 @@ def main() -> int:
     # 2. Pick target file and load code
     target_file = pick_target_file(report)
     print(f"[AGENT] Target file: {target_file}")
-    code = read_code_file(target_file, report)
+    try:
+        source_snapshot = capture_target_snapshot(target_file)
+    except (OSError, TypeError, ValueError) as exc:
+        print(f"[AGENT] BLOCKED: candidate source snapshot failed: {type(exc).__name__}: {exc}")
+        if not args.dry_run:
+            append_improve_ledger(
+                "blocked",
+                issue=top.get("title"),
+                target_file=target_file,
+                detail={"reason": "candidate_snapshot_failed", "detail": str(exc)},
+                returncode=2,
+            )
+        return 2
+    prompt_transaction_head = _git_head()
+    code = _prompt_code_view(target_file, str(source_snapshot["sourceText"]), report)
 
     # 3. Build prompt and call Claude
     prompt = build_prompt(report, code, target_file)
@@ -1313,111 +2289,216 @@ def main() -> int:
         print(f"[AGENT] Prompt preview (first 500 chars):\n{prompt[:500]}")
         return 0
 
-    response = call_claude(prompt)
-    print(f"[AGENT] Got response ({len(response)} chars)")
-
-    # 4. Extract and validate diff
-    diff_text = extract_diff(response)
-    if not diff_text:
-        print("[AGENT] No valid diff in response. Skipping.")
-        print(f"[AGENT] Response preview: {response[:300]}")
-        append_improve_ledger(
-            "no_change",
-            issue=top.get("title"),
-            target_file=target_file,
-            detail={"reason": "no_valid_diff", "response_length": len(response)},
-            returncode=0,
-        )
-        return 0
-
-    print(f"[AGENT] Diff extracted ({len(diff_text.splitlines())} lines)")
-
-    # 5. Apply diff
-    original_target_text = (PROJECT_ROOT / target_file).read_text(encoding="utf-8")
-    if not apply_diff(diff_text, target_file):
-        print("[AGENT] Diff failed to apply. Skipping.")
-        append_improve_ledger(
-            "rejected",
-            issue=top.get("title"),
-            target_file=target_file,
-            detail={"reason": "diff_apply_failed"},
-            returncode=1,
-        )
-        return 1
-
-    # 6. Syntax check
-    if not syntax_check(target_file):
-        print("[AGENT] Syntax check failed. Reverting.")
-        restore_file_snapshot(target_file, original_target_text)
-        append_improve_ledger(
-            "rejected",
-            issue=top.get("title"),
-            target_file=target_file,
-            detail={"reason": "syntax_check_failed"},
-            returncode=1,
-        )
-        return 1
-
-    # 7. Run tests — now only a CHEAP PRE-FILTER, not the acceptance gate.
-    if not run_tests():
-        print("[AGENT] Tests failed (pre-filter). Reverting.")
-        restore_file_snapshot(target_file, original_target_text)
-        append_improve_ledger(
-            "rejected",
-            issue=top.get("title"),
-            target_file=target_file,
-            detail={"reason": "tests_failed"},
-            returncode=1,
-        )
-        return 1
-
-    # 8. REAL acceptance gate (P1): offline win-rate eval vs frozen baseline.
-    accepted, detail = offline_eval_gate()
-    print(f"[AGENT] Eval gate verdict: ACCEPT={accepted} :: {json.dumps(detail)[:600]}")
-    if not accepted:
-        print("[AGENT] Eval gate REJECTED the change (no significant win-rate gain "
-              "/ regression). Reverting.")
-        restore_file_snapshot(target_file, original_target_text)
-        append_improve_ledger(
-            "rejected",
-            issue=top.get("title"),
-            target_file=target_file,
-            detail={"reason": "offline_eval_rejected", "eval_detail": detail},
-            returncode=1,
-        )
-        return 1
-
-    # 9. Commit and push
-    push_requested = auto_push_enabled(args.enable_git_push)
-    if commit_and_push(
-        target_file,
-        top["title"],
-        push_enabled=push_requested,
-        push_remote=args.push_remote,
-        push_branch=args.push_branch,
-    ):
-        if push_requested:
-            print(f"[AGENT] Successfully committed and pushed fix for: {top['title']}")
-        else:
-            print(f"[AGENT] Successfully committed local fix for: {top['title']}")
-        append_improve_ledger(
-            "accepted",
-            issue=top.get("title"),
-            target_file=target_file,
-            detail={"reason": "offline_eval_accepted", "eval_detail": detail, "push_requested": push_requested},
-            returncode=0,
-        )
-        return 0
-    else:
-        print("[AGENT] Commit/push failed. Change is staged but not pushed.")
+    checkout_guard = improvement_checkout_guard()
+    if not checkout_guard["ready"]:
+        print("[AGENT] BLOCKED: candidate checkout is not clean and exclusively available.")
+        for blocker in checkout_guard["blockers"]:
+            print(f"[AGENT] BLOCKER: {blocker}")
         append_improve_ledger(
             "blocked",
             issue=top.get("title"),
             target_file=target_file,
-            detail={"reason": "commit_or_push_failed", "push_requested": push_requested},
-            returncode=1,
+            detail={"reason": "candidate_checkout_guard", "guard": checkout_guard},
+            returncode=2,
         )
-        return 1
+        return 2
+
+    lock_token, lock_detail = acquire_improve_lock(target_file)
+    if not lock_token:
+        print(f"[AGENT] BLOCKED: {json.dumps(lock_detail)}")
+        append_improve_ledger(
+            "blocked",
+            issue=top.get("title"),
+            target_file=target_file,
+            detail={"reason": "candidate_lock_failed", "lock": lock_detail},
+            returncode=2,
+        )
+        return 2
+
+    transaction_head = prompt_transaction_head
+    outcome_status = "blocked"
+    outcome_detail: dict = {"reason": "candidate_transaction_not_completed"}
+    outcome_returncode = 2
+
+    def consume_once() -> dict[str, Any]:
+        try:
+            ledger_authority = load_ledger_authority(DEFAULT_AUTHORITY_PATH)
+            return consume_improve_authorization(
+                ledger_path=ledger_authority.ledger_path,
+                ledger_id=ledger_authority.ledger_id,
+                authority=ledger_authority,
+                authorization_digest=str(lease.get("authorizationSha256") or ""),
+                lease_id=str(lease.get("id") or ""),
+                source_commit=str(lease.get("sourceCommit") or ""),
+                source_tree=str(lease.get("sourceTree") or ""),
+                change_id=str(lease.get("changeId") or ""),
+                deployment_id=str(lease.get("deploymentId") or ""),
+                session_id=str(lease.get("sessionId") or ""),
+                account=str(lease.get("account") or ""),
+                control_checkout=str(control_guard["controlCheckout"]),
+                control_head=str(control_guard["controlHead"] or ""),
+                control_tree=str(control_guard["controlTree"] or ""),
+                max_cycles=args.max_cycles,
+            )
+        except Exception as exc:
+            return {
+                "consumed": False,
+                "blocker": f"external DEKU improve authorization store failed: {type(exc).__name__}: {exc}",
+            }
+
+    try:
+        generation = generate_authorized_response(
+            prompt=prompt,
+            snapshot=source_snapshot,
+            transaction_head=transaction_head,
+            autoresearch_sha256=autoresearch_sha256,
+            consume_authorization=consume_once,
+        )
+        if not generation.get("generated"):
+            generation_blockers = [str(item) for item in generation.get("blockers") or []]
+            for blocker in generation_blockers:
+                print(f"[AGENT] BLOCKER: {blocker}")
+            if generation.get("authorizationConsumed"):
+                write_improve_recovery_block(
+                    "candidate inputs changed after signed authorization was consumed",
+                    {"targetFile": target_file, "transactionHead": transaction_head, "blockers": generation_blockers},
+                )
+            outcome_detail = {
+                "reason": (
+                    "candidate_source_precondition_failed"
+                    if not generation.get("consumption")
+                    else "improve_authorization_or_post_consumption_precondition_failed"
+                ),
+                "blockers": generation_blockers,
+                "authorizationConsumed": bool(generation.get("authorizationConsumed")),
+            }
+        else:
+            response = str(generation.get("response") or "")
+            print(f"[AGENT] Got response ({len(response)} chars)")
+            diff_text = extract_diff(response)
+            if not diff_text:
+                print("[AGENT] No valid diff in response. Skipping.")
+                print(f"[AGENT] Response preview: {response[:300]}")
+                outcome_status = "no_change"
+                outcome_detail = {"reason": "no_valid_diff", "response_length": len(response)}
+                outcome_returncode = 0
+            else:
+                post_generation_blockers = source_precondition_blockers(
+                    source_snapshot,
+                    transaction_head=transaction_head,
+                    autoresearch_sha256=autoresearch_sha256,
+                )
+                if post_generation_blockers:
+                    write_improve_recovery_block(
+                        "candidate checkout changed while the coding response was generated",
+                        {
+                            "targetFile": target_file,
+                            "transactionHead": transaction_head,
+                            "blockers": post_generation_blockers,
+                        },
+                    )
+                    outcome_detail = {
+                        "reason": "candidate_checkout_changed_during_generation",
+                        "blockers": post_generation_blockers,
+                    }
+                else:
+                    print(f"[AGENT] Diff extracted ({len(diff_text.splitlines())} lines)")
+                    with prepared_candidate_workspace(
+                        diff_text,
+                        target_file,
+                        source_snapshot=source_snapshot,
+                        transaction_head=transaction_head,
+                    ) as candidate:
+                        candidate_root = Path(candidate["root"])
+                        if not syntax_check(target_file, project_root=candidate_root):
+                            print("[AGENT] Syntax check failed in the private candidate workspace.")
+                            outcome_status = "rejected"
+                            outcome_detail = {"reason": "syntax_check_failed"}
+                            outcome_returncode = 1
+                        elif not run_tests(project_root=candidate_root):
+                            print("[AGENT] Tests failed or timed out in the private candidate workspace.")
+                            outcome_status = "rejected"
+                            outcome_detail = {"reason": "tests_failed_or_timed_out"}
+                            outcome_returncode = 1
+                        else:
+                            try:
+                                accepted, eval_detail = offline_eval_gate(
+                                    target_file,
+                                    autoresearch_sha256=autoresearch_sha256,
+                                    project_root=candidate_root,
+                                )
+                            except Exception as exc:
+                                accepted = False
+                                eval_detail = {
+                                    "error": "head_to_head_gate_exception",
+                                    "detail": f"{type(exc).__name__}: {exc}",
+                                }
+                            print(
+                                f"[AGENT] Eval gate verdict: ACCEPT={accepted} :: "
+                                f"{json.dumps(eval_detail)[:600]}"
+                            )
+                            if not accepted:
+                                print("[AGENT] Symmetric head-to-head gate rejected the candidate.")
+                                outcome_status = "rejected"
+                                outcome_detail = {
+                                    "reason": "head_to_head_eval_rejected",
+                                    "eval_detail": eval_detail,
+                                }
+                                outcome_returncode = 1
+                            else:
+                                push_requested = auto_push_enabled(args.enable_git_push)
+                                committed = commit_and_push(
+                                    target_file,
+                                    top["title"],
+                                    candidate_root=candidate_root,
+                                    source_snapshot=source_snapshot,
+                                    transaction_head=transaction_head,
+                                    push_enabled=push_requested,
+                                    push_remote=args.push_remote,
+                                    push_branch=args.push_branch,
+                                    promotion_proof=eval_detail,
+                                )
+                                if committed:
+                                    outcome_status = "accepted"
+                                    outcome_detail = {
+                                        "reason": "head_to_head_eval_accepted",
+                                        "eval_detail": eval_detail,
+                                        "push_requested": push_requested,
+                                    }
+                                    outcome_returncode = 0
+                                    destination = "committed and pushed" if push_requested else "recorded locally"
+                                    print(f"[AGENT] Successfully {destination} fix for: {top['title']}")
+                                else:
+                                    print("[AGENT] Candidate commit or requested push failed; activation is blocked.")
+                                    outcome_status = "blocked"
+                                    outcome_detail = {
+                                        "reason": "commit_or_push_failed",
+                                        "push_requested": push_requested,
+                                        "controlHead": _git_head(),
+                                    }
+                                    outcome_returncode = 2
+    except Exception as exc:
+        print(f"[AGENT] Candidate transaction failed closed: {type(exc).__name__}: {exc}")
+        outcome_status = "blocked"
+        outcome_detail = {
+            "reason": "candidate_transaction_exception",
+            "detail": f"{type(exc).__name__}: {exc}",
+        }
+        outcome_returncode = 2
+    finally:
+        if not release_improve_lock(lock_token):
+            outcome_status = "blocked"
+            outcome_detail = {**outcome_detail, "lockRelease": "failed"}
+            outcome_returncode = 2
+
+    append_improve_ledger(
+        outcome_status,
+        issue=top.get("title"),
+        target_file=target_file,
+        detail=outcome_detail,
+        returncode=outcome_returncode,
+    )
+    return outcome_returncode
 
 
 if __name__ == "__main__":

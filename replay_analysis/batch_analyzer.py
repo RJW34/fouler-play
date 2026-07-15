@@ -22,6 +22,7 @@ from replay_analysis.loss_learning import aggregate_loss_lessons, build_loss_art
 from replay_analysis.account_identity import resolve_bot_username
 from fp.theknower_competitive import build_competitive_meta_context
 from infrastructure.gen9_validation import Gen9Validator
+from infrastructure.runtime_paths import resolve_runtime_paths
 
 # Analysis source contract:
 # - Use a strong external reasoning agent via OpenClaw for Pokemon-competent analysis.
@@ -29,9 +30,12 @@ from infrastructure.gen9_validation import Gen9Validator
 # - Do NOT use qwen or other lightweight local LLMs for Pokemon analysis; they hallucinate mechanics.
 ANALYSIS_PROVIDER = "openclaw"
 ANALYSIS_MODEL = "anthropic/claude-opus-4-6"
-REPORTS_DIR = PROJECT_ROOT / "replay_analysis" / "reports"
-BATTLE_STATS_FILE = PROJECT_ROOT / "battle_stats.json"
-REPLAY_ANALYSIS_DIR = PROJECT_ROOT / "replay_analysis"
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
+RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
+RUNTIME_LOG_ROOT = _RUNTIME_PATHS.log_root
+REPORTS_DIR = RUNTIME_STATE_ROOT / "replay_analysis" / "reports"
+BATTLE_STATS_FILE = _RUNTIME_PATHS.battle_stats_path
+REPLAY_ANALYSIS_DIR = RUNTIME_STATE_ROOT / "replay_analysis"
 
 
 class BatchAnalyzer:
@@ -89,7 +93,7 @@ class BatchAnalyzer:
             replay_data = None
             
             # PRIORITY 1: Check logs directory for battle log file
-            logs_dir = PROJECT_ROOT / "logs"
+            logs_dir = RUNTIME_LOG_ROOT
             # Battle IDs in logs have format: battle-gen9ou-2539943964_OpponentName.log
             log_files = list(logs_dir.glob(f"{replay_id}_*.log")) + list(logs_dir.glob(f"{replay_id}.log"))
             

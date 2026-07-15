@@ -13,10 +13,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from streaming import state_store
+from streaming import state_store  # noqa: E402
 
 
-SESSION_PID_FILE = ROOT / ".pids" / "devstream_battle_session.pid"
+RUNTIME_STATE_ROOT = Path(
+    os.getenv("FOULER_RUNTIME_STATE_ROOT", str(ROOT))
+).expanduser().absolute()
+SESSION_PID_FILE = RUNTIME_STATE_ROOT / "pids" / "devstream_battle_session.pid"
 
 
 def active_battle_count() -> int:

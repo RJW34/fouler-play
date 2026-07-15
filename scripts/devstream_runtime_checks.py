@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,11 +18,32 @@ CREDENTIAL_FAILURE_MARKERS = (
     ("loginerror", "showdown_login_error"),
 )
 
-RUNTIME_LOGS = (
-    "logs/devstream_battle_session.log",
-    "logs/init.log",
+RUNTIME_LOG_NAMES = (
+    "devstream_battle_session.log",
+    "init.log",
 )
-SUCCESS_PROOF = "devstream/truth/showdown-login-proof.json"
+SUCCESS_PROOF_NAME = "showdown-login-proof.json"
+
+
+def _uses_runtime_environment(root: Path) -> bool:
+    try:
+        return root.resolve() == ROOT.resolve()
+    except OSError:
+        return root.absolute() == ROOT.absolute()
+
+
+def _state_root(root: Path) -> Path:
+    configured = str(os.getenv("FOULER_RUNTIME_STATE_ROOT") or "").strip()
+    if configured and _uses_runtime_environment(root):
+        return Path(configured).expanduser().absolute()
+    return root
+
+
+def _log_root(root: Path) -> Path:
+    configured = str(os.getenv("FOULER_RUNTIME_LOG_ROOT") or "").strip()
+    if configured and _uses_runtime_environment(root):
+        return Path(configured).expanduser().absolute()
+    return root / "logs"
 
 
 def iso_from_epoch(value: float | None) -> str | None:
@@ -62,20 +84,20 @@ def _parse_iso(value: Any) -> datetime | None:
 
 
 def latest_successful_login_proof(root: Path = ROOT) -> dict[str, Any]:
-    path = root / SUCCESS_PROOF
+    path = _state_root(root) / "truth" / SUCCESS_PROOF_NAME
     if not path.exists():
-        return {"found": False, "path": SUCCESS_PROOF}
+        return {"found": False, "path": str(path)}
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
-        return {"found": False, "path": SUCCESS_PROOF, "error": str(exc)}
+        return {"found": False, "path": str(path), "error": str(exc)}
     if not isinstance(payload, dict):
-        return {"found": False, "path": SUCCESS_PROOF, "error": "proof is not a JSON object"}
+        return {"found": False, "path": str(path), "error": "proof is not a JSON object"}
     checked_at = _parse_iso(payload.get("checkedAt"))
     ok = bool(payload.get("ok") and payload.get("loginOk") and not payload.get("secretValuesPrinted"))
     return {
         "found": ok,
-        "path": SUCCESS_PROOF,
+        "path": str(path),
         "checkedAt": checked_at.isoformat() if checked_at else None,
         "mtime": iso_from_epoch(path.stat().st_mtime),
         "ok": ok,
@@ -92,8 +114,9 @@ def recent_showdown_credential_failure(
     scanned: list[dict[str, Any]] = []
     success_proof = latest_successful_login_proof(root)
     success_checked_at = _parse_iso(success_proof.get("checkedAt"))
-    for rel in RUNTIME_LOGS:
-        path = root / rel
+    for name in RUNTIME_LOG_NAMES:
+        path = _log_root(root) / name
+        rel = str(path)
         if not path.exists():
             scanned.append({"path": rel, "exists": False})
             continue

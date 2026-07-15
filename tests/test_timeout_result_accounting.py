@@ -86,6 +86,7 @@ async def test_battle_stats_stamp_active_account_and_season(tmp_path, monkeypatc
     season_path.write_text(
         json.dumps(
             {
+                "schemaVersion": "fouler-play-account-season/v1",
                 "account": "DekuFoulerLab",
                 "seasonId": "dekufoulerlab-gen9ou-20260710",
             }
@@ -132,6 +133,7 @@ def test_battle_stats_load_only_active_tagged_account_season(tmp_path, monkeypat
     season_path.write_text(
         json.dumps(
             {
+                "schemaVersion": "fouler-play-account-season/v1",
                 "account": "DekuFoulerLab",
                 "seasonId": "dekufoulerlab-gen9ou-20260710",
             }
@@ -205,6 +207,7 @@ def test_timeout_queues_loss_battle_result_for_discord(monkeypatch):
         queued["channel"] = channel
         queued["payload"] = payload
         queued["dedup_window_sec"] = dedup_window_sec
+        return "event-timeout"
 
     monkeypatch.setattr(run_battle, "battle_result_event_queue_enabled", lambda: True)
     monkeypatch.setattr(run_battle, "queue_event", fake_queue_event)
@@ -217,7 +220,7 @@ def test_timeout_queues_loss_battle_result_for_discord(monkeypatch):
         reason="message_timeout_disconnect",
         elapsed_seconds=240.0,
         timeout_strikes=3,
-    ) is True
+    ) == "event-timeout"
 
     assert queued["event_type"] == "battle_result"
     payload = json.loads(queued["payload"])
@@ -228,6 +231,24 @@ def test_timeout_queues_loss_battle_result_for_discord(monkeypatch):
     assert payload["timeout_reason"] == "message_timeout_disconnect"
     assert "ended loss" in queued["payload"]
     assert "result=loss" in payload["proof"]
+
+
+@pytest.mark.asyncio
+async def test_battle_result_handoff_advances_required_event_to_deku(monkeypatch):
+    calls = []
+
+    def fake_process_pending_events(*, max_events, required_event_id):
+        calls.append((max_events, required_event_id))
+        return {
+            "ok": True,
+            "requiredStatus": "posted",
+            "pendingRemaining": 0,
+        }
+
+    monkeypatch.setattr(run_battle, "process_pending_events", fake_process_pending_events)
+
+    assert await run_battle._handoff_battle_result_to_deku("battle-event-1") is True
+    assert calls == [(50, "battle-event-1")]
 
 
 @pytest.mark.asyncio

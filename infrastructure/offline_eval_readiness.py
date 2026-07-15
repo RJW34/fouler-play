@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only readiness doctor for the offline eval acceptance gate."""
+"""Read-only readiness doctor for the weak-baseline smoke harness."""
 
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from scripts.devstream_runtime_lease import RUNTIME_LEASE_PATH_ENV, validate_runtime_lease
 
-SCHEMA_VERSION = "fouler-play-offline-eval-readiness/v1"
-RESULT_PROOF_SCHEMA_VERSION = "fouler-play-offline-eval-result-proof/v1"
+SCHEMA_VERSION = "fouler-play-offline-eval-readiness/v2"
+RESULT_PROOF_SCHEMA_VERSION = "fouler-play-offline-eval-result-proof/v2"
 FOULER_RUNTIME_IMPORTS = ("aiohttp", "requests", "dotenv", "dateutil", "psutil", "poke_engine")
 RUNNING_STATUS_STAGES = {
     "starting",
@@ -804,26 +804,31 @@ def _as_bool(value: object) -> bool | None:
     return None
 
 
-def _compare_verdict(compare: Mapping[str, object]) -> tuple[bool | None, str]:
+def _compare_smoke_verdict(compare: Mapping[str, object]) -> tuple[bool | None, str, str]:
+    if "smoke_passed" in compare:
+        passed = _as_bool(compare["smoke_passed"])
+        if passed is not None:
+            return passed, "passed" if passed else "failed", "smoke_passed"
+
     raw_verdict = _first_present(compare, ("verdict", "status"))
     if isinstance(raw_verdict, str):
         normalized = raw_verdict.strip().lower().replace("_", "-")
         if normalized in {"accept", "accepted", "pass", "passed", "ready"}:
-            return True, "accepted"
+            return True, "passed", "legacy-verdict"
         if normalized in {"reject", "rejected", "fail", "failed", "blocked"}:
-            return False, "rejected"
+            return False, "failed", "legacy-verdict"
         if normalized:
             verdict_bool = _as_bool(normalized)
             if verdict_bool is not None:
-                return verdict_bool, "accepted" if verdict_bool else "rejected"
-            return None, normalized
+                return verdict_bool, "passed" if verdict_bool else "failed", "legacy-verdict"
+            return None, normalized, "legacy-verdict"
 
     for key in ("accepted", "ACCEPT", "ready"):
         if key in compare:
-            accepted = _as_bool(compare[key])
-            if accepted is not None:
-                return accepted, "accepted" if accepted else "rejected"
-    return None, "missing"
+            passed = _as_bool(compare[key])
+            if passed is not None:
+                return passed, "passed" if passed else "failed", f"legacy-{key}"
+    return None, "missing", "missing"
 
 
 def _result_values_match(left: object, right: object) -> bool:
@@ -886,7 +891,9 @@ def offline_eval_result_proof(
     if compare_candidate and compare_candidate_battles is None:
         compare_candidate_battles = _as_int(_first_present(compare_candidate, ("candidateBattles", "battles")))
 
-    compare_accepted, compare_verdict = _compare_verdict(compare) if compare else (None, "missing")
+    compare_smoke_passed, compare_verdict, compare_verdict_source = (
+        _compare_smoke_verdict(compare) if compare else (None, "missing", "missing")
+    )
     stale_reasons: list[str] = []
     if candidate and compare_candidate:
         for candidate_key, compare_key in [
@@ -910,9 +917,9 @@ def offline_eval_result_proof(
     if candidate and candidate_battles is None:
         missing_fields["candidate"].append("battles")
         reasons.append("candidate battle count is missing")
-    if compare and compare_accepted is None:
-        missing_fields["compare"].append("ACCEPT|accepted|verdict")
-        reasons.append("compare verdict is missing")
+    if compare and compare_smoke_passed is None:
+        missing_fields["compare"].append("smoke_passed|legacy verdict")
+        reasons.append("weak-baseline smoke verdict is missing")
     if candidate_battles is not None and candidate_battles < required_battles:
         reasons.append(f"candidate battle count {candidate_battles} is below required {required_battles}")
     reasons.extend(stale_reasons)
@@ -923,18 +930,18 @@ def offline_eval_result_proof(
         status = "malformed"
     elif candidate_battles is None or candidate_battles < required_battles:
         status = "insufficient"
-    elif compare_accepted is None:
+    elif compare_smoke_passed is None:
         status = "malformed"
     elif stale_reasons:
         status = "stale"
-    elif compare_accepted:
-        status = "accepted"
-        reasons.append("compare verdict accepted candidate")
+    elif compare_smoke_passed:
+        status = "smoke-passed"
+        reasons.append("weak-baseline transport and gross-regression smoke passed")
     else:
-        status = "rejected"
-        reasons.append("compare verdict rejected candidate")
+        status = "smoke-failed"
+        reasons.append("weak-baseline transport or gross-regression smoke failed")
 
-    accepted = status == "accepted"
+    smoke_passed = status == "smoke-passed"
     candidate_artifact.update({
         "label": candidate.get("label") if candidate else None,
         "candidateBattles": candidate_battles,
@@ -947,7 +954,11 @@ def offline_eval_result_proof(
     })
     compare_artifact.update({
         "verdict": compare_verdict,
-        "accepted": compare_accepted,
+        "verdictSource": compare_verdict_source,
+        "smokePassed": compare_smoke_passed,
+        "accepted": False,
+        "legacyReportedAcceptance": _as_bool(compare.get("ACCEPT")) if compare else None,
+        "promotionEligible": False,
         "candidateBattles": compare_candidate_battles,
         "deltaWinRate": compare.get("delta_win_rate") if compare else None,
         "pValue": compare.get("p_value") if compare else None,
@@ -955,10 +966,13 @@ def offline_eval_result_proof(
     })
     return {
         "schemaVersion": RESULT_PROOF_SCHEMA_VERSION,
-        "ready": accepted,
-        "accepted": accepted,
+        "ready": smoke_passed,
+        "smokePassed": smoke_passed,
+        "accepted": False,
+        "promotionEligible": False,
+        "promotionBlocker": "weak heuristic baseline cannot discriminate Fouler engine quality",
         "status": status,
-        "verdict": "accepted" if accepted else "rejected" if status == "rejected" else compare_verdict,
+        "verdict": "passed" if smoke_passed else "failed" if status == "smoke-failed" else compare_verdict,
         "candidateBattles": candidate_battles,
         "compareCandidateBattles": compare_candidate_battles,
         "requiredBattles": required_battles,
@@ -972,7 +986,10 @@ def offline_eval_result_proof(
             "compare": compare_artifact,
         },
         "noRuntimeActions": True,
-        "note": "Read-only result proof. It only reads eval_results/offline/candidate.json and compare-frozen-vs-candidate.json.",
+        "note": (
+            "Read-only weak-baseline smoke proof. It only reads eval_results/offline/candidate.json "
+            "and compare-frozen-vs-candidate.json; it can never authorize engine promotion."
+        ),
     }
 
 
@@ -1174,6 +1191,7 @@ def build_readiness_payload(
         "schemaVersion": SCHEMA_VERSION,
         "ready": ready,
         "recursiveImprovementReady": ready,
+        "promotionReady": False,
         "blockers": blockers,
         "checks": checks,
         "configuration": command_config,
@@ -1194,14 +1212,14 @@ def build_readiness_payload(
             "eval_results/offline/*-status.json is archived, adopted by a live finite sidecar, or blocked before a new eval starts",
             "infrastructure/offline_eval.py and infrastructure/_offline_baseline.py are present",
             "eval_results/offline/frozen.json exists, meets IMPROVE_AGENT_EVAL_BATTLES, and contains label, battles, fouler_wins, fouler_win_rate, and fouler_wilson_lcb",
-            "after an accepted candidate run, resultProof.status is accepted using eval_results/offline/candidate.json and compare-frozen-vs-candidate.json",
+            "candidate/compare resultProof is weak-baseline smoke only; promotion requires eval_results/head_to_head/latest.json",
         ],
         "note": "Read-only check. It does not start Pokemon Showdown, Discord posting, ladder battles, HERMES/DEKU, or services.",
     }
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Read-only offline eval gate readiness doctor")
+    parser = argparse.ArgumentParser(description="Read-only weak-baseline smoke readiness doctor")
     parser.add_argument("--require-ready", action="store_true", help="exit non-zero unless recursiveImprovementReady is true")
     parser.add_argument("--skip-import-check", action="store_true", help="do not execute .venv-eval python import probe")
     parser.add_argument("--skip-server-check", action="store_true", help="do not probe the local Pokemon Showdown eval server port")

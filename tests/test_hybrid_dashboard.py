@@ -282,7 +282,7 @@ def test_trace_reason_redacts_project_key():
         "choice": "shadowball",
         "hybrid": {
             "status": "error",
-            "reason": "failed with sk-proj-abcDEF1234567890_xyz",
+            "reason": "failed with " + "sk-proj-" + ("x" * 40),
         },
     }
     parsed = parse_trace_turn(payload, source_name="trace.json", fallback_epoch=0)

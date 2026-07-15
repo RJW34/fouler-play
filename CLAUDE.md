@@ -13,7 +13,7 @@ Build an **overnight team-testing service** for a competitive Pokemon player. Th
 
 **Why 1700 ELO matters:** At 1200 (where we are now), opponents play poorly and the data is meaningless for team evaluation. The bot must reach **1700+** so that matchup data reflects how the team performs against competent opponents. 1700 is not the goal — it's the minimum quality threshold for useful test data.
 
-**Current devstream deployment:** DEKU runs on ubunztu as the control plane. Fouler has no default live runtime while the two-PC proof gate is being rebuilt. JIGGLYPUFF at `D:\Projects\fouler-play` is only an optional remote runtime profile; any `--execute`, scheduled task, Discord posting, or laddering path requires a current proof window and runtime lease that names Fouler, the machine, the account, run count, concurrency, replay behavior, and expiry.
+**Current devstream deployment:** DEKU runs on ubunztu as the signing control plane. Fouler has no authorized live runtime until an exact pushed commit is installed at `D:\Releases\fouler-play\<commit>` on JIGGLYPUFF and bound to its deployment receipt plus a finite DEKU-signed v3 runtime lease. `D:\Projects\fouler-play` is a legacy mutable tree and must not own production tasks, services, or processes. Recursive improvement is off by default and requires a separate signed `improve-agent` lease.
 
 **What the player actually consumes:**
 - Per-team win rates and trends across overnight sessions
@@ -73,31 +73,33 @@ Use your current coding-agent runtime for headless sub-agents. The exact harness
 
 **You own:** Environment readiness and status proof only unless a current proof window and runtime lease authorize a bounded batch. Streaming is secondary.
 
-### Your loop: status/dry-run first
-DEKU may inspect the remote profile through:
+### Your loop: status first
+DEKU may inspect the remote profile without writing through:
 ```
-python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py status
-python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py start --run-count 10 --max-concurrent-battles 1
-python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py stop
+python3 /home/ryan/projects/fouler-play/scripts/jigglypuff_devstream_control.py status --read-only
 ```
-The `start` and `stop` examples above are dry-run/planning commands unless an approved proof window and lease explicitly permit `--execute`. Do not infer launch permission from this file.
+Do not infer launch permission from this file. Production start/stop uses the
+immutable-release workflow in `docs/DEVSTREAM_CONTRACT.md`, not a mutable remote
+script or locally minted lease.
 
-The direct Windows fallback is `infrastructure/windows/player_loop.bat` or `start_one_touch.bat`. The current Windows runtime profile is intentionally **single-worker by default** unless explicitly overridden via environment or launcher args. Install or start persistent scheduled tasks only under a proof-window/lease document; normal onboarding must leave them disabled:
+There is no direct Windows fallback. The only battle lifecycle owner is
+`HERMES-FoulerBattleSupervisor`, installed from an immutable release after its
+deployment receipt and finite DEKU-signed v3 lease validate. Retired launchers intentionally
+exit nonzero so stale scheduled tasks cannot bypass this authority:
 ```
-# Proof-window-only historical reference; do not run from onboarding:
-# Run as Administrator: infrastructure\windows\install_task.bat
-# schtasks /run /tn "FoulerPlayOneTouch"
+# Authorized proof-window path only; do not run from onboarding:
+# powershell.exe -File scripts\install_battle_supervisor_task.ps1 -Apply -Start ...
 ```
 
 ### Your responsibilities (in priority order)
 1. **Keep readiness visible** — report status, logs, dependency health, and whether a proof-gated batch could run. Do not keep the bot playing continuously from stale docs.
 2. **Preserve battle data** — after an authorized batch, `battle_stats.json` and replays are evidence. Do not push or overwrite them without a scoped handoff.
-3. **ELO monitoring** — `infrastructure/elo_watchdog.py` runs after deploys. If ELO drops >50 from a deploy, it auto-reverts. Make sure this is working.
+3. **ELO monitoring** — `infrastructure/elo_watchdog.py` validates an immutable exact-identity judgment. A regression blocks the next batch; it never mutates or reverts Git.
 4. **poke-engine builds** — if DEKU pushes code that updates poke-engine version, you need Rust toolchain installed to rebuild. `pip install -e .` or `pip install poke-engine==X.X.X`.
 5. **Streaming (low priority)** — the streaming pipeline in `streaming/` is built and functional but is NOT critical to the mission. Only work on it if everything above is running smoothly.
    - `serve_obs_page.py`: HTTP + WebSocket server on port 8777
    - `state_store.py`: Reads/writes `active_battles.json` and `stream_status.json`
-   - Start with: `python streaming/serve_obs_page.py`
+   - Lifecycle owner: `HERMES-FoulerObsServer` via `scripts/install_obs_server_service.ps1`
 
 ### Coordinating with DEKU
 - Push battle data (stats, replays) to `master`. DEKU pulls in their developer loop.
@@ -116,7 +118,7 @@ fouler-play/
 ├── .env.example              # Template for .env (tracked)
 ├── CLAUDE.md                 # THIS FILE — read on every session
 ├── TASKBOARD.md              # Cross-machine coordination — read and update
-├── start_one_touch.bat       # Battle launcher (non-interactive when PS_RUN_COUNT set)
+├── start_one_touch.bat       # Retired fail-closed compatibility tombstone
 ├── pipeline.py               # Analysis orchestrator (BUILT, do not modify)
 ├── constants.py              # Shim -> re-exports from constants_pkg/
 ├── constants_pkg/            # Penalty/boost values, ability sets, move flags

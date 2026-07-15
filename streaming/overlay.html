@@ -100,12 +100,11 @@ body.mode-bottom #bottom-bar {
 }
 .logo-text {
   font-family: 'Agency FB', 'Bahnschrift', 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #f8fafc;
+  -webkit-text-fill-color: #f8fafc;
   font-size: 38px;
   font-weight: 900;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.85), 0 0 12px rgba(239,68,68,0.35);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9), 0 0 12px rgba(245,158,11,0.24);
 }
 
 /* Divider */
@@ -239,9 +238,11 @@ body.mode-bottom #bottom-bar {
   opacity: 0;
   animation: none;
 }
+#status-dot.live,
 #status-dot.battling {
   background: #ef4444;
 }
+#status-dot.live::after,
 #status-dot.battling::after {
   opacity: 0.4;
   animation: pulse-ring 1.5s ease-out infinite;
@@ -259,6 +260,15 @@ body.mode-bottom #bottom-bar {
 }
 #status-dot.idle {
   background: #6b7280;
+}
+#status-dot.ready {
+  background: #60a5fa;
+}
+#status-dot.stale {
+  background: #fbbf24;
+}
+#status-dot.unavailable {
+  background: #ef7067;
 }
 
 @keyframes pulse-ring {
@@ -368,7 +378,7 @@ body.mode-bottom #bottom-bar {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   width: 100%;
 }
@@ -380,13 +390,13 @@ body.mode-bottom #bottom-bar {
   flex: 1 1 auto;
 }
 .worker-label {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 1.2px;
   text-transform: uppercase;
   color: rgba(255,255,255,0.7);
 }
 .worker-opponent {
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 800;
   color: #f8fafc;
   max-width: 100%;
@@ -397,14 +407,15 @@ body.mode-bottom #bottom-bar {
 .worker-status {
   padding: 4px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   background: rgba(148,163,184,0.2);
   color: #cbd5f5;
   flex: 0 0 auto;
 }
-.worker-status.active {
+.worker-status.active,
+.worker-status.live {
   background: rgba(34,197,94,0.2);
   color: #86efac;
 }
@@ -415,6 +426,18 @@ body.mode-bottom #bottom-bar {
 .worker-status.searching {
   background: rgba(250,204,21,0.2);
   color: #fde68a;
+}
+.worker-status.ready {
+  background: rgba(96,165,250,0.2);
+  color: #bfdbfe;
+}
+.worker-status.stale {
+  background: rgba(251,191,36,0.2);
+  color: #fde68a;
+}
+.worker-status.unavailable {
+  background: rgba(239,112,103,0.2);
+  color: #fecaca;
 }
 .dead-card {
   flex: 1;
@@ -432,7 +455,7 @@ body.mode-bottom #bottom-bar {
   width: 100%;
 }
 .hud-label {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -473,7 +496,7 @@ body.mode-bottom #bottom-bar {
   margin: 0 4px;
 }
 .hud-sub {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   opacity: 0.9;
   max-width: 100%;
@@ -481,7 +504,7 @@ body.mode-bottom #bottom-bar {
   text-align: center;
 }
 .hud-status {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -730,30 +753,30 @@ body:not(.mode-slot) .slot-proof {
   <div class="bar-inner">
     <div class="logo">
       <span class="logo-icon" aria-hidden="true"></span>
-      <span class="logo-text">All Chung</span>
+      <span class="logo-text">Fouler Play</span>
     </div>
     
     <div class="divider"></div>
     
     <div class="meta-group">
       <div class="meta-item">
-        <span class="meta-label">Active</span>
-        <span class="meta-value" id="active-count">0</span>
+        <span class="meta-label">Matches live</span>
+        <span class="meta-value" id="active-count">--</span>
       </div>
       <div class="meta-item">
-        <span class="meta-label">Session</span>
-        <span class="meta-value" id="session-record">0W-0L</span>
+        <span class="meta-label">Season record</span>
+        <span class="meta-value" id="session-record">--</span>
       </div>
-      <div class="meta-item elo-sync">
-        <span class="meta-label">ELO Sync</span>
-        <span class="meta-value" id="elo-sync">--</span>
+      <div class="meta-item state-age">
+        <span class="meta-label">Updated</span>
+        <span class="meta-value" id="state-age">--</span>
       </div>
     </div>
 
     <div class="status-group">
       <div class="format-badge">GEN 9 OU</div>
       <div id="status-dot" class="idle"></div>
-      <div id="status-text">IDLE</div>
+      <div id="status-text">CONNECTING</div>
     </div>
   </div>
 </div>
@@ -763,16 +786,16 @@ body:not(.mode-slot) .slot-proof {
     <div class="worker-pill" id="worker-1">
       <div class="worker-left">
         <div class="worker-label" id="worker-1-label">FEATURED MATCH 1</div>
-        <div class="worker-opponent" id="worker-1-name">Idle</div>
+        <div class="worker-opponent" id="worker-1-name">Checking match status</div>
       </div>
-      <div class="worker-status idle" id="worker-1-status">Idle</div>
+      <div class="worker-status idle" id="worker-1-status">Connecting</div>
     </div>
     <div class="dead-card">
       <div class="hud-label">TODAY</div>
       <div class="hud-record">
-        <span class="hud-w" id="mid-wins">0</span>
+        <span class="hud-w" id="mid-wins">--</span>
         <span class="hud-sep">-</span>
-        <span class="hud-l" id="mid-losses">0</span>
+        <span class="hud-l" id="mid-losses">--</span>
       </div>
       <div class="hud-sub" id="mid-winrate"></div>
       <div class="hud-sub" id="mid-streak"></div>
@@ -782,16 +805,16 @@ body:not(.mode-slot) .slot-proof {
   <div class="dead-column col-center">
     <div class="dead-card emerald-card">
       <div class="hud-label" style="color: #4ade80;">BATTLE LAB</div>
-      <div class="hud-sub" id="emerald-status" style="color: rgba(255,255,255,0.85);">Showdown queue active</div>
-      <div class="hud-sub" style="font-size: 11px; opacity: 0.6;">Bounded battles create replay evidence after each match</div>
+      <div class="hud-sub" id="emerald-status" style="color: rgba(255,255,255,0.85);">Match feed connecting</div>
+      <div class="hud-sub" style="font-size: 14px; opacity: 0.72;">Three ranked matches update as they happen</div>
     </div>
     <div class="dead-card" style="padding: 14px 20px;">
       <div class="hud-label">ELO</div>
       <div id="accounts-elo-container"></div>
     </div>
     <div class="dead-card" style="padding: 14px 20px;">
-      <div class="hud-label">NEXT FIX</div>
-      <div class="hud-todo-text" id="mid-todo">Pending replay review</div>
+      <div class="hud-label">SEASON SNAPSHOT</div>
+      <div class="hud-todo-text" id="mid-todo">Waiting for current results</div>
       <div class="hud-sub" id="mid-form"></div>
     </div>
   </div>
@@ -799,16 +822,16 @@ body:not(.mode-slot) .slot-proof {
     <div class="worker-pill" id="worker-2">
       <div class="worker-left">
         <div class="worker-label">FEATURED MATCH 2</div>
-        <div class="worker-opponent" id="worker-2-name">Idle</div>
+        <div class="worker-opponent" id="worker-2-name">Checking match status</div>
       </div>
-      <div class="worker-status idle" id="worker-2-status">Idle</div>
+      <div class="worker-status idle" id="worker-2-status">Connecting</div>
     </div>
     <div class="dead-card">
       <div class="hud-label">TODAY</div>
       <div class="hud-record">
-        <span class="hud-w" id="mid-wins2">0</span>
+        <span class="hud-w" id="mid-wins2">--</span>
         <span class="hud-sep">-</span>
-        <span class="hud-l" id="mid-losses2">0</span>
+        <span class="hud-l" id="mid-losses2">--</span>
       </div>
     </div>
   </div>
@@ -816,12 +839,12 @@ body:not(.mode-slot) .slot-proof {
 
 <div id="bottom-bar">
   <div class="bar-inner">
-    <div id="battle-info">Waiting for battle...</div>
+    <div id="battle-info">No match in progress</div>
     <div id="results-group">
       <div id="recent-results"></div>
       <div id="streak"></div>
     </div>
-    <div id="ticker">SHOWDOWN BATTLE LAB — Gen 9 OU Ladder</div>
+    <div id="ticker">FOULER PLAY / GEN 9 OU RANKED</div>
   </div>
 </div>
 
@@ -836,9 +859,16 @@ let lastStreakText = '';
 let lastStreakClass = '';
 let lastMidStreakText = '';
 let lastActiveBattles = [];
+let localSurface = { key: 'unavailable', label: 'CONNECTING', emptyTitle: 'Checking match status' };
+let dekuSurface = { key: 'unavailable', label: 'CONNECTING', emptyTitle: 'Checking match status' };
+let localWins = 0, localLosses = 0, localOpponent = '';
+let dekuWins = 0, dekuLosses = 0, dekuOpponent = '';
+let localActiveCount = 0, dekuActiveCount = 0;
+let localRecordKnown = false, dekuRecordKnown = false;
 const uiCache = new Map();
 const RECENT_STORAGE_KEY = 'fp_recent_results_v1';
 const COUNTER_STORAGE_KEY = 'fp_recent_counters_v1';
+const STATUS_STALE_AFTER_SECONDS = 120;
 const params = new URLSearchParams(window.location.search);
 const mode = params.get('mode');
 const selectedSlot = (() => {
@@ -964,6 +994,112 @@ function normalizeBattles(battles) {
   });
 }
 
+function explicitSearchActivity(data) {
+  const value = data || {};
+  return value.search_active === true ||
+    value.searching === true ||
+    value.queue_active === true ||
+    value.matchmaking_active === true ||
+    Number(value.search_count) > 0;
+}
+
+function timestampAgeSeconds(value, nowMs = Date.now()) {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.floor((nowMs - parsed) / 1000));
+}
+
+function formatElapsed(seconds) {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value < 0) return '--';
+  const whole = Math.floor(value);
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const secs = whole % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${secs}s`;
+  return `${secs}s`;
+}
+
+function surfacePresentation(data, battles, state = {}) {
+  const value = data || {};
+  const active = normalizeBattles(battles);
+  const statusKey = String(value.status || '').trim().toLowerCase();
+  const stateAge = timestampAgeSeconds(state.updated || value.updated, state.now_ms ?? Date.now());
+  const stale = value.stale === true ||
+    value.freshness === 'stale' ||
+    state.stale === true ||
+    (active.length > 0 && stateAge !== null && stateAge > STATUS_STALE_AFTER_SECONDS);
+
+  if (active.length > 0) {
+    if (stale) {
+      return {
+        key: 'stale',
+        label: 'STALE',
+        emptyTitle: 'Match update delayed',
+      };
+    }
+    return {
+      key: 'live',
+      label: 'LIVE',
+      emptyTitle: 'Match in progress',
+    };
+  }
+
+  if (/blocked|credential|error|unavailable|offline/.test(statusKey)) {
+    return {
+      key: 'unavailable',
+      label: 'UNAVAILABLE',
+      emptyTitle: 'Match feed unavailable',
+    };
+  }
+  if (/ready|complete|staged/.test(statusKey)) {
+    return {
+      key: 'ready',
+      label: 'READY',
+      emptyTitle: 'Next match ready',
+    };
+  }
+  if (explicitSearchActivity(value)) {
+    return {
+      key: 'searching',
+      label: 'SEARCHING',
+      emptyTitle: 'Looking for an opponent',
+    };
+  }
+  return {
+    key: 'idle',
+    label: 'IDLE',
+    emptyTitle: /maint|held|paused|stopped/.test(statusKey) ? 'Battles paused' : 'No match in progress',
+  };
+}
+
+function aggregatePresentation(surfaces) {
+  const available = (surfaces || []).filter(Boolean);
+  for (const key of ['live', 'stale', 'searching', 'ready', 'idle', 'unavailable']) {
+    const match = available.find((surface) => surface.key === key);
+    if (match) return match;
+  }
+  return { key: 'unavailable', label: 'UNAVAILABLE', emptyTitle: 'Match feed unavailable' };
+}
+
+function updateBattleSnapshot(payload) {
+  const value = payload || {};
+  let incoming = null;
+  if (Array.isArray(value.battles)) {
+    incoming = value.battles;
+  } else if (Array.isArray(value.active_battles)) {
+    incoming = value.active_battles;
+  } else if (value.status && Array.isArray(value.status.active_battles)) {
+    incoming = value.status.active_battles;
+  }
+  if (incoming !== null) {
+    lastActiveBattles = incoming;
+  }
+  return lastActiveBattles;
+}
+
 function battleSlotOf(battle, index) {
   if (!battle || typeof battle !== 'object') return index + 1;
   const raw = battle.slot ?? (battle.worker_id !== undefined ? Number(battle.worker_id) + 1 : index + 1);
@@ -995,7 +1131,7 @@ function buildBattleInfo(status, battles) {
     const names = normalized.map((battle) => battle.opponent || battle.id || 'Unknown');
     return names.map((name) => (name.startsWith('vs ') ? name : `vs ${name}`)).join(', ');
   }
-  return status.battle_info || 'Waiting for battle...';
+  return 'No match in progress';
 }
 
 function isStatusPayload(payload) {
@@ -1014,15 +1150,15 @@ function isStatusPayload(payload) {
   return keys.some((key) => payload[key] !== undefined);
 }
 
-function updateOverlay(status, battles) {
+function updateOverlay(status, battles, state = {}) {
   const data = status || {};
   const activeBattles = slotBattlesOnly(normalizeBattles(battles));
+  localSurface = surfacePresentation(data, activeBattles, state);
+  localActiveCount = localSurface.key === 'live' ? activeBattles.length : 0;
   const eloEl = document.getElementById('elo');
   const winsEl = document.getElementById('wins');
   const lossesEl = document.getElementById('losses');
   const deltaEl = document.getElementById('elo-delta');
-  const dotEl = document.getElementById('status-dot');
-  const statusEl = document.getElementById('status-text');
   const battleEl = document.getElementById('battle-info');
   const winrateEl = document.getElementById('winrate');
   const midEloEl = document.getElementById('mid-elo');
@@ -1033,13 +1169,9 @@ function updateOverlay(status, battles) {
   const midStreakEl = document.getElementById('mid-streak');
   const midTodoEl = document.getElementById('mid-todo');
   const midFormEl = document.getElementById('mid-form');
-  const activeCountEl = document.getElementById('active-count');
-  const sessionRecordEl = document.getElementById('session-record');
-  const eloSyncEl = document.getElementById('elo-sync');
+  const stateAgeEl = document.getElementById('state-age');
   const worker1NameEl = document.getElementById('worker-1-name');
-  const worker2NameEl = document.getElementById('worker-2-name');
   const worker1StatusEl = document.getElementById('worker-1-status');
-  const worker2StatusEl = document.getElementById('worker-2-status');
   const worker1LabelEl = document.getElementById('worker-1-label');
   const slotBattleIdEl = document.getElementById('slot-battle-id');
 
@@ -1087,14 +1219,6 @@ function updateOverlay(status, battles) {
     }
   }
   
-    // Update name labels dynamically from state
-  const firstAcctName = Object.keys(accountsElo)[0];
-  if (firstAcctName && !selectedSlot) {
-    const lbl = document.getElementById("worker-1-label");
-    const tkr = document.getElementById("ticker");
-    if (lbl) lbl.textContent = firstAcctName.toUpperCase();
-    if (tkr) tkr.textContent = "SHOWDOWN BATTLE LAB — Gen 9 OU Ladder";
-  }
   // Backward compat: update top bar ELO with primary account
   const newElo = data.elo || '---';
   if (eloEl) {
@@ -1119,6 +1243,7 @@ function updateOverlay(status, battles) {
   const sessionWins = Number(data.wins || 0);
   const sessionLosses = Number(data.losses || 0);
   const hasDaily = hasDailyStats(data);
+  localRecordKnown = hasDaily || (data.wins !== undefined && data.losses !== undefined);
   const todayWins = hasDaily ? Number(
     data.today_wins ?? data.daily_wins ?? sessionWins
   ) : null;
@@ -1184,43 +1309,11 @@ function updateOverlay(status, battles) {
   // Track local wins/losses for merged stats
   localWins = hasDaily ? todayWins : sessionWins;
   localLosses = hasDaily ? todayLosses : sessionLosses;
-  // sessionRecordEl updated by mergeBotStats()
-
-  // Status dot
-  const hasActiveBattles = activeBattles.length > 0;
-  const statusRaw = data.status || '';
-  let statusValue = statusRaw.toLowerCase();
-  if (hasActiveBattles && (!statusValue || statusValue.includes('idle') || statusValue.includes('search'))) {
-    statusValue = 'battling';
-  } else if (!statusValue) {
-    statusValue = hasActiveBattles ? 'battling' : 'idle';
-  }
-  if (statusValue.includes('battle') || statusValue.includes('fighting')) {
-    setClass(dotEl, 'battling', 'status-dot');
-    setText(statusEl, 'IN BATTLE');
-  } else if (statusValue.includes('search')) {
-    setClass(dotEl, 'searching', 'status-dot');
-    setText(statusEl, 'SEARCHING');
-  } else {
-    setClass(dotEl, 'idle', 'status-dot');
-    setText(statusEl, 'IDLE');
-  }
-  
-  if (activeCountEl) {
-    setText(activeCountEl, String(activeBattles.length));
-  }
-  if (eloSyncEl) {
-    if (typeof data.elo_updated === 'number' && data.elo_updated > 0) {
-      const diff = Math.max(0, Math.floor(Date.now() / 1000 - data.elo_updated));
-      const mins = Math.floor(diff / 60);
-      const secs = diff % 60;
-      setText(eloSyncEl, mins > 0 ? `${mins}m ${secs}s` : `${secs}s`);
-    } else {
-      setText(eloSyncEl, '--');
-    }
+  if (stateAgeEl) {
+    const updatedAge = timestampAgeSeconds(state.updated || data.updated);
+    setText(stateAgeEl, updatedAge === null ? '--' : `${formatElapsed(updatedAge)} ago`);
   }
   // Track local opponent for merged display
-  const localBattleInfo = buildBattleInfo(data, activeBattles);
   localOpponent = activeBattles.length > 0 ? (activeBattles[0].opponent || activeBattles[0].id || '') : '';
   // battleEl updated by mergeBotStats()
   
@@ -1247,7 +1340,7 @@ function updateOverlay(status, battles) {
       let count = 0;
       for (let i = recentResults.length - 1; i >= 0 && recentResults[i] === last; i--) count++;
       if (count >= 2) {
-        streakText = count + (last === 'W' ? '🔥' : '💀');
+        streakText = count + last;
         streakClass = 'active ' + (last === 'W' ? 'win-streak' : 'loss-streak');
       }
     }
@@ -1282,15 +1375,10 @@ function updateOverlay(status, battles) {
     if (midLossesEl) setText(midLossesEl, todayLosses);
   }
   if (midTodoEl) {
-    const nextFix = typeof data.next_fix === 'string' ? data.next_fix.trim() : '';
-    if (nextFix) {
-      setText(midTodoEl, nextFix);
-    } else {
-      const current = midTodoEl.textContent || '';
-      if (!current.trim()) {
-        setText(midTodoEl, 'Pending replay review');
-      }
-    }
+    setText(
+      midTodoEl,
+      hasDaily ? `${todayWins} wins / ${todayLosses} losses today` : 'Waiting for current results'
+    );
   }
 
   const slotMap = {};
@@ -1301,25 +1389,27 @@ function updateOverlay(status, battles) {
       slotMap[slot] = battle;
     }
   }
-  const slotStatus = statusValue.includes('search') ? 'Searching' : 'Idle';
   const updateWorker = (slot, nameEl, statusEl) => {
     if (!nameEl || !statusEl) return;
     const battle = slotMap[slot];
     if (battle) {
-      const opponent = selectedSlot ? 'Active ladder battle' : (battle.opponent || battle.id || 'Unknown');
+      const opponent = selectedSlot ? 'Ranked match in progress' : (battle.opponent || battle.id || 'Opponent');
       setText(nameEl, opponent, `${nameEl.id}:text`);
-      setText(statusEl, 'Active', `${statusEl.id}:text`);
-      setClass(statusEl, 'worker-status active', `${statusEl.id}:class`);
+      setText(statusEl, localSurface.label, `${statusEl.id}:text`);
+      setClass(statusEl, `worker-status ${localSurface.key}`, `${statusEl.id}:class`);
     } else {
-      setText(nameEl, selectedSlot ? 'Next match ready' : 'Idle', `${nameEl.id}:text`);
-      setText(statusEl, slotStatus, `${statusEl.id}:text`);
-      setClass(statusEl, `worker-status ${slotStatus.toLowerCase()}`, `${statusEl.id}:class`);
+      const emptyTitle = selectedSlot && localSurface.key === 'ready' ? 'Next match ready' : localSurface.emptyTitle;
+      setText(nameEl, emptyTitle, `${nameEl.id}:text`);
+      setText(statusEl, localSurface.label, `${statusEl.id}:text`);
+      setClass(statusEl, `worker-status ${localSurface.key}`, `${statusEl.id}:class`);
     }
   };
   updateWorker(1, worker1NameEl, worker1StatusEl);
   if (selectedSlot && slotBattleIdEl) {
     const battle = slotMap[1];
-    const label = battle ? 'Live ladder battle' : 'Next matchup ready';
+    const label = battle
+      ? (localSurface.key === 'stale' ? 'Last known matchup' : 'Live ladder battle')
+      : (localSurface.key === 'ready' ? 'Next matchup ready' : localSurface.emptyTitle);
     setText(slotBattleIdEl, label, 'slot-battle-id:text');
   }
   // Worker 2 is updated by pollDeku() separately
@@ -1360,20 +1450,16 @@ function getWsUrl() {
 function handlePayload(payload) {
   if (!payload) return;
   if (payload.status && typeof payload.status === 'object') {
-    const incoming = payload.battles || payload.active_battles;
-    const hasObjects = Array.isArray(incoming) && incoming.some((b) => b && typeof b === 'object');
-    if (hasObjects) lastActiveBattles = incoming;
-    updateOverlay(payload.status, hasObjects ? incoming : lastActiveBattles);
+    const battles = updateBattleSnapshot(payload);
+    updateOverlay(payload.status, battles, payload);
     if (!hasDailyStats(payload.status)) {
       fetchStatusOnce();
     }
     return;
   }
   if (!isStatusPayload(payload)) return;
-  const incoming = payload.battles || payload.active_battles;
-  const hasObjects = Array.isArray(incoming) && incoming.some((b) => b && typeof b === 'object');
-  if (hasObjects) lastActiveBattles = incoming;
-  updateOverlay(payload, hasObjects ? incoming : lastActiveBattles);
+  const battles = updateBattleSnapshot(payload);
+  updateOverlay(payload, battles, payload);
   if (!hasDailyStats(payload)) {
     fetchStatusOnce();
   }
@@ -1439,9 +1525,8 @@ function connectWs() {
   });
 }
 
-// Remote battle poller updates the secondary public match view and merged stats.
+// Secondary match feed for the combined public view.
 const DEKU_STATE_URL = '/deku-state';
-let dekuWins = 0, dekuLosses = 0, dekuOpponent = '';
 async function pollDeku() {
   const w2Name = document.getElementById('worker-2-name');
   const w2Status = document.getElementById('worker-2-status');
@@ -1451,57 +1536,61 @@ async function pollDeku() {
     if (!resp.ok) throw new Error('fetch failed');
     const data = await resp.json();
     const dStatus = data.status || {};
-    // Track DEKU wins/losses
+    dekuRecordKnown = hasDailyStats(dStatus) || (dStatus.wins !== undefined && dStatus.losses !== undefined);
     dekuWins = Number(dStatus.today_wins ?? dStatus.wins ?? 0);
     dekuLosses = Number(dStatus.today_losses ?? dStatus.losses ?? 0);
-    // Update Worker 2 pill
-    const battles = data.battles || dStatus.active_battles || [];
+    const battles = Array.isArray(data.battles)
+      ? data.battles
+      : (Array.isArray(dStatus.active_battles) ? dStatus.active_battles : []);
+    dekuSurface = surfacePresentation(dStatus, battles, data);
+    dekuActiveCount = dekuSurface.key === 'live' ? battles.length : 0;
     if (battles.length > 0) {
       const b = battles[0];
-      dekuOpponent = (b && typeof b === 'object') ? (b.opponent || b.id || 'Unknown') : String(b);
+      dekuOpponent = (b && typeof b === 'object') ? (b.opponent || b.id || 'Opponent') : String(b);
       w2Name.textContent = dekuOpponent;
-      w2Status.textContent = 'Active';
-      w2Status.className = 'worker-status active';
+      w2Status.textContent = dekuSurface.label;
+      w2Status.className = 'worker-status ' + dekuSurface.key;
     } else {
-      const statusStr = (dStatus.status || '').toLowerCase();
-      const label = statusStr.includes('search') ? 'Searching' : 'Idle';
       dekuOpponent = '';
-      w2Name.textContent = label;
-      w2Status.textContent = label;
-      w2Status.className = 'worker-status ' + label.toLowerCase();
+      w2Name.textContent = dekuSurface.emptyTitle;
+      w2Status.textContent = dekuSurface.label;
+      w2Status.className = 'worker-status ' + dekuSurface.key;
     }
     // Update right-side DEKU score card
     const dw = document.getElementById('mid-wins2');
     const dl = document.getElementById('mid-losses2');
-    if (dw) dw.textContent = dekuWins;
-    if (dl) dl.textContent = dekuLosses;
+    if (dw) dw.textContent = dekuRecordKnown ? dekuWins : '--';
+    if (dl) dl.textContent = dekuRecordKnown ? dekuLosses : '--';
     // Merge stats into overlay
     mergeBotStats();
   } catch (e) {
-    w2Name.textContent = 'Offline';
-    w2Status.textContent = 'Offline';
-    w2Status.className = 'worker-status idle';
+    dekuSurface = { key: 'unavailable', label: 'UNAVAILABLE', emptyTitle: 'Match feed unavailable' };
+    dekuActiveCount = 0;
+    dekuOpponent = '';
+    w2Name.textContent = dekuSurface.emptyTitle;
+    w2Status.textContent = dekuSurface.label;
+    w2Status.className = 'worker-status unavailable';
+    mergeBotStats();
   }
 }
 
-let localWins = 0, localLosses = 0, localOpponent = '';
 function mergeBotStats() {
   const totalW = localWins + dekuWins;
   const totalL = localLosses + dekuLosses;
   const total = totalW + totalL;
   // Update session record (top bar)
   const sessionRecordEl = document.getElementById('session-record');
-  if (sessionRecordEl) sessionRecordEl.textContent = totalW + 'W-' + totalL + 'L';
+  if (sessionRecordEl) {
+    sessionRecordEl.textContent = localRecordKnown || dekuRecordKnown ? totalW + 'W-' + totalL + 'L' : '--';
+  }
   // Update active count
   const activeCountEl = document.getElementById('active-count');
   if (activeCountEl) {
-    const localActive = document.getElementById('worker-1-status');
-    const dekuActive = document.getElementById('worker-2-status');
-    let count = 0;
-    if (localActive && localActive.textContent === 'Active') count++;
-    if (dekuActive && dekuActive.textContent === 'Active') count++;
-    activeCountEl.textContent = String(count);
+    activeCountEl.textContent = String(Math.min(3, localActiveCount + dekuActiveCount));
   }
+  const combinedSurface = aggregatePresentation([localSurface, dekuSurface]);
+  setClass(document.getElementById('status-dot'), combinedSurface.key, 'status-dot');
+  setText(document.getElementById('status-text'), combinedSurface.label);
   // Update battle info (bottom bar) — show both opponents
   const battleEl = document.getElementById('battle-info');
   if (battleEl) {
@@ -1510,9 +1599,25 @@ function mergeBotStats() {
     if (dekuOpponent) parts.push('vs ' + dekuOpponent);
     if (parts.length > 0) {
       battleEl.textContent = parts.join('  |  ');
+    } else if (localSurface.key === 'searching' || dekuSurface.key === 'searching') {
+      battleEl.textContent = 'Looking for an opponent';
+    } else if (localSurface.key === 'ready' || dekuSurface.key === 'ready') {
+      battleEl.textContent = 'Ready for next match';
+    } else if (localSurface.key === 'unavailable' && dekuSurface.key === 'unavailable') {
+      battleEl.textContent = 'Match feed unavailable';
     } else {
-      battleEl.textContent = 'Waiting for battle...';
+      battleEl.textContent = 'No match in progress';
     }
+  }
+  const feedStatusEl = document.getElementById('emerald-status');
+  if (feedStatusEl) {
+    const liveCount = Math.min(3, localActiveCount + dekuActiveCount);
+    if (liveCount > 0) feedStatusEl.textContent = `${liveCount} ranked ${liveCount === 1 ? 'match' : 'matches'} live`;
+    else if (localSurface.key === 'stale' || dekuSurface.key === 'stale') feedStatusEl.textContent = 'Match update delayed';
+    else if (localSurface.key === 'searching' || dekuSurface.key === 'searching') feedStatusEl.textContent = 'Looking for an opponent';
+    else if (localSurface.key === 'ready' || dekuSurface.key === 'ready') feedStatusEl.textContent = 'Ready for next match';
+    else if (localSurface.key === 'idle' || dekuSurface.key === 'idle') feedStatusEl.textContent = 'No match in progress';
+    else feedStatusEl.textContent = 'Match feed unavailable';
   }
 }
 

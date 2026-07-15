@@ -1,14 +1,32 @@
 $ErrorActionPreference = "Continue"
 
-$Repo = "D:\Projects\fouler-play"
-$TruthDir = Join-Path $Repo "devstream\truth"
+$Repo = (Split-Path -Parent $PSScriptRoot)
+$ProgramDataRoot = if ($env:ProgramData) { $env:ProgramData } else { "C:\ProgramData" }
+$TruthDir = Join-Path $ProgramDataRoot "HERMES\state\fouler"
 $Out = Join-Path $TruthDir "process-status.json"
 New-Item -ItemType Directory -Force -Path $TruthDir | Out-Null
 
+function Redact-CommandLine {
+    param([string]$CommandLine)
+    $safe = [string]$CommandLine
+    $safe = [regex]::Replace(
+        $safe,
+        '(?i)(--ps-password(?:=|\s+))(?:"[^"]*"|''[^'']*''|\S+)',
+        '$1<redacted>'
+    )
+    $safe = [regex]::Replace(
+        $safe,
+        '(?i)((?:password|passwd|token|secret|api[_-]?key|webhook(?:_url)?)\s*[=:]\s*)(?:"[^"]*"|''[^'']*''|\S+)',
+        '$1<redacted>'
+    )
+    return $safe
+}
+
 $Rows = @()
+$EscapedRepo = [regex]::Escape($Repo)
 $Processes = Get-CimInstance Win32_Process |
     Where-Object {
-        ($_.CommandLine -like "*D:\Projects\fouler-play*") -or
+        ($_.CommandLine -match $EscapedRepo) -or
         ($_.CommandLine -like "*run.py*--bot-mode search_ladder*")
     }
 
@@ -32,7 +50,7 @@ foreach ($Proc in $Processes) {
         pid = [int]$Proc.ProcessId
         parentPid = [int]$Proc.ParentProcessId
         name = [string]$Proc.Name
-        commandLine = $Cmd
+        commandLine = (Redact-CommandLine -CommandLine $Cmd)
         isBattleRunner = [bool]$IsBattleRunner
         isObsHttp = [bool]$IsObsHttp
         isSupervisor = [bool]$IsSupervisor

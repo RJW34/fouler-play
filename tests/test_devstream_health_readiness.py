@@ -202,13 +202,15 @@ def test_health_payload_exposes_offline_eval_result_proof_without_live_runtime(t
             "commands": {"readiness": "python infrastructure/offline_eval_readiness.py --require-ready"},
             "resultProof": {
                 "ready": True,
-                "accepted": True,
-                "status": "accepted",
-                "verdict": "accepted",
+                "smokePassed": True,
+                "accepted": False,
+                "promotionEligible": False,
+                "status": "smoke-passed",
+                "verdict": "passed",
                 "candidateBattles": 200,
                 "requiredBattles": 200,
                 "missingPaths": [],
-                "reasons": ["compare verdict accepted candidate"],
+                "reasons": ["weak-baseline transport and gross-regression smoke passed"],
             },
             "note": "fixture",
         },
@@ -222,9 +224,9 @@ def test_health_payload_exposes_offline_eval_result_proof_without_live_runtime(t
     result_proof = payload["usefulWorkProof"]["offlineEvalResultProof"]
     assert payload["readiness"]["runtimeReady"] is False
     assert payload["readiness"]["usefulWorkProofReady"] is True
-    assert payload["usefulWorkProof"]["status"] == "offline-eval-result-accepted"
+    assert payload["usefulWorkProof"]["status"] == "offline-eval-smoke-passed"
     assert payload["usefulWorkProof"]["offlineEvalResultProofReady"] is True
-    assert result_proof["status"] == "accepted"
+    assert result_proof["status"] == "smoke-passed"
     assert result_proof["candidateBattles"] == 200
 
 

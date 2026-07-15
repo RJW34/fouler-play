@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import json
 import os
 import re
 import signal
+import shutil
+import stat
 import subprocess
 import sys
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -20,40 +22,111 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from streaming import state_store
-from scripts.devstream_runtime_lease import (
+from infrastructure.runtime_paths import (  # noqa: E402
+    RuntimePathError,
+    is_production_runtime,
+    paths_overlap,
+    resolve_runtime_paths,
+)
+from streaming import state_store  # noqa: E402
+from scripts.devstream_runtime_lease import (  # noqa: E402
     RUNTIME_LEASE_PATH_ENV,
-    lease_summary,
-    read_json,
+    lease_environment,
     runtime_lease_path,
     validate_runtime_lease,
+)
+from infrastructure.runtime_lease_client import (  # noqa: E402
+    ProtocolError,
+    RUNTIME_RESERVATION_PURPOSE,
+    broker_request_payload,
+    require_exact_reservation_binding,
+    request_with_retry,
+    response_error_text,
 )
 
 DEFAULT_RUN_COUNT = 1
 DEFAULT_MAX_CONCURRENT = 3
+PILOT_SEARCH_PARALLELISM = 2
 RUN_COUNT_CAP_ENV = "FOULER_DEVSTREAM_RUN_COUNT_CAP"
 DEFAULT_RUN_COUNT_CAP = 30
 AUTO_IMPROVE_MAX_CYCLES_ENV = "FOULER_AUTO_IMPROVE_MAX_CYCLES"
 DEFAULT_AUTO_IMPROVE_MAX_CYCLES = 1
+DEFAULT_IMPROVE_TIMEOUT_SECONDS = 18000
 CHILD_LOG_MAX_BYTES_ENV = "FOULER_DEVSTREAM_CHILD_LOG_MAX_BYTES"
 DEFAULT_CHILD_LOG_MAX_BYTES = 64 * 1024 * 1024
-PID_DIR = ROOT / ".pids"
+JUDGMENT_BATTLE_COUNT = 30
+RUNTIME_LEASE_CONSUMPTION_ROOT_OVERRIDE: Path | None = None
+RUNTIME_LEASE_RESERVATION_ID_ENV = "FOULER_RUNTIME_LEASE_RESERVATION_ID"
+RUNTIME_SUPERVISOR_INSTANCE_ID_ENV = "FOULER_RUNTIME_SUPERVISOR_INSTANCE_ID"
+RUNTIME_RESERVATION_PURPOSE_ENV = "FOULER_RUNTIME_RESERVATION_PURPOSE"
+RUNTIME_RESERVATION_KIND_ENV = "FOULER_RUNTIME_RESERVATION_KIND"
+RUNTIME_RESERVATION_BATTLE_COUNT_ENV = "FOULER_RUNTIME_RESERVATION_BATTLE_COUNT"
+RUNTIME_RESERVATION_CYCLE_COUNT_ENV = "FOULER_RUNTIME_RESERVATION_CYCLE_COUNT"
+RUNTIME_RESERVATION_CONCURRENCY_ENV = "FOULER_RUNTIME_RESERVATION_MAX_CONCURRENT_BATTLES"
+RUNTIME_SUPERVISOR_PID_ENV = "FOULER_RUNTIME_SUPERVISOR_PID"
+RUNTIME_SUPERVISOR_CREATION_FILETIME_ENV = (
+    "FOULER_RUNTIME_SUPERVISOR_CREATION_FILETIME"
+)
+RUNTIME_LAUNCH_NONCE_ENV = "FOULER_RUNTIME_LAUNCH_NONCE"
+_RUNTIME_PATHS = resolve_runtime_paths(ROOT)
+RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
+RUNTIME_TRUTH_DIR = RUNTIME_STATE_ROOT / "truth"
+RUNTIME_LOG_ROOT = _RUNTIME_PATHS.log_root
+PID_DIR = RUNTIME_STATE_ROOT / "pids"
 OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
 DRAIN_FILE = PID_DIR / "drain.request"
 SUPERVISOR_PID_FILE = PID_DIR / "devstream_battle_supervisor.pid"
 SUPERVISOR_STOP_FILE = PID_DIR / "supervisor.stop"
-SUPERVISOR_STATUS_FILE = ROOT / "devstream" / "truth" / "supervisor-status.json"
-SUPERVISOR_IMPROVE_LEASE_FILE = ROOT / "devstream" / "truth" / "improve-runtime-lease.json"
-STALE_BATTLE_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-active-battles-backups"
-STALE_STREAM_STATUS_BACKUP_DIR = ROOT / "devstream" / "truth" / "stale-stream-status-backups"
-ENV_FILES = [ROOT / ".env", ROOT / ".env.deku"]
-BOT_LOCK_PID_FILE = ROOT / ".bot.pid"
-STREAM_STATUS_FILE = ROOT / "stream_status.json"
-BATTLE_STATS_FILE = ROOT / "battle_stats.json"
-ACCOUNT_SEASON_FILE = ROOT / "devstream" / "truth" / "account-season.json"
-BATTLE_LOG_DIR = ROOT / "logs"
-REPLAY_ANALYSIS_DIR = ROOT / "replay_analysis"
+IMPROVE_AGENT_LOCK_FILE = PID_DIR / "improve-agent.lock"
+IMPROVE_AGENT_RECOVERY_BLOCK_FILE = PID_DIR / "improve-agent-recovery-block.json"
+SUPERVISOR_STATUS_FILE = RUNTIME_TRUTH_DIR / "supervisor-status.json"
+IMPROVE_RUNTIME_LEASE_PATH_ENV = "FOULER_IMPROVE_RUNTIME_LEASE_PATH"
+STALE_BATTLE_BACKUP_DIR = RUNTIME_TRUTH_DIR / "stale-active-battles-backups"
+STALE_STREAM_STATUS_BACKUP_DIR = RUNTIME_TRUTH_DIR / "stale-stream-status-backups"
+if os.name == "nt":
+    _DEFAULT_SECRET_ENV_FILE = (
+        Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData"))
+        / "HERMES"
+        / "secrets"
+        / "fouler.env"
+    )
+else:
+    _DEFAULT_SECRET_ENV_FILE = Path.home() / ".config" / "deku-devstream" / "secrets" / "fouler.env"
+SECRET_ENV_FILE = Path(
+    os.getenv("FOULER_ENV_FILE", str(_DEFAULT_SECRET_ENV_FILE))
+).expanduser().absolute()
+ENV_FILES = [SECRET_ENV_FILE, ROOT / ".env", ROOT / ".env.deku"]
+if os.name == "nt":
+    _DEFAULT_ACCOUNT_SEASON_AUTHORITY_FILE = (
+        Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData"))
+        / "HERMES"
+        / "authority"
+        / "fouler"
+        / "account-season.json"
+    )
+else:
+    _DEFAULT_ACCOUNT_SEASON_AUTHORITY_FILE = (
+        Path.home()
+        / ".config"
+        / "deku-devstream"
+        / "authority"
+        / "fouler"
+        / "account-season.json"
+    )
+ACCOUNT_SEASON_AUTHORITY_FILE = Path(
+    os.getenv(
+        "FOULER_ACCOUNT_SEASON_PATH",
+        str(_DEFAULT_ACCOUNT_SEASON_AUTHORITY_FILE),
+    )
+).expanduser().absolute()
+BOT_LOCK_PID_FILE = PID_DIR / "bot.pid"
+STREAM_STATUS_FILE = RUNTIME_STATE_ROOT / "stream_status.json"
+BATTLE_STATS_FILE = RUNTIME_STATE_ROOT / "battle_stats.json"
+# This writable runtime copy is display/reporting state only. It never authorizes a launch.
+ACCOUNT_SEASON_FILE = RUNTIME_TRUTH_DIR / "account-season.json"
+BATTLE_LOG_DIR = RUNTIME_LOG_ROOT
+REPLAY_ANALYSIS_DIR = RUNTIME_STATE_ROOT / "replay_analysis"
 TEAMS_DIR = ROOT / "teams"
 STALE_ACTIVE_TRUTH_SECONDS = 1800
 STALE_STREAM_TRUTH_SECONDS = 21600
@@ -70,6 +143,32 @@ FINITE_RUNTIME_LEASE_PRECONDITIONS = [
 ]
 AUTO_IMPROVE_SENTINEL = "FOULER_PLAY_ENABLE_AUTO_IMPROVE"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+RUNTIME_PROVENANCE_ENV_NAMES = (
+    "FOULER_SOURCE_COMMIT",
+    "FOULER_SESSION_ID",
+    "FOULER_CHANGE_ID",
+    "FOULER_DEPLOYMENT_ID",
+    "FOULER_RUNTIME_LEASE_ID",
+    "FOULER_RUNTIME_AUTHORIZATION_SHA256",
+    "FOULER_SOURCE_TREE",
+    "FOULER_RUNTIME_MANIFEST_DIGEST",
+    "FOULER_DEPLOYMENT_RECEIPT_SHA256",
+    "FOULER_DEPLOYMENT_RECEIPT_PATH",
+)
+IMPROVE_AUTHORITY_ENV_NAMES = {
+    "FOULER_SOURCE_COMMIT": "FOULER_IMPROVE_SOURCE_COMMIT",
+    "FOULER_SESSION_ID": "FOULER_IMPROVE_SESSION_ID",
+    "FOULER_CHANGE_ID": "FOULER_IMPROVE_CHANGE_ID",
+    "FOULER_DEPLOYMENT_ID": "FOULER_IMPROVE_DEPLOYMENT_ID",
+    "FOULER_RUNTIME_LEASE_ID": "FOULER_IMPROVE_RUNTIME_LEASE_ID",
+    "FOULER_RUNTIME_AUTHORIZATION_SHA256": "FOULER_IMPROVE_RUNTIME_AUTHORIZATION_SHA256",
+    "FOULER_SOURCE_TREE": "FOULER_IMPROVE_SOURCE_TREE",
+    "FOULER_RUNTIME_MANIFEST_DIGEST": "FOULER_IMPROVE_RUNTIME_MANIFEST_DIGEST",
+    "FOULER_DEPLOYMENT_RECEIPT_SHA256": "FOULER_IMPROVE_DEPLOYMENT_RECEIPT_SHA256",
+    "FOULER_DEPLOYMENT_RECEIPT_PATH": "FOULER_IMPROVE_DEPLOYMENT_RECEIPT_PATH",
+    RUNTIME_LEASE_PATH_ENV: IMPROVE_RUNTIME_LEASE_PATH_ENV,
+}
+GIT_COMMIT_RE = re.compile(r"^[0-9a-f]{40,64}$")
 ACCOUNT_AUTHORITY_FILES = [ROOT / "AGENTS.md", ROOT / "CLAUDE.md", ROOT / "TASKBOARD.md"]
 ACCOUNT_AUTHORITY_PATTERNS = (
     ("current PS_USERNAME", re.compile(r"Current:\s*`?PS_USERNAME=([A-Za-z0-9_.-]+)`?", re.IGNORECASE)),
@@ -81,19 +180,55 @@ ACCOUNT_AUTHORITY_PATTERNS = (
 )
 
 
+def runtime_state_root(env: dict[str, str] | None = None) -> Path:
+    environment = os.environ if env is None else env
+    if not is_production_runtime(ROOT, environ=environment) and not any(
+        str(environment.get(name) or "").strip()
+        for name in (
+            "FOULER_RUNTIME_STATE_ROOT",
+            "FOULER_RUNTIME_LOG_ROOT",
+            "FOULER_RUNTIME_CACHE_ROOT",
+            "FOULER_RUNTIME_TEMP_ROOT",
+        )
+    ):
+        return ROOT
+    return resolve_runtime_paths(ROOT, environ=environment).state_root
+
+
+def runtime_log_root(env: dict[str, str] | None = None) -> Path:
+    environment = os.environ if env is None else env
+    if not is_production_runtime(ROOT, environ=environment) and not any(
+        str(environment.get(name) or "").strip()
+        for name in (
+            "FOULER_RUNTIME_STATE_ROOT",
+            "FOULER_RUNTIME_LOG_ROOT",
+            "FOULER_RUNTIME_CACHE_ROOT",
+            "FOULER_RUNTIME_TEMP_ROOT",
+        )
+    ):
+        return ROOT / "logs"
+    return resolve_runtime_paths(ROOT, environ=environment).log_root
+
+
 def env_flag_enabled(env: dict[str, str], name: str) -> bool:
     return str(env.get(name, "")).strip().lower() in TRUTHY_ENV_VALUES
 
 
 def supervisor_auto_improve_enabled(args: argparse.Namespace, env: dict[str, str] | None = None) -> tuple[bool, str]:
-    if getattr(args, "skip_improve", False):
-        return False, "--skip-improve"
-    if getattr(args, "enable_auto_improve", False):
-        return True, "--enable-auto-improve"
     env = env if env is not None else load_env_files()
+    requested_by: list[str] = []
+    if getattr(args, "enable_auto_improve", False):
+        requested_by.append("--enable-auto-improve")
     if env_flag_enabled(env, AUTO_IMPROVE_SENTINEL):
-        return True, f"{AUTO_IMPROVE_SENTINEL}=1"
-    return False, f"missing --enable-auto-improve or {AUTO_IMPROVE_SENTINEL}=1"
+        requested_by.append(f"{AUTO_IMPROVE_SENTINEL}=1")
+    if getattr(args, "skip_improve", False):
+        requested_by.append("--skip-improve")
+    request_text = ", ".join(requested_by) if requested_by else "not requested"
+    return (
+        False,
+        "immutable runtime improvement is disabled and delegated to the external "
+        f"DEKU control plane ({request_text})",
+    )
 
 
 def positive_int(value: object, default: int) -> int:
@@ -102,6 +237,23 @@ def positive_int(value: object, default: int) -> int:
     except (TypeError, ValueError):
         return default
     return parsed if parsed > 0 else default
+
+
+def improve_eval_battle_count(env: dict[str, str]) -> int:
+    requested = positive_int(env.get("IMPROVE_AGENT_EVAL_BATTLES"), 60)
+    return requested if requested >= 60 and requested % 12 == 0 else 60
+
+
+def minimum_improve_timeout_seconds(env: dict[str, str]) -> int:
+    battles = improve_eval_battle_count(env)
+    try:
+        per_battle = float(env.get("IMPROVE_AGENT_EVAL_PER_BATTLE_TIMEOUT", "240"))
+    except (TypeError, ValueError):
+        per_battle = 240.0
+    per_battle = per_battle if per_battle > 0 else 240.0
+    # Match the child gate's full matrix timeout and leave room for tests,
+    # candidate generation, worktree setup, and cleanup.
+    return int(battles * per_battle + 2400)
 
 
 def effective_run_count(run_count: object, env: dict[str, str] | None = None) -> int:
@@ -132,6 +284,11 @@ def runtime_lease_guard(
     max_cycles: int | None = None,
     require_max_cycles: bool = False,
 ) -> dict[str, Any]:
+    requires_deployment_identity = purpose in {
+        "devstream-start",
+        "devstream-start-continuous",
+        "devstream-supervise",
+    }
     return validate_runtime_lease(
         purpose=purpose,
         lease_path=getattr(args, "runtime_lease", None),
@@ -139,10 +296,13 @@ def runtime_lease_guard(
         requested_max_cycles=max_cycles,
         requested_max_concurrent_battles=getattr(args, "max_concurrent_battles", None),
         requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
+        requested_replay_behavior=env_value(env, "SAVE_REPLAY", default="always"),
         require_run_count=True,
         require_max_cycles=require_max_cycles,
         require_max_concurrent_battles=True,
         require_replay_behavior=True,
+        require_deployment_receipt=requires_deployment_identity,
+        verify_deployment_checkout=requires_deployment_identity,
     )
 
 
@@ -153,6 +313,7 @@ def cleanup_runtime_lease_guard(*, purpose: str, args: argparse.Namespace, env: 
         requested_run_count=1,
         requested_max_concurrent_battles=1,
         requested_account=env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID") or None,
+        requested_replay_behavior=env_value(env, "SAVE_REPLAY", default="always"),
         require_run_count=True,
         require_max_concurrent_battles=True,
         require_replay_behavior=True,
@@ -190,6 +351,459 @@ def prepare_runtime_env(env: dict[str, str]) -> dict[str, str]:
         env.setdefault("VIRTUAL_ENV", str(ROOT / ".venv"))
         env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
     return env
+
+
+def current_source_commit() -> str:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=20,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return result.stdout.strip().lower() if result.returncode == 0 else ""
+
+
+def apply_runtime_process_identity(
+    env: dict[str, str],
+    lease_guard: dict[str, Any],
+) -> tuple[dict[str, str], dict[str, Any]]:
+    """Bind every child to one verified source/deployment/lease/session identity."""
+    updated = dict(env)
+    blockers: list[str] = []
+    source_commit = current_source_commit()
+    if not GIT_COMMIT_RE.fullmatch(source_commit):
+        blockers.append("current Git source commit is unavailable or malformed")
+    try:
+        approved = lease_environment(lease_guard)
+    except (OSError, ValueError) as exc:
+        approved = {}
+        blockers.append(f"runtime lease process identity is unavailable: {exc}")
+    for name, approved_value in approved.items():
+        configured = str(updated.get(name) or "").strip()
+        if configured and configured != approved_value:
+            blockers.append(f"{name} does not match the validated runtime lease")
+    if approved.get("FOULER_SOURCE_COMMIT") != source_commit:
+        blockers.append("runtime lease sourceCommit does not match the current checkout HEAD")
+    if not blockers:
+        updated.update(approved)
+    public = {
+        "schemaVersion": "fouler-runtime-process-identity/v1",
+        "ok": not blockers,
+        "sourceCommit": source_commit or None,
+        "deploymentId": approved.get("FOULER_DEPLOYMENT_ID") or None,
+        "runtimeLeaseId": approved.get("FOULER_RUNTIME_LEASE_ID") or None,
+        "runtimeAuthorizationSha256": approved.get("FOULER_RUNTIME_AUTHORIZATION_SHA256") or None,
+        "sessionId": approved.get("FOULER_SESSION_ID") or None,
+        "changeId": approved.get("FOULER_CHANGE_ID") or None,
+        "sourceTree": approved.get("FOULER_SOURCE_TREE") or None,
+        "runtimeManifestDigest": approved.get("FOULER_RUNTIME_MANIFEST_DIGEST") or None,
+        "deploymentReceiptSha256": approved.get("FOULER_DEPLOYMENT_RECEIPT_SHA256") or None,
+        "deploymentReceiptPath": approved.get("FOULER_DEPLOYMENT_RECEIPT_PATH") or None,
+        "runtimeLeasePath": approved.get(RUNTIME_LEASE_PATH_ENV) or None,
+        "blockers": blockers,
+        "envNamesApplied": list(RUNTIME_PROVENANCE_ENV_NAMES) if not blockers else [],
+    }
+    return updated, public
+
+
+def resolved_runtime_lease_path(lease_guard: dict[str, Any]) -> str:
+    """Return the exact absolute lease path approved by validation."""
+    approved = lease_environment(lease_guard)
+    return approved[RUNTIME_LEASE_PATH_ENV]
+
+
+def improve_authority_environment(lease_guard: dict[str, Any]) -> dict[str, str]:
+    """Namespace improve authority without replacing the live battle identity."""
+    approved = lease_environment(lease_guard)
+    return {
+        improve_name: str(approved.get(runtime_name) or "")
+        for runtime_name, improve_name in IMPROVE_AUTHORITY_ENV_NAMES.items()
+    }
+
+
+def _broker_lease_identity(lease_guard: dict[str, Any]) -> tuple[str, str, list[str]]:
+    summary = lease_guard.get("lease") if isinstance(lease_guard.get("lease"), dict) else {}
+    lease_id = str(summary.get("id") or "").strip()
+    authorization_digest = str(summary.get("authorizationSha256") or "").strip().lower()
+    blockers: list[str] = []
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}", lease_id):
+        blockers.append("validated runtime lease id is missing or malformed")
+    if not re.fullmatch(r"[0-9a-f]{64}", authorization_digest):
+        blockers.append("validated runtime authorization digest is missing or malformed")
+    return lease_id, authorization_digest, blockers
+
+
+def runtime_lease_consumption_root(env: dict[str, str] | None = None) -> Path:
+    """Return the administrator/service-only broker store root."""
+
+    del env
+    if RUNTIME_LEASE_CONSUMPTION_ROOT_OVERRIDE is not None:
+        return RUNTIME_LEASE_CONSUMPTION_ROOT_OVERRIDE.expanduser().resolve()
+    if os.name == "nt":
+        return Path(r"C:\ProgramData\HERMES-LeaseBroker\fouler")
+    return (Path.home() / ".local" / "state" / "hermes-lease-broker" / "fouler").resolve()
+
+
+def initialize_runtime_lease_consumption(
+    lease_guard: dict[str, Any],
+    *,
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    del env
+    lease_id, authorization_digest, blockers = _broker_lease_identity(lease_guard)
+    return {
+        "ok": not blockers,
+        "blockers": blockers,
+        "authority": "windows-named-pipe-lease-broker",
+        "stateRoot": str(runtime_lease_consumption_root()),
+        "runtimeLeaseId": lease_id or None,
+        "runtimeAuthorizationSha256": authorization_digest or None,
+        "exhausted": False,
+        "note": "capacity is checked atomically when the supervisor reserves a cycle",
+    }
+
+
+def reserve_runtime_lease_consumption(
+    lease_guard: dict[str, Any],
+    *,
+    run_count: int,
+    cycle_index: int,
+    supervisor_instance_id: str,
+    max_concurrent_battles: int = DEFAULT_MAX_CONCURRENT,
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    del env
+    lease_id, authorization_digest, blockers = _broker_lease_identity(lease_guard)
+    result: dict[str, Any] = {
+        "ok": False,
+        "reserved": False,
+        "authority": "windows-named-pipe-lease-broker",
+        "blockers": blockers,
+    }
+    requested = positive_int(run_count, 0)
+    concurrency = positive_int(max_concurrent_battles, 0)
+    if requested <= 0:
+        blockers.append("runtime broker reservation run count must be positive")
+    if concurrency <= 0 or concurrency > 3:
+        blockers.append("runtime broker reservation concurrency must be between one and three")
+    if not supervisor_instance_id:
+        blockers.append("runtime broker reservation supervisor identity is missing")
+    if blockers:
+        return result
+    request = broker_request_payload(
+        "reserve-runtime",
+        authorization_digest=authorization_digest,
+        lease_id=lease_id,
+        request_id=f"reserve-runtime-{cycle_index}-{uuid.uuid4().hex}",
+        purpose=RUNTIME_RESERVATION_PURPOSE,
+        kind="runtime",
+        battleCount=requested,
+        cycleCount=1,
+        maxConcurrentBattles=concurrency,
+        supervisorInstanceId=supervisor_instance_id,
+    )
+    try:
+        response = request_with_retry(request)
+    except (OSError, PermissionError, ValueError) as exc:
+        result["blockers"] = [f"lease broker request failed closed: {exc}"]
+        return result
+    result["brokerRequestId"] = response.get("requestId")
+    result["brokerAction"] = response.get("action")
+    if not response.get("ok"):
+        error = response.get("error") if isinstance(response.get("error"), dict) else {}
+        error_code = str(error.get("code") or "")
+        if error_code in {"run_bound_exhausted", "cycle_bound_exhausted"}:
+            result.update({"ok": True, "exhausted": True, "blockers": []})
+            return result
+        result["blockers"] = [response_error_text(response)]
+        return result
+    broker_reservation = response.get("result") if isinstance(response.get("result"), dict) else {}
+    reservation_id = str(broker_reservation.get("reservationId") or "")
+    if not re.fullmatch(r"res-[0-9a-f]{32}", reservation_id):
+        result["blockers"] = ["lease broker returned a malformed reservation id"]
+        return result
+    expected_static = {
+        "kind": "runtime",
+        "purpose": RUNTIME_RESERVATION_PURPOSE,
+        "battleCount": requested,
+        "cycleCount": 1,
+        "maxConcurrentBattles": concurrency,
+        "supervisorInstanceId": supervisor_instance_id,
+    }
+    mismatches = [
+        name
+        for name, expected in expected_static.items()
+        if broker_reservation.get(name) != expected
+    ]
+    supervisor_pid = broker_reservation.get("supervisorProcessId")
+    supervisor_creation = broker_reservation.get("supervisorProcessCreationFiletime")
+    launch_nonce = str(broker_reservation.get("launchNonce") or "").lower()
+    if supervisor_pid != os.getpid():
+        mismatches.append("supervisorProcessId")
+    if type(supervisor_creation) is not int or supervisor_creation <= 0:
+        mismatches.append("supervisorProcessCreationFiletime")
+    if not re.fullmatch(r"[0-9a-f]{64}", launch_nonce):
+        mismatches.append("launchNonce")
+    if mismatches:
+        result["blockers"] = [
+            "lease broker returned a mismatched reservation binding: "
+            + ", ".join(sorted(set(mismatches)))
+        ]
+        return result
+    binding = {
+        "reservationId": reservation_id,
+        **expected_static,
+        "supervisorProcessId": supervisor_pid,
+        "supervisorProcessCreationFiletime": supervisor_creation,
+        "launchNonce": launch_nonce,
+    }
+    try:
+        require_exact_reservation_binding(broker_reservation, binding)
+    except (ProtocolError, ValueError) as exc:
+        result["blockers"] = [f"lease broker reservation binding failed closed: {exc}"]
+        return result
+    result.update(
+        {
+            "ok": True,
+            "reserved": True,
+            "exhausted": False,
+            "blockers": [],
+            "reservation": {
+                **broker_reservation,
+                "runtimeLeaseId": lease_id,
+                "authorizationDigest": authorization_digest,
+                "cycleIndex": cycle_index,
+                "runCount": requested,
+            },
+        }
+    )
+    return result
+
+
+def validate_runtime_lease_reservation(
+    lease_guard: dict[str, Any],
+    *,
+    reservation_id: str,
+    run_count: int,
+    max_concurrent_battles: int,
+    supervisor_instance_id: str,
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    _lease_id, _authorization_digest, blockers = _broker_lease_identity(lease_guard)
+    if not re.fullmatch(r"res-[0-9a-f]{32}", str(reservation_id or "")):
+        blockers.append("broker reservation id is missing or malformed")
+    if positive_int(run_count, 0) <= 0:
+        blockers.append("broker reservation run count is invalid")
+    if not supervisor_instance_id:
+        blockers.append("broker reservation supervisor identity is missing")
+    binding = runtime_reservation_binding_from_env(env or os.environ)
+    if binding.get("reservationId") != reservation_id:
+        blockers.append("broker reservation environment id does not match")
+    if binding.get("purpose") != RUNTIME_RESERVATION_PURPOSE:
+        blockers.append("broker reservation purpose is invalid")
+    if binding.get("kind") != "runtime":
+        blockers.append("broker reservation kind is invalid")
+    if binding.get("battleCount") != run_count:
+        blockers.append("broker reservation battle count does not match")
+    if binding.get("cycleCount") != 1:
+        blockers.append("broker reservation cycle count must equal one")
+    if binding.get("maxConcurrentBattles") != max_concurrent_battles:
+        blockers.append("broker reservation concurrency does not match")
+    if binding.get("supervisorInstanceId") != supervisor_instance_id:
+        blockers.append("broker reservation supervisor instance does not match")
+    if type(binding.get("supervisorProcessId")) is not int:
+        blockers.append("broker reservation supervisor PID is invalid")
+    if type(binding.get("supervisorProcessCreationFiletime")) is not int:
+        blockers.append("broker reservation supervisor creation identity is invalid")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(binding.get("launchNonce") or "")):
+        blockers.append("broker reservation launch nonce is invalid")
+    return {
+        "ok": not blockers,
+        "valid": not blockers,
+        "blockers": blockers,
+        "authority": "windows-named-pipe-lease-broker",
+        "reservation": public_runtime_reservation(binding),
+    }
+
+
+def _positive_env_integer(env: dict[str, str], name: str) -> int | None:
+    try:
+        parsed = int(str(env.get(name) or "").strip())
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def runtime_reservation_binding_from_env(env: dict[str, str]) -> dict[str, Any]:
+    return {
+        "reservationId": str(env.get(RUNTIME_LEASE_RESERVATION_ID_ENV) or "").strip(),
+        "kind": str(env.get(RUNTIME_RESERVATION_KIND_ENV) or "").strip(),
+        "purpose": str(env.get(RUNTIME_RESERVATION_PURPOSE_ENV) or "").strip(),
+        "battleCount": _positive_env_integer(env, RUNTIME_RESERVATION_BATTLE_COUNT_ENV),
+        "cycleCount": _positive_env_integer(env, RUNTIME_RESERVATION_CYCLE_COUNT_ENV),
+        "maxConcurrentBattles": _positive_env_integer(
+            env, RUNTIME_RESERVATION_CONCURRENCY_ENV
+        ),
+        "supervisorProcessId": _positive_env_integer(env, RUNTIME_SUPERVISOR_PID_ENV),
+        "supervisorProcessCreationFiletime": _positive_env_integer(
+            env, RUNTIME_SUPERVISOR_CREATION_FILETIME_ENV
+        ),
+        "supervisorInstanceId": str(
+            env.get(RUNTIME_SUPERVISOR_INSTANCE_ID_ENV) or ""
+        ).strip(),
+        "launchNonce": str(env.get(RUNTIME_LAUNCH_NONCE_ENV) or "").strip().lower(),
+    }
+
+
+def runtime_reservation_environment(reservation: dict[str, Any]) -> dict[str, str]:
+    return {
+        RUNTIME_LEASE_RESERVATION_ID_ENV: str(reservation["reservationId"]),
+        RUNTIME_RESERVATION_KIND_ENV: str(reservation["kind"]),
+        RUNTIME_RESERVATION_PURPOSE_ENV: str(reservation["purpose"]),
+        RUNTIME_RESERVATION_BATTLE_COUNT_ENV: str(reservation["battleCount"]),
+        RUNTIME_RESERVATION_CYCLE_COUNT_ENV: str(reservation["cycleCount"]),
+        RUNTIME_RESERVATION_CONCURRENCY_ENV: str(
+            reservation["maxConcurrentBattles"]
+        ),
+        RUNTIME_SUPERVISOR_PID_ENV: str(reservation["supervisorProcessId"]),
+        RUNTIME_SUPERVISOR_CREATION_FILETIME_ENV: str(
+            reservation["supervisorProcessCreationFiletime"]
+        ),
+        RUNTIME_SUPERVISOR_INSTANCE_ID_ENV: str(reservation["supervisorInstanceId"]),
+        RUNTIME_LAUNCH_NONCE_ENV: str(reservation["launchNonce"]),
+    }
+
+
+def public_runtime_reservation(reservation: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in reservation.items()
+        if key not in {"launchNonce", "authorizationDigest"}
+    } | {"launchNoncePresent": bool(reservation.get("launchNonce"))}
+
+
+def runtime_reservation_status(
+    lease_guard: dict[str, Any], reservation: dict[str, Any]
+) -> dict[str, Any]:
+    lease_id, authorization_digest, blockers = _broker_lease_identity(lease_guard)
+    if blockers:
+        return {"ok": False, "blockers": blockers}
+    request = broker_request_payload(
+        "status",
+        authorization_digest=authorization_digest,
+        lease_id=lease_id,
+        lookupType="reservation",
+        lookupId=str(reservation.get("reservationId") or ""),
+    )
+    try:
+        response = request_with_retry(request)
+    except (OSError, PermissionError, ValueError) as exc:
+        return {"ok": False, "blockers": [f"lease broker status failed closed: {exc}"]}
+    if not response.get("ok"):
+        return {"ok": False, "blockers": [response_error_text(response)]}
+    status = response.get("result") if isinstance(response.get("result"), dict) else {}
+    if not status.get("found"):
+        return {"ok": False, "blockers": ["lease broker reservation status is missing"]}
+    compared_fields = (
+        "reservationId",
+        "kind",
+        "purpose",
+        "battleCount",
+        "cycleCount",
+        "maxConcurrentBattles",
+        "supervisorProcessId",
+        "supervisorProcessCreationFiletime",
+        "supervisorInstanceId",
+    )
+    mismatches = [
+        name for name in compared_fields if status.get(name) != reservation.get(name)
+    ]
+    if mismatches:
+        return {
+            "ok": False,
+            "blockers": [
+                "lease broker status binding mismatch: " + ", ".join(mismatches)
+            ],
+        }
+    return {"ok": True, "blockers": [], "status": status}
+
+
+def complete_runtime_lease_consumption(
+    lease_guard: dict[str, Any],
+    *,
+    reservation: dict[str, Any],
+    outcome: str,
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    del env
+    lease_id, authorization_digest, blockers = _broker_lease_identity(lease_guard)
+    result: dict[str, Any] = {
+        "ok": False,
+        "completed": False,
+        "blockers": blockers,
+        "authority": "windows-named-pipe-lease-broker",
+    }
+    if outcome not in {"completed", "failed", "aborted"}:
+        result["blockers"].append("runtime reservation outcome is invalid")
+    if blockers:
+        return result
+    binding = {
+        name: reservation.get(name)
+        for name in (
+            "reservationId",
+            "kind",
+            "purpose",
+            "battleCount",
+            "cycleCount",
+            "maxConcurrentBattles",
+            "supervisorProcessId",
+            "supervisorProcessCreationFiletime",
+            "supervisorInstanceId",
+            "launchNonce",
+        )
+    }
+    request = broker_request_payload(
+        "complete",
+        authorization_digest=authorization_digest,
+        lease_id=lease_id,
+        **binding,
+        outcome=outcome,
+    )
+    try:
+        response = request_with_retry(request)
+    except (OSError, PermissionError, ValueError) as exc:
+        result["blockers"] = [f"lease broker completion failed closed: {exc}"]
+        return result
+    if not response.get("ok"):
+        result["blockers"] = [response_error_text(response)]
+        return result
+    broker_result = response.get("result") if isinstance(response.get("result"), dict) else {}
+    try:
+        require_exact_reservation_binding(broker_result, binding)
+    except (ProtocolError, ValueError) as exc:
+        result["blockers"] = [f"lease broker completion binding failed closed: {exc}"]
+        return result
+    result.update(
+        {
+            "ok": True,
+            "completed": broker_result.get("state") == "completed",
+            "state": broker_result.get("state"),
+            "reservationId": broker_result.get("reservationId"),
+            "blockers": [],
+            "reservation": public_runtime_reservation(reservation),
+            "outcome": broker_result.get("outcome"),
+            "completionActor": broker_result.get("completionActor"),
+            "capacityReturned": False,
+        }
+    )
+    return result
 
 
 def iso_now() -> str:
@@ -271,9 +885,62 @@ def unquote_env_value(value: str) -> str:
     return value
 
 
-def load_env_files() -> dict[str, str]:
-    env = dict(os.environ)
-    for path in ENV_FILES:
+def _default_secret_env_path(
+    environment: dict[str, str],
+    *,
+    platform_name: str,
+) -> Path:
+    if platform_name == "nt":
+        return (
+            Path(environment.get("PROGRAMDATA") or r"C:\ProgramData")
+            / "HERMES"
+            / "secrets"
+            / "fouler.env"
+        )
+    return Path.home() / ".config" / "deku-devstream" / "secrets" / "fouler.env"
+
+
+def env_file_candidates(
+    environment: dict[str, str] | None = None,
+    *,
+    platform_name: str | None = None,
+) -> list[Path]:
+    environment = dict(os.environ if environment is None else environment)
+    platform = os.name if platform_name is None else platform_name
+    if platform == "nt" and is_production_runtime(
+        ROOT,
+        environ=environment,
+        platform_name=platform,
+    ):
+        configured = str(environment.get("FOULER_ENV_FILE") or "").strip()
+        path = Path(configured) if configured else _default_secret_env_path(
+            environment,
+            platform_name=platform,
+        )
+        return [path.expanduser()]
+    return [Path(path).expanduser() for path in ENV_FILES]
+
+
+def load_env_files(
+    *,
+    environ: dict[str, str] | None = None,
+    platform_name: str | None = None,
+) -> dict[str, str]:
+    env = dict(os.environ if environ is None else environ)
+    platform = os.name if platform_name is None else platform_name
+    production_windows = platform == "nt" and is_production_runtime(
+        ROOT,
+        environ=env,
+        platform_name=platform,
+    )
+    if production_windows and not production_env_file_status(
+        env,
+        platform_name=platform,
+    )["ok"]:
+        return env
+    for path in env_file_candidates(env, platform_name=platform):
+        if production_windows and not path.is_absolute():
+            continue
         if not path.exists():
             continue
         for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -298,8 +965,37 @@ def env_value(env: dict[str, str], *names: str, default: str = "") -> str:
 
 def runtime_lease_account(args: argparse.Namespace, env: dict[str, str]) -> str:
     path = runtime_lease_path(getattr(args, "runtime_lease", None), env)
-    summary = lease_summary(read_json(path))
+    command = str(getattr(args, "command", "") or "")
+    execute = bool(getattr(args, "execute", False))
+    if command == "cleanup-stale-truth":
+        purpose = STALE_TRUTH_CLEANUP_PURPOSE if execute else STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE
+    elif command == "supervise":
+        purpose = "devstream-supervise"
+    elif command == "start" and getattr(args, "continuous", False):
+        purpose = "devstream-start-continuous" if execute else "devstream-start-continuous-dry-run"
+    else:
+        purpose = "devstream-start" if execute else "devstream-start-dry-run"
+    validation = validate_runtime_lease(purpose=purpose, lease_path=path)
+    if not validation.get("ok"):
+        return ""
+    summary = validation.get("lease") if isinstance(validation.get("lease"), dict) else {}
     return str(summary.get("account") or "").strip()
+
+
+def load_launch_environment(args: argparse.Namespace) -> dict[str, str]:
+    inherited = dict(os.environ)
+    lease_path = str(getattr(args, "runtime_lease", None) or "").strip()
+    if lease_path:
+        inherited[RUNTIME_LEASE_PATH_ENV] = lease_path
+    try:
+        loaded = load_env_files(environ=inherited)
+    except TypeError:
+        # Compatibility for narrow unit-test loaders that predate the explicit
+        # inherited-environment parameter.
+        loaded = load_env_files()
+        if lease_path:
+            loaded[RUNTIME_LEASE_PATH_ENV] = lease_path
+    return prepare_runtime_env(loaded)
 
 
 def apply_runtime_lease_account(env: dict[str, str], args: argparse.Namespace) -> dict[str, str]:
@@ -307,14 +1003,222 @@ def apply_runtime_lease_account(env: dict[str, str], args: argparse.Namespace) -
     if not account:
         return env
     env = dict(env)
-    for name in ("PS_USERNAME", "SHOWDOWN_USER_ID", "SHOWDOWN_ACCOUNTS", "FOULER_ACTIVE_ACCOUNT"):
-        env[name] = account
     env["FOULER_RUNTIME_LEASE_ACCOUNT"] = account
     return env
 
 
 def normalize_account_name(value: object) -> str:
     return str(value or "").strip().strip("\"'`").lower()
+
+
+def normalize_showdown_account(value: object) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(value or "").strip().lower())
+
+
+def _default_account_season_authority_path(
+    environment: dict[str, str],
+    *,
+    platform_name: str,
+) -> Path:
+    if platform_name == "nt":
+        return (
+            Path(environment.get("PROGRAMDATA") or r"C:\ProgramData")
+            / "HERMES"
+            / "authority"
+            / "fouler"
+            / "account-season.json"
+        )
+    return (
+        Path.home()
+        / ".config"
+        / "deku-devstream"
+        / "authority"
+        / "fouler"
+        / "account-season.json"
+    )
+
+
+def account_season_authority_path(
+    environment: dict[str, str] | None = None,
+    *,
+    platform_name: str | None = None,
+) -> Path:
+    environment = dict(os.environ if environment is None else environment)
+    platform = os.name if platform_name is None else platform_name
+    configured = str(environment.get("FOULER_ACCOUNT_SEASON_PATH") or "").strip()
+    path = Path(configured) if configured else _default_account_season_authority_path(
+        environment,
+        platform_name=platform,
+    )
+    return path.expanduser()
+
+
+def _reparse_components(path: Path) -> list[str]:
+    try:
+        absolute = path.absolute()
+    except OSError:
+        absolute = path
+    current = Path(absolute.anchor) if absolute.anchor else Path()
+    components: list[str] = []
+    for part in absolute.parts[1:] if absolute.anchor else absolute.parts:
+        current = current / part
+        if not os.path.lexists(current):
+            continue
+        try:
+            metadata = os.lstat(current)
+        except OSError:
+            continue
+        attributes = int(getattr(metadata, "st_file_attributes", 0) or 0)
+        reparse_flag = int(getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400) or 0x400)
+        if stat.S_ISLNK(metadata.st_mode) or bool(attributes & reparse_flag):
+            components.append(str(current))
+    return components
+
+
+def _read_only_regular_file(path: Path, *, platform_name: str) -> tuple[bool, bool]:
+    try:
+        metadata = path.lstat()
+    except OSError:
+        return False, False
+    regular = stat.S_ISREG(metadata.st_mode)
+    mode_read_only = (stat.S_IMODE(metadata.st_mode) & 0o222) == 0
+    if platform_name == "nt":
+        attributes = int(getattr(metadata, "st_file_attributes", 0) or 0)
+        readonly_flag = int(getattr(stat, "FILE_ATTRIBUTE_READONLY", 1) or 1)
+        mode_read_only = mode_read_only and bool(attributes & readonly_flag)
+    return regular, mode_read_only
+
+
+def _strict_json_object(path: Path) -> dict[str, Any]:
+    raw = path.read_bytes()
+    if len(raw) > 64 * 1024:
+        raise ValueError("authority file exceeds 64 KiB")
+
+    def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON key: {key}")
+            result[key] = value
+        return result
+
+    payload = json.loads(raw.decode("utf-8"), object_pairs_hook=reject_duplicates)
+    if type(payload) is not dict:
+        raise ValueError("authority payload must be a JSON object")
+    return payload
+
+
+def account_season_authority_check(
+    lease_guard: dict[str, Any],
+    *,
+    env: dict[str, str] | None = None,
+    path: Path | None = None,
+    platform_name: str | None = None,
+) -> dict[str, Any]:
+    environment = dict(os.environ if env is None else env)
+    platform = os.name if platform_name is None else platform_name
+    authority_path = path or account_season_authority_path(
+        environment,
+        platform_name=platform,
+    )
+    blockers: list[str] = []
+    summary = lease_guard.get("lease") if isinstance(lease_guard.get("lease"), dict) else {}
+    lease_account = str(summary.get("account") or "").strip()
+    if not lease_guard.get("ok") or not lease_account:
+        blockers.append("a validated runtime lease account is required")
+
+    if not authority_path.is_absolute():
+        blockers.append("FOULER_ACCOUNT_SEASON_PATH must be absolute")
+        resolved_path = authority_path
+    else:
+        try:
+            resolved_path = authority_path.resolve(strict=False)
+        except OSError:
+            resolved_path = authority_path.absolute()
+
+    runtime_roots: dict[str, Path] = {}
+    try:
+        runtime_paths = resolve_runtime_paths(
+            ROOT,
+            environ=environment,
+            platform_name=platform,
+            require_existing=False,
+        )
+        runtime_roots = {
+            "runtime state root": runtime_paths.state_root,
+            "runtime log root": runtime_paths.log_root,
+            "runtime cache root": runtime_paths.cache_root,
+            "runtime temp root": runtime_paths.temp_root,
+        }
+    except RuntimePathError as exc:
+        blockers.append(f"runtime path policy is invalid: {exc}")
+
+    if authority_path.is_absolute():
+        for label, root in {"immutable release": ROOT, **runtime_roots}.items():
+            try:
+                if paths_overlap(authority_path, root):
+                    blockers.append(f"account-season authority overlaps {label}")
+            except RuntimePathError as exc:
+                blockers.append(f"account-season authority path is invalid: {exc}")
+                break
+
+    reparse_components = _reparse_components(authority_path) if authority_path.is_absolute() else []
+    if reparse_components:
+        blockers.append("account-season authority path contains a symlink or reparse point")
+
+    exists = authority_path.exists()
+    regular, read_only = _read_only_regular_file(authority_path, platform_name=platform)
+    if not exists:
+        blockers.append("protected account-season authority file is missing")
+    elif not regular:
+        blockers.append("protected account-season authority path is not a regular file")
+    elif not read_only:
+        blockers.append("protected account-season authority file is writable")
+
+    payload: dict[str, Any] = {}
+    if exists and regular and not reparse_components:
+        try:
+            payload = _strict_json_object(authority_path)
+        except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+            blockers.append(f"protected account-season authority is malformed: {exc}")
+
+    schema_version = payload.get("schemaVersion")
+    account = payload.get("account")
+    season_id = payload.get("seasonId")
+    if payload:
+        if type(schema_version) is not str or schema_version != "fouler-play-account-season/v1":
+            blockers.append(
+                "protected account-season schemaVersion must equal fouler-play-account-season/v1"
+            )
+        if type(account) is not str or not normalize_showdown_account(account):
+            blockers.append("protected account-season account must be a non-empty string")
+        if type(season_id) is not str or not season_id.strip():
+            blockers.append("protected account-season seasonId must be a non-empty string")
+
+    normalized_lease = normalize_showdown_account(lease_account)
+    normalized_authority = normalize_showdown_account(account)
+    if normalized_lease and normalized_authority and normalized_lease != normalized_authority:
+        blockers.append("protected account-season account does not match the runtime lease account")
+
+    return {
+        "schemaVersion": "fouler-account-season-authority-check/v1",
+        "ok": not blockers,
+        "blockers": blockers,
+        "path": str(resolved_path),
+        "source": (
+            "FOULER_ACCOUNT_SEASON_PATH"
+            if str(environment.get("FOULER_ACCOUNT_SEASON_PATH") or "").strip()
+            else "platform-default"
+        ),
+        "account": account if type(account) is str else None,
+        "seasonId": season_id if type(season_id) is str else None,
+        "leaseAccount": lease_account or None,
+        "readOnly": read_only,
+        "regularFile": regular,
+        "reparseComponents": reparse_components,
+        "runtimeMirrorAuthoritative": False,
+        "secretValuesPrinted": False,
+    }
 
 
 def documented_showdown_accounts() -> list[dict[str, Any]]:
@@ -455,6 +1359,8 @@ def shell_command_for_session(run_count: int, max_concurrent: int, env: dict[str
         str(run_count),
         "--max-concurrent-battles",
         str(max_concurrent),
+        "--search-parallelism",
+        str(PILOT_SEARCH_PARALLELISM),
         "--save-replay",
         env_value(env, "SAVE_REPLAY", default="always"),
         "--log-to-file",
@@ -611,7 +1517,7 @@ def supervisor_child_python() -> str:
 
 
 def read_active_battles() -> int:
-    path = ROOT / "active_battles.json"
+    path = active_battles_path()
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
@@ -621,7 +1527,7 @@ def read_active_battles() -> int:
 
 
 def active_battles_path() -> Path:
-    return ROOT / "active_battles.json"
+    return runtime_state_root() / "active_battles.json"
 
 
 def active_battles_age_seconds() -> float | None:
@@ -730,6 +1636,7 @@ def abandoned_battle_stats_row(
         "opponent": str(battle.get("opponent") or ""),
         "battle_url": str(battle.get("url") or ""),
         "operational_loss": True,
+        "provenance_status": "recovered-unattributed",
         "outcome_detail": "abandoned-active-battle-without-result",
         "source": "stale-active-battle-cleanup",
         "source_backup_path": str(backup_path),
@@ -846,14 +1753,13 @@ def infer_team_file_from_replay(
 def showdown_account_from_runtime() -> str:
     try:
         env = prepare_runtime_env(load_env_files())
-        account = env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID", "FOULER_ACTIVE_ACCOUNT")
-        if account:
-            return account
-        lease_payload = read_json_object(runtime_lease_path(None, env))
-        lease = lease_summary(lease_payload)
-        account = str(lease.get("account") or "").strip()
-        if account:
-            return account
+        validation = validate_runtime_lease(
+            purpose="devstream-supervise",
+            lease_path=runtime_lease_path(None, env),
+        )
+        if validation.get("ok"):
+            lease = validation.get("lease") if isinstance(validation.get("lease"), dict) else {}
+            return str(lease.get("account") or "").strip()
     except Exception:
         return ""
     return ""
@@ -949,6 +1855,7 @@ def completed_battle_stats_row_from_log(
         "winner": winner,
         "opponent": opponent_from_battle_log_path(path, battle_id, winner, account),
         "recovered_result": True,
+        "provenance_status": "recovered-unattributed",
         "source": "completed-battle-log-recovery",
         "source_log_path": str(path),
         "replay_url": replay_url,
@@ -1545,6 +2452,44 @@ def _command_expected_tokens(command: object) -> list[str]:
     return tokens
 
 
+def _normalize_command_argument(value: object) -> str:
+    text = str(value or "").strip().strip('"')
+    if not text:
+        return ""
+    looks_like_path = (
+        text.lower().endswith((".py", ".ps1", ".bat", ".cmd", ".exe", ".sh"))
+        or "\\" in text
+        or "/" in text
+    )
+    if looks_like_path and not text.startswith("-"):
+        candidate = Path(text)
+        if not candidate.is_absolute():
+            candidate = ROOT / candidate
+        try:
+            text = str(candidate.resolve())
+        except OSError:
+            text = os.path.abspath(str(candidate))
+    return os.path.normcase(text)
+
+
+def _command_identity_matches(expected: object, observed: object) -> bool:
+    """Match the complete recorded argv, allowing only an added interpreter prefix."""
+    if not isinstance(expected, list) or not expected:
+        return False
+    if not isinstance(observed, list) or not observed:
+        return False
+    expected_parts = [_normalize_command_argument(item) for item in expected]
+    observed_parts = [_normalize_command_argument(item) for item in observed]
+    if observed_parts == expected_parts:
+        return True
+    return len(observed_parts) == len(expected_parts) + 1 and observed_parts[1:] == expected_parts
+
+
+def _process_cwd_matches_root(snapshot: dict[str, Any]) -> bool:
+    cwd = str(snapshot.get("cwd") or "").strip()
+    return bool(cwd) and os.path.normcase(os.path.abspath(cwd)) == os.path.normcase(os.path.abspath(ROOT))
+
+
 def _pid_file_expected_tokens(path: Path, payload: dict[str, Any] | str | None) -> list[str]:
     if isinstance(payload, dict):
         tokens = _command_expected_tokens(payload.get("command") or [])
@@ -1570,14 +2515,14 @@ def _process_snapshot(pid: int) -> dict[str, Any] | None:
             "cmdline": [str(item) for item in proc.cmdline()],
             "cwd": proc.cwd(),
             "createTime": float(proc.create_time()),
+            "parentPid": int(proc.ppid()),
         }
     except Exception:
         return None
 
 
 def _find_existing_process(command: list[str]) -> int | None:
-    expected_tokens = _command_expected_tokens(command)
-    if not expected_tokens:
+    if not command:
         return None
     try:
         import psutil  # type: ignore
@@ -1588,11 +2533,13 @@ def _find_existing_process(command: list[str]) -> int | None:
                     continue
                 if proc.info.get("status") == getattr(psutil, "STATUS_ZOMBIE", "zombie"):
                     continue
-                cwd = proc.info.get("cwd")
-                if not cwd or os.path.abspath(str(cwd)) != os.path.abspath(ROOT):
+                snapshot = {
+                    "cwd": proc.info.get("cwd"),
+                    "cmdline": [str(item) for item in (proc.info.get("cmdline") or [])],
+                }
+                if not _process_cwd_matches_root(snapshot):
                     continue
-                command_line = " ".join(str(item) for item in (proc.info.get("cmdline") or [])).lower()
-                if all(token in command_line for token in expected_tokens):
+                if _command_identity_matches(command, snapshot["cmdline"]):
                     return int(proc.info["pid"])
             except Exception:
                 continue
@@ -1605,18 +2552,23 @@ def _pid_matches_expected_process(path: Path, pid: int, payload: dict[str, Any] 
     snapshot = _process_snapshot(pid)
     if not snapshot or not snapshot.get("running"):
         return False
-    expected_tokens = _pid_file_expected_tokens(path, payload)
-    command = " ".join(snapshot.get("cmdline") or []).lower()
-    if expected_tokens and not any(token in command for token in expected_tokens):
+    if not isinstance(payload, dict):
         return False
-    if expected_tokens:
-        cwd = snapshot.get("cwd")
-        if cwd and os.path.abspath(str(cwd)) != os.path.abspath(ROOT):
-            return False
-    if isinstance(payload, dict):
-        started_at = _parse_started_at(payload.get("startedAt") or payload.get("started_at"))
-        create_time = snapshot.get("createTime")
-        if started_at is not None and create_time is not None and float(create_time) < started_at - 2:
+    expected_command = payload.get("command")
+    if not _command_identity_matches(expected_command, snapshot.get("cmdline")):
+        return False
+    if not _process_cwd_matches_root(snapshot):
+        return False
+    started_at = _parse_started_at(payload.get("startedAt") or payload.get("started_at"))
+    create_time = snapshot.get("createTime")
+    if started_at is not None and create_time is not None and float(create_time) < started_at - 2:
+        return False
+    recorded_create_time = payload.get("createTime")
+    if recorded_create_time not in (None, "") and create_time is not None:
+        try:
+            if abs(float(recorded_create_time) - float(create_time)) > 2:
+                return False
+        except (TypeError, ValueError):
             return False
     return True
 
@@ -1633,8 +2585,7 @@ def pid_alive(path: Path) -> tuple[bool, int | None]:
         return _pid_matches_expected_process(path, pid, payload), pid
     except OSError:
         # Windows can raise for signal 0 even when psutil can still inspect a
-        # valid process. Prefer the richer process snapshot before treating the
-        # pid file as stale, otherwise legacy bare PID files can spawn duplicates.
+        # valid process. The structured PID record still has to match exactly.
         return _pid_matches_expected_process(path, pid, payload), pid
 
 
@@ -1723,21 +2674,129 @@ def rotate_child_log_before_append(log_path: Path, env: dict[str, str]) -> dict[
     }
 
 
-def secure_env_files(*, execute: bool) -> list[dict[str, Any]]:
+def production_env_file_status(
+    env: dict[str, str] | None = None,
+    *,
+    platform_name: str | None = None,
+) -> dict[str, Any]:
+    environment = dict(os.environ if env is None else env)
+    platform = os.name if platform_name is None else platform_name
+    required = platform == "nt" and is_production_runtime(
+        ROOT,
+        environ=environment,
+        platform_name=platform,
+    )
+    candidates = env_file_candidates(environment, platform_name=platform)
+    if not required:
+        return {
+            "ok": True,
+            "required": False,
+            "blockers": [],
+            "paths": [str(path) for path in candidates],
+        }
+
+    blockers: list[str] = []
+    path = candidates[0]
+    if len(candidates) != 1:
+        blockers.append("Windows production must select exactly one FOULER_ENV_FILE")
+    if not path.is_absolute():
+        blockers.append("FOULER_ENV_FILE must be absolute for Windows production")
+
+    runtime_roots: dict[str, Path] = {}
+    try:
+        runtime_paths = resolve_runtime_paths(
+            ROOT,
+            environ=environment,
+            platform_name=platform,
+            require_existing=False,
+        )
+        runtime_roots = {
+            "runtime state root": runtime_paths.state_root,
+            "runtime log root": runtime_paths.log_root,
+            "runtime cache root": runtime_paths.cache_root,
+            "runtime temp root": runtime_paths.temp_root,
+        }
+    except RuntimePathError as exc:
+        blockers.append(f"runtime path policy is invalid: {exc}")
+
+    if path.is_absolute():
+        for label, root in {"immutable release": ROOT, **runtime_roots}.items():
+            try:
+                if paths_overlap(path, root):
+                    blockers.append(f"FOULER_ENV_FILE overlaps {label}")
+            except RuntimePathError as exc:
+                blockers.append(f"FOULER_ENV_FILE is invalid: {exc}")
+                break
+
+    reparse_components = _reparse_components(path) if path.is_absolute() else []
+    if reparse_components:
+        blockers.append("FOULER_ENV_FILE path contains a symlink or reparse point")
+    exists = path.exists()
+    regular, read_only = _read_only_regular_file(path, platform_name=platform)
+    if not exists:
+        blockers.append("protected FOULER_ENV_FILE is missing")
+    elif not regular:
+        blockers.append("protected FOULER_ENV_FILE is not a regular file")
+    elif not read_only:
+        blockers.append("protected FOULER_ENV_FILE is writable")
+    return {
+        "ok": not blockers,
+        "required": True,
+        "blockers": blockers,
+        "paths": [str(path)],
+        "path": str(path.absolute()) if path.is_absolute() else str(path),
+        "regularFile": regular,
+        "readOnly": read_only,
+        "reparseComponents": reparse_components,
+    }
+
+
+def secure_env_files(
+    *,
+    execute: bool,
+    env: dict[str, str] | None = None,
+    platform_name: str | None = None,
+) -> list[dict[str, Any]]:
+    environment = dict(os.environ if env is None else env)
+    platform = os.name if platform_name is None else platform_name
+    policy = production_env_file_status(environment, platform_name=platform)
+    if policy["required"]:
+        return [
+            {
+                "path": policy.get("path"),
+                "changed": False,
+                "ok": policy["ok"],
+                "readOnly": policy.get("readOnly", False),
+                "regularFile": policy.get("regularFile", False),
+                "reparseComponents": policy.get("reparseComponents", []),
+                "blockers": policy.get("blockers", []),
+                "policy": "protected-windows-production-env/v1",
+            }
+        ]
+
     items: list[dict[str, Any]] = []
-    for path in ENV_FILES:
+    for path in env_file_candidates(environment, platform_name=platform):
         if not path.exists():
             continue
         mode = path.stat().st_mode & 0o777
         item: dict[str, Any] = {"path": str(path), "mode": oct(mode), "changed": False}
-        if execute and os.name != "nt" and mode != 0o600:
+        if execute and platform != "nt" and mode != 0o600:
             path.chmod(0o600)
             item["changed"] = True
             mode = path.stat().st_mode & 0o777
             item["mode"] = oct(mode)
-        item["ok"] = os.name == "nt" or mode == 0o600
+        item["ok"] = platform == "nt" or mode == 0o600
         items.append(item)
     return items
+
+
+def secure_env_file_report(*, execute: bool, env: dict[str, str]) -> list[dict[str, Any]]:
+    try:
+        return secure_env_files(execute=execute, env=env)
+    except TypeError:
+        # Preserve narrow test/embedding shims that implement the historical
+        # execute-only call contract.
+        return secure_env_files(execute=execute)
 
 
 def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> dict[str, Any]:
@@ -1799,7 +2858,7 @@ def start_process(command: list[str], pid_file: Path, env: dict[str, str]) -> di
             "removedStalePidFile": removed_stale_pid_file,
         }
     PID_DIR.mkdir(parents=True, exist_ok=True)
-    log_path = ROOT / "logs" / f"{pid_file.stem}.log"
+    log_path = runtime_log_root(env) / f"{pid_file.stem}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     log_rotation = rotate_child_log_before_append(log_path, env)
     handle = log_path.open("a", encoding="utf-8")
@@ -2280,6 +3339,15 @@ def recover_stale_battle_runtime(*, execute: bool, stale_after_seconds: int) -> 
                 except OSError as exc:
                     action["pidFileRemoveError"] = str(exc)
         payload["actions"].append(action)
+    failed_actions = [
+        action
+        for action in payload["actions"]
+        if action.get("wasRunning") and not action.get("stopped")
+    ]
+    if failed_actions:
+        payload["reason"] = "stale battle process tree survived or could not be verified"
+        payload["terminationFailures"] = failed_actions
+        return payload
     payload["recovered"] = True
     payload["reason"] = "stale idle battle runner replaced before bounded session start"
     return payload
@@ -2302,29 +3370,186 @@ def detached_child_env(env: dict[str, str]) -> dict[str, str]:
     return child_env
 
 
+def _owned_process_tree_snapshots(
+    pid: int,
+    payload: dict[str, Any],
+) -> tuple[list[dict[str, Any]], str | None]:
+    root_snapshot = _process_snapshot(pid)
+    if not root_snapshot or not _pid_matches_expected_process(Path("."), pid, payload):
+        return [], "root PID no longer matches the complete recorded process identity"
+    snapshots = [{"pid": pid, **root_snapshot}]
+    try:
+        import psutil  # type: ignore
+
+        root_process = psutil.Process(pid)
+        for child in root_process.children(recursive=True):
+            try:
+                snapshots.append(
+                    {
+                        "pid": int(child.pid),
+                        "running": bool(child.is_running()),
+                        "cmdline": [str(item) for item in child.cmdline()],
+                        "cwd": child.cwd(),
+                        "createTime": float(child.create_time()),
+                        "parentPid": int(child.ppid()),
+                    }
+                )
+            except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+                continue
+    except Exception as exc:
+        return snapshots, f"owned process descendants could not be enumerated: {type(exc).__name__}: {exc}"
+    return snapshots, None
+
+
+def _same_process_still_alive(snapshot: dict[str, Any]) -> bool:
+    current = _process_snapshot(int(snapshot.get("pid") or 0))
+    if not current or not current.get("running"):
+        return False
+    try:
+        return abs(float(current.get("createTime")) - float(snapshot.get("createTime"))) <= 2
+    except (TypeError, ValueError):
+        return True
+
+
+def _expected_ladder_commands(payload: dict[str, Any]) -> list[list[str]]:
+    command = payload.get("command") if isinstance(payload.get("command"), list) else []
+    if not command:
+        return []
+    commands: list[list[str]] = []
+    names = [Path(str(part)).name.lower() for part in command]
+    if "run.py" in names:
+        run_index = names.index("run.py")
+        start_index = max(0, run_index - 1)
+        commands.append([str(item) for item in command[start_index:]])
+    if "run_bounded_battle_session.py" in names and "--" in command:
+        separator = command.index("--")
+        nested = [str(item) for item in command[separator + 1 :]]
+        if nested:
+            commands.append(nested)
+    return commands
+
+
+def _rescan_exact_ladder_processes(expected_commands: list[list[str]]) -> tuple[list[dict[str, Any]], str | None]:
+    if not expected_commands:
+        return [], None
+    matches: list[dict[str, Any]] = []
+    try:
+        import psutil  # type: ignore
+
+        for proc in psutil.process_iter(["pid", "cmdline", "cwd", "status", "create_time"]):
+            try:
+                if proc.info.get("status") == getattr(psutil, "STATUS_ZOMBIE", "zombie"):
+                    continue
+                snapshot = {
+                    "pid": int(proc.info.get("pid") or 0),
+                    "cmdline": [str(item) for item in (proc.info.get("cmdline") or [])],
+                    "cwd": proc.info.get("cwd"),
+                    "createTime": proc.info.get("create_time"),
+                }
+                if not _process_cwd_matches_root(snapshot):
+                    continue
+                if any(
+                    _command_identity_matches(expected, snapshot["cmdline"])
+                    for expected in expected_commands
+                ):
+                    matches.append(snapshot)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, OSError, TypeError, ValueError):
+                continue
+    except Exception as exc:
+        return matches, f"post-termination ladder rescan failed: {type(exc).__name__}: {exc}"
+    return matches, None
+
+
+def _terminate_owned_process_tree(
+    path: Path,
+    pid: int,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    item: dict[str, Any] = {
+        "pidFile": str(path),
+        "pid": pid,
+        "wasRunning": True,
+        "stopped": False,
+        "treeVerified": False,
+    }
+    snapshots, enumeration_error = _owned_process_tree_snapshots(pid, payload)
+    item["ownedTreePids"] = [int(snapshot["pid"]) for snapshot in snapshots]
+    if enumeration_error:
+        item["enumerationError"] = enumeration_error
+    try:
+        if os.name == "nt":
+            killed = subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=30,
+                check=False,
+            )
+            item["sent"] = "taskkill /PID /T /F"
+            item["taskkillReturnCode"] = killed.returncode
+            item["taskkillStdout"] = tail_text(killed.stdout, 1000)
+            item["taskkillStderr"] = tail_text(killed.stderr, 1000)
+        else:
+            try:
+                import psutil  # type: ignore
+
+                root_process = psutil.Process(pid)
+                descendants = root_process.children(recursive=True)
+                for process in reversed(descendants):
+                    try:
+                        process.terminate()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                root_process.terminate()
+                _, alive = psutil.wait_procs([*descendants, root_process], timeout=10)
+                for process in alive:
+                    try:
+                        process.kill()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                item["sent"] = "psutil terminate/kill tree"
+            except Exception as exc:
+                item["terminateError"] = f"{type(exc).__name__}: {exc}"
+    except (OSError, subprocess.SubprocessError) as exc:
+        item["terminateError"] = f"{type(exc).__name__}: {exc}"
+
+    deadline = time.time() + 10
+    captured_survivors = [snapshot for snapshot in snapshots if _same_process_still_alive(snapshot)]
+    while captured_survivors and time.time() < deadline:
+        time.sleep(0.2)
+        captured_survivors = [snapshot for snapshot in snapshots if _same_process_still_alive(snapshot)]
+    ladder_survivors, rescan_error = _rescan_exact_ladder_processes(_expected_ladder_commands(payload))
+    survivors_by_pid = {
+        int(snapshot["pid"]): snapshot
+        for snapshot in [*captured_survivors, *ladder_survivors]
+    }
+    if rescan_error:
+        item["rescanError"] = rescan_error
+    item["survivors"] = list(survivors_by_pid.values())
+    item["treeVerified"] = not enumeration_error and not rescan_error
+    item["stopped"] = bool(item["treeVerified"] and not survivors_by_pid)
+    if survivors_by_pid:
+        item["error"] = "owned process tree or exact ladder descendant survived termination"
+    elif not item["treeVerified"]:
+        item["error"] = "owned process tree termination could not be fully verified"
+    return item
+
+
 def terminate_pid_file(path: Path, *, force: bool = False) -> dict[str, Any]:
-    alive, pid = pid_alive(path)
+    payload = read_pid_payload(path)
+    pid = read_pid(path)
+    alive = bool(pid and _pid_matches_expected_process(path, pid, payload))
     item: dict[str, Any] = {"pidFile": str(path), "pid": pid, "wasRunning": alive}
     if not alive or pid is None:
+        if pid is not None:
+            item["skipped"] = True
+            item["reason"] = "PID does not match the complete recorded command identity and release root"
         return item
-    try:
-        os.kill(pid, signal.SIGTERM)
-        item["sent"] = "SIGTERM"
-    except OSError as exc:
-        item["error"] = str(exc)
-        return item
-    for _ in range(30):
-        still_alive, _ = pid_alive(path)
-        if not still_alive:
-            break
-        time.sleep(1)
-    still_alive, _ = pid_alive(path)
-    if force and still_alive:
-        try:
-            os.kill(pid, getattr(signal, "SIGKILL", signal.SIGTERM))
-            item["forced"] = True
-        except OSError as exc:
-            item["forceError"] = str(exc)
+    assert isinstance(payload, dict)
+    item = _terminate_owned_process_tree(path, pid, payload)
+    item["forceRequested"] = force
     return item
 
 
@@ -2374,6 +3599,82 @@ def tail_text(text: str, max_chars: int = 4000) -> str:
     return text[-max_chars:]
 
 
+def _output_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def terminate_supervisor_process_tree(process: subprocess.Popen) -> dict[str, Any]:
+    """Terminate a timed-out child and all descendants before the supervisor proceeds."""
+    detail: dict[str, Any] = {"pid": process.pid, "platform": os.name, "stopped": False}
+    if process.poll() is not None:
+        detail["stopped"] = True
+        detail["returnCode"] = process.returncode
+        return detail
+    snapshots: list[dict[str, Any]] = []
+    enumeration_error: str | None = None
+    root_snapshot = _process_snapshot(process.pid)
+    if root_snapshot:
+        snapshots.append({"pid": process.pid, **root_snapshot})
+    try:
+        import psutil  # type: ignore
+
+        for child in psutil.Process(process.pid).children(recursive=True):
+            try:
+                child_snapshot = _process_snapshot(int(child.pid))
+                if child_snapshot:
+                    snapshots.append({"pid": int(child.pid), **child_snapshot})
+            except (psutil.NoSuchProcess, psutil.AccessDenied, OSError):
+                continue
+    except Exception as exc:
+        enumeration_error = f"{type(exc).__name__}: {exc}"
+        detail["enumerationError"] = enumeration_error
+    detail["ownedTreePids"] = [int(snapshot["pid"]) for snapshot in snapshots]
+    try:
+        if os.name == "nt":
+            killed = subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=30,
+                check=False,
+            )
+            detail["taskkillReturnCode"] = killed.returncode
+            detail["taskkillStdout"] = tail_text(killed.stdout, 1000)
+            detail["taskkillStderr"] = tail_text(killed.stderr, 1000)
+        else:
+            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+            detail["signal"] = "SIGTERM"
+    except (OSError, subprocess.SubprocessError) as exc:
+        detail["terminateError"] = f"{type(exc).__name__}: {exc}"
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        try:
+            if os.name == "nt":
+                process.kill()
+            else:
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+            detail["forced"] = True
+            process.wait(timeout=10)
+        except (OSError, subprocess.SubprocessError) as exc:
+            detail["forceError"] = f"{type(exc).__name__}: {exc}"
+    detail["returnCode"] = process.poll()
+    survivors = [snapshot for snapshot in snapshots if _same_process_still_alive(snapshot)]
+    detail["survivors"] = survivors
+    detail["stopped"] = bool(
+        process.poll() is not None
+        and not survivors
+        and enumeration_error is None
+    )
+    return detail
+
+
 def run_supervisor_command(
     command: list[str],
     *,
@@ -2384,39 +3685,119 @@ def run_supervisor_command(
     child_env = prepare_runtime_env(load_env_files())
     if env_overrides:
         child_env.update({str(key): str(value) for key, value in env_overrides.items()})
+    process: subprocess.Popen | None = None
     try:
-        result = subprocess.run(
+        popen_options: dict[str, Any] = {}
+        if os.name == "nt":
+            popen_options["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        else:
+            popen_options["start_new_session"] = True
+        process = subprocess.Popen(
             command,
             cwd=str(ROOT),
             env=child_env,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
-            check=False,
+            encoding="utf-8",
+            errors="replace",
+            **popen_options,
         )
-        return {
+        stdout, stderr = process.communicate(timeout=timeout)
+        result = {
             "command": command,
-            "returnCode": result.returncode,
-            "stdoutTail": tail_text(result.stdout),
-            "stderrTail": tail_text(result.stderr),
+            "returnCode": process.returncode,
+            "stdoutTail": tail_text(stdout or ""),
+            "stderrTail": tail_text(stderr or ""),
             "durationSeconds": round(time.time() - started, 3),
         }
+        try:
+            parsed = json.loads(stdout)
+        except (json.JSONDecodeError, TypeError):
+            parsed = None
+        if isinstance(parsed, dict):
+            result["json"] = parsed
+        return result
     except subprocess.TimeoutExpired as exc:
+        cleanup = terminate_supervisor_process_tree(process) if process is not None else {"stopped": False}
+        remainder_stdout = ""
+        remainder_stderr = ""
+        if process is not None:
+            try:
+                remainder_stdout, remainder_stderr = process.communicate(timeout=5)
+            except (OSError, subprocess.SubprocessError):
+                pass
         return {
             "command": command,
             "returnCode": None,
             "timedOut": True,
-            "stdoutTail": tail_text(exc.stdout or ""),
-            "stderrTail": tail_text(exc.stderr or ""),
+            "processTreeCleanup": cleanup,
+            "stdoutTail": tail_text(_output_text(exc.stdout) + _output_text(remainder_stdout)),
+            "stderrTail": tail_text(_output_text(exc.stderr) + _output_text(remainder_stderr)),
             "durationSeconds": round(time.time() - started, 3),
         }
     except Exception as exc:
+        cleanup = None
+        if process is not None and process.poll() is None:
+            cleanup = terminate_supervisor_process_tree(process)
         return {
             "command": command,
             "returnCode": None,
             "error": f"{type(exc).__name__}: {exc}",
+            "processTreeCleanup": cleanup,
             "durationSeconds": round(time.time() - started, 3),
         }
+
+
+def improvement_checkout_guard() -> dict[str, Any]:
+    blockers: list[str] = []
+    dirty_engine: list[str] = []
+    try:
+        status = subprocess.run(
+            ["git", "status", "--porcelain=v1", "--untracked-files=all", "--", "fp"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        dirty_engine = [line for line in status.stdout.splitlines() if line.strip()]
+        if status.returncode:
+            blockers.append("engine checkout status command failed")
+        elif dirty_engine:
+            blockers.append("engine checkout has uncommitted or untracked changes")
+    except (OSError, subprocess.SubprocessError) as exc:
+        blockers.append(f"engine checkout status failed: {type(exc).__name__}: {exc}")
+    if IMPROVE_AGENT_LOCK_FILE.exists():
+        blockers.append("improve-agent lock exists")
+    if IMPROVE_AGENT_RECOVERY_BLOCK_FILE.exists():
+        blockers.append("improve-agent recovery block exists")
+    patch_artifact = ROOT / ".agent_diff.patch"
+    if patch_artifact.exists():
+        blockers.append("stale improve-agent patch artifact exists")
+    return {
+        "ready": not blockers,
+        "blockers": blockers,
+        "dirtyEngineEntries": dirty_engine,
+        "lockPath": str(IMPROVE_AGENT_LOCK_FILE),
+        "lockExists": IMPROVE_AGENT_LOCK_FILE.exists(),
+        "recoveryBlockPath": str(IMPROVE_AGENT_RECOVERY_BLOCK_FILE),
+        "recoveryBlockExists": IMPROVE_AGENT_RECOVERY_BLOCK_FILE.exists(),
+        "patchArtifactExists": patch_artifact.exists(),
+    }
+
+
+def termination_failures(payload: object) -> list[dict[str, Any]]:
+    failures: list[dict[str, Any]] = []
+    if isinstance(payload, dict):
+        if payload.get("wasRunning") and not payload.get("stopped"):
+            failures.append(payload)
+        for value in payload.values():
+            if isinstance(value, dict):
+                failures.extend(termination_failures(value))
+    return failures
 
 
 def write_supervisor_status(payload: dict[str, Any]) -> None:
@@ -2424,11 +3805,99 @@ def write_supervisor_status(payload: dict[str, Any]) -> None:
     SUPERVISOR_STATUS_FILE.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+def runtime_launch_preflight(
+    args: argparse.Namespace,
+    *,
+    env: dict[str, str] | None = None,
+    lease_guard: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Evaluate credential and finite launch blockers before broker reserve."""
+
+    env = dict(load_launch_environment(args) if env is None else env)
+    blockers: list[str] = []
+    lease_bound = bool(lease_guard and lease_guard.get("ok"))
+    policy_env = dict(env)
+    if lease_bound:
+        policy_env.setdefault(
+            RUNTIME_LEASE_PATH_ENV,
+            str(getattr(args, "runtime_lease", None) or "validated-runtime-lease"),
+        )
+    production = is_production_runtime(ROOT, environ=policy_env)
+    env_file_policy = production_env_file_status(policy_env)
+    if env_file_policy["required"] and not env_file_policy["ok"]:
+        blockers.extend(str(item) for item in env_file_policy["blockers"])
+
+    username_present = bool(env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID"))
+    password_required = showdown_password_required(env)
+    password_present = bool(env_value(env, "PS_PASSWORD"))
+    if not username_present:
+        blockers.append("PS_USERNAME or SHOWDOWN_USER_ID is required")
+    if password_required and not password_present:
+        blockers.append("PS_PASSWORD is required for registered Showdown ladder sessions")
+    credential_failure = recent_showdown_credential_failure(ROOT)
+    if credential_failure.get("found"):
+        blockers.append(
+            str(
+                credential_failure.get("summary")
+                or "recent Showdown credential failure is unresolved"
+            )
+        )
+    concurrency = positive_int(getattr(args, "max_concurrent_battles", 0), 0)
+    configured_parallelism = positive_int(
+        env_value(env, "SEARCH_PARALLELISM", default=str(PILOT_SEARCH_PARALLELISM)),
+        0,
+    )
+    if production or lease_bound:
+        if concurrency != DEFAULT_MAX_CONCURRENT:
+            blockers.append("production pilot max concurrent battles must equal three")
+        if configured_parallelism != PILOT_SEARCH_PARALLELISM:
+            blockers.append("production pilot search parallelism must equal two")
+    elif concurrency < 1 or concurrency > 3:
+        blockers.append("max concurrent battles must be between one and three")
+
+    account_season_authority: dict[str, Any] = {
+        "schemaVersion": "fouler-account-season-authority-check/v1",
+        "ok": True,
+        "required": False,
+        "blockers": [],
+        "runtimeMirrorAuthoritative": False,
+    }
+    if production or lease_bound:
+        account_season_authority = account_season_authority_check(
+            lease_guard or {},
+            env=policy_env,
+        )
+        account_season_authority["required"] = True
+        if not account_season_authority["ok"]:
+            blockers.extend(
+                str(item) for item in account_season_authority.get("blockers") or []
+            )
+    return {
+        "ok": not blockers,
+        "blockers": blockers,
+        "production": production,
+        "leaseBound": lease_bound,
+        "searchParallelism": configured_parallelism,
+        "environmentFilePolicy": env_file_policy,
+        "accountSeasonAuthority": account_season_authority,
+        "usernamePresent": username_present,
+        "passwordRequired": password_required,
+        "passwordPresent": password_present,
+        "recentCredentialFailure": bool(credential_failure.get("found")),
+        "credentialFailureCode": credential_failure.get("code"),
+        "secretValuesPrinted": False,
+    }
+
+
 def run_supervisor_cycle(
     args: argparse.Namespace,
     cycle_index: int,
     *,
     start_next: bool = True,
+    authority_ok: bool = True,
+    lease_guard: dict[str, Any] | None = None,
+    supervisor_instance_id: str | None = None,
+    reservation_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT))
     active_count = read_active_battles()
@@ -2443,7 +3912,20 @@ def run_supervisor_cycle(
         "requestedRunCount": getattr(args, "run_count", DEFAULT_RUN_COUNT),
         "effectiveRunCount": effective_count,
         "startNextBattleSession": start_next,
+        "parentRuntimeAuthorityValid": authority_ok,
     }
+    if not authority_ok:
+        payload["state"] = "blocked-runtime-lease"
+        payload["autoImprove"] = {
+            "enabled": False,
+            "reason": "parent runtime lease is invalid",
+            "sentinel": AUTO_IMPROVE_SENTINEL,
+        }
+        payload["startSkipped"] = {
+            "reason": "parent runtime lease is invalid; no proof, improvement, or runtime child may start",
+        }
+        payload["nextAction"] = "renew and revalidate the parent runtime lease before any bounded child action"
+        return payload
     queue_timeout_seconds = positive_int(getattr(args, "queue_timeout_seconds", 180), 180)
     if active_count > 0 and not battle_runner_alive:
         stale_clear = clear_stale_active_battles(
@@ -2493,124 +3975,161 @@ def run_supervisor_cycle(
             payload["nextAction"] = "stale idle runner recovery attempted; wait for drain before proof refresh"
             return payload
 
+    if reservation_state:
+        reservation_status = runtime_reservation_status(
+            lease_guard or {}, reservation_state
+        )
+        payload["leaseConsumptionStatus"] = reservation_status
+        if not reservation_status.get("ok"):
+            payload["state"] = "blocked-lease-consumption-reconciliation"
+            payload["nextAction"] = (
+                "an outstanding reservation could not be authoritatively queried; "
+                "no second reservation will be created"
+            )
+            return payload
+        status_payload = (
+            reservation_status.get("status")
+            if isinstance(reservation_status.get("status"), dict)
+            else {}
+        )
+        if status_payload.get("state") == "completed":
+            payload["leaseConsumptionTerminal"] = status_payload
+            reservation_state.clear()
+        elif status_payload.get("state") in {"reserved", "claimed"}:
+            outcome = "aborted" if status_payload.get("state") == "reserved" else "failed"
+            reconciliation = complete_runtime_lease_consumption(
+                lease_guard or {}, reservation=reservation_state, outcome=outcome
+            )
+            payload["leaseConsumptionTerminal"] = reconciliation
+            if reconciliation.get("ok") and reconciliation.get("completed"):
+                reservation_state.clear()
+                payload["state"] = "reconciled-orphaned-runtime"
+                payload["nextAction"] = (
+                    "orphaned runtime was terminally reconciled without returning capacity; "
+                    "review before the next bounded launch"
+                )
+            else:
+                payload["state"] = "blocked-lease-consumption-reconciliation"
+                payload["nextAction"] = (
+                    "orphaned runtime could not be terminally reconciled"
+                )
+            return payload
+        else:
+            payload["state"] = "blocked-lease-consumption-reconciliation"
+            payload["nextAction"] = "lease broker returned an unsupported reservation state"
+            return payload
+
     payload["state"] = "idle-restoring-runtime"
     payload["completedBattleLogResultRecovery"] = recover_completed_battle_results_from_logs(
         execute=True
     )
     payload["proofRefreshed"] = True
     py = supervisor_child_python()
+    live_start_blockers: list[str] = []
+    activation_managed = False
+    activation_ready = False
+    runtime_authority_env: dict[str, str] = {}
+    runtime_lease_text = ""
+    deployment_receipt_text = ""
+    if isinstance(lease_guard, dict) and lease_guard.get("ok"):
+        try:
+            runtime_authority_env = lease_environment(lease_guard)
+            runtime_lease_text = runtime_authority_env[RUNTIME_LEASE_PATH_ENV]
+        except (OSError, ValueError) as exc:
+            live_start_blockers.append(f"validated runtime lease environment is unavailable: {exc}")
+        lease_summary_payload = (
+            lease_guard.get("lease") if isinstance(lease_guard.get("lease"), dict) else {}
+        )
+        deployment_receipt_text = str(
+            lease_summary_payload.get("deploymentReceiptPath") or ""
+        ).strip()
+    if runtime_lease_text and deployment_receipt_text and not live_start_blockers:
+        activation_managed = True
+        activation_result = run_supervisor_command(
+            [
+                py,
+                "scripts/fouler_deployment_state.py",
+                "--ensure-activation",
+                "--root",
+                str(ROOT),
+                "--deployment-receipt",
+                deployment_receipt_text,
+                "--runtime-lease",
+                runtime_lease_text,
+                "--battle-stats",
+                str(BATTLE_STATS_FILE),
+            ],
+            timeout=getattr(args, "proof_timeout_seconds", 300),
+            env_overrides=runtime_authority_env,
+        )
+        payload["deploymentActivation"] = activation_result
+        payload["actions"].append(activation_result)
+        activation_json = (
+            activation_result.get("json")
+            if isinstance(activation_result.get("json"), dict)
+            else {}
+        )
+        activation_ready = bool(
+            activation_result.get("returnCode") == 0
+            and activation_json.get("status") == "active"
+        )
+        if activation_result.get("returnCode") != 0:
+            live_start_blockers.append("deployment activation proof failed")
+        elif activation_json.get("status") not in {"active", "waiting-for-first-battle"}:
+            live_start_blockers.append("deployment activation returned an unsupported state")
+        if activation_ready:
+            judgment_result = run_supervisor_command(
+                [py, "infrastructure/elo_watchdog.py"],
+                timeout=getattr(args, "proof_timeout_seconds", 300),
+                env_overrides=runtime_authority_env,
+            )
+            payload["deploymentJudgment"] = judgment_result
+            payload["actions"].append(judgment_result)
+            if judgment_result.get("returnCode") not in {0, None}:
+                live_start_blockers.append("deployment judgment blocked the next live batch")
+    else:
+        live_start_blockers.append(
+            "live child is not managed by the validated deployment activation/judgment identity"
+        )
+    payload["deploymentLifecycleManaged"] = activation_managed
     payload["actions"].append(
         run_supervisor_command(
             [py, "pipeline.py", "autoresearch", "-n", str(getattr(args, "autoresearch_count", 30)), "--no-discord"],
             timeout=getattr(args, "proof_timeout_seconds", 300),
+            env_overrides=runtime_authority_env or None,
         )
     )
     payload["actions"].append(
         run_supervisor_command(
             [py, "scripts/devstream_cycle_report.py", "--write"],
             timeout=getattr(args, "proof_timeout_seconds", 300),
+            env_overrides=runtime_authority_env or None,
         )
     )
 
-    # --- Self-improvement loop (explicit opt-in only) ------------------------
-    # Recursive improvement is disabled by default while the architecture is
-    # corrected. It may only run when the supervisor CLI flag or env sentinel is
-    # present; --skip-improve remains an explicit override.
-    improve_enabled, improve_reason = supervisor_auto_improve_enabled(args)
+    improve_env = load_env_files()
+    improve_requested = bool(
+        getattr(args, "enable_auto_improve", False)
+        or env_flag_enabled(improve_env, AUTO_IMPROVE_SENTINEL)
+    )
+    _improve_enabled, improve_reason = supervisor_auto_improve_enabled(args, improve_env)
     payload["autoImprove"] = {
-        "enabled": improve_enabled,
+        "enabled": False,
+        "requested": improve_requested,
         "reason": improve_reason,
+        "delegatedTo": "DEKU external control plane",
+        "runtimeMayLaunchImprovementAgent": False,
         "sentinel": AUTO_IMPROVE_SENTINEL,
     }
-    if improve_enabled:
-        improve_cycle_limit, _ = supervisor_cycle_limit(args)
-        improve_cycle_limit = improve_cycle_limit or DEFAULT_AUTO_IMPROVE_MAX_CYCLES
-        improve_env = prepare_runtime_env(load_env_files())
-        improve_account = env_value(
-            improve_env,
-            "IMPROVE_AGENT_ACCOUNT",
-            "FOULER_ACTIVE_ACCOUNT",
-            "SHOWDOWN_USER_ID",
-            "PS_USERNAME",
-            default="",
-        )
-        improve_lease = str(SUPERVISOR_IMPROVE_LEASE_FILE.relative_to(ROOT))
-        lease_minutes = max(60, ((effective_count * 220) + 300 + 59) // 60 + 10)
-        payload["improveLease"] = {
-            "path": improve_lease,
-            "runCount": effective_count,
-            "maxCycles": improve_cycle_limit,
-            "maxConcurrentBattles": args.max_concurrent_battles,
-            "account": improve_account,
-            "validMinutes": lease_minutes,
-            "purpose": "improve-agent",
-        }
-        lease_command = [
-            py,
-            "scripts/devstream_runtime_lease.py",
-            "--purpose",
-            "improve-agent",
-            "--write",
-            "--machine",
-            "JIGGLYPUFF",
-            "--run-count",
-            str(effective_count),
-            "--max-cycles",
-            str(improve_cycle_limit),
-            "--max-concurrent-battles",
-            str(args.max_concurrent_battles),
-            "--account",
-            improve_account,
-            "--replay-behavior",
-            "never",
-            "--valid-minutes",
-            str(lease_minutes),
-            "--approved",
-            "--runtime-lease",
-            improve_lease,
-        ]
-        lease_result = run_supervisor_command(
-            lease_command,
-            timeout=getattr(args, "proof_timeout_seconds", 300),
-        )
-        payload["actions"].append(lease_result)
-        if lease_result.get("returnCode") != 0:
-            payload["autoImprove"]["blocked"] = True
-            payload["autoImprove"]["blocker"] = "failed to write improve-agent runtime lease"
-            payload["actions"].append(
-                run_supervisor_command(
-                    [py, "infrastructure/elo_watchdog.py"],
-                    timeout=getattr(args, "proof_timeout_seconds", 300),
-                )
-            )
-        else:
-            improve_env_overrides = {
-                "IMPROVE_AGENT_EVAL_BATTLES": str(effective_count),
-                "IMPROVE_AGENT_ACCOUNT": improve_account,
-                "IMPROVE_AGENT_MAX_CONCURRENT_BATTLES": str(args.max_concurrent_battles),
-            }
-            improve_command = [
-                py,
-                "infrastructure/improve_agent.py",
-                "--enable-auto-improve",
-                "--max-cycles",
-                str(improve_cycle_limit),
-                "--runtime-lease",
-                improve_lease,
-            ]
-            payload["actions"].append(
-                run_supervisor_command(
-                    improve_command,
-                    timeout=getattr(args, "improve_timeout_seconds", 240),
-                    env_overrides=improve_env_overrides,
-                )
-            )
-            payload["actions"].append(
-                run_supervisor_command(
-                    [py, "infrastructure/elo_watchdog.py"],
-                    timeout=getattr(args, "proof_timeout_seconds", 300),
-                )
-            )
+
+    checkout_guard = improvement_checkout_guard()
+    payload["improvementCheckoutGuard"] = checkout_guard
+    if not checkout_guard["ready"]:
+        live_start_blockers.extend(checkout_guard["blockers"])
+    launch_preflight = runtime_launch_preflight(args)
+    payload["runtimeLaunchPreflight"] = launch_preflight
+    if start_next and not launch_preflight["ok"]:
+        live_start_blockers.extend(launch_preflight["blockers"])
     start_command = [
         py,
         "scripts/devstream_session.py",
@@ -2623,7 +4142,7 @@ def run_supervisor_cycle(
         str(args.queue_timeout_seconds),
         "--execute",
     ]
-    runtime_lease = str(getattr(args, "runtime_lease", "") or "").strip()
+    runtime_lease = runtime_lease_text
     if runtime_lease:
         start_command.extend(["--runtime-lease", runtime_lease])
     if not start_next:
@@ -2634,14 +4153,105 @@ def run_supervisor_cycle(
         payload["activeBattleCountAfter"] = read_active_battles()
         payload["nextAction"] = "bounded learning cycle complete; supervisor may stop"
         return payload
-    payload["actions"].append(
-        run_supervisor_command(
-            start_command,
-            timeout=getattr(args, "start_timeout_seconds", 60),
-        )
+    if not launch_preflight["ok"]:
+        payload["state"] = "blocked-runtime-launch-preflight"
+        payload["startSkipped"] = {
+            "reason": "credential or finite launch preflight failed before reservation",
+            "blockers": list(dict.fromkeys(launch_preflight["blockers"])),
+        }
+        payload["battleRunnerAliveAfter"] = any_battle_runner_alive()
+        payload["activeBattleCountAfter"] = read_active_battles()
+        payload["nextAction"] = "resolve launch preflight before consuming lease capacity"
+        return payload
+    if live_start_blockers:
+        payload["state"] = "blocked-improvement-checkout"
+        payload["startSkipped"] = {
+            "reason": "live battle start is blocked until improvement ownership and checkout recovery are clean",
+            "blockers": list(dict.fromkeys(live_start_blockers)),
+        }
+        payload["battleRunnerAliveAfter"] = any_battle_runner_alive()
+        payload["activeBattleCountAfter"] = read_active_battles()
+        payload["nextAction"] = "inspect improve-agent cleanup/recovery proof before starting another battle"
+        return payload
+    reservation = reserve_runtime_lease_consumption(
+        lease_guard or {},
+        run_count=effective_count,
+        cycle_index=cycle_index,
+        supervisor_instance_id=(supervisor_instance_id or f"supervisor-process-{os.getpid()}"),
+        max_concurrent_battles=args.max_concurrent_battles,
+        env=runtime_authority_env or None,
     )
+    payload["leaseConsumptionReservation"] = {
+        **reservation,
+        **(
+            {"reservation": public_runtime_reservation(reservation["reservation"])}
+            if isinstance(reservation.get("reservation"), dict)
+            else {}
+        ),
+    }
+    if reservation.get("ok") and reservation.get("exhausted"):
+        payload["state"] = "completed-lease-consumption"
+        payload["startSkipped"] = {
+            "reason": "the append-only lease broker reports that this signed lease is exhausted"
+        }
+        payload["nextAction"] = "issue a new DEKU-signed lease only after reviewing the completed proof window"
+        return payload
+    if not reservation.get("ok") or not reservation.get("reserved"):
+        payload["state"] = "blocked-lease-consumption"
+        payload["startSkipped"] = {
+            "reason": "runtime lease cumulative authority could not be reserved",
+            "blockers": reservation.get("blockers") or ["lease reservation was not created"],
+        }
+        payload["nextAction"] = "manually reconcile the external runtime lease consumption ledger"
+        return payload
+    reservation_payload = (
+        reservation.get("reservation")
+        if isinstance(reservation.get("reservation"), dict)
+        else {}
+    )
+    if reservation_state is not None:
+        reservation_state.clear()
+        reservation_state.update(reservation_payload)
+    start_env = dict(runtime_authority_env)
+    start_env.update(runtime_reservation_environment(reservation_payload))
+    start_result = run_supervisor_command(
+        start_command,
+        timeout=getattr(args, "start_timeout_seconds", 60),
+        env_overrides=start_env,
+    )
+    payload["actions"].append(start_result)
+    payload["battleStart"] = start_result
     payload["battleRunnerAliveAfter"] = any_battle_runner_alive()
     payload["activeBattleCountAfter"] = read_active_battles()
+    if start_result.get("returnCode") != 0 or start_result.get("timedOut") or start_result.get("error"):
+        if payload["battleRunnerAliveAfter"] or payload["activeBattleCountAfter"] > 0:
+            payload["state"] = "battle-cycle-in-flight"
+            payload["nextAction"] = (
+                "launcher reported failure but the bound runtime appeared; preserve the "
+                "reservation and monitor its broker terminal state"
+            )
+            return payload
+        reconciliation = complete_runtime_lease_consumption(
+            lease_guard or {},
+            reservation=reservation_payload,
+            outcome="aborted",
+            env=runtime_authority_env or None,
+        )
+        payload["leaseConsumptionTerminal"] = reconciliation
+        if reconciliation.get("ok") and reconciliation.get("completed"):
+            if reservation_state is not None:
+                reservation_state.clear()
+            payload["state"] = "blocked-battle-launch"
+            payload["nextAction"] = (
+                "launch failed before a healthy battle runtime appeared; capacity remains "
+                "consumed and the reservation was durably aborted"
+            )
+        else:
+            payload["state"] = "blocked-lease-consumption-reconciliation"
+            payload["nextAction"] = (
+                "battle launch failed and terminal reconciliation did not complete"
+            )
+        return payload
     payload["nextAction"] = "monitor bounded battle cycle, then refresh proof and restart if idle"
     return payload
 
@@ -2650,8 +4260,10 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     cycle_index = 0
     completed_learning_cycles = 0
     battle_was_in_flight = False
-    effective_max_cycles, max_cycles_reason = supervisor_cycle_limit(args)
-    env = apply_runtime_lease_account(prepare_runtime_env(load_env_files()), args)
+    current_reservation: dict[str, Any] = {}
+    supervisor_instance_id = f"supervisor-{os.getpid()}-{uuid.uuid4().hex}"
+    env = load_launch_environment(args)
+    effective_max_cycles, max_cycles_reason = supervisor_cycle_limit(args, env)
     effective_count = effective_run_count(getattr(args, "run_count", DEFAULT_RUN_COUNT), env)
     lease_guard = runtime_lease_guard(
         purpose="devstream-supervise",
@@ -2678,6 +4290,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             "maxCyclesSemantics": "completed bounded learning cycles, not supervisor polling heartbeats",
         },
         "completedLearningCycles": completed_learning_cycles,
+        "supervisorInstanceId": supervisor_instance_id,
         "cycleLease": {
             "reason": max_cycles_reason,
             "autoImproveSentinel": AUTO_IMPROVE_SENTINEL,
@@ -2693,6 +4306,58 @@ def cmd_supervise(args: argparse.Namespace) -> int:
         write_supervisor_status(payload)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
+    try:
+        args.runtime_lease = resolved_runtime_lease_path(lease_guard)
+    except (OSError, ValueError) as exc:
+        payload["state"] = "blocked-runtime-lease"
+        payload["error"] = f"validated runtime lease path is unavailable: {exc}"
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    payload["resolvedRuntimeLeasePath"] = args.runtime_lease
+    env, runtime_identity = apply_runtime_process_identity(env, lease_guard)
+    payload["runtimeIdentity"] = runtime_identity
+    if not runtime_identity.get("ok"):
+        payload["state"] = "blocked-runtime-identity"
+        payload["error"] = "; ".join(str(item) for item in runtime_identity.get("blockers") or [])
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    launch_preflight = runtime_launch_preflight(args, env=env, lease_guard=lease_guard)
+    payload["runtimeLaunchPreflight"] = launch_preflight
+    if not launch_preflight["ok"]:
+        payload["state"] = "blocked-runtime-launch-preflight"
+        payload["error"] = "; ".join(str(item) for item in launch_preflight["blockers"])
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    for name in (*RUNTIME_PROVENANCE_ENV_NAMES, RUNTIME_LEASE_PATH_ENV):
+        if name in env:
+            os.environ[name] = env[name]
+    lease_consumption = initialize_runtime_lease_consumption(lease_guard, env=env)
+    payload["leaseConsumption"] = lease_consumption
+    if not lease_consumption.get("ok"):
+        payload["state"] = "blocked-lease-consumption"
+        payload["error"] = "; ".join(str(item) for item in lease_consumption.get("blockers") or [])
+        payload["nextAction"] = "manually reconcile the external runtime lease consumption ledger"
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    if any_battle_runner_alive() or read_active_battles() > 0:
+        payload["state"] = "blocked-unreserved-runtime"
+        payload["error"] = (
+            "live battle state exists without an in-flight reservation owned by this supervisor"
+        )
+        payload["nextAction"] = "manually reconcile the live runner and external lease consumption ledger"
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    if lease_consumption.get("exhausted"):
+        payload["state"] = "completed-lease-consumption"
+        payload["completedAt"] = iso_now()
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
     payload["deadBattlePidCleanup"] = clear_dead_battle_pid_files(
         reason="supervisor start confirmed recorded battle runner PID is not alive"
     )
@@ -2731,7 +4396,30 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 max_cycles=effective_max_cycles,
                 require_max_cycles=True,
             )
+            current_summary = (
+                current_lease_guard.get("lease")
+                if isinstance(current_lease_guard.get("lease"), dict)
+                else {}
+            )
+            if current_summary.get("id") != runtime_identity.get("runtimeLeaseId"):
+                current_lease_guard.setdefault("blockers", []).append(
+                    "runtime lease identity changed during the supervisor session"
+                )
+                current_lease_guard["ok"] = False
             payload["runtimeLease"] = current_lease_guard
+            current_account_season = account_season_authority_check(
+                current_lease_guard,
+                env=env,
+            )
+            payload["accountSeasonAuthority"] = current_account_season
+            if not current_account_season["ok"]:
+                payload["state"] = "blocked-account-season-authority"
+                payload["error"] = "; ".join(
+                    str(item) for item in current_account_season["blockers"]
+                )
+                write_supervisor_status(payload)
+                print(json.dumps(payload, indent=2, sort_keys=True))
+                return 2
             lease_ok = bool(current_lease_guard.get("ok"))
             stale_after_seconds = max(
                 IDLE_RUNNER_STALE_SECONDS,
@@ -2764,7 +4452,15 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             cycle = run_supervisor_cycle(
                 args,
                 cycle_index,
-                start_next=lease_ok and not completing_final_learning_cycle,
+                start_next=(
+                    lease_ok
+                    and not completing_final_learning_cycle
+                    and not pre_cycle_completes_learning
+                ),
+                authority_ok=lease_ok,
+                lease_guard=current_lease_guard,
+                supervisor_instance_id=supervisor_instance_id,
+                reservation_state=current_reservation,
             )
             cycle["runtimeLease"] = current_lease_guard
             completed_this_cycle = learning_cycle_completed_after_cycle(
@@ -2773,7 +4469,45 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 cycle=cycle,
             )
             if completed_this_cycle:
-                completed_learning_cycles += 1
+                terminal = (
+                    cycle.get("leaseConsumptionTerminal")
+                    if isinstance(cycle.get("leaseConsumptionTerminal"), dict)
+                    else {}
+                )
+                terminal_status = (
+                    terminal.get("status")
+                    if isinstance(terminal.get("status"), dict)
+                    else terminal
+                )
+                if terminal_status.get("state") != "completed":
+                    cycle["leaseConsumptionCompletion"] = {
+                        "ok": False,
+                        "blockers": [
+                            "completed battle runtime lacks a broker-confirmed terminal reservation"
+                        ],
+                    }
+                    payload["state"] = "blocked-lease-consumption-reconciliation"
+                    payload["lastCycle"] = cycle
+                    payload["error"] = cycle["leaseConsumptionCompletion"]["blockers"][0]
+                    write_supervisor_status(payload)
+                    print(json.dumps(payload, indent=2, sort_keys=True))
+                    return 2
+                terminal_outcome = str(terminal_status.get("outcome") or "")
+                cycle["leaseConsumptionCompletion"] = {
+                    "ok": True,
+                    "completed": True,
+                    "authority": "windows-named-pipe-lease-broker",
+                    "reservationId": terminal_status.get("reservationId"),
+                    "outcome": terminal_outcome,
+                    "capacityReturned": False,
+                }
+                completed_this_cycle = terminal_outcome == "completed"
+                if completed_this_cycle:
+                    completed_learning_cycles += 1
+                else:
+                    cycle["learningCycleFailure"] = (
+                        "battle runtime ended without a completed broker outcome"
+                    )
             cycle["learningCycleCompleted"] = completed_this_cycle
             cycle["completedLearningCycles"] = completed_learning_cycles
             cycle["preCycleRuntime"] = pre_cycle_runtime
@@ -2805,6 +4539,11 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 cycle["leaseBlockedStartNext"] = True
                 cycle["nextAction"] = payload["nextAction"]
             write_supervisor_status(payload)
+            if cycle.get("state") == "blocked-lease-consumption-reconciliation":
+                payload["blockedAt"] = iso_now()
+                write_supervisor_status(payload)
+                print(json.dumps(payload, indent=2, sort_keys=True))
+                return 2
             if not lease_ok and not post_cycle_in_flight:
                 payload["blockedAt"] = iso_now()
                 write_supervisor_status(payload)
@@ -2944,7 +4683,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
 
 def cmd_cleanup_stale_truth(args: argparse.Namespace) -> int:
-    env = apply_runtime_lease_account(prepare_runtime_env(load_env_files()), args)
+    env = load_launch_environment(args)
     purpose = STALE_TRUTH_CLEANUP_PURPOSE if args.execute else STALE_TRUTH_CLEANUP_DRY_RUN_PURPOSE
     lease_guard = cleanup_runtime_lease_guard(purpose=purpose, args=args, env=env)
     payload: dict[str, Any] = {
@@ -2989,7 +4728,7 @@ def cmd_cleanup_stale_truth(args: argparse.Namespace) -> int:
 
 
 def cmd_start(args: argparse.Namespace) -> int:
-    env = apply_runtime_lease_account(prepare_runtime_env(load_env_files()), args)
+    env = load_launch_environment(args)
     effective_count = effective_run_count(args.run_count, env)
     continuous = bool(getattr(args, "continuous", False))
     start_purpose = "devstream-start-continuous" if continuous else "devstream-start"
@@ -3003,6 +4742,21 @@ def cmd_start(args: argparse.Namespace) -> int:
         max_cycles=positive_int(getattr(args, "max_cycles", 0), 0) if continuous else None,
         require_max_cycles=continuous,
     )
+    runtime_identity: dict[str, Any] = {
+        "schemaVersion": "fouler-runtime-process-identity/v1",
+        "ok": False,
+        "blockers": ["runtime lease has not validated"],
+    }
+    if lease_guard.get("ok"):
+        try:
+            args.runtime_lease = resolved_runtime_lease_path(lease_guard)
+        except (OSError, ValueError) as exc:
+            lease_guard.setdefault("blockers", []).append(
+                f"validated runtime lease path is unavailable: {exc}"
+            )
+            lease_guard["ok"] = False
+        if lease_guard.get("ok"):
+            env, runtime_identity = apply_runtime_process_identity(env, lease_guard)
     commands = {
         "obsHttp": obs_server_command(),
         "battleSession": shell_command_for_session(effective_count, args.max_concurrent_battles, env),
@@ -3031,46 +4785,56 @@ def cmd_start(args: argparse.Namespace) -> int:
             "turnTimeoutSeconds": args.turn_timeout_seconds,
             "maxCycles": positive_int(getattr(args, "max_cycles", 0), 0),
         },
-        "envFilePermissions": secure_env_files(execute=args.execute),
+        "envFilePermissions": secure_env_file_report(execute=args.execute, env=env),
         "runtimeLease": lease_guard,
+        "runtimeIdentity": runtime_identity,
+        "resolvedRuntimeLeasePath": getattr(args, "runtime_lease", None),
     }
     if not lease_guard.get("ok"):
         payload["status"] = "blocked-runtime-lease"
         payload["error"] = runtime_lease_blocked_message(lease_guard)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
-    if not args.execute:
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return 0
-    if not env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID"):
-        payload["error"] = "PS_USERNAME or SHOWDOWN_USER_ID is required"
+    if not runtime_identity.get("ok"):
+        payload["status"] = "blocked-runtime-identity"
+        payload["error"] = "; ".join(str(item) for item in runtime_identity.get("blockers") or [])
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
-    if showdown_password_required(env) and not env_value(env, "PS_PASSWORD"):
-        payload["error"] = "PS_PASSWORD is required for registered Showdown ladder sessions"
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return 2
-    credential_failure = recent_showdown_credential_failure(ROOT)
-    if credential_failure.get("found"):
-        payload["credentialFailure"] = credential_failure
-        payload["blockedTruth"] = state_store.write_runtime_blocked_status(
-            code=str(credential_failure.get("code") or "showdown_credential_blocked"),
-            summary=str(
-                credential_failure.get("summary")
-                or "Showdown login failed; credential was rejected."
-            ),
+    checkout_guard = improvement_checkout_guard()
+    payload["improvementCheckoutGuard"] = checkout_guard
+    if not checkout_guard["ready"]:
+        payload["status"] = "blocked-improvement-checkout"
+        payload["error"] = (
+            "battle start blocked until improvement ownership and engine checkout recovery are clean: "
+            + "; ".join(checkout_guard["blockers"])
         )
-        env["FP_PARENT_PID"] = "0"
-        payload["started"] = {
-            "obsHttp": start_process(commands["obsHttp"], OBS_PID_FILE, obs_http_env(env)),
-            "battleSession": {
-                "skipped": True,
-                "reason": "recent Showdown credential failure is unresolved",
-            },
-        }
-        time.sleep(1)
-        health, error = run_json([runtime_python(), "scripts/devstream_health.py"])
-        payload["postHealth"] = health if health is not None else {"error": error}
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    launch_preflight = runtime_launch_preflight(args, env=env, lease_guard=lease_guard)
+    payload["runtimeLaunchPreflight"] = launch_preflight
+    if args.execute and not launch_preflight["ok"]:
+        payload["status"] = "blocked-runtime-launch-preflight"
+        payload["error"] = "; ".join(str(item) for item in launch_preflight["blockers"])
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    if args.execute and not continuous:
+        reservation_guard = validate_runtime_lease_reservation(
+            lease_guard,
+            reservation_id=str(env.get(RUNTIME_LEASE_RESERVATION_ID_ENV) or "").strip(),
+            run_count=effective_count,
+            max_concurrent_battles=args.max_concurrent_battles,
+            supervisor_instance_id=str(env.get(RUNTIME_SUPERVISOR_INSTANCE_ID_ENV) or "").strip(),
+            env=env,
+        )
+        payload["leaseConsumptionReservation"] = reservation_guard
+        if not reservation_guard.get("ok") or not reservation_guard.get("valid"):
+            payload["status"] = "blocked-lease-consumption"
+            payload["error"] = "; ".join(
+                str(item) for item in reservation_guard.get("blockers") or []
+            )
+            print(json.dumps(payload, indent=2, sort_keys=True))
+            return 2
+    if not args.execute:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
     if args.continuous:
@@ -3157,7 +4921,11 @@ def cmd_stop(args: argparse.Namespace) -> int:
             "battleSession": terminate_battle_runners(force=args.force),
             "obsHttp": terminate_pid_file(OBS_PID_FILE, force=args.force),
         }
-        if args.force:
+        process_tree_failures = termination_failures(payload["terminated"])
+        payload["processTreeTerminationFailures"] = process_tree_failures
+        if process_tree_failures:
+            payload["error"] = "one or more owned process trees survived or could not be verified"
+        if args.force and not process_tree_failures:
             payload["forcedActiveBattleCleanup"] = clear_stale_active_battles(
                 execute=True,
                 stale_after_seconds=0,
@@ -3238,7 +5006,7 @@ def main() -> int:
     start.add_argument(
         "--enable-auto-improve",
         action="store_true",
-        help=f"Allow the recursive improve_agent + elo_watchdog path. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
+        help="Compatibility flag only; immutable runtime improvement is delegated to DEKU.",
     )
     start.add_argument("--execute", action="store_true")
     supervise = sub.add_parser("supervise")
@@ -3254,14 +5022,19 @@ def main() -> int:
     supervise.add_argument("--autoresearch-count", type=int, default=30)
     supervise.add_argument("--proof-timeout-seconds", type=int, default=300)
     supervise.add_argument("--start-timeout-seconds", type=int, default=60)
-    supervise.add_argument("--improve-timeout-seconds", type=int, default=240)
+    supervise.add_argument(
+        "--improve-timeout-seconds",
+        type=int,
+        default=DEFAULT_IMPROVE_TIMEOUT_SECONDS,
+        help="Compatibility option retained for old launchers; runtime does not launch improvement.",
+    )
     supervise.add_argument(
         "--enable-auto-improve",
         action="store_true",
-        help=f"Allow the recursive improve_agent + elo_watchdog path. Alternative: {AUTO_IMPROVE_SENTINEL}=1.",
+        help="Compatibility flag only; immutable runtime improvement is delegated to DEKU.",
     )
     supervise.add_argument("--skip-improve", action="store_true",
-                           help="Disable the self-improvement loop (improve_agent + elo_watchdog).")
+                           help="Compatibility flag; runtime improvement is always disabled.")
     stop = sub.add_parser("stop")
     stop.add_argument("--force", action="store_true")
     stop.add_argument("--max-wait-seconds", type=int, default=1800)

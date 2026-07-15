@@ -2,10 +2,8 @@ import importlib
 import builtins
 import json
 import os
-import socket
 import sys
 import time
-import urllib.error
 from pathlib import Path
 
 from infrastructure.discord_reporting import (
@@ -23,7 +21,7 @@ from infrastructure.discord_reporting import (
     summarize_recent_results_with_current,
     top_recurring_issue,
 )
-from infrastructure.event_queue_lib import classify_delivery_error, queue_health_summary
+from infrastructure.event_queue_lib import queue_health_summary
 
 
 def _configure_battle_digest_test(monkeypatch, tmp_path):
@@ -42,7 +40,7 @@ def _configure_battle_digest_test(monkeypatch, tmp_path):
     monkeypatch.setattr(event_poster, "DISCORD_DELIVERY_PROOF", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(event_poster, "DISCORD_DOCTOR_PROOF", truth_dir / "discord-reporting-doctor.json")
     monkeypatch.setattr(event_poster, "BATTLE_DIGEST_STATE", truth_dir / "battle-report-digest-state.json")
-    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_SIZE", 5)
+    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_SIZE", 30)
     monkeypatch.setattr(event_poster, "BATTLE_DIGEST_MAX_AGE_SEC", 900)
     monkeypatch.setattr(event_poster, "BATTLE_DIGEST_REPORTED_ID_LIMIT", 100)
     monkeypatch.setattr(event_poster, "DEKU_EVENT_QUEUE_ROOT", tmp_path / "deku-events")
@@ -80,32 +78,31 @@ def _queue_digest_test_battle(event_queue_lib, index: int) -> str:
         "battles",
         payload,
         dedup_window_sec=0,
+        session_id="session-reporting-test",
+        cycle_id="session-reporting-test-cycle-1",
+        session_expected_battles=30,
     )
     assert event_id
     return event_id
 
 
-def test_event_retention_outlives_partial_digest_window():
+def test_event_retention_allows_transient_relay_outages():
     import infrastructure.event_poster as event_poster
 
-    assert event_poster.EXPIRY_SEC > event_poster.BATTLE_DIGEST_MAX_AGE_SEC
+    assert event_poster.EXPIRY_SEC >= 3600
 
 
-def test_event_poster_loads_env_chain_for_webhooks(monkeypatch, tmp_path):
+def test_event_poster_does_not_discover_chat_credentials(monkeypatch):
     import infrastructure.event_poster as event_poster
 
-    env_file = tmp_path / ".env"
-    env_file.write_text("DISCORD_BATTLES_WEBHOOK_URL=https://discord.com/api/webhooks/example/token\n", encoding="utf-8")
-    monkeypatch.setattr(event_poster, "ENV_FILES", (env_file,))
-    monkeypatch.delenv("DISCORD_BATTLES_WEBHOOK_URL", raising=False)
-    monkeypatch.delenv("DISCORD_WEBHOOK_URL", raising=False)
+    monkeypatch.setenv("DISCORD_WEBHOOK_URL", "must-not-be-read")
+    monkeypatch.setenv("DISCORD_BATTLES_WEBHOOK_URL", "must-not-be-read")
 
-    loaded = event_poster.load_env_chain()
-    url, source = event_poster.resolve_webhook_url("battles")
+    status = event_poster.discord_config_status()
 
-    assert loaded == [str(env_file)]
-    assert source == "DISCORD_BATTLES_WEBHOOK_URL"
-    assert url.endswith("/token")
+    assert status["projectCredentialDiscoveryEnabled"] is False
+    assert status["projectNetworkSenderEnabled"] is False
+    assert "must-not-be-read" not in json.dumps(status)
 
 
 def test_post_to_discord_writes_structured_durable_deku_event(monkeypatch, tmp_path):
@@ -115,22 +112,14 @@ def test_post_to_discord_writes_structured_durable_deku_event(monkeypatch, tmp_p
     queue_file.write_text("[]", encoding="utf-8")
     monkeypatch.setattr(event_poster, "DEKU_EVENT_QUEUE_ROOT", tmp_path / "deku-events")
     monkeypatch.setattr(event_poster.event_queue_lib, "QUEUE_FILE", queue_file)
-    monkeypatch.setattr(
-        event_poster,
-        "_post_via_deku_remote",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("direct SSH must not run")),
-    )
-    monkeypatch.setattr(
-        event_poster,
-        "_post_via_webhook",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("webhook must not run")),
-    )
-
-    result = event_poster.post_to_discord({
+    result = event_poster.write_deku_observation({
         "id": "event-1",
         "event_type": "status_update",
         "channel": "battles",
         "content": "Fouler runner is intentionally parked under stop-loss.",
+        "dedup_key": "fouler-play:status:parked",
+        "evidence_refs": ["truth/mission-monitor.json"],
+        "recommended_next_action": "Review the local stop-loss evidence.",
     })
 
     assert result["ok"] is True
@@ -140,8 +129,16 @@ def test_post_to_discord_writes_structured_durable_deku_event(monkeypatch, tmp_p
     assert queued["schemaVersion"] == "deku-project-event/v1"
     assert queued["id"] == "fouler-event-1"
     assert queued["category"] == "fouler-play"
-    assert queued["proof"] == [str(queue_file)]
+    assert queued["kind"] == "observation"
+    assert queued["authority"] == "none"
+    assert queued["producer"] == "fouler-play"
+    assert queued["dedupKey"] == "fouler-play:status:parked"
+    assert queued["evidenceRefs"] == [str(queue_file), "truth/mission-monitor.json"]
+    assert queued["proof"] == queued["evidenceRefs"]
+    assert queued["recommendedNextAction"] == "Review the local stop-loss evidence."
     assert queued["payload"]["localEventId"] == "event-1"
+    assert "actionRequired" not in json.dumps(queued)
+    assert "nextHermesAction" not in json.dumps(queued)
 
 
 def test_deku_event_queue_handoff_is_idempotent(monkeypatch, tmp_path):
@@ -185,79 +182,78 @@ def test_deku_event_queue_fails_closed_on_id_collision(monkeypatch, tmp_path):
     assert result["errorCode"] == "deku_event_queue_collision"
 
 
-def test_battle_results_are_retained_locally_and_emit_one_bounded_batch_digest(monkeypatch, tmp_path):
+def test_every_battle_result_emits_one_deku_observation(monkeypatch, tmp_path):
     event_poster, event_queue_lib, queue_file, truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
 
     local_event_ids = []
-    for index in range(4):
+    for index in range(30):
         local_event_ids.append(_queue_digest_test_battle(event_queue_lib, index))
         assert event_poster.process_one_event() is True
 
     pending_dir = tmp_path / "deku-events" / "pending"
-    assert not pending_dir.exists() or list(pending_dir.glob("*.json")) == []
+    queue_paths = sorted(pending_dir.glob("*.json"))
+    assert len(queue_paths) == 30
+    queued = [json.loads(path.read_text(encoding="utf-8")) for path in queue_paths]
     local_events = json.loads(queue_file.read_text(encoding="utf-8"))
-    state = json.loads((truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8"))
-    assert [event["status"] for event in local_events] == ["posted"] * 4
-    assert len(state["pendingBattles"]) == 4
-    assert state["reportedEventIds"] == []
-
-    local_event_ids.append(_queue_digest_test_battle(event_queue_lib, 4))
-    assert event_poster.process_one_event() is True
-
-    queue_paths = list(pending_dir.glob("*.json"))
-    assert len(queue_paths) == 1
-    queued = json.loads(queue_paths[0].read_text(encoding="utf-8"))
-    local_events = json.loads(queue_file.read_text(encoding="utf-8"))
-    state = json.loads((truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8"))
     rendered = json.dumps(queued).lower()
 
-    assert queued["eventType"] == "battle_digest"
-    assert queued["payload"]["battleDigest"]["battleCount"] == 5
-    assert queued["payload"]["battleDigest"]["wins"] == 3
-    assert queued["payload"]["battleDigest"]["losses"] == 2
-    assert queued["payload"]["battleDigest"]["eloStart"] == 1000
-    assert queued["payload"]["battleDigest"]["eloEnd"] == 1030
-    assert queued["payload"]["battleDigest"]["eloDelta"] == 30
-    assert queued["payload"]["battleDigest"]["latestReplayUrl"].endswith("gen9ou-2600000004")
-    assert len(queued["summary"]) < 900
-    assert queued["proof"] == [str(queue_file), str(truth_dir / "battle-report-digest-state.json"), "https://replay.pokemonshowdown.com/gen9ou-2600000004"]
-    assert "webhook" not in rendered
+    assert {event["eventType"] for event in queued} == {"battle_result"}
+    assert {event["kind"] for event in queued} == {"observation"}
+    assert {event["authority"] for event in queued} == {"none"}
+    assert {
+        event["dedupKey"] for event in queued
+    } == {
+        f"fouler-play:battle-result:gen9ou-{2600000000 + index}"
+        for index in range(30)
+    }
+    assert {
+        event["id"] for event in queued
+    } == {
+        f"fouler-battle-result-gen9ou-{2600000000 + index}"
+        for index in range(30)
+    }
     assert "avatar_url" not in rendered
     assert "username" not in rendered
     assert [event["id"] for event in local_events] == local_event_ids
-    assert [event["status"] for event in local_events] == ["posted"] * 5
+    assert [event["status"] for event in local_events] == ["posted"] * 30
     assert all(event.get("proof") for event in local_events)
-    assert state["pendingBattles"] == []
-    assert state["reportedEventIds"] == local_event_ids
-    assert state["lastDigest"]["battleCount"] == 5
 
 
-def test_battle_digest_age_flush_recovers_idempotently_after_queue_before_state_crash(monkeypatch, tmp_path):
-    event_poster, event_queue_lib, _queue_file, truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
-    monkeypatch.setattr(event_poster, "BATTLE_DIGEST_MAX_AGE_SEC", 60)
+def test_requeued_same_battle_is_idempotent_at_deku_outbox(monkeypatch, tmp_path):
+    event_poster, event_queue_lib, _queue_file, _truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
 
-    event_id = _queue_digest_test_battle(event_queue_lib, 0)
+    first_id = _queue_digest_test_battle(event_queue_lib, 0)
     assert event_poster.process_one_event() is True
-    state = event_poster._read_battle_digest_state()
-    assert [item["localEventId"] for item in state["pendingBattles"]] == [event_id]
+    second_id = _queue_digest_test_battle(event_queue_lib, 0)
+    assert second_id != first_id
+    assert event_poster.process_one_event() is True
 
-    digest_event = event_poster._battle_digest_event(state["pendingBattles"])
-    queued_first = event_poster._queue_deku_project_event(digest_event, digest_event["content"])
-    assert queued_first["alreadyQueued"] is False
-
-    first_buffered = float(state["pendingBattles"][0]["bufferedAtEpoch"])
-    recovered = event_poster._flush_battle_digest_if_due(now=first_buffered + 61)
-    assert recovered["ok"] is True
-    assert recovered["alreadyQueued"] is True
-    assert recovered["flushed"] is True
-    assert len(list((tmp_path / "deku-events" / "pending").glob("*.json"))) == 1
-
-    state_after = json.loads((truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8"))
-    assert state_after["pendingBattles"] == []
-    assert state_after["reportedEventIds"] == [event_id]
+    paths = list((tmp_path / "deku-events" / "pending").glob("*.json"))
+    assert len(paths) == 1
+    queued = json.loads(paths[0].read_text(encoding="utf-8"))
+    assert queued["id"] == "fouler-battle-result-gen9ou-2600000000"
+    assert queued["dedupKey"] == "fouler-play:battle-result:gen9ou-2600000000"
 
 
-def test_battle_digest_parses_unchanged_elo_transition():
+def test_bounded_runtime_drain_reaches_required_battle(monkeypatch, tmp_path):
+    event_poster, event_queue_lib, queue_file, _truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
+
+    first_id = _queue_digest_test_battle(event_queue_lib, 0)
+    second_id = _queue_digest_test_battle(event_queue_lib, 1)
+    result = event_poster.process_pending_events(max_events=5, required_event_id=second_id)
+
+    assert result["ok"] is True
+    assert result["processed"] == 2
+    assert result["requiredStatus"] == "posted"
+    assert result["pendingRemaining"] == 0
+    assert result["networkDeliveryOwnedByProject"] is False
+    assert len(list((tmp_path / "deku-events" / "pending").glob("*.json"))) == 2
+    events = json.loads(queue_file.read_text(encoding="utf-8"))
+    assert [event["id"] for event in events] == [first_id, second_id]
+    assert [event["status"] for event in events] == ["posted", "posted"]
+
+
+def test_battle_observation_key_normalizes_unchanged_elo_result():
     import infrastructure.event_poster as event_poster
 
     content = format_payload_or_message(build_contract_payload(
@@ -275,12 +271,13 @@ def test_battle_digest_parses_unchanged_elo_transition():
         elo_after=1000,
         rating_delta=0,
     ))
-    entry = event_poster._battle_digest_entry(
-        {"id": "event-flat", "event_type": "battle_result", "content": content},
-        now=1.0,
-    )
+    fields = structured_report_fields(content, event_type="battle_result")
+    event = {"id": "event-flat", "event_type": "battle_result", "content": content, **fields}
 
-    assert entry["elo"] == {"before": 1000, "after": 1000, "delta": 0}
+    assert event_poster._battle_observation_key(event) == "gen9ou-2600000100"
+    assert event_poster._deku_project_event_id(event, "battle_result", "event-flat") == (
+        "fouler-battle-result-gen9ou-2600000100"
+    )
 
 
 def test_event_poster_doctor_reports_redacted_transport(monkeypatch, tmp_path):
@@ -660,7 +657,7 @@ def test_event_poster_archives_stale_backlog_before_transport(monkeypatch, tmp_p
     monkeypatch.setattr(event_poster, "DISCORD_REPORTING_PROOF", truth_dir / "discord-reporting.json")
     monkeypatch.setattr(event_poster, "DISCORD_DELIVERY_PROOF", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(event_poster, "DISCORD_DOCTOR_PROOF", truth_dir / "discord-reporting-doctor.json")
-    monkeypatch.setattr(event_poster, "post_to_discord", lambda event: calls.append(event) or {"ok": True, "status": "posted"})
+    monkeypatch.setattr(event_poster, "write_deku_observation", lambda event: calls.append(event) or {"ok": True, "status": "posted"})
 
     assert event_poster.process_one_event() is False
 
@@ -736,7 +733,7 @@ def test_event_poster_quarantines_stale_battle_result_after_replay_resolution(mo
     monkeypatch.setattr(event_poster, "DISCORD_DOCTOR_PROOF", truth_dir / "discord-reporting-doctor.json")
     monkeypatch.setattr(event_poster, "REPLAY_RESOLVE_ATTEMPTS", 1)
     monkeypatch.setattr(event_poster, "_replay_json_is_live", lambda replay_id: probes.append(replay_id) or True)
-    monkeypatch.setattr(event_poster, "post_to_discord", lambda event: calls.append(event) or {"ok": True, "status": "posted"})
+    monkeypatch.setattr(event_poster, "write_deku_observation", lambda event: calls.append(event) or {"ok": True, "status": "posted"})
 
     assert event_poster.process_one_event() is False
 
@@ -786,7 +783,7 @@ def test_event_poster_once_cannot_post_stale_backlog(monkeypatch, tmp_path):
     monkeypatch.setattr(event_poster, "DISCORD_REPORTING_PROOF", truth_dir / "discord-reporting.json")
     monkeypatch.setattr(event_poster, "DISCORD_DELIVERY_PROOF", truth_dir / "discord-delivery.json")
     monkeypatch.setattr(event_poster, "DISCORD_DOCTOR_PROOF", truth_dir / "discord-reporting-doctor.json")
-    monkeypatch.setattr(event_poster, "post_to_discord", lambda event: calls.append(event) or {"ok": True, "status": "posted"})
+    monkeypatch.setattr(event_poster, "write_deku_observation", lambda event: calls.append(event) or {"ok": True, "status": "posted"})
     monkeypatch.setattr(sys, "argv", ["event_poster.py", "--once"])
 
     assert event_poster.main() == 1
@@ -1389,24 +1386,48 @@ def test_read_queue_recovers_from_last_good_backup_after_corrupt_live_file(monke
     assert list(tmp_path.glob("events_queue.json.corrupt-*"))
 
 
-def test_webhook_dns_failure_is_reported_without_posting(monkeypatch):
-    import infrastructure.event_poster as event_poster
-    import urllib.request
+def test_performance_alert_dedup_uses_stable_edge_keys(monkeypatch, tmp_path):
+    import infrastructure.event_queue_lib as event_queue_lib
 
-    def raise_dns(*_args, **_kwargs):
-        raise urllib.error.URLError(socket.gaierror("getaddrinfo failed"))
+    queue_file = tmp_path / "events_queue.json"
+    queue_file.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(event_queue_lib, "QUEUE_FILE", queue_file)
 
-    monkeypatch.setattr(urllib.request, "urlopen", raise_dns)
-
-    result = event_poster._post_via_webhook(
-        {"id": "event-1", "event_type": "battle_result", "channel": "battles"},
-        "https://discord.com/api/webhooks/example/token",
-        "safe content",
+    first = event_queue_lib.queue_event(
+        "performance_alert",
+        "battles",
+        "trigger=loss-streak; battle_id=battle-gen9ou-100; streak=5",
+        dedup_window_sec=0,
+    )
+    duplicate = event_queue_lib.queue_event(
+        "performance_alert",
+        "battles",
+        "trigger=loss-streak; battle_id=battle-gen9ou-101; streak=6",
+        dedup_window_sec=0,
+    )
+    resolved = event_queue_lib.queue_event(
+        "performance_recovered",
+        "battles",
+        "trigger=loss-streak; recent results returned above the safety threshold",
+        dedup_window_sec=0,
+    )
+    duplicate_resolution = event_queue_lib.queue_event(
+        "performance_recovered",
+        "battles",
+        "trigger=loss-streak; another healthy battle completed",
+        dedup_window_sec=0,
     )
 
-    assert result["ok"] is False
-    assert result["errorCode"] == "dns_failure"
-    assert classify_delivery_error(result["errorCode"]) == "dns_failure"
+    assert first is not None
+    assert duplicate is None
+    assert resolved is not None
+    assert duplicate_resolution is None
+    events = event_queue_lib.read_queue()
+    assert [event["dedup_key"] for event in events] == [
+        "fouler-play:performance:loss-streak:open",
+        "fouler-play:performance:loss-streak:resolved",
+    ]
+    assert [event["edge_state"] for event in events] == ["open", "resolved"]
 
 
 def test_redacted_report_summary_is_concise_and_secret_safe_for_loss_payload():

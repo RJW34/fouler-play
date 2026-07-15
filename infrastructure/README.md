@@ -23,13 +23,14 @@ Responsibilities:
 - Runs the bot against the Pokemon Showdown ladder (`gen9ou`)
 - Streams gameplay to Twitch via OBS
 - After each batch of games, pushes `battle_stats.json` and replay files to GitHub
-- Periodically checks for new code on `master` and deploys updates
-- Runs the ELO watchdog to revert bad deploys
+- Runs only a clean release named by a deployment receipt and finite runtime lease
+- Creates exact-identity activation/judgment proof before another engine change is eligible
 
 Key scripts:
-- `infrastructure/windows/player_loop.bat` -- main loop
-- `infrastructure/windows/deploy_update.bat` -- pulls and logs deploys
-- `infrastructure/elo_watchdog.py` -- reverts if ELO drops too far
+- `scripts/devstream_session.py` -- finite leased supervisor/runtime lifecycle
+- `scripts/fouler_deployment_receipt.py` -- clean immutable release authorization
+- `scripts/fouler_deployment_state.py` -- activation/current-state/judgment operator
+- `infrastructure/elo_watchdog.py` -- exact-identity immutable judgment writer
 
 ### Linux Machine (Developer / Analyst)
 
@@ -46,10 +47,10 @@ Key scripts:
 
 ### GitHub as Coordination Layer
 
-- Branch `master` is the live code branch. Both machines push to and pull from it.
-- The Windows machine pushes data (stats, replays). The Linux machine pushes code.
-- Merge conflicts are avoided because each machine writes to different files.
-- `infrastructure/deploy_log.json` tracks every deploy event for audit and rollback.
+- Git carries reviewed code and durable source history; a push is not a deployment.
+- JIGGLYPUFF runs an immutable release directory for one exact pushed commit.
+- Runtime authority lives under `%PROGRAMDATA%\HERMES\state\fouler\deployments` as
+  deployment, activation, and judgment receipts rather than `deploy_log.json`.
 
 ---
 
@@ -58,13 +59,13 @@ Key scripts:
 ### Windows Player Loop
 
 ```
-1. git pull origin master
-2. Run bot for {batch_size} games (default 10)
-3. git add battle_stats.json replays/ && git commit && git push
-4. git fetch origin master
-5. If new commits from Linux machine: run deploy_update.bat
-6. Run elo_watchdog.py to check for regressions
-7. Go to step 1
+1. Validate the clean release receipt and finite DEKU-signed v3 runtime lease.
+2. Run one bounded three-slot battle batch under the lease identity.
+3. Ensure the first exact-identity row activates the release/session.
+4. Refresh replay/autoresearch proof without posting per-battle Discord noise.
+5. Judge after 30 exact-identity decisive battles; continue sampling while pending.
+6. Permit one candidate only after a passing immutable judgment.
+7. Deploy an accepted candidate or rollback as a new separately authorized release.
 ```
 
 ### Linux Developer Loop
@@ -85,24 +86,16 @@ Key scripts:
 
 ### Windows Machine
 
-1. Open a terminal in the repo root (`C:\Users\mtoli\Documents\Code\fouler-play`)
-2. Ensure `.env` has valid Pokemon Showdown credentials
-3. Run:
-   ```
-   infrastructure\windows\player_loop.bat
-   ```
-4. (Optional) Start OBS for Twitch streaming separately
+Do not run `infrastructure\windows\player_loop.bat`; it is a legacy mutable-checkout loop.
+Provision a clean release, deployment receipt, and finite `jigglypuff-runtime-start` lease, then
+invoke `scripts\devstream_session.py start --continuous --execute --runtime-lease <path>` through
+the validated supervisor task. OBS remains a separately verified output gate.
 
 ### Linux Machine
 
-1. Clone the repo and checkout `master`
-2. Ensure your chosen coding-agent/runtime is installed and authenticated (Codex/OpenClaw ACP preferred; Claude Code remains compatible)
-3. Ensure Python dependencies are installed (`pip install -r requirements.txt`)
-4. Run:
-   ```bash
-   chmod +x infrastructure/linux/developer_loop.sh
-   ./infrastructure/linux/developer_loop.sh
-   ```
+The old `infrastructure/linux/developer_loop.sh` is not runtime authority. HERMES may prepare one
+bounded candidate only after the current JIGGLY activation has a passing judgment and the external
+H2H attempt authority validates. Accepted source still requires a new immutable JIGGLY deployment.
 
 ---
 
@@ -122,8 +115,8 @@ All guardrails are defined in `infrastructure/guardrails.json`:
 
 | Guardrail | Value | Description |
 |---|---|---|
-| `max_elo_drop_before_revert` | 50 | If ELO drops more than this after a deploy, auto-revert |
-| `min_games_between_deploys` | 15 | Must play at least 15 games before accepting another deploy |
+| `max_elo_drop_before_revert` | 50 | Regression threshold recorded in immutable judgment proof |
+| `min_games_between_deploys` | 30 | Exact-identity decisive games required before another candidate |
 | `require_test_pass` | true | All tests must pass before a commit is pushed |
 | `require_syntax_check` | true | Syntax check (`python -m py_compile`) must pass |
 
@@ -131,8 +124,9 @@ File-level guardrails:
 - `allowed_modify`: Files the coding agent is permitted to change
 - `never_modify`: Files that must never be touched (credentials, config, teams)
 
-The ELO watchdog (`infrastructure/elo_watchdog.py`) runs after each deploy and can
-automatically revert bad changes using `git revert`.
+The ELO watchdog (`infrastructure/elo_watchdog.py`) never edits the live release. A
+regressed judgment blocks continuation until a separately authorized rollback or replacement
+release is activated.
 
 ---
 

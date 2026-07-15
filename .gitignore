@@ -18,9 +18,14 @@ node_modules/
 .tmp-codex*/
 .tmp-pytest*/
 .codex-pytest*/
+.playwright-cli/
 
 # Offline eval harness artifacts (generated local proof/runtime output)
 eval_results/offline/
+eval_results/head_to_head/
+eval_results/improve_ledger.jsonl
+data/smogon_stats_cache/*.json
+infrastructure/deploy_log.json
 
 # Logs
 *.log

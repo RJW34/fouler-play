@@ -23,12 +23,11 @@ from typing import Any
 
 from aiohttp import web
 
+from infrastructure.runtime_paths import resolve_runtime_paths
 from streaming import state_store
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_TRACE_DIR = Path(os.getenv("DECISION_TRACE_DIR", "logs/decision_traces"))
-if not DEFAULT_TRACE_DIR.is_absolute():
-    DEFAULT_TRACE_DIR = ROOT_DIR / DEFAULT_TRACE_DIR
+DEFAULT_TRACE_DIR = resolve_runtime_paths(ROOT_DIR).decision_trace_root
 
 DEFAULT_DASHBOARD_HTML = Path(__file__).resolve().parent / "hybrid_dashboard.html"
 DEFAULT_OVERLAY_HTML = Path(__file__).resolve().parent / "hybrid_overlay.html"

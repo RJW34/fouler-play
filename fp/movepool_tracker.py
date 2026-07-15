@@ -18,8 +18,15 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 
 from data import all_move_json
+from infrastructure.runtime_paths import resolve_runtime_paths
 
 logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+LEGACY_MOVEPOOL_DATA_FILE = PROJECT_ROOT / "fp" / "data" / "movepool_data.json"
+
+
+def _runtime_movepool_data_file() -> Path:
+    return resolve_runtime_paths(PROJECT_ROOT).movepool_data_path
 
 
 class ThreatCategory(Enum):
@@ -101,7 +108,7 @@ class MovepoolTracker:
     """
     
     def __init__(self, data_file: Path = None):
-        self.data_file = data_file or Path("fp/data/movepool_data.json")
+        self.data_file = data_file or _runtime_movepool_data_file()
         self.movepool_db: Dict[str, MovepoolData] = {}
         self.move_categories = self._load_move_categories()
         self._load()
@@ -119,12 +126,19 @@ class MovepoolTracker:
     
     def _load(self):
         """Load existing movepool data from disk"""
-        if not self.data_file.exists():
+        read_file = self.data_file
+        if (
+            not read_file.exists()
+            and read_file != LEGACY_MOVEPOOL_DATA_FILE
+            and LEGACY_MOVEPOOL_DATA_FILE.exists()
+        ):
+            read_file = LEGACY_MOVEPOOL_DATA_FILE
+        if not read_file.exists():
             logger.info(f"No existing movepool data at {self.data_file}, starting fresh")
             return
         
         try:
-            with open(self.data_file, 'r') as f:
+            with open(read_file, 'r') as f:
                 data = json.load(f)
                 for pokemon_name, pokemon_data in data.items():
                     self.movepool_db[pokemon_name] = MovepoolData.from_dict(pokemon_data)

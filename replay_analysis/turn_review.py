@@ -24,10 +24,12 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from data import pokedex
 from fp.helpers import type_effectiveness_modifier
+from infrastructure.runtime_paths import resolve_runtime_paths
 from replay_analysis.account_identity import resolve_bot_username
 
 
 DEFAULT_BOT_USERNAME = resolve_bot_username()
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
 SETUP_MOVES = {
     "calmmind",
     "curse",
@@ -64,9 +66,8 @@ class TurnReviewer:
 
     def __init__(self, bot_username: str = DEFAULT_BOT_USERNAME):
         self.bot_username = bot_username
-        project_root = Path(__file__).parent.parent
-        self.reviews_dir = project_root / "replay_analysis" / "turn_reviews"
-        self.reviews_dir.mkdir(exist_ok=True)
+        self.reviews_dir = _RUNTIME_PATHS.state_root / "replay_analysis" / "turn_reviews"
+        self.reviews_dir.mkdir(parents=True, exist_ok=True)
         self._pokedex_lookup = self._build_pokedex_lookup()
 
     @staticmethod

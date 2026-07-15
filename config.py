@@ -45,15 +45,17 @@ class CustomRotatingFileHandler(RotatingFileHandler):
             maxBytes: Maximum size in bytes before rotation (default 10MB)
             backupCount: Number of backup files to keep (default 3)
         """
-        self.base_dir = "logs"
-        if not os.path.exists(self.base_dir):
-            os.mkdir(self.base_dir)
+        self.base_dir = os.getenv(
+            "FOULER_LOG_DIR",
+            os.path.join(os.getenv("FOULER_RUNTIME_STATE_ROOT", os.getcwd()), "logs"),
+        )
+        os.makedirs(self.base_dir, exist_ok=True)
 
         # Use UTF-8 encoding to handle Pokemon Showdown unicode chars
         # (e.g. ☆ in usernames) without crashing on Windows cp1252
         kwargs.setdefault("encoding", "utf-8")
         super().__init__(
-            "{}/{}".format(self.base_dir, file_name),
+            os.path.join(self.base_dir, file_name),
             maxBytes=maxBytes,
             backupCount=backupCount,
             **kwargs
@@ -61,7 +63,7 @@ class CustomRotatingFileHandler(RotatingFileHandler):
 
     def do_rollover(self, new_file_name):
         new_file_name = new_file_name.replace("/", "_")
-        self.baseFilename = "{}/{}".format(self.base_dir, new_file_name)
+        self.baseFilename = os.path.join(self.base_dir, new_file_name)
         self.doRollover()
 
 
@@ -240,7 +242,7 @@ class _FoulPlayConfig:
         parser.add_argument(
             "--search-parallelism",
             type=int,
-            default=_env_int("SEARCH_PARALLELISM", 4),
+            default=_env_int("SEARCH_PARALLELISM", 2),
             help="Number of states to search in parallel",
         )
         parser.add_argument(

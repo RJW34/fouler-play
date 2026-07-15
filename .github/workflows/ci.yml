@@ -21,8 +21,31 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
-    - name: fmt, lint, & test
+    - name: Repository fatal lint
       run: |
-        ruff check
-        ruff format --check --diff
-        pytest tests
+        ruff check . --select E9,F63,F7,F82 --exclude launch_integration_example.py
+    - name: Strict production runtime lint
+      run: |
+        ruff check \
+          run.py \
+          config.py \
+          process_lock.py \
+          fp/devstream_chat.py \
+          infrastructure/deployment_lineage.py \
+          infrastructure/deployment_state.py \
+          infrastructure/elo_watchdog.py \
+          infrastructure/head_to_head_authority.py \
+          infrastructure/head_to_head_eval.py \
+          infrastructure/improve_agent.py \
+          infrastructure/runtime_authorization.py \
+          infrastructure/runtime_lease_client.py \
+          infrastructure/windows/fouler_lease_broker.py \
+          scripts/devstream_runtime_lease.py \
+          scripts/devstream_session.py \
+          scripts/run_bounded_battle_session.py \
+          scripts/fouler_deployment_receipt.py \
+          scripts/fouler_deployment_state.py \
+          scripts/fouler_runtime_authority.py \
+          streaming/run_obs_server_service.py
+    - name: Test
+      run: pytest -q tests

@@ -14,6 +14,7 @@ def test_jiggly_runtime_start_lease_allows_continuous_supervisor_chain():
 
     assert allowed == [
         "jigglypuff-runtime-start",
+        "deployment-activation",
         "devstream-start-continuous-dry-run",
         "devstream-start-continuous",
         "devstream-supervise",
@@ -35,10 +36,19 @@ def test_continuous_start_lease_allows_supervisor_and_battle_runner():
         max_concurrent_battles=1,
         replay_behavior="always",
         valid_minutes=10,
+        source_commit="a" * 40,
+        change_id="change-test-0001",
+        deployment_id="deployment-test-0001",
+        source_tree="b" * 40,
+        runtime_manifest_digest="c" * 64,
+        deployment_receipt_path="C:\\ProgramData\\HERMES\\state\\fouler\\deployment-test.json",
+        deployment_receipt_sha256="d" * 64,
+        session_id="session-test-0001",
     )
 
     assert lease["allowedPurposes"] == [
         "devstream-start-continuous",
+        "deployment-activation",
         "devstream-start-continuous-dry-run",
         "devstream-supervise",
         "devstream-start-dry-run",

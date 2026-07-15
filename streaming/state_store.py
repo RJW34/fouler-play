@@ -19,14 +19,19 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from infrastructure.runtime_paths import resolve_runtime_paths
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
-ACTIVE_BATTLES_PATH = ROOT_DIR / "active_battles.json"
-STREAM_STATUS_PATH = ROOT_DIR / "stream_status.json"
-DAILY_STATS_PATH = ROOT_DIR / "daily_stats.json"
-BATTLE_STATS_PATH = ROOT_DIR / "battle_stats.json"
-NEXT_FIX_PATH = ROOT_DIR / "next_fix.txt"
-STABILITY_REPORT_PATH = ROOT_DIR / "stability_report.json"
-STATE_STORE_WRITE_FAILURE_PATH = ROOT_DIR / "devstream" / "truth" / "state-store-write-failure.json"
+_RUNTIME_PATHS = resolve_runtime_paths(ROOT_DIR)
+RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
+RUNTIME_TRUTH_DIR = RUNTIME_STATE_ROOT / "truth"
+ACTIVE_BATTLES_PATH = RUNTIME_STATE_ROOT / "active_battles.json"
+STREAM_STATUS_PATH = RUNTIME_STATE_ROOT / "stream_status.json"
+DAILY_STATS_PATH = RUNTIME_STATE_ROOT / "daily_stats.json"
+BATTLE_STATS_PATH = _RUNTIME_PATHS.battle_stats_path
+NEXT_FIX_PATH = RUNTIME_STATE_ROOT / "next_fix.txt"
+STABILITY_REPORT_PATH = RUNTIME_STATE_ROOT / "stability_report.json"
+STATE_STORE_WRITE_FAILURE_PATH = RUNTIME_TRUTH_DIR / "state-store-write-failure.json"
 
 DEFAULT_NEXT_FIX = "Pending replay review"
 DEFAULT_DEVSTREAM_BATTLE_SURFACES = 3

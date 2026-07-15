@@ -4,9 +4,17 @@ import os
 import time
 import hashlib
 from datetime import datetime
+from pathlib import Path
+
+from infrastructure.runtime_paths import (
+    resolve_runtime_paths,
+    validate_external_runtime_path,
+)
 
 logger = logging.getLogger(__name__)
 PUBLIC_BATTLE_VIEW_FILENAME = "latest-public-battle.json"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
 
 
 def _live_request_evidence(battle):
@@ -228,7 +236,11 @@ def _write_public_battle_view(payload: dict, target_dir: str) -> None:
 def write_decision_trace(trace: dict, base_dir: str | None = None) -> str | None:
     if not trace:
         return None
-    target_dir = base_dir or os.getenv("DECISION_TRACE_DIR", "logs/decision_traces")
+    target_dir = validate_external_runtime_path(
+        base_dir or _RUNTIME_PATHS.decision_trace_root,
+        release_root=PROJECT_ROOT,
+        label="decision trace directory",
+    )
     try:
         os.makedirs(target_dir, exist_ok=True)
         tag = trace.get("battle_tag", "battle")
