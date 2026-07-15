@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Fouler Play - Three Battle Vertical</title>
+  <style>
+    :root {
+      --ink: #07090b;
+      --panel: #121619;
+      --panel-raised: #1a2024;
+      --line: #374047;
+      --paper: #f7f4ea;
+      --muted: #aeb8bd;
+      --teal: #38c7b5;
+      --amber: #f1c75b;
+      --coral: #ef7067;
+      --green: #6ed58b;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--ink);
+      color: var(--paper);
+      font-family: "Segoe UI", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    body { min-width: 1080px; min-height: 1920px; }
+
+    .broadcast {
+      width: 1080px;
+      height: 1920px;
+      padding: 28px 30px 24px;
+      display: grid;
+      grid-template-rows: 116px minmax(0, 1fr) 74px;
+      gap: 16px;
+      background: var(--ink);
+    }
+
+    .masthead {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 438px;
+      align-items: stretch;
+      border-top: 7px solid var(--amber);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      min-width: 0;
+      padding: 14px 18px 11px 0;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 49px;
+      line-height: 50px;
+      font-stretch: condensed;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .brand p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 15px;
+      line-height: 20px;
+      text-transform: uppercase;
+    }
+
+    .scoreboard {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.18fr;
+      border-left: 1px solid var(--line);
+    }
+
+    .score {
+      min-width: 0;
+      padding: 18px 12px 10px;
+      border-right: 1px solid var(--line);
+      text-align: center;
+    }
+
+    .score:last-child { border-right: 0; }
+
+    .score span {
+      display: block;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      line-height: 18px;
+      text-transform: uppercase;
+    }
+
+    .score strong {
+      display: block;
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--paper);
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 34px;
+      line-height: 38px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .score.live strong { color: var(--teal); }
+
+    .matches {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .match {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr);
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    .match-rail {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      align-items: center;
+      justify-items: center;
+      padding: 15px 0 13px;
+      border-right: 1px solid var(--line);
+      background: #0d1012;
+    }
+
+    .match-number {
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 30px;
+      line-height: 32px;
+      font-weight: 800;
+    }
+
+    .status-line {
+      width: 5px;
+      height: 100%;
+      margin: 13px 0;
+      background: var(--amber);
+    }
+
+    .status-mark {
+      width: 14px;
+      height: 14px;
+      border: 3px solid var(--amber);
+      background: transparent;
+      transform: rotate(45deg);
+    }
+
+    .match.live .status-line,
+    .match.live .status-mark { border-color: var(--teal); background: var(--teal); }
+    .match.delayed .status-line,
+    .match.delayed .status-mark { border-color: var(--amber); background: var(--amber); }
+    .match.reconnecting .status-line,
+    .match.reconnecting .status-mark { border-color: var(--coral); background: var(--coral); }
+
+    .match-content {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: 61px minmax(0, 1fr) 31px;
+      padding: 0 18px 10px;
+    }
+
+    .match-head {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .match-title { min-width: 0; }
+
+    .match-kicker {
+      color: var(--amber);
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      line-height: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .match-title strong {
+      display: block;
+      overflow: hidden;
+      color: var(--paper);
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 25px;
+      line-height: 28px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .match-state {
+      min-width: 128px;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      line-height: 17px;
+      font-weight: 700;
+      text-align: right;
+      text-transform: uppercase;
+    }
+
+    .match-state b {
+      display: block;
+      color: var(--amber);
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 20px;
+      line-height: 21px;
+    }
+
+    .match.live .match-state b { color: var(--teal); }
+    .match.reconnecting .match-state b { color: var(--coral); }
+
+    .arena {
+      min-height: 0;
+      position: relative;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) 65px minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    .arena::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      border-left: 1px solid #252c30;
+      pointer-events: none;
+    }
+
+    .side {
+      min-width: 0;
+      min-height: 0;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 126px minmax(0, 1fr) 208px;
+      align-items: center;
+      gap: 14px;
+      padding: 7px 0;
+    }
+
+    .side.agent {
+      grid-template-columns: 208px minmax(0, 1fr) 126px;
+    }
+
+    .sprite {
+      width: 126px;
+      height: 126px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .sprite img {
+      width: 118px;
+      height: 118px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .sprite-fallback {
+      display: flex;
+      width: 76px;
+      height: 76px;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--line);
+      color: var(--muted);
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 29px;
+      font-weight: 800;
+    }
+
+    .sprite-fallback[hidden],
+    .roster-mon span[hidden] { display: none !important; }
+
+    .side-copy { min-width: 0; }
+
+    .side-label {
+      overflow: hidden;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      line-height: 16px;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .pokemon-name {
+      margin-top: 2px;
+      overflow: hidden;
+      color: var(--paper);
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 28px;
+      line-height: 31px;
+      font-weight: 800;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .pokemon-meta {
+      height: 18px;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 18px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .hp-copy {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 7px;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      line-height: 14px;
+    }
+
+    .hp-track {
+      height: 8px;
+      margin-top: 4px;
+      overflow: hidden;
+      background: #30383d;
+    }
+
+    .hp-track i {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: var(--green);
+    }
+
+    .hp-track i.mid { background: var(--amber); }
+    .hp-track i.low { background: var(--coral); }
+
+    .roster {
+      width: 208px;
+      height: 102px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 5px;
+    }
+
+    .roster-mon {
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid #3a444a;
+      background: var(--panel-raised);
+    }
+
+    .roster-mon.active { border-color: var(--amber); }
+    .roster-mon.fainted { opacity: .35; }
+
+    .roster-mon img {
+      width: 58px;
+      height: 43px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .roster-mon span {
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .roster-mon i {
+      position: absolute;
+      left: 3px;
+      right: 3px;
+      bottom: 2px;
+      height: 3px;
+      background: #30383d;
+    }
+
+    .roster-mon i::after {
+      content: "";
+      display: block;
+      width: var(--hp, 0%);
+      height: 100%;
+      background: var(--green);
+    }
+
+    .turn-strip {
+      z-index: 2;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 148px minmax(0, 1fr) 104px;
+      align-items: center;
+      gap: 12px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: #0e1214;
+    }
+
+    .turn-strip strong {
+      padding-left: 14px;
+      color: var(--amber);
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 25px;
+      line-height: 29px;
+      text-transform: uppercase;
+    }
+
+    .turn-event {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--paper);
+      font-size: 15px;
+      line-height: 20px;
+      text-align: center;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .turn-age {
+      padding-right: 14px;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .queue {
+      min-height: 0;
+      display: none;
+      align-content: center;
+      justify-items: center;
+      padding: 34px 30px 26px;
+      text-align: center;
+    }
+
+    .match.searching .arena,
+    .match.reconnecting .arena { display: none; }
+    .match.searching .queue,
+    .match.reconnecting .queue { display: grid; }
+
+    .queue-bars {
+      width: 540px;
+      height: 56px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      align-items: end;
+      gap: 8px;
+    }
+
+    .queue-bars i {
+      display: block;
+      height: 16px;
+      background: #31393e;
+      animation: scan 1.8s steps(1, end) infinite;
+    }
+
+    .queue-bars i:nth-child(2) { animation-delay: .15s; }
+    .queue-bars i:nth-child(3) { animation-delay: .3s; }
+    .queue-bars i:nth-child(4) { animation-delay: .45s; }
+    .queue-bars i:nth-child(5) { animation-delay: .6s; }
+    .queue-bars i:nth-child(6) { animation-delay: .75s; }
+    .queue-bars i:nth-child(7) { animation-delay: .9s; }
+    .queue-bars i:nth-child(8) { animation-delay: 1.05s; }
+    .queue-bars i:nth-child(9) { animation-delay: 1.2s; }
+    .queue-bars i:nth-child(10) { animation-delay: 1.35s; }
+    .queue-bars i:nth-child(11) { animation-delay: 1.5s; }
+    .queue-bars i:nth-child(12) { animation-delay: 1.65s; }
+
+    .queue strong {
+      margin-top: 22px;
+      color: var(--paper);
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 31px;
+      line-height: 34px;
+      text-transform: uppercase;
+    }
+
+    .queue span {
+      margin-top: 7px;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      line-height: 20px;
+      text-transform: uppercase;
+    }
+
+    .match.reconnecting .queue-bars i { animation-name: reconnect; }
+
+    .match-foot {
+      min-width: 0;
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      overflow: hidden;
+      color: var(--muted);
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      line-height: 20px;
+      text-transform: uppercase;
+    }
+
+    .match-foot span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .broadcast-foot {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 22px;
+      padding: 0 18px;
+      border-left: 7px solid var(--teal);
+      background: var(--panel);
+    }
+
+    .broadcast-foot strong {
+      display: block;
+      font-family: Bahnschrift, "Arial Narrow", sans-serif;
+      font-size: 20px;
+      line-height: 24px;
+      text-transform: uppercase;
+    }
+
+    .broadcast-foot span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 17px;
+    }
+
+    .format-mark {
+      color: var(--amber) !important;
+      font-family: Consolas, monospace;
+      font-size: 14px !important;
+      font-weight: 700;
+      text-align: right;
+      text-transform: uppercase;
+    }
+
+    @keyframes scan {
+      0%, 48%, 100% { height: 16px; background: #31393e; }
+      49%, 66% { height: 52px; background: var(--amber); }
+    }
+
+    @keyframes reconnect {
+      0%, 48%, 100% { height: 16px; background: #31393e; }
+      49%, 66% { height: 52px; background: var(--coral); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .queue-bars i { animation: none; }
+      .queue-bars i:nth-child(4),
+      .queue-bars i:nth-child(8),
+      .queue-bars i:nth-child(12) { height: 52px; background: var(--amber); }
+    }
+  </style>
+</head>
+<body>
+  <main class="broadcast">
+    <header class="masthead">
+      <div class="brand">
+        <h1>Fouler Play</h1>
+        <p>DEKU / three concurrent ranked battles</p>
+      </div>
+      <div class="scoreboard" aria-label="Current season summary">
+        <div class="score"><span>Season</span><strong id="record">0-0</strong></div>
+        <div class="score"><span>ELO</span><strong id="elo">1000</strong></div>
+        <div class="score live"><span>Matches live</span><strong id="liveCount">0 / 3</strong></div>
+      </div>
+    </header>
+
+    <section class="matches" id="matches" aria-live="polite"></section>
+
+    <footer class="broadcast-foot">
+      <div>
+        <strong>Three matches. One shared agent.</strong>
+        <span>Public battle state updates automatically; private decision data stays off-screen.</span>
+      </div>
+      <span class="format-mark">Pokemon Showdown<br>Gen 9 OU</span>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var SLOT_COUNT = 3;
+      var POLL_MS = 2000;
+      var slots = {};
+
+      function escapeText(value, fallback) {
+        var text = String(value == null ? "" : value).trim();
+        return text || fallback || "--";
+      }
+
+      function titleWords(value) {
+        return escapeText(value, "")
+          .replace(/[-_]+/g, " ")
+          .replace(/\s+/g, " ")
+          .toLowerCase()
+          .replace(/\b[a-z]/g, function (letter) { return letter.toUpperCase(); });
+      }
+
+      function initials(pokemon) {
+        return escapeText((pokemon || {}).display_name || (pokemon || {}).name, "?")
+          .replace(/[^A-Za-z0-9]/g, "")
+          .slice(0, 2)
+          .toUpperCase() || "?";
+      }
+
+      function hpPercent(pokemon) {
+        if (!pokemon) { return null; }
+        if (pokemon.fainted) { return 0; }
+        var value = Number(pokemon.hp_percent);
+        return isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
+      }
+
+      function hpLabel(pokemon) {
+        var value = hpPercent(pokemon);
+        if (pokemon && pokemon.fainted) { return "Fainted"; }
+        return value == null ? "HP unavailable" : Math.round(value) + "%";
+      }
+
+      function hpClass(value) {
+        if (value != null && value < 25) { return "low"; }
+        if (value != null && value < 50) { return "mid"; }
+        return "";
+      }
+
+      function imageSources(pokemon) {
+        var sources = ((pokemon || {}).sprite_urls || [(pokemon || {}).sprite_url]).filter(Boolean);
+        var staticSources = sources.filter(function (url) { return /\.png(?:\?|$)/i.test(url); });
+        return staticSources.length ? staticSources : sources;
+      }
+
+      function create(tag, className, text) {
+        var node = document.createElement(tag);
+        if (className) { node.className = className; }
+        if (text != null) { node.textContent = String(text); }
+        return node;
+      }
+
+      function makeQueueBars() {
+        var bars = create("div", "queue-bars");
+        for (var index = 0; index < 12; index += 1) { bars.appendChild(create("i")); }
+        return bars;
+      }
+
+      function makeSide(className, label) {
+        var side = create("section", "side " + className);
+        var sprite = create("div", "sprite");
+        sprite.dataset.role = "sprite";
+        var copy = create("div", "side-copy");
+        copy.appendChild(create("div", "side-label", label));
+        var account = create("div", "side-label", "--");
+        account.dataset.role = "account";
+        copy.appendChild(account);
+        var name = create("div", "pokemon-name", "Pokemon pending");
+        name.dataset.role = "name";
+        copy.appendChild(name);
+        var meta = create("div", "pokemon-meta", "Public state loading");
+        meta.dataset.role = "meta";
+        copy.appendChild(meta);
+        var hpCopy = create("div", "hp-copy");
+        hpCopy.appendChild(create("span", "", "HP"));
+        var hpValue = create("span", "", "--");
+        hpValue.dataset.role = "hp-copy";
+        hpCopy.appendChild(hpValue);
+        copy.appendChild(hpCopy);
+        var hpTrack = create("div", "hp-track");
+        var hpFill = create("i");
+        hpFill.dataset.role = "hp-fill";
+        hpTrack.appendChild(hpFill);
+        copy.appendChild(hpTrack);
+        var roster = create("div", "roster");
+        roster.dataset.role = "roster";
+
+        if (className === "agent") {
+          side.appendChild(roster);
+          side.appendChild(copy);
+          side.appendChild(sprite);
+        } else {
+          side.appendChild(sprite);
+          side.appendChild(copy);
+          side.appendChild(roster);
+        }
+        return side;
+      }
+
+      function buildSlot(slot) {
+        var match = create("article", "match searching");
+        match.id = "match-" + slot;
+        match.dataset.slot = String(slot);
+
+        var rail = create("div", "match-rail");
+        rail.appendChild(create("span", "match-number", "0" + slot));
+        rail.appendChild(create("span", "status-line"));
+        rail.appendChild(create("span", "status-mark"));
+        match.appendChild(rail);
+
+        var content = create("div", "match-content");
+        var head = create("header", "match-head");
+        var title = create("div", "match-title");
+        title.appendChild(create("span", "match-kicker", "Ranked match " + slot));
+        var opponent = create("strong", "", "Finding an opponent");
+        opponent.dataset.role = "opponent";
+        title.appendChild(opponent);
+        var state = create("div", "match-state");
+        var stateStrong = create("b", "", "Searching");
+        stateStrong.dataset.role = "state";
+        state.appendChild(stateStrong);
+        var stateDetail = create("span", "", "Gen 9 OU queue");
+        stateDetail.dataset.role = "state-detail";
+        state.appendChild(stateDetail);
+        head.appendChild(title);
+        head.appendChild(state);
+        content.appendChild(head);
+
+        var arena = create("div", "arena");
+        var opponentSide = makeSide("opponent", "Opponent");
+        opponentSide.dataset.role = "opponent-side";
+        arena.appendChild(opponentSide);
+        var turn = create("div", "turn-strip");
+        var turnNumber = create("strong", "", "Turn --");
+        turnNumber.dataset.role = "turn";
+        var turnEvent = create("span", "turn-event", "Waiting for verified battle state");
+        turnEvent.dataset.role = "event";
+        var turnAge = create("span", "turn-age", "--");
+        turnAge.dataset.role = "age";
+        turn.appendChild(turnNumber);
+        turn.appendChild(turnEvent);
+        turn.appendChild(turnAge);
+        arena.appendChild(turn);
+        var agentSide = makeSide("agent", "DEKU agent");
+        agentSide.dataset.role = "agent-side";
+        arena.appendChild(agentSide);
+        content.appendChild(arena);
+
+        var queue = create("div", "queue");
+        queue.appendChild(makeQueueBars());
+        var queueTitle = create("strong", "", "Finding ranked opponent");
+        queueTitle.dataset.role = "queue-title";
+        var queueDetail = create("span", "", "Match slot ready / public state connected");
+        queueDetail.dataset.role = "queue-detail";
+        queue.appendChild(queueTitle);
+        queue.appendChild(queueDetail);
+        content.appendChild(queue);
+
+        var foot = create("footer", "match-foot");
+        var footLeft = create("span", "", "Stall team / ranked ladder");
+        footLeft.dataset.role = "foot-left";
+        var footRight = create("span", "", "Updates every 2 seconds");
+        footRight.dataset.role = "foot-right";
+        foot.appendChild(footLeft);
+        foot.appendChild(footRight);
+        content.appendChild(foot);
+
+        match.appendChild(content);
+        slots[slot] = match;
+        return match;
+      }
+
+      function first(root, role) {
+        return root.querySelector('[data-role="' + role + '"]');
+      }
+
+      function setSprite(root, pokemon) {
+        var sources = imageSources(pokemon);
+        var spriteKey = escapeText((pokemon || {}).display_name || (pokemon || {}).name, "?") + "|" + sources.join("|");
+        if (root.dataset.spriteKey === spriteKey) { return; }
+        root.dataset.spriteKey = spriteKey;
+        root.replaceChildren();
+        var fallback = create("span", "sprite-fallback", initials(pokemon));
+        root.appendChild(fallback);
+        if (!sources.length) { return; }
+        var image = document.createElement("img");
+        var sourceIndex = 0;
+        image.alt = "";
+        image.referrerPolicy = "no-referrer";
+        image.addEventListener("load", function () { fallback.hidden = true; });
+        image.addEventListener("error", function () {
+          sourceIndex += 1;
+          if (sourceIndex < sources.length) { image.src = sources[sourceIndex]; }
+          else { image.remove(); }
+        });
+        image.src = sources[0];
+        root.appendChild(image);
+      }
+
+      function makeRosterMon(pokemon, active) {
+        var cell = create("div", "roster-mon" + (active ? " active" : "") + (pokemon && pokemon.fainted ? " fainted" : ""));
+        if (!pokemon) {
+          cell.appendChild(create("span", "", "--"));
+          return cell;
+        }
+        var fallback = create("span", "", initials(pokemon));
+        cell.appendChild(fallback);
+        var sources = imageSources(pokemon);
+        if (sources.length) {
+          var image = document.createElement("img");
+          var sourceIndex = 0;
+          image.alt = "";
+          image.referrerPolicy = "no-referrer";
+          image.addEventListener("load", function () { fallback.hidden = true; });
+          image.addEventListener("error", function () {
+            sourceIndex += 1;
+            if (sourceIndex < sources.length) { image.src = sources[sourceIndex]; }
+            else { image.remove(); }
+          });
+          image.src = sources[0];
+          cell.appendChild(image);
+        }
+        var hp = create("i");
+        hp.style.setProperty("--hp", (hpPercent(pokemon) == null ? 0 : hpPercent(pokemon)) + "%");
+        cell.appendChild(hp);
+        return cell;
+      }
+
+      function renderRoster(root, side) {
+        var team = [];
+        if (side && side.active) { team.push(side.active); }
+        team = team.concat((side && side.reserve) || []);
+        var rosterKey = team.map(function (pokemon) {
+          return [
+            (pokemon || {}).display_name || (pokemon || {}).name || "empty",
+            hpPercent(pokemon),
+            !!(pokemon && pokemon.fainted),
+          ].join(":");
+        }).join("|");
+        if (root.dataset.rosterKey === rosterKey) { return; }
+        root.dataset.rosterKey = rosterKey;
+        var fragment = document.createDocumentFragment();
+        for (var index = 0; index < 6; index += 1) {
+          fragment.appendChild(makeRosterMon(team[index], index === 0));
+        }
+        root.replaceChildren(fragment);
+      }
+
+      function renderSide(root, side, fallbackAccount) {
+        side = side || {};
+        var pokemon = side.active || {};
+        var hp = hpPercent(pokemon);
+        first(root, "account").textContent = escapeText(side.account, fallbackAccount);
+        first(root, "name").textContent = escapeText(pokemon.display_name || titleWords(pokemon.name), "Pokemon pending");
+        var types = (pokemon.types || []).map(titleWords).join(" / ");
+        first(root, "meta").textContent = types || "Public combat state";
+        first(root, "hp-copy").textContent = hpLabel(pokemon);
+        var fill = first(root, "hp-fill");
+        fill.style.width = (hp == null ? 0 : hp) + "%";
+        fill.className = hpClass(hp);
+        setSprite(first(root, "sprite"), pokemon);
+        renderRoster(first(root, "roster"), side);
+      }
+
+      function latestEvent(lab) {
+        var events = (lab && lab.events) || [];
+        if (!events.length) { return "Reading the live position"; }
+        return escapeText(events[events.length - 1], "Reading the live position");
+      }
+
+      function renderSlot(slot, payload) {
+        var root = slots[slot];
+        var lab = (payload && payload.battle_lab) || {};
+        var view = lab.battle_view || null;
+        var live = !!lab.active;
+        var delayed = !!(view && view.stale);
+        root.className = "match " + (live ? (delayed ? "delayed" : "live") : "searching");
+        first(root, "opponent").textContent = live ? "vs " + escapeText(lab.opponent, "Opponent") : "Finding an opponent";
+        first(root, "state").textContent = live ? (delayed ? "Delayed" : "Live") : "Searching";
+        first(root, "state-detail").textContent = live ? "Ranked battle connected" : "Gen 9 OU queue";
+        first(root, "queue-title").textContent = live ? "Battle connected" : "Finding ranked opponent";
+        first(root, "queue-detail").textContent = live ? "Verified combat state is loading" : "Match slot ready / public state connected";
+        first(root, "foot-left").textContent = live ? "Public battle state / private strategy withheld" : "Stall team / ranked ladder";
+        first(root, "foot-right").textContent = live ? escapeText(lab.age_label, "Live") : "Updates every 2 seconds";
+
+        if (live && view && view.user && view.opponent) {
+          renderSide(first(root, "opponent-side"), view.opponent, "Opponent");
+          renderSide(first(root, "agent-side"), view.user, "DEKU");
+          first(root, "turn").textContent = "Turn " + escapeText(view.turn == null ? lab.turn : view.turn, "--");
+          first(root, "event").textContent = latestEvent(lab);
+          first(root, "age").textContent = escapeText(lab.age_label, "Live");
+        }
+      }
+
+      function renderReconnect(slot) {
+        var root = slots[slot];
+        root.className = "match reconnecting";
+        first(root, "state").textContent = "Reconnecting";
+        first(root, "state-detail").textContent = "Public state retry";
+        first(root, "queue-title").textContent = "Restoring match feed";
+        first(root, "queue-detail").textContent = "The battle process continues while this view reconnects";
+      }
+
+      function updateScoreboard(payloads) {
+        var labs = payloads.map(function (payload) { return payload && payload.battle_lab; }).filter(Boolean);
+        var reference = labs[0] || {};
+        var liveCount = labs.filter(function (lab) { return !!lab.active; }).length;
+        document.getElementById("record").textContent = (reference.wins || 0) + "-" + (reference.losses || 0);
+        var elo = Number(reference.elo);
+        document.getElementById("elo").textContent = isFinite(elo) && elo > 0 ? Math.round(elo) : "1000";
+        document.getElementById("liveCount").textContent = liveCount + " / 3";
+      }
+
+      function poll() {
+        var requests = [];
+        for (var slot = 1; slot <= SLOT_COUNT; slot += 1) {
+          (function (slotNumber) {
+            requests.push(
+              fetch("/slot/" + slotNumber + "/state?t=" + Date.now(), { cache: "no-store" })
+                .then(function (response) {
+                  if (!response.ok) { throw new Error("state unavailable"); }
+                  return response.json();
+                })
+                .then(function (payload) { renderSlot(slotNumber, payload); return payload; })
+                .catch(function () { renderReconnect(slotNumber); return null; })
+            );
+          })(slot);
+        }
+        Promise.all(requests).then(function (payloads) {
+          updateScoreboard(payloads);
+          document.body.dataset.ready = "true";
+        });
+      }
+
+      var matches = document.getElementById("matches");
+      for (var slot = 1; slot <= SLOT_COUNT; slot += 1) { matches.appendChild(buildSlot(slot)); }
+      poll();
+      setInterval(poll, POLL_MS);
+    })();
+  </script>
+</body>
+</html>

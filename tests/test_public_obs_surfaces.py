@@ -20,6 +20,7 @@ PUBLIC_SCENE_COLLECTION = ROOT_DIR / "streaming" / "fouler_play_hybrid_scenes.js
 PUBLIC_OVERLAY_HTML = ROOT_DIR / "streaming" / "overlay.html"
 PUBLIC_BATTLE_INJECT_CSS = ROOT_DIR / "streaming" / "battle_inject.css"
 PUBLIC_BATTLE_SLOT_HTML = ROOT_DIR / "streaming" / "battle_slot.html"
+PUBLIC_VERTICAL_HTML = ROOT_DIR / "streaming" / "fouler_vertical.html"
 PUBLIC_DEVSTREAM_CONTRACT = ROOT_DIR / "devstream.yaml"
 
 FORBIDDEN_PUBLIC_STRINGS = (
@@ -128,6 +129,43 @@ def test_public_battle_slot_is_viewport_responsive_for_obs_browser_sources() -> 
     assert "renderLiveBoard" in served_html
     assert "private strategy stays private" in served_html
     assert "live agent state" not in served_html.lower()
+
+
+def test_public_vertical_surface_has_three_reactive_viewer_safe_matches() -> None:
+    html = PUBLIC_VERTICAL_HTML.read_text(encoding="utf-8")
+
+    assert "width: 1080px" in html
+    assert "height: 1920px" in html
+    assert "SLOT_COUNT = 3" in html
+    assert 'fetch("/slot/" + slotNumber + "/state' in html
+    assert "Three matches. One shared agent." in html
+    assert "private decision data stays off-screen" in html
+    assert "Finding ranked opponent" in html
+    assert "Restoring match feed" in html
+    assert "function imageSources" in html
+    assert "root.dataset.spriteKey" in html
+    assert "root.dataset.rosterKey" in html
+    assert "Pokemon Showdown" in html
+    assert "Gen 9 OU" in html
+    assert "chat" not in html.lower()
+    assert "webhook" not in html.lower()
+    assert "operator" not in html.lower()
+    assert "OBS_WS_PASSWORD" not in html
+    assert "Twitch" not in html
+
+
+@pytest.mark.asyncio
+async def test_public_vertical_route_is_no_store() -> None:
+    request = make_mocked_request("GET", "/vertical")
+
+    response = await serve_obs_page.handle_vertical(request)
+
+    assert response.status == 200
+    assert response.headers["Cache-Control"] == "no-store, no-cache, must-revalidate, max-age=0"
+    assert response.headers["Pragma"] == "no-cache"
+    assert response.headers["Expires"] == "0"
+    assert "Fouler Play - Three Battle Vertical" in response.text
+    assert "SLOT_COUNT = 3" in response.text
 
 
 def test_obs_slot_stays_on_reactive_local_surface_during_active_battles() -> None:

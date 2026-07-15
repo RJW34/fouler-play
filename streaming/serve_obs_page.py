@@ -4,6 +4,7 @@ Simple HTTP server to serve OBS battle display on Windows.
 
 Provides:
 - /obs (battle layout)
+- /vertical (three-battle 1080x1920 layout)
 - /overlay (stats overlay)
 - /ws (real-time state updates)
 - /event (bot event hook-ins)
@@ -1740,6 +1741,18 @@ async def handle_obs(request: web.Request) -> web.Response:
     return await _html_file_response("obs_battles.html")
 
 
+async def handle_vertical(request: web.Request) -> web.Response:
+    response = await _html_file_response("fouler_vertical.html")
+    response.headers.update(
+        {
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
+    return response
+
+
 async def handle_overlay(request: web.Request) -> web.Response:
     return await _html_file_response("overlay.html")
 
@@ -2400,6 +2413,7 @@ def create_app() -> web.Application:
     app.router.add_get("/health", handle_health)
     app.router.add_post("/event", handle_event)
     app.router.add_get("/obs", handle_obs)
+    app.router.add_get("/vertical", handle_vertical)
     app.router.add_get("/overlay", handle_overlay)
     app.router.add_get("/idle", handle_idle)
     app.router.add_get("/debug", handle_debug)
@@ -2434,6 +2448,7 @@ if __name__ == "__main__":
     print()
     print("  OBS Browser Source URLs:")
     print(f"    Battle Display (legacy iframes): http://localhost:{PORT}/obs")
+    print(f"    Vertical Triple Battle: http://localhost:{PORT}/vertical")
     print(f"    Stats Overlay:  http://localhost:{PORT}/overlay")
     if OBS_BATTLE_SOURCES:
         print()
