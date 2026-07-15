@@ -33,6 +33,17 @@ BOT_USERNAME = resolve_bot_username()
 HAZARD_SETTING_MOVES = {"stealthrock", "spikes", "toxicspikes", "stickyweb"}
 HAZARD_CONTROL_MOVES = {"defog", "rapidspin", "mortalspin", "tidyup", "courtchange"}
 MAGIC_BOUNCE_REFLECTED_MOVES = HAZARD_SETTING_MOVES | {"toxic", "willowisp", "thunderwave", "glare"}
+PROTECT_FAMILY_MOVES = {
+    "banefulbunker",
+    "burningbulwark",
+    "detect",
+    "kingsshield",
+    "maxguard",
+    "obstruct",
+    "protect",
+    "silktrap",
+    "spikyshield",
+}
 
 
 def _normalize_move_name(value: Any) -> str:
@@ -363,6 +374,59 @@ class AutoResearcher:
             return True, f"loss lasted {turns} turns, suggesting endgame conversion or long-game planning failure"
         return False, ""
 
+    @staticmethod
+    def _protect_sequence_issue(lines: list[str], bot_slot: str) -> tuple[bool, str]:
+        """Find failed consecutive Protect-family attempts in Showdown protocol truth."""
+        current_turn = 0
+        previous_bot_move = ""
+        pending_consecutive_protect: tuple[int, str, str] | None = None
+        failures: list[tuple[int, str, str]] = []
+
+        for line in lines:
+            if line.startswith("|turn|"):
+                pending_consecutive_protect = None
+                try:
+                    current_turn = int(line.split("|")[2])
+                except (IndexError, ValueError):
+                    pass
+                continue
+
+            if line.startswith(("|switch|", "|drag|", "|cant|")):
+                parts = line.split("|")
+                if len(parts) >= 3 and parts[2].startswith(f"{bot_slot}a:"):
+                    previous_bot_move = ""
+                    pending_consecutive_protect = None
+                continue
+
+            if line.startswith("|move|"):
+                parts = line.split("|")
+                if len(parts) < 4 or not parts[2].startswith(f"{bot_slot}a:"):
+                    continue
+                actor = parts[2].split(":", 1)[-1].strip()
+                move_label = parts[3].strip()
+                move = _normalize_move_name(move_label)
+                if move in PROTECT_FAMILY_MOVES and previous_bot_move in PROTECT_FAMILY_MOVES:
+                    pending_consecutive_protect = (current_turn, move_label, actor)
+                else:
+                    pending_consecutive_protect = None
+                previous_bot_move = move
+                continue
+
+            if pending_consecutive_protect and line.startswith(f"|-fail|{bot_slot}a:"):
+                failures.append(pending_consecutive_protect)
+                pending_consecutive_protect = None
+
+        if not failures:
+            return False, ""
+
+        examples = ", ".join(
+            f"{move} by {actor} on turn {turn}" for turn, move, actor in failures[:3]
+        )
+        return (
+            True,
+            f"{len(failures)} consecutive Protect-family attempt(s) failed ({examples})",
+        )
+
     def _trace_has_request_legal_options(self, trace: dict[str, Any]) -> bool:
         legal_options = trace.get("legalOptions") if isinstance(trace.get("legalOptions"), dict) else {}
         request = trace.get("showdownRequest") if isinstance(trace.get("showdownRequest"), dict) else {}
@@ -389,28 +453,11 @@ class AutoResearcher:
                 if str(event.get("source") or "") == "decision_loop_break":
                     yield event
 
-    def _trace_refutes_instability(self, trace: dict[str, Any], choice: str) -> bool:
-        choice_norm = _normalize_move_name(choice)
-        for event in self._trace_loop_break_events(trace):
-            move_norm = _normalize_move_name(event.get("move"))
-            if move_norm and choice_norm and move_norm != choice_norm:
-                continue
-            reason = str(event.get("reason") or "").lower()
-            if (
-                "_repeated_0_" in reason
-                or "position_not_stagnant" in reason
-                or "search_decisive" in reason
-                or "last_mon_damage_progress" in reason
-            ):
-                return True
-        return False
-
     def _trace_issue(self, traces: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
         reasons: list[str] = []
         legal_option_proofs: list[str] = []
         loop_break_proofs: list[str] = []
         for trace in traces:
-            choice = str(trace.get("choice", "")).strip()
             reason = str(trace.get("reason", "")).strip()
             if reason:
                 reasons.append(reason)
@@ -439,31 +486,15 @@ class AutoResearcher:
                     f"traceSha256={trace.get('_trace_sha256', 'unknown')}"
                 )
 
-        repeated: list[str] = []
-        current_run: list[str] = []
-        for trace in traces:
-            choice = str(trace.get("choice", "")).strip()
-            if not choice:
-                current_run = []
-                continue
-            if current_run and current_run[-1] == choice:
-                current_run.append(choice)
-            else:
-                current_run = [choice]
-            if (
-                len(current_run) >= 3
-                and choice not in repeated
-                and not self._trace_refutes_instability(trace, choice)
-            ):
-                repeated.append(choice)
-
         findings: list[str] = []
         if loop_break_proofs:
             findings.append("; ".join(loop_break_proofs[:3]))
-        if repeated:
-            findings.append(f"consecutive repeated action loop: {', '.join(repeated[:3])}")
         if reasons:
-            timeout_count = sum(1 for r in reasons if "timeout" in r or "fallback" in r or "error" in r)
+            timeout_count = sum(
+                1
+                for reason in reasons
+                if any(signal in reason.lower() for signal in ("timeout", "fallback", "error", "exception"))
+            )
             if timeout_count >= 2:
                 findings.append(f"decision traces show {timeout_count} fallback/timeout/error selections")
         if findings and legal_option_proofs:
@@ -775,6 +806,11 @@ class AutoResearcher:
                 pattern_counter["endgame_conversion"] += 1
                 evidence_map["endgame_conversion"].append(f"{battle_label}: {long_detail}")
 
+            protect_issue, protect_detail = self._protect_sequence_issue(lines, bot_slot)
+            if protect_issue:
+                pattern_counter["protect_sequence_waste"] += 1
+                evidence_map["protect_sequence_waste"].append(f"{battle_label}: {protect_detail}")
+
             trace_findings, _ = self._trace_issue(traces)
             if trace_findings:
                 pattern_counter["decision_instability"] += 1
@@ -808,9 +844,14 @@ class AutoResearcher:
                 "Add stronger endgame-preservation heuristics: protect wincon HP, value recovery higher, and avoid unnecessary trades once ahead on resources.",
             ),
             "decision_instability": (
-                "Decision traces show unstable fallback behavior",
-                "Losses contain repeated fallback/timeout/error decisions or obvious repeated action loops.",
-                "Prioritize stability fixes around slow or failing decision branches before chasing niche matchup ideas.",
+                "Decision traces show fallback or override failures",
+                "Losses contain repeated fallback/timeout/error decisions or a grounded harmful loop-breaker override.",
+                "Repair the evidenced decision failure path before changing battle strategy.",
+            ),
+            "protect_sequence_waste": (
+                "Failed consecutive Protect attempts are wasting turns",
+                "Replay protocol logs show Protect-family moves failing after being selected on consecutive turns.",
+                "Prevent consecutive Protect-family selections unless the engine can prove a mechanic-specific exception.",
             ),
             "search_regret": (
                 "High-regret moves: the engine overrode its own best search line",

@@ -23,7 +23,7 @@ PS_USERNAME=thepeakmons
 SHOWDOWN_ACCOUNTS=thepeakmons
 MAX_CONCURRENT_BATTLES=1
 LOSS_TRIGGERED_DRAIN=0
-TEAM_NAMES=gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo
+TEAM_NAMES=gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-balance,gen9/ou/fat-team-3-dondozo
 BOT_DISPLAY_NAME=💥 BAKUGO
 ```
 

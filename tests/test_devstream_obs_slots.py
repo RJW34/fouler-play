@@ -40,10 +40,10 @@ def test_battle_slot_translates_runtime_details_for_viewers_without_dom_flash() 
     assert "Pokemon Showdown / Ranked match 2" in html
     assert "Battle timeline" in html
     assert "function normalizeEvent(event)" in html
-    assert "Battle read: " in html
-    assert "Decision: " in html
-    assert "one use tracked" in html
-    assert "is ruled out" in html
+    assert "Battle read: " not in html
+    assert "Decision: " not in html
+    assert "one use tracked" not in html
+    assert "is ruled out" not in html
     assert '<strong>GEN 9 OU</strong><span>Format</span>' in html
     assert '<strong id="record">0-0</strong><span>Season</span>' in html
     assert "text('elo'" not in html

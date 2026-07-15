@@ -31,7 +31,7 @@ WEBHOOK = FEEDBACK_WEBHOOK or MAIN_WEBHOOK
 
 TEAM_EMOJI = {
     "fat-team-3-dondozo": "🐋",
-    "fat-team-2-pivot": "🔄",
+    "fat-team-2-balance": "🔄",
     "fat-team-1-stall": "🛡️",
 }
 

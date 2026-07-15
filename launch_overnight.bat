@@ -13,7 +13,7 @@ py -3 run.py ^
   --max-concurrent-battles 3 ^
   --search-parallelism 1 ^
   --max-mcts-battles 1 ^
-  --team-names "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo" ^
+  --team-names "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-balance,gen9/ou/fat-team-3-dondozo" ^
   --save-replay always ^
   --log-level INFO ^
   --log-to-file ^

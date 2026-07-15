@@ -393,6 +393,83 @@ def test_autoresearch_flags_grounded_loop_breaker_override(tmp_path: Path):
     assert "requestHash=" in proof
 
 
+def test_autoresearch_does_not_call_repeated_recovery_instability(tmp_path: Path):
+    researcher = AutoResearcher(project_root=tmp_path)
+    traces = [
+        {"turn": turn, "choice": "roost", "reason": "mcts"}
+        for turn in (13, 14, 15, 18, 19, 20)
+    ]
+
+    findings, _ = researcher._trace_issue(traces)
+
+    assert findings == []
+
+
+def test_autoresearch_flags_failed_consecutive_protect_from_replay(tmp_path: Path):
+    project = tmp_path
+    write_json(
+        project / "battle_stats.json",
+        {
+            "battles": [
+                {
+                    "battle_id": "battle-gen9ou-protect-sequence",
+                    "timestamp": "2026-07-14T12:00:00+00:00",
+                    "team_file": "fat-team-2-balance",
+                    "result": "loss",
+                    "replay_id": "battle-gen9ou-protect-sequence",
+                }
+            ]
+        },
+    )
+    write_json(
+        project / "replay_analysis" / "gen9ou-protect-sequence.json",
+        {
+            "log": "\n".join(
+                [
+                    "|player|p1|ALL CHUNG|",
+                    "|player|p2|Opponent|",
+                    "|turn|16",
+                    "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+                    "|turn|17",
+                    "|move|p1a: Garganacl|Protect||[still]",
+                    "|-fail|p1a: Garganacl",
+                    "|turn|18",
+                    "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+                    "|turn|19",
+                    "|move|p1a: Garganacl|Protect||[still]",
+                    "|-fail|p1a: Garganacl",
+                    "|win|Opponent",
+                ]
+            )
+        },
+    )
+
+    report = AutoResearcher(project_root=project).analyze(last_n=5)
+
+    issue = next(item for item in report["issues"] if item["key"] == "protect_sequence_waste")
+    assert issue["title"] == "Failed consecutive Protect attempts are wasting turns"
+    assert "2 consecutive Protect-family attempt(s) failed" in issue["proof"][0]
+    assert "turn 17" in issue["proof"][0]
+    assert "turn 19" in issue["proof"][0]
+    assert "decision_instability" not in [item["key"] for item in report["issues"]]
+
+
+def test_autoresearch_does_not_bridge_protect_sequence_across_switch():
+    lines = [
+        "|turn|1",
+        "|move|p1a: Garganacl|Protect|p1a: Garganacl",
+        "|turn|2",
+        "|switch|p1a: Blissey|Blissey, F|100/100",
+        "|turn|3",
+        "|switch|p1a: Garganacl|Garganacl|100/100",
+        "|turn|4",
+        "|move|p1a: Garganacl|Protect||[still]",
+        "|-fail|p1a: Garganacl",
+    ]
+
+    assert AutoResearcher._protect_sequence_issue(lines, "p1") == (False, "")
+
+
 def test_autoresearch_does_not_count_wait_or_empty_force_switch_as_legal_options(tmp_path: Path):
     project = tmp_path
     trace_dir = project / "logs" / "decision_traces"

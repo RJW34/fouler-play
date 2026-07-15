@@ -149,7 +149,7 @@ class Pipeline:
             
             **Team Performance:**
             • fat-team-1-stall: 7-3 (70%) ✅
-            • fat-team-2-pivot: 6-4 (60%)
+            • fat-team-2-balance: 6-4 (60%)
             ...
             
             **Top Issues Found:**

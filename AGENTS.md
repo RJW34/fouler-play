@@ -217,7 +217,7 @@ python infrastructure/improve_agent.py --dry-run   # show the fix it WOULD make,
 | `fp/playstyle_config.py` | FAT/STALL tuning knobs — the "play it like a human stall player" config. | imported by search |
 | `fp/battle_modifier.py` | Showdown protocol parser (server messages -> battle state). | called by run_battle |
 | `fp/run_battle.py` | Per-battle loop + result/replay capture. | called by run.py |
-| `teams/` | The 3 provided fat/stall teams. **Protected — never redesign.** `teams/gen9/ou/{fat-team-1-stall, fat-team-2-pivot, fat-team-3-dondozo}`; loaders in `teams/load_team.py`, `teams/team_converter.py`. | `--team-names` / `TEAM_NAMES` |
+| `teams/` | The 3 provided fat/stall teams. **Protected — never redesign.** `teams/gen9/ou/{fat-team-1-stall, fat-team-2-balance, fat-team-3-dondozo}`; loaders in `teams/load_team.py`, `teams/team_converter.py`. | `--team-names` / `TEAM_NAMES` |
 | `replay_analysis/autoresearch.py` (678) | **Autoresearch:** reads recent battle window + replays, ranks recurring-loss issues, writes report with grounded competitive context. | `run_autoresearch(last_n, queue_discord)` |
 | `infrastructure/improve_agent.py` (399) | **The one-fix step.** Reads `autoresearch_latest.json` top issue, prompts an LLM (via `claude` CLI, Max OAuth) for ONE targeted diff, applies it, runs the test gate, commits if green. | `python infrastructure/improve_agent.py` |
 | `infrastructure/elo_watchdog.py` (271) | **ELO-gated revert.** Watches post-deploy ELO; `git revert`s the last deploy if ELO drops past the guardrail threshold. | `check_and_revert()` |

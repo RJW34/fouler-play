@@ -295,7 +295,7 @@ def test_cycle_report_builds_1700_sustain_elo_proof_for_all_fixed_teams(monkeypa
     assert proof["analysis"]["decisionTraceReviewPath"] == "devstream/truth/proof-status.json"
     assert proof["summary"]["teamCoverage"] == {
         "fat-team-1-stall": 10,
-        "fat-team-2-pivot": 10,
+        "fat-team-2-balance": 10,
         "fat-team-3-dondozo": 10,
     }
     assert status["ready"] is True
@@ -304,10 +304,10 @@ def test_cycle_report_builds_1700_sustain_elo_proof_for_all_fixed_teams(monkeypa
 def test_cycle_report_elo_proof_blocks_large_pre_target_skid_before_sustain():
     battles = [
         _elo_battle(0, team="fat-team-1-stall", rating=1600, result="win"),
-        _elo_battle(1, team="fat-team-2-pivot", rating=1688, result="win"),
+        _elo_battle(1, team="fat-team-2-balance", rating=1688, result="win"),
         _elo_battle(2, team="fat-team-3-dondozo", rating=1570, result="loss"),
         _elo_battle(3, team="fat-team-1-stall", rating=1640, result="win"),
-        _elo_battle(4, team="fat-team-2-pivot", rating=1695, result="win"),
+        _elo_battle(4, team="fat-team-2-balance", rating=1695, result="win"),
     ]
     index = len(battles)
     for team in devstream_cycle_report.ELO_REQUIRED_TEAMS:

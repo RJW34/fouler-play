@@ -646,7 +646,7 @@ def test_elo_sustain_proof_requires_all_three_fixed_teams():
     assert status["ready"] is False
     assert status["teams"]["gamesAtOrAboveFloorByTeam"]["fat-team-1-stall"] == 30
     assert {item["team"] for item in status["teams"]["missingTeamMinimums"]} == {
-        "fat-team-2-pivot",
+        "fat-team-2-balance",
         "fat-team-3-dondozo",
     }
 
@@ -1149,7 +1149,7 @@ def test_elo_sustain_proof_pre_target_skid_blocks_next_ladder_start(monkeypatch,
     proof = sustain_proof()
     proof["games"] = [
         proof_game(100, rating=1600, team="fat-team-1-stall", result="win"),
-        proof_game(101, rating=1688, team="fat-team-2-pivot", result="win"),
+        proof_game(101, rating=1688, team="fat-team-2-balance", result="win"),
         proof_game(102, rating=1570, team="fat-team-3-dondozo", result="loss"),
     ]
     proof["summary"]["completedGames"] = len(proof["games"])
@@ -1202,7 +1202,7 @@ def test_historical_pre_target_skid_does_not_permanently_stop_recovered_lane(mon
     proof = sustain_proof()
     proof["games"] = [
         proof_game(200, rating=1000, team="fat-team-1-stall", result="win"),
-        proof_game(201, rating=1397, team="fat-team-2-pivot", result="win"),
+        proof_game(201, rating=1397, team="fat-team-2-balance", result="win"),
         proof_game(202, rating=1311, team="fat-team-3-dondozo", result="loss"),
         proof_game(203, rating=1333, team="fat-team-1-stall", result="win"),
     ]

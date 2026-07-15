@@ -17,7 +17,7 @@ $username = $env:PS_USERNAME ?? "npctypebeat"
 $password = $env:PS_PASSWORD ?? "npctypebeat"
 $wsUri = $env:PS_WEBSOCKET_URI ?? "wss://sim3.psim.us/showdown/websocket"
 $format = $env:PS_FORMAT ?? "gen9ou"
-$teams = $env:TEAM_NAMES ?? "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo"
+$teams = $env:TEAM_NAMES ?? "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-balance,gen9/ou/fat-team-3-dondozo"
 $mcts = $env:MAX_MCTS_BATTLES ?? "3"
 
 Write-Host ""

@@ -44,7 +44,7 @@ while true; do
         --log-level INFO \
         --max-mcts-battles 4 \
         --max-concurrent-battles 3 \
-        --team-names gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-pivot,gen9/ou/fat-team-3-dondozo \
+        --team-names gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-balance,gen9/ou/fat-team-3-dondozo \
         2>&1 | tee -a "$RESTART_LOG"
     
     EXIT_CODE=$?

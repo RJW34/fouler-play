@@ -34,7 +34,7 @@ ELO_SUSTAIN_MINIMUM_GAMES = 30
 ELO_SUSTAIN_MINIMUM_GAMES_PER_TEAM = 10
 ELO_SUSTAIN_MAX_DRAWDOWN = 75
 ELO_SUSTAIN_MINIMUM_WIN_RATE = 0.5
-ELO_REQUIRED_TEAMS = ("fat-team-1-stall", "fat-team-2-pivot", "fat-team-3-dondozo")
+ELO_REQUIRED_TEAMS = ("fat-team-1-stall", "fat-team-2-balance", "fat-team-3-dondozo")
 SHOWDOWN_PROFILE_TIMEOUT_SECONDS = 5.0
 
 

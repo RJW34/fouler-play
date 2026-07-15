@@ -4,7 +4,7 @@ Adjusts bot behavior based on team archetype
 """
 
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict
 
 
 class Playstyle(Enum):
@@ -131,7 +131,7 @@ class PlaystyleConfig:
         team_mappings = {
             # Fat teams from top player
             "fat-team-1-stall": Playstyle.FAT,
-            "fat-team-2-pivot": Playstyle.FAT,
+            "fat-team-2-balance": Playstyle.FAT,
             "fat-team-3-dondozo": Playstyle.FAT,
             
             # HO teams
