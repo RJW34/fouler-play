@@ -373,11 +373,14 @@ function Write-ReplaceAtomic {
         [Parameter(Mandatory = $true)][byte[]]$Content,
         [Parameter(Mandatory = $true)][string]$Destination
     )
-    $temporary = Join-Path (Split-Path -Parent $Destination) ("." + [System.IO.Path]::GetFileName($Destination) + "." + [guid]::NewGuid().ToString("N") + ".tmp")
+    $parent = Split-Path -Parent $Destination
+    $name = [System.IO.Path]::GetFileName($Destination)
+    $temporary = Join-Path $parent ("." + $name + "." + [guid]::NewGuid().ToString("N") + ".tmp")
+    $replacementBackup = Join-Path $parent ("." + $name + "." + [guid]::NewGuid().ToString("N") + ".replace.bak")
     try {
         [System.IO.File]::WriteAllBytes($temporary, $Content)
         if (Test-Path -LiteralPath $Destination -PathType Leaf) {
-            [System.IO.File]::Replace($temporary, $Destination, $null, $true)
+            [System.IO.File]::Replace($temporary, $Destination, $replacementBackup, $true)
         }
         else {
             Move-Item -LiteralPath $temporary -Destination $Destination
@@ -385,6 +388,7 @@ function Write-ReplaceAtomic {
     }
     finally {
         Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $replacementBackup -Force -ErrorAction SilentlyContinue
     }
 }
 

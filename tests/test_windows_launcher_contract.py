@@ -1147,3 +1147,20 @@ def test_runtime_authority_installer_is_acl_protected_and_never_starts_runtime()
     assert "& $python -I -B" in text
     assert "Start-ScheduledTask" not in text
     assert "Start-Process" not in text
+
+
+def test_windows_atomic_replacement_uses_a_concrete_same_directory_backup():
+    installers = (
+        ROOT / "scripts" / "install_runtime_authority.ps1",
+        ROOT / "scripts" / "install_obs_server_service.ps1",
+    )
+
+    for installer in installers:
+        text = installer.read_text(encoding="utf-8")
+        assert "::Replace($temporary, $Destination, $null, $true)" not in text
+        assert '".replace.bak"' in text
+        assert "::Replace($temporary, $Destination, $replacementBackup, $true)" in text
+        assert (
+            "Remove-Item -LiteralPath $replacementBackup -Force "
+            "-ErrorAction SilentlyContinue"
+        ) in text

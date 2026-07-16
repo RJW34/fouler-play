@@ -141,11 +141,13 @@ function Write-AtomicBytes {
     $parent = Split-Path -Parent $Destination
     if (-not (Test-Path -LiteralPath $parent -PathType Container)) { throw "atomic publication parent must already exist" }
     Assert-NoReparsePathChain -Path $parent
-    $temporary = Join-Path $parent ("." + [IO.Path]::GetFileName($Destination) + "." + [guid]::NewGuid().ToString("N") + ".tmp")
+    $name = [IO.Path]::GetFileName($Destination)
+    $temporary = Join-Path $parent ("." + $name + "." + [guid]::NewGuid().ToString("N") + ".tmp")
+    $replacementBackup = Join-Path $parent ("." + $name + "." + [guid]::NewGuid().ToString("N") + ".replace.bak")
     try {
         [IO.File]::WriteAllBytes($temporary, $Bytes)
         if (Test-Path -LiteralPath $Destination -PathType Leaf) {
-            [IO.File]::Replace($temporary, $Destination, $null, $true)
+            [IO.File]::Replace($temporary, $Destination, $replacementBackup, $true)
         }
         else {
             Move-Item -LiteralPath $temporary -Destination $Destination
@@ -153,6 +155,7 @@ function Write-AtomicBytes {
     }
     finally {
         Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $replacementBackup -Force -ErrorAction SilentlyContinue
     }
 }
 
