@@ -182,6 +182,8 @@ class VerifiedServerIdentity:
     parent_process_id: int
     command_line: str
     broker_script: str
+    launcher_process_id: int | None = None
+    launcher_executable: str | None = None
 
 
 if os.name == "nt":
@@ -661,12 +663,43 @@ def _same_windows_path(left: str, right: str) -> bool:
     return os.path.normcase(os.path.realpath(left)) == os.path.normcase(os.path.realpath(right))
 
 
+def _venv_base_executable(expected_executable: str) -> str:
+    venv_python = Path(expected_executable)
+    configuration = venv_python.parents[1] / "pyvenv.cfg"
+    try:
+        metadata = configuration.lstat()
+    except OSError as exc:
+        raise ServerIdentityError("immutable broker venv configuration is unavailable") from exc
+    if not configuration.is_file() or configuration.is_symlink() or metadata.st_size > 64 * 1024:
+        raise ServerIdentityError("immutable broker venv configuration is not a regular bounded file")
+    try:
+        lines = configuration.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise ServerIdentityError("immutable broker venv configuration is unreadable") from exc
+    values = [
+        match.group("path").strip()
+        for line in lines
+        if (match := re.fullmatch(r"\s*executable\s*=\s*(?P<path>.+?)\s*", line))
+    ]
+    if len(values) != 1 or not values[0]:
+        raise ServerIdentityError("immutable broker venv configuration must name one base executable")
+    try:
+        base_executable = str(Path(values[0]).resolve(strict=True))
+    except OSError as exc:
+        raise ServerIdentityError("configured broker base executable is unavailable") from exc
+    if Path(base_executable).name.lower() != "python.exe":
+        raise ServerIdentityError("configured broker base executable is not python.exe")
+    return base_executable
+
+
 def _is_expected_broker_command(
-    arguments: list[str], expected_script: str
+    arguments: list[str], expected_executable: str, expected_script: str
 ) -> bool:
     if len(arguments) < 3 or "serve" not in arguments[1:]:
         return False
     return (
+        _same_windows_path(arguments[0], expected_executable)
+        and
         sum(
             1
             for argument in arguments[1:]
@@ -674,6 +707,36 @@ def _is_expected_broker_command(
         )
         == 1
     )
+
+
+def _query_process_identity(api: "_WindowsApi", process_id: int, label: str) -> dict[str, Any]:
+    process = api.kernel32.OpenProcess(
+        api.PROCESS_QUERY_LIMITED_INFORMATION, False, process_id
+    )
+    if not process:
+        raise api.last_error(f"OpenProcess({label})")
+    try:
+        return {
+            "creation": api.process_creation_filetime(process),
+            "executable": api.process_image(process),
+            "command_line": api.process_command_line(process),
+            "token": api.token_user_and_groups(process),
+        }
+    finally:
+        api.close(process)
+
+
+def _require_broker_token(
+    identity: Mapping[str, Any], *, service_sid: str, api: "_WindowsApi", label: str
+) -> None:
+    token_user, groups = identity["token"]
+    if token_user != "S-1-5-19":
+        raise ServerIdentityError(f"{label} is not running as LocalService")
+    attributes = groups.get(service_sid)
+    if attributes is None:
+        raise ServerIdentityError(f"{label} token does not contain its service SID")
+    if not (attributes & api.SE_GROUP_ENABLED) or attributes & api.SE_GROUP_USE_FOR_DENY_ONLY:
+        raise ServerIdentityError(f"{label} service SID is not an enabled unrestricted token group")
 
 
 def verify_broker_server_identity(
@@ -692,6 +755,7 @@ def verify_broker_server_identity(
         raise ServerIdentityError(
             "expected broker executable is not in D:\\Releases\\fouler-play\\<commit>"
         )
+    expected_base_path = _venv_base_executable(expected_path)
     expected_script = str(Path(expected_broker_script).resolve(strict=True))
     if not _IMMUTABLE_BROKER_SCRIPT_RE.fullmatch(expected_script):
         raise ServerIdentityError(
@@ -710,53 +774,69 @@ def verify_broker_server_identity(
     if server_pid.value <= 0:
         raise ServerIdentityError("named pipe server PID is invalid")
 
-    process = api.kernel32.OpenProcess(
-        api.PROCESS_QUERY_LIMITED_INFORMATION, False, server_pid.value
-    )
-    if not process:
-        raise api.last_error("OpenProcess(server)")
-    try:
-        creation = api.process_creation_filetime(process)
-        executable = api.process_image(process)
-        command_line = api.process_command_line(process)
-        token_user, groups = api.token_user_and_groups(process)
-    finally:
-        api.close(process)
-
-    if not _same_windows_path(executable, expected_path):
-        raise ServerIdentityError("named pipe server executable does not match the immutable release")
-    command_arguments = api.command_line_arguments(command_line)
-    if not _is_expected_broker_command(command_arguments, expected_script):
-        raise ServerIdentityError(
-            "named pipe server command line is not the immutable broker serve command"
-        )
-    if token_user != "S-1-5-19":
-        raise ServerIdentityError("named pipe server is not running as LocalService")
-
     resolved_service_sid = api.resolve_account_sid(f"NT SERVICE\\{service_name}")
     if expected_service_sid and resolved_service_sid != expected_service_sid:
         raise ServerIdentityError("installed broker service SID does not match the expected SID")
-    attributes = groups.get(resolved_service_sid)
-    if attributes is None:
-        raise ServerIdentityError("broker process token does not contain its service SID")
-    if not (attributes & api.SE_GROUP_ENABLED) or attributes & api.SE_GROUP_USE_FOR_DENY_ONLY:
-        raise ServerIdentityError("broker service SID is not an enabled unrestricted token group")
+
+    server = _query_process_identity(api, int(server_pid.value), "server")
+    executable = str(server["executable"])
+    command_line = str(server["command_line"])
+    if not (
+        _same_windows_path(executable, expected_path)
+        or _same_windows_path(executable, expected_base_path)
+    ):
+        raise ServerIdentityError("named pipe server executable does not match the immutable venv runtime")
+    command_arguments = api.command_line_arguments(command_line)
+    if not _is_expected_broker_command(command_arguments, executable, expected_script):
+        raise ServerIdentityError(
+            "named pipe server command line is not the immutable broker serve command"
+        )
+    _require_broker_token(
+        server, service_sid=resolved_service_sid, api=api, label="named pipe server"
+    )
 
     service_pid = api.service_process_id(service_name)
     parent_pid = api.parent_process_id(int(server_pid.value))
-    if parent_pid != service_pid:
-        raise ServerIdentityError("named pipe server is not the child of the installed NSSM service")
+    launcher_pid: int | None = None
+    launcher_executable: str | None = None
+    if _same_windows_path(executable, expected_path):
+        if parent_pid != service_pid:
+            raise ServerIdentityError("named pipe server is not the child of the installed NSSM service")
+    else:
+        launcher_pid = parent_pid
+        launcher = _query_process_identity(api, launcher_pid, "venv-launcher")
+        launcher_executable = str(launcher["executable"])
+        if not _same_windows_path(launcher_executable, expected_path):
+            raise ServerIdentityError("broker base runtime parent is not the immutable venv launcher")
+        launcher_arguments = api.command_line_arguments(str(launcher["command_line"]))
+        if not _is_expected_broker_command(
+            launcher_arguments, launcher_executable, expected_script
+        ):
+            raise ServerIdentityError("broker venv launcher command is not the immutable serve command")
+        _require_broker_token(
+            launcher,
+            service_sid=resolved_service_sid,
+            api=api,
+            label="broker venv launcher",
+        )
+        launcher_parent_pid = api.parent_process_id(launcher_pid)
+        if launcher_parent_pid != service_pid:
+            raise ServerIdentityError(
+                "broker venv launcher is not the child of the installed NSSM service"
+            )
 
     return VerifiedServerIdentity(
         process_id=int(server_pid.value),
-        process_creation_filetime=creation,
+        process_creation_filetime=int(server["creation"]),
         executable=executable,
-        token_user_sid=token_user,
+        token_user_sid=str(server["token"][0]),
         service_sid=resolved_service_sid,
         service_process_id=service_pid,
         parent_process_id=parent_pid,
         command_line=command_line,
         broker_script=expected_script,
+        launcher_process_id=launcher_pid,
+        launcher_executable=launcher_executable,
     )
 
 

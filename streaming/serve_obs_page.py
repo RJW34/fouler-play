@@ -160,6 +160,11 @@ OBS_IDLE_URL = os.getenv("OBS_IDLE_URL", f"http://localhost:{PORT}/idle")
 OBS_FORCE_REFRESH = os.getenv("OBS_FORCE_REFRESH", "1").strip().lower() not in ("0", "false", "no", "off")
 OBS_REFRESH_PAUSE_MS = int(os.getenv("OBS_REFRESH_PAUSE_MS", "120"))
 OBS_SYNC_INTERVAL_SEC = int(os.getenv("OBS_SYNC_INTERVAL_SEC", "5"))
+FOULER_COMPOSITE_SOURCES = (
+    "FOULER_LANDSCAPE_TRIPLE",
+    "FOULER_VERTICAL_TRIPLE",
+)
+OBS_COMPOSITE_REFRESH_RETRY_SEC = 2.0
 OBS_WS_DISABLED = OFFLINE_REHEARSAL_MODE or os.getenv("FOULER_OBS_WS_DISABLED", "").strip().lower() in (
     "1",
     "true",
@@ -1940,6 +1945,41 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 _last_obs_ids.pop(idx, None)
 
 
+async def _local_overlay_health_ready() -> bool:
+    try:
+        timeout = aiohttp.ClientTimeout(total=2)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(f"http://127.0.0.1:{PORT}/health") as response:
+                return response.status == 200
+    except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+        return False
+
+
+async def refresh_fouler_composite_sources_after_health(
+    *, max_attempts: int | None = None
+) -> bool:
+    if not _obs_client:
+        return False
+    attempt = 0
+    while max_attempts is None or attempt < max_attempts:
+        attempt += 1
+        if await _local_overlay_health_ready():
+            refreshed = [
+                await _obs_client.press_input_properties_button(
+                    source_name, "refreshnocache"
+                )
+                for source_name in FOULER_COMPOSITE_SOURCES
+            ]
+            if all(refreshed):
+                print(
+                    "[OBS-WS] Refreshed Fouler composite browser inputs after overlay health became ready"
+                )
+                return True
+        if max_attempts is None or attempt < max_attempts:
+            await asyncio.sleep(OBS_COMPOSITE_REFRESH_RETRY_SEC)
+    return False
+
+
 async def _html_file_response(filename: str) -> web.Response:
     """Serve small OBS HTML pages without Windows Proactor sendfile stalls."""
     text = await asyncio.to_thread((STREAMING_DIR / filename).read_text, encoding="utf-8")
@@ -2504,6 +2544,9 @@ async def start_background_tasks(app: web.Application) -> None:
         async def init_obs_sources():
             await maybe_update_obs_sources(await asyncio.to_thread(build_state_payload))
         app["obs_init"] = asyncio.create_task(init_obs_sources())
+        app["obs_composite_refresh"] = asyncio.create_task(
+            refresh_fouler_composite_sources_after_health()
+        )
 
 
 async def cleanup_background_tasks(app: web.Application) -> None:
@@ -2522,6 +2565,11 @@ async def cleanup_background_tasks(app: web.Application) -> None:
         obs_init.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await obs_init
+    composite_refresh = app.get("obs_composite_refresh")
+    if composite_refresh:
+        composite_refresh.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await composite_refresh
     elo_init = app.get("elo_init")
     if elo_init:
         elo_init.cancel()

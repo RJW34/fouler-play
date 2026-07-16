@@ -56,7 +56,8 @@ def test_obs_installer_rejects_alternate_lifecycle_and_process_identity() -> Non
     assert "port 8777 is owned outside the stopped canonical OBS service" in source
     assert "Assert-InstalledObsServiceIdentity" in source
     assert "$tokens.Count -ne 5" in source
-    assert "SCM/NSSM does not own exactly one exact OBS Python child" in source
+    assert "SCM/NSSM does not own exactly one exact OBS venv launcher" in source
+    assert "OBS venv launcher does not own exactly one exact base-Python runtime" in source
     assert "canonical OBS service environment changed" in source
     assert r"D:\Projects\fouler-play" not in source
     assert "OBS_WS_PASSWORD" not in source
@@ -70,6 +71,18 @@ def test_obs_process_chain_keeps_a_single_nssm_child_as_an_array() -> None:
     assert "$allChildren = @(\n        if ($servicePid -gt 0) {" in source
     assert "$allChildren = if ($servicePid -gt 0)" not in source
     assert "$allChildren.Count -ne 1" in source
+
+
+def test_obs_process_chain_validates_windows_venv_redirector_and_runtime_leaf() -> None:
+    source = INSTALLER.read_text(encoding="utf-8")
+
+    assert "function Get-VenvBasePythonPath" in source
+    assert 'Join-Path $ProjectDir ".venv\\pyvenv.cfg"' in source
+    assert "function Test-ExactObsRuntimeCommand" in source
+    assert 'ParentProcessId = $([int64]$launcher.ProcessId)' in source
+    assert "OBS venv launcher does not own exactly one exact base-Python runtime" in source
+    assert "OBS PID file does not name the exact base-Python runtime" in source
+    assert "childPid = if ($runtime)" in source
 
 
 def test_service_release_pattern_accepts_only_one_lowercase_commit() -> None:

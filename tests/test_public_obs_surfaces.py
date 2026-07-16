@@ -18,6 +18,41 @@ from scripts.build_obs_hybrid_scene_collection import BATTLE_SLOT_HEIGHT, BATTLE
 from streaming import serve_obs_page
 
 
+class _CompositeRefreshObsClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str]] = []
+
+    async def press_input_properties_button(
+        self, input_name: str, property_name: str
+    ) -> bool:
+        self.calls.append((input_name, property_name))
+        return True
+
+
+@pytest.mark.asyncio
+async def test_composite_browser_sources_refresh_only_after_overlay_health(monkeypatch):
+    client = _CompositeRefreshObsClient()
+    readiness = iter((False, True))
+
+    async def health_ready() -> bool:
+        return next(readiness)
+
+    async def no_pause(_seconds: float) -> None:
+        return None
+
+    monkeypatch.setattr(serve_obs_page, "_obs_client", client)
+    monkeypatch.setattr(serve_obs_page, "_local_overlay_health_ready", health_ready)
+    monkeypatch.setattr(serve_obs_page.asyncio, "sleep", no_pause)
+
+    assert await serve_obs_page.refresh_fouler_composite_sources_after_health(
+        max_attempts=2
+    )
+    assert client.calls == [
+        ("FOULER_LANDSCAPE_TRIPLE", "refreshnocache"),
+        ("FOULER_VERTICAL_TRIPLE", "refreshnocache"),
+    ]
+
+
 PUBLIC_SCENE_COLLECTION = ROOT_DIR / "streaming" / "fouler_play_hybrid_scenes.json"
 PUBLIC_OVERLAY_HTML = ROOT_DIR / "streaming" / "overlay.html"
 PUBLIC_BATTLE_INJECT_CSS = ROOT_DIR / "streaming" / "battle_inject.css"

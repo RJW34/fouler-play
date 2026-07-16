@@ -402,6 +402,40 @@ function Test-ExactObsChildCommand {
     )
 }
 
+function Get-VenvBasePythonPath {
+    $configuration = Join-Path $ProjectDir ".venv\pyvenv.cfg"
+    Assert-NoReparsePathChain -Path $configuration
+    Assert-RegularSingleLinkFile -Path $configuration -Label "manifested venv configuration"
+    $values = @(
+        foreach ($line in [IO.File]::ReadAllLines($configuration)) {
+            if ($line -match '^\s*executable\s*=\s*(?<path>.+?)\s*$') {
+                [string]$matches["path"]
+            }
+        }
+    )
+    if ($values.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$values[0])) {
+        throw "manifested venv configuration must name exactly one base Python executable"
+    }
+    $basePython = [IO.Path]::GetFullPath([string]$values[0])
+    Assert-NoReparsePathChain -Path $basePython
+    Assert-RegularSingleLinkFile -Path $basePython -Label "venv base Python executable"
+    return $basePython
+}
+
+function Test-ExactObsRuntimeCommand {
+    param($Process, [string]$BasePython)
+    if (-not $Process -or -not (Test-ExactPath -Actual ([string]$Process.ExecutablePath) -Expected $BasePython)) { return $false }
+    $tokens = @(Split-WindowsCommandLine -CommandLine ([string]$Process.CommandLine))
+    if ($tokens.Count -ne 5) { return $false }
+    return (
+        (Test-ExactPath -Actual $tokens[0] -Expected $BasePython) -and
+        $tokens[1] -ceq "-I" -and
+        $tokens[2] -ceq "-B" -and
+        $tokens[3] -ceq "-u" -and
+        (Test-ExactPath -Actual $tokens[4] -Expected $Entrypoint)
+    )
+}
+
 function Assert-ObsBaseServiceIdentity {
     param([Parameter(Mandatory = $true)][ValidateSet("Disabled", "Manual", "Automatic")][string]$ExpectedStartMode)
     $serviceRecord = Get-CimInstance Win32_Service -Filter "Name = '$($ServiceName.Replace("'", "''"))'" -ErrorAction Stop | Select-Object -First 1
@@ -446,29 +480,47 @@ function Get-ObsProcessChain {
             Get-CimInstance Win32_Process -Filter "ParentProcessId = $servicePid" -ErrorAction SilentlyContinue
         }
     )
-    $children = @($allChildren | Where-Object { Test-ExactObsChildCommand -Process $_ })
-    if ($allChildren.Count -ne 1 -or $children.Count -ne 1) { $reasons += "SCM/NSSM does not own exactly one exact OBS Python child" }
-    $child = if ($children.Count -eq 1) { $children[0] } else { $null }
+    $launchers = @($allChildren | Where-Object { Test-ExactObsChildCommand -Process $_ })
+    if ($allChildren.Count -ne 1 -or $launchers.Count -ne 1) { $reasons += "SCM/NSSM does not own exactly one exact OBS venv launcher" }
+    $launcher = if ($launchers.Count -eq 1) { $launchers[0] } else { $null }
+    $runtime = $null
+    if ($launcher) {
+        try {
+            $basePython = Get-VenvBasePythonPath
+            $runtimeChildren = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $([int64]$launcher.ProcessId)" -ErrorAction SilentlyContinue)
+            $exactRuntimes = @($runtimeChildren | Where-Object { Test-ExactObsRuntimeCommand -Process $_ -BasePython $basePython })
+            if ($runtimeChildren.Count -ne 1 -or $exactRuntimes.Count -ne 1) {
+                $reasons += "OBS venv launcher does not own exactly one exact base-Python runtime"
+            }
+            elseif ($exactRuntimes.Count -eq 1) {
+                $runtime = $exactRuntimes[0]
+            }
+        }
+        catch {
+            $reasons += "OBS venv base-Python lineage could not be validated: $($_.Exception.Message)"
+        }
+    }
     $pidPayload = $null
     if (Test-Path -LiteralPath $PidFile -PathType Leaf) {
         try { $pidPayload = Get-Content -LiteralPath $PidFile -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $reasons += "OBS PID file is malformed" }
     } else { $reasons += "OBS PID file is missing" }
-    if ($child -and $pidPayload) {
-        if ([int64]$pidPayload.pid -ne [int64]$child.ProcessId) { $reasons += "OBS PID file does not name the exact SCM child" }
+    if ($runtime -and $pidPayload) {
+        if ([int64]$pidPayload.pid -ne [int64]$runtime.ProcessId) { $reasons += "OBS PID file does not name the exact base-Python runtime" }
         try {
-            $created = [DateTimeOffset]([DateTime]$child.CreationDate)
+            $created = [DateTimeOffset]([DateTime]$runtime.CreationDate)
             $creationUnix = $created.ToUnixTimeMilliseconds() / 1000.0
-            if ([Math]::Abs($creationUnix - [double]$pidPayload.started_at) -gt 5.0) { $reasons += "OBS PID creation time does not match the exact child" }
-        } catch { $reasons += "OBS child creation time could not be reconciled" }
+            if ([Math]::Abs($creationUnix - [double]$pidPayload.started_at) -gt 5.0) { $reasons += "OBS PID creation time does not match the exact base-Python runtime" }
+        } catch { $reasons += "OBS runtime creation time could not be reconciled" }
     }
     return [pscustomobject]@{
         verified = [bool]($reasons.Count -eq 0)
         reasons = $reasons
         servicePid = if ($serviceProcess) { [int64]$serviceProcess.ProcessId } else { $null }
-        childPid = if ($child) { [int64]$child.ProcessId } else { $null }
+        launcherPid = if ($launcher) { [int64]$launcher.ProcessId } else { $null }
+        childPid = if ($runtime) { [int64]$runtime.ProcessId } else { $null }
         serviceCreation = if ($serviceProcess) { [string]$serviceProcess.CreationDate } else { $null }
-        childCreation = if ($child) { [string]$child.CreationDate } else { $null }
-        childCommand = if ($child) { [string]$child.CommandLine } else { $null }
+        childCreation = if ($runtime) { [string]$runtime.CreationDate } else { $null }
+        childCommand = if ($runtime) { [string]$runtime.CommandLine } else { $null }
     }
 }
 

@@ -167,7 +167,30 @@ def test_client_verifies_server_process_service_and_token_identity():
     assert "SE_GROUP_USE_FOR_DENY_ONLY" in source
     assert "QueryServiceStatusEx" in source
     assert "parent_pid != service_pid" in source
+    assert "launcher_parent_pid != service_pid" in source
+    assert 'venv_python.parents[1] / "pyvenv.cfg"' in source
+    assert 'OpenProcess(launcher)' not in source
     assert "SECURITY_IDENTIFICATION" in source
     assert "FILE_READ_DATA | api.FILE_WRITE_DATA" in source
     assert "http://" not in source
     assert "https://" not in source
+
+
+def test_broker_grants_only_runtime_query_rights_before_pipe_creation():
+    source = BROKER.read_text(encoding="utf-8")
+    ast.parse(source)
+
+    assert "SetEntriesInAclW" in source
+    assert 'SetSecurityInfo({label}-DACL)' in source
+    assert "self.PROCESS_QUERY_LIMITED_INFORMATION" in source
+    assert "self.TOKEN_QUERY" in source
+    assert "self.READ_CONTROL | self.WRITE_DAC" in source
+    assert "self._grant_runtime_process_query(process_id)" in source
+    assert "self._grant_runtime_token_query(process_id)" in source
+    assert "self._grant_runtime_attestation_access()" in source
+    assert source.index("self._grant_runtime_attestation_access()") < source.index(
+        "listener = self._create_pipe(first_instance=True)"
+    )
+    assert "PROCESS_ALL_ACCESS" not in source
+    assert "TOKEN_ALL_ACCESS" not in source
+    assert "SeDebugPrivilege" not in source

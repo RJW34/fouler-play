@@ -409,8 +409,9 @@ def test_obs_server_service_is_the_durable_lifecycle_owner():
     assert "Assert-InstalledObsServiceIdentity" in text
     assert "canonical OBS service Application is not the pinned release venv Python" in text
     assert "canonical OBS service environment changed" in text
-    assert "SCM/NSSM does not own exactly one exact OBS Python child" in text
-    assert "OBS PID creation time does not match the exact child" in text
+    assert "SCM/NSSM does not own exactly one exact OBS venv launcher" in text
+    assert "OBS venv launcher does not own exactly one exact base-Python runtime" in text
+    assert "OBS PID creation time does not match the exact base-Python runtime" in text
     assert "port8777ListenerPids" in text
     assert "OBS installation must leave the canonical service stopped and Automatic without activating it" in text
     assert "startsProcesses = $false" in text

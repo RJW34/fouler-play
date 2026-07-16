@@ -1629,6 +1629,25 @@ if os.name == "nt":
         ]
 
 
+    class _TRUSTEE_W(ctypes.Structure):
+        _fields_ = [
+            ("pMultipleTrustee", wintypes.LPVOID),
+            ("MultipleTrusteeOperation", wintypes.DWORD),
+            ("TrusteeForm", wintypes.DWORD),
+            ("TrusteeType", wintypes.DWORD),
+            ("ptstrName", wintypes.LPVOID),
+        ]
+
+
+    class _EXPLICIT_ACCESS_W(ctypes.Structure):
+        _fields_ = [
+            ("grfAccessPermissions", wintypes.DWORD),
+            ("grfAccessMode", wintypes.DWORD),
+            ("grfInheritance", wintypes.DWORD),
+            ("Trustee", _TRUSTEE_W),
+        ]
+
+
 def _pipe_security_sddl(runtime_sid: str, broker_sid: str) -> str:
     if not _SID_RE.fullmatch(runtime_sid) or not _SID_RE.fullmatch(broker_sid):
         raise ValueError("pipe security SID is malformed")
@@ -1660,6 +1679,17 @@ class WindowsPipeServer:
     WAIT_OBJECT_0 = 0x00000000
     INFINITE = 0xFFFFFFFF
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    TOKEN_QUERY = 0x0008
+    READ_CONTROL = 0x00020000
+    WRITE_DAC = 0x00040000
+    SE_KERNEL_OBJECT = 6
+    DACL_SECURITY_INFORMATION = 0x00000004
+    GRANT_ACCESS = 1
+    NO_INHERITANCE = 0
+    NO_MULTIPLE_TRUSTEE = 0
+    TRUSTEE_IS_SID = 0
+    TRUSTEE_IS_USER = 1
+    ERROR_SUCCESS = 0
     LOCAL_SERVICE_SID = "S-1-5-19"
     INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
@@ -1758,6 +1788,45 @@ class WindowsPipeServer:
             ctypes.POINTER(wintypes.DWORD),
         ]
         self.advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW.restype = wintypes.BOOL
+        self.advapi32.ConvertStringSidToSidW.argtypes = [
+            wintypes.LPCWSTR,
+            ctypes.POINTER(wintypes.LPVOID),
+        ]
+        self.advapi32.ConvertStringSidToSidW.restype = wintypes.BOOL
+        self.advapi32.OpenProcessToken.argtypes = [
+            wintypes.HANDLE,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.HANDLE),
+        ]
+        self.advapi32.OpenProcessToken.restype = wintypes.BOOL
+        self.advapi32.GetSecurityInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.LPVOID),
+        ]
+        self.advapi32.GetSecurityInfo.restype = wintypes.DWORD
+        self.advapi32.SetEntriesInAclW.argtypes = [
+            wintypes.ULONG,
+            ctypes.POINTER(_EXPLICIT_ACCESS_W),
+            wintypes.LPVOID,
+            ctypes.POINTER(wintypes.LPVOID),
+        ]
+        self.advapi32.SetEntriesInAclW.restype = wintypes.DWORD
+        self.advapi32.SetSecurityInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.LPVOID,
+            wintypes.LPVOID,
+            wintypes.LPVOID,
+        ]
+        self.advapi32.SetSecurityInfo.restype = wintypes.DWORD
 
     @staticmethod
     def _filetime(value: "_FILETIME") -> int:
@@ -1767,6 +1836,126 @@ class WindowsPipeServer:
     def _error(operation: str) -> OSError:
         code = ctypes.get_last_error()
         return OSError(code, f"{operation} failed: {ctypes.FormatError(code).strip()}")
+
+    @staticmethod
+    def _status_error(operation: str, status: int) -> OSError:
+        return OSError(status, f"{operation} failed: {ctypes.FormatError(status).strip()}")
+
+    def _grant_runtime_object_access(
+        self, handle: int, *, access_mask: int, label: str
+    ) -> None:
+        runtime_sid = wintypes.LPVOID()
+        security_descriptor = wintypes.LPVOID()
+        existing_dacl = wintypes.LPVOID()
+        updated_dacl = wintypes.LPVOID()
+        try:
+            if not self.advapi32.ConvertStringSidToSidW(
+                self.runtime_sid, ctypes.byref(runtime_sid)
+            ):
+                raise self._error("ConvertStringSidToSidW(runtime)")
+            status = int(
+                self.advapi32.GetSecurityInfo(
+                    handle,
+                    self.SE_KERNEL_OBJECT,
+                    self.DACL_SECURITY_INFORMATION,
+                    None,
+                    None,
+                    ctypes.byref(existing_dacl),
+                    None,
+                    ctypes.byref(security_descriptor),
+                )
+            )
+            if status != self.ERROR_SUCCESS:
+                raise self._status_error(f"GetSecurityInfo({label}-DACL)", status)
+            trustee = _TRUSTEE_W(
+                None,
+                self.NO_MULTIPLE_TRUSTEE,
+                self.TRUSTEE_IS_SID,
+                self.TRUSTEE_IS_USER,
+                runtime_sid,
+            )
+            access = _EXPLICIT_ACCESS_W(
+                access_mask,
+                self.GRANT_ACCESS,
+                self.NO_INHERITANCE,
+                trustee,
+            )
+            status = int(
+                self.advapi32.SetEntriesInAclW(
+                    1,
+                    ctypes.byref(access),
+                    existing_dacl,
+                    ctypes.byref(updated_dacl),
+                )
+            )
+            if status != self.ERROR_SUCCESS:
+                raise self._status_error(f"SetEntriesInAclW({label}-DACL)", status)
+            status = int(
+                self.advapi32.SetSecurityInfo(
+                    handle,
+                    self.SE_KERNEL_OBJECT,
+                    self.DACL_SECURITY_INFORMATION,
+                    None,
+                    None,
+                    updated_dacl,
+                    None,
+                )
+            )
+            if status != self.ERROR_SUCCESS:
+                raise self._status_error(f"SetSecurityInfo({label}-DACL)", status)
+        finally:
+            if updated_dacl:
+                self.kernel32.LocalFree(updated_dacl)
+            if security_descriptor:
+                self.kernel32.LocalFree(security_descriptor)
+            if runtime_sid:
+                self.kernel32.LocalFree(runtime_sid)
+
+    def _grant_runtime_process_query(self, process_id: int) -> None:
+        process = self.kernel32.OpenProcess(
+            self.READ_CONTROL | self.WRITE_DAC, False, process_id
+        )
+        if not process:
+            raise self._error("OpenProcess(process-DACL)")
+        try:
+            self._grant_runtime_object_access(
+                process,
+                access_mask=self.PROCESS_QUERY_LIMITED_INFORMATION,
+                label="process",
+            )
+        finally:
+            self.kernel32.CloseHandle(process)
+
+    def _grant_runtime_token_query(self, process_id: int) -> None:
+        process = self.kernel32.OpenProcess(
+            self.PROCESS_QUERY_LIMITED_INFORMATION, False, process_id
+        )
+        if not process:
+            raise self._error("OpenProcess(token-DACL)")
+        token = wintypes.HANDLE()
+        try:
+            if not self.advapi32.OpenProcessToken(
+                process,
+                self.READ_CONTROL | self.WRITE_DAC,
+                ctypes.byref(token),
+            ):
+                raise self._error("OpenProcessToken(token-DACL)")
+            self._grant_runtime_object_access(
+                token.value,
+                access_mask=self.TOKEN_QUERY,
+                label="token",
+            )
+        finally:
+            if token.value:
+                self.kernel32.CloseHandle(token.value)
+            self.kernel32.CloseHandle(process)
+
+    def _grant_runtime_attestation_access(self) -> None:
+        # The client verifies both the base-Python pipe owner and the Windows
+        # venv redirector that remains between it and NSSM.
+        for process_id in {os.getpid(), os.getppid()}:
+            self._grant_runtime_process_query(process_id)
+            self._grant_runtime_token_query(process_id)
 
     def _create_pipe(self, *, first_instance: bool) -> int:
         sddl = _pipe_security_sddl(self.runtime_sid, self.broker_sid)
@@ -1927,6 +2116,7 @@ class WindowsPipeServer:
 
     def serve_forever(self) -> None:
         self.store.validate()
+        self._grant_runtime_attestation_access()
         listener = self._create_pipe(first_instance=True)
         while True:
             next_listener: int | None = None

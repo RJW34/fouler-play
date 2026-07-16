@@ -5,6 +5,7 @@ import json
 import os
 import sqlite3
 import struct
+import sys
 import threading
 import time
 import uuid
@@ -700,22 +701,59 @@ def test_pipe_sddl_separates_create_instance_from_runtime_data_rights():
 
 
 def test_broker_command_line_must_name_exact_script_and_serve(tmp_path):
+    executable = str(tmp_path / "python.exe")
     script = str(tmp_path / "fouler_lease_broker.py")
 
     assert lease_client._is_expected_broker_command(
-        ["python.exe", script, "--store-path", "store.db", "serve"], script
+        [executable, script, "--store-path", "store.db", "serve"], executable, script
     )
     assert not lease_client._is_expected_broker_command(
-        ["python.exe", str(tmp_path / "other.py"), "serve"], script
+        [str(tmp_path / "other-python.exe"), script, "serve"], executable, script
     )
     assert not lease_client._is_expected_broker_command(
-        ["python.exe", script, "check-store"], script
+        [executable, str(tmp_path / "other.py"), "serve"], executable, script
     )
+    assert not lease_client._is_expected_broker_command(
+        [executable, script, "check-store"], executable, script
+    )
+
+
+def test_venv_base_executable_comes_from_one_bounded_manifested_value(tmp_path):
+    scripts = tmp_path / ".venv" / "Scripts"
+    scripts.mkdir(parents=True)
+    launcher = scripts / "python.exe"
+    launcher.write_bytes(b"launcher")
+    expected_base = Path(sys.executable).resolve()
+    (scripts.parent / "pyvenv.cfg").write_text(
+        f"home = {expected_base.parent}\nexecutable = {expected_base}\n",
+        encoding="utf-8",
+    )
+
+    assert lease_client._venv_base_executable(str(launcher)) == str(expected_base)
+
+    (scripts.parent / "pyvenv.cfg").write_text(
+        f"executable = {expected_base}\nexecutable = {expected_base}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        lease_client.ServerIdentityError,
+        match="must name one base executable",
+    ):
+        lease_client._venv_base_executable(str(launcher))
 
 
 def _current_windows_user_sid() -> str:
     account = os.environ.get("USERNAME") or os.getlogin()
     return lease_client._windows_api().resolve_account_sid(account)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="kernel-object DACL test is Windows-specific")
+def test_actual_attestation_acl_grants_are_accepted_for_process_and_token():
+    sid = _current_windows_user_sid()
+    server = broker.WindowsPipeServer(_ProbeStore(), sid, broker_sid=sid)
+
+    server._grant_runtime_process_query(os.getpid())
+    server._grant_runtime_token_query(os.getpid())
 
 
 class _ProbeStore:
