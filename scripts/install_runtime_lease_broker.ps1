@@ -647,13 +647,29 @@ if ($installedHash -ne $expectedHash) {
 }
 
 $sc = "$env:SystemRoot\System32\sc.exe"
-if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) {
-    # Create the service via NSSM so that the later "nssm set" calls recognize it
-    # as an NSSM-managed service; a plain sc.exe-created service is not registered
-    # with NSSM and rejects every "nssm set". ObjectName/Start/application are
-    # applied by the nssm set calls below plus the sc config that follows.
-    Invoke-Nssm -Arguments @("install", $ServiceName, $python)
+# Rollback-safe existing-service migration. Save-ExistingServiceConfiguration above
+# already captured any prior service (sc qc/queryex, reg export, nssm dump) into the
+# backup directory, and any running instance was stopped above under the
+# -RestartBroker authorization. A legacy broker service created by the retired
+# plain-sc.exe path is NOT NSSM-managed, so every subsequent "nssm set" would fail
+# were it reused (the original defect). Rather than positively re-proving an opaque
+# prior service, always delete it -- only after the backup -- and reinstall cleanly
+# through NSSM. Deletion after the backup keeps the operation rollback-safe.
+if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+    & $sc delete $ServiceName 2>&1 | Out-Null
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) { break }
+        Start-Sleep -Seconds 1
+    }
+    if (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue) {
+        throw "existing broker service '$ServiceName' could not be removed before NSSM reinstallation"
+    }
 }
+# NSSM performs the installation so that the mutable "nssm set" configuration below
+# is accepted; a plain sc.exe-created service is rejected by every "nssm set".
+Invoke-Nssm -Arguments @("install", $ServiceName, $python)
+# Immediately pin least-privilege identity + disabled start BEFORE any mutable NSSM
+# application/config setting: Disabled + LocalService, then the unrestricted SID.
 & $sc config $ServiceName "start=" "disabled" "obj=" "NT AUTHORITY\LocalService" | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "failed to force the broker service into Disabled LocalService state" }
 & $sc sidtype $ServiceName unrestricted | Out-Null

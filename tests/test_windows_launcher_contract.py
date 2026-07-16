@@ -330,8 +330,29 @@ def test_obs_server_service_is_the_durable_lifecycle_owner():
     assert "Get-RegularFileSnapshot" in text
     assert "Protect-AdminDirectory" in text
     assert "NT SERVICE\\HERMES-FoulerObsServer" in text
-    assert '"obj=" $ServiceAccount "password=" ""' in text
+    # The service account is pinned via sc.exe config and the final NSSM ObjectName
+    # (no LocalSystem fallback). The obsolete passwordless empty-string arg is gone: a
+    # virtual/service account takes no password and PowerShell 5.1 drops the empty
+    # native arg, which is why the certified sc.exe path failed at runtime.
+    assert '& $sc config $ServiceName "obj=" $ServiceAccount' in text
+    assert '"ObjectName", $ServiceAccount' in text
+    assert '"password=" ""' not in text
     assert '"ObjectName", "LocalSystem"' not in text
+    # Backup precedes stop + delete of any existing service, which precedes clean
+    # NSSM (re)installation -- closing the same legacy-service repair gap as the broker.
+    obs_backup = text.index("$backup = Save-RollbackBackup")
+    obs_stop = text.index("& $sc stop $ServiceName")
+    obs_delete = text.index("& $sc delete $ServiceName")
+    obs_install = text.index('Invoke-Nssm -Arguments @("install", $ServiceName')
+    assert obs_backup < obs_stop < obs_delete < obs_install
+    # Immediately after install: disabled start mode, unrestricted SID, intended account.
+    obs_disabled = text.index('& $sc config $ServiceName "start=" "disabled"')
+    obs_sidtype = text.index("& $sc sidtype $ServiceName unrestricted")
+    obs_obj = text.index('& $sc config $ServiceName "obj=" $ServiceAccount')
+    assert obs_install < obs_disabled < obs_sidtype < obs_obj
+    # Post-install identity validation runs with ExpectedStartMode Disabled.
+    assert 'Assert-ObsBaseServiceIdentity -ExpectedStartMode "Disabled"' in text
+    assert obs_obj < text.index('Assert-ObsBaseServiceIdentity -ExpectedStartMode "Disabled"')
     assert "SERVICE_DISABLED" in text
     assert "TEMP=$RuntimeTempRoot" in text
     assert "TMP=$RuntimeTempRoot" in text
@@ -612,7 +633,53 @@ def test_battle_supervisor_uses_the_fixed_live_pilot_authority_contract():
     assert "$env:TMP = $RuntimeTempRoot" in wrapper
     assert "New-ScheduledTaskTrigger -AtStartup" not in installer
     assert "New-ScheduledTaskTrigger -AtLogOn" not in installer
-    assert "-UserId $RuntimeAccount -LogonType S4U" in installer
+    # --- Bounded S4U task registered via the Task Scheduler COM API ---
+    # Cross-user passwordless Register-ScheduledTask cannot register S4U for a
+    # different account (Access Denied), so registration uses the COM API with an
+    # ephemeral credential. Every security property below is preserved and, for the
+    # installed task, independently revalidated.
+    assert "-UserId $RuntimeAccount -LogonType S4U" not in installer
+    # No autonomous triggers of any kind: no cmdlet triggers, no COM trigger creation.
+    assert ".Triggers.Create(" not in installer
+    # Principal is the runtime account, S4U logon (2), Limited run level (0).
+    assert "$definition.Principal.UserId = $RuntimeAccount" in installer
+    assert "$definition.Principal.LogonType = 2" in installer       # TASK_LOGON_S4U
+    assert "$definition.Principal.RunLevel = 0" in installer        # TASK_RUNLEVEL_LUA (Limited)
+    # RegisterTaskDefinition uses the runtime account and logon type 2 (S4U).
+    assert "$root.RegisterTaskDefinition($TaskName, $definition, 6, $RuntimeAccount, $s4uSecret, 2, $null)" in installer
+    # The AutoAdminLogon identity must exactly match the runtime account BEFORE the
+    # ephemeral credential is read.
+    assert "does not match the canonical runtime account" in installer
+    identity_guard = installer.index("does not match the canonical runtime account")
+    credential_read = installer.index("$s4uSecret = [string]$winlogon.DefaultPassword")
+    assert identity_guard < credential_read
+    # The credential is nonempty, used only to register, cleared in a finally, and
+    # never printed, logged, or persisted.
+    assert "if ([string]::IsNullOrEmpty($s4uSecret)) { throw" in installer
+    finally_index = installer.index("finally {", credential_read)
+    clear_index = installer.index("$s4uSecret = $null")
+    assert credential_read < finally_index < clear_index
+    for cred_line in installer.splitlines():
+        if "$s4uSecret" in cred_line and any(
+            sink in cred_line
+            for sink in ("Write-", "Out-File", "Out-Host", "Set-Content", "Add-Content",
+                         "ConvertTo-Json", "Export-", "Tee-Object", "echo ")
+        ):
+            raise AssertionError(f"registration credential must never be emitted to a sink: {cred_line!r}")
+    # The installed-task validator checks principal SID equality, S4U logon, absence of
+    # real triggers, and the exact action (executable, arguments, working directory).
+    assert "function Assert-InstalledTaskIdentity" in installer
+    validator_body = installer[installer.index("function Assert-InstalledTaskIdentity"):]
+    assert "$expectedPrincipalSid" in validator_body and "$actualPrincipalSid" in validator_body
+    assert "canonical Fouler supervisor task runtime principal changed" in validator_body
+    assert '$task.Principal.LogonType, "S4U"' in validator_body
+    assert "@($task.Triggers | Where-Object { $_ }).Count -ne 0" in validator_body
+    assert "canonical Fouler supervisor task must not have autonomous triggers" in validator_body
+    assert "canonical Fouler supervisor task must contain exactly one action" in validator_body
+    assert "$action.Execute" in validator_body and "$TaskExecute" in validator_body
+    assert "$action.Arguments" in validator_body and "$TaskArguments" in validator_body
+    assert "$action.WorkingDirectory" in validator_body and "$ProjectDir" in validator_body
+    assert "$null = Assert-InstalledTaskIdentity" in installer
     assert '"C:\\ProgramData\\HERMES\\authority\\fouler\\runtime-lease.json"' in installer
     assert '"C:\\ProgramData\\HERMES\\state\\fouler"' in wrapper
     assert '"C:\\ProgramData\\HERMES\\logs\\fouler"' in wrapper

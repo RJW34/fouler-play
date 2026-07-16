@@ -39,17 +39,34 @@ def test_installer_security_contract_is_static_and_fail_closed():
     assert "runtimeDatabaseAccess = $false" in source
     assert 'pipeRuntimeRights = "FILE_READ_DATA|FILE_WRITE_DATA"' in source
 
+    # Rollback-safe existing-service migration: the backup precedes any removal and
+    # NSSM reinstallation, and NSSM (never plain sc.exe create) performs the install.
+    # This closes the legacy-service repair gap where a service left by the retired
+    # sc.exe path caused NSSM install to be skipped and every later "nssm set" to fail.
+    assert "& $sc create $ServiceName" not in source
     backup_call = source.index("Save-ExistingServiceConfiguration -Path")
-    service_install = source.index("& $sc create $ServiceName")
+    service_delete = source.index("& $sc delete $ServiceName")
+    service_install = source.index('Invoke-Nssm -Arguments @("install", $ServiceName')
+    sc_identity = source.index('& $sc config $ServiceName "start=" "disabled" "obj=" "NT AUTHORITY\\LocalService"')
+    sidtype = source.index("& $sc sidtype $ServiceName unrestricted")
     first_service_set = source.index('Invoke-Nssm -Arguments @("set", $ServiceName')
-    assert backup_call < service_install < first_service_set
+    assert backup_call < service_delete < service_install
+    # Immediately after installation sc.exe pins Disabled + LocalService, then the
+    # unrestricted SID, all before the first mutable NSSM application/config setting.
+    assert service_install < sc_identity < sidtype < first_service_set
     assert '"start=" "disabled"' in source
+    # The final NSSM ObjectName is LocalService and the final Start is SERVICE_DISABLED.
+    assert 'Invoke-Nssm -Arguments @("set", $ServiceName, "ObjectName", "NT AUTHORITY\\LocalService")' in source
     assert 'Invoke-Nssm -Arguments @("set", $ServiceName, "Start", "SERVICE_DISABLED")' in source
+    # The service stays stopped + Disabled and its identity is revalidated before
+    # authority activation, which itself precedes auto-start enablement and start.
     assert "broker publication must remain stopped and Disabled until authority activation" in source
+    prepared_recheck = source.index("broker publication must remain stopped and Disabled until authority activation")
     activation = source.index("$authorityActivation = Assert-AuthorityActivationReceipt")
     enable = source.index('Invoke-Nssm -Arguments @("set", $ServiceName, "Start", "SERVICE_AUTO_START")')
     start = source.index("Start-Service -Name $ServiceName")
-    assert first_service_set < activation < enable < start
+    assert first_service_set < prepared_recheck < activation
+    assert activation < enable < start
     assert "fouler-lease-broker-activation/v1" in source
     assert "fouler-bootstrap-manifest/v1" in source
     assert "release file inventory no longer matches broker authority activation" in source
