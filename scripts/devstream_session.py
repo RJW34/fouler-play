@@ -4133,7 +4133,7 @@ def run_supervisor_cycle(
     payload["improvementCheckoutGuard"] = checkout_guard
     if not checkout_guard["ready"]:
         live_start_blockers.extend(checkout_guard["blockers"])
-    launch_preflight = runtime_launch_preflight(args)
+    launch_preflight = runtime_launch_preflight(args, lease_guard=lease_guard)
     payload["runtimeLaunchPreflight"] = launch_preflight
     if start_next and not launch_preflight["ok"]:
         live_start_blockers.extend(launch_preflight["blockers"])
