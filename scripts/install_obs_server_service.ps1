@@ -441,7 +441,11 @@ function Get-ObsProcessChain {
     $servicePid = [int64]$serviceRecord.ProcessId
     $serviceProcess = Get-ProcessRecordById -ProcessId $servicePid
     if (-not $serviceProcess -or -not (Test-ExactPath -Actual ([string]$serviceProcess.ExecutablePath) -Expected $StableNssm)) { $reasons += "SCM PID is not the pinned NSSM process" }
-    $allChildren = if ($servicePid -gt 0) { @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $servicePid" -ErrorAction SilentlyContinue) } else { @() }
+    $allChildren = @(
+        if ($servicePid -gt 0) {
+            Get-CimInstance Win32_Process -Filter "ParentProcessId = $servicePid" -ErrorAction SilentlyContinue
+        }
+    )
     $children = @($allChildren | Where-Object { Test-ExactObsChildCommand -Process $_ })
     if ($allChildren.Count -ne 1 -or $children.Count -ne 1) { $reasons += "SCM/NSSM does not own exactly one exact OBS Python child" }
     $child = if ($children.Count -eq 1) { $children[0] } else { $null }

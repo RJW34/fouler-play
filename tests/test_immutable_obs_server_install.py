@@ -64,6 +64,14 @@ def test_obs_installer_rejects_alternate_lifecycle_and_process_identity() -> Non
     assert "TWITCH" not in source.upper()
 
 
+def test_obs_process_chain_keeps_a_single_nssm_child_as_an_array() -> None:
+    source = INSTALLER.read_text(encoding="utf-8")
+
+    assert "$allChildren = @(\n        if ($servicePid -gt 0) {" in source
+    assert "$allChildren = if ($servicePid -gt 0)" not in source
+    assert "$allChildren.Count -ne 1" in source
+
+
 def test_service_release_pattern_accepts_only_one_lowercase_commit() -> None:
     release = "D:\\Releases\\fouler-play\\" + ("a" * 40)
 
