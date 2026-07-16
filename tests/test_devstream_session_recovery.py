@@ -175,7 +175,11 @@ def run_authorized_supervisor_cycle(monkeypatch, args, cycle_index, **kwargs):
         monkeypatch.setattr(
             devstream_session,
             "runtime_launch_preflight",
-            lambda _args: {"ok": True, "blockers": [], "secretValuesPrinted": False},
+            lambda _args, *, lease_guard: {
+                "ok": bool(lease_guard.get("ok")),
+                "blockers": [],
+                "secretValuesPrinted": False,
+            },
         )
     if (
         getattr(devstream_session.reserve_runtime_lease_consumption, "__module__", "")
@@ -2261,6 +2265,7 @@ def test_supervisor_cycle_caps_legacy_unbounded_run_count(monkeypatch):
 
 def test_supervisor_launch_preflight_blocks_before_reservation(monkeypatch):
     commands = []
+    preflight_guards = []
     reserve_calls = []
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
@@ -2268,7 +2273,8 @@ def test_supervisor_launch_preflight_blocks_before_reservation(monkeypatch):
     monkeypatch.setattr(
         devstream_session,
         "runtime_launch_preflight",
-        lambda _args: {
+        lambda _args, *, lease_guard: preflight_guards.append(lease_guard)
+        or {
             "ok": False,
             "blockers": ["recent Showdown credential failure is unresolved"],
             "secretValuesPrinted": False,
@@ -2300,6 +2306,16 @@ def test_supervisor_launch_preflight_blocks_before_reservation(monkeypatch):
     payload = run_authorized_supervisor_cycle(monkeypatch, args, 1)
 
     assert payload["state"] == "blocked-runtime-launch-preflight"
+    assert preflight_guards == [
+        {
+            "ok": True,
+            "path": str((ROOT / "devstream" / "truth" / "runtime-lease.json").resolve()),
+            "lease": {
+                "id": "lease-test",
+                "deploymentReceiptPath": r"C:\ProgramData\HERMES\state\fouler\deployment-test.json",
+            },
+        }
+    ]
     assert reserve_calls == []
     assert "leaseConsumptionReservation" not in payload
 
