@@ -718,6 +718,85 @@ def test_broker_command_line_must_name_exact_script_and_serve(tmp_path):
     )
 
 
+def test_prepare_broker_client_identity_grants_only_resolved_service_sid(monkeypatch):
+    calls = []
+
+    class FakeApi:
+        def resolve_account_sid(self, account):
+            calls.append(("resolve", account))
+            return "S-1-5-80-1234"
+
+        def grant_current_process_query_to_sid(self, sid):
+            calls.append(("grant", sid))
+
+    monkeypatch.setattr(lease_client, "_WINDOWS_API", FakeApi())
+
+    assert lease_client.prepare_broker_client_identity(
+        service_name="HERMES-FoulerLeaseBroker",
+        expected_service_sid="S-1-5-80-1234",
+    ) == "S-1-5-80-1234"
+    assert calls == [
+        ("resolve", r"NT SERVICE\HERMES-FoulerLeaseBroker"),
+        ("grant", "S-1-5-80-1234"),
+    ]
+
+
+def test_prepare_broker_client_identity_fails_before_grant_on_sid_mismatch(monkeypatch):
+    granted = []
+
+    class FakeApi:
+        @staticmethod
+        def resolve_account_sid(_account):
+            return "S-1-5-80-1234"
+
+        @staticmethod
+        def grant_current_process_query_to_sid(sid):
+            granted.append(sid)
+
+    monkeypatch.setattr(lease_client, "_WINDOWS_API", FakeApi())
+
+    with pytest.raises(lease_client.ServerIdentityError, match="service SID"):
+        lease_client.prepare_broker_client_identity(
+            expected_service_sid="S-1-5-80-9999"
+        )
+    assert granted == []
+
+
+def test_default_client_prepares_identity_before_waiting_for_pipe(monkeypatch):
+    calls = []
+
+    class FakeKernel:
+        @staticmethod
+        def WaitNamedPipeW(_pipe_name, _timeout_ms):
+            calls.append("wait")
+            return False
+
+    class FakeApi:
+        kernel32 = FakeKernel()
+
+        @staticmethod
+        def last_error(operation):
+            return OSError(operation)
+
+    monkeypatch.setattr(lease_client, "_WINDOWS_API", FakeApi())
+    monkeypatch.setattr(
+        lease_client,
+        "prepare_broker_client_identity",
+        lambda **_kwargs: calls.append("prepare"),
+    )
+
+    with pytest.raises(OSError, match="WaitNamedPipeW"):
+        LeaseBrokerClient().request(
+            {
+                "schemaVersion": PROTOCOL_VERSION,
+                "action": "status",
+                "requestId": "prepare-before-pipe-0001",
+            }
+        )
+
+    assert calls == ["prepare", "wait"]
+
+
 def test_venv_base_executable_comes_from_one_bounded_manifested_value(tmp_path):
     scripts = tmp_path / ".venv" / "Scripts"
     scripts.mkdir(parents=True)

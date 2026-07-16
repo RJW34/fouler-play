@@ -229,6 +229,25 @@ if os.name == "nt":
         ]
 
 
+    class _TRUSTEE_W(ctypes.Structure):
+        _fields_ = [
+            ("pMultipleTrustee", wintypes.LPVOID),
+            ("MultipleTrusteeOperation", wintypes.DWORD),
+            ("TrusteeForm", wintypes.DWORD),
+            ("TrusteeType", wintypes.DWORD),
+            ("ptstrName", wintypes.LPVOID),
+        ]
+
+
+    class _EXPLICIT_ACCESS_W(ctypes.Structure):
+        _fields_ = [
+            ("grfAccessPermissions", wintypes.DWORD),
+            ("grfAccessMode", wintypes.DWORD),
+            ("grfInheritance", wintypes.DWORD),
+            ("Trustee", _TRUSTEE_W),
+        ]
+
+
     class _PROCESSENTRY32W(ctypes.Structure):
         _fields_ = [
             ("dwSize", wintypes.DWORD),
@@ -260,6 +279,14 @@ if os.name == "nt":
 
 class _WindowsApi:
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    SE_KERNEL_OBJECT = 6
+    DACL_SECURITY_INFORMATION = 0x00000004
+    GRANT_ACCESS = 1
+    NO_INHERITANCE = 0
+    NO_MULTIPLE_TRUSTEE = 0
+    TRUSTEE_IS_SID = 0
+    TRUSTEE_IS_USER = 1
+    ERROR_SUCCESS = 0
     TOKEN_QUERY = 0x0008
     TOKEN_USER = 1
     TOKEN_GROUPS = 2
@@ -307,6 +334,8 @@ class _WindowsApi:
             wintypes.HANDLE,
         ]
         self.kernel32.CreateFileW.restype = wintypes.HANDLE
+        self.kernel32.GetCurrentProcess.argtypes = []
+        self.kernel32.GetCurrentProcess.restype = wintypes.HANDLE
         self.kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
         self.kernel32.CloseHandle.restype = wintypes.BOOL
         self.kernel32.ReadFile.argtypes = [
@@ -430,6 +459,39 @@ class _WindowsApi:
             ctypes.POINTER(wintypes.DWORD),
         ]
         self.advapi32.QueryServiceStatusEx.restype = wintypes.BOOL
+        self.advapi32.ConvertStringSidToSidW.argtypes = [
+            wintypes.LPCWSTR,
+            ctypes.POINTER(wintypes.LPVOID),
+        ]
+        self.advapi32.ConvertStringSidToSidW.restype = wintypes.BOOL
+        self.advapi32.GetSecurityInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            wintypes.DWORD,
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.LPVOID),
+            ctypes.POINTER(wintypes.LPVOID),
+        ]
+        self.advapi32.GetSecurityInfo.restype = wintypes.DWORD
+        self.advapi32.SetEntriesInAclW.argtypes = [
+            wintypes.ULONG,
+            ctypes.POINTER(_EXPLICIT_ACCESS_W),
+            wintypes.LPVOID,
+            ctypes.POINTER(wintypes.LPVOID),
+        ]
+        self.advapi32.SetEntriesInAclW.restype = wintypes.DWORD
+        self.advapi32.SetSecurityInfo.argtypes = [
+            wintypes.HANDLE,
+            ctypes.c_int,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.LPVOID,
+            wintypes.LPVOID,
+            wintypes.LPVOID,
+        ]
+        self.advapi32.SetSecurityInfo.restype = wintypes.DWORD
         self.ntdll.NtQueryInformationProcess.argtypes = [
             wintypes.HANDLE,
             ctypes.c_int,
@@ -648,6 +710,77 @@ class _WindowsApi:
             self.close(service)
             self.close(manager)
 
+    def grant_current_process_query_to_sid(self, sid: str) -> None:
+        """Let only the expected broker service query this client's identity."""
+
+        sid_pointer = wintypes.LPVOID()
+        security_descriptor = wintypes.LPVOID()
+        existing_dacl = wintypes.LPVOID()
+        updated_dacl = wintypes.LPVOID()
+        process = self.kernel32.GetCurrentProcess()
+        try:
+            if not self.advapi32.ConvertStringSidToSidW(
+                sid, ctypes.byref(sid_pointer)
+            ):
+                raise self.last_error("ConvertStringSidToSidW(broker-service)")
+            status = int(
+                self.advapi32.GetSecurityInfo(
+                    process,
+                    self.SE_KERNEL_OBJECT,
+                    self.DACL_SECURITY_INFORMATION,
+                    None,
+                    None,
+                    ctypes.byref(existing_dacl),
+                    None,
+                    ctypes.byref(security_descriptor),
+                )
+            )
+            if status != self.ERROR_SUCCESS:
+                raise self.error_from_code("GetSecurityInfo(client-process-DACL)", status)
+            trustee = _TRUSTEE_W(
+                None,
+                self.NO_MULTIPLE_TRUSTEE,
+                self.TRUSTEE_IS_SID,
+                self.TRUSTEE_IS_USER,
+                sid_pointer,
+            )
+            access = _EXPLICIT_ACCESS_W(
+                self.PROCESS_QUERY_LIMITED_INFORMATION,
+                self.GRANT_ACCESS,
+                self.NO_INHERITANCE,
+                trustee,
+            )
+            status = int(
+                self.advapi32.SetEntriesInAclW(
+                    1,
+                    ctypes.byref(access),
+                    existing_dacl,
+                    ctypes.byref(updated_dacl),
+                )
+            )
+            if status != self.ERROR_SUCCESS:
+                raise self.error_from_code("SetEntriesInAclW(client-process-DACL)", status)
+            status = int(
+                self.advapi32.SetSecurityInfo(
+                    process,
+                    self.SE_KERNEL_OBJECT,
+                    self.DACL_SECURITY_INFORMATION,
+                    None,
+                    None,
+                    updated_dacl,
+                    None,
+                )
+            )
+            if status != self.ERROR_SUCCESS:
+                raise self.error_from_code("SetSecurityInfo(client-process-DACL)", status)
+        finally:
+            if updated_dacl:
+                self.kernel32.LocalFree(updated_dacl)
+            if security_descriptor:
+                self.kernel32.LocalFree(security_descriptor)
+            if sid_pointer:
+                self.kernel32.LocalFree(sid_pointer)
+
 
 _WINDOWS_API: _WindowsApi | None = None
 
@@ -840,6 +973,23 @@ def verify_broker_server_identity(
     )
 
 
+def prepare_broker_client_identity(
+    *,
+    service_name: str = DEFAULT_SERVICE_NAME,
+    expected_service_sid: str | None = None,
+) -> str:
+    """Prepare the reciprocal process-query boundary before pipe connection."""
+
+    api = _windows_api()
+    service_sid = api.resolve_account_sid(f"NT SERVICE\\{service_name}")
+    if expected_service_sid and service_sid != expected_service_sid:
+        raise ServerIdentityError(
+            "installed broker service SID does not match the expected SID"
+        )
+    api.grant_current_process_query_to_sid(service_sid)
+    return service_sid
+
+
 def _remaining_wait_ms(deadline: float) -> int:
     remaining = deadline - time.monotonic()
     if remaining <= 0:
@@ -1006,6 +1156,11 @@ class LeaseBrokerClient:
         api = _windows_api()
         frame = encode_frame(dict(payload))
         deadline = time.monotonic() + self.timeout_ms / 1000
+        if self.pipe_name == PIPE_NAME:
+            prepare_broker_client_identity(
+                service_name=self.service_name,
+                expected_service_sid=self.expected_service_sid,
+            )
         if not api.kernel32.WaitNamedPipeW(
             self.pipe_name, _remaining_wait_ms(deadline)
         ):
