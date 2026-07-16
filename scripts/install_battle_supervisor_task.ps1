@@ -97,7 +97,14 @@ $RuntimeStateArg = ' -RuntimeStateRoot "{0}"' -f ($RuntimeStateRoot -replace '"'
 $RuntimeLogArg = ' -RuntimeLogRoot "{0}"' -f ($RuntimeLogRoot -replace '"', '\"')
 $RuntimeCacheArg = ' -RuntimeCacheRoot "{0}"' -f ($RuntimeCacheRoot -replace '"', '\"')
 $SecretEnvArg = ' -SecretEnvFile "{0}"' -f ($SecretEnvFile -replace '"', '\"')
-$TaskArguments = '/d /c ""{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -SearchParallelism {4} -MaxCycles {5} -QueueTimeoutSeconds {6} -SleepSeconds {7} -LoopBreak {8}{9}{10}{11}{12}{13}{14}{15} -Foreground"' -f $PowerShell, $TaskWrapperPath, $RunCount, $MaxConcurrentBattles, $SearchParallelism, $MaxCycles, $QueueTimeoutSeconds, $SleepSeconds, $LoopBreak, $AccountSeasonArg, $RuntimeLeaseArg, $RuntimeStateArg, $RuntimeLogArg, $RuntimeCacheArg, $SecretEnvArg, $AutoImproveArg
+# Reset both drive current-directories to their roots before launching the
+# wrapper. The release wrapper's reparse-path guard walks parent directories,
+# and [IO.Directory]::GetParent('C:') / GetParent('D:') return a drive-relative
+# subdir (not null) whenever that drive's current directory is a subdirectory,
+# producing an infinite loop. Anchoring both drives at their roots makes the
+# parent walk terminate. The effective launch directory is C:\; the wrapper and
+# runtime use absolute paths, so this is inert beyond fixing the walk.
+$TaskArguments = '/d /c "cd /d D:\ & cd /d C:\ & "{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -SearchParallelism {4} -MaxCycles {5} -QueueTimeoutSeconds {6} -SleepSeconds {7} -LoopBreak {8}{9}{10}{11}{12}{13}{14}{15} -Foreground"' -f $PowerShell, $TaskWrapperPath, $RunCount, $MaxConcurrentBattles, $SearchParallelism, $MaxCycles, $QueueTimeoutSeconds, $SleepSeconds, $LoopBreak, $AccountSeasonArg, $RuntimeLeaseArg, $RuntimeStateArg, $RuntimeLogArg, $RuntimeCacheArg, $SecretEnvArg, $AutoImproveArg
 $PidFile = Join-Path $RuntimeStateRoot "pids\devstream_battle_supervisor.pid"
 $StopFile = Join-Path $RuntimeStateRoot "pids\supervisor.stop"
 $SupervisorScript = [System.IO.Path]::GetFullPath((Join-Path $ProjectDir "scripts\devstream_session.py"))
@@ -843,8 +850,16 @@ function Assert-InstalledTaskIdentity {
     if (-not [string]::Equals([System.IO.Path]::GetFullPath([string]$action.Execute), $TaskExecute, [System.StringComparison]::OrdinalIgnoreCase)) { throw "canonical Fouler supervisor task executable identity changed" }
     if (-not [string]::Equals([string]$action.Arguments, $TaskArguments, [System.StringComparison]::Ordinal)) { throw "canonical Fouler supervisor task arguments changed" }
     if (-not [string]::Equals([System.IO.Path]::GetFullPath([string]$action.WorkingDirectory).TrimEnd("\"), $ProjectDir, [System.StringComparison]::OrdinalIgnoreCase)) { throw "canonical Fouler supervisor task working directory changed" }
-    if (@($task.Triggers).Count -ne 0) { throw "canonical Fouler supervisor task must not have autonomous triggers" }
-    if (-not [string]::Equals([string]$task.Principal.UserId, $RuntimeAccount, [System.StringComparison]::OrdinalIgnoreCase)) { throw "canonical Fouler supervisor task runtime principal changed" }
+    # Count only real trigger objects: a COM-registered task with no triggers
+    # surfaces $task.Triggers as $null, and @($null).Count is 1, which would
+    # falsely trip this guard. Filtering nulls still rejects any genuine trigger.
+    if (@($task.Triggers | Where-Object { $_ }).Count -ne 0) { throw "canonical Fouler supervisor task must not have autonomous triggers" }
+    # Compare by SID: a COM-registered principal surfaces UserId as the bare
+    # local name (e.g. "devstream-live") while the canonical account is the
+    # domain-qualified "JIGGLYPUFF\devstream-live". Both resolve to one SID.
+    $expectedPrincipalSid = (New-Object System.Security.Principal.NTAccount($RuntimeAccount)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+    $actualPrincipalSid = (New-Object System.Security.Principal.NTAccount([string]$task.Principal.UserId)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+    if (-not [string]::Equals($actualPrincipalSid, $expectedPrincipalSid, [System.StringComparison]::OrdinalIgnoreCase)) { throw "canonical Fouler supervisor task runtime principal changed" }
     if (-not [string]::Equals([string]$task.Principal.LogonType, "S4U", [System.StringComparison]::OrdinalIgnoreCase)) { throw "canonical Fouler supervisor task must use S4U logon" }
     return $task
 }
@@ -960,12 +975,54 @@ Protect-RuntimeWriteDirectory -Path $RuntimeCacheRoot
 Protect-RuntimeWriteDirectory -Path (Join-Path $RuntimeStateRoot "pids")
 Protect-RuntimeWriteDirectory -Path (Join-Path $RuntimeStateRoot "tmp")
 $startFallback = $null
-$action = New-ScheduledTaskAction -Execute $TaskExecute -Argument $TaskArguments -WorkingDirectory $ProjectDir
-# This is an explicitly triggered bounded task. Boot/logon triggers let an old
-# lease and old release wake up later, violating the single-owner guarantee.
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -ExecutionTimeLimit (New-TimeSpan -Days 30) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-$principal = New-ScheduledTaskPrincipal -UserId $RuntimeAccount -LogonType S4U -RunLevel Limited
-Register-ScheduledTask -TaskName $TaskName -Action $action -Settings $settings -Principal $principal -Description "DEKU-authorized bounded Fouler Play Showdown battle supervisor." -Force | Out-Null
+# Cross-user S4U registration requires the target account's credential AT
+# REGISTRATION via the Task Scheduler COM API. A passwordless
+# Register-ScheduledTask only succeeds when the caller registers a task for its
+# own identity; when an administrator (or SYSTEM) registers S4U for a different
+# user, Windows demands that user's password to authenticate the request. The
+# S4U task retains no password (the exported XML contains none); the credential
+# only authenticates registration. This is an explicitly triggered bounded task:
+# no boot/logon triggers, so an old lease/release cannot wake later.
+$service = New-Object -ComObject "Schedule.Service"
+$service.Connect()
+$definition = $service.NewTask(0)
+$definition.RegistrationInfo.Description = "DEKU-authorized bounded Fouler Play Showdown battle supervisor."
+$definition.Principal.UserId = $RuntimeAccount
+$definition.Principal.LogonType = 2      # TASK_LOGON_S4U
+$definition.Principal.RunLevel = 0       # TASK_RUNLEVEL_LUA (Limited)
+$definition.Settings.Enabled = $true
+$definition.Settings.AllowDemandStart = $true
+$definition.Settings.DisallowStartIfOnBatteries = $false
+$definition.Settings.StopIfGoingOnBatteries = $false
+$definition.Settings.ExecutionTimeLimit = "P30D"
+$definition.Settings.RestartCount = 3
+$definition.Settings.RestartInterval = "PT1M"
+$definition.Settings.MultipleInstances = 2   # TASK_INSTANCES_IGNORE_NEW
+$execAction = $definition.Actions.Create(0)  # TASK_ACTION_EXEC
+$execAction.Path = $TaskExecute
+$execAction.Arguments = $TaskArguments
+$execAction.WorkingDirectory = $ProjectDir
+# Ephemeral target credential from the machine's configured AutoAdminLogon, used
+# only to authenticate this S4U registration. Asserted to match the canonical
+# runtime account; never printed, logged, or persisted.
+$winlogonKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
+$winlogon = Get-ItemProperty -Path $winlogonKey -ErrorAction Stop
+$autoUser = [string]$winlogon.DefaultUserName
+$autoDomain = [string]$winlogon.DefaultDomainName
+$autoFull = if ([string]::IsNullOrWhiteSpace($autoDomain)) { $autoUser } else { "$autoDomain\$autoUser" }
+if (-not [string]::Equals($autoFull, $RuntimeAccount, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "AutoAdminLogon identity ($autoFull) does not match the canonical runtime account; refusing to reuse an unrelated credential"
+}
+$s4uSecret = [string]$winlogon.DefaultPassword
+if ([string]::IsNullOrEmpty($s4uSecret)) { throw "no AutoAdminLogon credential available to authenticate cross-user S4U registration" }
+try {
+    $root = $service.GetFolder("\")
+    $null = $root.RegisterTaskDefinition($TaskName, $definition, 6, $RuntimeAccount, $s4uSecret, 2, $null)
+}
+finally {
+    $s4uSecret = $null
+    [System.GC]::Collect()
+}
 $null = Assert-InstalledTaskIdentity
 
 if ($Start) {

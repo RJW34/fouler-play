@@ -79,7 +79,10 @@ $ReleaseCommit = Split-Path -Leaf $ProjectDir
 $ReleaseManifestPath = Join-Path $AuthorityRoot ("releases\$ReleaseCommit\bootstrap-manifest.json")
 $BrokerActivationPath = Join-Path $AuthorityRoot ("broker-activations\$ReleaseCommit.json")
 $LegacyTasks = @("HERMES-FoulerObsKeepAlive", "HERMES-FoulerObsServer")
-$ObsServiceArguments = "-I -B -u `"$Entrypoint`""
+# The entrypoint is an immutable-release path (D:\Releases\fouler-play\<hex>) with
+# no spaces; NSSM stores such arguments unquoted, so the canonical value must be
+# unquoted too or the exact AppParameters readback assertion fails.
+$ObsServiceArguments = "-I -B -u $Entrypoint"
 $ObsServiceEnvironment = @(
     "FOULER_OBS_LIFECYCLE_OWNER=windows-service",
     "OBS_SERVER_HOST=127.0.0.1",
@@ -502,6 +505,7 @@ function Test-HealthEndpoint {
 
 function Get-LegacyTaskStatus {
     param([string]$Name)
+    if (-not (Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue)) { return @{ name = $Name; present = $false; state = "missing" } }
     $lines = @(& "$env:SystemRoot\System32\schtasks.exe" /Query /TN $Name /FO CSV /NH 2>$null)
     if ($LASTEXITCODE -ne 0) { return @{ name = $Name; present = $false; state = "missing" } }
     $line = $lines | Where-Object { $_ } | Select-Object -First 1
@@ -610,6 +614,7 @@ function Save-RollbackBackup {
         "No existing service named $ServiceName." | Set-Content -LiteralPath (Join-Path $path "$ServiceName.none.txt") -Encoding UTF8
     }
     foreach ($name in $LegacyTasks) {
+        if (-not (Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue)) { continue }
         $xml = @(& "$env:SystemRoot\System32\schtasks.exe" /Query /TN $name /XML 2>$null)
         if ($LASTEXITCODE -eq 0) {
             [IO.File]::WriteAllLines((Join-Path $path "$name.xml"), [string[]]$xml, [Text.UTF8Encoding]::new($false))
@@ -752,16 +757,23 @@ try {
     if ((Get-FileHash -LiteralPath $StableNssm -Algorithm SHA256).Hash.ToLowerInvariant() -ne $script:ExpectedNssmHash) { throw "stable nssm.exe failed post-publication SHA-256 verification" }
 
     $sc = "$env:SystemRoot\System32\sc.exe"
-    if (-not (Get-ServiceRecord)) {
-        & $sc create $ServiceName "binPath=" "`"$StableNssm`"" "start=" "disabled" "DisplayName=" "HERMES Fouler OBS Server" | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "failed to create the OBS service in Disabled state" }
-    } else {
-        & $sc config $ServiceName "binPath=" "`"$StableNssm`"" "start=" "disabled" | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "failed to force the OBS service into Disabled state before reconfiguration" }
+    if (Get-ServiceRecord) {
+        # A pre-existing (legacy/mutable) service is removed and reinstalled as an
+        # NSSM-managed service bound to the immutable release NSSM. Its state was
+        # already backed up above; a plain sc.exe service is rejected by nssm set.
+        & $sc stop $ServiceName 2>&1 | Out-Null
+        Start-Sleep -Seconds 2
+        & $sc delete $ServiceName 2>&1 | Out-Null
+        Start-Sleep -Seconds 1
     }
+    # Create via NSSM so the nssm set calls below recognize the service as
+    # NSSM-managed; a plain sc.exe-created service is rejected by every nssm set.
+    Invoke-Nssm -Arguments @("install", $ServiceName, $Python)
+    & $sc config $ServiceName "start=" "disabled" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "failed to force the OBS service into Disabled state before reconfiguration" }
     & $sc sidtype $ServiceName unrestricted | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "failed to enable the OBS service SID" }
-    & $sc config $ServiceName "obj=" $ServiceAccount "password=" "" | Out-Null
+    & $sc config $ServiceName "obj=" $ServiceAccount | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "failed to configure the OBS virtual service account" }
 
     Protect-AdminDirectory -Path (Split-Path -Parent $StableNssm) -ReadAccount $ServiceAccount

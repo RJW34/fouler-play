@@ -16,11 +16,18 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from devstream_runtime_checks import recent_showdown_credential_failure
-
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+# Put the script's own directory and the release root on sys.path BEFORE the
+# local imports below. The production launch uses `python -I` (isolated mode),
+# which implies `-P` and therefore does NOT prepend the script's directory to
+# sys.path, so a bare sibling import (devstream_runtime_checks) would otherwise
+# fail with ModuleNotFoundError.
+for _extra_path in (str(_SCRIPTS_DIR), str(ROOT)):
+    if _extra_path not in sys.path:
+        sys.path.insert(0, _extra_path)
+
+from devstream_runtime_checks import recent_showdown_credential_failure  # noqa: E402
 
 from infrastructure.runtime_paths import (  # noqa: E402
     RuntimePathError,

@@ -87,6 +87,11 @@ function Invoke-Checked {
         $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments `
             -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru `
             -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        # Cache the process handle immediately so ExitCode is retained after the
+        # process exits. Without this, Start-Process -PassThru can report a null
+        # ExitCode in non-interactive hosts (e.g. an SSH session), which the
+        # check below would misread as a nonzero failure.
+        $null = $process.Handle
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
             try { $process.Kill() } catch {}
             throw "$Label timed out after $TimeoutSeconds seconds"

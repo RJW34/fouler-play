@@ -648,12 +648,14 @@ if ($installedHash -ne $expectedHash) {
 
 $sc = "$env:SystemRoot\System32\sc.exe"
 if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) {
-    & $sc create $ServiceName "binPath=" "`"$StableNssm`"" "start=" "disabled" "obj=" "NT AUTHORITY\LocalService" "password=" "" "DisplayName=" "HERMES Fouler Lease Broker" | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "failed to create the broker service in Disabled state" }
-} else {
-    & $sc config $ServiceName "binPath=" "`"$StableNssm`"" "start=" "disabled" "obj=" "NT AUTHORITY\LocalService" "password=" "" | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "failed to force the existing broker service into Disabled state" }
+    # Create the service via NSSM so that the later "nssm set" calls recognize it
+    # as an NSSM-managed service; a plain sc.exe-created service is not registered
+    # with NSSM and rejects every "nssm set". ObjectName/Start/application are
+    # applied by the nssm set calls below plus the sc config that follows.
+    Invoke-Nssm -Arguments @("install", $ServiceName, $python)
 }
+& $sc config $ServiceName "start=" "disabled" "obj=" "NT AUTHORITY\LocalService" | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "failed to force the broker service into Disabled LocalService state" }
 & $sc sidtype $ServiceName unrestricted | Out-Null
 if ($LASTEXITCODE -ne 0) {
     throw "failed to configure an unrestricted service SID"
