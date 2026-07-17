@@ -26,7 +26,9 @@ param(
     [string]$SecretEnvFile = "C:\ProgramData\HERMES\secrets\fouler.env",
     [ValidateSet("0", "1")]
     [string]$LoopBreak = "0",
-    [switch]$AutoImprove
+    [switch]$AutoImprove,
+    [switch]$ClearStopFile,
+    [switch]$ClearDrainRequest
 )
 
 $ErrorActionPreference = "Stop"
@@ -57,6 +59,20 @@ if ($MaxConcurrentBattles -ne $PilotMaxConcurrentBattles) {
 }
 if ($SearchParallelism -ne $PilotSearchParallelism) {
     throw "owner-locked live pilot SearchParallelism must equal 2"
+}
+if ([bool]$ClearStopFile -ne [bool]$ClearDrainRequest) {
+    throw "ClearStopFile and ClearDrainRequest must be supplied together"
+}
+if (($ClearStopFile -or $ClearDrainRequest) -and (-not $Apply -or -not $Start)) {
+    throw "sentinel clear is a one-shot -Apply -Start operation"
+}
+if ($ClearStopFile) {
+    if ($RunCount -lt 1 -or $RunCount -gt 5) {
+        throw "sentinel clear is restricted to a RunCount 1-5 recovery proof window"
+    }
+    if ($MaxCycles -ne 1 -or $LoopBreak -ne "0") {
+        throw "sentinel clear requires MaxCycles=1 and LoopBreak=0"
+    }
 }
 $AuthorityRoot = $CanonicalAuthorityRoot
 $AccountSeasonPath = $CanonicalAccountSeasonPath
@@ -107,6 +123,7 @@ $SecretEnvArg = ' -SecretEnvFile "{0}"' -f ($SecretEnvFile -replace '"', '\"')
 $TaskArguments = '/d /c "cd /d D:\ & cd /d C:\ & "{0}" -NoProfile -ExecutionPolicy Bypass -File "{1}" -RunCount {2} -MaxConcurrentBattles {3} -SearchParallelism {4} -MaxCycles {5} -QueueTimeoutSeconds {6} -SleepSeconds {7} -LoopBreak {8}{9}{10}{11}{12}{13}{14}{15} -Foreground"' -f $PowerShell, $TaskWrapperPath, $RunCount, $MaxConcurrentBattles, $SearchParallelism, $MaxCycles, $QueueTimeoutSeconds, $SleepSeconds, $LoopBreak, $AccountSeasonArg, $RuntimeLeaseArg, $RuntimeStateArg, $RuntimeLogArg, $RuntimeCacheArg, $SecretEnvArg, $AutoImproveArg
 $PidFile = Join-Path $RuntimeStateRoot "pids\devstream_battle_supervisor.pid"
 $StopFile = Join-Path $RuntimeStateRoot "pids\supervisor.stop"
+$DrainFile = Join-Path $RuntimeStateRoot "pids\drain.request"
 $SupervisorScript = [System.IO.Path]::GetFullPath((Join-Path $ProjectDir "scripts\devstream_session.py"))
 $BoundedSessionScript = [System.IO.Path]::GetFullPath((Join-Path $ProjectDir "scripts\run_bounded_battle_session.py"))
 $LadderScript = [System.IO.Path]::GetFullPath((Join-Path $ProjectDir "run.py"))
@@ -514,7 +531,7 @@ function Test-BattleSupervisorLauncherOwnership {
         "-RuntimeCacheRoot", "-SecretEnvFile", "-AccountSeasonPath",
         "-SearchParallelism", "-LoopBreak"
     )
-    $switchNames = @("-AutoImprove", "-ClearStopFile", "-ClearDrainRequest", "-Foreground")
+    $switchNames = @("-AutoImprove", "-Foreground")
     if (-not (Test-AllowedCommandTail -Tokens $tokens -StartIndex ($fileIndex + 2) -ValueNames $valueNames -SwitchNames $switchNames)) { return $false }
     foreach ($name in @("-RunCount", "-MaxConcurrentBattles", "-MaxCycles", "-QueueTimeoutSeconds", "-SleepSeconds")) {
         if (-not (Test-PositiveCommandInteger -Tokens $tokens -Name $name)) { return $false }
@@ -964,6 +981,25 @@ if ($Start) {
     }
 }
 
+if ($Start -and -not $ClearStopFile) {
+    $presentStartSentinels = @(
+        @($StopFile, $DrainFile) | Where-Object {
+            Test-Path -LiteralPath $_ -PathType Leaf
+        }
+    )
+    if ($presentStartSentinels.Count -gt 0) {
+        [pscustomobject]@{
+            dryRun = $false
+            blocked = $true
+            status = "blocked-runtime-sentinel"
+            taskName = $TaskName
+            blockers = @("runtime stop/drain sentinel is present; a bounded recovery start must explicitly clear both sentinels")
+            sentinels = @($presentStartSentinels)
+        } | ConvertTo-Json -Depth 5
+        exit 2
+    }
+}
+
 $backup = Save-TaskBackup -Name $TaskName
 $secretAclBackup = Join-Path (Split-Path -Parent $backup) "fouler-secret-acl.txt"
 & "$env:SystemRoot\System32\icacls.exe" $SecretEnvFile /save $secretAclBackup /Q | Out-Null
@@ -1026,9 +1062,33 @@ finally {
 $null = Assert-InstalledTaskIdentity
 
 if ($Start) {
+    if (-not $ClearStopFile) {
+        $lateStartSentinels = @(
+            @($StopFile, $DrainFile) | Where-Object {
+                Test-Path -LiteralPath $_ -PathType Leaf
+            }
+        )
+        if ($lateStartSentinels.Count -gt 0) {
+            [pscustomobject]@{
+                dryRun = $false
+                blocked = $true
+                status = "blocked-runtime-sentinel-race"
+                taskName = $TaskName
+                blockers = @("runtime stop/drain sentinel appeared after task registration; launch was not attempted")
+                sentinels = @($lateStartSentinels)
+            } | ConvertTo-Json -Depth 5
+            exit 2
+        }
+    }
     Stop-BattleSupervisorProcesses | Out-Null
     if (Test-Path -LiteralPath $PidFile -PathType Leaf) { Remove-Item -LiteralPath $PidFile -Force -ErrorAction SilentlyContinue }
-    if (Test-Path -LiteralPath $StopFile -PathType Leaf) { Remove-Item -LiteralPath $StopFile -Force -ErrorAction SilentlyContinue }
+    if ($ClearStopFile) {
+        foreach ($sentinel in @($StopFile, $DrainFile)) {
+            if (Test-Path -LiteralPath $sentinel -PathType Leaf) {
+                Remove-Item -LiteralPath $sentinel -Force -ErrorAction Stop
+            }
+        }
+    }
     Rotate-LogFile -Path $StdoutLog | Out-Null
     Rotate-LogFile -Path $StderrLog | Out-Null
     Start-ScheduledTask -TaskName $TaskName

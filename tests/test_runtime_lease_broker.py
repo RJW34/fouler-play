@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import json
 import os
+import shutil
 import sqlite3
 import struct
 import sys
@@ -802,7 +803,12 @@ def test_venv_base_executable_comes_from_one_bounded_manifested_value(tmp_path):
     scripts.mkdir(parents=True)
     launcher = scripts / "python.exe"
     launcher.write_bytes(b"launcher")
-    expected_base = Path(sys.executable).resolve()
+    base_directory = tmp_path / "base"
+    base_directory.mkdir()
+    base_executable = base_directory / "python.exe"
+    shutil.copy2(shutil.which("py") or sys.executable, base_executable)
+    expected_base = base_executable.resolve(strict=True)
+    assert os.access(expected_base, os.X_OK)
     (scripts.parent / "pyvenv.cfg").write_text(
         f"home = {expected_base.parent}\nexecutable = {expected_base}\n",
         encoding="utf-8",

@@ -120,23 +120,23 @@ def test_public_surface_forces_loopback_bind(monkeypatch) -> None:
     assert web.run_app is fake_run_app
 
 
-def test_service_enables_obs_source_updates_by_default_and_honors_rehearsal_disable(
+def test_service_forces_http_only_mode_even_when_ambient_env_requests_obs_control(
     monkeypatch,
 ) -> None:
     validation = {"lease": {"account": "FoulerPilot"}}
-    environment: dict[str, str] = {}
+    environment = {"FOULER_OBS_WS_DISABLED": "0"}
     monkeypatch.setattr(service, "_assert_service_runtime_layout", lambda: None)
     monkeypatch.setattr(service, "_validated_runtime", lambda: validation)
     monkeypatch.setattr(service, "lease_environment", lambda _validation: {})
 
     service._configure_environment(environment)
 
-    assert environment["FOULER_OBS_WS_DISABLED"] == "0"
+    assert environment["FOULER_OBS_WS_DISABLED"] == "1"
     if service.os.name == "nt":
         for name, path in service.WINDOWS_EXTERNAL_PATHS.items():
             assert environment[name] == str(path)
 
-    environment["FOULER_OBS_WS_DISABLED"] = "1"
+    environment["FOULER_OBS_WS_DISABLED"] = "0"
     service._configure_environment(environment)
 
     assert environment["FOULER_OBS_WS_DISABLED"] == "1"

@@ -175,7 +175,6 @@ def _configure_environment(
         "FOULER_RUNTIME_STATE_ROOT": str(state_root),
         "FOULER_RUNTIME_LOG_ROOT": str(state_root / "logs"),
         "FOULER_OBS_LIFECYCLE_OWNER": "windows-service",
-        "FOULER_OBS_WS_DISABLED": "0",
     }
     if os.name == "nt":
         defaults.update(
@@ -183,6 +182,9 @@ def _configure_environment(
         )
     for name, value in defaults.items():
         target.setdefault(name, value)
+    # JIGGLYPUFF only serves the browser-source HTTP surface. OBS control and
+    # credentials belong exclusively to the RWLEGION broadcast node.
+    target["FOULER_OBS_WS_DISABLED"] = "1"
     target["OBS_SERVER_HOST"] = LOOPBACK_HOST
     target["OBS_SERVER_PORT"] = str(LOOPBACK_PORT)
     target["PS_FORMAT"] = "gen9ou"

@@ -49,7 +49,8 @@
 | Stats Overlay | Browser | localhost:8777/overlay | 1920x1080 | ✅ |
 
 ### Plugins Installed
-- ✅ obs-websocket (v5.x) — Port 4455, Password: `4Dswd1gtixEnGuK1`
+- ✅ obs-websocket (v5.x) — Port 4455, Password: `<PROVISION_OUTSIDE_GIT>`
+- OBS WebSocket credentials must be provisioned outside git.
 - ✅ obs-browser (CEF-based)
 - ✅ obs-nvenc (NVIDIA encoder)
 - ✅ win-capture (window/display capture)
@@ -218,7 +219,8 @@ from obswebsocket.exceptions import ConnectionFailure
 # Configuration
 OBS_HOST = "192.168.1.181"
 OBS_PORT = 4455
-OBS_WEBSOCKET_PASSWORD=<REDACTED>
+# Credentials must be provisioned outside git; this is a non-secret placeholder.
+OBS_WEBSOCKET_PASSWORD = "<PROVISION_OUTSIDE_GIT>"
 
 class OBSController:
     def __init__(self, host=OBS_HOST, port=OBS_PORT, password=OBS_PASSWORD):

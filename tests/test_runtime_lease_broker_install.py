@@ -38,6 +38,14 @@ def test_installer_security_contract_is_static_and_fail_closed():
     assert 'SecurityIdentifier("S-1-5-32-544")' in source
     assert "runtimeDatabaseAccess = $false" in source
     assert 'pipeRuntimeRights = "FILE_READ_DATA|FILE_WRITE_DATA"' in source
+    assert "function Grant-RuntimeServiceQueryStatus" in source
+    assert "$serviceQueryStatus = 0x0004" in source
+    assert 'rights = "SERVICE_QUERY_STATUS"' in source
+    assert "runtime SID has unexpected broker service rights" in source
+    assert "broker service DACL did not retain the exact query-status-only runtime ACE" in source
+    grant_runtime_query = source.index(
+        "$runtimeServiceAccess = Grant-RuntimeServiceQueryStatus"
+    )
 
     # Rollback-safe existing-service migration: the backup precedes any removal and
     # NSSM reinstallation, and NSSM (never plain sc.exe create) performs the install.
@@ -65,7 +73,7 @@ def test_installer_security_contract_is_static_and_fail_closed():
     activation = source.index("$authorityActivation = Assert-AuthorityActivationReceipt")
     enable = source.index('Invoke-Nssm -Arguments @("set", $ServiceName, "Start", "SERVICE_AUTO_START")')
     start = source.index("Start-Service -Name $ServiceName")
-    assert first_service_set < prepared_recheck < activation
+    assert first_service_set < grant_runtime_query < prepared_recheck < activation
     assert activation < enable < start
     assert "fouler-lease-broker-activation/v1" in source
     assert "fouler-bootstrap-manifest/v1" in source

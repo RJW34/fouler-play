@@ -434,8 +434,8 @@ def test_obs_server_service_entrypoint_loads_authority_and_runs_in_process():
     assert '_install_service_console_signal_handlers()' in text
     assert '("SIGINT", "SIGBREAK")' in text
     assert 'publish_latest=False' in text
-    assert '"FOULER_OBS_WS_DISABLED": "0"' in text
-    assert 'os.environ["FOULER_OBS_WS_DISABLED"] = "1"' not in text
+    assert 'target["FOULER_OBS_WS_DISABLED"] = "1"' in text
+    assert 'target.setdefault("FOULER_OBS_WS_DISABLED"' not in text
     assert 'LOOPBACK_HOST = "127.0.0.1"' in text
     assert "LOOPBACK_PORT = 8777" in text
     assert "WINDOWS_RELEASE_RE" in text
@@ -626,6 +626,21 @@ def test_battle_supervisor_uses_the_fixed_live_pilot_authority_contract():
     assert "-MaxCycles" in installer
     assert "-AutoImprove" in installer
     assert "-Foreground" in installer
+    assert "[switch]$ClearStopFile" in installer
+    assert "[switch]$ClearDrainRequest" in installer
+    assert "sentinel clear is a one-shot -Apply -Start operation" in installer
+    assert "blocked-runtime-sentinel" in installer
+    assert "blocked-runtime-sentinel-race" in installer
+    assert 'foreach ($sentinel in @($StopFile, $DrainFile))' in installer
+    task_arguments_line = next(
+        line for line in installer.splitlines() if line.startswith("$TaskArguments = ")
+    )
+    launcher_switches_line = next(
+        line for line in installer.splitlines()
+        if '$switchNames = @("-AutoImprove"' in line
+    )
+    assert "ClearStopFile" not in task_arguments_line + launcher_switches_line
+    assert "ClearDrainRequest" not in task_arguments_line + launcher_switches_line
     assert "Wait-BattleSupervisorProcess" in installer
     assert "Start-ForegroundWrapperProcess" not in installer
     assert "installer-token fallback is forbidden" in installer

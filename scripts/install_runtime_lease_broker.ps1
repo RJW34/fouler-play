@@ -276,6 +276,86 @@ function Protect-DirectoryTree {
     [System.IO.Directory]::SetAccessControl($Path, $rootSecurity)
 }
 
+function Grant-RuntimeServiceQueryStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][System.Security.Principal.SecurityIdentifier]$RuntimeSid
+    )
+    $serviceQueryStatus = 0x0004
+    $sc = "$env:SystemRoot\System32\sc.exe"
+    $beforeOutput = @(& $sc sdshow $Name 2>&1)
+    if ($LASTEXITCODE -ne 0) { throw "failed to read broker service DACL" }
+    $beforeSddl = @(
+        $beforeOutput |
+            ForEach-Object { ([string]$_).Trim() } |
+            Where-Object { $_ -match '^[OGDS]:' } |
+            Select-Object -Last 1
+    )
+    if ($beforeSddl.Count -ne 1) { throw "broker service DACL output is malformed" }
+    $descriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new([string]$beforeSddl[0])
+    $runtimeAces = @(
+        $descriptor.DiscretionaryAcl | Where-Object {
+            $_ -is [System.Security.AccessControl.KnownAce] -and
+            [string]$_.SecurityIdentifier.Value -eq $RuntimeSid.Value
+        }
+    )
+    if ($runtimeAces.Count -gt 0) {
+        $exact = @($runtimeAces | Where-Object {
+            $_ -is [System.Security.AccessControl.QualifiedAce] -and
+            [string]$_.AceQualifier -eq "AccessAllowed" -and
+            [int64]$_.AccessMask -eq $serviceQueryStatus
+        })
+        if ($runtimeAces.Count -ne 1 -or $exact.Count -ne 1) {
+            throw "runtime SID has unexpected broker service rights; refusing to broaden or replace them"
+        }
+    }
+    else {
+        $ace = [System.Security.AccessControl.CommonAce]::new(
+            [System.Security.AccessControl.AceFlags]::None,
+            [System.Security.AccessControl.AceQualifier]::AccessAllowed,
+            $serviceQueryStatus,
+            $RuntimeSid,
+            $false,
+            $null
+        )
+        $descriptor.DiscretionaryAcl.InsertAce($descriptor.DiscretionaryAcl.Count, $ace)
+        $updatedSddl = $descriptor.GetSddlForm([System.Security.AccessControl.AccessControlSections]::All)
+        & $sc sdset $Name $updatedSddl | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "failed to grant runtime SID broker SERVICE_QUERY_STATUS" }
+    }
+
+    $afterOutput = @(& $sc sdshow $Name 2>&1)
+    if ($LASTEXITCODE -ne 0) { throw "failed to verify broker service DACL" }
+    $afterSddl = @(
+        $afterOutput |
+            ForEach-Object { ([string]$_).Trim() } |
+            Where-Object { $_ -match '^[OGDS]:' } |
+            Select-Object -Last 1
+    )
+    if ($afterSddl.Count -ne 1) { throw "verified broker service DACL output is malformed" }
+    $verified = [System.Security.AccessControl.RawSecurityDescriptor]::new([string]$afterSddl[0])
+    $verifiedRuntimeAces = @(
+        $verified.DiscretionaryAcl | Where-Object {
+            $_ -is [System.Security.AccessControl.KnownAce] -and
+            [string]$_.SecurityIdentifier.Value -eq $RuntimeSid.Value
+        }
+    )
+    $verifiedExact = @($verifiedRuntimeAces | Where-Object {
+        $_ -is [System.Security.AccessControl.QualifiedAce] -and
+        [string]$_.AceQualifier -eq "AccessAllowed" -and
+        [int64]$_.AccessMask -eq $serviceQueryStatus
+    })
+    if ($verifiedRuntimeAces.Count -ne 1 -or $verifiedExact.Count -ne 1) {
+        throw "broker service DACL did not retain the exact query-status-only runtime ACE"
+    }
+    return [pscustomobject]@{
+        sid = $RuntimeSid.Value
+        accessMask = $serviceQueryStatus
+        rights = "SERVICE_QUERY_STATUS"
+        exactAceCount = $verifiedExact.Count
+    }
+}
+
 function Protect-AdminDirectory {
     param([Parameter(Mandatory = $true)][string]$Path)
     Assert-NoReparsePathChain -Path $Path
@@ -708,6 +788,7 @@ Invoke-Nssm -Arguments @("set", $ServiceName, "AppRotateOnline", "1")
 Invoke-Nssm -Arguments @("set", $ServiceName, "AppRotateBytes", "10485760")
 & $sc sidtype $ServiceName unrestricted | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "service SID type verification failed" }
+$runtimeServiceAccess = Grant-RuntimeServiceQueryStatus -Name $ServiceName -RuntimeSid $runtimeSid
 $preparedService = Get-Service -Name $ServiceName
 if ([string]$preparedService.Status -ne "Stopped" -or [string]$preparedService.StartType -ne "Disabled") {
     throw "broker publication must remain stopped and Disabled until authority activation"
@@ -731,6 +812,7 @@ $service = Get-Service -Name $ServiceName
 $plan.status = "installed"
 $plan.backupDirectory = $backupDirectory
 $plan.serviceSid = $serviceSid.Value
+$plan.runtimeServiceAccess = $runtimeServiceAccess
 $plan.nssmSha256 = $installedHash
 $plan.serviceState = [string]$service.Status
 $plan.storeInitialized = [bool](Test-Path -LiteralPath $storePath -PathType Leaf)
