@@ -26,9 +26,7 @@ param(
     [string]$SecretEnvFile = "C:\ProgramData\HERMES\secrets\fouler.env",
     [ValidateSet("0", "1")]
     [string]$LoopBreak = "0",
-    [switch]$AutoImprove,
-    [switch]$ClearStopFile,
-    [switch]$ClearDrainRequest
+    [switch]$AutoImprove
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,20 +57,6 @@ if ($MaxConcurrentBattles -ne $PilotMaxConcurrentBattles) {
 }
 if ($SearchParallelism -ne $PilotSearchParallelism) {
     throw "owner-locked live pilot SearchParallelism must equal 2"
-}
-if ([bool]$ClearStopFile -ne [bool]$ClearDrainRequest) {
-    throw "ClearStopFile and ClearDrainRequest must be supplied together"
-}
-if (($ClearStopFile -or $ClearDrainRequest) -and (-not $Apply -or -not $Start)) {
-    throw "sentinel clear is a one-shot -Apply -Start operation"
-}
-if ($ClearStopFile) {
-    if ($RunCount -lt 1 -or $RunCount -gt 5) {
-        throw "sentinel clear is restricted to a RunCount 1-5 recovery proof window"
-    }
-    if ($MaxCycles -ne 1 -or $LoopBreak -ne "0") {
-        throw "sentinel clear requires MaxCycles=1 and LoopBreak=0"
-    }
 }
 $AuthorityRoot = $CanonicalAuthorityRoot
 $AccountSeasonPath = $CanonicalAccountSeasonPath
@@ -626,8 +610,12 @@ function Test-FoulerBattleOwnerCandidate {
 }
 
 function Assert-NoAlternateBattleOwnerProcesses {
+    param([object[]]$Processes)
+    if (-not $PSBoundParameters.ContainsKey("Processes")) {
+        $Processes = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+    }
     $alternate = @()
-    foreach ($process in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)) {
+    foreach ($process in @($Processes)) {
         if (-not (Test-FoulerBattleOwnerCandidate -Process $process)) { continue }
         if (
             (Test-BattleSupervisorProcessOwnership -Process $process) -or
@@ -638,6 +626,26 @@ function Assert-NoAlternateBattleOwnerProcesses {
     }
     if ($alternate.Count -gt 0) {
         throw "mutable or alternate Fouler battle owner process blocks supervisor mutation: $(@($alternate.ProcessId) -join ', ')"
+    }
+}
+
+function Assert-BattleSupervisorRuntimeIdle {
+    $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+    Assert-NoAlternateBattleOwnerProcesses -Processes $processes
+    $launchers = @($processes | Where-Object { Test-BattleSupervisorLauncherOwnership -Process $_ })
+    $supervisors = @($processes | Where-Object { Test-BattleSupervisorProcessOwnership -Process $_ })
+    $ladders = @($processes | Where-Object { Test-BattleLadderProcessOwnership -Process $_ })
+    $tasks = @(
+        Get-ScheduledTask -ErrorAction Stop | Where-Object {
+            [string]::Equals([string]$_.TaskName, $TaskName, [System.StringComparison]::OrdinalIgnoreCase)
+        }
+    )
+    $taskStates = @($tasks | ForEach-Object { [string]$_.State })
+    $taskState = if ($taskStates.Count -gt 0) { $taskStates -join "," } else { "missing" }
+    $taskIdle = @($taskStates | Where-Object { $_ -notin @("Ready", "Disabled") }).Count -eq 0
+    if (-not $taskIdle -or $launchers.Count -gt 0 -or $supervisors.Count -gt 0 -or $ladders.Count -gt 0) {
+        $ownedPids = @($launchers.ProcessId) + @($supervisors.ProcessId) + @($ladders.ProcessId)
+        throw "battle supervisor start requires complete runtime idleness; taskState=$taskState; ownedProcessPids=$(@($ownedPids | Select-Object -Unique) -join ', ')"
     }
 }
 
@@ -981,7 +989,7 @@ if ($Start) {
     }
 }
 
-if ($Start -and -not $ClearStopFile) {
+if ($Start) {
     $presentStartSentinels = @(
         @($StopFile, $DrainFile) | Where-Object {
             Test-Path -LiteralPath $_ -PathType Leaf
@@ -993,11 +1001,12 @@ if ($Start -and -not $ClearStopFile) {
             blocked = $true
             status = "blocked-runtime-sentinel"
             taskName = $TaskName
-            blockers = @("runtime stop/drain sentinel is present; a bounded recovery start must explicitly clear both sentinels")
+            blockers = @("runtime stop/drain sentinel is present; start does not clear operator sentinels")
             sentinels = @($presentStartSentinels)
         } | ConvertTo-Json -Depth 5
         exit 2
     }
+    $null = Assert-BattleSupervisorRuntimeIdle
 }
 
 $backup = Save-TaskBackup -Name $TaskName
@@ -1062,33 +1071,23 @@ finally {
 $null = Assert-InstalledTaskIdentity
 
 if ($Start) {
-    if (-not $ClearStopFile) {
-        $lateStartSentinels = @(
-            @($StopFile, $DrainFile) | Where-Object {
-                Test-Path -LiteralPath $_ -PathType Leaf
-            }
-        )
-        if ($lateStartSentinels.Count -gt 0) {
-            [pscustomobject]@{
-                dryRun = $false
-                blocked = $true
-                status = "blocked-runtime-sentinel-race"
-                taskName = $TaskName
-                blockers = @("runtime stop/drain sentinel appeared after task registration; launch was not attempted")
-                sentinels = @($lateStartSentinels)
-            } | ConvertTo-Json -Depth 5
-            exit 2
+    $lateStartSentinels = @(
+        @($StopFile, $DrainFile) | Where-Object {
+            Test-Path -LiteralPath $_ -PathType Leaf
         }
+    )
+    if ($lateStartSentinels.Count -gt 0) {
+        [pscustomobject]@{
+            dryRun = $false
+            blocked = $true
+            status = "blocked-runtime-sentinel-race"
+            taskName = $TaskName
+            blockers = @("runtime stop/drain sentinel appeared after task registration; launch was not attempted")
+            sentinels = @($lateStartSentinels)
+        } | ConvertTo-Json -Depth 5
+        exit 2
     }
-    Stop-BattleSupervisorProcesses | Out-Null
-    if (Test-Path -LiteralPath $PidFile -PathType Leaf) { Remove-Item -LiteralPath $PidFile -Force -ErrorAction SilentlyContinue }
-    if ($ClearStopFile) {
-        foreach ($sentinel in @($StopFile, $DrainFile)) {
-            if (Test-Path -LiteralPath $sentinel -PathType Leaf) {
-                Remove-Item -LiteralPath $sentinel -Force -ErrorAction Stop
-            }
-        }
-    }
+    $null = Assert-BattleSupervisorRuntimeIdle
     Rotate-LogFile -Path $StdoutLog | Out-Null
     Rotate-LogFile -Path $StderrLog | Out-Null
     Start-ScheduledTask -TaskName $TaskName

@@ -626,21 +626,12 @@ def test_battle_supervisor_uses_the_fixed_live_pilot_authority_contract():
     assert "-MaxCycles" in installer
     assert "-AutoImprove" in installer
     assert "-Foreground" in installer
-    assert "[switch]$ClearStopFile" in installer
-    assert "[switch]$ClearDrainRequest" in installer
-    assert "sentinel clear is a one-shot -Apply -Start operation" in installer
+    assert "ClearStopFile" not in installer
+    assert "ClearDrainRequest" not in installer
     assert "blocked-runtime-sentinel" in installer
     assert "blocked-runtime-sentinel-race" in installer
-    assert 'foreach ($sentinel in @($StopFile, $DrainFile))' in installer
-    task_arguments_line = next(
-        line for line in installer.splitlines() if line.startswith("$TaskArguments = ")
-    )
-    launcher_switches_line = next(
-        line for line in installer.splitlines()
-        if '$switchNames = @("-AutoImprove"' in line
-    )
-    assert "ClearStopFile" not in task_arguments_line + launcher_switches_line
-    assert "ClearDrainRequest" not in task_arguments_line + launcher_switches_line
+    assert "start does not clear operator sentinels" in installer
+    assert "function Assert-BattleSupervisorRuntimeIdle" in installer
     assert "Wait-BattleSupervisorProcess" in installer
     assert "Start-ForegroundWrapperProcess" not in installer
     assert "installer-token fallback is forbidden" in installer
@@ -782,9 +773,47 @@ def test_battle_supervisor_uses_the_fixed_live_pilot_authority_contract():
     assert '& $TaskKill /PID "$processId" /T /F' in installer
     assert "Stop-Process" not in installer
     validation_gate = installer.index("if ($Start) {\n    $startLeaseCheck")
+    preflight_idle = installer.index("$null = Assert-BattleSupervisorRuntimeIdle", validation_gate)
     registration = installer.index("$backup = Save-TaskBackup", validation_gate)
-    disruption = installer.index("    Stop-BattleSupervisorProcesses", registration)
-    assert validation_gate < registration < disruption
+    launch_block = installer.index("if ($Start) {", registration)
+    launch_idle = installer.index("$null = Assert-BattleSupervisorRuntimeIdle", launch_block)
+    launch = installer.index("Start-ScheduledTask -TaskName $TaskName", launch_idle)
+    assert validation_gate < preflight_idle < registration < launch_idle < launch
+
+
+def test_battle_supervisor_start_requires_idle_runtime_without_disruption():
+    installer = (ROOT / "scripts" / "install_battle_supervisor_task.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    idle_start = installer.index("function Assert-BattleSupervisorRuntimeIdle")
+    idle_end = installer.index("function Get-ProcessRecordById", idle_start)
+    idle = installer[idle_start:idle_end]
+    assert "Get-CimInstance Win32_Process -ErrorAction Stop" in idle
+    assert "Assert-NoAlternateBattleOwnerProcesses -Processes $processes" in idle
+    assert "Test-BattleSupervisorLauncherOwnership" in idle
+    assert "Test-BattleSupervisorProcessOwnership" in idle
+    assert "Test-BattleLadderProcessOwnership" in idle
+    assert "Get-ScheduledTask -ErrorAction Stop" in idle
+    assert '$_ -notin @("Ready", "Disabled")' in idle
+    assert "battle supervisor start requires complete runtime idleness" in idle
+    assert "Stop-BattleSupervisorProcesses" not in idle
+    assert "Remove-Item" not in idle
+
+    launch_start = installer.index(
+        "if ($Start) {", installer.index("$null = Assert-InstalledTaskIdentity")
+    )
+    launch_end = installer.index("$statusPayload = Get-BattleSupervisorStatus", launch_start)
+    launch = installer[launch_start:launch_end]
+    assert "Stop-BattleSupervisorProcesses" not in launch
+    assert "Remove-Item" not in launch
+    assert "Set-Content -LiteralPath $StopFile" not in launch
+
+    stop_start = installer.index("if ($Stop -or $Uninstall) {")
+    stop_end = installer.index("if (-not $Apply) {", stop_start)
+    stop = installer[stop_start:stop_end]
+    assert "Stop-BattleSupervisorProcesses | Out-Null" in stop
+    assert installer.count("Stop-BattleSupervisorProcesses | Out-Null") == 1
 
 
 def test_legacy_jigglypuff_runtime_mutations_are_fail_closed():
