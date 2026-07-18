@@ -250,6 +250,28 @@ def install_supervisor_authority_fixture(monkeypatch, tmp_path, *, run_count: in
     )
     monkeypatch.setattr(
         devstream_session,
+        "runtime_lease_consumption_status",
+        lambda lease_guard, *, run_count, max_concurrent_battles, max_cycles: {
+            "ok": True,
+            "blockers": [],
+            "status": {
+                "lookupType": "lease-runtime",
+                "lookupId": "lease-test",
+                "found": False,
+                "reservationCount": 0,
+                "reservedBattleCount": 0,
+                "reservedCycleCount": 0,
+                "successfulCycleCount": 0,
+                "unresolvedReservationCount": 0,
+                "remainingRunCount": 30,
+                "remainingCycles": 1,
+                "observedWorkload": None,
+                "latestReservation": None,
+            },
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
         "complete_runtime_lease_consumption",
         lambda lease_guard, *, reservation, outcome, env=None: {
             "ok": bool(
@@ -331,6 +353,116 @@ def test_consumption_initialization_is_structural_and_never_creates_mutable_ledg
     assert result["authority"] == "windows-named-pipe-lease-broker"
     assert result["runtimeLeaseId"] == "lease-test-0001"
     assert not (tmp_path / "broker-store").exists()
+
+
+
+def test_runtime_lease_status_requires_exact_public_workload(monkeypatch):
+    guard = {
+        "ok": True,
+        "lease": {
+            "id": "lease-test",
+            "authorizationSha256": "f" * 64,
+            "maxRunCount": 30,
+            "maxCycles": 1,
+        },
+    }
+    latest = {
+        "reservationId": "res-" + "4" * 32,
+        "kind": "runtime",
+        "purpose": devstream_session.RUNTIME_RESERVATION_PURPOSE,
+        "battleCount": 30,
+        "cycleCount": 1,
+        "maxConcurrentBattles": 3,
+        "supervisorProcessId": 1234,
+        "supervisorProcessCreationFiletime": 133_801_234_567_890_000,
+        "supervisorInstanceId": "supervisor-1234-test",
+        "state": "completed",
+        "reservedAtFiletime": 133_801_234_567_890_001,
+        "claimedProcessId": 2345,
+        "claimedProcessCreationFiletime": 133_801_234_567_890_002,
+        "claimedAtFiletime": 133_801_234_567_890_003,
+        "outcome": "completed",
+        "completionActor": "claimant",
+        "completedAtFiletime": 133_801_234_567_890_004,
+        "capacityReturned": False,
+    }
+    status = {
+        "lookupType": "lease-runtime",
+        "lookupId": "lease-test",
+        "found": True,
+        "reservationCount": 1,
+        "reservedBattleCount": 30,
+        "reservedCycleCount": 1,
+        "successfulCycleCount": 1,
+        "unresolvedReservationCount": 0,
+        "remainingRunCount": 0,
+        "remainingCycles": 0,
+        "observedWorkload": {
+            "minimumBattleCount": 30,
+            "maximumBattleCount": 30,
+            "minimumCycleCount": 1,
+            "maximumCycleCount": 1,
+            "minimumMaxConcurrentBattles": 3,
+            "maximumMaxConcurrentBattles": 3,
+        },
+        "latestReservation": latest,
+    }
+    requests = []
+    monkeypatch.setattr(
+        devstream_session,
+        "request_with_retry",
+        lambda request: requests.append(request)
+        or {"ok": True, "result": status},
+    )
+
+    result = devstream_session.runtime_lease_consumption_status(
+        guard, run_count=30, max_concurrent_battles=3, max_cycles=1
+    )
+
+    assert result["ok"] is True
+    assert requests[0]["action"] == "status"
+    assert requests[0]["lookupType"] == "lease-runtime"
+    assert "launchNonce" not in json.dumps(result)
+    assert "authorizationDigest" not in json.dumps(result)
+
+    mismatched = json.loads(json.dumps(status))
+    mismatched["observedWorkload"]["minimumBattleCount"] = 29
+    monkeypatch.setattr(
+        devstream_session,
+        "request_with_retry",
+        lambda request: {"ok": True, "result": mismatched},
+    )
+    rejected = devstream_session.runtime_lease_consumption_status(
+        guard, run_count=30, max_concurrent_battles=3, max_cycles=1
+    )
+    assert rejected["ok"] is False
+    assert "workload binding does not match" in "; ".join(rejected["blockers"])
+
+    secret_bearing = json.loads(json.dumps(status))
+    secret_bearing["latestReservation"]["authorizationDigest"] = "f" * 64
+    monkeypatch.setattr(
+        devstream_session,
+        "request_with_retry",
+        lambda request: {"ok": True, "result": secret_bearing},
+    )
+    rejected = devstream_session.runtime_lease_consumption_status(
+        guard, run_count=30, max_concurrent_battles=3, max_cycles=1
+    )
+    assert rejected["ok"] is False
+    assert "forbidden secret field" in "; ".join(rejected["blockers"])
+
+    ambiguous = json.loads(json.dumps(status))
+    ambiguous["unresolvedReservationCount"] = 1
+    monkeypatch.setattr(
+        devstream_session,
+        "request_with_retry",
+        lambda request: {"ok": True, "result": ambiguous},
+    )
+    rejected = devstream_session.runtime_lease_consumption_status(
+        guard, run_count=30, max_concurrent_battles=3, max_cycles=1
+    )
+    assert rejected["ok"] is False
+    assert "ambiguous with a terminal" in "; ".join(rejected["blockers"])
 
 
 def test_runtime_process_identity_comes_only_from_validated_lease(tmp_path, monkeypatch):
@@ -3081,7 +3213,7 @@ def test_supervisor_cycle_can_refresh_proof_without_starting_next_batch(monkeypa
     ]
 
 
-def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_path, monkeypatch):
+def test_cmd_supervise_carries_terminal_binding_across_live_poll_race(tmp_path, monkeypatch):
     statuses = []
     start_next_flags = []
     runtime_lease = install_supervisor_authority_fixture(monkeypatch, tmp_path, run_count=30)
@@ -3156,15 +3288,10 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
                 },
             }
         if cycle_index == 2:
-            return {
-                "state": "battle-cycle-in-flight",
-                "proofRefreshed": False,
-            }
-        if cycle_index == 3:
             reservation_state.clear()
             return {
-                "state": "idle-restoring-runtime",
-                "proofRefreshed": True,
+                "state": "reconciled-completed-runtime",
+                "proofRefreshed": False,
                 "battleRunnerAliveAfter": False,
                 "activeBattleCountAfter": 0,
                 "leaseConsumptionTerminal": {
@@ -3172,6 +3299,14 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
                     "outcome": "completed",
                     "reservationId": "res-" + "1" * 32,
                 },
+            }
+        if cycle_index == 3:
+            assert reservation_state == {}
+            return {
+                "state": "idle-restoring-runtime",
+                "proofRefreshed": True,
+                "battleRunnerAliveAfter": False,
+                "activeBattleCountAfter": 0,
             }
         raise AssertionError("supervisor should stop after one completed learning cycle")
 
@@ -3203,7 +3338,289 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
     assert final["lastCycle"]["learningCycleCompleted"] is True
     assert final["lastCycle"]["completedLearningCycles"] == 1
 
+    assert final["lastCycle"]["leaseConsumptionTerminal"]["reservationId"] == (
+        "res-" + "1" * 32
+    )
 
+
+
+def test_cmd_supervise_restart_accepts_broker_completed_batch(
+    tmp_path, monkeypatch
+):
+    statuses = []
+    runtime_lease = install_supervisor_authority_fixture(
+        monkeypatch, tmp_path, run_count=30
+    )
+    terminal = {
+        "reservationId": "res-" + "6" * 32,
+        "kind": "runtime",
+        "purpose": devstream_session.RUNTIME_RESERVATION_PURPOSE,
+        "battleCount": 30,
+        "cycleCount": 1,
+        "maxConcurrentBattles": 3,
+        "supervisorProcessId": 2222,
+        "supervisorProcessCreationFiletime": 133_801_234_567_890_000,
+        "supervisorInstanceId": "supervisor-2222-prior",
+        "state": "completed",
+        "outcome": "completed",
+        "completionActor": "claimant",
+        "capacityReturned": False,
+    }
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_lease_consumption_status",
+        lambda *args, **kwargs: {
+            "ok": True,
+            "blockers": [],
+            "status": {
+                "successfulCycleCount": 1,
+                "remainingRunCount": 0,
+                "remainingCycles": 0,
+                "latestReservation": dict(terminal),
+            },
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop"
+    )
+    monkeypatch.setattr(
+        devstream_session, "SUPERVISOR_PID_FILE", tmp_path / "supervisor.pid"
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "SUPERVISOR_STATUS_FILE",
+        tmp_path / "supervisor-status.json",
+    )
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(
+        devstream_session,
+        "write_pid_value",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("completed restart must not write a supervisor PID")
+        ),
+    )
+    monkeypatch.setattr(
+        devstream_session, "write_supervisor_status",
+        lambda payload: statuses.append(json.loads(json.dumps(payload))),
+    )
+    args = argparse.Namespace(
+        run_count=30,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=1,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(runtime_lease),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 0
+
+    assert statuses[-1]["state"] == "completed-max-cycles"
+    assert statuses[-1]["completedLearningCycles"] == 1
+    assert statuses[-1]["latestBrokerReservation"]["reservationId"] == (
+        terminal["reservationId"]
+    )
+    assert "launchNonce" not in json.dumps(statuses[-1]["latestBrokerReservation"])
+    assert "authorizationDigest" not in json.dumps(
+        statuses[-1]["latestBrokerReservation"]
+    )
+
+
+def test_cmd_supervise_restart_recovers_exact_dead_claim_without_capacity(
+    tmp_path, monkeypatch
+):
+    statuses = []
+    recovery_calls = []
+    runtime_lease = install_supervisor_authority_fixture(
+        monkeypatch, tmp_path, run_count=30
+    )
+    claimed = {
+        "reservationId": "res-" + "7" * 32,
+        "kind": "runtime",
+        "purpose": devstream_session.RUNTIME_RESERVATION_PURPOSE,
+        "battleCount": 30,
+        "cycleCount": 1,
+        "maxConcurrentBattles": 3,
+        "supervisorProcessId": 2222,
+        "supervisorProcessCreationFiletime": 133_801_234_567_890_000,
+        "supervisorInstanceId": "supervisor-2222-prior",
+        "state": "claimed",
+        "claimedProcessId": 3333,
+        "claimedProcessCreationFiletime": 133_801_234_567_891_000,
+        "capacityReturned": False,
+    }
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_lease_consumption_status",
+        lambda *args, **kwargs: {
+            "ok": True,
+            "blockers": [],
+            "status": {
+                "successfulCycleCount": 0,
+                "remainingRunCount": 0,
+                "remainingCycles": 0,
+                "latestReservation": dict(claimed),
+            },
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_reservation_status",
+        lambda lease_guard, reservation: {
+            "ok": reservation["reservationId"] == claimed["reservationId"],
+            "blockers": [],
+            "status": dict(claimed),
+        },
+    )
+
+    def recover(lease_guard, reservation):
+        recovery_calls.append((lease_guard, dict(reservation)))
+        return {
+            "ok": True,
+            "completed": True,
+            "status": {
+                **claimed,
+                "state": "completed",
+                "outcome": "abandoned",
+                "completionActor": "administrator",
+                "capacityReturned": False,
+                "recovered": True,
+            },
+            "outcome": "abandoned",
+            "capacityReturned": False,
+        }
+
+    monkeypatch.setattr(
+        devstream_session, "recover_runtime_lease_consumption", recover
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "reserve_runtime_lease_consumption",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("orphan recovery must not reserve more capacity")
+        ),
+    )
+    monkeypatch.setattr(
+        devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop"
+    )
+    monkeypatch.setattr(
+        devstream_session, "SUPERVISOR_PID_FILE", tmp_path / "supervisor.pid"
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "SUPERVISOR_STATUS_FILE",
+        tmp_path / "supervisor-status.json",
+    )
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(devstream_session, "write_pid_value", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        devstream_session,
+        "supervisor_runtime_state",
+        lambda: {
+            "activeBattleCount": 0,
+            "battleRunnerAlive": False,
+            "inFlight": False,
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "idle_battle_runner_recovery_candidate",
+        lambda stale_after_seconds: {"shouldRecover": False},
+    )
+    monkeypatch.setattr(
+        devstream_session, "write_supervisor_status",
+        lambda payload: statuses.append(json.loads(json.dumps(payload))),
+    )
+    args = argparse.Namespace(
+        run_count=30,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=1,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(runtime_lease),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 0
+
+    assert len(recovery_calls) == 1
+    recovered_binding = recovery_calls[0][1]
+    assert recovered_binding["reservationId"] == claimed["reservationId"]
+    assert recovered_binding["supervisorInstanceId"] == (
+        claimed["supervisorInstanceId"]
+    )
+    assert recovered_binding["battleCount"] == 30
+    assert "launchNonce" not in recovered_binding
+    assert "authorizationDigest" not in recovered_binding
+    assert statuses[-1]["state"] == "completed-lease-consumption"
+    assert statuses[-1]["lastCycle"]["state"] == "reconciled-orphaned-runtime"
+    assert statuses[-1]["lastCycle"]["leaseConsumptionTerminal"]["outcome"] == (
+        "abandoned"
+    )
+
+
+def test_cmd_supervise_restart_fails_closed_on_ambiguous_broker_state(
+    tmp_path, monkeypatch
+):
+    statuses = []
+    runtime_lease = install_supervisor_authority_fixture(
+        monkeypatch, tmp_path, run_count=30
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "runtime_lease_consumption_status",
+        lambda *args, **kwargs: {
+            "ok": False,
+            "blockers": ["lease broker runtime workload binding does not match"],
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session, "SUPERVISOR_STATUS_FILE",
+        tmp_path / "supervisor-status.json",
+    )
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(
+        devstream_session,
+        "write_pid_value",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("ambiguous broker state must block before PID ownership")
+        ),
+    )
+    monkeypatch.setattr(
+        devstream_session, "write_supervisor_status",
+        lambda payload: statuses.append(json.loads(json.dumps(payload))),
+    )
+    args = argparse.Namespace(
+        run_count=30,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=1,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(runtime_lease),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 2
+    assert statuses[-1]["state"] == "blocked-lease-consumption-reconciliation"
+    assert "workload binding does not match" in statuses[-1]["error"]
 def test_cmd_supervise_does_not_start_next_after_final_stale_idle_recovery(tmp_path, monkeypatch):
     statuses = []
     start_next_flags = []

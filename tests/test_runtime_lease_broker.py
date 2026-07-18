@@ -131,6 +131,14 @@ def complete_request(
     )
 
 
+def recover_request(
+    reserved: dict[str, object], request_id: str, **overrides: object
+) -> dict[str, object]:
+    binding = reservation_binding(reserved)
+    binding.pop("launchNonce")
+    return request("recover-runtime", request_id, **{**binding, **overrides})
+
+
 def synthetic_binding(reservation_id: str = "res-" + "b" * 32) -> dict[str, object]:
     return {
         "reservationId": reservation_id,
@@ -371,6 +379,176 @@ def test_status_recovers_committed_request_and_terminal_reservation(store):
     assert "launchNonce" not in by_reservation["result"]
 
 
+def test_lease_runtime_status_exposes_exact_public_counters(store):
+    reserved = store.execute(
+        runtime_reserve("reserve-lease-runtime-status-0001", battles=3), CALLER
+    )
+    assert store.execute(
+        claim_request(reserved, "claim-lease-runtime-status-0001"), CHILD
+    )["ok"]
+    assert store.execute(
+        complete_request(
+            reserved, "complete-lease-runtime-status-0001", "completed"
+        ),
+        CHILD,
+    )["ok"]
+
+    status = store.execute(
+        request(
+            "status",
+            "status-lease-runtime-0001",
+            lookupType="lease-runtime",
+            lookupId=LEASE_ID,
+        ),
+        CHILD,
+    )
+
+    assert status["ok"] is True
+    result = status["result"]
+    assert result["reservationCount"] == 1
+    assert result["reservedBattleCount"] == 3
+    assert result["reservedCycleCount"] == 1
+    assert result["successfulCycleCount"] == 1
+    assert result["unresolvedReservationCount"] == 0
+    assert result["remainingRunCount"] == 7
+    assert result["remainingCycles"] == 9
+    assert result["observedWorkload"] == {
+        "minimumBattleCount": 3,
+        "maximumBattleCount": 3,
+        "minimumCycleCount": 1,
+        "maximumCycleCount": 1,
+        "minimumMaxConcurrentBattles": 1,
+        "maximumMaxConcurrentBattles": 1,
+    }
+    assert result["latestReservation"]["reservationId"] == (
+        reserved["result"]["reservationId"]
+    )
+    assert result["latestReservation"]["outcome"] == "completed"
+    serialized = json.dumps(result)
+    assert "launchNonce" not in serialized
+    assert "authorizationDigest" not in serialized
+
+
+def test_recover_runtime_requires_broker_process_verification(store):
+    reserved = store.execute(runtime_reserve("reserve-recover-denied-0001"), CALLER)
+    recovery = recover_request(reserved, "recover-runtime-denied-0001")
+
+    denied = store.execute(recovery, CHILD)
+
+    assert denied["ok"] is False
+    assert denied["error"]["code"] == "reservation_process_alive"
+    status = store.execute(
+        request(
+            "status",
+            "status-recover-denied-0001",
+            lookupType="reservation",
+            lookupId=reserved["result"]["reservationId"],
+        ),
+        CHILD,
+    )
+    assert status["result"]["state"] == "reserved"
+
+
+def test_recover_runtime_is_exact_idempotent_and_never_returns_capacity(store):
+    reserved = store.execute(runtime_reserve("reserve-recover-orphan-0001"), CALLER)
+    assert store.execute(
+        claim_request(reserved, "claim-recover-orphan-0001"), CHILD
+    )["ok"]
+    recovery = recover_request(reserved, "recover-runtime-orphan-0001")
+    verified_targets = []
+
+    recovered = store.execute(
+        recovery,
+        broker.CallerIdentity(4300, 133_801_234_567_892_000),
+        recovery_verifier=lambda target: verified_targets.append(dict(target)) or True,
+    )
+
+    assert recovered["ok"] is True
+    assert recovered["result"]["state"] == "completed"
+    assert recovered["result"]["outcome"] == "abandoned"
+    assert recovered["result"]["completionActor"] == "administrator"
+    assert recovered["result"]["capacityReturned"] is False
+    assert recovered["result"]["recoveryAuthority"] == (
+        "broker-verified-process-liveness"
+    )
+    assert verified_targets == [
+        {
+            "reservationId": reserved["result"]["reservationId"],
+            "state": "claimed",
+            "supervisorProcessId": CALLER.process_id,
+            "supervisorProcessCreationFiletime": CALLER.process_creation_filetime,
+            "claimedProcessId": CHILD.process_id,
+            "claimedProcessCreationFiletime": CHILD.process_creation_filetime,
+        }
+    ]
+
+    retry = store.execute(
+        recover_request(reserved, "recover-runtime-orphan-0002"),
+        broker.CallerIdentity(4301, 133_801_234_567_893_000),
+    )
+    assert retry["ok"] is True
+    assert retry["result"]["idempotentTerminal"] is True
+    assert retry["result"]["outcome"] == "abandoned"
+    assert "launchNonce" not in json.dumps(retry)
+    assert "authorizationDigest" not in json.dumps(retry["result"])
+    assert database_rows(store, "SELECT count(*), sum(battle_count) FROM reservations") == [
+        (1, 1)
+    ]
+
+
+def test_recover_runtime_rejects_binding_mismatch_before_verification(store):
+    reserved = store.execute(runtime_reserve("reserve-recover-mismatch-0001"), CALLER)
+    verifier_called = []
+
+    rejected = store.execute(
+        recover_request(
+            reserved, "recover-runtime-mismatch-0001", battleCount=2
+        ),
+        CHILD,
+        recovery_verifier=lambda target: verifier_called.append(target) or True,
+    )
+
+    assert rejected["ok"] is False
+    assert rejected["error"]["code"] == "reservation_binding_mismatch"
+    assert verifier_called == []
+
+
+def test_recover_runtime_transaction_wins_claim_after_verification_race(store):
+    reserved = store.execute(runtime_reserve("reserve-recover-race-0001"), CALLER)
+    recovery = recover_request(reserved, "recover-runtime-race-0001")
+    verifier_entered = threading.Event()
+    release_verifier = threading.Event()
+
+    def verifier(_target):
+        verifier_entered.set()
+        assert release_verifier.wait(2)
+        return True
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        recovery_future = executor.submit(
+            store.execute,
+            recovery,
+            broker.CallerIdentity(4300, 133_801_234_567_892_000),
+            recovery_verifier=verifier,
+        )
+        assert verifier_entered.wait(2)
+        claim_future = executor.submit(
+            store.execute,
+            claim_request(reserved, "claim-recover-race-0001"),
+            CHILD,
+        )
+        time.sleep(0.05)
+        assert claim_future.done() is False
+        release_verifier.set()
+        recovered = recovery_future.result(timeout=2)
+        claimed = claim_future.result(timeout=2)
+
+    assert recovered["ok"] is True
+    assert recovered["result"]["outcome"] == "abandoned"
+    assert claimed["ok"] is False
+    assert claimed["error"]["code"] == "reservation_not_reserved"
+
+
 def test_request_status_denies_different_caller_but_allows_original(store):
     reserve_request = runtime_reserve("reserve-status-caller-bound-0001")
     reserved = store.execute(reserve_request, CALLER)
@@ -509,6 +687,7 @@ def test_schema_prevents_skipping_transitions_and_deleting_history(store):
         "reserve-runtime",
         "reserve-improve",
         "claim",
+        "recover-runtime",
         "complete",
         "status",
     }

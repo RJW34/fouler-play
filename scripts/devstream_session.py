@@ -696,6 +696,353 @@ def public_runtime_reservation(reservation: dict[str, Any]) -> dict[str, Any]:
     } | {"launchNoncePresent": bool(reservation.get("launchNonce"))}
 
 
+_BROKER_SECRET_FIELDS = frozenset({"launchNonce", "authorizationDigest"})
+_PUBLIC_BROKER_RESERVATION_FIELDS = frozenset(
+    {
+        "lookupType",
+        "lookupId",
+        "found",
+        "reservationId",
+        "kind",
+        "purpose",
+        "battleCount",
+        "cycleCount",
+        "maxConcurrentBattles",
+        "supervisorProcessId",
+        "supervisorProcessCreationFiletime",
+        "supervisorInstanceId",
+        "state",
+        "reservedAtFiletime",
+        "claimedProcessId",
+        "claimedProcessCreationFiletime",
+        "claimedAtFiletime",
+        "outcome",
+        "completionActor",
+        "completedAtFiletime",
+        "capacityReturned",
+        "recovered",
+        "idempotentTerminal",
+        "recoveryAuthority",
+    }
+)
+
+
+def _broker_payload_contains_secret(value: object) -> bool:
+    if isinstance(value, dict):
+        return bool(
+            _BROKER_SECRET_FIELDS.intersection(value)
+            or any(_broker_payload_contains_secret(item) for item in value.values())
+        )
+    if isinstance(value, list):
+        return any(_broker_payload_contains_secret(item) for item in value)
+    return False
+
+
+def public_broker_reservation_status(status: dict[str, Any]) -> dict[str, Any]:
+    if _broker_payload_contains_secret(status):
+        raise ValueError("lease broker status unexpectedly contains a secret field")
+    unknown = set(status) - _PUBLIC_BROKER_RESERVATION_FIELDS
+    if unknown:
+        raise ValueError(
+            "lease broker status contains unknown fields: "
+            + ", ".join(sorted(unknown))
+        )
+    return dict(status)
+
+
+_LEASE_RUNTIME_STATUS_FIELDS = frozenset(
+    {
+        "lookupType",
+        "lookupId",
+        "found",
+        "reservationCount",
+        "reservedBattleCount",
+        "reservedCycleCount",
+        "successfulCycleCount",
+        "unresolvedReservationCount",
+        "remainingRunCount",
+        "remainingCycles",
+        "observedWorkload",
+        "latestReservation",
+    }
+)
+
+
+def runtime_lease_consumption_status(
+    lease_guard: dict[str, Any],
+    *,
+    run_count: int,
+    max_concurrent_battles: int,
+    max_cycles: int,
+) -> dict[str, Any]:
+    lease_id, authorization_digest, blockers = _broker_lease_identity(lease_guard)
+    requested = {
+        "runCount": run_count,
+        "maxConcurrentBattles": max_concurrent_battles,
+        "maxCycles": max_cycles,
+    }
+    if any(type(value) is not int or value <= 0 for value in requested.values()):
+        blockers.append("runtime broker status workload bounds are invalid")
+    if blockers:
+        return {"ok": False, "blockers": list(dict.fromkeys(blockers))}
+    request = broker_request_payload(
+        "status",
+        authorization_digest=authorization_digest,
+        lease_id=lease_id,
+        lookupType="lease-runtime",
+        lookupId=lease_id,
+    )
+    try:
+        response = request_with_retry(request)
+    except (OSError, PermissionError, ValueError) as exc:
+        return {
+            "ok": False,
+            "blockers": [f"lease broker runtime status failed closed: {exc}"],
+        }
+    if not response.get("ok"):
+        return {"ok": False, "blockers": [response_error_text(response)]}
+    status = response.get("result") if isinstance(response.get("result"), dict) else {}
+    if _broker_payload_contains_secret(status):
+        return {
+            "ok": False,
+            "blockers": ["lease broker runtime status exposed a forbidden secret field"],
+        }
+    if set(status) != _LEASE_RUNTIME_STATUS_FIELDS:
+        return {
+            "ok": False,
+            "blockers": ["lease broker runtime status fields are missing or unknown"],
+        }
+    if status.get("lookupType") != "lease-runtime" or status.get("lookupId") != lease_id:
+        blockers.append("lease broker runtime status identity does not match")
+    if type(status.get("found")) is not bool:
+        blockers.append("lease broker runtime status found flag is invalid")
+    counter_names = (
+        "reservationCount",
+        "reservedBattleCount",
+        "reservedCycleCount",
+        "successfulCycleCount",
+        "unresolvedReservationCount",
+        "remainingRunCount",
+        "remainingCycles",
+    )
+    if any(
+        type(status.get(name)) is not int or status.get(name) < 0
+        for name in counter_names
+    ):
+        blockers.append("lease broker runtime status counters are invalid")
+    summary = (
+        lease_guard.get("lease")
+        if isinstance(lease_guard.get("lease"), dict)
+        else {}
+    )
+    lease_max_run = summary.get("maxRunCount")
+    lease_max_cycles = summary.get("maxCycles")
+    if type(lease_max_run) is not int or lease_max_run <= 0:
+        blockers.append("validated runtime lease maxRunCount is invalid")
+    if type(lease_max_cycles) is not int or lease_max_cycles <= 0:
+        blockers.append("validated runtime lease maxCycles is invalid")
+    if not blockers:
+        reservation_count = status["reservationCount"]
+        reserved_battles = status["reservedBattleCount"]
+        reserved_cycles = status["reservedCycleCount"]
+        successful_cycles = status["successfulCycleCount"]
+        unresolved_reservations = status["unresolvedReservationCount"]
+        if reserved_battles + status["remainingRunCount"] != lease_max_run:
+            blockers.append("lease broker runtime battle counters do not match the lease")
+        if reserved_cycles + status["remainingCycles"] != lease_max_cycles:
+            blockers.append("lease broker runtime cycle counters do not match the lease")
+        if reservation_count != reserved_cycles:
+            blockers.append("lease broker runtime reservation count is ambiguous")
+        if reserved_battles != reservation_count * run_count:
+            blockers.append("lease broker runtime battle workload does not match")
+        if successful_cycles > reservation_count:
+            blockers.append("lease broker successful cycle count exceeds reservations")
+        if successful_cycles > max_cycles:
+            blockers.append("lease broker successful cycles exceed this supervisor bound")
+        if unresolved_reservations > reservation_count:
+            blockers.append("lease broker unresolved reservations exceed reservations")
+        if unresolved_reservations > 1:
+            blockers.append("lease broker runtime has multiple unresolved reservations")
+        if successful_cycles > reservation_count - unresolved_reservations:
+            blockers.append("lease broker successful cycles exceed terminal reservations")
+    reservation_count = status.get("reservationCount")
+    unresolved_reservations = status.get("unresolvedReservationCount")
+    observed_workload = status.get("observedWorkload")
+    expected_workload = {
+        "minimumBattleCount": run_count,
+        "maximumBattleCount": run_count,
+        "minimumCycleCount": 1,
+        "maximumCycleCount": 1,
+        "minimumMaxConcurrentBattles": max_concurrent_battles,
+        "maximumMaxConcurrentBattles": max_concurrent_battles,
+    }
+    if type(reservation_count) is int and reservation_count > 0:
+        if observed_workload != expected_workload:
+            blockers.append("lease broker runtime workload binding does not match")
+    elif observed_workload is not None:
+        blockers.append("lease broker reported workload without a reservation")
+    latest = status.get("latestReservation")
+    public_latest: dict[str, Any] | None = None
+    if latest is not None:
+        if not isinstance(latest, dict):
+            blockers.append("lease broker latest runtime reservation is malformed")
+        else:
+            try:
+                public_latest = public_broker_reservation_status(latest)
+            except ValueError as exc:
+                blockers.append(str(exc))
+    found = status.get("found")
+    if found is True and public_latest is None:
+        blockers.append("lease broker runtime status lacks its latest reservation")
+    if found is False and public_latest is not None:
+        blockers.append("lease broker runtime status has an unexpected reservation")
+    if type(reservation_count) is int and bool(reservation_count) != bool(found):
+        blockers.append("lease broker runtime status found flag is inconsistent")
+    if public_latest is None and unresolved_reservations != 0:
+        blockers.append(
+            "lease broker unresolved reservation count lacks an exact reservation"
+        )
+    if public_latest is not None:
+        expected_latest = {
+            "kind": "runtime",
+            "purpose": RUNTIME_RESERVATION_PURPOSE,
+            "battleCount": run_count,
+            "cycleCount": 1,
+            "maxConcurrentBattles": max_concurrent_battles,
+        }
+        if any(public_latest.get(name) != value for name, value in expected_latest.items()):
+            blockers.append("lease broker latest reservation workload does not match")
+        if not re.fullmatch(
+            r"res-[0-9a-f]{32}", str(public_latest.get("reservationId") or "")
+        ):
+            blockers.append("lease broker latest reservation id is malformed")
+        for name in (
+            "supervisorProcessId",
+            "supervisorProcessCreationFiletime",
+            "reservedAtFiletime",
+        ):
+            if type(public_latest.get(name)) is not int or public_latest.get(name) <= 0:
+                blockers.append(f"lease broker latest reservation {name} is invalid")
+        supervisor_identity = str(public_latest.get("supervisorInstanceId") or "")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}", supervisor_identity):
+            blockers.append("lease broker latest supervisor identity is malformed")
+        state = public_latest.get("state")
+        if state not in {"reserved", "claimed", "completed"}:
+            blockers.append("lease broker latest reservation state is invalid")
+        elif state in {"reserved", "claimed"} and unresolved_reservations != 1:
+            blockers.append(
+                "lease broker unresolved reservation count does not match the latest reservation"
+            )
+        elif state == "completed" and unresolved_reservations != 0:
+            blockers.append(
+                "lease broker unresolved reservation count is ambiguous with a terminal latest reservation"
+            )
+        if public_latest.get("capacityReturned") is not False:
+            blockers.append("lease broker latest reservation returned capacity")
+        if state == "claimed":
+            for name in (
+                "claimedProcessId",
+                "claimedProcessCreationFiletime",
+                "claimedAtFiletime",
+            ):
+                if type(public_latest.get(name)) is not int or public_latest.get(name) <= 0:
+                    blockers.append(f"lease broker latest reservation {name} is invalid")
+        if state == "completed":
+            if public_latest.get("outcome") not in {"completed", "failed", "aborted", "abandoned"}:
+                blockers.append("lease broker latest terminal outcome is invalid")
+            if public_latest.get("completionActor") not in {"claimant", "supervisor", "administrator"}:
+                blockers.append("lease broker latest completion actor is invalid")
+            if type(public_latest.get("completedAtFiletime")) is not int:
+                blockers.append("lease broker latest completion time is invalid")
+    if blockers:
+        return {"ok": False, "blockers": list(dict.fromkeys(blockers))}
+    public_status = {
+        name: status[name]
+        for name in _LEASE_RUNTIME_STATUS_FIELDS
+        if name not in {"latestReservation"}
+    }
+    public_status["latestReservation"] = public_latest
+    return {"ok": True, "blockers": [], "status": public_status}
+
+
+def recover_runtime_lease_consumption(
+    lease_guard: dict[str, Any], reservation: dict[str, Any]
+) -> dict[str, Any]:
+    lease_id, authorization_digest, blockers = _broker_lease_identity(lease_guard)
+    result: dict[str, Any] = {
+        "ok": False,
+        "completed": False,
+        "authority": "windows-named-pipe-lease-broker",
+        "blockers": blockers,
+    }
+    binding_fields = (
+        "reservationId",
+        "kind",
+        "purpose",
+        "battleCount",
+        "cycleCount",
+        "maxConcurrentBattles",
+        "supervisorProcessId",
+        "supervisorProcessCreationFiletime",
+        "supervisorInstanceId",
+    )
+    binding = {name: reservation.get(name) for name in binding_fields}
+    if _broker_payload_contains_secret(reservation):
+        blockers.append("runtime orphan recovery received a forbidden secret field")
+    if blockers:
+        return result
+    request = broker_request_payload(
+        "recover-runtime",
+        authorization_digest=authorization_digest,
+        lease_id=lease_id,
+        **binding,
+    )
+    try:
+        response = request_with_retry(request)
+    except (OSError, PermissionError, ValueError) as exc:
+        result["blockers"] = [
+            f"lease broker orphan recovery failed closed: {exc}"
+        ]
+        return result
+    if not response.get("ok"):
+        result["blockers"] = [response_error_text(response)]
+        return result
+    broker_result = (
+        response.get("result") if isinstance(response.get("result"), dict) else {}
+    )
+    try:
+        public_status = public_broker_reservation_status(broker_result)
+    except ValueError as exc:
+        result["blockers"] = [str(exc)]
+        return result
+    mismatches = [
+        name for name, expected in binding.items() if public_status.get(name) != expected
+    ]
+    if mismatches:
+        result["blockers"] = [
+            "lease broker orphan recovery binding mismatch: "
+            + ", ".join(sorted(mismatches))
+        ]
+        return result
+    if public_status.get("state") != "completed":
+        result["blockers"] = ["lease broker orphan recovery is not terminal"]
+        return result
+    if public_status.get("capacityReturned") is not False:
+        result["blockers"] = ["lease broker orphan recovery returned capacity"]
+        return result
+    result.update(
+        {
+            "ok": True,
+            "completed": True,
+            "blockers": [],
+            "status": public_status,
+            "outcome": public_status.get("outcome"),
+            "capacityReturned": False,
+        }
+    )
+    return result
+
+
 def runtime_reservation_status(
     lease_guard: dict[str, Any], reservation: dict[str, Any]
 ) -> dict[str, Any]:
@@ -718,6 +1065,10 @@ def runtime_reservation_status(
     status = response.get("result") if isinstance(response.get("result"), dict) else {}
     if not status.get("found"):
         return {"ok": False, "blockers": ["lease broker reservation status is missing"]}
+    try:
+        public_status = public_broker_reservation_status(status)
+    except ValueError as exc:
+        return {"ok": False, "blockers": [str(exc)]}
     compared_fields = (
         "reservationId",
         "kind",
@@ -730,7 +1081,7 @@ def runtime_reservation_status(
         "supervisorInstanceId",
     )
     mismatches = [
-        name for name in compared_fields if status.get(name) != reservation.get(name)
+        name for name in compared_fields if public_status.get(name) != reservation.get(name)
     ]
     if mismatches:
         return {
@@ -739,7 +1090,7 @@ def runtime_reservation_status(
                 "lease broker status binding mismatch: " + ", ".join(mismatches)
             ],
         }
-    return {"ok": True, "blockers": [], "status": status}
+    return {"ok": True, "blockers": [], "status": public_status}
 
 
 def complete_runtime_lease_consumption(
@@ -4002,11 +4353,23 @@ def run_supervisor_cycle(
         if status_payload.get("state") == "completed":
             payload["leaseConsumptionTerminal"] = status_payload
             reservation_state.clear()
-        elif status_payload.get("state") in {"reserved", "claimed"}:
-            outcome = "aborted" if status_payload.get("state") == "reserved" else "failed"
-            reconciliation = complete_runtime_lease_consumption(
-                lease_guard or {}, reservation=reservation_state, outcome=outcome
+            payload["state"] = "reconciled-completed-runtime"
+            payload["nextAction"] = (
+                "carry the broker-confirmed terminal binding into the next proof refresh"
             )
+            return payload
+        elif status_payload.get("state") in {"reserved", "claimed"}:
+            if reservation_state.get("launchNonce"):
+                outcome = (
+                    "aborted" if status_payload.get("state") == "reserved" else "failed"
+                )
+                reconciliation = complete_runtime_lease_consumption(
+                    lease_guard or {}, reservation=reservation_state, outcome=outcome
+                )
+            else:
+                reconciliation = recover_runtime_lease_consumption(
+                    lease_guard or {}, reservation_state
+                )
             payload["leaseConsumptionTerminal"] = reconciliation
             if reconciliation.get("ok") and reconciliation.get("completed"):
                 reservation_state.clear()
@@ -4268,6 +4631,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     completed_learning_cycles = 0
     battle_was_in_flight = False
     current_reservation: dict[str, Any] = {}
+    pending_terminal_reservation: dict[str, Any] = {}
     supervisor_instance_id = f"supervisor-{os.getpid()}-{uuid.uuid4().hex}"
     env = load_launch_environment(args)
     effective_max_cycles, max_cycles_reason = supervisor_cycle_limit(args, env)
@@ -4350,7 +4714,45 @@ def cmd_supervise(args: argparse.Namespace) -> int:
         write_supervisor_status(payload)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
-    if any_battle_runner_alive() or read_active_battles() > 0:
+    lease_runtime_status = runtime_lease_consumption_status(
+        lease_guard,
+        run_count=effective_count,
+        max_concurrent_battles=args.max_concurrent_battles,
+        max_cycles=effective_max_cycles,
+    )
+    payload["leaseConsumptionRecovery"] = lease_runtime_status
+    if not lease_runtime_status.get("ok"):
+        payload["state"] = "blocked-lease-consumption-reconciliation"
+        payload["error"] = "; ".join(
+            str(item) for item in lease_runtime_status.get("blockers") or []
+        )
+        payload["nextAction"] = (
+            "repair or administratively reconcile the exact broker reservation; "
+            "no unbound runtime will be adopted"
+        )
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
+    lease_runtime_state = (
+        lease_runtime_status.get("status")
+        if isinstance(lease_runtime_status.get("status"), dict)
+        else {}
+    )
+    completed_learning_cycles = int(lease_runtime_state["successfulCycleCount"])
+    payload["completedLearningCycles"] = completed_learning_cycles
+    latest_reservation = lease_runtime_state.get("latestReservation")
+    if isinstance(latest_reservation, dict):
+        payload["latestBrokerReservation"] = latest_reservation
+        if latest_reservation.get("state") in {"reserved", "claimed"}:
+            current_reservation.update(latest_reservation)
+            battle_was_in_flight = latest_reservation.get("state") == "claimed"
+    runtime_capacity_exhausted = bool(
+        lease_runtime_state["remainingRunCount"] < effective_count
+        or lease_runtime_state["remainingCycles"] < 1
+    )
+    if (
+        any_battle_runner_alive() or read_active_battles() > 0
+    ) and current_reservation.get("state") != "claimed":
         payload["state"] = "blocked-unreserved-runtime"
         payload["error"] = (
             "live battle state exists without an in-flight reservation owned by this supervisor"
@@ -4359,7 +4761,19 @@ def cmd_supervise(args: argparse.Namespace) -> int:
         write_supervisor_status(payload)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
-    if lease_consumption.get("exhausted"):
+    if (
+        not current_reservation
+        and effective_max_cycles
+        and completed_learning_cycles >= effective_max_cycles
+    ):
+        payload["state"] = "completed-max-cycles"
+        payload["completedAt"] = iso_now()
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+    if not current_reservation and (
+        lease_consumption.get("exhausted") or runtime_capacity_exhausted
+    ):
         payload["state"] = "completed-lease-consumption"
         payload["completedAt"] = iso_now()
         write_supervisor_status(payload)
@@ -4470,22 +4884,32 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 reservation_state=current_reservation,
             )
             cycle["runtimeLease"] = current_lease_guard
+            observed_terminal = (
+                cycle.get("leaseConsumptionTerminal")
+                if isinstance(cycle.get("leaseConsumptionTerminal"), dict)
+                else {}
+            )
+            observed_terminal_status = (
+                observed_terminal.get("status")
+                if isinstance(observed_terminal.get("status"), dict)
+                else observed_terminal
+            )
+            if observed_terminal_status.get("state") == "completed" and (
+                battle_was_in_flight
+                or observed_terminal_status.get("outcome") == "completed"
+            ):
+                pending_terminal_reservation.clear()
+                pending_terminal_reservation.update(observed_terminal_status)
+                if observed_terminal_status.get("outcome") == "completed":
+                    battle_was_in_flight = True
             completed_this_cycle = learning_cycle_completed_after_cycle(
                 battle_was_in_flight=battle_was_in_flight,
                 pre_cycle_runtime=pre_cycle_runtime,
                 cycle=cycle,
             )
+            cycle_boundary_completed = completed_this_cycle
             if completed_this_cycle:
-                terminal = (
-                    cycle.get("leaseConsumptionTerminal")
-                    if isinstance(cycle.get("leaseConsumptionTerminal"), dict)
-                    else {}
-                )
-                terminal_status = (
-                    terminal.get("status")
-                    if isinstance(terminal.get("status"), dict)
-                    else terminal
-                )
+                terminal_status = dict(pending_terminal_reservation)
                 if terminal_status.get("state") != "completed":
                     cycle["leaseConsumptionCompletion"] = {
                         "ok": False,
@@ -4499,6 +4923,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                     write_supervisor_status(payload)
                     print(json.dumps(payload, indent=2, sort_keys=True))
                     return 2
+                cycle["leaseConsumptionTerminal"] = terminal_status
                 terminal_outcome = str(terminal_status.get("outcome") or "")
                 cycle["leaseConsumptionCompletion"] = {
                     "ok": True,
@@ -4508,6 +4933,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                     "outcome": terminal_outcome,
                     "capacityReturned": False,
                 }
+                pending_terminal_reservation.clear()
                 completed_this_cycle = terminal_outcome == "completed"
                 if completed_this_cycle:
                     completed_learning_cycles += 1
@@ -4524,13 +4950,16 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 or positive_int(cycle.get("activeBattleCountAfter"), 0) > 0
                 or pre_cycle_runtime["inFlight"]
             )
-            if completed_this_cycle:
+            if cycle_boundary_completed:
                 battle_was_in_flight = bool(
                     cycle.get("battleRunnerAliveAfter")
                     or positive_int(cycle.get("activeBattleCountAfter"), 0) > 0
                 )
             elif post_cycle_in_flight:
                 battle_was_in_flight = True
+            if cycle.get("state") == "reconciled-orphaned-runtime":
+                battle_was_in_flight = False
+                pending_terminal_reservation.clear()
             payload["state"] = cycle.get("state", "unknown")
             payload["lastHeartbeatAt"] = iso_now()
             payload["lastCycle"] = cycle
@@ -4556,6 +4985,14 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 write_supervisor_status(payload)
                 print(json.dumps(payload, indent=2, sort_keys=True))
                 return 2
+            if cycle.get("state") == "completed-lease-consumption" or (
+                cycle.get("state") == "reconciled-orphaned-runtime"
+                and runtime_capacity_exhausted
+            ):
+                payload["state"] = "completed-lease-consumption"
+                payload["completedAt"] = iso_now()
+                write_supervisor_status(payload)
+                return 0
             if effective_max_cycles and completed_learning_cycles >= effective_max_cycles:
                 payload["state"] = "completed-max-cycles"
                 payload["completedAt"] = iso_now()

@@ -26,7 +26,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -71,7 +71,7 @@ _LAUNCH_NONCE_RE = re.compile(r"^[0-9a-f]{64}$")
 _SID_RE = re.compile(r"^S-\d+(?:-\d+)+$")
 _FILETIME_EPOCH_OFFSET = 116_444_736_000_000_000
 _RESERVATION_KINDS = frozenset({"runtime", "improve"})
-_STATUS_LOOKUP_TYPES = frozenset({"request", "reservation"})
+_STATUS_LOOKUP_TYPES = frozenset({"request", "reservation", "lease-runtime"})
 
 _REGISTRATION_FIELDS = frozenset(
     {
@@ -146,6 +146,18 @@ _ACTION_FIELDS = {
         "outcome",
     },
     "status": _COMMON_REQUEST_FIELDS | {"lookupType", "lookupId"},
+    "recover-runtime": _COMMON_REQUEST_FIELDS
+    | {
+        "reservationId",
+        "purpose",
+        "kind",
+        "battleCount",
+        "cycleCount",
+        "maxConcurrentBattles",
+        "supervisorProcessId",
+        "supervisorProcessCreationFiletime",
+        "supervisorInstanceId",
+    },
 }
 _RUNTIME_OUTCOMES = frozenset({"completed", "failed", "aborted"})
 _IMPROVE_OUTCOMES = frozenset(
@@ -865,7 +877,11 @@ class ConsumptionStore:
             connection.close()
 
     def execute(
-        self, payload: Mapping[str, Any], caller: CallerIdentity
+        self,
+        payload: Mapping[str, Any],
+        caller: CallerIdentity,
+        *,
+        recovery_verifier: Callable[[Mapping[str, Any]], bool] | None = None,
     ) -> dict[str, Any]:
         request = _validated_request(payload)
         caller = caller.validated()
@@ -935,7 +951,13 @@ class ConsumptionStore:
                 return response
 
             try:
-                result = self._perform(connection, lease, request, caller)
+                result = self._perform(
+                    connection,
+                    lease,
+                    request,
+                    caller,
+                    recovery_verifier=recovery_verifier,
+                )
                 response = _success_response(request, result)
             except BrokerError as exc:
                 # Rejected requests do not mutate reservation state and are not
@@ -1081,6 +1103,8 @@ class ConsumptionStore:
         lease: sqlite3.Row,
         request: Mapping[str, Any],
         caller: CallerIdentity,
+        *,
+        recovery_verifier: Callable[[Mapping[str, Any]], bool] | None = None,
     ) -> dict[str, Any]:
         action = request["action"]
         if action in {"reserve-runtime", "reserve-improve", "claim"}:
@@ -1096,6 +1120,13 @@ class ConsumptionStore:
             return self._claim(connection, lease, request, caller)
         if action == "complete":
             return self._complete(connection, lease, request, caller)
+        if action == "recover-runtime":
+            return self._recover_runtime(
+                connection,
+                lease,
+                request,
+                recovery_verifier=recovery_verifier,
+            )
         raise BrokerError("unsupported_action", "request action is not supported")
 
     @staticmethod
@@ -1264,6 +1295,21 @@ class ConsumptionStore:
         return launch_nonce
 
     @classmethod
+    def _validate_recovery_binding(
+        cls, row: sqlite3.Row, request: Mapping[str, Any]
+    ) -> None:
+        expected = cls._binding_result(row)
+        mismatches = [
+            name for name, value in expected.items() if request.get(name) != value
+        ]
+        if mismatches:
+            raise BrokerError(
+                "reservation_binding_mismatch",
+                "runtime recovery does not match the immutable reservation: "
+                + ", ".join(sorted(mismatches)),
+            )
+
+    @classmethod
     def _claim(
         cls,
         connection: sqlite3.Connection,
@@ -1371,6 +1417,100 @@ class ConsumptionStore:
         }
 
     @classmethod
+    def _reservation_status_result(cls, row: sqlite3.Row) -> dict[str, Any]:
+        result = {
+            **cls._binding_result(row),
+            "state": row["state"],
+            "reservedAtFiletime": int(row["reserved_at_filetime"]),
+            "capacityReturned": False,
+        }
+        if row["claimed_pid"] is not None:
+            result.update(
+                {
+                    "claimedProcessId": int(row["claimed_pid"]),
+                    "claimedProcessCreationFiletime": int(
+                        row["claimed_process_creation_filetime"]
+                    ),
+                    "claimedAtFiletime": int(row["claimed_at_filetime"]),
+                }
+            )
+        if row["state"] == "completed":
+            result.update(
+                {
+                    "outcome": row["outcome"],
+                    "completionActor": row["completion_actor"],
+                    "completedAtFiletime": int(row["completed_at_filetime"]),
+                }
+            )
+        return result
+
+    @classmethod
+    def _recover_runtime(
+        cls,
+        connection: sqlite3.Connection,
+        lease: sqlite3.Row,
+        request: Mapping[str, Any],
+        *,
+        recovery_verifier: Callable[[Mapping[str, Any]], bool] | None,
+    ) -> dict[str, Any]:
+        row = cls._reservation(connection, lease, request)
+        cls._validate_recovery_binding(row, request)
+        if row["state"] == "completed":
+            return {
+                **cls._reservation_status_result(row),
+                "recovered": False,
+                "idempotentTerminal": True,
+            }
+
+        target: dict[str, Any] = {
+            "reservationId": row["reservation_id"],
+            "state": row["state"],
+            "supervisorProcessId": int(row["supervisor_pid"]),
+            "supervisorProcessCreationFiletime": int(
+                row["supervisor_process_creation_filetime"]
+            ),
+        }
+        if row["state"] == "claimed":
+            target.update(
+                {
+                    "claimedProcessId": int(row["claimed_pid"]),
+                    "claimedProcessCreationFiletime": int(
+                        row["claimed_process_creation_filetime"]
+                    ),
+                }
+            )
+        if recovery_verifier is None or not recovery_verifier(target):
+            raise BrokerError(
+                "reservation_process_alive",
+                "runtime recovery requires broker-verified termination of every "
+                "reservation owner process",
+            )
+
+        prior_time = int(row["claimed_at_filetime"] or row["reserved_at_filetime"])
+        now = max(utc_filetime(), prior_time + 1)
+        reason = "broker-verified orphan recovery after supervisor restart"
+        connection.execute(
+            """
+            UPDATE reservations
+            SET state = 'completed', completion_request_id = ?,
+                completed_at_filetime = ?, outcome = 'abandoned',
+                completion_actor = 'administrator', administrator_reason = ?
+            WHERE reservation_id = ? AND state IN ('reserved', 'claimed')
+            """,
+            (request["requestId"], now, reason, row["reservation_id"]),
+        )
+        return {
+            **cls._binding_result(row),
+            "state": "completed",
+            "outcome": "abandoned",
+            "completionActor": "administrator",
+            "completedAtFiletime": now,
+            "capacityReturned": False,
+            "recovered": True,
+            "recoveryAuthority": "broker-verified-process-liveness",
+        }
+
+    @classmethod
     def _status(
         cls,
         connection: sqlite3.Connection,
@@ -1416,6 +1556,82 @@ class ConsumptionStore:
                 "response": response,
             }
 
+        if lookup_type == "lease-runtime":
+            if lookup_id != lease["lease_id"]:
+                raise BrokerError(
+                    "lease_identity_mismatch",
+                    "lease-runtime status lookupId must equal the registered leaseId",
+                )
+            totals = connection.execute(
+                """
+                SELECT
+                    COUNT(*) AS reservation_count,
+                    COALESCE(SUM(battle_count), 0) AS reserved_battles,
+                    COALESCE(SUM(cycle_count), 0) AS reserved_cycles,
+                    COALESCE(SUM(
+                        CASE WHEN state = 'completed' AND outcome = 'completed'
+                             THEN cycle_count ELSE 0 END
+                    ), 0) AS successful_cycles,
+                    COALESCE(SUM(
+                        CASE WHEN state IN ('reserved', 'claimed')
+                             THEN 1 ELSE 0 END
+                    ), 0) AS unresolved_reservations,
+                    MIN(battle_count) AS min_battle_count,
+                    MAX(battle_count) AS max_battle_count,
+                    MIN(cycle_count) AS min_cycle_count,
+                    MAX(cycle_count) AS max_cycle_count,
+                    MIN(max_concurrent_battles) AS min_concurrency,
+                    MAX(max_concurrent_battles) AS max_concurrency
+                FROM reservations
+                WHERE authorization_digest = ? AND kind = 'runtime'
+                """,
+                (lease["authorization_digest"],),
+            ).fetchone()
+            latest = connection.execute(
+                """
+                SELECT * FROM reservations
+                WHERE authorization_digest = ? AND kind = 'runtime'
+                ORDER BY reserved_at_filetime DESC, reservation_id DESC
+                LIMIT 1
+                """,
+                (lease["authorization_digest"],),
+            ).fetchone()
+            reserved_battles = int(totals["reserved_battles"])
+            reserved_cycles = int(totals["reserved_cycles"])
+            reservation_count = int(totals["reservation_count"])
+            observed_workload = None
+            if reservation_count:
+                observed_workload = {
+                    "minimumBattleCount": int(totals["min_battle_count"]),
+                    "maximumBattleCount": int(totals["max_battle_count"]),
+                    "minimumCycleCount": int(totals["min_cycle_count"]),
+                    "maximumCycleCount": int(totals["max_cycle_count"]),
+                    "minimumMaxConcurrentBattles": int(totals["min_concurrency"]),
+                    "maximumMaxConcurrentBattles": int(totals["max_concurrency"]),
+                }
+            return {
+                "lookupType": lookup_type,
+                "lookupId": lookup_id,
+                "found": latest is not None,
+                "reservationCount": reservation_count,
+                "reservedBattleCount": reserved_battles,
+                "reservedCycleCount": reserved_cycles,
+                "successfulCycleCount": int(totals["successful_cycles"]),
+                "unresolvedReservationCount": int(totals["unresolved_reservations"]),
+                "remainingRunCount": max(
+                    0, int(lease["max_run_count"]) - reserved_battles
+                ),
+                "remainingCycles": max(
+                    0, int(lease["max_cycles"]) - reserved_cycles
+                ),
+                "observedWorkload": observed_workload,
+                "latestReservation": (
+                    cls._reservation_status_result(latest)
+                    if latest is not None
+                    else None
+                ),
+            }
+
         row = connection.execute(
             """
             SELECT * FROM reservations
@@ -1429,34 +1645,12 @@ class ConsumptionStore:
                 "lookupId": lookup_id,
                 "found": False,
             }
-        result = {
+        return {
             "lookupType": lookup_type,
             "lookupId": lookup_id,
             "found": True,
-            **cls._binding_result(row),
-            "state": row["state"],
-            "reservedAtFiletime": int(row["reserved_at_filetime"]),
-            "capacityReturned": False,
+            **cls._reservation_status_result(row),
         }
-        if row["claimed_pid"] is not None:
-            result.update(
-                {
-                    "claimedProcessId": int(row["claimed_pid"]),
-                    "claimedProcessCreationFiletime": int(
-                        row["claimed_process_creation_filetime"]
-                    ),
-                    "claimedAtFiletime": int(row["claimed_at_filetime"]),
-                }
-            )
-        if row["state"] == "completed":
-            result.update(
-                {
-                    "outcome": row["outcome"],
-                    "completionActor": row["completion_actor"],
-                    "completedAtFiletime": int(row["completed_at_filetime"]),
-                }
-            )
-        return result
 
 
 def _require_active_proof_window(lease: sqlite3.Row) -> None:
@@ -1520,7 +1714,7 @@ def _validated_request(payload: Mapping[str, Any]) -> dict[str, Any]:
                 "improve_bounds_invalid",
                 "runtime improvement reservations must carry zero runtime workload bounds",
             )
-    if action in {"claim", "complete"}:
+    if action in {"claim", "complete", "recover-runtime"}:
         _required_text(
             request.get("reservationId"),
             "reservationId",
@@ -1557,11 +1751,28 @@ def _validated_request(payload: Mapping[str, Any]) -> dict[str, Any]:
             maximum=128,
             pattern=_ID_RE,
         )
-        _required_text(
-            request.get("launchNonce"),
-            "launchNonce",
-            maximum=64,
-            pattern=_LAUNCH_NONCE_RE,
+        if action in {"claim", "complete"}:
+            _required_text(
+                request.get("launchNonce"),
+                "launchNonce",
+                maximum=64,
+                pattern=_LAUNCH_NONCE_RE,
+            )
+    if action == "recover-runtime" and (
+        kind != "runtime"
+        or request.get("purpose") != RUNTIME_RESERVATION_PURPOSE
+        or any(
+            type(request.get(name)) is not int or request.get(name) <= 0
+            for name in (
+                "battleCount",
+                "cycleCount",
+                "maxConcurrentBattles",
+            )
+        )
+    ):
+        raise BrokerError(
+            "recovery_binding_invalid",
+            "runtime recovery requires a positive runtime workload binding",
         )
     if action == "complete":
         _required_text(request.get("outcome"), "outcome", maximum=32)
@@ -1571,8 +1782,15 @@ def _validated_request(payload: Mapping[str, Any]) -> dict[str, Any]:
         )
         if lookup_type not in _STATUS_LOOKUP_TYPES:
             raise BrokerError("status_lookup_invalid", "status lookup type is unsupported")
-        pattern = _REQUEST_ID_RE if lookup_type == "request" else _RESERVATION_ID_RE
-        maximum = 192 if lookup_type == "request" else 36
+        if lookup_type == "request":
+            pattern = _REQUEST_ID_RE
+            maximum = 192
+        elif lookup_type == "reservation":
+            pattern = _RESERVATION_ID_RE
+            maximum = 36
+        else:
+            pattern = _ID_RE
+            maximum = 128
         _required_text(
             request.get("lookupId"), "lookupId", maximum=maximum, pattern=pattern
         )
@@ -1676,6 +1894,7 @@ class WindowsPipeServer:
     SDDL_REVISION_1 = 1
     ERROR_PIPE_CONNECTED = 535
     ERROR_IO_PENDING = 997
+    ERROR_INVALID_PARAMETER = 87
     WAIT_OBJECT_0 = 0x00000000
     INFINITE = 0xFFFFFFFF
     PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
@@ -2053,6 +2272,52 @@ class WindowsPipeServer:
         finally:
             self.kernel32.CloseHandle(process)
 
+    def _process_identity_alive(
+        self, process_id: int, process_creation_filetime: int
+    ) -> bool:
+        process = self.kernel32.OpenProcess(
+            self.PROCESS_QUERY_LIMITED_INFORMATION, False, process_id
+        )
+        if not process:
+            if ctypes.get_last_error() == self.ERROR_INVALID_PARAMETER:
+                return False
+            raise self._error("OpenProcess(recovery-target)")
+        try:
+            creation = _FILETIME()
+            exit_time = _FILETIME()
+            kernel = _FILETIME()
+            user = _FILETIME()
+            if not self.kernel32.GetProcessTimes(
+                process,
+                ctypes.byref(creation),
+                ctypes.byref(exit_time),
+                ctypes.byref(kernel),
+                ctypes.byref(user),
+            ):
+                raise self._error("GetProcessTimes(recovery-target)")
+            return self._filetime(creation) == process_creation_filetime
+        finally:
+            self.kernel32.CloseHandle(process)
+
+    def _recovery_processes_dead(self, target: Mapping[str, Any]) -> bool:
+        identities = [
+            (
+                int(target["supervisorProcessId"]),
+                int(target["supervisorProcessCreationFiletime"]),
+            )
+        ]
+        if target.get("state") == "claimed":
+            identities.append(
+                (
+                    int(target["claimedProcessId"]),
+                    int(target["claimedProcessCreationFiletime"]),
+                )
+            )
+        return all(
+            not self._process_identity_alive(process_id, creation_filetime)
+            for process_id, creation_filetime in identities
+        )
+
     def _read_exact(self, handle: int, length: int, *, deadline: float) -> bytes:
         parts: list[bytes] = []
         remaining = length
@@ -2092,7 +2357,14 @@ class WindowsPipeServer:
             if not isinstance(parsed, dict):
                 raise BrokerError("request_invalid", "request must be a JSON object")
             request = parsed
-            response = self.store.execute(request, caller)
+            if request.get("action") == "recover-runtime":
+                response = self.store.execute(
+                    request,
+                    caller,
+                    recovery_verifier=self._recovery_processes_dead,
+                )
+            else:
+                response = self.store.execute(request, caller)
         except DuplicateJSONKeyError:
             response = _error_response(None, "duplicate_json_key", "duplicate JSON keys are forbidden")
         except ProtocolError as exc:

@@ -155,6 +155,7 @@ def test_broker_uses_only_local_byte_mode_ctypes_pipe_with_explicit_sddl():
         "reserve-runtime",
         "reserve-improve",
         "claim",
+        "recover-runtime",
         "complete",
         "status",
     }
