@@ -201,6 +201,53 @@ _battles_lock = asyncio.Lock()
 _last_active_battles_write = 0.0
 _last_active_battles_payload = None
 
+# Spectator invite tracking: the /invite for a battle must be sent exactly
+# once, and always BEFORE the battle is published as active to the OBS
+# router/feed — a Browser Source that loads a private room before its
+# spectator is invited renders only the battlefield backdrop.
+_spectator_invites_sent: set[str] = set()
+
+_ENV_FALSE_VALUES = ("0", "false", "no", "off")
+
+
+def spectator_invites_enabled() -> bool:
+    """True when the spectator should be invited to each battle.
+
+    ENABLE_SPECTATOR_INVITES honors explicit false values ("0", "false",
+    "no", "off", any case); every other value — including unset or empty —
+    enables invites as long as SPECTATOR_USERNAME is configured.
+    """
+    if not getattr(FoulPlayConfig, "spectator_username", None):
+        return False
+    raw = os.getenv("ENABLE_SPECTATOR_INVITES", "")
+    return raw.strip().lower() not in _ENV_FALSE_VALUES
+
+
+async def ensure_spectator_invited(ps_websocket_client, battle_tag) -> bool:
+    """Send the spectator /invite for ``battle_tag`` exactly once.
+
+    Callers must invoke this BEFORE the battle is published as active
+    (``update_active_battles_file``) so the OBS Browser Source never
+    navigates to a private room the spectator cannot yet view.  Returns
+    True only when this call sent the invite.
+    """
+    if not spectator_invites_enabled():
+        return False
+    if not battle_tag or battle_tag in _spectator_invites_sent:
+        return False
+    # Reserve before awaiting so a concurrent caller cannot double-send.
+    _spectator_invites_sent.add(battle_tag)
+    try:
+        logger.info(f"Inviting spectator: {FoulPlayConfig.spectator_username}")
+        await ps_websocket_client.send_message(
+            battle_tag, [f"/invite {FoulPlayConfig.spectator_username}"]
+        )
+    except Exception:
+        # Release the reservation so a later fallback call can retry.
+        _spectator_invites_sent.discard(battle_tag)
+        raise
+    return True
+
 # Battle message timeout tuning (seconds)
 MESSAGE_TIMEOUT_SEC = int(os.getenv("BATTLE_MESSAGE_TIMEOUT_SEC", "120"))
 STALE_STRIKES = int(os.getenv("BATTLE_STALE_STRIKES", "2"))
@@ -1436,6 +1483,15 @@ async def _attempt_resume_battle(
             if queue:
                 for buffered_msg in buffered:
                     queue.put_nowait(buffered_msg)
+
+            # Re-assert the spectator invite before re-publishing the battle
+            # as active. The exactly-once guard makes this a no-op when this
+            # process already invited; after a restart it restores spectator
+            # access without double-sending within one runtime.
+            try:
+                await ensure_spectator_invited(ps_websocket_client, battle_tag)
+            except Exception:
+                pass
 
             info = _active_battles.get(battle_tag, {})
             info["status"] = "active"
@@ -2763,6 +2819,19 @@ async def start_battle_common(
             _active_battles[battle_tag] = existing
         await update_active_battles_file()
 
+    # Invite the spectator BEFORE the battle is published to the router/feed
+    # so the OBS Browser Source only ever navigates to a room its spectator
+    # session can already view. A failed invite must not abort the battle;
+    # the fallback in start_battle retries it.
+    try:
+        await ensure_spectator_invited(ps_websocket_client, battle_tag)
+    except Exception:
+        logger.warning(
+            "Spectator invite failed for %s; will retry after battle init",
+            battle_tag,
+            exc_info=True,
+        )
+
     # Register battle as soon as we have the tag so OBS can attach immediately.
     # This avoids a "searching" slot while start_battle waits on early messages.
     await _register_active_battle()
@@ -3104,9 +3173,10 @@ async def start_battle(
 
     await ps_websocket_client.send_message(battle.battle_tag, ["/timer on"])
 
-    if FoulPlayConfig.spectator_username:
-        logger.info(f"Inviting spectator: {FoulPlayConfig.spectator_username}")
-        await ps_websocket_client.send_message(battle.battle_tag, [f"/invite {FoulPlayConfig.spectator_username}"])
+    # Fallback only: the invite is normally sent (exactly once) before the
+    # battle was published in start_battle_common. This retries solely when
+    # that earlier attempt failed and released its reservation.
+    await ensure_spectator_invited(ps_websocket_client, battle.battle_tag)
 
     return battle
 
