@@ -104,19 +104,19 @@ def test_control_defaults_to_jigglypuff_direct_ip_with_tailnet_fallback(monkeypa
 
     module = load_module()
 
-    assert module.OBS_HTTP == "http://192.168.1.126:8777"
-    assert module.WORKER_HTTP == "http://192.168.1.126:8791"
+    assert module.OBS_HTTP == "http://192.168.1.125:8777"
+    assert module.WORKER_HTTP == "http://192.168.1.125:8791"
     assert module.SSH_REMOTE_CANDIDATES == [
         "Ryanj@jigglypuff.tail4859dd.ts.net",
         "Ryanj@JIGGLYPUFF",
-        "Ryanj@192.168.1.126",
+        "Ryanj@192.168.1.125",
     ]
     assert module.OBS_HTTP_CANDIDATES == [
-        "http://192.168.1.126:8777",
+        "http://192.168.1.125:8777",
         "http://jigglypuff.tail4859dd.ts.net:8777",
     ]
     assert module.WORKER_HTTP_CANDIDATES == [
-        "http://192.168.1.126:8791",
+        "http://192.168.1.125:8791",
         "http://jigglypuff.tail4859dd.ts.net:8791",
     ]
 
@@ -151,7 +151,7 @@ def test_public_runtime_fetch_falls_back_to_direct_ip_when_tailnet_primary_fails
     assert state["count"] == 1
     assert calls == [
         "http://jigglypuff.tail4859dd.ts.net:8777/state",
-        "http://192.168.1.126:8777/state",
+        "http://192.168.1.125:8777/state",
     ]
 
 
