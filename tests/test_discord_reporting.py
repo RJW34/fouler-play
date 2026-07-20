@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from infrastructure.discord_reporting import (
+    battle_identity_key,
     build_contract_message,
     build_contract_payload,
     canonical_replay_url,
@@ -182,7 +183,20 @@ def test_deku_event_queue_fails_closed_on_id_collision(monkeypatch, tmp_path):
     assert result["errorCode"] == "deku_event_queue_collision"
 
 
-def test_every_battle_result_emits_one_deku_observation(monkeypatch, tmp_path):
+def test_thirty_battle_results_emit_one_digest_and_reconcile(monkeypatch, tmp_path):
+    """30 battles produce ONE Discord post, and no battle is swallowed.
+
+    This replaces test_every_battle_result_emits_one_deku_observation, which
+    asserted 30 battles produce 30 observations. That was the behaviour the
+    owner asked us to stop: on the live queue 275 of 277 events were individual
+    battle results, "so much noise and repetitive".
+
+    The dangerous failure mode of batching is silent loss -- a digest that
+    quietly drops results is much harder to notice than noisy output. So this
+    asserts RECONCILIATION explicitly: battles in == battles counted in the
+    digest == battles listed in the digest, and every local event still reaches
+    a terminal status rather than being stranded pending.
+    """
     event_poster, event_queue_lib, queue_file, truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
 
     local_event_ids = []
@@ -192,35 +206,75 @@ def test_every_battle_result_emits_one_deku_observation(monkeypatch, tmp_path):
 
     pending_dir = tmp_path / "deku-events" / "pending"
     queue_paths = sorted(pending_dir.glob("*.json"))
-    assert len(queue_paths) == 30
-    queued = [json.loads(path.read_text(encoding="utf-8")) for path in queue_paths]
-    local_events = json.loads(queue_file.read_text(encoding="utf-8"))
-    rendered = json.dumps(queued).lower()
 
-    assert {event["eventType"] for event in queued} == {"battle_result"}
-    assert {event["kind"] for event in queued} == {"observation"}
-    assert {event["authority"] for event in queued} == {"none"}
-    assert {
-        event["dedupKey"] for event in queued
-    } == {
-        f"fouler-play:battle-result:gen9ou-{2600000000 + index}"
-        for index in range(30)
+    # One post for the batch, not thirty.
+    assert len(queue_paths) == 1
+    queued = json.loads(queue_paths[0].read_text(encoding="utf-8"))
+    assert queued["eventType"] == "fouler-cycle-digest"
+
+    digest = queued["payload"]["digest"]
+    # Counts reconcile three ways.
+    assert digest["battleCount"] == 30
+    assert digest["wins"] + digest["losses"] + digest["ties"] + digest["unknown"] == 30
+    assert len(digest["battles"]) == 30
+    # _queue_digest_test_battle alternates win/loss starting with a win.
+    assert digest["wins"] == 15
+    assert digest["losses"] == 15
+    assert digest["winRatePct"] == 50
+
+    # Every battle that went in is identifiable in what came out.
+    assert {entry["battleId"] for entry in digest["battles"]} == {
+        f"battle-gen9ou-{2600000000 + index}" for index in range(30)
     }
-    assert {
-        event["id"] for event in queued
-    } == {
-        f"fouler-battle-result-gen9ou-{2600000000 + index}"
-        for index in range(30)
-    }
+
+    # The owner's requested headline shape.
+    assert queued["payload"]["digestContent"].startswith("Batch of 30 done - 15W/15L (50%)")
+
+    rendered = json.dumps(queued).lower()
     assert "avatar_url" not in rendered
     assert "username" not in rendered
+
+    # Nothing stranded: every local event reached a terminal status.
+    local_events = json.loads(queue_file.read_text(encoding="utf-8"))
     assert [event["id"] for event in local_events] == local_event_ids
     assert [event["status"] for event in local_events] == ["posted"] * 30
-    assert all(event.get("proof") for event in local_events)
 
 
-def test_requeued_same_battle_is_idempotent_at_deku_outbox(monkeypatch, tmp_path):
-    event_poster, event_queue_lib, _queue_file, _truth_dir = _configure_battle_digest_test(monkeypatch, tmp_path)
+def test_diagnosed_operational_loss_still_gets_its_own_post(monkeypatch, tmp_path):
+    """The digest is the default, not the only route.
+
+    A loss with an actually-classified operational cause is the one case where a
+    per-battle post says something the batch cannot, so it bypasses the digest.
+    An ordinary played-out loss does not.
+    """
+    event_poster, _event_queue_lib, _queue_file, _truth_dir = _configure_battle_digest_test(
+        monkeypatch, tmp_path
+    )
+
+    def event(result, terminal):
+        return {
+            "event_type": "battle_result",
+            "result": result,
+            "terminal_condition": terminal,
+        }
+
+    assert event_poster._should_digest_battle_result(event("loss", "inactivity_timeout")) is False
+    assert event_poster._should_digest_battle_result(event("loss", "forfeit")) is False
+    assert event_poster._should_digest_battle_result(event("loss", "played_out")) is True
+    assert event_poster._should_digest_battle_result(event("win", "inactivity_timeout")) is True
+    assert event_poster._should_digest_battle_result(event("win", "played_out")) is True
+
+
+def test_requeued_same_battle_is_counted_once_in_the_digest(monkeypatch, tmp_path):
+    """The same battle arriving twice must not inflate the batch.
+
+    Idempotency used to be enforced at the DEKU outbox by filename collision.
+    With batching it has to hold one layer earlier, in the digest buffer, or a
+    requeued battle would be counted twice in the record the owner reads.
+    """
+    event_poster, event_queue_lib, _queue_file, truth_dir = _configure_battle_digest_test(
+        monkeypatch, tmp_path
+    )
 
     first_id = _queue_digest_test_battle(event_queue_lib, 0)
     assert event_poster.process_one_event() is True
@@ -228,11 +282,10 @@ def test_requeued_same_battle_is_idempotent_at_deku_outbox(monkeypatch, tmp_path
     assert second_id != first_id
     assert event_poster.process_one_event() is True
 
-    paths = list((tmp_path / "deku-events" / "pending").glob("*.json"))
-    assert len(paths) == 1
-    queued = json.loads(paths[0].read_text(encoding="utf-8"))
-    assert queued["id"] == "fouler-battle-result-gen9ou-2600000000"
-    assert queued["dedupKey"] == "fouler-play:battle-result:gen9ou-2600000000"
+    state = json.loads((truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8"))
+    pending = state["pendingBattles"]
+    assert len(pending) == 1, "the same battle must be buffered once, not twice"
+    assert pending[0]["battleId"] == "battle-gen9ou-2600000000"
 
 
 def test_bounded_runtime_drain_reaches_required_battle(monkeypatch, tmp_path):
@@ -247,7 +300,15 @@ def test_bounded_runtime_drain_reaches_required_battle(monkeypatch, tmp_path):
     assert result["requiredStatus"] == "posted"
     assert result["pendingRemaining"] == 0
     assert result["networkDeliveryOwnedByProject"] is False
-    assert len(list((tmp_path / "deku-events" / "pending").glob("*.json"))) == 2
+    # Two battles is under the batch size and inside the max age, so nothing has
+    # been posted yet -- they are buffered, not lost. The local queue still
+    # drains, which is what "bounded drain" is about.
+    assert len(list((tmp_path / "deku-events" / "pending").glob("*.json"))) == 0
+    digest_state = json.loads(
+        (_truth_dir / "battle-report-digest-state.json").read_text(encoding="utf-8")
+    )
+    assert len(digest_state["pendingBattles"]) == 2
+
     events = json.loads(queue_file.read_text(encoding="utf-8"))
     assert [event["id"] for event in events] == [first_id, second_id]
     assert [event["status"] for event in events] == ["posted", "posted"]
@@ -1453,8 +1514,16 @@ def test_redacted_report_summary_is_concise_and_secret_safe_for_loss_payload():
     assert summary["opponent"] == "Example"
     assert summary["battleIds"] == ["gen9ou-999"]
     assert summary["opsSignal"] == "operational-loss"
-    assert summary["replay"]["status"] == "pending-public-upload"
-    assert summary["currentBattleState"] == "battle loss; vs Example; id 999-privatehash; replay pending gen9ou-999"
+    # The payload supplies a replay_url and no explicit status, so the summary
+    # reports the reference it was given. A room suffix no longer downgrades it
+    # to "pending" -- that inference was the false-private model, and it is what
+    # withheld working replay links from the owner. Callers that know a replay
+    # is not yet public still say so explicitly, and that wins.
+    assert summary["replay"]["status"] == "public"
+    assert summary["replay"]["id"] == "gen9ou-999-privatehash"
+    assert summary["currentBattleState"] == (
+        "battle loss; vs Example; id 999-privatehash; public replay gen9ou-999-privatehash"
+    )
     assert summary["whyItMatters"]
     assert "disconnect behavior" in summary["viewerSummary"]
     assert "Check reconnect handling" in summary["nextAction"]
@@ -1867,7 +1936,26 @@ def test_elo_delta_labels_match_result_direction():
     assert format_elo_delta(1117, 1136, "loss") == "ELO unverified (cached 1117, fetched 1136)"
 
 
-def test_replay_url_canonicalization_rejects_private_unresolved_links():
+def test_replay_url_canonicalization_keeps_the_room_suffix():
+    """A room suffix is part of the replay id, not a marker that it is private.
+
+    This test previously asserted the opposite -- that
+    "battle-gen9ou-111-privatehash" canonicalizes to "" and that its replay id
+    truncates to "gen9ou-111". That encoded a belief about Showdown that is
+    false, and it is why replays stopped being linked to the owner.
+
+    Measured against the live queue on 2026-07-20, over the 79 battle_result
+    events frozen at pending-public-upload:
+
+        full id   gen9ou-2652213820-h7g6y6whjxmwikdpwlo8a4rx0ssqx3lpw -> HTTP 200
+        truncated gen9ou-2652213820                                   -> HTTP 404
+
+    13 of 13 sampled resolved at the full id, 0 of 13 at the truncated one, and
+    a control of 6 already-public replays returned 200 -- so the probe was
+    sound and the replays had been uploaded all along. Truncating produced a
+    URL that 404s, the poster believed its own honest 404, and the event froze
+    forever.
+    """
     assert (
         canonical_replay_url("https://replay.pokemonshowdown.com/battle-gen9ou-111.json")
         == "https://replay.pokemonshowdown.com/gen9ou-111"
@@ -1876,26 +1964,60 @@ def test_replay_url_canonicalization_rejects_private_unresolved_links():
         canonical_replay_url("https://replay.pokemonshowdown.com/gen9ou-111")
         == "https://replay.pokemonshowdown.com/gen9ou-111"
     )
-    assert canonical_replay_url("https://replay.pokemonshowdown.com/battle-gen9ou-111-privatehash") == ""
-    assert public_replay_id_candidate("battle-gen9ou-111-privatehash") == "gen9ou-111"
+    assert (
+        canonical_replay_url("https://replay.pokemonshowdown.com/battle-gen9ou-111-privatehash")
+        == "https://replay.pokemonshowdown.com/gen9ou-111-privatehash"
+    )
+    assert public_replay_id_candidate("battle-gen9ou-111-privatehash") == "gen9ou-111-privatehash"
+    # Things that are not replay references are still rejected.
+    assert canonical_replay_url("https://example.com/not-a-replay") == ""
+    assert public_replay_id_candidate("gen9ou") == ""
+    assert public_replay_id_candidate("some-random-text") == ""
 
 
-def test_payload_formatter_marks_private_replay_as_pending_not_public_link():
+def test_battle_identity_is_suffix_invariant_so_updates_do_not_duplicate():
+    """Battle identity and replay id are different things.
+
+    The replay lives at the full suffixed id, but the pending post and its later
+    public update must collapse to ONE Discord message. Both needs used to be
+    served by a single truncating function, so fixing the replay id without this
+    split would have doubled post volume.
+    """
+    assert battle_identity_key("battle-gen9ou-111-privatehash") == "gen9ou-111"
+    assert battle_identity_key("gen9ou-111") == "gen9ou-111"
+    assert battle_identity_key("https://replay.pokemonshowdown.com/gen9ou-111-abc") == "gen9ou-111"
+    assert battle_identity_key("not-a-battle") == ""
+
+
+def test_payload_formatter_links_suffixed_replay_at_its_full_id():
+    """A room-suffixed replay is linked at its full id, not truncated away.
+
+    This test previously asserted that such a replay must be shown as
+    "pending public upload" and its URL withheld. That was the false-private
+    model: Showdown serves these replays publicly at their full id, so
+    withholding the link is what stopped replays reaching the owner. Truncating
+    the id instead produced a URL that 404s permanently.
+
+    An explicit replay_status still wins over this inference -- see
+    test_pending_replay_battle_result_is_not_hermes_analysis_ready.
+    """
     payload = build_contract_payload(
         "PROOF",
         "battle result loss vs PrivateReplay",
         "Battle battle-gen9ou-111-privatehash ended loss against PrivateReplay.",
-        "Private room ids should not be shown as confident public replay URLs.",
+        "Suffixed room ids are public replays and should be linked in full.",
         "replay=https://replay.pokemonshowdown.com/battle-gen9ou-111-privatehash",
-        "wait for public upload or use local replay JSON",
+        "review the replay",
         result="loss",
         battle_id="battle-gen9ou-111-privatehash",
         replay_url="https://replay.pokemonshowdown.com/battle-gen9ou-111-privatehash",
     )
     formatted = format_payload_or_message(payload)
 
-    assert "- replay pending public upload `gen9ou-111`" in formatted
-    assert "https://replay.pokemonshowdown.com/gen9ou-111" not in formatted
+    assert "https://replay.pokemonshowdown.com/gen9ou-111-privatehash" in formatted
+    # The truncated id must never be emitted as a link: it is the 404.
+    assert "replay.pokemonshowdown.com/gen9ou-111\n" not in formatted
+    assert "replay.pokemonshowdown.com/gen9ou-111 " not in formatted
 
 
 def test_pending_replay_battle_result_is_not_hermes_analysis_ready():

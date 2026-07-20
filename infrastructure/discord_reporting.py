@@ -142,6 +142,33 @@ def format_elo_delta(
 
 
 def _replay_id_from_reference(value: object, *, public_only: bool) -> str:
+    """Normalize any replay reference to the id Showdown actually serves it under.
+
+    THE ROOM SUFFIX IS PART OF THE REPLAY ID.
+    A battle played in a challenge / private room has the tag
+    ``battle-<format>-<number>-<roomhash>``. This function used to drop the
+    roomhash and return ``<format>-<number>``, on the theory that a suffixed
+    room is "private" and therefore has no public replay. That theory is false:
+    ``/savereplay`` uploads such a battle under its FULL id, and
+    replay.pokemonshowdown.com serves it publicly at that full id.
+
+    Measured against the live queue on 2026-07-20, over the 79 battle_result
+    events frozen at ``pending-public-upload``:
+
+        full id  ``gen9ou-2652213820-h7g6y6whjxmwikdpwlo8a4rx0ssqx3lpw``  -> HTTP 200
+        truncated ``gen9ou-2652213820``                                   -> HTTP 404
+
+    13 of 13 sampled resolved at the full id and 0 of 13 at the truncated one,
+    while a control of 6 already-public replays returned 200. So the replays had
+    been uploaded successfully the whole time; the poster was verifying a URL we
+    had constructed incorrectly, getting an honest 404, and freezing the event at
+    ``pending-public-upload`` forever. That is why replays stopped being linked.
+
+    Whether a replay is public is therefore decided by PROBING it
+    (``_replay_json_is_live``), never by the shape of its id. ``public_only``
+    still rejects references that are not replay ids at all, but it no longer
+    rejects a well-formed id for having a room suffix.
+    """
     text = _clean_line(value)
     if not text:
         return ""
@@ -158,18 +185,45 @@ def _replay_id_from_reference(value: object, *, public_only: bool) -> str:
     parts = [part for part in text.split("-") if part]
     if len(parts) < 2:
         return ""
-    if public_only and len(parts) > 2:
+    # A replay id is "<format>-<number>" optionally followed by a room suffix.
+    # Require the number so arbitrary hyphenated text is still rejected.
+    if not parts[1].isdigit():
         return ""
-    return f"{parts[0]}-{parts[1]}"
+    return "-".join(parts)
+
+
+def battle_identity_key(value: object) -> str:
+    """Return the suffix-invariant identity of a battle: ``<format>-<number>``.
+
+    This is deliberately NOT the replay id. A battle has one identity but can be
+    referred to with or without its room suffix, and de-duplication has to treat
+    those as the same battle -- otherwise the pending post and the later public
+    update become two Discord messages instead of one edit.
+
+    The replay, by contrast, lives at the FULL id including the suffix (see
+    ``_replay_id_from_reference``). Both needs used to be served by one
+    truncating function, which is why fixing the replay id would otherwise have
+    doubled the post volume this change set exists to reduce.
+    """
+    replay_id = _replay_id_from_reference(value, public_only=False)
+    if not replay_id:
+        return ""
+    parts = replay_id.split("-")
+    return f"{parts[0]}-{parts[1]}" if len(parts) >= 2 else replay_id
 
 
 def public_replay_id_candidate(value: object) -> str:
-    """Return the public Showdown replay id that should be verified before linking."""
+    """Return the Showdown replay id that should be verified before linking."""
     return _replay_id_from_reference(value, public_only=False)
 
 
 def canonical_replay_url(value: object) -> str:
-    """Return a canonical public Showdown replay URL, or empty for private/unresolved refs."""
+    """Return the canonical Showdown replay URL for a reference, or empty if it is not one.
+
+    A non-empty return means "this is where the replay would live", NOT "this
+    replay is confirmed public". Callers that need the latter must probe it; see
+    ``event_poster._replay_json_is_live``.
+    """
     replay_id = _replay_id_from_reference(value, public_only=True)
     return f"https://replay.pokemonshowdown.com/{replay_id}" if replay_id else ""
 
@@ -589,6 +643,14 @@ def _proof_from_payload(data: dict) -> str:
     status_line = _status_line(data)
     if status_line:
         add(status_line)
+
+    # How the battle ended. Rendered as a proof bit so it survives the payload
+    # -> message -> structured-fields round trip: the proof STRING is rebuilt
+    # from these bits rather than passed through, so a fact that is not a bit
+    # here is silently dropped before anything downstream can read it.
+    terminal_condition = _clean_line(data.get("terminal_condition")).lower()
+    if terminal_condition in _TERMINAL_CONDITIONS:
+        add(f"ended {terminal_condition}")
 
     team_file = data.get("team_file")
     if team_file:
@@ -1165,7 +1227,10 @@ def _battle_ids_from_report_text(text: str, limit: int = 8) -> list[str]:
     seen: set[str] = set()
 
     def add(raw: object) -> None:
-        candidate = public_replay_id_candidate(raw)
+        # Identity, not replay id: battleIds answers "which battle is this
+        # report about", and _battle_result_key falls back to it for dedup, so
+        # it must stay suffix-invariant.
+        candidate = battle_identity_key(raw)
         if candidate and candidate not in seen:
             ids.append(candidate)
             seen.add(candidate)
@@ -1186,6 +1251,18 @@ def _battle_ids_from_report_text(text: str, limit: int = 8) -> list[str]:
 
 
 def _first_replay_summary(*values: object) -> dict[str, object]:
+    """Fallback summary when the payload carries no explicit replay status.
+
+    Reports the reference it was handed. A caller that knows the replay is not
+    yet public says so explicitly (``replay_status`` / ``replay_public_verified``),
+    and that explicit path wins -- see ``_explicit_replay_summary_from_payload``.
+
+    Note this treats a suffixed id exactly like an unsuffixed one. It previously
+    did not: a room suffix downgraded the replay to "pending" forever on the
+    false premise that such replays are private. They are not; Showdown serves
+    them at their full id. The suffix carries no information about publicness,
+    so it no longer changes the answer.
+    """
     for value in values:
         canonical = canonical_replay_url(value)
         if canonical:
@@ -1198,6 +1275,60 @@ def _first_replay_summary(*values: object) -> dict[str, object]:
         if pending:
             return {"status": "pending-public-upload", "id": pending, "url": ""}
     return {"status": "absent", "id": "", "url": ""}
+
+
+_RENDERED_PENDING_REPLAY_RE = re.compile(
+    r"replay\s+pending\s+public\s+upload\s+`?([A-Za-z0-9][A-Za-z0-9-]*)`?",
+    re.IGNORECASE,
+)
+
+
+def _replay_summary_from_report_text(text: str) -> dict[str, object]:
+    """Recover the replay summary from an already-rendered contract message.
+
+    Reads the two forms the renderer emits -- a public replay URL, or the
+    literal "replay pending public upload <id>" line -- instead of handing the
+    whole message to the id parser.
+
+    That is what used to happen: the entire message body was split on "-" and
+    its first two fragments returned as a replay id. The result was non-empty
+    garbage, which happened to look like "pending" to the caller and so produced
+    the right answer for the wrong reason. Once the id parser started requiring
+    a numeric battle number, the garbage was correctly rejected and the accident
+    stopped working. This reads the actual line.
+    """
+    public = canonical_replay_url(_PS_REPLAY_RE.search(text or "").group(0)) if _PS_REPLAY_RE.search(text or "") else ""
+    if public:
+        return {
+            "status": "public",
+            "id": public.rstrip("/").rsplit("/", 1)[-1],
+            "url": public,
+        }
+    pending_match = _RENDERED_PENDING_REPLAY_RE.search(text or "")
+    if pending_match:
+        pending_id = public_replay_id_candidate(pending_match.group(1))
+        if pending_id:
+            return {"status": "pending-public-upload", "id": pending_id, "url": ""}
+    return {"status": "absent", "id": "", "url": ""}
+
+
+_TERMINAL_CONDITIONS = ("played_out", "inactivity_timeout", "forfeit", "unknown")
+_TERMINAL_CONDITION_RE = re.compile(
+    r"\b(?:terminal[=:]|ended)\s*`?([a-z_]+)`?", re.IGNORECASE
+)
+
+
+def _terminal_condition_from(data: dict | None, raw: str) -> str:
+    """Recover how the battle ended, from the payload or the rendered proof line."""
+    value = _clean_line((data or {}).get("terminal_condition")).lower()
+    if value in _TERMINAL_CONDITIONS:
+        return value
+    match = _TERMINAL_CONDITION_RE.search(raw or "")
+    if match:
+        candidate = match.group(1).lower()
+        if candidate in _TERMINAL_CONDITIONS:
+            return candidate
+    return ""
 
 
 def _bool_flag(value: object) -> bool | None:
@@ -1488,7 +1619,7 @@ def redacted_report_summary(content: str) -> dict[str, object]:
     viewer, changed = _safe_report_text(what or headline_source or "pending", 360)
     secret_redacted = secret_redacted or changed
     battle_ids = _battle_ids_from_report_text(formatted)
-    replay = _first_replay_summary(formatted)
+    replay = _replay_summary_from_report_text(formatted)
     raw_why = _extract_contract_section(formatted, "Why it matters:")
     synthetic_data = {
         "result": result,
@@ -1602,6 +1733,8 @@ def structured_report_fields(content: str, *, event_type: str = "") -> dict[str,
     if turns is None:
         turns = _structured_turns_from_text(raw)
 
+    terminal_condition = _terminal_condition_from(data, raw)
+
     winner = _clean_line(data.get("winner") if data else "") or None
     loser = _clean_line(data.get("loser") if data else "") or None
     if not winner and not loser and result in {"win", "loss"}:
@@ -1682,6 +1815,9 @@ def structured_report_fields(content: str, *, event_type: str = "") -> dict[str,
         "winner": winner,
         "loser": loser,
         "turns": turns,
+        # How the battle ended. Carried as a first-class field so the digest and
+        # the digest-vs-own-post routing can read it without re-parsing prose.
+        "terminal_condition": terminal_condition or None,
         "proof": proof if proof_has_signal else None,
         "analysis": analysis if any(value for value in analysis.values()) else None,
         "current_battle_state": current_state,

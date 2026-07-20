@@ -1109,6 +1109,9 @@ async def _enrich_battle_stats_rating_once(
     winner: str | None = None,
     opponent_name: str | None = None,
     replay_url: str | None = None,
+    replay_verified: bool = False,
+    turns: int | None = None,
+    terminal_condition: str | None = None,
     path: Path | None = None,
 ) -> bool:
     """Fill battle_stats rows with authoritative result/ELO/reporting data.
@@ -1155,16 +1158,30 @@ async def _enrich_battle_stats_rating_once(
             fact["winner"] = str(winner)
         if opponent_name and opponent_name != "Unknown":
             fact["opponent"] = str(opponent_name)
+        # How the battle ended and how long it took. Persisted so that
+        # forfeit-vs-played is a field read rather than a replay back-fill.
+        try:
+            turn_count = int(turns) if turns is not None else None
+        except (TypeError, ValueError):
+            turn_count = None
+        if turn_count is not None and turn_count > 0:
+            fact["turns"] = turn_count
+        if terminal_condition in TERMINAL_CONDITIONS:
+            fact["terminal_condition"] = terminal_condition
+
         if replay_url:
             canonical_url = canonical_replay_url(replay_url)
-            if canonical_url:
+            pending_id = public_replay_id_candidate(replay_url)
+            if pending_id:
+                fact["public_replay_id"] = pending_id
+            # "public" is a claim that the replay resolves, and only the caller
+            # that probed it can make that claim. Deriving it from the shape of
+            # the id is what produced 79 rows asserting a URL that 404s.
+            if canonical_url and replay_verified:
                 fact["replay_url"] = canonical_url
                 fact["replay_status"] = "public"
-            else:
-                pending_id = public_replay_id_candidate(replay_url)
-                if pending_id:
-                    fact["public_replay_id"] = pending_id
-                    fact["replay_status"] = "pending-public-upload"
+            elif canonical_url or pending_id:
+                fact["replay_status"] = "pending-public-upload"
 
         target = None
         known_ids = set(_battle_stats_authoritative_facts)
@@ -1234,6 +1251,9 @@ async def _enrich_battle_stats_rating_after_record(
     winner: str | None = None,
     opponent_name: str | None = None,
     replay_url: str | None = None,
+    replay_verified: bool = False,
+    turns: int | None = None,
+    terminal_condition: str | None = None,
     attempts: int = 30,
     delay_seconds: float = 0.5,
 ) -> bool:
@@ -1248,6 +1268,9 @@ async def _enrich_battle_stats_rating_after_record(
             winner=winner,
             opponent_name=opponent_name,
             replay_url=replay_url,
+            replay_verified=replay_verified,
+            turns=turns,
+            terminal_condition=terminal_condition,
         ):
             return True
         if attempt + 1 < attempts:
@@ -1266,6 +1289,9 @@ def _schedule_battle_stats_rating_enrichment(
     winner: str | None = None,
     opponent_name: str | None = None,
     replay_url: str | None = None,
+    replay_verified: bool = False,
+    turns: int | None = None,
+    terminal_condition: str | None = None,
 ) -> None:
     if not battle_tag or (elo_after is None and not result_key):
         return
@@ -1280,6 +1306,9 @@ def _schedule_battle_stats_rating_enrichment(
                 winner=winner,
                 opponent_name=opponent_name,
                 replay_url=replay_url,
+                replay_verified=replay_verified,
+                turns=turns,
+                terminal_condition=terminal_condition,
             )
         )
     except RuntimeError:
@@ -1567,6 +1596,47 @@ def replay_handoff_fields(
         "raw_replay_url": replay_url,
         "verified_replay_url": verified_replay_url,
     }
+
+
+TERMINAL_CONDITIONS = ("played_out", "inactivity_timeout", "forfeit", "unknown")
+
+
+def classify_terminal_condition(message_text: object, *, turns: object = None) -> str:
+    """Classify HOW a battle ended, from the server's terminal message.
+
+    WHY THIS IS A FIELD AND NOT PROSE.
+    Until now a battle row carried four cryptographic digests
+    (runtime_authorization_sha256, runtime_manifest_digest,
+    deployment_receipt_sha256, physical_host_id_sha256) and no record of how the
+    battle ended or how long it lasted. The same distinction existed only as an
+    English sentence built inline for the loss path of the Discord message and
+    thrown away afterwards, so any question of the form "how many losses were
+    actually played out?" required re-deriving it from the replay corpus.
+
+    That back-fill has now been done once, over 189 replays: 85.5% of losses were
+    genuinely played (median 41 turns), 14.5% were Showdown inactivity timeouts,
+    and none were forfeits. This function makes that classification a cheap
+    read on every future battle instead of a bespoke archaeology job, so
+    forfeit-vs-played is answerable directly from battle_stats.json.
+
+    Returns one of TERMINAL_CONDITIONS. "unknown" is deliberate and distinct
+    from "played_out": absence of a terminal signal is not evidence of a clean
+    finish, and collapsing the two would silently inflate the played-out rate.
+    """
+    text = str(message_text or "").lower()
+    if not text:
+        return "unknown"
+    if "forfeit" in text:
+        return "forfeit"
+    if any(token in text for token in ("inactive", "disconnect", "timeout")):
+        return "inactivity_timeout"
+    try:
+        turn_count = int(turns) if turns is not None else 0
+    except (TypeError, ValueError):
+        turn_count = 0
+    if turn_count > 0:
+        return "played_out"
+    return "unknown"
 
 
 def battle_result_event_queue_enabled() -> bool:
@@ -3719,6 +3789,15 @@ async def pokemon_battle(
                 if winner is None and _terminal_result == "loss":
                     _battle_end_payload["operationalLoss"] = True
                     _battle_end_payload["reason"] = "terminal_without_winner"
+                # Classify HOW this battle ended once, here, from the terminal
+                # server message, and reuse that single value for the stats row,
+                # the queued event and the Discord copy. Previously the same
+                # distinction was re-derived inline as English for the loss path
+                # only, and never persisted.
+                _terminal_condition = classify_terminal_condition(
+                    msg, turns=battle_turn_count
+                )
+                _battle_end_payload["terminalCondition"] = _terminal_condition
                 await send_stream_event("BATTLE_END", _battle_end_payload)
                 battle_end_event_sent = True
 
@@ -3807,11 +3886,14 @@ async def pokemon_battle(
                             _what_parts.append(f"in {_turn_count_ev} turns")
                         _what_happened = " ".join(_what_parts)
 
+                        # Derived from the SAME terminal classification that is
+                        # persisted on the battle row, so the sentence in Discord
+                        # and the field in battle_stats.json can never disagree.
                         _decisive_reason = ""
                         if _result_str == "loss":
-                            if "forfeit" in _message_text:
+                            if _terminal_condition == "forfeit":
                                 _decisive_reason = "Battle ended on forfeit; classify who forfeited from replay before treating it as gameplay signal."
-                            elif "inactive" in _message_text or "disconnect" in _message_text or "timeout" in _message_text:
+                            elif _terminal_condition == "inactivity_timeout":
                                 _decisive_reason = "Loss came from inactivity/disconnect behavior, so this is operational until reconnect and timer logs are cleared."
                             elif not _replay_is_public:
                                 _decisive_reason = "Replay is not public yet, so the loss is recorded without a claimed strategic cause."
@@ -3849,7 +3931,7 @@ async def pokemon_battle(
                                 f"battle result {_result_str} vs {opponent_name}",
                                 _what_happened,
                                 _why_it_matters_ev,
-                                f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; replay={_queue_replay_url or ''}; replay_status={_queue_replay_status}",
+                                f"battle_id={battle_tag}; result={_result_str}; team_file={_team_name_ev or 'unknown'}; opponent={opponent_name}; turns={_turn_count_ev}; terminal={_terminal_condition}; replay={_queue_replay_url or ''}; replay_status={_queue_replay_status}",
                                 "Append replay or ladder delta if more context lands after posting.",
                                 source="fp.run_battle",
                                 battle_id=battle_tag,
@@ -3872,6 +3954,7 @@ async def pokemon_battle(
                                 recent_streak=_recent_streak_ev,
                                 decisive_reason=_decisive_reason,
                                 next_battle_action=_next_action,
+                                terminal_condition=_terminal_condition,
                             ),
                             dedup_window_sec=5,
                         )
@@ -3935,6 +4018,9 @@ async def pokemon_battle(
                     winner=winner,
                     opponent_name=opponent_name,
                     replay_url=_queue_replay_url or _discord_replay_url or replay_url,
+                    replay_verified=bool(_replay_handoff.get("replay_public_verified")),
+                    turns=battle_turn_count,
+                    terminal_condition=_terminal_condition,
                 )
 
                 return winner, battle_tag

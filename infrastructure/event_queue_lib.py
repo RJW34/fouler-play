@@ -25,7 +25,12 @@ import uuid
 from pathlib import Path
 from typing import Optional, Callable
 
-from infrastructure.discord_reporting import format_payload_or_message, public_replay_id_candidate, structured_report_fields
+from infrastructure.discord_reporting import (
+    battle_identity_key,
+    format_payload_or_message,
+    public_replay_id_candidate,
+    structured_report_fields,
+)
 from infrastructure.runtime_paths import (
     resolve_runtime_paths,
     validate_external_runtime_path,
@@ -218,9 +223,12 @@ def _battle_result_key(fields: dict) -> str:
         battle_ids = fields["proof"].get("battleIds") or []
         value = battle_ids[0] if battle_ids else None
     text = str(value or "").strip().lower()
-    public_id = public_replay_id_candidate(text)
-    if public_id:
-        return public_id.lower()
+    # Suffix-invariant on purpose: the pending post and its later public update
+    # must collapse to ONE event. Using the replay id here (which now retains the
+    # room suffix) would emit a second message instead of updating the first.
+    identity = battle_identity_key(text)
+    if identity:
+        return identity.lower()
     if text.startswith("battle-"):
         text = text.replace("battle-", "", 1)
     return text

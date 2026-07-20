@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -45,6 +46,12 @@ from scripts.devstream_runtime_lease import (  # noqa: E402
     validate_runtime_lease,
 )
 from infrastructure.deployment_state import current_deployment_context  # noqa: E402
+from infrastructure.learn_loop_events import (  # noqa: E402
+    QUIET_OUTCOMES,
+    emit_engine_change_explained,
+    emit_learn_cycle_finished,
+    emit_learn_cycle_started,
+)
 from infrastructure.head_to_head_authority import (  # noqa: E402
     DEFAULT_AUTHORITY_PATH,
     consume_improve_authorization,
@@ -585,6 +592,21 @@ def append_improve_ledger(
     IMPROVE_LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
     with IMPROVE_LEDGER_PATH.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, sort_keys=True, default=str) + "\n")
+
+
+def _improve_cycle_index() -> int:
+    """Sequence number for this improve run: the count of ledger lines so far.
+
+    Derived from the ledger rather than kept in memory so the number survives
+    restarts and means the same thing to anyone reading the ledger afterwards.
+    """
+    try:
+        if not IMPROVE_LEDGER_PATH.exists():
+            return 1
+        with IMPROVE_LEDGER_PATH.open("r", encoding="utf-8") as handle:
+            return sum(1 for line in handle if line.strip()) + 1
+    except OSError:
+        return 0
 
 
 def record_deploy(pre_commit: str, post_commit: str) -> None:
@@ -2129,6 +2151,10 @@ def main() -> int:
 
     print(f"[AGENT] {datetime.now().isoformat()} — Starting improvement cycle")
 
+    _cycle_started_at = time.time()
+    _cycle_index = _improve_cycle_index()
+    emit_learn_cycle_started(cycle_index=_cycle_index)
+
     if not args.dry_run and not auto_improve_enabled(args.enable_auto_improve):
         print(
             f"[AGENT] BLOCKED: auto-improvement is disabled. Set {AUTO_IMPROVE_SENTINEL}=1 "
@@ -2498,6 +2524,32 @@ def main() -> int:
         detail=outcome_detail,
         returncode=outcome_returncode,
     )
+
+    emit_learn_cycle_finished(
+        cycle_index=_cycle_index,
+        outcome=outcome_status,
+        issue=top.get("title"),
+        target_file=target_file,
+        duration_sec=time.time() - _cycle_started_at,
+        detail=outcome_detail if isinstance(outcome_detail, dict) else None,
+    )
+    # Only an accepted change actually altered the engine. Explaining a change
+    # that was rejected or never attempted would misrepresent what the bot is
+    # running -- and QUIET_OUTCOMES get no engine-change post at all.
+    if outcome_status == "accepted" and outcome_status not in QUIET_OUTCOMES:
+        _lineage = outcome_detail if isinstance(outcome_detail, dict) else {}
+        emit_engine_change_explained(
+            change_id=str(_lineage.get("changeId") or "") or None,
+            hypothesis=str(top.get("summary") or top.get("title") or "unstated"),
+            change=str(top.get("title") or target_file or "engine change"),
+            predicted_effect=str(top.get("recommendation") or "unstated"),
+            # Deliberately unmeasured at land time. The verdict defaults to
+            # "pending" so an unmeasured change can never read as a working one.
+            measured_result=None,
+            verdict="pending",
+            target_file=target_file,
+            evidence=[str(item) for item in (top.get("proof") or [])],
+        )
     return outcome_returncode
 
 

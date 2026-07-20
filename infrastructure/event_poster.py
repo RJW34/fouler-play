@@ -52,8 +52,13 @@ from infrastructure.runtime_paths import (
 # Configuration
 POLL_INTERVAL = float(os.getenv("EVENT_POSTER_POLL_SEC", "2"))
 CLEANUP_INTERVAL = 300  # Cleanup every 5 minutes
-REPLAY_RESOLVE_ATTEMPTS = max(1, int(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_ATTEMPTS", "1")))
-REPLAY_RESOLVE_DELAY_SEC = max(0.0, float(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_DELAY_SEC", "0")))
+# Defaults were "1" attempt and "0" delay, which made the retry guard
+# (`attempt < attempts and REPLAY_RESOLVE_DELAY_SEC > 0`) unsatisfiable: exactly
+# one probe, fired the instant the battle ended, then permanent surrender. Two
+# attempts a couple of seconds apart cover an upload that is merely slow; the
+# digest flush reconciliation covers one that is slower still.
+REPLAY_RESOLVE_ATTEMPTS = max(1, int(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_ATTEMPTS", "2")))
+REPLAY_RESOLVE_DELAY_SEC = max(0.0, float(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_DELAY_SEC", "2")))
 REPLAY_RESOLVE_TIMEOUT_SEC = max(0.1, float(os.getenv("EVENT_POSTER_REPLAY_RESOLVE_TIMEOUT_SEC", "3")))
 _RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
 RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
@@ -477,6 +482,13 @@ def _deku_project_event(event: dict[str, Any], content: str) -> dict[str, Any]:
             "edgeState": str(event.get("edge_state") or "").strip() or None,
         },
     }
+    # A digest post stands in for N per-battle posts, so it has to carry the
+    # per-battle detail those posts would have carried. Without this the volume
+    # reduction would be a data loss, and "battles in == battles reported" would
+    # not be checkable downstream.
+    if isinstance(event.get("digest"), dict):
+        payload["payload"]["digest"] = event["digest"]
+        payload["payload"]["digestContent"] = content
     return payload
 
 
@@ -619,12 +631,23 @@ def _battle_digest_entry(event: dict[str, Any], *, now: float) -> dict[str, Any]
         turns = int(event.get("turns")) if event.get("turns") is not None else None
     except (TypeError, ValueError):
         turns = None
+    terminal_condition = _clean_digest_text(
+        event.get("terminal_condition") or analysis.get("terminalCondition"), 40
+    ).lower()
+    if terminal_condition not in {"played_out", "inactivity_timeout", "forfeit", "unknown"}:
+        terminal_condition = "unknown"
     entry = {
         "localEventId": _clean_digest_text(event.get("id"), 160),
         "battleId": battle_id or None,
         "result": result,
         "opponent": _clean_digest_text(analysis.get("opponent") or summary.get("opponent"), 80) or None,
         "turns": turns if turns is not None and turns > 0 else None,
+        "terminalCondition": terminal_condition,
+        # Retained even when empty: the flush pass re-probes these, which is the
+        # post-hoc reconciliation that per-battle posting never had.
+        "replayId": _clean_digest_text(
+            event.get("replay_id") or replay.get("id") or battle_id, 200
+        ) or None,
         "replayUrl": replay_url or None,
         "eventTimestamp": event.get("timestamp"),
         "bufferedAtEpoch": now,
@@ -668,38 +691,92 @@ def _battle_digest_event(entries: list[dict[str, Any]]) -> dict[str, Any]:
     first_battle_id = entries[0].get("battleId")
     latest_battle_id = entries[-1].get("battleId")
     latest_opponent = entries[-1].get("opponent")
+    decided = result_counts["win"] + result_counts["loss"]
+    win_rate = round(result_counts["win"] * 100 / decided) if decided else None
+    terminal_counts = {
+        condition: sum(1 for entry in entries if entry.get("terminalCondition") == condition)
+        for condition in ("played_out", "inactivity_timeout", "forfeit", "unknown")
+    }
+    turn_values = [
+        int(entry["turns"]) for entry in entries if isinstance(entry.get("turns"), int)
+    ]
+    median_turns = None
+    if turn_values:
+        ordered = sorted(turn_values)
+        median_turns = ordered[len(ordered) // 2]
+    loss_replays = [
+        str(entry.get("replayUrl"))
+        for entry in entries
+        if entry.get("result") == "loss" and entry.get("replayUrl")
+    ]
     digest = {
         "battleCount": len(entries),
         "wins": result_counts["win"],
         "losses": result_counts["loss"],
         "ties": result_counts["tie"],
         "unknown": result_counts["unknown"],
+        "winRatePct": win_rate,
         "totalTurns": total_turns,
+        "medianTurns": median_turns,
+        "terminalConditions": terminal_counts,
         "eloStart": elo_start,
         "eloEnd": elo_end,
         "eloDelta": elo_delta,
         "firstBattleId": first_battle_id,
         "latestBattleId": latest_battle_id,
         "latestReplayUrl": latest_replay,
+        "replayResolvedCount": sum(1 for entry in entries if entry.get("replayUrl")),
         "sessionId": session_id or None,
         "cycleId": cycle_id or None,
+        # Per-battle detail is CARRIED, not discarded. This batch replaces N
+        # individual Discord posts, so every field those posts would have shown
+        # has to survive here -- otherwise reducing post volume would mean
+        # losing the record, and "battles in == battles reported" would stop
+        # being checkable.
+        "battles": [
+            {
+                "battleId": entry.get("battleId"),
+                "result": entry.get("result"),
+                "turns": entry.get("turns"),
+                "terminalCondition": entry.get("terminalCondition"),
+                "opponent": entry.get("opponent"),
+                "replayUrl": entry.get("replayUrl"),
+            }
+            for entry in entries
+        ],
     }
-    parts = [
-        "Fouler ladder digest: "
-        f"{len(entries)} battles ({digest['wins']}W-{digest['losses']}L-{digest['ties']}T)"
-    ]
-    if total_turns:
-        parts[0] += f", {total_turns} turns"
-    parts[0] += "."
+
+    # Headline in the owner's requested shape.
+    headline = f"Batch of {len(entries)} done"
+    record = f"{digest['wins']}W/{digest['losses']}L"
+    if digest["ties"]:
+        record += f"/{digest['ties']}T"
+    if win_rate is not None:
+        record += f" ({win_rate}%)"
+    parts = [f"{headline} - {record}"]
     if elo_start is not None and elo_end is not None:
         sign = "+" if elo_delta is not None and elo_delta >= 0 else ""
-        parts.append(f"ELO {elo_start} -> {elo_end} ({sign}{elo_delta}).")
-    if first_battle_id or latest_battle_id:
-        parts.append(f"Range {first_battle_id or 'unknown'} to {latest_battle_id or 'unknown'}.")
-    if latest_opponent:
-        parts.append(f"Latest opponent: {latest_opponent}.")
-    if latest_replay:
-        parts.append(f"Latest replay: {latest_replay}")
+        parts[0] += f", ELO {elo_start} -> {elo_end} ({sign}{elo_delta})"
+    parts[0] += "."
+
+    # Only say how battles ended when it is not the boring answer. A batch that
+    # was all played out needs no sentence about it.
+    non_played = terminal_counts["inactivity_timeout"] + terminal_counts["forfeit"]
+    if non_played:
+        bits = []
+        if terminal_counts["inactivity_timeout"]:
+            bits.append(f"{terminal_counts['inactivity_timeout']} inactivity timeout")
+        if terminal_counts["forfeit"]:
+            bits.append(f"{terminal_counts['forfeit']} forfeit")
+        parts.append(f"Not played out: {', '.join(bits)}.")
+    if median_turns:
+        parts.append(f"Median {median_turns} turns.")
+    if loss_replays:
+        shown = loss_replays[-5:]
+        parts.append("Loss replays: " + " ".join(shown))
+    missing_replays = len(entries) - digest["replayResolvedCount"]
+    if missing_replays:
+        parts.append(f"{missing_replays} replay(s) unresolved.")
     return {
         "id": f"cycle-digest-{digest_key}",
         "event_type": "fouler-cycle-digest",
@@ -712,6 +789,37 @@ def _battle_digest_event(entries: list[dict[str, Any]]) -> dict[str, Any]:
         "recommended_next_action": "Review the bounded session evidence before authorizing another cycle.",
         "digest": digest,
     }
+
+
+def _reconcile_digest_replays(entries: list[dict[str, Any]]) -> int:
+    """Re-probe replays that had not resolved when their battle ended.
+
+    THIS IS THE RECONCILIATION PASS THAT NEVER EXISTED.
+    The per-battle path probed Showdown exactly once, immediately at battle end
+    (EVENT_POSTER_REPLAY_RESOLVE_ATTEMPTS defaults to "1", and the retry guard
+    `attempt < attempts and DELAY > 0` can therefore never be true), and then
+    moved on permanently. Any upload that completed a moment later was never
+    looked at again, so the event stayed at pending-public-upload forever.
+
+    A digest flush happens after the batch fills or after
+    FOULER_BATTLE_DIGEST_MAX_AGE_SEC, which is minutes later -- exactly the
+    window an upload needs. Probing here costs one request per genuinely
+    unresolved replay and is the difference between a link and a dead end.
+    """
+    resolved = 0
+    for entry in entries:
+        if entry.get("replayUrl"):
+            continue
+        replay_id = public_replay_id_candidate(entry.get("replayId") or entry.get("battleId"))
+        if not replay_id:
+            continue
+        url = _resolve_public_replay_url_from_pending_id(replay_id)
+        if url:
+            entry["replayUrl"] = url
+            resolved += 1
+    if resolved:
+        logger.info("Digest replay reconciliation resolved %d previously pending replay(s)", resolved)
+    return resolved
 
 
 def _battle_digest_failure(exc: BaseException) -> dict[str, Any]:
@@ -773,6 +881,7 @@ def _flush_battle_digest_if_due(*, now: float | None = None) -> dict[str, Any]:
                 "cycleId": first_cycle or None,
                 "expectedBattleCount": expected_count,
             }
+        _reconcile_digest_replays(batch)
         digest_event = _battle_digest_event(batch)
         result = _queue_deku_project_event(digest_event, digest_event["content"])
         if not result.get("ok"):
@@ -803,6 +912,44 @@ def _flush_battle_digest_if_due(*, now: float | None = None) -> dict[str, Any]:
         return _battle_digest_failure(exc)
 
 
+BATTLE_DIGEST_ENABLED = str(
+    os.getenv("FOULER_BATTLE_DIGEST_ENABLED", "1")
+).strip().lower() not in {"0", "false", "no", "off"}
+
+# Terminal conditions that are worth interrupting the digest for. Both are
+# operational faults the owner can act on; a played-out loss is ordinary ladder
+# variance and belongs in the batch.
+DIAGNOSED_LOSS_CONDITIONS = {"inactivity_timeout", "forfeit"}
+
+
+def _should_digest_battle_result(event: dict[str, Any]) -> bool:
+    """True when this battle belongs in the batch rather than its own post.
+
+    The digest is the DEFAULT. 275 of 277 events in the live queue were
+    individual battle results, one Discord post each, and the owner's complaint
+    is that this is "so much noise and repetitive" -- every post restated the
+    same shape and most carried no fact the batch could not carry.
+
+    A per-battle post survives only where it says something a batch cannot: a
+    loss with an actually-classified operational cause (inactivity timeout or
+    forfeit). Those are the ones where "what changed, and does it matter?" has a
+    real answer and someone may need to go look at reconnect or timer handling.
+    An ordinary played-out loss is ladder variance and goes in the batch.
+    """
+    if not BATTLE_DIGEST_ENABLED:
+        return False
+    if str(event.get("event_type") or "") != "battle_result":
+        return False
+    analysis = event.get("analysis") if isinstance(event.get("analysis"), dict) else {}
+    result = str(event.get("result") or analysis.get("result") or "").strip().lower()
+    terminal = str(
+        event.get("terminal_condition") or analysis.get("terminalCondition") or ""
+    ).strip().lower()
+    if result == "loss" and terminal in DIAGNOSED_LOSS_CONDITIONS:
+        return False
+    return True
+
+
 def _buffer_battle_result(event: dict[str, Any]) -> dict[str, Any]:
     now = time.time()
     try:
@@ -831,8 +978,22 @@ def _buffer_battle_result(event: dict[str, Any]) -> dict[str, Any]:
             for item in state["pendingBattles"]
             if isinstance(item, dict)
         }
-        if event_id not in reported_ids and event_id not in pending_ids:
-            state["pendingBattles"].append(_battle_digest_entry(event, now=now))
+        entry = _battle_digest_entry(event, now=now)
+        # Dedup by BATTLE as well as by local event id. A requeued battle gets a
+        # fresh local event id, so id-only dedup would buffer it twice and the
+        # batch would report "31 battles" for 30 played. Idempotency used to be
+        # enforced by filename collision at the DEKU outbox; batching moves that
+        # responsibility here, and a digest that overcounts is exactly the kind
+        # of silent miscount that is hard to notice.
+        pending_battle_ids = {
+            str(item.get("battleId") or "")
+            for item in state["pendingBattles"]
+            if isinstance(item, dict) and item.get("battleId")
+        }
+        battle_id = str(entry.get("battleId") or "")
+        duplicate_battle = bool(battle_id) and battle_id in pending_battle_ids
+        if event_id not in reported_ids and event_id not in pending_ids and not duplicate_battle:
+            state["pendingBattles"].append(entry)
             _write_battle_digest_state(state)
         result = _flush_battle_digest_if_due(now=now)
         if result.get("ok"):
@@ -1616,7 +1777,10 @@ def process_one_event(dry_run: bool = False) -> bool:
 
     # Commit the observation to the project-local DEKU handoff.
     event = prepare_battle_result_replay_for_post(event)
-    result = write_deku_observation(event)
+    if _should_digest_battle_result(event):
+        result = _buffer_battle_result(event)
+    else:
+        result = write_deku_observation(event)
     if result.get("ok"):
         mark_posted(event_id)
     else:

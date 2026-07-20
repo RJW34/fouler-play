@@ -56,9 +56,12 @@ def test_resolve_public_replay_url_stops_after_bounded_attempts(monkeypatch):
     )
 
     assert result is None
+    # Probes the FULL id. This assertion previously required the truncated id,
+    # which is the URL Showdown 404s on -- the resolver was being asserted to
+    # spend its bounded attempts on an address that could never resolve.
     assert calls == [
-        ("gen9ou-2626011055", False),
-        ("gen9ou-2626011055", False),
+        ("gen9ou-2626011055-privatehash", False),
+        ("gen9ou-2626011055-privatehash", False),
     ]
 
 
@@ -177,22 +180,32 @@ def test_replay_handoff_marks_requested_missing_url_as_pending():
         save_replay_requested=True,
     )
 
-    assert fields["replay_id"] == "gen9ou-2626011055"
+    # The room suffix is retained. It is part of the id Showdown serves the
+    # replay under, and dropping it produced a URL that 404s forever.
+    assert fields["replay_id"] == "gen9ou-2626011055-privatehash"
     assert fields["replay_url"] is None
     assert fields["replay_status"] == "pending-public-upload"
     assert fields["replay_public_verified"] is False
 
 
-def test_replay_handoff_does_not_publish_private_hash_url():
+def test_replay_handoff_keeps_suffixed_replay_unverified_until_probed():
+    """A suffixed replay is still UNVERIFIED until something probes it.
+
+    What changed is the id, not the verification rule. Previously the room
+    suffix both truncated the id and permanently forced "pending", so the
+    resolver spent its one attempt on a URL that could only 404. Now the full id
+    is carried -- so the probe can succeed -- while publicness still comes from
+    the probe, never from the shape of the id.
+    """
     fields = run_battle.replay_handoff_fields(
         battle_tag="battle-gen9ou-2626011055-privatehash",
         replay_url="https://replay.pokemonshowdown.com/gen9ou-2626011055-privatehash",
         verified_replay_url=None,
     )
 
-    assert fields["replay_id"] == "gen9ou-2626011055"
-    assert fields["replay_url"] is None
+    assert fields["replay_id"] == "gen9ou-2626011055-privatehash"
     assert fields["raw_replay_url"] == "https://replay.pokemonshowdown.com/gen9ou-2626011055-privatehash"
+    # Unverified: no probe has confirmed it resolves.
     assert fields["replay_status"] == "pending-public-upload"
     assert fields["replay_public_verified"] is False
 
