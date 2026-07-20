@@ -37,6 +37,9 @@ from infrastructure.event_queue_lib import (
 )
 from infrastructure.gen9_validation import Gen9Validator
 from infrastructure.discord_reporting import (
+    _extract_contract_section,
+    why_adds_no_information,
+    why_is_constant_copy,
     canonical_replay_url,
     format_payload_or_message,
     is_generic_why_text,
@@ -1418,6 +1421,35 @@ def validate_event_content(event: dict) -> Tuple[bool, str]:
     return True, ""
 
 
+def _recent_why_texts(limit: int = 8) -> list[str]:
+    """Best-effort: the whyItMatters of the most recent queued battle events.
+
+    Fails OPEN. If the queue cannot be read, the constant-copy detector simply
+    sees no history and reports nothing; a reporting gate must never be able to
+    block the transport because of its own I/O error.
+    """
+    try:
+        queue_file = Path(os.getenv("EVENT_QUEUE_FILE", str(PROJECT_ROOT / "events_queue.json")))
+        events = json.loads(queue_file.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    if not isinstance(events, list):
+        return []
+    whys: list[str] = []
+    for event in reversed(events):
+        if not isinstance(event, dict):
+            continue
+        if str(event.get("event_type") or "") != "battle_result":
+            continue
+        summary = redacted_report_summary(str(event.get("content") or ""))
+        why = str(summary.get("whyItMatters") or "").strip()
+        if why:
+            whys.append(why)
+        if len(whys) >= limit:
+            break
+    return whys
+
+
 def report_quality_findings(event: dict[str, Any]) -> list[str]:
     """Return transport-blocking report quality findings for Discord-bound events."""
 
@@ -1434,8 +1466,26 @@ def report_quality_findings(event: dict[str, Any]) -> list[str]:
 
     summary = redacted_report_summary(content)
     why = str(summary.get("whyItMatters") or "")
+    # An ABSENT why is fine and is now the normal case for wins: the field is
+    # omitted rather than filled with prose. These checks only fire on a why
+    # that is present but says nothing.
     if is_generic_why_text(why):
         findings.append("generic_why")
+    elif why:
+        # Structural checks. The phrase blocklist above was silenced once by a
+        # rewording (it still lists "battle updates should" while the runtime had
+        # moved to a different constant tail), so these test the properties we
+        # actually care about rather than a list of strings someone noticed.
+        what = _extract_contract_section(content, "What happened:")
+        if why_adds_no_information(why, what):
+            findings.append("why_restates_what_happened")
+        # why_is_constant_copy is deliberately NOT blocking. The surviving why is
+        # a CLASSIFICATION drawn from a closed set of three causes (forfeit /
+        # inactivity-disconnect / replay-not-public), so it legitimately repeats
+        # whenever the same cause recurs. Measured against the live corpus it
+        # would have blocked 32 of 38 real loss reports. A repeated valid
+        # classification is not a defect; it stays available for offline scanning
+        # of the free-prose fields, which is where boilerplate actually hides.
 
     structured = structured_report_fields(content, event_type=event_type)
     readiness = structured.get("proof_readiness")

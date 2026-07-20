@@ -20,9 +20,11 @@ VALID_EVENT_CLASSES = {
 }
 
 _HEADER_RE = re.compile(r"^\[(?P<event>[A-Z_]+)\]\s+.+")
+# "Why it matters:" is deliberately NOT required. It was filler in 221 of 223
+# live events (restating the result already stated in "What happened"), so the
+# win path now omits it entirely rather than generating prose to fill it.
 _REQUIRED_LABELS = (
     "What happened:",
-    "Why it matters:",
     "Proof:",
     "Remaining:",
 )
@@ -717,9 +719,11 @@ def _headline_from_payload(data: dict) -> str:
 def _subject_matter_summary(data: dict) -> list[str]:
     summary: list[str] = []
 
-    decisive_reason = _clean_line(data.get("decisive_reason", ""))
-    if decisive_reason:
-        summary.append(decisive_reason)
+    # decisive_reason is deliberately NOT added here. It is the one thing the
+    # "Why it matters" field still carries (loss path only), and including it in
+    # the what-happened summary as well stated the same fact twice -- which is
+    # both the defect this change set exists to remove and enough to trip the
+    # why_adds_no_information gate, which would have blocked every loss report.
 
     strategic_issue = _clean_line(data.get("strategic_issue", ""))
     if strategic_issue:
@@ -916,6 +920,55 @@ def is_generic_why_text(value: object) -> bool:
     return _is_generic_why_text(value)
 
 
+_WHY_NOISE_RE = re.compile(r"[0-9]+|\bvs\b|\bWR\b|%|[(),;:.-]", re.IGNORECASE)
+_WHY_STOPWORDS = frozenset(
+    "a an and are as at be but by for from in is it its of on or that the this to was were with".split()
+)
+
+
+def _why_signature(value: object) -> str:
+    """Opponent- and number-independent fingerprint of a why-it-matters line.
+
+    Two whys differing only by opponent name and ELO/record numbers collapse to
+    the same signature. That is what lets the constant-copy detector below see
+    that a field is boilerplate no matter how the boilerplate is worded.
+    """
+    text = _WHY_NOISE_RE.sub(" ", _clean_line(value).lower())
+    tokens = [t for t in text.split() if t and t not in _WHY_STOPWORDS]
+    return " ".join(tokens)
+
+
+def why_is_constant_copy(value: object, recent_values, *, threshold: int = 3) -> bool:
+    """True when this why is the same boilerplate as recent events.
+
+    WHY THIS IS NOT A PHRASE LIST.
+    _GENERIC_WHY_PHRASES is a blocklist of known-bad strings, and it was silenced
+    by a single rewording: it still lists "battle updates should" while the
+    runtime had moved on to emitting "keep proof focused on repeatable win
+    conditions, not flavor text". The gate therefore reported 0 bad events while
+    183 of 223 live events carried a constant platitude and 221 restated the
+    result. A blocklist can only ever describe filler somebody already noticed.
+
+    This checks the structural property instead -- that the field does not vary
+    with the event -- so it keeps working when the copy changes. The blocklist is
+    retained as defence in depth, not as the primary signal.
+    """
+    signature = _why_signature(value)
+    if not signature:
+        return False
+    matches = sum(1 for other in recent_values if _why_signature(other) == signature)
+    return matches >= threshold
+
+
+def why_adds_no_information(why: object, what: object) -> bool:
+    """True when the why contributes no token that the what-happened does not
+    already state -- the same fact written twice."""
+    why_tokens = set(_why_signature(why).split())
+    if not why_tokens:
+        return False
+    return not (why_tokens - set(_why_signature(what).split()))
+
+
 def _battle_why_from_payload(data: dict, result: str) -> str:
     opponent = _sanitized_opponent_name(data.get("opponent", ""))
     if result == "loss":
@@ -1008,8 +1061,15 @@ def build_contract_message(
         f"[{event}] **{_truncate(header, _MAX_HEADLINE_LEN)}**",
         "",
         _render_section("What happened:", what_happened, limit=_MAX_WHAT_LEN),
-        "",
-        _render_section("Why it matters:", why_it_matters, limit=220),
+    ]
+    # Omit the section entirely when there is nothing specific to say.
+    # _render_section renders a blank value as the literal "pending", so an empty
+    # why would print a "Why it matters: pending" line, which is worse than
+    # absent. Deleting a field that was filler 221 times out of 223 is the fix;
+    # do not generate prose to fill it.
+    if _clean_line(why_it_matters):
+        parts += ["", _render_section("Why it matters:", why_it_matters, limit=220)]
+    parts += [
         "",
         _render_section("Proof:", proof, bulletize=True),
         "",

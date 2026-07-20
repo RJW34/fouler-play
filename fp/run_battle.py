@@ -37,6 +37,37 @@ RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
 RUNTIME_LOG_ROOT = _RUNTIME_PATHS.log_root
 BATTLE_STATS_PATH = _RUNTIME_PATHS.battle_stats_path
 _battle_stats_enrichment_lock = asyncio.Lock()
+
+# Rows for battles THIS PROCESS has already finished, in completion order.
+#
+# run.py appends a finished battle to battle_stats.json on its own schedule, but
+# the runner is started with --max-concurrent-battles 3, so two or three battles
+# routinely finish within seconds of each other. Each one used to compute its
+# "last 5" window from a file snapshot that did not yet contain its siblings.
+# Measured on the live corpus: 111 of 223 events repeated the PREVIOUS event's
+# window verbatim, and every one passed the transport gate, because that gate
+# only checks the arithmetic is self-consistent (wins + losses == count) and
+# never compares the window against real history. A message stating a false
+# record is worse than an ugly one, so the window is now computed from the file
+# rows merged with what this process knows it has already completed.
+_session_completed_rows: dict = {}
+
+
+def _merge_session_completed_rows(file_rows: list) -> list:
+    """File rows plus this process's completed battles, deduped by battle id."""
+    seen = set()
+    for row in file_rows:
+        if not isinstance(row, dict):
+            continue
+        for key in ("battle_id", "replay_id", "id"):
+            value = str(row.get(key) or "").strip()
+            if value:
+                seen.add(value)
+    merged = [r for r in file_rows if isinstance(r, dict)]
+    for battle_id, row in _session_completed_rows.items():
+        if battle_id and battle_id not in seen:
+            merged.append(row)
+    return merged
 _deku_event_drain_lock = asyncio.Lock()
 _battle_stats_authoritative_facts: dict[str, dict[str, object]] = {}
 
@@ -3772,13 +3803,19 @@ async def pokemon_battle(
                             "turns": _turn_count_ev,
                         }
                         try:
-                            _stats_battles = []
-                            if BATTLE_STATS_PATH.exists():
-                                _stats_data = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
-                                _stats_battles = [
-                                    _b for _b in _stats_data.get("battles", [])
-                                    if isinstance(_b, dict)
-                                ]
+                            # Serialize against the enrichment writer and merge in
+                            # the battles this process finished but run.py has not
+                            # appended yet. See _merge_session_completed_rows.
+                            async with _battle_stats_enrichment_lock:
+                                _session_completed_rows[battle_tag] = _current_result_row
+                                _stats_battles = []
+                                if BATTLE_STATS_PATH.exists():
+                                    _stats_data = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+                                    _stats_battles = [
+                                        _b for _b in _stats_data.get("battles", [])
+                                        if isinstance(_b, dict)
+                                    ]
+                                _stats_battles = _merge_session_completed_rows(_stats_battles)
                             _stats_battles_for_alert = _stats_battles
                             _recent_result_summary = summarize_recent_results_with_current(
                                 _stats_battles,
@@ -3829,17 +3866,18 @@ async def pokemon_battle(
                         elif _result_str == "win":
                             _next_action = ""
 
+                        # "Why it matters" is emitted ONLY when there is something
+                        # specific to say: a loss whose cause we actually classified
+                        # (forfeit, inactivity/disconnect, or replay not yet public).
+                        # Every other branch previously restated the result already
+                        # in "What happened" and appended a constant tail. That was
+                        # filler in 221 of 223 live events, so the field is dropped.
+                        # Do NOT reintroduce generated prose here.
                         _why_it_matters_ev = (
-                            f"{_result_str} vs {_opponent_label} is ladder evidence"
+                            _decisive_reason
+                            if (_result_str == "loss" and _decisive_reason)
+                            else ""
                         )
-                        if _recent_summary:
-                            _why_it_matters_ev += f"; {_recent_summary}"
-                        if _result_str == "loss" and _decisive_reason:
-                            _why_it_matters_ev += f"; {_decisive_reason}"
-                        elif _result_str == "loss":
-                            _why_it_matters_ev += "; recorded as ladder evidence only (improve loop parked: no replay-review servicer; needs a discriminating offline gate)"
-                        elif _result_str == "win":
-                            _why_it_matters_ev += "; keep proof focused on repeatable win conditions, not flavor text"
 
                         _battle_result_event_id = queue_event(
                             "battle_result",
