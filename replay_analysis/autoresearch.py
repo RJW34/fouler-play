@@ -18,7 +18,11 @@ from data.pokedex_oracle import oracle as _oracle
 from infrastructure.discord_reporting import build_contract_payload
 from infrastructure.event_queue_lib import queue_event
 from infrastructure.runtime_paths import resolve_runtime_paths
-from replay_analysis.account_identity import resolve_bot_username
+from replay_analysis.account_identity import (
+    _norm_account,
+    resolve_bot_accounts,
+    resolve_bot_username,
+)
 
 _RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
 RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
@@ -333,10 +337,21 @@ class AutoResearcher:
         return [line.strip() for line in log.split("\n") if line.strip()]
 
     def _parse_bot_slot(self, lines: Iterable[str]) -> str:
+        """Resolve which side of the replay the bot played.
+
+        Matches against every account the bot is or has been known as, not just
+        the current lease account. account_identity documents why: the lease
+        only knows the CURRENT name, while the replay window is dominated by
+        games played under prior ones, so single-name matching silently falls
+        back to "p1" and inverts the analysis for those replays. The bot is p1
+        and p2 at roughly even rates, so a wrong slot means every downstream
+        detector reads the OPPONENT's game.
+        """
+        known_accounts = resolve_bot_accounts()
         for line in lines:
             if line.startswith("|player|"):
                 parts = line.split("|")
-                if len(parts) >= 4 and BOT_USERNAME.lower() in parts[3].lower():
+                if len(parts) >= 4 and _norm_account(parts[3]) in known_accounts:
                     return parts[2]
         return "p1"
 
@@ -400,20 +415,232 @@ class AutoResearcher:
             return True, f"multiple Pokemon fainted by turn 8 ({mons})"
         return False, ""
 
-    def _long_game_loss_issue(self, battle: dict[str, Any], replay_data: dict[str, Any] | None) -> tuple[bool, str]:
+    # --- endgame conversion (material-grounded) -------------------------------
+    #
+    # A conversion failure is "we reached a winning position and lost it", not
+    # "the game ran long". Fat/stall teams produce 40-90 turn games by design,
+    # so a turn-count threshold fires on essentially every stall loss and says
+    # nothing mechanical. These thresholds describe a real material lead.
+    ENDGAME_MIN_TURN = 8              # after the window early_bleeding owns
+    ENDGAME_MATERIAL_LEAD = 2         # up 2+ Pokemon is decisively winning
+    ENDGAME_NARROW_LEAD = 1           # up 1 Pokemon ...
+    ENDGAME_NARROW_HP_EDGE = 0.20     # ... plus a 20pp team-HP edge
+
+    @staticmethod
+    def _parse_hp_fraction(token: str) -> float | None:
+        """Parse a Showdown HP token ('43/100', '0 fnt', '250\\/300 brn') -> 0..1."""
+        raw = str(token or "").strip()
+        if not raw:
+            return None
+        raw = raw.split(" ")[0].replace("\\/", "/").strip()
+        if not raw:
+            return None
+        if raw in {"0", "0.0"}:
+            return 0.0
+        if "/" not in raw:
+            return None
+        num, _, den = raw.partition("/")
+        try:
+            numerator = float(num)
+            denominator = float(den)
+        except ValueError:
+            return None
+        if denominator <= 0:
+            return None
+        return max(0.0, min(1.0, numerator / denominator))
+
+    @classmethod
+    def _material_timeline(
+        cls, lines: list[str], bot_slot: str
+    ) -> list[dict[str, Any]]:
+        """Reconstruct per-turn material state for both sides from protocol truth.
+
+        Uses only Showdown replay protocol lines, so every number in the
+        resulting evidence can be re-checked by a human opening the replay.
+        Unrevealed Pokemon are counted alive at full HP, which is what both
+        players can actually see.
+        """
+        opponent_slot = "p2" if bot_slot == "p1" else "p1"
+        sides = (bot_slot, opponent_slot)
+
+        team_size: dict[str, int] = {side: 0 for side in sides}
+        preview_counts: dict[str, int] = {side: 0 for side in sides}
+        hp: dict[str, dict[str, float]] = {side: {} for side in sides}
+        fainted: dict[str, set[str]] = {side: set() for side in sides}
+
+        def side_of(target: str) -> str | None:
+            slot = target.split(":", 1)[0].strip()
+            side = slot[:2]
+            return side if side in team_size else None
+
+        def name_of(target: str) -> str:
+            return target.split(":", 1)[1].strip() if ":" in target else target.strip()
+
+        def snapshot(turn: int) -> dict[str, Any]:
+            row: dict[str, Any] = {"turn": turn}
+            for side in sides:
+                size = team_size[side] or preview_counts[side] or 6
+                known = hp[side]
+                total = sum(known.values()) + (size - len(known)) * 1.0
+                key = "our" if side == bot_slot else "opp"
+                row[f"{key}_alive"] = size - len(fainted[side])
+                row[f"{key}_hp"] = max(0.0, min(1.0, total / size)) if size else 0.0
+            return row
+
+        timeline: list[dict[str, Any]] = []
+        current_turn = 0
+        for line in lines:
+            parts = line.split("|")
+            if len(parts) < 2:
+                continue
+            tag = parts[1]
+
+            if tag == "teamsize" and len(parts) >= 4:
+                side = parts[2].strip()
+                if side in team_size:
+                    try:
+                        team_size[side] = int(parts[3])
+                    except ValueError:
+                        pass
+            elif tag == "poke" and len(parts) >= 3:
+                side = parts[2].strip()
+                if side in preview_counts:
+                    preview_counts[side] += 1
+            elif tag == "turn" and len(parts) >= 3:
+                try:
+                    current_turn = int(parts[2])
+                except ValueError:
+                    continue
+                timeline.append(snapshot(current_turn))
+            elif tag in {"switch", "drag", "replace"} and len(parts) >= 5:
+                side = side_of(parts[2])
+                if side:
+                    value = cls._parse_hp_fraction(parts[4])
+                    if value is not None:
+                        hp[side][name_of(parts[2])] = value
+            elif tag in {"-damage", "-heal", "-sethp"} and len(parts) >= 4:
+                side = side_of(parts[2])
+                if side:
+                    value = cls._parse_hp_fraction(parts[3])
+                    if value is not None:
+                        hp[side][name_of(parts[2])] = value
+            elif tag == "faint" and len(parts) >= 3:
+                side = side_of(parts[2])
+                if side:
+                    name = name_of(parts[2])
+                    hp[side][name] = 0.0
+                    fainted[side].add(name)
+
+        # Final state after the last |turn| marker, so a lead thrown on the
+        # closing turns is still visible.
+        if current_turn:
+            timeline.append(snapshot(current_turn))
+        return timeline
+
+    @staticmethod
+    def _winning_slot(lines: list[str]) -> str | None:
+        """Resolve which side the replay says actually won, from |player| + |win|."""
+        names: dict[str, str] = {}
+        winner = ""
+        for line in lines:
+            parts = line.split("|")
+            if len(parts) < 3:
+                continue
+            if parts[1] == "player" and len(parts) >= 4 and parts[3].strip():
+                names[parts[2].strip()] = parts[3].strip().lower()
+            elif parts[1] == "win":
+                winner = parts[2].strip().lower()
+        if not winner:
+            return None
+        for slot, name in names.items():
+            if name == winner:
+                return slot
+        return None
+
+    @classmethod
+    def _losing_slot(cls, lines: list[str], assumed_bot_slot: str) -> str | None:
+        """The bot's slot for a recorded loss, verified against the replay itself.
+
+        _parse_bot_slot matches a configured username and silently falls back to
+        "p1" when that lookup fails (renamed account, unset env). Trusting that
+        fallback makes the analyzer read the OPPONENT's winning position as the
+        bot's and emit confident, exactly-backwards claims. The replay's own
+        |win| line is ground truth, so for a recorded loss the bot is whichever
+        side did not win. Returns None when the replay cannot settle it, so the
+        caller declines to make a claim rather than guessing.
+        """
+        winner = cls._winning_slot(lines)
+        if winner is None:
+            return None
+        loser = "p2" if winner == "p1" else "p1"
+        return loser
+
+    @classmethod
+    def _endgame_conversion_issue(
+        cls, battle: dict[str, Any], lines: list[str], bot_slot: str
+    ) -> tuple[bool, str]:
+        """Flag losses where the bot held a real material lead and lost it.
+
+        Grounded in reconstructed per-turn Pokemon-alive counts and team HP
+        from the replay protocol log. A long game the bot was losing throughout
+        is a matchup problem and is deliberately NOT flagged here.
+        """
         if battle.get("result") != "loss":
             return False, ""
-        log = self._extract_log_lines(replay_data)
-        turns = 0
-        for line in log:
-            if line.startswith("|turn|"):
-                try:
-                    turns = max(turns, int(line.split("|")[2]))
-                except Exception:
-                    pass
-        if turns >= 35:
-            return True, f"loss lasted {turns} turns, suggesting endgame conversion or long-game planning failure"
-        return False, ""
+        # Never analyze the wrong side of the battle: a mis-resolved slot turns
+        # the opponent's winning position into a fabricated "we were winning"
+        # claim. Prefer the replay's verdict; decline if it cannot be verified.
+        verified_slot = cls._losing_slot(lines, bot_slot)
+        if verified_slot is None:
+            return False, ""
+        bot_slot = verified_slot
+        timeline = cls._material_timeline(lines, bot_slot)
+        if not timeline:
+            return False, ""
+
+        def lead_of(row: dict[str, Any]) -> tuple[int, float]:
+            return (
+                int(row["our_alive"]) - int(row["opp_alive"]),
+                float(row["our_hp"]) - float(row["opp_hp"]),
+            )
+
+        def qualifies(row: dict[str, Any]) -> bool:
+            material, hp_edge = lead_of(row)
+            if hp_edge < 0:
+                # Up on bodies but behind on total HP is not a winning position:
+                # three near-dead Pokemon do not beat one healthy one.
+                return False
+            if material >= cls.ENDGAME_MATERIAL_LEAD:
+                return True
+            return material >= cls.ENDGAME_NARROW_LEAD and hp_edge >= cls.ENDGAME_NARROW_HP_EDGE
+
+        eligible = [
+            row
+            for row in timeline
+            if int(row["turn"]) >= cls.ENDGAME_MIN_TURN and qualifies(row)
+        ]
+        if not eligible:
+            return False, ""
+
+        peak = max(eligible, key=lambda row: (lead_of(row), -int(row["turn"])))
+        peak_turn = int(peak["turn"])
+        material, hp_edge = lead_of(peak)
+
+        surrendered_at = None
+        for row in timeline:
+            if int(row["turn"]) > peak_turn and lead_of(row)[0] <= 0:
+                surrendered_at = int(row["turn"])
+                break
+
+        detail = (
+            f"led {int(peak['our_alive'])}-{int(peak['opp_alive'])} on Pokemon at turn {peak_turn} "
+            f"(team HP {peak['our_hp']:.0%} vs {peak['opp_hp']:.0%}, {hp_edge:+.0%} edge) and still lost"
+        )
+        if surrendered_at is not None:
+            detail += f"; material lead surrendered by turn {surrendered_at}"
+        else:
+            detail += "; lead eroded without the material count ever inverting"
+        return True, detail
 
     @staticmethod
     def _protect_sequence_issue(lines: list[str], bot_slot: str) -> tuple[bool, str]:
@@ -842,10 +1069,10 @@ class AutoResearcher:
                 pattern_counter["early_bleeding"] += 1
                 evidence_map["early_bleeding"].append(f"{battle_label}: {early_detail}")
 
-            long_issue, long_detail = self._long_game_loss_issue(battle, replay_data)
-            if long_issue:
+            endgame_issue, endgame_detail = self._endgame_conversion_issue(battle, lines, bot_slot)
+            if endgame_issue:
                 pattern_counter["endgame_conversion"] += 1
-                evidence_map["endgame_conversion"].append(f"{battle_label}: {long_detail}")
+                evidence_map["endgame_conversion"].append(f"{battle_label}: {endgame_detail}")
 
             protect_issue, protect_detail = self._protect_sequence_issue(lines, bot_slot)
             if protect_issue:
@@ -880,9 +1107,16 @@ class AutoResearcher:
                 "Bias opening decisions toward preserving defensive pivots and reduce greedy lines before turn 8.",
             ),
             "endgame_conversion": (
-                "Long games are not being converted cleanly",
-                "The bot reaches playable long games and still loses after turn 35, pointing to endgame planning weakness rather than raw matchup hopelessness.",
-                "Add stronger endgame-preservation heuristics: protect wincon HP, value recovery higher, and avoid unnecessary trades once ahead on resources.",
+                "Winning positions are not being converted",
+                "In these losses the bot reached a real material lead -- ahead on Pokemon "
+                "remaining, and on team HP -- and lost from there. Counts and HP are "
+                "reconstructed per turn from the replay protocol log, so each cited "
+                "position can be re-checked against the replay. Long losses where the bot "
+                "was behind throughout are matchup problems and are not counted here.",
+                "Audit decision-making from the cited peak-advantage turn onward: whether "
+                "the win condition was preserved, whether recovery was valued correctly "
+                "while ahead, and whether trades that gave back the material lead were "
+                "necessary.",
             ),
             "decision_instability": (
                 "Decision traces show fallback or override failures",
