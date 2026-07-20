@@ -67,12 +67,15 @@
       "tunnel": "HERMES-BroadcastSourceTunnels",
       "tunnelForward": "-L 127.0.0.1:8777:127.0.0.1:8777 devstream-tunnel@192.168.1.125",
       "remotelyProbeable": false,
+      "declaredForRelease": "94b9815372a948cfd1b3852559ff7336ac84c2ff",
       "notes": "The overlay server binds loopback-only on JIGGLYPUFF on purpose; it is never exposed to the LAN. The broadcast node reaches it through the HERMES-BroadcastSourceTunnels SSH forward, so these URLs are correct ONLY on a host carrying that tunnel. The control plane (DEKU) carries no such tunnel and MUST NOT HEAD-probe these URLs -- server liveness is covered by health.command, which runs on the box that can actually see the socket. Do not 'fix' an unreachable surface by widening the bind."
     },
     "surfaces": [
       {"name": "slot 1", "url": "http://127.0.0.1:8777/slot/1?slot_idle=public", "required": true},
       {"name": "slot 2", "url": "http://127.0.0.1:8777/slot/2?slot_idle=public", "required": true},
       {"name": "slot 3", "url": "http://127.0.0.1:8777/slot/3?slot_idle=public", "required": true},
+      {"name": "landscape triple battle", "url": "http://127.0.0.1:8777/landscape", "required": true, "canvas": "1920x1080", "chatOverlay": false},
+      {"name": "vertical triple battle", "url": "http://127.0.0.1:8777/vertical", "required": true, "canvas": "1080x1920", "chatOverlay": false},
       {"name": "battle lab overlay", "url": "http://127.0.0.1:8777/overlay?mode=bottom&hide_recent=1", "required": true},
       {"name": "health", "url": "http://127.0.0.1:8777/health", "required": true, "captureRequired": false, "operatorOnly": true}
     ]

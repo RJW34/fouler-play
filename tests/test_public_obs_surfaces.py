@@ -22,6 +22,12 @@ PUBLIC_BATTLE_INJECT_CSS = ROOT_DIR / "streaming" / "battle_inject.css"
 PUBLIC_BATTLE_SLOT_HTML = ROOT_DIR / "streaming" / "battle_slot.html"
 PUBLIC_DEVSTREAM_CONTRACT = ROOT_DIR / "devstream.yaml"
 
+# DEKU-side pointer at the fouler release that is actually deployed. Maintained
+# by whoever cuts a release; the tests below make a stale pointer loud instead of
+# letting the control plane quietly read a manifest for code that is not running.
+DEPLOYED_RELEASE_DIR = Path("/home/ryan/deku-fouler-signing/current-release")
+DEPLOYMENT_RECEIPT_DIR = Path("/home/ryan/deku-fouler-signing")
+
 FORBIDDEN_PUBLIC_STRINGS = (
     "Debug Overlay",
     "Starting Soon",
@@ -502,3 +508,92 @@ def test_hybrid_scene_builder_prunes_operator_dashboard_sources() -> None:
     assert slot_item["bounds_crop"] is False
     assert slot_item["crop_left"] == 0
 
+
+# --- the manifest must describe the release that is actually deployed --------
+#
+# 2026-07-20: the control-plane registry reads this file, but this checkout is a
+# different lineage from the deployed release and does not even contain its
+# commit. A same-day edit that rewrote the surface URLs also dropped the two
+# dual-format surfaces, so the control plane saw five surfaces for a release that
+# serves seven -- with no signal that anything was missing. These tests pin the
+# surface set and tie it to the deployed commit.
+
+EXPECTED_SURFACES = {
+    "slot 1",
+    "slot 2",
+    "slot 3",
+    "landscape triple battle",
+    "vertical triple battle",
+    "battle lab overlay",
+    "health",
+}
+
+
+def test_manifest_declares_every_surface_the_release_serves() -> None:
+    parsed = json.loads(PUBLIC_DEVSTREAM_CONTRACT.read_text(encoding="utf-8"))
+    surfaces = parsed["obs"]["surfaces"]
+
+    assert {surface["name"] for surface in surfaces} == EXPECTED_SURFACES
+
+
+def test_dual_format_surfaces_keep_their_broadcast_geometry() -> None:
+    """Landscape + vertical are the live multitrack broadcast; do not drop them."""
+    parsed = json.loads(PUBLIC_DEVSTREAM_CONTRACT.read_text(encoding="utf-8"))
+    by_name = {surface["name"]: surface for surface in parsed["obs"]["surfaces"]}
+
+    landscape = by_name["landscape triple battle"]
+    assert landscape["url"] == "http://127.0.0.1:8777/landscape"
+    assert landscape["canvas"] == "1920x1080"
+    assert landscape["chatOverlay"] is False
+
+    vertical = by_name["vertical triple battle"]
+    assert vertical["url"] == "http://127.0.0.1:8777/vertical"
+    assert vertical["canvas"] == "1080x1920"
+    assert vertical["chatOverlay"] is False
+
+
+def test_surface_set_matches_the_deployed_release_contract() -> None:
+    """This checkout is not the deployed lineage, so prove the sets still agree.
+
+    Skipped off DEKU. On DEKU it is the guard that would have caught the split:
+    the deployed release declares seven surfaces, and so must we.
+    """
+    deployed_contract = DEPLOYED_RELEASE_DIR / "devstream.yaml"
+    if not deployed_contract.exists():
+        pytest.skip("no deployed-release pointer on this host")
+
+    deployed = json.loads(deployed_contract.read_text(encoding="utf-8"))
+    ours = json.loads(PUBLIC_DEVSTREAM_CONTRACT.read_text(encoding="utf-8"))
+
+    deployed_names = {surface["name"] for surface in deployed["obs"]["surfaces"]}
+    our_names = {surface["name"] for surface in ours["obs"]["surfaces"]}
+
+    assert our_names == deployed_names, (
+        "the control plane reads this manifest but the deployed release serves a "
+        "different surface set; reconcile them rather than letting the control "
+        "plane report on surfaces that do not exist (or miss ones that do)"
+    )
+
+
+def test_declared_release_is_the_one_currently_deployed() -> None:
+    """`declaredForRelease` must track the newest deployment receipt.
+
+    Without this, cutting a new release silently leaves the surface declaration
+    describing the previous one -- the same 'pointer at something that moved'
+    failure this whole file exists to prevent.
+    """
+    receipts = sorted(DEPLOYMENT_RECEIPT_DIR.glob("deployment-receipt-*.json"))
+    if not receipts:
+        pytest.skip("no deployment receipts on this host")
+
+    newest = max(
+        (json.loads(path.read_text(encoding="utf-8")) for path in receipts),
+        key=lambda receipt: receipt["createdAt"],
+    )
+    parsed = json.loads(PUBLIC_DEVSTREAM_CONTRACT.read_text(encoding="utf-8"))
+
+    assert parsed["obs"]["surfaceAccess"]["declaredForRelease"] == newest["sourceCommit"], (
+        "surface declaration was written against a different release than the one "
+        f"deployed ({newest['sourceCommit']}); re-check the surface set and update "
+        "declaredForRelease"
+    )

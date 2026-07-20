@@ -25,17 +25,31 @@ JIGGLYPUFF_RUNTIME_START_PURPOSE = "jigglypuff-runtime-start"
 JIGGLYPUFF_RUNTIME_STOP_PURPOSE = "jigglypuff-runtime-stop"
 JIGGLYPUFF_TAILNET_HOST = "jigglypuff.tail4859dd.ts.net"
 JIGGLYPUFF_LAN_HOST = "JIGGLYPUFF"
-JIGGLYPUFF_DIRECT_IP = "192.168.1.126"
-DEFAULT_OBS_HTTP = f"http://{JIGGLYPUFF_DIRECT_IP}:8777"
+JIGGLYPUFF_DIRECT_IP = "192.168.1.125"
+# The overlay/health server binds 127.0.0.1:8777 on JIGGLYPUFF and is never
+# exposed to the LAN. DEKU reaches it through jigglypuff-fouler-health-tunnel
+# .service, which forwards 127.0.0.1:8777 here. Probing the LAN address for 8777
+# fails by construction no matter which octet you write, so the tunnel -- not the
+# host address -- is the default for OBS HTTP.
+TUNNELLED_OBS_HTTP = "http://127.0.0.1:8777"
+DEFAULT_OBS_HTTP = TUNNELLED_OBS_HTTP
+# The status worker on 8791 has no tunnel; the LAN address is the only path.
 DEFAULT_WORKER_HTTP = f"http://{JIGGLYPUFF_DIRECT_IP}:8791"
+LAN_OBS_HTTP = f"http://{JIGGLYPUFF_DIRECT_IP}:8777"
 TAILNET_OBS_HTTP = f"http://{JIGGLYPUFF_TAILNET_HOST}:8777"
 TAILNET_WORKER_HTTP = f"http://{JIGGLYPUFF_TAILNET_HOST}:8791"
 STATUS_WORKER_TIMEOUT_SECONDS = int(os.environ.get("FOULER_JIGGLYPUFF_STATUS_WORKER_TIMEOUT_SECONDS", "6"))
 STATUS_SSH_TIMEOUT_SECONDS = int(os.environ.get("FOULER_JIGGLYPUFF_STATUS_SSH_TIMEOUT_SECONDS", "45"))
 TAILNET_REMOTE = f"Ryanj@{JIGGLYPUFF_TAILNET_HOST}"
+# NOTE: the bare hostname is NOT a LAN path. MagicDNS resolves "JIGGLYPUFF" to
+# the tailnet address, so this candidate is a second, slower spelling of
+# TAILNET_REMOTE and burns a full SSH timeout before the direct IP is tried.
 LAN_REMOTE = f"Ryanj@{JIGGLYPUFF_LAN_HOST}"
 DIRECT_REMOTE = f"Ryanj@{JIGGLYPUFF_DIRECT_IP}"
-REMOTE = os.environ.get("FOULER_JIGGLYPUFF_SSH", TAILNET_REMOTE)
+# Default to the address that answers. A nonzero exit from this script makes the
+# control plane report the whole project "blocked", so the primary path must not
+# be one that is expected to time out.
+REMOTE = os.environ.get("FOULER_JIGGLYPUFF_SSH", DIRECT_REMOTE)
 REMOTE_SCRIPT = os.environ.get(
     "FOULER_JIGGLYPUFF_SCRIPT",
     r"D:\Projects\fouler-play\scripts\fouler_jigglypuff_runtime.ps1",
@@ -71,20 +85,27 @@ def remote_candidates(primary: str, fallback_env: str, defaults: list[str]) -> l
     return candidates
 
 
+# 8777 is loopback-bound on JIGGLYPUFF: neither the LAN address nor the tailnet
+# name can ever answer it. Only the tunnel is a real candidate here.
 OBS_HTTP_CANDIDATES = endpoint_candidates(
     OBS_HTTP,
     os.environ.get("FOULER_JIGGLYPUFF_OBS_HTTP_FALLBACKS", ""),
-    [DEFAULT_OBS_HTTP, TAILNET_OBS_HTTP],
+    [TUNNELLED_OBS_HTTP],
 )
+# The tailnet name still resolves via MagicDNS but the node has been offline for
+# days at a time; keep it as a genuine off-LAN second path for the worker port,
+# which is not loopback-bound, but never as the primary.
 WORKER_HTTP_CANDIDATES = endpoint_candidates(
     WORKER_HTTP,
     os.environ.get("FOULER_JIGGLYPUFF_WORKER_HTTP_FALLBACKS", ""),
     [DEFAULT_WORKER_HTTP, TAILNET_WORKER_HTTP],
 )
+# LAN_REMOTE is deliberately absent: it resolves to the same tailnet address as
+# TAILNET_REMOTE, so including it only doubles the timeout before we give up.
 SSH_REMOTE_CANDIDATES = remote_candidates(
     REMOTE,
     os.environ.get("FOULER_JIGGLYPUFF_SSH_FALLBACKS", ""),
-    [] if os.environ.get("FOULER_JIGGLYPUFF_SSH") else [LAN_REMOTE, DIRECT_REMOTE],
+    [] if os.environ.get("FOULER_JIGGLYPUFF_SSH") else [DIRECT_REMOTE, TAILNET_REMOTE],
 )
 
 _LAST_LIVE_STATE_URL: str | None = None

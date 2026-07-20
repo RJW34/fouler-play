@@ -116,7 +116,18 @@ def test_control_supports_direct_ip_env_overrides(monkeypatch):
     assert module.WORKER_HTTP == "http://192.168.1.40:8791"
 
 
-def test_control_defaults_to_jigglypuff_direct_ip_with_tailnet_fallback(monkeypatch):
+def test_control_defaults_to_paths_that_can_actually_answer(monkeypatch):
+    """Defaults must be reachable, because a nonzero exit here reads as "blocked".
+
+    Rewritten 2026-07-20. The previous expectations pinned 192.168.1.126 -- a
+    retired address that does not answer ARP -- as the primary for SSH and both
+    HTTP ports, with a tailnet name as the only fallback. Measured on DEKU: .126
+    is gone, .125 answers SSH, 8777 is loopback-bound on JIGGLYPUFF and is
+    reached here only through jigglypuff-fouler-health-tunnel.service, and the
+    tailnet node has been offline for ten days. Every default was a dead end, and
+    `deku_devstream` turns a nonzero return from this script into a `blocked`
+    verdict for the whole project -- so these defaults could stop a live run.
+    """
     monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH", raising=False)
     monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH_FALLBACKS", raising=False)
     monkeypatch.delenv("FOULER_JIGGLYPUFF_OBS_HTTP", raising=False)
@@ -126,21 +137,42 @@ def test_control_defaults_to_jigglypuff_direct_ip_with_tailnet_fallback(monkeypa
 
     module = load_module()
 
-    assert module.OBS_HTTP == "http://192.168.1.126:8777"
-    assert module.WORKER_HTTP == "http://192.168.1.126:8791"
-    assert module.SSH_REMOTE_CANDIDATES == [
-        "Ryanj@jigglypuff.tail4859dd.ts.net",
-        "Ryanj@JIGGLYPUFF",
-        "Ryanj@192.168.1.126",
-    ]
-    assert module.OBS_HTTP_CANDIDATES == [
-        "http://192.168.1.126:8777",
-        "http://jigglypuff.tail4859dd.ts.net:8777",
-    ]
+    assert module.JIGGLYPUFF_DIRECT_IP == "192.168.1.125"
+    # 8777 is loopback-bound on the serving host; the tunnel is the only path.
+    assert module.OBS_HTTP == "http://127.0.0.1:8777"
+    assert module.OBS_HTTP_CANDIDATES == ["http://127.0.0.1:8777"]
+    # 8791 is not loopback-bound, so the LAN address is primary and the tailnet
+    # name stays as a genuine off-LAN second path.
+    assert module.WORKER_HTTP == "http://192.168.1.125:8791"
     assert module.WORKER_HTTP_CANDIDATES == [
-        "http://192.168.1.126:8791",
+        "http://192.168.1.125:8791",
         "http://jigglypuff.tail4859dd.ts.net:8791",
     ]
+    # "Ryanj@JIGGLYPUFF" is absent on purpose: MagicDNS resolves the bare
+    # hostname to the tailnet address, so it is a slower duplicate of the tailnet
+    # candidate and burns a full SSH timeout before the direct IP is reached.
+    assert module.SSH_REMOTE_CANDIDATES == [
+        "Ryanj@192.168.1.125",
+        "Ryanj@jigglypuff.tail4859dd.ts.net",
+    ]
+
+
+def test_no_default_points_at_the_retired_address(monkeypatch):
+    monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH", raising=False)
+    monkeypatch.delenv("FOULER_JIGGLYPUFF_OBS_HTTP", raising=False)
+    monkeypatch.delenv("FOULER_JIGGLYPUFF_WORKER_HTTP", raising=False)
+
+    module = load_module()
+
+    defaults = [
+        module.REMOTE,
+        module.OBS_HTTP,
+        module.WORKER_HTTP,
+        *module.SSH_REMOTE_CANDIDATES,
+        *module.OBS_HTTP_CANDIDATES,
+        *module.WORKER_HTTP_CANDIDATES,
+    ]
+    assert not [item for item in defaults if "192.168.1.126" in item]
 
 
 def test_public_runtime_fetch_falls_back_to_direct_ip_when_tailnet_primary_fails(monkeypatch):
@@ -173,7 +205,7 @@ def test_public_runtime_fetch_falls_back_to_direct_ip_when_tailnet_primary_fails
     assert state["count"] == 1
     assert calls == [
         "http://jigglypuff.tail4859dd.ts.net:8777/state",
-        "http://192.168.1.126:8777/state",
+        "http://127.0.0.1:8777/state",
     ]
 
 
@@ -299,7 +331,15 @@ def test_remote_command_falls_back_to_ssh_when_resident_fouler_endpoint_is_missi
     assert result["residentWorker"]["workerStatus"] == 404
 
 
-def test_status_tries_lan_ssh_when_tailnet_remote_does_not_return_json(monkeypatch):
+def test_status_falls_back_to_the_tailnet_when_the_direct_ip_does_not_answer(monkeypatch):
+    """SSH fallback still works -- with the direct LAN address tried first.
+
+    Rewritten 2026-07-20 along with the defaults. The behaviour under test is
+    unchanged (a failed primary must be followed by the next candidate); what
+    changed is which candidate is primary. Unlike 8777, port 22 is not
+    loopback-bound, so the tailnet remains a real second path when JIGGLYPUFF is
+    off-LAN and online -- it is kept as a fallback, just never as the primary.
+    """
     monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH", raising=False)
     monkeypatch.delenv("FOULER_JIGGLYPUFF_SSH_FALLBACKS", raising=False)
     module = load_module()
@@ -312,7 +352,7 @@ def test_status_tries_lan_ssh_when_tailnet_remote_does_not_return_json(monkeypat
             "ok": False,
             "returnCode": None,
             "workerStatus": 404,
-            "workerUrl": "http://jigglypuff.tail4859dd.ts.net:8791/fouler/status",
+            "workerUrl": "http://192.168.1.125:8791/fouler/status",
             "json": {"ok": False, "error": "unknown endpoint"},
             "stderr": "",
         },
@@ -321,8 +361,8 @@ def test_status_tries_lan_ssh_when_tailnet_remote_does_not_return_json(monkeypat
     def fake_run(command, *, timeout=60):
         calls.append(command)
         remote = command[5]
-        if remote == "Ryanj@jigglypuff.tail4859dd.ts.net":
-            return {"ok": False, "returnCode": 255, "stdout": "", "stderr": "dns failed"}
+        if remote == "Ryanj@192.168.1.125":
+            return {"ok": False, "returnCode": 255, "stdout": "", "stderr": "host unreachable"}
         return {"ok": True, "returnCode": 0, "stdout": '{"ok":true,"status":"running"}', "stderr": ""}
 
     monkeypatch.setattr(module, "run", fake_run)
@@ -330,10 +370,10 @@ def test_status_tries_lan_ssh_when_tailnet_remote_does_not_return_json(monkeypat
     result = module.remote_command("status")
 
     assert [call[5] for call in calls] == [
+        "Ryanj@192.168.1.125",
         "Ryanj@jigglypuff.tail4859dd.ts.net",
-        "Ryanj@JIGGLYPUFF",
     ]
-    assert result["remote"] == "Ryanj@JIGGLYPUFF"
+    assert result["remote"] == "Ryanj@jigglypuff.tail4859dd.ts.net"
     assert result["json"]["status"] == "running"
     assert len(result["sshAttempts"]) == 2
 
