@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import hashlib
+import math
 import os
+import re
 import sys
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -53,6 +55,44 @@ PROTECT_FAMILY_MOVES = {
     "spikyshield",
 }
 
+# --- evidence-quality grading -------------------------------------------------
+#
+# Issue ranking must not reward whichever detector happens to have the loosest
+# predicate. A detector that fires on a coarse whole-battle aggregate ("we never
+# set rocks") will always out-fire one that reads real search output, so ranking
+# on raw frequency structurally promotes the least grounded finding to the top
+# slot -- which is exactly the slot the learn loop pulls from.
+#
+# Groundedness is therefore derived from what an issue's own evidence *cites*,
+# never from a per-detector priority table. A claim earns credit only for
+# coordinates that resolve against the source artifact for that battle:
+#
+#   * a turn number that actually appears in the Showdown protocol log or in a
+#     decision trace for that battle, and
+#   * a 64-hex artifact digest (traceSha256 / requestHash) that matches a digest
+#     the trace loader actually produced for that battle.
+#
+# Both are verified against the source data, so a detector cannot inflate its own
+# rank by writing more numbers into its prose -- an invented "turn 999" or a made
+# up digest resolves against nothing and scores zero. The only way to rank higher
+# is to make a claim a human can re-check in the replay, which is the behaviour we
+# want detectors competing on.
+_TURN_CITATION_RE = re.compile(r"\bturn\s+(\d{1,4})\b", re.IGNORECASE)
+_DIGEST_CITATION_RE = re.compile(r"\b[0-9a-f]{64}\b", re.IGNORECASE)
+
+
+@dataclass
+class _EvidenceLedger:
+    """Per-issue tally of how well-grounded that issue's evidence is."""
+
+    battles_flagged: int = 0
+    battles_with_detail: int = 0
+    battles_with_source: int = 0
+    battles_with_citation: int = 0
+    battles_with_anchor: int = 0
+    verified_turn_citations: int = 0
+    unverified_turn_citations: int = 0
+
 
 def _normalize_move_name(value: Any) -> str:
     return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
@@ -67,6 +107,12 @@ class ResearchIssue:
     summary: str
     recommendation: str
     proof: list[str]
+    # How many battles the detector fired on (evidence_count is the capped proof
+    # sample, so it must not be read as frequency).
+    battles_flagged: int = 0
+    # Auditable breakdown of how `score` was reached. Published in the report so a
+    # reader can see why one issue outranked another.
+    grounding: dict[str, Any] = field(default_factory=dict)
 
 
 class AutoResearcher:
@@ -355,6 +401,143 @@ class AutoResearcher:
                     return parts[2]
         return "p1"
 
+    # --- evidence-quality ranking ---------------------------------------------
+    #
+    # Tuning rationale for the constants below:
+    #   GROUNDING_FLOOR       an ungrounded-but-real finding still counts for
+    #                         something; it is demoted, not silenced.
+    #   CITATION_TARGET       ~1.5 verified coordinates per flagged battle is
+    #                         "this claim is pinned to specific turns". Detectors
+    #                         cite up to 3, so the target is reachable without
+    #                         rewarding citation spam.
+    #   CITATION_/ANCHOR_W    turn citations are the primary signal (a human can
+    #                         open the replay at that turn); artifact digests are
+    #                         secondary but real, and they let a trace-backed
+    #                         detector that names no turn still grade above a
+    #                         contentless aggregate.
+    GROUNDING_FLOOR = 0.25
+    CITATION_TARGET_DENSITY = 1.5
+    CITATION_WEIGHT = 0.65
+    ANCHOR_WEIGHT = 0.35
+
+    @staticmethod
+    def _verifiable_coordinates(
+        lines: list[str], traces: list[dict[str, Any]]
+    ) -> tuple[set[int], set[str]]:
+        """Collect the coordinates an evidence claim could legitimately cite.
+
+        Returns (turns, digests) actually present in this battle's source
+        artifacts. Anything a detector cites outside these sets is unverifiable
+        and earns no grounding credit.
+        """
+        turns: set[int] = set()
+        for line in lines or []:
+            if line.startswith("|turn|"):
+                try:
+                    turns.add(int(line.split("|")[2]))
+                except (IndexError, ValueError):
+                    continue
+
+        digests: set[str] = set()
+        for trace in traces or []:
+            if not isinstance(trace, dict):
+                continue
+            for turn_key in ("turn", "battle_turn"):
+                try:
+                    turns.add(int(trace.get(turn_key)))
+                except (TypeError, ValueError):
+                    continue
+            sha = str(trace.get("_trace_sha256") or "").strip().lower()
+            if len(sha) == 64:
+                digests.add(sha)
+            for block_key in ("legalOptions", "showdownRequest"):
+                block = trace.get(block_key)
+                if not isinstance(block, dict):
+                    continue
+                request_hash = str(block.get("requestHash") or "").strip().lower()
+                if len(request_hash) == 64:
+                    digests.add(request_hash)
+        return turns, digests
+
+    @staticmethod
+    def _grade_detail(
+        detail: str, turns: set[int], digests: set[str]
+    ) -> tuple[set[int], set[int], set[str]]:
+        """Split an evidence string's citations into verified and unverified.
+
+        Returns (verified_turns, unverified_turns, verified_digests).
+        """
+        cited_turns: set[int] = set()
+        for raw in _TURN_CITATION_RE.findall(detail or ""):
+            try:
+                cited_turns.add(int(raw))
+            except ValueError:
+                continue
+        verified_turns = cited_turns & turns
+        cited_digests = {d.lower() for d in _DIGEST_CITATION_RE.findall(detail or "")}
+        return verified_turns, cited_turns - verified_turns, cited_digests & digests
+
+    @classmethod
+    def _score_issue(cls, ledger: _EvidenceLedger) -> tuple[float, dict[str, Any]]:
+        """Rank an issue by frequency *weighted by how checkable its evidence is*.
+
+            score = sqrt(battles_flagged) * (FLOOR + (1 - FLOOR) * groundedness)
+
+        Frequency stays a real factor but is compressed: the 20th instance of a
+        pattern carries far less new information than the 2nd, and uncompressed
+        counts let a loose predicate outrank a measured one by sheer volume.
+        Because the multiplier is monotone, two issues with equal groundedness
+        still rank by frequency -- frequent issues are re-weighted, not buried.
+
+        An issue that attaches no evidence at all scores 0 and sorts last: it is
+        not a finding, it is an assertion.
+        """
+        flagged = max(int(ledger.battles_flagged), 0)
+        breakdown: dict[str, Any] = {
+            "battles_flagged": flagged,
+            "battles_with_detail": ledger.battles_with_detail,
+            "battles_with_source": ledger.battles_with_source,
+            "battles_with_citation": ledger.battles_with_citation,
+            "battles_with_anchor": ledger.battles_with_anchor,
+            "verified_turn_citations": ledger.verified_turn_citations,
+            "unverified_turn_citations": ledger.unverified_turn_citations,
+        }
+        if flagged <= 0 or ledger.battles_with_detail <= 0:
+            breakdown |= {
+                "source_rate": 0.0,
+                "citation_density": 0.0,
+                "citation_quality": 0.0,
+                "anchor_rate": 0.0,
+                "groundedness": 0.0,
+                "frequency_term": 0.0,
+                "basis": "no evidence attached",
+            }
+            return 0.0, breakdown
+
+        source_rate = ledger.battles_with_source / flagged
+        citation_density = ledger.verified_turn_citations / flagged
+        citation_quality = min(1.0, citation_density / cls.CITATION_TARGET_DENSITY)
+        anchor_rate = ledger.battles_with_anchor / flagged
+        # Unbacked claims cannot be re-checked at all, so source_rate gates the
+        # whole grounding term rather than being averaged into it.
+        groundedness = source_rate * (
+            cls.CITATION_WEIGHT * citation_quality + cls.ANCHOR_WEIGHT * anchor_rate
+        )
+        frequency_term = math.sqrt(flagged)
+        score = frequency_term * (
+            cls.GROUNDING_FLOOR + (1.0 - cls.GROUNDING_FLOOR) * groundedness
+        )
+        breakdown |= {
+            "source_rate": round(source_rate, 4),
+            "citation_density": round(citation_density, 4),
+            "citation_quality": round(citation_quality, 4),
+            "anchor_rate": round(anchor_rate, 4),
+            "groundedness": round(groundedness, 4),
+            "frequency_term": round(frequency_term, 4),
+            "basis": "sqrt(battles_flagged) * (floor + (1-floor) * groundedness)",
+        }
+        return round(score, 4), breakdown
+
     def _hazard_issue(
         self,
         lines: list[str],
@@ -397,6 +580,8 @@ class AutoResearcher:
             return True, f"team has no hazard setter; opponent hazards stuck while bot never used {moves}"
         return False, ""
 
+    EARLY_FAINT_MAX_TURN = 8  # the opening window endgame_conversion excludes
+
     def _early_faint_issue(self, lines: list[str], bot_slot: str) -> tuple[bool, str]:
         current_turn = 0
         our_faints: list[tuple[int, str]] = []
@@ -409,10 +594,22 @@ class AutoResearcher:
             elif line.startswith("|faint|") and f"|{bot_slot}" in line:
                 mon = line.split(":")[-1].strip()
                 our_faints.append((current_turn, mon))
-        early = [entry for entry in our_faints if entry[0] and entry[0] <= 8]
+        early = [
+            entry
+            for entry in our_faints
+            if entry[0] and entry[0] <= self.EARLY_FAINT_MAX_TURN
+        ]
         if len(early) >= 2:
-            mons = ", ".join(mon for _, mon in early[:3])
-            return True, f"multiple Pokemon fainted by turn 8 ({mons})"
+            # Cite the turns the faints actually happened on, not the threshold.
+            # "by turn 8" names a turn that need not exist in a game that ended
+            # earlier, so it reads as an unverifiable coordinate even though the
+            # underlying observation is exact and re-checkable in the replay.
+            mons = ", ".join(f"{mon} on turn {turn}" for turn, mon in early[:3])
+            return (
+                True,
+                f"{len(early)} Pokemon fainted inside the first "
+                f"{self.EARLY_FAINT_MAX_TURN} turns ({mons})",
+            )
         return False, ""
 
     # --- endgame conversion (material-grounded) -------------------------------
@@ -937,8 +1134,13 @@ class AutoResearcher:
         for key in keys:
             cur = current_issues.get(key)
             prev = previous_issues.get(key)
-            cur_count = int((cur or {}).get("evidence_count", 0))
-            prev_count = int((prev or {}).get("evidence_count", 0))
+            # Compare how often each issue actually fired. evidence_count is the
+            # PROOF SAMPLE, capped at 5, so using it here made every delta
+            # saturate: an issue going from 6 to 30 battles reported as "flat".
+            # battles_flagged is the real frequency; fall back for reports
+            # serialized before it existed.
+            cur_count = int((cur or {}).get("battles_flagged", (cur or {}).get("evidence_count", 0)))
+            prev_count = int((prev or {}).get("battles_flagged", (prev or {}).get("evidence_count", 0)))
             delta = cur_count - prev_count
             if delta == 0 and cur_count == 0 and prev_count == 0:
                 continue
@@ -1017,6 +1219,7 @@ class AutoResearcher:
 
         pattern_counter: Counter[str] = Counter()
         evidence_map: dict[str, list[str]] = defaultdict(list)
+        evidence_ledgers: dict[str, _EvidenceLedger] = defaultdict(_EvidenceLedger)
         team_counter: Counter[str] = Counter()
         opponent_counter: Counter[str] = Counter()
         evidence_integrity = {
@@ -1058,42 +1261,63 @@ class AutoResearcher:
                     if species:
                         opponent_counter[species] += 1
 
+            # Coordinates this battle's evidence is allowed to cite. Detectors are
+            # graded against the battle's own source artifacts, so a citation only
+            # counts if a reader could actually follow it back to the replay/trace.
+            verifiable_turns, verifiable_digests = self._verifiable_coordinates(lines, traces)
+            battle_has_source = bool(lines) or bool(traces)
+
+            def record(key: str, detail: str) -> None:
+                """Count a detector firing and grade the evidence it attached."""
+                ledger = evidence_ledgers[key]
+                ledger.battles_flagged += 1
+                pattern_counter[key] += 1
+                evidence_map[key].append(f"{battle_label}: {detail}")
+                if not str(detail or "").strip():
+                    # Fired without saying anything checkable. Counted, not credited.
+                    return
+                ledger.battles_with_detail += 1
+                if battle_has_source:
+                    ledger.battles_with_source += 1
+                verified, unverified, anchors = self._grade_detail(
+                    detail, verifiable_turns, verifiable_digests
+                )
+                ledger.verified_turn_citations += len(verified)
+                ledger.unverified_turn_citations += len(unverified)
+                if verified:
+                    ledger.battles_with_citation += 1
+                if anchors:
+                    ledger.battles_with_anchor += 1
+
             team_caps = self._team_hazard_capabilities(battle.get("team_file"))
             hazard_issue, hazard_detail = self._hazard_issue(lines, bot_slot, team_caps)
             if hazard_issue:
-                pattern_counter["hazard_pressure"] += 1
-                evidence_map["hazard_pressure"].append(f"{battle_label}: {hazard_detail}")
+                record("hazard_pressure", hazard_detail)
 
             early_issue, early_detail = self._early_faint_issue(lines, bot_slot)
             if early_issue:
-                pattern_counter["early_bleeding"] += 1
-                evidence_map["early_bleeding"].append(f"{battle_label}: {early_detail}")
+                record("early_bleeding", early_detail)
 
             endgame_issue, endgame_detail = self._endgame_conversion_issue(battle, lines, bot_slot)
             if endgame_issue:
-                pattern_counter["endgame_conversion"] += 1
-                evidence_map["endgame_conversion"].append(f"{battle_label}: {endgame_detail}")
+                record("endgame_conversion", endgame_detail)
 
             protect_issue, protect_detail = self._protect_sequence_issue(lines, bot_slot)
             if protect_issue:
-                pattern_counter["protect_sequence_waste"] += 1
-                evidence_map["protect_sequence_waste"].append(f"{battle_label}: {protect_detail}")
+                record("protect_sequence_waste", protect_detail)
 
             trace_findings, _ = self._trace_issue(traces)
             if trace_findings:
-                pattern_counter["decision_instability"] += 1
-                evidence_map["decision_instability"].append(f"{battle_label}: {'; '.join(trace_findings[:3])}")
+                record("decision_instability", "; ".join(trace_findings[:3]))
 
             # P2: replay-grounded regret mining (chosen-move MCTS value << best legal)
             regret_flag, regret_detail = self._regret_issue(traces)
             if regret_flag:
-                pattern_counter["search_regret"] += 1
-                evidence_map["search_regret"].append(f"{battle_label}: {regret_detail}")
+                record("search_regret", regret_detail)
 
             magic_flag, magic_detail = self._magic_bounce_reflected_hazard_issue(traces)
             if magic_flag:
-                pattern_counter["magic_bounce_reflected_hazard"] += 1
-                evidence_map["magic_bounce_reflected_hazard"].append(f"{battle_label}: {magic_detail}")
+                record("magic_bounce_reflected_hazard", magic_detail)
 
         issue_defs = {
             "hazard_pressure": (
@@ -1145,10 +1369,14 @@ class AutoResearcher:
         }
 
         issues: list[ResearchIssue] = []
-        for key, count in pattern_counter.most_common():
+        for key, count in pattern_counter.items():
             title, summary, recommendation = issue_defs[key]
             proof = evidence_map.get(key, [])[:5]
-            score = count + min(len(proof) * 0.1, 0.5)
+            ledger = evidence_ledgers[key]
+            # Frequency alone decided ranking here for a long time, which quietly
+            # handed the top slot -- the one the learn loop acts on -- to whichever
+            # detector had the loosest predicate. Rank on evidence quality instead.
+            score, grounding = self._score_issue(ledger)
             issues.append(
                 ResearchIssue(
                     key=key,
@@ -1158,8 +1386,23 @@ class AutoResearcher:
                     summary=summary,
                     recommendation=recommendation,
                     proof=proof,
+                    battles_flagged=count,
+                    grounding=grounding,
                 )
             )
+
+        # Deterministic ordering: score, then how many battles actually cited a
+        # verifiable coordinate, then frequency, then key. Every tiebreak is a
+        # total order on stable data, so equal-evidence issues never reshuffle
+        # between runs (the hypothesis ledger dedupes on this ordering).
+        issues.sort(
+            key=lambda issue: (
+                -issue.score,
+                -issue.grounding.get("battles_with_citation", 0),
+                -issue.battles_flagged,
+                issue.key,
+            )
+        )
 
         top_issue = issues[0] if issues else None
         top_opponents = [{"pokemon": k, "count": v} for k, v in opponent_counter.most_common(5)]
@@ -1227,6 +1470,9 @@ class AutoResearcher:
                 "summary": top_issue.summary,
                 "recommendation": top_issue.recommendation,
                 "proof": top_issue.proof,
+                "score": top_issue.score,
+                "battles_flagged": top_issue.battles_flagged,
+                "grounding": top_issue.grounding,
             } if top_issue else None,
             "issues": [
                 {
@@ -1234,9 +1480,11 @@ class AutoResearcher:
                     "title": issue.title,
                     "score": issue.score,
                     "evidence_count": issue.evidence_count,
+                    "battles_flagged": issue.battles_flagged,
                     "summary": issue.summary,
                     "recommendation": issue.recommendation,
                     "proof": issue.proof,
+                    "grounding": issue.grounding,
                 }
                 for issue in issues
             ],
@@ -1318,8 +1566,22 @@ class AutoResearcher:
             lines.append("")
 
         lines.append("## Ranked issues")
+        lines.append(
+            "Ranked by evidence quality, not raw frequency: how often an issue "
+            "fired, weighted by how much of its evidence cites a turn or artifact "
+            "a reader can check in the replay."
+        )
+        lines.append("")
         for idx, issue in enumerate(report.get("issues", []), start=1):
             lines.append(f"### {idx}. {issue['title']}")
+            grounding = issue.get("grounding") or {}
+            if issue.get("battles_flagged"):
+                lines.append(
+                    f"- Ranking: score {issue.get('score', 0)} from "
+                    f"{issue['battles_flagged']} battle(s), "
+                    f"{grounding.get('verified_turn_citations', 0)} verified turn citation(s), "
+                    f"groundedness {grounding.get('groundedness', 0)}"
+                )
             lines.append(f"- Summary: {issue['summary']}")
             lines.append(f"- Recommendation: {issue['recommendation']}")
             for proof in issue.get("proof", [])[:3]:

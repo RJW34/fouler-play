@@ -44,6 +44,10 @@ LEDGER_DIR = validate_external_runtime_path(
     label="hypothesis ledger directory",
 )
 
+# Track a non-leading issue when it scores within this fraction of the top issue.
+# Relative by design -- see emit_from_autoresearch_output.
+SECONDARY_ISSUE_SCORE_RATIO = 0.6
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -124,13 +128,29 @@ def emit_from_autoresearch_output(autoresearch_data: dict) -> list[str]:
         p = emit_from_issue(top, batch_meta)
         if p:
             written.append(str(p))
-    # also emit any high-score issues (score >= 8) so multi-class failures
-    # get tracked, not just the top one.
+    # Also emit the other issues that are close behind the top one, so multi-class
+    # failures get tracked rather than only the leader.
+    #
+    # This gate is expressed RELATIVE to the top issue on purpose. It used to be
+    # `score >= 8`, an absolute cut calibrated to the old scoring scale, where
+    # score was essentially the raw count of battles an issue fired on. Issue
+    # scores are now evidence-weighted and frequency-compressed, so they live on a
+    # much smaller scale -- an absolute 8 would silently never fire again and this
+    # loop would quietly stop tracking everything except the top issue. A ratio
+    # survives any future rescaling of the score.
+    top_score = float(top.get("score") or 0.0)
     for issue in autoresearch_data.get("issues", []):
-        if (issue.get("score") or 0) >= 8 and issue.get("key") != top.get("key"):
-            p = emit_from_issue(issue, batch_meta)
-            if p:
-                written.append(str(p))
+        if issue.get("key") == top.get("key"):
+            continue
+        score = float(issue.get("score") or 0.0)
+        # score == 0 means the issue attached no evidence at all; never track it.
+        if score <= 0.0:
+            continue
+        if top_score > 0.0 and score < top_score * SECONDARY_ISSUE_SCORE_RATIO:
+            continue
+        p = emit_from_issue(issue, batch_meta)
+        if p:
+            written.append(str(p))
     return written
 
 
