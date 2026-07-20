@@ -58,12 +58,23 @@
     "profile": "CrossProjectDevstream",
     "primaryScene": "fouler-play - Battle Lab Main",
     "scenes": ["fouler-play - Battle Lab Main", "fouler-play - Battle Slots"],
+    "surfaceAccess": {
+      "kind": "ssh-tunnel",
+      "servedOn": "JIGGLYPUFF",
+      "bind": "127.0.0.1:8777",
+      "bindIsLoopbackOnly": true,
+      "consumedOn": "RWLEGION",
+      "tunnel": "HERMES-BroadcastSourceTunnels",
+      "tunnelForward": "-L 127.0.0.1:8777:127.0.0.1:8777 devstream-tunnel@192.168.1.125",
+      "remotelyProbeable": false,
+      "notes": "The overlay server binds loopback-only on JIGGLYPUFF on purpose; it is never exposed to the LAN. The broadcast node reaches it through the HERMES-BroadcastSourceTunnels SSH forward, so these URLs are correct ONLY on a host carrying that tunnel. The control plane (DEKU) carries no such tunnel and MUST NOT HEAD-probe these URLs -- server liveness is covered by health.command, which runs on the box that can actually see the socket. Do not 'fix' an unreachable surface by widening the bind."
+    },
     "surfaces": [
-      {"name": "slot 1", "url": "http://192.168.1.126:8777/slot/1?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/1?slot_idle=public"], "required": true},
-      {"name": "slot 2", "url": "http://192.168.1.126:8777/slot/2?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/2?slot_idle=public"], "required": true},
-      {"name": "slot 3", "url": "http://192.168.1.126:8777/slot/3?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/3?slot_idle=public"], "required": true},
-      {"name": "battle lab overlay", "url": "http://192.168.1.126:8777/overlay?mode=bottom&hide_recent=1", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/overlay?mode=bottom&hide_recent=1"], "required": true},
-      {"name": "health", "url": "http://192.168.1.126:8777/health", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/health"], "required": true, "captureRequired": false, "operatorOnly": true}
+      {"name": "slot 1", "url": "http://127.0.0.1:8777/slot/1?slot_idle=public", "required": true},
+      {"name": "slot 2", "url": "http://127.0.0.1:8777/slot/2?slot_idle=public", "required": true},
+      {"name": "slot 3", "url": "http://127.0.0.1:8777/slot/3?slot_idle=public", "required": true},
+      {"name": "battle lab overlay", "url": "http://127.0.0.1:8777/overlay?mode=bottom&hide_recent=1", "required": true},
+      {"name": "health", "url": "http://127.0.0.1:8777/health", "required": true, "captureRequired": false, "operatorOnly": true}
     ]
   },
   "focus": {

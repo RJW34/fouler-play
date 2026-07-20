@@ -75,13 +75,53 @@ def test_project_public_obs_contract_uses_battle_lab_surfaces() -> None:
     assert "/overlay?mode=bottom&hide_recent=1" in contract
     assert "/overlay/hybrid" not in contract
     assert "Dashboard Focus" not in contract
-    assert "http://192.168.1.126:8777/slot/1?slot_idle=public" in contract
-    assert "fallbackUrls" in contract
+    assert "http://127.0.0.1:8777/slot/1?slot_idle=public" in contract
     health_surface = next(surface for surface in parsed["obs"]["surfaces"] if surface["name"] == "health")
-    assert health_surface["url"] == "http://192.168.1.126:8777/health"
-    assert health_surface["fallbackUrls"] == ["http://jigglypuff.tail4859dd.ts.net:8777/health"]
+    assert health_surface["url"] == "http://127.0.0.1:8777/health"
     assert health_surface["operatorOnly"] is True
     assert health_surface["captureRequired"] is False
+
+
+def test_declared_surfaces_match_the_loopback_bind_they_are_served_from() -> None:
+    """The overlay server binds 127.0.0.1 only; declared URLs must say so.
+
+    Regression guard for the 2026-07-20 split between declared and actual: the
+    manifest advertised http://192.168.1.126:8777/... for surfaces that are
+    served on a loopback-only bind and reached through the
+    HERMES-BroadcastSourceTunnels SSH forward. Every one of those URLs was
+    unreachable by construction from every machine in the fleet, and .126 was a
+    retired address on top of that. Correcting the octet would not have helped.
+    """
+    parsed = json.loads(PUBLIC_DEVSTREAM_CONTRACT.read_text(encoding="utf-8"))
+    obs = parsed["obs"]
+    surfaces = obs["surfaces"]
+    assert surfaces
+
+    for surface in surfaces:
+        assert surface["url"].startswith("http://127.0.0.1:8777/"), (
+            f"{surface['name']}: surfaces are served on a loopback-only bind and reached "
+            "through the broadcast-node SSH tunnel; a routable host here cannot work"
+        )
+        # fallbackUrls were never read by any consumer and pointed at a tailnet
+        # name for a node that is routinely offline. Do not reintroduce them as
+        # if they bought resilience.
+        assert "fallbackUrls" not in surface, f"{surface['name']}: dead fallback declaration"
+
+    access = obs["surfaceAccess"]
+    assert access["bind"] == "127.0.0.1:8777"
+    assert access["bindIsLoopbackOnly"] is True
+    assert access["kind"] == "ssh-tunnel"
+    assert access["remotelyProbeable"] is False, (
+        "the control plane carries no tunnel to 8777; probing these from DEKU "
+        "manufactures a permanent false 'surface unavailable'"
+    )
+
+
+def test_contract_declares_no_retired_or_unroutable_hosts() -> None:
+    """.126 is a retired address and the tailnet name is not a working fallback."""
+    contract = PUBLIC_DEVSTREAM_CONTRACT.read_text(encoding="utf-8")
+    assert "192.168.1.126" not in contract, "retired JIGGLYPUFF address"
+    assert "tail4859dd.ts.net" not in contract, "tailnet fallback is not reachable in practice"
 
 
 def test_public_overlay_copy_is_viewer_facing() -> None:
