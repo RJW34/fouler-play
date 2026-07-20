@@ -47,7 +47,34 @@ import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RESULTS_DIR = PROJECT_ROOT / "eval_results" / "offline"
+
+# The offline arena is the only instrument here that can resolve a ~+30 ELO effect
+# (ladder ELO needs ~1570 battles for a 5-point win-rate change; offline_eval
+# already implements Wilson lower bounds and a two-proportion z-test).
+#
+# It has been dormant since 2026-06-08 and the reason was structural, not a bad
+# baseline file: RESULTS_DIR pointed at PROJECT_ROOT/eval_results/offline, which
+# in production is INSIDE the immutable, manifest-checked release tree at
+# D:/Releases/fouler-play/<sha>. Writing there is forbidden (and would break the
+# deployment receipt's runtimeManifestDigest), so the arena could not persist a
+# result at all. The only frozen.json files on JIGGLYPUFF live under
+# ProgramData/HERMES/test-tmp/... — pytest fixtures, never a live baseline.
+#
+# Resolve to the external runtime state root when one is configured, exactly as
+# every other runtime surface does, and fall back to the source tree for local
+# development checkouts.
+def _offline_results_dir() -> Path:
+    try:
+        from infrastructure.runtime_paths import resolve_runtime_paths
+        paths = resolve_runtime_paths(PROJECT_ROOT)
+        if paths.production or str(paths.state_root) != str(PROJECT_ROOT):
+            return paths.state_root / "eval_results" / "offline"
+    except Exception:
+        pass
+    return PROJECT_ROOT / "eval_results" / "offline"
+
+
+RESULTS_DIR = _offline_results_dir()
 OFFLINE_RUNNER_SCRIPT = PROJECT_ROOT / "infrastructure" / "offline_eval_runner.py"
 VENV_PY = PROJECT_ROOT / ".venv-eval" / "Scripts" / "python.exe"
 if not VENV_PY.exists():

@@ -663,11 +663,30 @@ def _judgment_outcome(
     except (TypeError, ValueError):
         win_rate_regressed = False
     try:
+        # `rd` is the Glicko deviation, present only to SUPPRESS the check while a
+        # rating is still provisional. It must not be able to disable the check
+        # entirely. It could: rd = latest.get("rprd", latest.get("deviation")) and
+        # NEITHER KEY IS EVER WRITTEN -- across all 273 rows of the live
+        # battle_stats.json on 2026-07-20, `rprd` and `deviation` are absent, not
+        # merely zero. So `rd is not None` was False every time and elo_regressed
+        # was unconditionally False in every judgment ever written.
+        #
+        # Live proof, judgment fouler-activation-ad6a1a18... (2026-07-20):
+        # baseline elo 1510 -> post 1415, a 95-point drop against maxEloDrop 50,
+        # win rate 0.40, and it still recorded "status": "passed".
+        #
+        # An unknown deviation is not evidence of a stable rating, so treat it as
+        # "no suppression" rather than "skip the gate".
+        rd_permits_judgment = True
+        if rd is not None:
+            try:
+                rd_permits_judgment = float(rd) < max_glicko_deviation
+            except (TypeError, ValueError):
+                rd_permits_judgment = True
         elo_regressed = (
             baseline_elo is not None
             and after_elo is not None
-            and rd is not None
-            and float(rd) < max_glicko_deviation
+            and rd_permits_judgment
             and float(baseline_elo) - float(after_elo) > max_elo_drop
             and float(after_rate) <= 0.50
         )
