@@ -142,13 +142,55 @@ def test_project_public_obs_contract_uses_battle_lab_surfaces() -> None:
     assert "/overlay?mode=bottom&hide_recent=1" in contract
     assert "/overlay/hybrid" not in contract
     assert "Dashboard Focus" not in contract
-    assert "http://192.168.1.126:8777/slot/1?slot_idle=public" in contract
+    assert "http://192.168.1.125:8777/slot/1?slot_idle=public" in contract
     assert "fallbackUrls" in contract
     health_surface = next(surface for surface in parsed["obs"]["surfaces"] if surface["name"] == "health")
-    assert health_surface["url"] == "http://192.168.1.126:8777/health"
+    assert health_surface["url"] == "http://192.168.1.125:8777/health"
     assert health_surface["fallbackUrls"] == ["http://jigglypuff.tail4859dd.ts.net:8777/health"]
     assert health_surface["operatorOnly"] is True
     assert health_surface["captureRequired"] is False
+
+
+def _load_jigglypuff_control_module():
+    """Load the control script by path; it is a script, not an importable package."""
+    import importlib.util
+
+    path = ROOT_DIR / "scripts" / "jigglypuff_devstream_control.py"
+    spec = importlib.util.spec_from_file_location("jigglypuff_devstream_control", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_public_obs_surfaces_track_the_canonical_jigglypuff_ip() -> None:
+    """Every public surface must resolve to the one canonical JIGGLYPUFF address.
+
+    JIGGLYPUFF moved 192.168.1.126 -> 192.168.1.125 and devstream.yaml kept the
+    dead address for seven public overlay surfaces while
+    scripts/jigglypuff_devstream_control.py held its own private copy. Two
+    hand-maintained copies of one fact is the bug; this test couples them so a
+    future move only has to be made once and cannot silently half-land.
+    """
+    control = _load_jigglypuff_control_module()
+    canonical_ip = control.JIGGLYPUFF_DIRECT_IP
+
+    parsed = json.loads(PUBLIC_DEVSTREAM_CONTRACT.read_text(encoding="utf-8"))
+    surfaces = parsed["obs"]["surfaces"]
+    assert surfaces, "devstream.yaml declares no OBS surfaces"
+
+    for surface in surfaces:
+        assert canonical_ip in surface["url"], (
+            f"surface {surface['name']!r} points at {surface['url']!r}, "
+            f"which is not the canonical JIGGLYPUFF IP {canonical_ip}"
+        )
+
+    # No superseded address may survive anywhere in the public contract,
+    # including fallbackUrls.
+    contract = PUBLIC_DEVSTREAM_CONTRACT.read_text(encoding="utf-8")
+    assert "192.168.1.126" not in contract, (
+        "devstream.yaml still references the superseded JIGGLYPUFF IP 192.168.1.126"
+    )
 
 
 def test_public_overlay_copy_is_viewer_facing() -> None:

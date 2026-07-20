@@ -59,13 +59,13 @@
     "primaryScene": "08_BATTLE_LAB",
     "scenes": ["08_BATTLE_LAB", "Fouler Vertical - Triple Battles"],
     "surfaces": [
-      {"name": "slot 1", "url": "http://192.168.1.126:8777/slot/1?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/1?slot_idle=public"], "required": true},
-      {"name": "slot 2", "url": "http://192.168.1.126:8777/slot/2?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/2?slot_idle=public"], "required": true},
-      {"name": "slot 3", "url": "http://192.168.1.126:8777/slot/3?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/3?slot_idle=public"], "required": true},
-      {"name": "landscape triple battle", "url": "http://192.168.1.126:8777/landscape", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/landscape"], "required": true, "canvas": "1920x1080", "chatOverlay": false},
-      {"name": "vertical triple battle", "url": "http://192.168.1.126:8777/vertical", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/vertical"], "required": true, "canvas": "1080x1920", "chatOverlay": false},
-      {"name": "battle lab overlay", "url": "http://192.168.1.126:8777/overlay?mode=bottom&hide_recent=1", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/overlay?mode=bottom&hide_recent=1"], "required": true},
-      {"name": "health", "url": "http://192.168.1.126:8777/health", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/health"], "required": true, "captureRequired": false, "operatorOnly": true}
+      {"name": "slot 1", "url": "http://192.168.1.125:8777/slot/1?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/1?slot_idle=public"], "required": true},
+      {"name": "slot 2", "url": "http://192.168.1.125:8777/slot/2?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/2?slot_idle=public"], "required": true},
+      {"name": "slot 3", "url": "http://192.168.1.125:8777/slot/3?slot_idle=public", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/slot/3?slot_idle=public"], "required": true},
+      {"name": "landscape triple battle", "url": "http://192.168.1.125:8777/landscape", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/landscape"], "required": true, "canvas": "1920x1080", "chatOverlay": false},
+      {"name": "vertical triple battle", "url": "http://192.168.1.125:8777/vertical", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/vertical"], "required": true, "canvas": "1080x1920", "chatOverlay": false},
+      {"name": "battle lab overlay", "url": "http://192.168.1.125:8777/overlay?mode=bottom&hide_recent=1", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/overlay?mode=bottom&hide_recent=1"], "required": true},
+      {"name": "health", "url": "http://192.168.1.125:8777/health", "fallbackUrls": ["http://jigglypuff.tail4859dd.ts.net:8777/health"], "required": true, "captureRequired": false, "operatorOnly": true}
     ]
   },
   "focus": {

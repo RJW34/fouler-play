@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import hashlib
+import math
 import os
+import re
 import sys
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -18,7 +20,11 @@ from data.pokedex_oracle import oracle as _oracle
 from infrastructure.discord_reporting import build_contract_payload
 from infrastructure.event_queue_lib import queue_event
 from infrastructure.runtime_paths import resolve_runtime_paths
-from replay_analysis.account_identity import resolve_bot_username
+from replay_analysis.account_identity import (
+    _norm_account,
+    resolve_bot_accounts,
+    resolve_bot_username,
+)
 
 _RUNTIME_PATHS = resolve_runtime_paths(PROJECT_ROOT)
 RUNTIME_STATE_ROOT = _RUNTIME_PATHS.state_root
@@ -49,6 +55,44 @@ PROTECT_FAMILY_MOVES = {
     "spikyshield",
 }
 
+# --- evidence-quality grading -------------------------------------------------
+#
+# Issue ranking must not reward whichever detector happens to have the loosest
+# predicate. A detector that fires on a coarse whole-battle aggregate ("we never
+# set rocks") will always out-fire one that reads real search output, so ranking
+# on raw frequency structurally promotes the least grounded finding to the top
+# slot -- which is exactly the slot the learn loop pulls from.
+#
+# Groundedness is therefore derived from what an issue's own evidence *cites*,
+# never from a per-detector priority table. A claim earns credit only for
+# coordinates that resolve against the source artifact for that battle:
+#
+#   * a turn number that actually appears in the Showdown protocol log or in a
+#     decision trace for that battle, and
+#   * a 64-hex artifact digest (traceSha256 / requestHash) that matches a digest
+#     the trace loader actually produced for that battle.
+#
+# Both are verified against the source data, so a detector cannot inflate its own
+# rank by writing more numbers into its prose -- an invented "turn 999" or a made
+# up digest resolves against nothing and scores zero. The only way to rank higher
+# is to make a claim a human can re-check in the replay, which is the behaviour we
+# want detectors competing on.
+_TURN_CITATION_RE = re.compile(r"\bturn\s+(\d{1,4})\b", re.IGNORECASE)
+_DIGEST_CITATION_RE = re.compile(r"\b[0-9a-f]{64}\b", re.IGNORECASE)
+
+
+@dataclass
+class _EvidenceLedger:
+    """Per-issue tally of how well-grounded that issue's evidence is."""
+
+    battles_flagged: int = 0
+    battles_with_detail: int = 0
+    battles_with_source: int = 0
+    battles_with_citation: int = 0
+    battles_with_anchor: int = 0
+    verified_turn_citations: int = 0
+    unverified_turn_citations: int = 0
+
 
 def _normalize_move_name(value: Any) -> str:
     return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
@@ -63,6 +107,12 @@ class ResearchIssue:
     summary: str
     recommendation: str
     proof: list[str]
+    # How many battles the detector fired on (evidence_count is the capped proof
+    # sample, so it must not be read as frequency).
+    battles_flagged: int = 0
+    # Auditable breakdown of how `score` was reached. Published in the report so a
+    # reader can see why one issue outranked another.
+    grounding: dict[str, Any] = field(default_factory=dict)
 
 
 class AutoResearcher:
@@ -333,12 +383,160 @@ class AutoResearcher:
         return [line.strip() for line in log.split("\n") if line.strip()]
 
     def _parse_bot_slot(self, lines: Iterable[str]) -> str:
+        """Resolve which side of the replay the bot played.
+
+        Matches against every account the bot is or has been known as, not just
+        the current lease account. account_identity documents why: the lease
+        only knows the CURRENT name, while the replay window is dominated by
+        games played under prior ones, so single-name matching silently falls
+        back to "p1" and inverts the analysis for those replays. The bot is p1
+        and p2 at roughly even rates, so a wrong slot means every downstream
+        detector reads the OPPONENT's game.
+        """
+        known_accounts = resolve_bot_accounts()
         for line in lines:
             if line.startswith("|player|"):
                 parts = line.split("|")
-                if len(parts) >= 4 and BOT_USERNAME.lower() in parts[3].lower():
+                if len(parts) >= 4 and _norm_account(parts[3]) in known_accounts:
                     return parts[2]
         return "p1"
+
+    # --- evidence-quality ranking ---------------------------------------------
+    #
+    # Tuning rationale for the constants below:
+    #   GROUNDING_FLOOR       an ungrounded-but-real finding still counts for
+    #                         something; it is demoted, not silenced.
+    #   CITATION_TARGET       ~1.5 verified coordinates per flagged battle is
+    #                         "this claim is pinned to specific turns". Detectors
+    #                         cite up to 3, so the target is reachable without
+    #                         rewarding citation spam.
+    #   CITATION_/ANCHOR_W    turn citations are the primary signal (a human can
+    #                         open the replay at that turn); artifact digests are
+    #                         secondary but real, and they let a trace-backed
+    #                         detector that names no turn still grade above a
+    #                         contentless aggregate.
+    GROUNDING_FLOOR = 0.25
+    CITATION_TARGET_DENSITY = 1.5
+    CITATION_WEIGHT = 0.65
+    ANCHOR_WEIGHT = 0.35
+
+    @staticmethod
+    def _verifiable_coordinates(
+        lines: list[str], traces: list[dict[str, Any]]
+    ) -> tuple[set[int], set[str]]:
+        """Collect the coordinates an evidence claim could legitimately cite.
+
+        Returns (turns, digests) actually present in this battle's source
+        artifacts. Anything a detector cites outside these sets is unverifiable
+        and earns no grounding credit.
+        """
+        turns: set[int] = set()
+        for line in lines or []:
+            if line.startswith("|turn|"):
+                try:
+                    turns.add(int(line.split("|")[2]))
+                except (IndexError, ValueError):
+                    continue
+
+        digests: set[str] = set()
+        for trace in traces or []:
+            if not isinstance(trace, dict):
+                continue
+            for turn_key in ("turn", "battle_turn"):
+                try:
+                    turns.add(int(trace.get(turn_key)))
+                except (TypeError, ValueError):
+                    continue
+            sha = str(trace.get("_trace_sha256") or "").strip().lower()
+            if len(sha) == 64:
+                digests.add(sha)
+            for block_key in ("legalOptions", "showdownRequest"):
+                block = trace.get(block_key)
+                if not isinstance(block, dict):
+                    continue
+                request_hash = str(block.get("requestHash") or "").strip().lower()
+                if len(request_hash) == 64:
+                    digests.add(request_hash)
+        return turns, digests
+
+    @staticmethod
+    def _grade_detail(
+        detail: str, turns: set[int], digests: set[str]
+    ) -> tuple[set[int], set[int], set[str]]:
+        """Split an evidence string's citations into verified and unverified.
+
+        Returns (verified_turns, unverified_turns, verified_digests).
+        """
+        cited_turns: set[int] = set()
+        for raw in _TURN_CITATION_RE.findall(detail or ""):
+            try:
+                cited_turns.add(int(raw))
+            except ValueError:
+                continue
+        verified_turns = cited_turns & turns
+        cited_digests = {d.lower() for d in _DIGEST_CITATION_RE.findall(detail or "")}
+        return verified_turns, cited_turns - verified_turns, cited_digests & digests
+
+    @classmethod
+    def _score_issue(cls, ledger: _EvidenceLedger) -> tuple[float, dict[str, Any]]:
+        """Rank an issue by frequency *weighted by how checkable its evidence is*.
+
+            score = sqrt(battles_flagged) * (FLOOR + (1 - FLOOR) * groundedness)
+
+        Frequency stays a real factor but is compressed: the 20th instance of a
+        pattern carries far less new information than the 2nd, and uncompressed
+        counts let a loose predicate outrank a measured one by sheer volume.
+        Because the multiplier is monotone, two issues with equal groundedness
+        still rank by frequency -- frequent issues are re-weighted, not buried.
+
+        An issue that attaches no evidence at all scores 0 and sorts last: it is
+        not a finding, it is an assertion.
+        """
+        flagged = max(int(ledger.battles_flagged), 0)
+        breakdown: dict[str, Any] = {
+            "battles_flagged": flagged,
+            "battles_with_detail": ledger.battles_with_detail,
+            "battles_with_source": ledger.battles_with_source,
+            "battles_with_citation": ledger.battles_with_citation,
+            "battles_with_anchor": ledger.battles_with_anchor,
+            "verified_turn_citations": ledger.verified_turn_citations,
+            "unverified_turn_citations": ledger.unverified_turn_citations,
+        }
+        if flagged <= 0 or ledger.battles_with_detail <= 0:
+            breakdown |= {
+                "source_rate": 0.0,
+                "citation_density": 0.0,
+                "citation_quality": 0.0,
+                "anchor_rate": 0.0,
+                "groundedness": 0.0,
+                "frequency_term": 0.0,
+                "basis": "no evidence attached",
+            }
+            return 0.0, breakdown
+
+        source_rate = ledger.battles_with_source / flagged
+        citation_density = ledger.verified_turn_citations / flagged
+        citation_quality = min(1.0, citation_density / cls.CITATION_TARGET_DENSITY)
+        anchor_rate = ledger.battles_with_anchor / flagged
+        # Unbacked claims cannot be re-checked at all, so source_rate gates the
+        # whole grounding term rather than being averaged into it.
+        groundedness = source_rate * (
+            cls.CITATION_WEIGHT * citation_quality + cls.ANCHOR_WEIGHT * anchor_rate
+        )
+        frequency_term = math.sqrt(flagged)
+        score = frequency_term * (
+            cls.GROUNDING_FLOOR + (1.0 - cls.GROUNDING_FLOOR) * groundedness
+        )
+        breakdown |= {
+            "source_rate": round(source_rate, 4),
+            "citation_density": round(citation_density, 4),
+            "citation_quality": round(citation_quality, 4),
+            "anchor_rate": round(anchor_rate, 4),
+            "groundedness": round(groundedness, 4),
+            "frequency_term": round(frequency_term, 4),
+            "basis": "sqrt(battles_flagged) * (floor + (1-floor) * groundedness)",
+        }
+        return round(score, 4), breakdown
 
     def _hazard_issue(
         self,
@@ -382,6 +580,8 @@ class AutoResearcher:
             return True, f"team has no hazard setter; opponent hazards stuck while bot never used {moves}"
         return False, ""
 
+    EARLY_FAINT_MAX_TURN = 8  # the opening window endgame_conversion excludes
+
     def _early_faint_issue(self, lines: list[str], bot_slot: str) -> tuple[bool, str]:
         current_turn = 0
         our_faints: list[tuple[int, str]] = []
@@ -394,26 +594,250 @@ class AutoResearcher:
             elif line.startswith("|faint|") and f"|{bot_slot}" in line:
                 mon = line.split(":")[-1].strip()
                 our_faints.append((current_turn, mon))
-        early = [entry for entry in our_faints if entry[0] and entry[0] <= 8]
+        early = [
+            entry
+            for entry in our_faints
+            if entry[0] and entry[0] <= self.EARLY_FAINT_MAX_TURN
+        ]
         if len(early) >= 2:
-            mons = ", ".join(mon for _, mon in early[:3])
-            return True, f"multiple Pokemon fainted by turn 8 ({mons})"
+            # Cite the turns the faints actually happened on, not the threshold.
+            # "by turn 8" names a turn that need not exist in a game that ended
+            # earlier, so it reads as an unverifiable coordinate even though the
+            # underlying observation is exact and re-checkable in the replay.
+            mons = ", ".join(f"{mon} on turn {turn}" for turn, mon in early[:3])
+            return (
+                True,
+                f"{len(early)} Pokemon fainted inside the first "
+                f"{self.EARLY_FAINT_MAX_TURN} turns ({mons})",
+            )
         return False, ""
 
-    def _long_game_loss_issue(self, battle: dict[str, Any], replay_data: dict[str, Any] | None) -> tuple[bool, str]:
+    # --- endgame conversion (material-grounded) -------------------------------
+    #
+    # A conversion failure is "we reached a winning position and lost it", not
+    # "the game ran long". Fat/stall teams produce 40-90 turn games by design,
+    # so a turn-count threshold fires on essentially every stall loss and says
+    # nothing mechanical. These thresholds describe a real material lead.
+    ENDGAME_MIN_TURN = 8              # after the window early_bleeding owns
+    ENDGAME_MATERIAL_LEAD = 2         # up 2+ Pokemon is decisively winning
+    ENDGAME_NARROW_LEAD = 1           # up 1 Pokemon ...
+    ENDGAME_NARROW_HP_EDGE = 0.20     # ... plus a 20pp team-HP edge
+
+    @staticmethod
+    def _parse_hp_fraction(token: str) -> float | None:
+        """Parse a Showdown HP token ('43/100', '0 fnt', '250\\/300 brn') -> 0..1."""
+        raw = str(token or "").strip()
+        if not raw:
+            return None
+        raw = raw.split(" ")[0].replace("\\/", "/").strip()
+        if not raw:
+            return None
+        if raw in {"0", "0.0"}:
+            return 0.0
+        if "/" not in raw:
+            return None
+        num, _, den = raw.partition("/")
+        try:
+            numerator = float(num)
+            denominator = float(den)
+        except ValueError:
+            return None
+        if denominator <= 0:
+            return None
+        return max(0.0, min(1.0, numerator / denominator))
+
+    @classmethod
+    def _material_timeline(
+        cls, lines: list[str], bot_slot: str
+    ) -> list[dict[str, Any]]:
+        """Reconstruct per-turn material state for both sides from protocol truth.
+
+        Uses only Showdown replay protocol lines, so every number in the
+        resulting evidence can be re-checked by a human opening the replay.
+        Unrevealed Pokemon are counted alive at full HP, which is what both
+        players can actually see.
+        """
+        opponent_slot = "p2" if bot_slot == "p1" else "p1"
+        sides = (bot_slot, opponent_slot)
+
+        team_size: dict[str, int] = {side: 0 for side in sides}
+        preview_counts: dict[str, int] = {side: 0 for side in sides}
+        hp: dict[str, dict[str, float]] = {side: {} for side in sides}
+        fainted: dict[str, set[str]] = {side: set() for side in sides}
+
+        def side_of(target: str) -> str | None:
+            slot = target.split(":", 1)[0].strip()
+            side = slot[:2]
+            return side if side in team_size else None
+
+        def name_of(target: str) -> str:
+            return target.split(":", 1)[1].strip() if ":" in target else target.strip()
+
+        def snapshot(turn: int) -> dict[str, Any]:
+            row: dict[str, Any] = {"turn": turn}
+            for side in sides:
+                size = team_size[side] or preview_counts[side] or 6
+                known = hp[side]
+                total = sum(known.values()) + (size - len(known)) * 1.0
+                key = "our" if side == bot_slot else "opp"
+                row[f"{key}_alive"] = size - len(fainted[side])
+                row[f"{key}_hp"] = max(0.0, min(1.0, total / size)) if size else 0.0
+            return row
+
+        timeline: list[dict[str, Any]] = []
+        current_turn = 0
+        for line in lines:
+            parts = line.split("|")
+            if len(parts) < 2:
+                continue
+            tag = parts[1]
+
+            if tag == "teamsize" and len(parts) >= 4:
+                side = parts[2].strip()
+                if side in team_size:
+                    try:
+                        team_size[side] = int(parts[3])
+                    except ValueError:
+                        pass
+            elif tag == "poke" and len(parts) >= 3:
+                side = parts[2].strip()
+                if side in preview_counts:
+                    preview_counts[side] += 1
+            elif tag == "turn" and len(parts) >= 3:
+                try:
+                    current_turn = int(parts[2])
+                except ValueError:
+                    continue
+                timeline.append(snapshot(current_turn))
+            elif tag in {"switch", "drag", "replace"} and len(parts) >= 5:
+                side = side_of(parts[2])
+                if side:
+                    value = cls._parse_hp_fraction(parts[4])
+                    if value is not None:
+                        hp[side][name_of(parts[2])] = value
+            elif tag in {"-damage", "-heal", "-sethp"} and len(parts) >= 4:
+                side = side_of(parts[2])
+                if side:
+                    value = cls._parse_hp_fraction(parts[3])
+                    if value is not None:
+                        hp[side][name_of(parts[2])] = value
+            elif tag == "faint" and len(parts) >= 3:
+                side = side_of(parts[2])
+                if side:
+                    name = name_of(parts[2])
+                    hp[side][name] = 0.0
+                    fainted[side].add(name)
+
+        # Final state after the last |turn| marker, so a lead thrown on the
+        # closing turns is still visible.
+        if current_turn:
+            timeline.append(snapshot(current_turn))
+        return timeline
+
+    @staticmethod
+    def _winning_slot(lines: list[str]) -> str | None:
+        """Resolve which side the replay says actually won, from |player| + |win|."""
+        names: dict[str, str] = {}
+        winner = ""
+        for line in lines:
+            parts = line.split("|")
+            if len(parts) < 3:
+                continue
+            if parts[1] == "player" and len(parts) >= 4 and parts[3].strip():
+                names[parts[2].strip()] = parts[3].strip().lower()
+            elif parts[1] == "win":
+                winner = parts[2].strip().lower()
+        if not winner:
+            return None
+        for slot, name in names.items():
+            if name == winner:
+                return slot
+        return None
+
+    @classmethod
+    def _losing_slot(cls, lines: list[str], assumed_bot_slot: str) -> str | None:
+        """The bot's slot for a recorded loss, verified against the replay itself.
+
+        _parse_bot_slot matches a configured username and silently falls back to
+        "p1" when that lookup fails (renamed account, unset env). Trusting that
+        fallback makes the analyzer read the OPPONENT's winning position as the
+        bot's and emit confident, exactly-backwards claims. The replay's own
+        |win| line is ground truth, so for a recorded loss the bot is whichever
+        side did not win. Returns None when the replay cannot settle it, so the
+        caller declines to make a claim rather than guessing.
+        """
+        winner = cls._winning_slot(lines)
+        if winner is None:
+            return None
+        loser = "p2" if winner == "p1" else "p1"
+        return loser
+
+    @classmethod
+    def _endgame_conversion_issue(
+        cls, battle: dict[str, Any], lines: list[str], bot_slot: str
+    ) -> tuple[bool, str]:
+        """Flag losses where the bot held a real material lead and lost it.
+
+        Grounded in reconstructed per-turn Pokemon-alive counts and team HP
+        from the replay protocol log. A long game the bot was losing throughout
+        is a matchup problem and is deliberately NOT flagged here.
+        """
         if battle.get("result") != "loss":
             return False, ""
-        log = self._extract_log_lines(replay_data)
-        turns = 0
-        for line in log:
-            if line.startswith("|turn|"):
-                try:
-                    turns = max(turns, int(line.split("|")[2]))
-                except Exception:
-                    pass
-        if turns >= 35:
-            return True, f"loss lasted {turns} turns, suggesting endgame conversion or long-game planning failure"
-        return False, ""
+        # Never analyze the wrong side of the battle: a mis-resolved slot turns
+        # the opponent's winning position into a fabricated "we were winning"
+        # claim. Prefer the replay's verdict; decline if it cannot be verified.
+        verified_slot = cls._losing_slot(lines, bot_slot)
+        if verified_slot is None:
+            return False, ""
+        bot_slot = verified_slot
+        timeline = cls._material_timeline(lines, bot_slot)
+        if not timeline:
+            return False, ""
+
+        def lead_of(row: dict[str, Any]) -> tuple[int, float]:
+            return (
+                int(row["our_alive"]) - int(row["opp_alive"]),
+                float(row["our_hp"]) - float(row["opp_hp"]),
+            )
+
+        def qualifies(row: dict[str, Any]) -> bool:
+            material, hp_edge = lead_of(row)
+            if hp_edge < 0:
+                # Up on bodies but behind on total HP is not a winning position:
+                # three near-dead Pokemon do not beat one healthy one.
+                return False
+            if material >= cls.ENDGAME_MATERIAL_LEAD:
+                return True
+            return material >= cls.ENDGAME_NARROW_LEAD and hp_edge >= cls.ENDGAME_NARROW_HP_EDGE
+
+        eligible = [
+            row
+            for row in timeline
+            if int(row["turn"]) >= cls.ENDGAME_MIN_TURN and qualifies(row)
+        ]
+        if not eligible:
+            return False, ""
+
+        peak = max(eligible, key=lambda row: (lead_of(row), -int(row["turn"])))
+        peak_turn = int(peak["turn"])
+        material, hp_edge = lead_of(peak)
+
+        surrendered_at = None
+        for row in timeline:
+            if int(row["turn"]) > peak_turn and lead_of(row)[0] <= 0:
+                surrendered_at = int(row["turn"])
+                break
+
+        detail = (
+            f"led {int(peak['our_alive'])}-{int(peak['opp_alive'])} on Pokemon at turn {peak_turn} "
+            f"(team HP {peak['our_hp']:.0%} vs {peak['opp_hp']:.0%}, {hp_edge:+.0%} edge) and still lost"
+        )
+        if surrendered_at is not None:
+            detail += f"; material lead surrendered by turn {surrendered_at}"
+        else:
+            detail += "; lead eroded without the material count ever inverting"
+        return True, detail
 
     @staticmethod
     def _protect_sequence_issue(lines: list[str], bot_slot: str) -> tuple[bool, str]:
@@ -710,8 +1134,13 @@ class AutoResearcher:
         for key in keys:
             cur = current_issues.get(key)
             prev = previous_issues.get(key)
-            cur_count = int((cur or {}).get("evidence_count", 0))
-            prev_count = int((prev or {}).get("evidence_count", 0))
+            # Compare how often each issue actually fired. evidence_count is the
+            # PROOF SAMPLE, capped at 5, so using it here made every delta
+            # saturate: an issue going from 6 to 30 battles reported as "flat".
+            # battles_flagged is the real frequency; fall back for reports
+            # serialized before it existed.
+            cur_count = int((cur or {}).get("battles_flagged", (cur or {}).get("evidence_count", 0)))
+            prev_count = int((prev or {}).get("battles_flagged", (prev or {}).get("evidence_count", 0)))
             delta = cur_count - prev_count
             if delta == 0 and cur_count == 0 and prev_count == 0:
                 continue
@@ -790,6 +1219,7 @@ class AutoResearcher:
 
         pattern_counter: Counter[str] = Counter()
         evidence_map: dict[str, list[str]] = defaultdict(list)
+        evidence_ledgers: dict[str, _EvidenceLedger] = defaultdict(_EvidenceLedger)
         team_counter: Counter[str] = Counter()
         opponent_counter: Counter[str] = Counter()
         evidence_integrity = {
@@ -831,42 +1261,63 @@ class AutoResearcher:
                     if species:
                         opponent_counter[species] += 1
 
+            # Coordinates this battle's evidence is allowed to cite. Detectors are
+            # graded against the battle's own source artifacts, so a citation only
+            # counts if a reader could actually follow it back to the replay/trace.
+            verifiable_turns, verifiable_digests = self._verifiable_coordinates(lines, traces)
+            battle_has_source = bool(lines) or bool(traces)
+
+            def record(key: str, detail: str) -> None:
+                """Count a detector firing and grade the evidence it attached."""
+                ledger = evidence_ledgers[key]
+                ledger.battles_flagged += 1
+                pattern_counter[key] += 1
+                evidence_map[key].append(f"{battle_label}: {detail}")
+                if not str(detail or "").strip():
+                    # Fired without saying anything checkable. Counted, not credited.
+                    return
+                ledger.battles_with_detail += 1
+                if battle_has_source:
+                    ledger.battles_with_source += 1
+                verified, unverified, anchors = self._grade_detail(
+                    detail, verifiable_turns, verifiable_digests
+                )
+                ledger.verified_turn_citations += len(verified)
+                ledger.unverified_turn_citations += len(unverified)
+                if verified:
+                    ledger.battles_with_citation += 1
+                if anchors:
+                    ledger.battles_with_anchor += 1
+
             team_caps = self._team_hazard_capabilities(battle.get("team_file"))
             hazard_issue, hazard_detail = self._hazard_issue(lines, bot_slot, team_caps)
             if hazard_issue:
-                pattern_counter["hazard_pressure"] += 1
-                evidence_map["hazard_pressure"].append(f"{battle_label}: {hazard_detail}")
+                record("hazard_pressure", hazard_detail)
 
             early_issue, early_detail = self._early_faint_issue(lines, bot_slot)
             if early_issue:
-                pattern_counter["early_bleeding"] += 1
-                evidence_map["early_bleeding"].append(f"{battle_label}: {early_detail}")
+                record("early_bleeding", early_detail)
 
-            long_issue, long_detail = self._long_game_loss_issue(battle, replay_data)
-            if long_issue:
-                pattern_counter["endgame_conversion"] += 1
-                evidence_map["endgame_conversion"].append(f"{battle_label}: {long_detail}")
+            endgame_issue, endgame_detail = self._endgame_conversion_issue(battle, lines, bot_slot)
+            if endgame_issue:
+                record("endgame_conversion", endgame_detail)
 
             protect_issue, protect_detail = self._protect_sequence_issue(lines, bot_slot)
             if protect_issue:
-                pattern_counter["protect_sequence_waste"] += 1
-                evidence_map["protect_sequence_waste"].append(f"{battle_label}: {protect_detail}")
+                record("protect_sequence_waste", protect_detail)
 
             trace_findings, _ = self._trace_issue(traces)
             if trace_findings:
-                pattern_counter["decision_instability"] += 1
-                evidence_map["decision_instability"].append(f"{battle_label}: {'; '.join(trace_findings[:3])}")
+                record("decision_instability", "; ".join(trace_findings[:3]))
 
             # P2: replay-grounded regret mining (chosen-move MCTS value << best legal)
             regret_flag, regret_detail = self._regret_issue(traces)
             if regret_flag:
-                pattern_counter["search_regret"] += 1
-                evidence_map["search_regret"].append(f"{battle_label}: {regret_detail}")
+                record("search_regret", regret_detail)
 
             magic_flag, magic_detail = self._magic_bounce_reflected_hazard_issue(traces)
             if magic_flag:
-                pattern_counter["magic_bounce_reflected_hazard"] += 1
-                evidence_map["magic_bounce_reflected_hazard"].append(f"{battle_label}: {magic_detail}")
+                record("magic_bounce_reflected_hazard", magic_detail)
 
         issue_defs = {
             "hazard_pressure": (
@@ -880,9 +1331,16 @@ class AutoResearcher:
                 "Bias opening decisions toward preserving defensive pivots and reduce greedy lines before turn 8.",
             ),
             "endgame_conversion": (
-                "Long games are not being converted cleanly",
-                "The bot reaches playable long games and still loses after turn 35, pointing to endgame planning weakness rather than raw matchup hopelessness.",
-                "Add stronger endgame-preservation heuristics: protect wincon HP, value recovery higher, and avoid unnecessary trades once ahead on resources.",
+                "Winning positions are not being converted",
+                "In these losses the bot reached a real material lead -- ahead on Pokemon "
+                "remaining, and on team HP -- and lost from there. Counts and HP are "
+                "reconstructed per turn from the replay protocol log, so each cited "
+                "position can be re-checked against the replay. Long losses where the bot "
+                "was behind throughout are matchup problems and are not counted here.",
+                "Audit decision-making from the cited peak-advantage turn onward: whether "
+                "the win condition was preserved, whether recovery was valued correctly "
+                "while ahead, and whether trades that gave back the material lead were "
+                "necessary.",
             ),
             "decision_instability": (
                 "Decision traces show fallback or override failures",
@@ -911,10 +1369,14 @@ class AutoResearcher:
         }
 
         issues: list[ResearchIssue] = []
-        for key, count in pattern_counter.most_common():
+        for key, count in pattern_counter.items():
             title, summary, recommendation = issue_defs[key]
             proof = evidence_map.get(key, [])[:5]
-            score = count + min(len(proof) * 0.1, 0.5)
+            ledger = evidence_ledgers[key]
+            # Frequency alone decided ranking here for a long time, which quietly
+            # handed the top slot -- the one the learn loop acts on -- to whichever
+            # detector had the loosest predicate. Rank on evidence quality instead.
+            score, grounding = self._score_issue(ledger)
             issues.append(
                 ResearchIssue(
                     key=key,
@@ -924,8 +1386,23 @@ class AutoResearcher:
                     summary=summary,
                     recommendation=recommendation,
                     proof=proof,
+                    battles_flagged=count,
+                    grounding=grounding,
                 )
             )
+
+        # Deterministic ordering: score, then how many battles actually cited a
+        # verifiable coordinate, then frequency, then key. Every tiebreak is a
+        # total order on stable data, so equal-evidence issues never reshuffle
+        # between runs (the hypothesis ledger dedupes on this ordering).
+        issues.sort(
+            key=lambda issue: (
+                -issue.score,
+                -issue.grounding.get("battles_with_citation", 0),
+                -issue.battles_flagged,
+                issue.key,
+            )
+        )
 
         top_issue = issues[0] if issues else None
         top_opponents = [{"pokemon": k, "count": v} for k, v in opponent_counter.most_common(5)]
@@ -993,6 +1470,9 @@ class AutoResearcher:
                 "summary": top_issue.summary,
                 "recommendation": top_issue.recommendation,
                 "proof": top_issue.proof,
+                "score": top_issue.score,
+                "battles_flagged": top_issue.battles_flagged,
+                "grounding": top_issue.grounding,
             } if top_issue else None,
             "issues": [
                 {
@@ -1000,9 +1480,11 @@ class AutoResearcher:
                     "title": issue.title,
                     "score": issue.score,
                     "evidence_count": issue.evidence_count,
+                    "battles_flagged": issue.battles_flagged,
                     "summary": issue.summary,
                     "recommendation": issue.recommendation,
                     "proof": issue.proof,
+                    "grounding": issue.grounding,
                 }
                 for issue in issues
             ],
@@ -1084,8 +1566,22 @@ class AutoResearcher:
             lines.append("")
 
         lines.append("## Ranked issues")
+        lines.append(
+            "Ranked by evidence quality, not raw frequency: how often an issue "
+            "fired, weighted by how much of its evidence cites a turn or artifact "
+            "a reader can check in the replay."
+        )
+        lines.append("")
         for idx, issue in enumerate(report.get("issues", []), start=1):
             lines.append(f"### {idx}. {issue['title']}")
+            grounding = issue.get("grounding") or {}
+            if issue.get("battles_flagged"):
+                lines.append(
+                    f"- Ranking: score {issue.get('score', 0)} from "
+                    f"{issue['battles_flagged']} battle(s), "
+                    f"{grounding.get('verified_turn_citations', 0)} verified turn citation(s), "
+                    f"groundedness {grounding.get('groundedness', 0)}"
+                )
             lines.append(f"- Summary: {issue['summary']}")
             lines.append(f"- Recommendation: {issue['recommendation']}")
             for proof in issue.get("proof", [])[:3]:
