@@ -7210,6 +7210,85 @@ def _apply_hard_legality_and_safety(
                     }
                 )
 
+    # Always-on safety: consecutive Protect-family moves fail with probability
+    # 1 - (1/3)^n, where n is the number of consecutive SUCCESSFUL protects by the
+    # current active Pokemon (the gen9 stall counter). Two facts make this a
+    # hard-mechanics correction rather than a heuristic preference:
+    #
+    #   1. The state serialized to the search engine carries no stall counter
+    #      (grep: no protect/stall counter in fp/battle.py or fp/battle_modifier/),
+    #      so MCTS values a repeat Protect as if it always succeeds.
+    #   2. A failed Protect is STRICTLY DOMINATED: the turn is spent AND the
+    #      incoming hit lands in full. There is no branch where the failure
+    #      outcome is preferable to simply having picked the other move.
+    #
+    # `side_conditions[PROTECT]` already tracks the streak: +2 on each successful
+    # protect (battle_modifier/status.py singleturn) and -1 each upkeep, so its
+    # value at decision time equals the number of consecutive successes. We gate on
+    # last_used_move as well so a decayed-but-nonzero counter cannot penalize a
+    # Pokemon whose streak has actually been broken.
+    #
+    # Evidence (2026-07-20, 189-replay corpus at
+    # C:/ProgramData/HERMES/state/fouler/replay_analysis):
+    #   38 failed consecutive-Protect turns across 21 battles = 20.1 per 100 battles.
+    #   gen9ou-2652198322 t29 lost the game outright: Gliscor Protect #3 (p=1/9)
+    #   -> |-fail| -> Make It Rain crit -> faint -> |win|Imnotgcb (-18 ELO).
+    if battle is not None and getattr(battle, "user", None) is not None:
+        protect_streak = 0
+        try:
+            active = getattr(battle.user, "active", None)
+            last = getattr(battle.user, "last_used_move", None)
+            streak_live = (
+                active is not None
+                and last is not None
+                and normalize_name(getattr(last, "move", "") or "")
+                in constants.PROTECT_MOVES
+                and getattr(last, "pokemon_name", None) == active.name
+            )
+            if streak_live:
+                raw = (getattr(battle.user, "side_conditions", {}) or {}).get(
+                    constants.PROTECT, 0
+                )
+                protect_streak = max(1, int(raw or 0))
+        except Exception:
+            protect_streak = 0
+
+        if protect_streak > 0:
+            success_p = (1.0 / 3.0) ** protect_streak
+            positive_non_protect = [
+                float(weight)
+                for move, weight in working.items()
+                if weight > 0
+                and normalize_name(move.split(":")[-1] if ":" in move else move)
+                not in constants.PROTECT_MOVES
+            ]
+            ceiling = (
+                max(positive_non_protect) * success_p if positive_non_protect else None
+            )
+            for move, weight in list(working.items()):
+                move_name = move.split(":")[-1] if ":" in move else move
+                if normalize_name(move_name) not in constants.PROTECT_MOVES:
+                    continue
+                if weight <= 0:
+                    continue
+                new_weight = float(weight) * success_p
+                if ceiling is not None:
+                    new_weight = min(new_weight, ceiling)
+                working[move] = new_weight
+                if trace_events is not None:
+                    trace_events.append(
+                        {
+                            "type": "penalty",
+                            "source": "mcts_hard_safety",
+                            "move": move,
+                            "reason": "consecutive_protect_fail_risk",
+                            "protectStreak": protect_streak,
+                            "successProbability": round(success_p, 4),
+                            "before": weight,
+                            "after": new_weight,
+                        }
+                    )
+
     our_hp_percent = None
     if ability_state is not None:
         try:
