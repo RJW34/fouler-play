@@ -1,0 +1,261 @@
+{
+  "contract": {
+    "ladderStages": [
+      {
+        "id": "establish-baseline",
+        "ratingFloor": 0,
+        "requiredProof": "first fresh rated proof window without duplicate runners or reporting gaps",
+        "targetRating": 1500
+      },
+      {
+        "id": "prove-1500",
+        "ratingFloor": 1,
+        "requiredProof": "bounded proof batches until current rating is at least 1500 with stop-loss clear",
+        "targetRating": 1500
+      },
+      {
+        "id": "prove-1600",
+        "ratingFloor": 1500,
+        "requiredProof": "shorter proof batches after 1500 so rating drawdown is caught before a full skid",
+        "targetRating": 1600
+      },
+      {
+        "id": "prove-1700",
+        "ratingFloor": 1600,
+        "requiredProof": "very small batches near 1700 plus replay/error analysis between attempts",
+        "targetRating": 1700
+      },
+      {
+        "id": "sustain-1700",
+        "ratingFloor": 1700,
+        "requiredProof": "30-game post-1700 sustain proof accumulated through re-gated five-game chunks with per-team coverage",
+        "targetRating": 1700
+      }
+    ],
+    "requiredTeams": [
+      "fat-team-1-stall",
+      "fat-team-2-pivot",
+      "fat-team-3-dondozo"
+    ],
+    "sustainMaxDrawdown": 75.0,
+    "sustainMinimumGames": 30,
+    "sustainMinimumGamesPerTeam": 10,
+    "sustainMinimumWinRate": 0.5,
+    "targetRating": 1700
+  },
+  "definitionSource": "owner goal: 1700 ELO sustained with a closed learn-from-losses loop; thresholds from devstream_cycle_report.ELO_SUSTAIN_* and fouler_mission_monitor.LADDER_STAGE_POLICY",
+  "doctrine": "Every check is evaluated against battle records and hypothesis artifacts, never against a report the project generated about itself. A process must never grade its own homework. Checks whose evidence is absent report 'unverifiable', never 'complete'.",
+  "entries": [
+    {
+      "checks": [
+        {
+          "derivedFrom": "fouler_mission_monitor.LADDER_STAGE_POLICY",
+          "kind": "peak_rating_at_least",
+          "rating": 1500
+        }
+      ],
+      "group": "elo",
+      "id": "elo/establish-baseline",
+      "requiredProof": "first fresh rated proof window without duplicate runners or reporting gaps",
+      "title": "Ladder stage establish-baseline (floor 0, target 1500)"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "fouler_mission_monitor.LADDER_STAGE_POLICY",
+          "kind": "peak_rating_at_least",
+          "rating": 1500
+        }
+      ],
+      "group": "elo",
+      "id": "elo/prove-1500",
+      "requiredProof": "bounded proof batches until current rating is at least 1500 with stop-loss clear",
+      "title": "Ladder stage prove-1500 (floor 1, target 1500)"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "fouler_mission_monitor.LADDER_STAGE_POLICY",
+          "kind": "peak_rating_at_least",
+          "rating": 1600
+        }
+      ],
+      "group": "elo",
+      "id": "elo/prove-1600",
+      "requiredProof": "shorter proof batches after 1500 so rating drawdown is caught before a full skid",
+      "title": "Ladder stage prove-1600 (floor 1500, target 1600)"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "fouler_mission_monitor.LADDER_STAGE_POLICY",
+          "kind": "peak_rating_at_least",
+          "rating": 1700
+        }
+      ],
+      "group": "elo",
+      "id": "elo/prove-1700",
+      "requiredProof": "very small batches near 1700 plus replay/error analysis between attempts",
+      "title": "Ladder stage prove-1700 (floor 1600, target 1700)"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "fouler_mission_monitor.LADDER_STAGE_POLICY",
+          "kind": "peak_rating_at_least",
+          "rating": 1700
+        }
+      ],
+      "group": "elo",
+      "id": "elo/sustain-1700",
+      "requiredProof": "30-game post-1700 sustain proof accumulated through re-gated five-game chunks with per-team coverage",
+      "title": "Ladder stage sustain-1700 (floor 1700, target 1700)"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "devstream_cycle_report.ELO_SUSTAIN_MINIMUM_GAMES",
+          "floor": 1700,
+          "kind": "games_at_or_above_floor",
+          "minimum": 30
+        }
+      ],
+      "group": "elo",
+      "id": "elo/sustain-window-games",
+      "title": "30 rated games at or above 1700"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "devstream_cycle_report.ELO_SUSTAIN_MINIMUM_WIN_RATE",
+          "floor": 1700,
+          "kind": "sustain_win_rate_at_least",
+          "minimum": 0.5
+        }
+      ],
+      "group": "elo",
+      "id": "elo/sustain-win-rate",
+      "title": "Win rate at or above 50% across the sustain window"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "devstream_cycle_report.ELO_REQUIRED_TEAMS",
+          "floor": 1700,
+          "kind": "team_coverage_at_least",
+          "minimumPerTeam": 10,
+          "teams": [
+            "fat-team-1-stall",
+            "fat-team-2-pivot",
+            "fat-team-3-dondozo"
+          ]
+        }
+      ],
+      "group": "elo",
+      "id": "elo/sustain-team-coverage",
+      "title": "Each required team plays at least 10 games in the sustain window"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "fouler_mission_monitor.SUSTAIN_MAX_DRAWDOWN",
+          "floor": 1700,
+          "kind": "max_drawdown_within",
+          "maximum": 75.0
+        }
+      ],
+      "group": "elo",
+      "id": "elo/sustain-drawdown",
+      "title": "No drawdown greater than 75.0 points inside the sustain window"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "join on hypothesis.evidence[] battle id prefix",
+          "kind": "losses_without_hypothesis",
+          "maximum": 0
+        }
+      ],
+      "group": "learn-loop",
+      "id": "learn-loop/loss-coverage",
+      "title": "Every rated loss is cited by a hypothesis or explicitly triaged"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "replay_analysis/hypothesis_ledger.py status vocabulary",
+          "kind": "hypotheses_not_terminal",
+          "maximum": 0,
+          "terminalStates": [
+            "kept",
+            "reverted"
+          ]
+        }
+      ],
+      "group": "learn-loop",
+      "id": "learn-loop/hypotheses-terminal",
+      "title": "Hypotheses reach a terminal state (kept or reverted), not just open"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "hypothesis.implementation.committedAt vs openedAt",
+          "kind": "implementation_predates_hypothesis",
+          "maximum": 0
+        }
+      ],
+      "group": "learn-loop",
+      "id": "learn-loop/implementation-after-hypothesis",
+      "notes": [
+        "A commit that predates the hypothesis cannot be a fix for it. The closer's git --grep has no --since filter, so a detector's own birth commit can certify every hypothesis that detector will ever emit."
+      ],
+      "title": "Every implementing commit is dated after the hypothesis opened"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "hermes-fouler-hypothesis-closer BATTLE_STATS path",
+          "kind": "battle_store_resolvable",
+          "minimumBattles": 1
+        }
+      ],
+      "group": "learn-loop",
+      "id": "learn-loop/measurement-store-resolvable",
+      "notes": [
+        "If this store is missing, len(window) >= 30 is never true and no hypothesis can ever reach kept or reverted. Terminal states become unreachable by construction and the loop cannot close."
+      ],
+      "title": "The battle store the closer measures against exists and is non-empty"
+    },
+    {
+      "checks": [
+        {
+          "derivedFrom": "replay_analysis/autoresearch.py detector inventory",
+          "groundedDetectors": [
+            "hazard_pressure",
+            "decision_instability",
+            "search_regret",
+            "magic_bounce_reflected_hazard"
+          ],
+          "kind": "grounded_detectors_represented",
+          "minimumRepresented": 1,
+          "templatedDetectors": [
+            "endgame_conversion"
+          ]
+        }
+      ],
+      "group": "learn-loop",
+      "id": "learn-loop/detector-diversity",
+      "notes": [
+        "Ranking issues on raw frequency hands the queue to whichever detector fires most often, which is the loosest predicate rather than the most informative one. Rank on evidence that resolves against source artifacts."
+      ],
+      "title": "Grounded detectors are represented in the ledger, not only templated ones"
+    }
+  ],
+  "entryCount": 14,
+  "generatedBy": "scripts/build_done_registry.py",
+  "generatedFrom": {
+    "scripts/devstream_cycle_report.py": "1ec488094fb975139f168ce698d9dbed774748cc636a5d4c8f77ac093aeb949f",
+    "scripts/fouler_mission_monitor.py": "70961c597fc99734ec0f6111116784757daa072cea9bc97f152ff63604752a8e"
+  },
+  "schemaVersion": "fouler-play-done-registry/v1"
+}
