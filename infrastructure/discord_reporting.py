@@ -185,9 +185,12 @@ def _replay_id_from_reference(value: object, *, public_only: bool) -> str:
     parts = [part for part in text.split("-") if part]
     if len(parts) < 2:
         return ""
-    # A replay id is "<format>-<number>" optionally followed by a room suffix.
-    # Require the number so arbitrary hyphenated text is still rejected.
-    if not parts[1].isdigit():
+    # A replay id is "<format>-<battlenumber>" optionally followed by a room
+    # suffix. Requiring an alphanumeric battle number still rejects arbitrary
+    # prose -- a whole rendered message split on "-" yields fragments containing
+    # spaces and punctuation -- which matters because this function used to
+    # accept such fragments and return non-empty garbage from them.
+    if not parts[1].isalnum():
         return ""
     return "-".join(parts)
 

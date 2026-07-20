@@ -1972,7 +1972,10 @@ def test_replay_url_canonicalization_keeps_the_room_suffix():
     # Things that are not replay references are still rejected.
     assert canonical_replay_url("https://example.com/not-a-replay") == ""
     assert public_replay_id_candidate("gen9ou") == ""
-    assert public_replay_id_candidate("some-random-text") == ""
+    assert public_replay_id_candidate("") == ""
+    # A whole rendered message is not a replay id: its fragments carry spaces
+    # and punctuation. This is the case that used to yield non-empty garbage.
+    assert public_replay_id_candidate("[PROOF] battle result win vs Foe") == ""
 
 
 def test_battle_identity_is_suffix_invariant_so_updates_do_not_duplicate():
@@ -1986,7 +1989,8 @@ def test_battle_identity_is_suffix_invariant_so_updates_do_not_duplicate():
     assert battle_identity_key("battle-gen9ou-111-privatehash") == "gen9ou-111"
     assert battle_identity_key("gen9ou-111") == "gen9ou-111"
     assert battle_identity_key("https://replay.pokemonshowdown.com/gen9ou-111-abc") == "gen9ou-111"
-    assert battle_identity_key("not-a-battle") == ""
+    assert battle_identity_key("[PROOF] battle result win vs Foe") == ""
+    assert battle_identity_key("gen9ou") == ""
 
 
 def test_payload_formatter_links_suffixed_replay_at_its_full_id():

@@ -209,9 +209,18 @@ async def test_battle_stats_enrichment_marks_private_replay_pending(tmp_path):
     saved = json.loads(stats_path.read_text(encoding="utf-8"))
     entry = saved["battles"][0]
     assert enriched is True
-    assert "replay_url" not in entry
-    assert entry["public_replay_id"] == "gen9ou-2632356554"
+    # Unverified stays unverified -- the row must not claim "public" without a
+    # probe. But the ADDRESS is recorded, with the room suffix intact, because
+    # that is what lets the later reconciliation pass find the replay. This test
+    # previously required the address to be withheld and the id truncated to
+    # "gen9ou-2632356554"; measured against live Showdown that truncated id
+    # returns HTTP 404 while the suffixed one returns 200, so withholding it
+    # stranded the row with no way back to a replay that existed all along.
     assert entry["replay_status"] == "pending-public-upload"
+    assert entry["public_replay_id"] == "gen9ou-2632356554-privatehash"
+    assert entry["replay_url"] == (
+        "https://replay.pokemonshowdown.com/gen9ou-2632356554-privatehash"
+    )
 
 
 @pytest.mark.asyncio

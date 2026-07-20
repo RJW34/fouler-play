@@ -1174,11 +1174,16 @@ async def _enrich_battle_stats_rating_once(
             pending_id = public_replay_id_candidate(replay_url)
             if pending_id:
                 fact["public_replay_id"] = pending_id
-            # "public" is a claim that the replay resolves, and only the caller
-            # that probed it can make that claim. Deriving it from the shape of
-            # the id is what produced 79 rows asserting a URL that 404s.
-            if canonical_url and replay_verified:
+            # The URL is WHERE the replay lives and is always recorded -- losing
+            # it would strand the row with no way back to the replay at all.
+            # "public" is a separate thing: a CLAIM that the replay resolves,
+            # which only a caller that probed it can make. Deriving that claim
+            # from the shape of an id is what produced 79 rows asserting a URL
+            # that 404s, so an unverified replay is recorded at its address and
+            # marked pending rather than announced as public.
+            if canonical_url:
                 fact["replay_url"] = canonical_url
+            if canonical_url and replay_verified:
                 fact["replay_status"] = "public"
             elif canonical_url or pending_id:
                 fact["replay_status"] = "pending-public-upload"
@@ -3911,17 +3916,35 @@ async def pokemon_battle(
                         elif _result_str == "win":
                             _next_action = ""
 
-                        _why_it_matters_ev = (
-                            f"{_result_str} vs {_opponent_label} is ladder evidence"
-                        )
-                        if _recent_summary:
-                            _why_it_matters_ev += f"; {_recent_summary}"
-                        if _result_str == "loss" and _decisive_reason:
-                            _why_it_matters_ev += f"; {_decisive_reason}"
-                        elif _result_str == "loss":
-                            _why_it_matters_ev += "; recorded as ladder evidence only (improve loop parked: no replay-review servicer; needs a discriminating offline gate)"
-                        elif _result_str == "win":
-                            _why_it_matters_ev += "; keep proof focused on repeatable win conditions, not flavor text"
+                        # WHY IT MATTERS MUST SAY SOMETHING THIS BATTLE-SPECIFIC.
+                        # This field used to be assembled as
+                        #   "<result> vs <opponent> is ladder evidence"
+                        #   + "; <last-5 window>" + a constant tail.
+                        # Every part of that was already elsewhere in the post:
+                        # the result is in the headline, the window is in
+                        # what-happened, and the tail never varied at all -- it
+                        # appeared on 183 of 223 live events verbatim. That is
+                        # the repetition the owner asked us to remove.
+                        #
+                        # A per-battle post now only happens for a loss with a
+                        # classified operational cause, so the decisive reason is
+                        # the real content and is normally present. The ELO
+                        # transition is the fallback because it is a fact that
+                        # differs between battles; do NOT reintroduce a constant
+                        # sentence here, and do not restate the window.
+                        if _decisive_reason:
+                            _why_it_matters_ev = _decisive_reason
+                        else:
+                            _elo_delta_text = format_elo_delta(
+                                _elo_before_final,
+                                _elo_after_final,
+                                _result_str,
+                                rating_delta=_elo_delta_final,
+                            )
+                            _why_it_matters_ev = (
+                                _elo_delta_text
+                                or f"{_result_str} recorded against {_opponent_label}"
+                            )
 
                         _battle_result_event_id = queue_event(
                             "battle_result",
