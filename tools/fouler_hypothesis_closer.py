@@ -62,6 +62,7 @@ import math
 import os
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 LOCAL_LIB = Path(__file__).resolve().parent / "_lib"
@@ -209,17 +210,39 @@ def _git_commit_for(failure_class: str, since: str | None) -> dict | None:
             "matchedSince": since}
 
 
+def _to_utc(value: str):
+    """Parse an ISO timestamp to an aware UTC datetime, or None."""
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def _battles_since(iso_timestamp: str) -> list[dict]:
-    """Return battle_stats entries with timestamp >= iso_timestamp."""
+    """Return battle_stats entries recorded at or after iso_timestamp.
+
+    Compares real datetimes, not strings. git's %aI renders the author's local
+    offset ("2026-07-20T18:22:03-04:00") while battle_stats timestamps are UTC
+    ("2026-07-20T21:35:50+00:00"). Lexical comparison of those two put 57 battles
+    inside a window that had barely opened, because "21" > "18" as text.
+    """
     if BATTLE_STATS is None:
         return []
     data = hl.read_json(BATTLE_STATS)
     if not data:
         return []
+    cutoff = _to_utc(iso_timestamp)
+    if cutoff is None:
+        return []
     out = []
     for b in data.get("battles", []):
-        ts = b.get("timestamp", "")
-        if ts and ts >= iso_timestamp:
+        ts = _to_utc(b.get("timestamp", ""))
+        if ts is not None and ts >= cutoff:
             out.append(b)
     return out
 
@@ -261,6 +284,7 @@ def process(record_path: Path, dry_run: bool = False) -> dict:
     record = hl.read_json(record_path)
     if not record:
         return {"path": str(record_path), "skip": "parse-error"}
+    original = json.loads(json.dumps(record, sort_keys=True))
 
     status = record.get("status", "open")
     failure_class = record.get("failureClass")
@@ -282,7 +306,8 @@ def process(record_path: Path, dry_run: bool = False) -> dict:
     # implementation older than the hypothesis is fiction; drop it and reopen.
     impl = record.get("implementation") or {}
     impl_at = impl.get("committedAt")
-    if impl_at and opened_at and impl_at < opened_at:
+    _impl_dt, _open_dt = _to_utc(impl_at), _to_utc(opened_at)
+    if _impl_dt and _open_dt and _impl_dt < _open_dt:
         record["invalidatedImplementation"] = {
             **impl,
             "invalidatedAtUtc": hl.now_iso(),
@@ -369,8 +394,14 @@ def process(record_path: Path, dry_run: bool = False) -> dict:
                     record["status"] = "measured-indeterminate"
                     record["measurement"] = measurement
 
-    if transition and not dry_run:
+    # Persist whenever anything changed, not only on a transition. The v1 closer
+    # wrote only on transition, so a recomputed measurement (e.g. after the
+    # timezone fix below shrank a bogus 57-battle window to its true 0) was
+    # silently discarded and the stale numbers stayed on disk.
+    changed = json.loads(json.dumps(record, sort_keys=True)) != original
+    if changed and not dry_run:
         hl.atomic_write(record_path, record)
+    if transition and not dry_run:
         body = f"Hypothesis `{record.get('failureClass')}` transitioned: {transition}."
         m = record.get("measurement") or {}
         if m.get("eloBefore") is not None and m.get("eloAfter") is not None:
