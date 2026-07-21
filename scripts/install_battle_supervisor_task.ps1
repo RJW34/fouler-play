@@ -194,7 +194,9 @@ function Assert-NoReparsePathChain {
         }
         $parent = [System.IO.Directory]::GetParent($cursor)
         if ($null -eq $parent) { break }
-        $cursor = $parent.FullName.TrimEnd("\")
+        $next = $parent.FullName.TrimEnd("\")
+        if ($next.Length -ge $cursor.Length) { break }
+        $cursor = $next
     }
 }
 
