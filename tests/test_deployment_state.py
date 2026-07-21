@@ -392,3 +392,143 @@ def test_current_context_fails_closed_without_judgment(tmp_path):
     assert context["readyForImprovement"] is False
     assert context["gamesSinceActivation"] == 30
     assert any("judgment receipt" in blocker for blocker in context["blockers"])
+
+
+def test_baseline_reads_stored_judged_result_not_the_live_tail(tmp_path):
+    """A baseline must be what the receipt recorded, not a fresh re-derivation.
+
+    Reproduces the live defect. Activation ``ad6a1a18`` accrued 88 decisive
+    battles; its judgment receipt records 12-18 (0.400) over the first 30, but
+    the baseline path re-derived from ``battle_stats.json`` with
+    ``performance_snapshot``, which takes the *last* 30, and handed its
+    successor a 21-9 (0.700) baseline. The 0.300 gap is the entire difference
+    between "passed" and "regressed".
+    """
+    results = ["win"] * 12 + ["loss"] * 18 + ["win"] * 21 + ["loss"] * 9
+    assert len(results) == 60
+    bundle = make_bundle(tmp_path, battle_count=60, results=results)
+    activation = bundle["activation"]
+    rows = state.read_battle_rows(bundle["statsPath"])
+
+    judgment = state.build_judgment_receipt(activation=activation, battle_rows=rows)
+    state.write_immutable_receipt(
+        state.judgment_receipt_path(activation["activationId"], bundle["stateRoot"]),
+        judgment,
+    )
+    assert (judgment["postActivation"]["wins"], judgment["postActivation"]["losses"]) == (12, 18)
+    assert judgment["postActivation"]["winRate"] == pytest.approx(0.4)
+
+    baseline = state_cli._baseline_from_current(
+        state_root=bundle["stateRoot"],
+        battle_stats_path=bundle["statsPath"],
+    )
+    assert baseline["resultSource"] == "judgment-receipt"
+    assert baseline["activationId"] == activation["activationId"]
+    assert (baseline["wins"], baseline["losses"]) == (12, 18)
+    assert baseline["winRate"] == pytest.approx(0.4)
+
+    # Non-vacuity: the removed re-derivation really did say something else.
+    tail = state.performance_snapshot(
+        state.deployment_battles(rows, activation, decisive_only=True), sample_size=30
+    )
+    assert (tail["wins"], tail["losses"]) == (21, 9)
+    assert tail["winRate"] == pytest.approx(0.7)
+
+    # ...and the difference is the verdict, on the exact live numbers: a
+    # successor that went 15-15 reads "regressed" against the drifted tail and
+    # "passed" against what the receipt actually recorded.
+    successor = {
+        "decisiveBattles": 30,
+        "wins": 15,
+        "losses": 15,
+        "winRate": 0.5,
+        "elo": 1417,
+        "glickoDeviation": None,
+    }
+    stored_status, _ = state._judgment_outcome(
+        baseline, successor, max_elo_drop=50.0, max_glicko_deviation=50.0
+    )
+    drifted_status, _ = state._judgment_outcome(
+        tail, successor, max_elo_drop=50.0, max_glicko_deviation=50.0
+    )
+    assert drifted_status == "regressed"
+    assert stored_status == "passed"
+
+
+def test_stored_activation_result_is_stable_while_battle_stats_keeps_growing(tmp_path):
+    """The same activation must return the same number on every read.
+
+    ``battle_stats.json`` is mutable: rows are appended while an activation runs
+    and enriched asynchronously afterwards. A result that is re-derived from it
+    therefore has no fixed value. Read the same activation ten times across ten
+    mutations of the file and require one answer.
+    """
+    results = ["win"] * 12 + ["loss"] * 18 + ["win"] * 21 + ["loss"] * 9
+    bundle = make_bundle(tmp_path, battle_count=60, results=results)
+    activation = bundle["activation"]
+
+    judgment = state.build_judgment_receipt(
+        activation=activation,
+        battle_rows=state.read_battle_rows(bundle["statsPath"]),
+    )
+    state.write_immutable_receipt(
+        state.judgment_receipt_path(activation["activationId"], bundle["stateRoot"]),
+        judgment,
+    )
+
+    template = dict(bundle["rows"][-1])
+    started = datetime(2026, 7, 15, tzinfo=timezone.utc)
+    stable_readings = []
+    rederived_readings = []
+    for extra in range(1, 11):
+        appended = dict(template)
+        appended["battle_id"] = f"battle-gen9ou-extra-{extra}"
+        appended["timestamp"] = (started + timedelta(minutes=60 + extra)).isoformat()
+        appended["result"] = "win" if extra % 2 else "loss"
+        appended["elo_after"] = 1100 + extra
+        grown = state.read_battle_rows(bundle["statsPath"]) + [appended]
+        bundle["statsPath"].write_text(json.dumps({"battles": grown}), encoding="utf-8")
+
+        live = state.read_battle_rows(bundle["statsPath"])
+        stable_readings.append(
+            state.activation_result(
+                activation, state_root=bundle["stateRoot"], battle_rows=live
+            )
+        )
+        rederived_readings.append(
+            state.performance_snapshot(
+                state.deployment_battles(live, activation, decisive_only=True),
+                sample_size=30,
+            )
+        )
+
+    assert len(stable_readings) == 10
+    assert len({json.dumps(item, sort_keys=True) for item in stable_readings}) == 1
+    assert stable_readings[0]["resultSource"] == "judgment-receipt"
+    assert stable_readings[0]["winRate"] == pytest.approx(0.4)
+
+    # Non-vacuity: the path this replaced moved on every single read.
+    assert len({json.dumps(item, sort_keys=True) for item in rederived_readings}) == 10
+
+
+def test_activation_result_refuses_a_partial_window_when_unjudged(tmp_path):
+    """Below the judged window there is no measurement, so there is no baseline.
+
+    The live chain contains a judgment made against a 3-0 (1.000) baseline drawn
+    from a 3-battle activation. A 3-sample baseline of 1.000 flags every
+    conceivable successor as a regression; it is not a baseline.
+    """
+    bundle = make_bundle(tmp_path, battle_count=3, results=["win", "win", "win"])
+    baseline = state_cli._baseline_from_current(
+        state_root=bundle["stateRoot"],
+        battle_stats_path=bundle["statsPath"],
+    )
+    assert baseline == {}
+
+    status, _ = state._judgment_outcome(
+        baseline,
+        {"decisiveBattles": 30, "wins": 15, "losses": 15, "winRate": 0.5, "elo": 1400},
+        max_elo_drop=50.0,
+        max_glicko_deviation=50.0,
+    )
+    assert status == "passed-no-baseline"
