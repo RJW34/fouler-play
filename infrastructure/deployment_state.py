@@ -329,6 +329,27 @@ def performance_snapshot(rows: Sequence[Mapping[str, Any]], sample_size: int = 3
     }
 
 
+def judged_window(
+    rows: Sequence[Mapping[str, Any]],
+    min_battles: int = MINIMUM_JUDGMENT_BATTLES,
+) -> list[dict[str, Any]]:
+    """The exact rows a judgment covers: the FIRST ``min_battles`` decisive rows.
+
+    Judging and baselining must name the same window, or the same activation
+    reads differently depending on which side is asking. ``performance_snapshot``
+    takes the *last* ``sample_size`` rows, so calling it directly on an
+    activation that ran longer than ``min_battles`` returns something the
+    judgment receipt never said. That is not hypothetical: activation
+    ``ad6a1a18`` accrued 88 decisive battles, and on one unchanged
+    ``battle_stats.json`` its first 30 were 12-18 (0.400 -- what its receipt
+    records) while its last 30 were 21-9 (0.700 -- what it was used as a
+    baseline for). This function is the single definition of that window; every
+    caller goes through it.
+    """
+    decisive = [dict(row) for row in rows if row.get("result") in {"win", "loss"}]
+    return decisive[:min_battles] if min_battles > 0 else decisive
+
+
 def _activation_identity(payload: Mapping[str, Any]) -> str:
     stable = {
         key: value
@@ -692,7 +713,7 @@ def build_judgment_receipt(
         raise ValueError("exact-identity judgment battles contain missing or duplicate battle ids")
     if len(rows) < min_battles:
         raise ValueError(f"only {len(rows)}/{min_battles} exact-identity decisive battles are available")
-    judged_rows = rows[:min_battles]
+    judged_rows = judged_window(rows, min_battles)
     after = performance_snapshot(judged_rows, sample_size=min_battles)
     baseline = activation.get("baseline") if isinstance(activation.get("baseline"), dict) else {}
     status, signals = _judgment_outcome(
@@ -726,6 +747,68 @@ def build_judgment_receipt(
     payload["judgmentId"] = _judgment_identity(payload)
     payload["receiptSha256"] = canonical_sha256(payload)
     return payload
+
+
+def activation_result(
+    activation: Mapping[str, Any],
+    *,
+    state_root: Path | None = None,
+    battle_rows: Sequence[Mapping[str, Any]] | None = None,
+    min_battles: int = MINIMUM_JUDGMENT_BATTLES,
+) -> dict[str, Any]:
+    """The authoritative, immutable result for one activation.
+
+    An activation's result is fixed at the moment it is judged. The judgment
+    receipt is written read-only and records ``postActivation`` next to the
+    per-row SHA-256 of every battle it covers, so it is the record -- not
+    ``battle_stats.json``, whose rows are enriched asynchronously and whose
+    length keeps growing while an activation runs.
+
+    Every later comparison reads that stored value. A baseline that is
+    re-derived can change value after the fact, and a moving baseline makes the
+    regression gate untrustworthy in both directions: it can manufacture a
+    regression that never happened, and it can hide one that did.
+
+    Falls back to deriving over :func:`judged_window` only when no judgment
+    receipt exists yet, and only when the full judged window is available -- a
+    partial window is not a measurement, it is noise with a denominator.
+    """
+    activation_id = str(activation.get("activationId") or "").strip()
+    if not activation_id:
+        return {}
+    identity = {
+        "activationId": activation_id,
+        "deploymentId": activation.get("deploymentId"),
+    }
+    judgment = _load_regular_json(
+        judgment_receipt_path(activation_id, state_root), "judgment receipt", []
+    )
+    stored = judgment.get("postActivation")
+    if (
+        isinstance(stored, dict)
+        and judgment.get("schemaVersion") == JUDGMENT_SCHEMA_VERSION
+        and judgment.get("activationId") == activation_id
+        and judgment.get("receiptSha256") == canonical_sha256(_payload_without_hash(judgment))
+        and judgment.get("judgmentId") == _judgment_identity(judgment)
+    ):
+        return {
+            **stored,
+            **identity,
+            "resultSource": "judgment-receipt",
+            "judgmentId": judgment.get("judgmentId"),
+        }
+    if battle_rows is None:
+        return {}
+    rows = judged_window(
+        deployment_battles(battle_rows, activation, decisive_only=True), min_battles
+    )
+    if len(rows) < min_battles:
+        return {}
+    return {
+        **performance_snapshot(rows, sample_size=min_battles),
+        **identity,
+        "resultSource": "judged-window-derived",
+    }
 
 
 def judgment_receipt_blockers(
@@ -884,6 +967,7 @@ __all__ = [
     "JUDGMENT_SCHEMA_VERSION",
     "activation_receipt_blockers",
     "activation_receipt_path",
+    "activation_result",
     "battle_row_matches_identity",
     "build_activation_receipt",
     "build_judgment_receipt",
@@ -891,6 +975,7 @@ __all__ = [
     "current_deployment_context",
     "default_state_root",
     "deployment_battles",
+    "judged_window",
     "judgment_receipt_blockers",
     "judgment_receipt_path",
     "load_current_activation",

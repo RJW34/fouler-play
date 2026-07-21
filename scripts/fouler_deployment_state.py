@@ -17,15 +17,14 @@ if str(ROOT) not in sys.path:
 from infrastructure.deployment_state import (  # noqa: E402
     activation_receipt_blockers,
     activation_receipt_path,
+    activation_result,
     build_activation_receipt,
     build_judgment_receipt,
     current_deployment_context,
     default_state_root,
-    deployment_battles,
     judgment_receipt_blockers,
     judgment_receipt_path,
     load_current_activation,
-    performance_snapshot,
     read_battle_rows,
     write_current_activation,
     write_immutable_receipt,
@@ -37,6 +36,14 @@ def _baseline_from_current(
     state_root: Path,
     battle_stats_path: Path,
 ) -> dict:
+    """Baseline a new activation against the outgoing one's *stored* result.
+
+    Read what the outgoing activation's judgment receipt recorded rather than
+    recomputing it from ``battle_stats.json``. Recomputing let a baseline drift
+    after it was set: the successor of ``ad6a1a18`` was measured against 0.700
+    while ``ad6a1a18``'s own receipt says 0.400, and the 0.300 gap alone decided
+    a regression verdict.
+    """
     current, blockers = load_current_activation(
         state_root=state_root,
         verify_checkout=False,
@@ -45,15 +52,11 @@ def _baseline_from_current(
     )
     if blockers or not current:
         return {}
-    rows = deployment_battles(read_battle_rows(battle_stats_path), current, decisive_only=True)
-    snapshot = performance_snapshot(rows, sample_size=30)
-    if not snapshot.get("decisiveBattles"):
-        return {}
-    return {
-        **snapshot,
-        "activationId": current.get("activationId"),
-        "deploymentId": current.get("deploymentId"),
-    }
+    return activation_result(
+        current,
+        state_root=state_root,
+        battle_rows=read_battle_rows(battle_stats_path),
+    )
 
 
 def main() -> int:
