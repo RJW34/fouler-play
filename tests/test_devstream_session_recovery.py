@@ -3758,3 +3758,141 @@ def test_supervisor_process_identity_requires_supervise_subcommand():
 
     assert "devstream_session.py" in tokens
     assert "supervise" in tokens
+
+
+def _stop_file_supervise_args(runtime_lease):
+    return argparse.Namespace(
+        run_count=30,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=1,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(runtime_lease),
+    )
+
+
+def _patch_stop_file_supervisor(monkeypatch, tmp_path, stop_file, statuses):
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STOP_FILE", stop_file)
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_PID_FILE", tmp_path / "supervisor.pid")
+    monkeypatch.setattr(
+        devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json"
+    )
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(devstream_session, "write_pid_value", lambda *a, **k: None)
+    monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(
+        devstream_session,
+        "supervisor_runtime_state",
+        lambda: {"activeBattleCount": 0, "battleRunnerAlive": False, "inFlight": False},
+    )
+    monkeypatch.setattr(devstream_session, "write_supervisor_status", statuses.append)
+
+
+def test_cmd_supervise_consumes_the_stop_file_it_honors(tmp_path, monkeypatch):
+    """A served stop request must not latch the runtime off forever.
+
+    start_battle_supervisor_task.ps1 refuses to launch while supervisor.stop
+    exists and exits 0 while doing so, so a stop file that survived the
+    shutdown it caused made every later Start-ScheduledTask a silent no-op:
+    LastTaskResult=0, State=Ready, Python never reached.
+    """
+
+    statuses = []
+    runtime_lease = install_supervisor_authority_fixture(monkeypatch, tmp_path, run_count=30)
+    stop_file = tmp_path / "supervisor.stop"
+    _patch_stop_file_supervisor(monkeypatch, tmp_path, stop_file, statuses)
+
+    def cycle_then_external_stop(args, cycle_index, **kwargs):
+        stop_file.write_text(
+            "2026-07-21T02:22:24Z cycle-boundary activation\n", encoding="utf-8"
+        )
+        return {
+            "state": "result-persistence-grace",
+            "battleRunnerAliveAfter": False,
+            "activeBattleCountAfter": 0,
+        }
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_cycle", cycle_then_external_stop)
+
+    assert devstream_session.cmd_supervise(_stop_file_supervise_args(runtime_lease)) == 0
+
+    final = statuses[-1]
+    assert final["state"] == "stopping"
+    assert final["stopReason"] == "stop file present"
+    assert final["stopFileConsumption"]["consumed"] is True
+    assert "cycle-boundary activation" in final["stopFileConsumption"]["request"]
+    assert (
+        not stop_file.exists()
+    ), "a served stop request must not survive the shutdown it caused"
+
+
+def test_cmd_supervise_reports_the_cycle_the_broker_banked(tmp_path, monkeypatch):
+    """completedLearningCycles must not under-report a cycle the broker banked.
+
+    The in-process credit lands one poll iteration after the broker records the
+    reservation terminal, because the boundary iteration returns early as
+    result-persistence-grace without setting proofRefreshed. Stopping inside
+    that window used to report 0 for a lease that had just completed a
+    30-battle cycle.
+    """
+
+    statuses = []
+    runtime_lease = install_supervisor_authority_fixture(monkeypatch, tmp_path, run_count=30)
+    stop_file = tmp_path / "supervisor.stop"
+    _patch_stop_file_supervisor(monkeypatch, tmp_path, stop_file, statuses)
+
+    broker_calls = {"n": 0}
+
+    def broker_status(lease_guard, *, run_count, max_concurrent_battles, max_cycles):
+        broker_calls["n"] += 1
+        at_startup = broker_calls["n"] == 1
+        return {
+            "ok": True,
+            "blockers": [],
+            "status": {
+                "lookupType": "lease-runtime",
+                "lookupId": "lease-test",
+                "found": not at_startup,
+                "reservationCount": 0 if at_startup else 1,
+                "reservedBattleCount": 0 if at_startup else 30,
+                "reservedCycleCount": 0 if at_startup else 1,
+                # Startup seeds 0; by the reconciliation call the batch has
+                # completed and the broker has durably recorded it.
+                "successfulCycleCount": 0 if at_startup else 1,
+                "unresolvedReservationCount": 0,
+                "remainingRunCount": 30 if at_startup else 0,
+                "remainingCycles": 1 if at_startup else 0,
+                "observedWorkload": None,
+                "latestReservation": None,
+            },
+        }
+
+    monkeypatch.setattr(devstream_session, "runtime_lease_consumption_status", broker_status)
+
+    def cycle_then_external_stop(args, cycle_index, **kwargs):
+        stop_file.write_text("2026-07-21T02:22:24Z boundary stop\n", encoding="utf-8")
+        return {
+            "state": "result-persistence-grace",
+            "battleRunnerAliveAfter": False,
+            "activeBattleCountAfter": 0,
+        }
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_cycle", cycle_then_external_stop)
+
+    assert devstream_session.cmd_supervise(_stop_file_supervise_args(runtime_lease)) == 0
+
+    final = statuses[-1]
+    assert final["state"] == "stopping"
+    assert final["completedLearningCycles"] == 1, "must report the cycle the broker banked"
+    reconciliation = final["completedLearningCyclesReconciliation"]
+    assert reconciliation["reconciled"] is True
+    assert reconciliation["inProcessCount"] == 0
+    assert reconciliation["brokerSuccessfulCycleCount"] == 1
+    assert reconciliation["authority"] == "windows-named-pipe-lease-broker"

@@ -3464,6 +3464,105 @@ def idle_battle_runner_recovery_candidate(stale_after_seconds: int = IDLE_RUNNER
     }
 
 
+def consume_supervisor_stop_file() -> dict[str, Any]:
+    """Delete the stop file at the moment the supervisor honors it.
+
+    A stop request is a one-shot instruction aimed at the supervisor that is
+    running when it is written, not a standing veto on the runtime. It used to
+    survive the shutdown it caused, and because
+    ``start_battle_supervisor_task.ps1`` refuses to launch (exit 0) while the
+    file exists, a single stop request latched the runtime off permanently: the
+    scheduled task reported ``LastTaskResult=0`` and returned to ``Ready``
+    without ever reaching Python. Consuming the request as we serve it keeps
+    the refusal meaningful for an *unserved* stop while letting a later
+    authorized start proceed.
+    """
+
+    result: dict[str, Any] = {"path": str(SUPERVISOR_STOP_FILE), "consumed": False}
+    try:
+        result["request"] = SUPERVISOR_STOP_FILE.read_text(encoding="utf-8").strip()[:400]
+    except OSError:
+        result["request"] = None
+    try:
+        SUPERVISOR_STOP_FILE.unlink()
+        result["consumed"] = True
+    except FileNotFoundError:
+        result["consumed"] = True
+        result["note"] = "stop file was already removed"
+    except OSError as exc:
+        result["error"] = f"could not consume stop file: {exc}"
+    return result
+
+
+def reconcile_completed_learning_cycles(
+    payload: dict[str, Any],
+    *,
+    lease_guard: dict[str, Any] | None,
+    args: argparse.Namespace,
+    run_count: int,
+    effective_max_cycles: int,
+    in_process_count: int,
+) -> int:
+    """Return the broker's per-lease successful-cycle count when it leads ours.
+
+    A learning cycle is credited in-process one poll iteration *after* the
+    broker records the reservation terminal, because
+    ``learning_cycle_completed_after_cycle`` requires ``proofRefreshed`` and the
+    boundary iteration returns early as ``result-persistence-grace`` or
+    ``battle-cycle-in-flight`` without setting it. If the supervisor exits
+    inside that window the broker has durably recorded a successful cycle while
+    ``completedLearningCycles`` still reports the pre-boundary value -- which is
+    exactly how a lease that had just banked a completed 30-battle cycle came to
+    report ``completedLearningCycles: 0``.
+
+    The broker is the external authority on lease consumption, so on the way out
+    we report its number rather than our stale one. This only ever moves the
+    reported count toward the ledger; it never invents a cycle and never affects
+    loop control flow.
+    """
+
+    reconciliation: dict[str, Any] = {
+        "inProcessCount": in_process_count,
+        "reconciled": False,
+    }
+    if not isinstance(lease_guard, dict) or not lease_guard.get("ok"):
+        reconciliation["reason"] = "no validated runtime lease to reconcile against"
+        payload["completedLearningCyclesReconciliation"] = reconciliation
+        return in_process_count
+    try:
+        status = runtime_lease_consumption_status(
+            lease_guard,
+            run_count=run_count,
+            max_concurrent_battles=args.max_concurrent_battles,
+            max_cycles=effective_max_cycles,
+        )
+    except Exception as exc:  # broker unavailable must never block a clean exit
+        reconciliation["error"] = f"broker consumption status unavailable: {exc}"
+        payload["completedLearningCyclesReconciliation"] = reconciliation
+        return in_process_count
+    if not status.get("ok"):
+        reconciliation["reason"] = "broker consumption status did not validate"
+        reconciliation["blockers"] = status.get("blockers")
+        payload["completedLearningCyclesReconciliation"] = reconciliation
+        return in_process_count
+    state = status.get("status") if isinstance(status.get("status"), dict) else {}
+    try:
+        broker_count = int(state["successfulCycleCount"])
+    except (KeyError, TypeError, ValueError):
+        reconciliation["reason"] = "broker did not report a successful cycle count"
+        payload["completedLearningCyclesReconciliation"] = reconciliation
+        return in_process_count
+    reconciliation["brokerSuccessfulCycleCount"] = broker_count
+    if broker_count <= in_process_count:
+        reconciliation["reason"] = "in-process count already matches or leads the ledger"
+        payload["completedLearningCyclesReconciliation"] = reconciliation
+        return in_process_count
+    reconciliation["reconciled"] = True
+    reconciliation["authority"] = "windows-named-pipe-lease-broker"
+    payload["completedLearningCyclesReconciliation"] = reconciliation
+    return broker_count
+
+
 def learning_cycle_completed_after_cycle(
     *,
     battle_was_in_flight: bool,
@@ -4800,11 +4899,22 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     payload["state"] = "supervisor-loop-starting"
     payload["lastHeartbeatAt"] = iso_now()
     write_supervisor_status(payload)
+    current_lease_guard: dict[str, Any] | None = None
     try:
         while True:
             if SUPERVISOR_STOP_FILE.exists():
                 payload["state"] = "stopping"
                 payload["stopReason"] = "stop file present"
+                payload["stopFileConsumption"] = consume_supervisor_stop_file()
+                payload["completedLearningCycles"] = reconcile_completed_learning_cycles(
+                    payload,
+                    lease_guard=current_lease_guard or lease_guard,
+                    args=args,
+                    run_count=effective_count,
+                    effective_max_cycles=effective_max_cycles,
+                    in_process_count=completed_learning_cycles,
+                )
+                payload["stoppedAt"] = iso_now()
                 write_supervisor_status(payload)
                 return 0
             cycle_index += 1
@@ -4902,6 +5012,13 @@ def cmd_supervise(args: argparse.Namespace) -> int:
                 pending_terminal_reservation.update(observed_terminal_status)
                 if observed_terminal_status.get("outcome") == "completed":
                     battle_was_in_flight = True
+            # Surface the banked-but-not-yet-credited boundary. Without this the
+            # status shows completedLearningCycles unchanged with nothing to
+            # explain why, even though the broker has already recorded the
+            # cycle as successful.
+            payload["pendingTerminalReservation"] = (
+                dict(pending_terminal_reservation) if pending_terminal_reservation else None
+            )
             completed_this_cycle = learning_cycle_completed_after_cycle(
                 battle_was_in_flight=battle_was_in_flight,
                 pre_cycle_runtime=pre_cycle_runtime,

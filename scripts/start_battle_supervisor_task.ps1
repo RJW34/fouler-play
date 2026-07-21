@@ -403,12 +403,27 @@ if ($ClearStopFile -and $ClearDrainRequest) {
     $marker | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $recoveryProofWindowFile -Encoding ASCII
     Write-Output "[start-gate] wrote finite recovery proof window marker"
 }
+# A refusal here exits 0 and the scheduled task drops straight back to Ready
+# with LastTaskResult=0, so the runtime looks healthy while it is in fact dark.
+# Leave a durable, timestamped trace of every refusal so a start that did not
+# start is visible without having to reproduce it interactively.
+function Write-StartGateRefusal {
+    param([string]$Reason)
+    Write-Output "[start-gate] $Reason; refusing to launch a battle supervisor"
+    $line = "{0}  refused: {1}" -f (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"), $Reason
+    try {
+        Add-Content -LiteralPath (Join-Path $RuntimeLogRoot "battle-supervisor-start-gate.log") -Value $line -ErrorAction Stop
+    } catch {
+        Write-Output "[start-gate] could not record the refusal: $($_.Exception.Message)"
+    }
+}
+
 if (Test-Path -LiteralPath $stopFile -PathType Leaf) {
     if ($ClearStopFile) {
         Remove-Item -LiteralPath $stopFile -Force
         Write-Output "[start-gate] cleared supervisor.stop because -ClearStopFile was explicitly supplied"
     } else {
-        Write-Output "[start-gate] supervisor.stop is present; refusing to launch a battle supervisor"
+        Write-StartGateRefusal -Reason "supervisor.stop is present"
         Close-LaunchLock
         exit 0
     }
@@ -419,7 +434,7 @@ if (Test-Path -LiteralPath $drainFile -PathType Leaf) {
         Remove-Item -LiteralPath $drainFile -Force
         Write-Output "[start-gate] cleared drain.request because -ClearDrainRequest was explicitly supplied"
     } else {
-        Write-Output "[start-gate] drain.request is present; refusing to launch a battle supervisor"
+        Write-StartGateRefusal -Reason "drain.request is present"
         Close-LaunchLock
         exit 0
     }
