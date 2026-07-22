@@ -371,9 +371,9 @@ class DecisionTraceCache:
             now = time.time()
             if not self._scan_needed(now, force=force):
                 return
-            self._refresh_locked(now)
+            self._refresh_locked(now, force=force)
 
-    def _refresh_locked(self, now: float) -> None:
+    def _refresh_locked(self, now: float, *, force: bool = False) -> None:
         if not self.trace_dir.exists():
             self._entries = {}
             self._turns = []
@@ -389,9 +389,16 @@ class DecisionTraceCache:
         except Exception:
             dir_signature = None
 
-        # Fast path: no directory-level changes since last scan.
+        # Fast path: no directory-level changes since last scan. Never taken on
+        # a FORCED refresh: Windows defers directory last-write-time updates,
+        # so a brand-new trace file can hide behind an unchanged directory
+        # signature (this flaked the release gate twice on NTFS on
+        # 2026-07-22). force=True must trust nothing but its own scandir pass;
+        # the per-entry signature cache below still prevents re-parsing
+        # unchanged files, which is where the measured cost lived.
         if (
-            dir_signature is not None
+            not force
+            and dir_signature is not None
             and self._last_dir_signature == dir_signature
             and self._entries
         ):
