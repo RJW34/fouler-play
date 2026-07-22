@@ -51,8 +51,11 @@ def test_idle_card_freshness_uses_client_clock():
     assert "reconnecting" in IDLE.lower()
 
 
-def test_idle_card_shows_ladder_target():
-    assert "1700" in IDLE
+def test_idle_card_never_reveals_the_elo_target():
+    # Owner directive 2026-07-22: the ladder ELO may be shown, but the ELO
+    # TARGET must not appear on any audience-facing surface.
+    assert "1700" not in IDLE
+    assert "target" not in IDLE.lower()
 
 
 def test_idle_card_never_embeds_secrets_or_operator_paths():
