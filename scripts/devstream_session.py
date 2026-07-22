@@ -4725,6 +4725,50 @@ def run_supervisor_cycle(
     return payload
 
 
+AUTHORITY_GATE_MAX_TRANSIENT_FAILURES = int(
+    os.getenv("FP_AUTHORITY_GATE_MAX_TRANSIENT_FAILURES", "3")
+)
+
+
+def authority_gate_decision(
+    *,
+    account_season_ok: bool,
+    battles_in_flight: bool,
+    failure_streak: int,
+    max_transient_failures: int = AUTHORITY_GATE_MAX_TRANSIENT_FAILURES,
+) -> str:
+    """One supervise iteration's verdict after the account/authority check.
+
+    Returns ``"proceed"``, ``"retry"``, or ``"exit"``.
+
+    2026-07-22 live incident: 2h45m into a healthy 4-cycle season, one
+    ``--verify-deployment-checkout`` git invocation failed transiently under
+    battle load ("checkout tree is unavailable or malformed"; the release tree
+    verified byte-identical to the receipt minutes later). The account gate
+    hard-exited the supervisor on that single failed iteration, orphaning three
+    in-flight battles, while the blocked-runtime-lease path a few lines below
+    is explicitly designed to keep supervising until the runtime drains.
+
+    Fail-closed is preserved in both directions:
+
+    - a PERSISTENT authority failure still exits, after
+      ``max_transient_failures`` consecutive failed iterations (about 45s at
+      the default 15s sleep) once nothing is in flight;
+    - while battles are in flight the supervisor never hard-exits — it keeps
+      supervising with no possibility of starting new work (every start path
+      requires a validated lease), mirroring blocked-runtime-lease drain
+      semantics — and exits only after the runtime drains with the failure
+      still present.
+    """
+    if account_season_ok:
+        return "proceed"
+    if battles_in_flight:
+        return "retry"
+    if failure_streak >= max(1, int(max_transient_failures)):
+        return "exit"
+    return "retry"
+
+
 def cmd_supervise(args: argparse.Namespace) -> int:
     cycle_index = 0
     completed_learning_cycles = 0
@@ -4900,6 +4944,7 @@ def cmd_supervise(args: argparse.Namespace) -> int:
     payload["lastHeartbeatAt"] = iso_now()
     write_supervisor_status(payload)
     current_lease_guard: dict[str, Any] | None = None
+    authority_failure_streak = 0
     try:
         while True:
             if SUPERVISOR_STOP_FILE.exists():
@@ -4944,13 +4989,28 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             )
             payload["accountSeasonAuthority"] = current_account_season
             if not current_account_season["ok"]:
+                authority_failure_streak += 1
+                decision = authority_gate_decision(
+                    account_season_ok=False,
+                    battles_in_flight=bool(pre_cycle_runtime["inFlight"]),
+                    failure_streak=authority_failure_streak,
+                )
                 payload["state"] = "blocked-account-season-authority"
                 payload["error"] = "; ".join(
                     str(item) for item in current_account_season["blockers"]
                 )
+                payload["authorityFailureStreak"] = authority_failure_streak
+                payload["authorityGateDecision"] = decision
+                payload["lastHeartbeatAt"] = iso_now()
                 write_supervisor_status(payload)
-                print(json.dumps(payload, indent=2, sort_keys=True))
-                return 2
+                if decision == "exit":
+                    print(json.dumps(payload, indent=2, sort_keys=True))
+                    return 2
+                time.sleep(args.sleep_seconds)
+                continue
+            authority_failure_streak = 0
+            payload.pop("authorityFailureStreak", None)
+            payload.pop("authorityGateDecision", None)
             lease_ok = bool(current_lease_guard.get("ok"))
             stale_after_seconds = max(
                 IDLE_RUNNER_STALE_SECONDS,
