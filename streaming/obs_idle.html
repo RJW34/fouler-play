@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fouler Play - Searching</title>
+    <title>Fouler Play - Battle Lab Idle</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
+        /* Designed for the native 640x360 Browser Source viewport (OBS scales
+           1.5x landscape / 1.6875x vertical). Everything must stay readable at
+           that base size — no element may rely on a larger canvas. */
         :root {
             --bg-dark: #0f0f1b;
+            --panel: #171728;
             --accent-blue: #08d9d6;
+            --accent-warm: #ffb400;
             --text-main: #eaeaea;
+            --text-dim: #9aa0b4;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             width: 100vw;
@@ -25,52 +27,50 @@
             background: var(--bg-dark);
             font-family: 'Outfit', sans-serif;
             color: var(--text-main);
-        }
-
-        .searching-overlay {
-            position: absolute;
-            inset: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: var(--bg-dark);
+        }
+
+        .card {
+            width: 92%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .sonar {
-            width: 300px;
-            height: 300px;
+            width: 34px;
+            height: 34px;
             position: relative;
-            margin-bottom: 40px;
-        }
-
-        .sonar-circle {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 1px solid var(--accent-blue);
-            border-radius: 50%;
-            opacity: 0;
-            animation: sonar-ping 4s infinite linear;
-        }
-
-        .sonar-circle:nth-child(2) { animation-delay: 1s; }
-        .sonar-circle:nth-child(3) { animation-delay: 2s; }
-        .sonar-circle:nth-child(4) { animation-delay: 3s; }
-
-        @keyframes sonar-ping {
-            0% { width: 0; height: 0; opacity: 1; }
-            100% { width: 100%; height: 100%; opacity: 0; }
+            flex: none;
         }
 
         .sonar-scanner {
             position: absolute;
             inset: 0;
             background: conic-gradient(from 0deg, transparent 0deg, var(--accent-blue) 360deg);
-            opacity: 0.1;
+            opacity: 0.35;
             border-radius: 50%;
             animation: rotate 4s linear infinite;
+        }
+
+        .sonar-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            transform: translate(-50%, -50%);
+            background: var(--accent-blue);
+            border-radius: 50%;
         }
 
         @keyframes rotate {
@@ -78,26 +78,220 @@
             to { transform: rotate(360deg); }
         }
 
-        .searching-text {
-            font-size: 32px;
+        .title {
+            font-size: 20px;
             font-weight: 900;
-            letter-spacing: 4px;
+            letter-spacing: 2px;
             text-transform: uppercase;
+        }
+
+        .title .lab { color: var(--accent-blue); }
+
+        .state-chip {
+            margin-left: auto;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--accent-blue);
             color: var(--accent-blue);
-            text-shadow: 0 0 20px rgba(8, 217, 214, 0.4);
+            white-space: nowrap;
+        }
+
+        .state-chip.warn { border-color: var(--accent-warm); color: var(--accent-warm); }
+
+        #why {
+            font-size: 16px;
+            line-height: 1.45;
+            color: var(--text-main);
+            background: var(--panel);
+            border-left: 3px solid var(--accent-blue);
+            padding: 10px 14px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .stat {
+            flex: 1;
+            background: var(--panel);
+            border-radius: 8px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+
+        .stat .label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        .stat .value {
+            font-size: 20px;
+            font-weight: 900;
+            margin-top: 2px;
+        }
+
+        .stat .value.accent { color: var(--accent-blue); }
+
+        .footer {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        #deku-line {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #freshness {
+            margin-left: auto;
+            flex: none;
+            white-space: nowrap;
+        }
+
+        .live-dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            margin-right: 4px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .live-dot.stale { background: var(--accent-warm); animation: none; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
         }
     </style>
 </head>
 <body>
-    <div class="searching-overlay">
-        <div class="sonar">
-            <div class="sonar-scanner"></div>
-            <div class="sonar-circle"></div>
-            <div class="sonar-circle"></div>
-            <div class="sonar-circle"></div>
-            <div class="sonar-circle"></div>
+    <div class="card">
+        <div class="header">
+            <div class="sonar"><div class="sonar-scanner"></div><div class="sonar-dot"></div></div>
+            <div class="title">Fouler <span class="lab">Battle Lab</span></div>
+            <div class="state-chip" id="state-chip">CONNECTING</div>
         </div>
-        <div class="searching-text">SCANNING...</div>
+        <div id="why">Connecting to the Battle Lab feed&hellip;</div>
+        <div class="stats-row">
+            <div class="stat"><div class="label">Ladder ELO</div><div class="value accent" id="stat-elo">&ndash;</div></div>
+            <div class="stat"><div class="label">Today</div><div class="value" id="stat-record">&ndash;</div></div>
+            <div class="stat"><div class="label">Target</div><div class="value" id="stat-target">1700</div></div>
+            <div class="stat"><div class="label">Live battles</div><div class="value" id="stat-active">&ndash;</div></div>
+        </div>
+        <div class="footer">
+            <span id="deku-line">DEKU reviews every finished battle before the next improvement.</span>
+            <span id="freshness"><span class="live-dot" id="live-dot"></span><span id="freshness-text">waiting for data</span></span>
+        </div>
     </div>
+
+    <script>
+        // Truthful idle surface: everything shown is read from this server's
+        // own /state endpoint. Freshness is measured from the last successful
+        // fetch on the CLIENT clock — the producer's "updated" field is host-
+        // local time with no timezone and must not be interpreted here.
+        const POLL_MS = 5000;
+        const STALE_AFTER_MS = 120000;
+        let lastOkAt = null;
+        let lastPayload = null;
+
+        function setText(id, text) {
+            document.getElementById(id).textContent = text;
+        }
+
+        function deriveWhy(payload) {
+            const count = payload.count || 0;
+            const status = (payload.status || {});
+            const mode = payload.runtime_mode || (payload.status || {}).runtime_mode || "";
+            if (payload.runtime_blocked) {
+                return "Paused — the Battle Lab runtime is holding for its next authorization.";
+            }
+            if (mode === "bounded_session_complete") {
+                return "Season checkpoint — the bounded battle season just finished. DEKU reviews the results before the next authorized season starts.";
+            }
+            if (count > 0) {
+                return "Matchmaking — " + count + " battle" + (count === 1 ? " is" : "s are") +
+                    " live on the other panels while this slot queues the next Gen 9 OU opponent.";
+            }
+            if ((status.status || "").toLowerCase() === "active") {
+                return "Searching the Pokémon Showdown Gen 9 OU ladder for the next opponent.";
+            }
+            return "Battle Lab is idle — no battles are running right now.";
+        }
+
+        function deriveChip(payload) {
+            if (payload.runtime_blocked) { return { text: "PAUSED", warn: true }; }
+            const mode = payload.runtime_mode || "";
+            if (mode === "bounded_session_complete") { return { text: "SEASON DONE", warn: false }; }
+            if ((payload.count || 0) > 0) { return { text: "IN BATTLE", warn: false }; }
+            return { text: "SEARCHING", warn: false };
+        }
+
+        function render() {
+            const dot = document.getElementById("live-dot");
+            const ageMs = lastOkAt === null ? null : (Date.now() - lastOkAt);
+            if (lastPayload === null || ageMs === null) {
+                setText("freshness-text", "waiting for data");
+                return;
+            }
+            if (ageMs > STALE_AFTER_MS) {
+                dot.classList.add("stale");
+                setText("freshness-text", "feed reconnecting · last data " + Math.round(ageMs / 1000) + "s ago");
+                const chip = document.getElementById("state-chip");
+                chip.textContent = "RECONNECTING";
+                chip.classList.add("warn");
+                return;
+            }
+            dot.classList.remove("stale");
+            setText("freshness-text", "updated " + Math.round(ageMs / 1000) + "s ago");
+
+            const payload = lastPayload;
+            const status = payload.status || {};
+            setText("why", deriveWhy(payload));
+            const chip = deriveChip(payload);
+            const chipEl = document.getElementById("state-chip");
+            chipEl.textContent = chip.text;
+            chipEl.classList.toggle("warn", chip.warn);
+            setText("stat-elo", status.elo != null ? String(status.elo) : "–");
+            const wins = status.today_wins != null ? status.today_wins : status.wins;
+            const losses = status.today_losses != null ? status.today_losses : status.losses;
+            setText("stat-record", (wins != null && losses != null) ? (wins + "-" + losses) : "–");
+            setText("stat-active", String(payload.count != null ? payload.count : "–"));
+            if (status.next_fix) {
+                setText("deku-line", "DEKU: " + status.next_fix);
+            }
+        }
+
+        async function poll() {
+            try {
+                const response = await fetch("/state", { cache: "no-store" });
+                if (response.ok) {
+                    lastPayload = await response.json();
+                    lastOkAt = Date.now();
+                }
+            } catch (err) {
+                /* keep last data; render() reports staleness truthfully */
+            }
+            render();
+        }
+
+        poll();
+        setInterval(poll, POLL_MS);
+        setInterval(render, 1000);
+    </script>
 </body>
 </html>
