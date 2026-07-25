@@ -63,6 +63,45 @@ def _strip_showdown_identity(value):
     return str(value or "").strip().lstrip("!‽+%@&#~ ")
 
 
+def _parse_updatesearch_formats(payload):
+    """Return the set of format ids the account is actively searching.
+
+    Modern Showdown sends the |updatesearch| payload as JSON, e.g.
+        {"searching": ["gen9ou"], "games": {"battle-...": "[Gen 9] OU"}}
+    where `searching` is empty once a search has been consumed by a match.
+    Older / local (--no-security) servers may instead send a bare CSV of
+    format ids. This parser handles both and returns an empty set for the
+    "not searching" case (empty payload, empty list, or malformed JSON).
+
+    Correct parsing is load-bearing: the ladder search manager uses
+    `active_searches` to decide when to STOP searching / cancel the queue
+    once max_concurrent_battles is reached. If this always returned an empty
+    set (the pre-fix behaviour of splitting JSON on ","), the bot could never
+    detect that it was still searching, never cancelled at capacity, and got
+    matched into more battles than its workers could claim -> inactivity
+    forfeits.
+    """
+    payload = (payload or "").strip()
+    if not payload:
+        return set()
+    if payload[0] in "{[":
+        try:
+            data = json.loads(payload)
+        except (ValueError, TypeError):
+            return set()
+        if isinstance(data, dict):
+            searching = data.get("searching")
+        elif isinstance(data, list):
+            searching = data
+        else:
+            searching = None
+        if not searching:
+            return set()
+        return {str(f) for f in searching if f}
+    # Legacy CSV fallback: comma-separated format ids.
+    return {f for f in payload.split(",") if f}
+
+
 def _put_bounded_nowait(queue, message, label):
     """Put without allowing inactive consumers to grow queues forever."""
     dropped = None
@@ -331,15 +370,16 @@ class PSWebsocketClient:
                 # Check if this is a battle-specific message
                 first_line = msg.split("\n")[0]
 
-                # Track ladder search state from updatesearch messages
-                # Format: |updatesearch|gen9ou,gen9randombattle
+                # Track ladder search state from updatesearch messages.
+                # Modern Showdown: |updatesearch|{"searching":[...],"games":{...}}
+                # Legacy/local:    |updatesearch|gen9ou,gen9randombattle
+                # NOTE: the payload is JSON and MUST NOT be split on "," (that
+                # produced garbage tokens, so active_searches never matched the
+                # format id and the search manager could never cancel at
+                # capacity -> inactivity-forfeit doom loop).
                 if first_line.startswith("|updatesearch|"):
-                    parts = first_line.split("|")
-                    if len(parts) >= 2 and parts[1] == "updatesearch":
-                        formats = []
-                        if len(parts) >= 3 and parts[2]:
-                            formats = [f for f in parts[2].split(",") if f]
-                        self.active_searches = set(formats)
+                    payload = first_line[len("|updatesearch|"):]
+                    self.active_searches = _parse_updatesearch_formats(payload)
 
                 match = battle_tag_pattern.match(first_line)
 
