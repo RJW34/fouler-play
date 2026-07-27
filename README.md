@@ -2,8 +2,13 @@
 
 > **Mission and intent: see [MISSION.md](MISSION.md) -- what this project is FOR (read first).**
 > **Architecture: see [ARCHITECTURE.md](ARCHITECTURE.md) (the truthful current engine map).**
+> **Canonical source/runtime identity: see
+> [docs/CANONICAL_LINEAGE_20260727.md](docs/CANONICAL_LINEAGE_20260727.md).**
 
-A finite-lease competitive Pokemon (gen9ou) battle agent for the DEKU/HERMES devstream. Live ladder work runs in bounded proof windows, while recursive improvement work runs through a local Pokemon Showdown offline-eval harness before any change is trusted.
+A finite-season competitive Pokemon (gen9ou) battle agent for the DEKU devstream.
+Live ladder work runs from immutable releases in bounded 30-game rounds, while
+recursive improvement work runs through an isolated local Pokemon Showdown
+candidate gate before any change is trusted.
 
 Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).
 
@@ -15,10 +20,11 @@ Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).
 4. Inspect a runtime plan: `python scripts/devstream_session.py doctor`
 
 Live laddering is never started directly. Production uses an immutable clean
-release, deployment receipt, finite v2 lease, and
-`HERMES-FoulerBattleSupervisor` via `scripts/install_battle_supervisor_task.ps1`.
-`start_one_touch.bat`, direct launchers, and legacy watchdogs are fail-closed
-tombstones retained only so stale tasks cannot revive old behavior.
+release, release manifest, external `E:` runtime state, a finite-season
+authority, and `DEVSTREAM-JIG-FoulerSeasonSupervisor`, installed by
+`scripts/install_season_supervisor_task.ps1`. The old HERMES supervisor,
+`start_one_touch.bat`, direct launchers, and legacy watchdogs are predecessors or
+fail-closed tombstones; none is an alternate runtime owner.
 
 ## Architecture
 
@@ -26,7 +32,7 @@ tombstones retained only so stale tasks cannot revive old behavior.
 run.py                     Entry point + battle-worker pool
 fp/search/main.py          Decision engine: clock-safety -> endgame -> forced-line -> MCTS -> argmax
 fp/search/forced_lines.py  Forced sequence detection (OHKOs, forced switches)
-fp/search/eval.py          1-ply position evaluation (eval-fallback path only)
+fp/search/eval.py          Static position evaluation used by the MCTS blend and fallback
 fp/battle_modifier.py      Pokemon Showdown protocol parser
 fp/run_battle.py           Battle loop + data collection
 replay_analysis/           Morning report generator
@@ -35,7 +41,9 @@ replay_analysis/           Morning report generator
 The engine is **MCTS-first**: it searches over Bayesian-sampled opponent sets and picks the
 top line by deterministic argmax under clock-safety and hard-legality/survival safety. The
 older heuristic **penalty pipeline is default-OFF** (`FOULER_PENALTY_PIPELINE=0`) and only
-runs on the eval-fallback branch. It plays teams faithfully to their archetype (fat/stall)
+runs on the eval-fallback branch. The separate static-eval blend is flatness-gated so
+decisive MCTS leads while genuinely flat searches can use the sharper eval signal. It
+plays teams faithfully to their archetype (fat/stall)
 rather than optimizing for cheese wins. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full
 verified pipeline and a layer-by-layer ON/OFF/DORMANT status table.
 
@@ -62,9 +70,11 @@ Outputs:
 - `replay_analysis/autoresearch_latest.json`
 - `replay_analysis/reports/autoresearch_latest.md`
 
-## DEKU Static Eval Loop
+## Static candidate gate
 
-The offline eval harness is the preferred static process for HERMES/DEKU improvement work:
+Improvement candidates are generated and evaluated in isolated worktrees. The
+head-to-head harness is the promotion authority; the older weak-baseline commands
+below remain useful only for smoke/readiness evidence:
 
 ```bash
 python infrastructure/offline_eval_readiness.py --require-ready

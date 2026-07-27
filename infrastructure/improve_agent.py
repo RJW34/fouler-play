@@ -677,6 +677,20 @@ def _ladder_snapshot() -> dict:
     }
 
 
+def _ladder_line() -> str:
+    """Render only observed ladder facts for candidate-generation prompts."""
+    snapshot = _ladder_snapshot()
+    elo = snapshot.get("current_elo")
+    elo_text = str(elo) if elo is not None else "unavailable"
+    return (
+        "Observed ladder snapshot: "
+        f"ELO={elo_text}; "
+        f"recent={snapshot['recent_wins']}-{snapshot['recent_losses']} "
+        f"over {snapshot['recent_sample']} decisive battles; "
+        f"latest_battle={snapshot.get('latest_battle_id') or 'unavailable'}."
+    )
+
+
 def append_improve_ledger(
     outcome: str,
     *,

@@ -11,11 +11,30 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from fp.search import flatness as fl
-from infrastructure import whole_function_edit as wfe
 from infrastructure import decision_regret as dr
+from infrastructure import improve_agent as ia
+from infrastructure import whole_function_edit as wfe
 
 
 # ---------------- Phase 0: flatness ----------------
+
+
+def test_whole_function_prompt_uses_observed_ladder_snapshot(monkeypatch):
+    monkeypatch.setattr(
+        ia,
+        "_ladder_snapshot",
+        lambda: {
+            "latest_battle_id": "battle-gen9ou-proof",
+            "current_elo": 1512,
+            "recent_sample": 20,
+            "recent_wins": 12,
+            "recent_losses": 8,
+        },
+    )
+    line = ia._ladder_line()
+    assert "ELO=1512" in line
+    assert "recent=12-8" in line
+    assert "battle-gen9ou-proof" in line
 
 def test_mcts_top_mass_basic():
     assert fl.mcts_top_mass({"a": 0.9, "b": 0.1}) == 0.9

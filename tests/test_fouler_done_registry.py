@@ -107,7 +107,7 @@ def test_peak_below_the_floor_scores_the_stage_incomplete(tmp_path):
 def test_a_full_sustain_window_scores_the_elo_entries_complete(tmp_path):
     """The gate must be passable — a permanently-red light trains everyone to ignore it."""
     battles = []
-    for team in ("fat-team-1-stall", "fat-team-2-pivot", "fat-team-3-dondozo"):
+    for team in ("fat-team-1-stall", "fat-team-2-balance", "fat-team-3-dondozo"):
         battles.extend(_sustain_battles(12, 1750.0, team=team, result="win"))
     _battles(tmp_path, battles)
     registry = B.build_registry()
@@ -121,7 +121,7 @@ def test_a_full_sustain_window_scores_the_elo_entries_complete(tmp_path):
 
 def test_a_losing_sustain_window_fails_the_win_rate(tmp_path):
     battles = []
-    for team in ("fat-team-1-stall", "fat-team-2-pivot", "fat-team-3-dondozo"):
+    for team in ("fat-team-1-stall", "fat-team-2-balance", "fat-team-3-dondozo"):
         battles.extend(_sustain_battles(12, 1750.0, team=team, result="loss"))
     _battles(tmp_path, battles)
     registry = B.build_registry()

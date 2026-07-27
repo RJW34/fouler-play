@@ -34,7 +34,7 @@
     ],
     "requiredTeams": [
       "fat-team-1-stall",
-      "fat-team-2-pivot",
+      "fat-team-2-balance",
       "fat-team-3-dondozo"
     ],
     "sustainMaxDrawdown": 75.0,
@@ -146,7 +146,7 @@
           "minimumPerTeam": 10,
           "teams": [
             "fat-team-1-stall",
-            "fat-team-2-pivot",
+            "fat-team-2-balance",
             "fat-team-3-dondozo"
           ]
         }
@@ -254,8 +254,8 @@
   "entryCount": 14,
   "generatedBy": "scripts/build_done_registry.py",
   "generatedFrom": {
-    "scripts/devstream_cycle_report.py": "1ec488094fb975139f168ce698d9dbed774748cc636a5d4c8f77ac093aeb949f",
-    "scripts/fouler_mission_monitor.py": "70961c597fc99734ec0f6111116784757daa072cea9bc97f152ff63604752a8e"
+    "scripts/devstream_cycle_report.py": "a8ca92647a831517d1d94a03a06f4f7c6e969c6ceb9b49372e0f4558c1d3a2a0",
+    "scripts/fouler_mission_monitor.py": "023a2d033b2c47376c72ebfd2a571b91e5be73656c6995666cb94c10b9672335"
   },
   "schemaVersion": "fouler-play-done-registry/v1"
 }
