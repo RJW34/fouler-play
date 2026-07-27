@@ -228,6 +228,7 @@ try {
         "infrastructure/head_to_head_eval.py",
         "infrastructure/improve_agent.py",
         "infrastructure/runtime_authorization.py",
+        "infrastructure/season_runtime_authority.py",
         "infrastructure/runtime_lease_client.py",
         "infrastructure/windows/fouler_lease_broker.py",
         "scripts/devstream_runtime_lease.py",
@@ -236,6 +237,7 @@ try {
         "scripts/fouler_deployment_receipt.py",
         "scripts/fouler_deployment_state.py",
         "scripts/fouler_runtime_authority.py",
+        "scripts/season_ladder_supervisor.py",
         "streaming/run_obs_server_service.py"
     )
     Invoke-Checked -FilePath $venvPython -Arguments (@("-I", "-m", "ruff", "check") + $strictRuffPaths) -WorkingDirectory $staging -Label "strict runtime lint gate" -TimeoutSeconds 900 | Out-Null
@@ -254,7 +256,10 @@ try {
         "scripts/devstream_runtime_lease.py",
         "scripts/devstream_session.py",
         "scripts/run_bounded_battle_session.py",
+        "scripts/season_ladder_supervisor.py",
+        "scripts/install_season_supervisor_task.ps1",
         "run.py",
+        "infrastructure/season_runtime_authority.py",
         "infrastructure/deployment_lineage.py",
         "infrastructure/head_to_head_authority.py",
         "infrastructure/head_to_head_eval.py",

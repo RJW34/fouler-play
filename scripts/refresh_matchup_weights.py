@@ -86,7 +86,7 @@ def main(window: int = DEFAULT_WINDOW) -> int:
         return 0
 
     bot = resolve_bot_username()
-    replay_dir = REPO / "replay_analysis"
+    replay_dir = resolve_runtime_paths(REPO).state_root / "replay_analysis"
     files = [p for p in replay_dir.glob("gen9*.json") if not p.name.endswith("_gameplan.json")]
     files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     files = files[:window]

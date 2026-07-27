@@ -351,14 +351,25 @@ class BattleStats:
         return []
 
     def _save_battles(self):
+        temporary = BATTLE_STATS_FILE.with_name(
+            f".{BATTLE_STATS_FILE.name}.{os.getpid()}.{time.time_ns()}.tmp"
+        )
         try:
             data = {"battles": self._battles}
-            BATTLE_STATS_FILE.write_text(
-                json.dumps(data, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
+            BATTLE_STATS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            encoded = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+            with temporary.open("w", encoding="utf-8", newline="\n") as handle:
+                handle.write(encoded)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, BATTLE_STATS_FILE)
         except Exception as e:
             logger.warning("Failed to save battle_stats.json: %s", e)
+        finally:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
 
     def _record_battle(self, team_file_name, result, battle_tag=None, rating=None):
         from datetime import datetime, timezone
@@ -376,7 +387,27 @@ class BattleStats:
         if season_id:
             entry["season_id"] = season_id
         entry.update(BATTLE_ROW_PROVENANCE)
-        self._battles.append(entry)
+        battle_identity = str(entry.get("battle_id") or "").strip().lower()
+        account_identity = _normalized_account_id(entry.get("account"))
+        existing_index = next(
+            (
+                index
+                for index, row in enumerate(self._battles)
+                if isinstance(row, dict)
+                and battle_identity
+                and battle_identity != "unknown"
+                and str(row.get("battle_id") or "").strip().lower() == battle_identity
+                and _normalized_account_id(row.get("account")) == account_identity
+            ),
+            None,
+        )
+        if existing_index is None:
+            self._battles.append(entry)
+        else:
+            # A resumed websocket can deliver the terminal event more than
+            # once. Replace the same account+battle identity atomically rather
+            # than emitting a second result row and double-consuming a season.
+            self._battles[existing_index] = entry
         if len(self._battles) > BATTLE_STATS_MAX_ENTRIES:
             del self._battles[:-BATTLE_STATS_MAX_ENTRIES]
         self._save_battles()
@@ -833,6 +864,12 @@ async def run_foul_play(*, offline_eval_authority: object | None = None):
         max_concurrent_battles=FoulPlayConfig.max_concurrent_battles,
         search_parallelism=FoulPlayConfig.parallelism,
         replay_behavior=FoulPlayConfig.save_replay,
+        pokemon_format=FoulPlayConfig.pokemon_format,
+        team_name=getattr(
+            FoulPlayConfig,
+            "team_name",
+            FoulPlayConfig.pokemon_format,
+        ),
         offline_eval_authority=offline_eval_authority,
     ):
         raise RuntimeError("runtime authority or singleton process lock was not acquired")

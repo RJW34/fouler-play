@@ -67,6 +67,8 @@ _LIVE_CREDENTIAL_ENV_NAMES = (
 )
 EXPECTED_LIVE_MAX_CONCURRENT_BATTLES = 3
 EXPECTED_LIVE_SEARCH_PARALLELISM = 2
+SEASON_AUTHORITY_PATH_ENV = "FOULER_SEASON_AUTHORITY_PATH"
+SEASON_AUTHORITY_SHA256_ENV = "FOULER_SEASON_AUTHORITY_SHA256"
 
 
 def _truthy_env(name: str) -> bool:
@@ -397,6 +399,8 @@ def _current_runtime_lease_guard(
     max_concurrent_battles: int | None = None,
     search_parallelism: int | None = None,
     replay_behavior: object | None = None,
+    pokemon_format: object | None = None,
+    team_name: object | None = None,
     offline_eval_authority: object | None = None,
 ) -> dict[str, object] | None:
     effective_context_supplied = bot_mode is not None or websocket_uri is not None
@@ -428,6 +432,46 @@ def _current_runtime_lease_guard(
         except (TypeError, ValueError):
             configured_parallelism = 0
         effective_search_parallelism = configured_parallelism or None
+
+    season_authority_path = str(
+        os.environ.get(SEASON_AUTHORITY_PATH_ENV) or ""
+    ).strip()
+    if season_authority_path:
+        from infrastructure.season_runtime_authority import (
+            validate_season_authority,
+        )
+
+        return validate_season_authority(
+            authority_path=season_authority_path,
+            expected_sha256=os.environ.get(SEASON_AUTHORITY_SHA256_ENV),
+            release_root=LOCK_DIR,
+            requested_account=(
+                username
+                or _arg_value(sys.argv, "--ps-username")
+                or os.environ.get("PS_USERNAME")
+            ),
+            requested_bot_mode=effective_mode,
+            requested_websocket_uri=effective_uri,
+            requested_pokemon_format=(
+                pokemon_format
+                or _arg_value(sys.argv, "--pokemon-format")
+            ),
+            requested_team_name=(
+                team_name
+                or _arg_value(sys.argv, "--team-name")
+                or _arg_value(sys.argv, "--pokemon-format")
+            ),
+            requested_run_count=(
+                run_count
+                if run_count is not None
+                else _arg_positive_int(sys.argv, "--run-count")
+            ),
+            requested_max_concurrent_battles=effective_concurrency,
+            requested_search_parallelism=effective_search_parallelism,
+            requested_replay_behavior=replay_behavior,
+            require_child_binding=True,
+            require_existing_paths=True,
+        )
 
     guard = validate_runtime_lease(
         purpose="run-py-battle-runner",
@@ -752,6 +796,8 @@ def acquire_lock(
     max_concurrent_battles: int | None = None,
     search_parallelism: int | None = None,
     replay_behavior: object | None = None,
+    pokemon_format: object | None = None,
+    team_name: object | None = None,
     offline_eval_authority: object | None = None,
 ) -> bool:
     """
@@ -771,15 +817,21 @@ def acquire_lock(
         max_concurrent_battles=max_concurrent_battles,
         search_parallelism=search_parallelism,
         replay_behavior=replay_behavior,
+        pokemon_format=pokemon_format,
+        team_name=team_name,
         offline_eval_authority=offline_eval_authority,
     )
     if lease_guard is not None and not lease_guard.get("ok"):
-        print("[LOCK] Runtime lease/proof window is required for live battle runners.", file=sys.stderr)
+        print("[LOCK] A valid runtime authority is required for live battle runners.", file=sys.stderr)
         blockers = lease_guard.get("blockers") if isinstance(lease_guard.get("blockers"), list) else []
         for blocker in blockers:
             print(f"[LOCK] BLOCKER: {blocker}", file=sys.stderr)
         return False
-    if lease_guard is not None and not _claim_runtime_broker_reservation(lease_guard):
+    if (
+        lease_guard is not None
+        and lease_guard.get("authorityType") != "finite-season"
+        and not _claim_runtime_broker_reservation(lease_guard)
+    ):
         return False
 
     while True:
