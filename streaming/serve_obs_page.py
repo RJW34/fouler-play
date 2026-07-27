@@ -67,12 +67,15 @@ SCRIPTS_DIR = ROOT_DIR / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from streaming import state_store
-from streaming.hybrid_dashboard import register_dashboard_routes
-from devstream_runtime_checks import recent_showdown_credential_failure
-from devstream_runtime_lease import runtime_lease_path, validate_runtime_lease
-from fp.decision_trace import build_public_battle_view
-from infrastructure.runtime_paths import (
+from streaming import state_store  # noqa: E402
+from streaming.hybrid_dashboard import register_dashboard_routes  # noqa: E402
+from devstream_runtime_checks import recent_showdown_credential_failure  # noqa: E402
+from devstream_runtime_lease import (  # noqa: E402
+    runtime_lease_path,
+    validate_runtime_lease,
+)
+from fp.decision_trace import build_public_battle_view  # noqa: E402
+from infrastructure.runtime_paths import (  # noqa: E402
     resolve_runtime_paths,
     validate_external_runtime_path,
 )
@@ -88,6 +91,17 @@ HERMES_OBS_ENV_KEYS = {
     "OBS_WEBSOCKET_PORT",
     "HERMES_OBS_WEBSOCKET_PORT",
 }
+
+
+def authority_managed_obs(environ: dict[str, str] | None = None) -> bool:
+    """Return whether an admitted external authority owns all OBS inputs."""
+    environment = os.environ if environ is None else environ
+    return str(environment.get("FOULER_OBS_AUTHORITY_MANAGED") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def _valid_env_value(value: str | None) -> bool:
@@ -121,8 +135,11 @@ def _load_hermes_obs_env() -> None:
             os.environ[key] = value
 
 
-# Rehearsal mode must not load production secrets or persistent OBS settings.
-if not OFFLINE_REHEARSAL_MODE:
+# Rehearsal mode and the finite-season entrypoint must not load ambient release
+# dotenv files or the predecessor HERMES OBS secret file. The admitted
+# entrypoint has already set every public-surface input from its exact authority.
+AUTHORITY_MANAGED_OBS = authority_managed_obs()
+if not OFFLINE_REHEARSAL_MODE and not AUTHORITY_MANAGED_OBS:
     if load_dotenv:
         load_dotenv()
     _load_hermes_obs_env()
@@ -1354,6 +1371,14 @@ def _configured_showdown_accounts() -> list[str]:
     season = _account_season_authority()
     if season.get("ready") and season.get("account"):
         return _dedupe_showdown_accounts([str(season["account"])])
+    if AUTHORITY_MANAGED_OBS:
+        admitted_account = (
+            os.getenv("FOULER_ACTIVE_ACCOUNT")
+            or os.getenv("SHOWDOWN_USER_ID")
+            or os.getenv("PS_USERNAME")
+            or ""
+        )
+        return _dedupe_showdown_accounts([admitted_account])
     lease_account = _runtime_lease_account()
     if lease_account:
         return _dedupe_showdown_accounts([lease_account])

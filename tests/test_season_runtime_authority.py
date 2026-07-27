@@ -36,7 +36,8 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, dict, str]:
             "account-season.json",
             (
                 '{"schemaVersion":"fouler-play-account-season/v1",'
-                '"account":"DekuFoulerFresh","seasonId":"test"}\n'
+                '"account":"DekuFoulerFresh",'
+                '"seasonId":"season-test-authority"}\n'
             ),
         ),
         (
@@ -77,6 +78,13 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, dict, str]:
             "replayBehavior": "always",
         },
         "stopLoss": {"ratingWindow": 60, "maxRatingDrawdown": 75},
+        "grants": {
+            "automaticRoundContinuation": True,
+            "sourceChanges": False,
+            "teamChanges": False,
+            "automaticImprovement": False,
+            "publicOutput": False,
+        },
         "runtime": {
             "stateRoot": str(runtime / "state"),
             "logRoot": str(runtime / "logs"),
@@ -193,3 +201,32 @@ def test_finite_season_child_requires_exact_direct_supervisor_binding(
 
     assert result["ok"] is False
     assert any("not the season ladder supervisor" in item for item in result["blockers"])
+
+
+def test_finite_season_rejects_policy_grant_stop_loss_and_generation_drift(
+    monkeypatch, tmp_path
+):
+    release, path, payload, _digest = _fixture(tmp_path)
+    payload["proofWindow"]["expiresAt"] = (
+        datetime.now(timezone.utc) + timedelta(hours=80)
+    ).isoformat()
+    payload["stopLoss"]["maxRatingDrawdown"] = 100
+    payload["grants"]["automaticImprovement"] = True
+    payload["grants"]["publicOutput"] = True
+    account_season = Path(payload["runtime"]["accountSeasonPath"])
+    account_season.write_text(
+        '{"schemaVersion":"fouler-play-account-season/v1",'
+        '"account":"DekuFoulerFresh","seasonId":"stale-generation"}\n',
+        encoding="utf-8",
+    )
+    digest = _write(path, payload)
+
+    result = _validate(monkeypatch, release, path, digest)
+
+    blockers = "; ".join(result["blockers"])
+    assert result["ok"] is False
+    assert "72-hour cap" in blockers
+    assert "maxRatingDrawdown must equal 75" in blockers
+    assert "automaticImprovement violates" in blockers
+    assert "publicOutput violates" in blockers
+    assert "account-season authority seasonId does not match" in blockers

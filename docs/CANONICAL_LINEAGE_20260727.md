@@ -19,8 +19,11 @@ runtime.
 - Runtime data: external state rooted on `E:` and named by the finite-season
   authority. `battle_stats.json`, logs, caches, replay state, and credentials are
   not release content.
-- Runtime owner: `DEVSTREAM-JIG-FoulerSeasonSupervisor`. Legacy Fouler tasks are
-  predecessors to be exported and disabled at cutover, not alternate owners.
+- Runtime owners: `DEVSTREAM-JIG-FoulerSeasonSupervisor` for gameplay and
+  `DEVSTREAM-JIG-FoulerObsServer` for the loopback presentation server. Both
+  consume the same finite-season authority and immutable release. Legacy Fouler
+  tasks/services are predecessors to be exported and disabled at cutover, not
+  alternate owners.
 - Public output: off. Nothing in this repository authorizes Start Streaming.
 
 ## Selected tree
@@ -105,3 +108,6 @@ release until all of the following are true:
    and snapshot revision while output remains off.
 7. Drawdown, pause, stale-release, duplicate-controller, occupied-port, and
    rollback injections all fail closed.
+8. Release, staging, runtime state, event queue, task actions, and presentation
+   server all resolve to the canonical `E:`/`C:\ProgramData\Devstream` topology;
+   no mutable checkout or HERMES predecessor remains a write or lifecycle owner.

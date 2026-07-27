@@ -4,21 +4,24 @@ param(
     [ValidatePattern('^[0-9a-fA-F]{40}$')]
     [string]$SourceCommit,
     [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9a-fA-F]{64}$')]
+    [string]$ExpectedManifestSha256,
+    [Parameter(Mandatory = $true)]
     [ValidatePattern('^season-[0-9a-z][0-9a-z.-]{7,95}$')]
     [string]$SeasonId,
-    [ValidateRange(2, 4)]
+    [ValidateRange(1, 4)]
     [int]$MaxRounds = 4,
-    [ValidateRange(24, 168)]
+    [ValidateRange(1, 72)]
     [int]$SeasonHours = 72,
     [string]$Account = "DekuFoulerFresh",
     [string]$TeamName = "gen9/ou/fat-team-2-balance",
     [string]$RuntimeAccount = "devstream-live",
     [string]$TaskName = "DEVSTREAM-JIG-FoulerSeasonSupervisor",
-    [string]$ReleaseRoot = "D:\Releases\fouler-play",
+    [string]$ReleaseRoot = "E:\Devstream\Releases\fouler-play",
     [string]$ManifestRoot = "C:\ProgramData\Devstream\staging\fouler\manifests",
     [string]$AuthorityRoot = "C:\ProgramData\Devstream\authority\fouler",
     [string]$RuntimeRoot = "E:\DevstreamRuntime\fouler",
-    [string]$EventQueueRoot = "D:\DekuEvents",
+    [string]$EventQueueRoot = "E:\DevstreamRuntime\fouler\events",
     [string]$SourceSecretEnv = "C:\ProgramData\HERMES\secrets\fouler.env",
     [string]$SourceAccountSeason = "C:\ProgramData\HERMES\authority\fouler\account-season.json",
     [string]$SourceRuntimeState = "C:\ProgramData\HERMES\state\fouler",
@@ -31,7 +34,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $SourceCommit = $SourceCommit.ToLowerInvariant()
+$ExpectedManifestSha256 = $ExpectedManifestSha256.ToLowerInvariant()
 $SeasonId = $SeasonId.ToLowerInvariant()
+if ($Start -and -not $Apply) { throw "-Start requires -Apply" }
 
 $release = [System.IO.Path]::GetFullPath((Join-Path $ReleaseRoot $SourceCommit)).TrimEnd("\")
 $manifest = [System.IO.Path]::GetFullPath((Join-Path $ManifestRoot "$SourceCommit.json"))
@@ -137,6 +142,45 @@ function Write-Utf8NoBomAtomic {
     }
 }
 
+function Get-ManagedFileSnapshot {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return [ordered]@{ path = $Path; present = $false }
+    }
+    Assert-RegularFile -Path $Path -Label "rollback source"
+    return [ordered]@{
+        path = $Path
+        present = $true
+        bytes = [System.IO.File]::ReadAllBytes($Path)
+        attributes = [int](Get-Item -LiteralPath $Path -Force).Attributes
+        acl = Get-Acl -LiteralPath $Path
+    }
+}
+
+function Clear-ManagedFileProtection {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return }
+    $item = Get-Item -LiteralPath $Path -Force
+    if (($item.Attributes -band [System.IO.FileAttributes]::ReadOnly) -ne 0) {
+        $item.Attributes = $item.Attributes -band (-bnot [System.IO.FileAttributes]::ReadOnly)
+    }
+}
+
+function Restore-ManagedFileSnapshot {
+    param([Parameter(Mandatory = $true)][System.Collections.IDictionary]$Snapshot)
+    $path = [string]$Snapshot.path
+    Clear-ManagedFileProtection -Path $path
+    Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+    if (-not [bool]$Snapshot.present) { return }
+    New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+    [System.IO.File]::WriteAllBytes($path, [byte[]]$Snapshot.bytes)
+    Set-Acl -LiteralPath $path -AclObject $Snapshot.acl
+    [System.IO.File]::SetAttributes(
+        $path,
+        [System.IO.FileAttributes][int]$Snapshot.attributes
+    )
+}
+
 function Get-TaskSnapshot {
     param([Parameter(Mandatory = $true)][string]$Name)
     $task = Get-ScheduledTask -TaskName $Name -ErrorAction SilentlyContinue
@@ -230,6 +274,48 @@ if ($manifestPayload.schemaVersion -ne "fouler-bootstrap-manifest/v1" -or
     ([string]$manifestPayload.sourceCommit).ToLowerInvariant() -ne $SourceCommit) {
     throw "immutable release manifest identity does not match SourceCommit"
 }
+$actualManifestSha256 = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualManifestSha256 -ne $ExpectedManifestSha256) {
+    throw "immutable release manifest SHA-256 does not match the caller-pinned digest"
+}
+$manifestFiles = @{}
+foreach ($property in @($manifestPayload.files.PSObject.Properties)) {
+    $manifestFiles[[string]$property.Name] = ([string]$property.Value).ToLowerInvariant()
+}
+foreach ($required in @(
+    ".venv/Scripts/python.exe",
+    "run.py",
+    "scripts/season_ladder_supervisor.py",
+    "scripts/install_season_supervisor_task.ps1",
+    "scripts/install_season_obs_server_task.ps1",
+    "streaming/run_season_obs_server.py",
+    "streaming/serve_obs_page.py"
+)) {
+    if (-not $manifestFiles.ContainsKey($required)) {
+        throw "release manifest omits required finite-season file: $required"
+    }
+}
+$releaseItems = @(Get-ChildItem -LiteralPath $release -Recurse -Force -ErrorAction Stop)
+$releaseReparse = @($releaseItems | Where-Object {
+    ($_.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0
+})
+if ($releaseReparse.Count -gt 0) {
+    throw "immutable release contains a reparse point: $($releaseReparse[0].FullName)"
+}
+$releaseFiles = @($releaseItems | Where-Object { -not $_.PSIsContainer })
+if ($releaseFiles.Count -ne $manifestFiles.Count) {
+    throw "immutable release file inventory count no longer matches the bootstrap manifest"
+}
+foreach ($file in $releaseFiles) {
+    $relative = $file.FullName.Substring($release.Length + 1).Replace("\", "/")
+    if (-not $manifestFiles.ContainsKey($relative)) {
+        throw "immutable release contains an unmanifested file: $relative"
+    }
+    $digest = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($digest -ne $manifestFiles[$relative]) {
+        throw "manifested release file hash changed: $relative"
+    }
+}
 $accountPayload = Get-Content -LiteralPath $SourceAccountSeason -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($accountPayload.schemaVersion -ne "fouler-play-account-season/v1" -or
     -not [string]::Equals([string]$accountPayload.account, $Account, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -243,6 +329,9 @@ $secretAccount = (($secretAccountLine -split '=', 2)[1]).Trim().Trim('"').Trim("
 if (-not [string]::Equals($secretAccount, $Account, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "source secret environment account does not match requested account"
 }
+if (Test-Path -LiteralPath $authorityPath) {
+    throw "finite-season authority already exists; SeasonId must identify a new immutable generation"
+}
 
 $plan = [ordered]@{
     schemaVersion = "fouler-season-supervisor-install-plan/v1"
@@ -253,6 +342,7 @@ $plan = [ordered]@{
     sourceCommit = $SourceCommit
     release = $release
     manifest = $manifest
+    expectedManifestSha256 = $ExpectedManifestSha256
     seasonId = $SeasonId
     maxRounds = $MaxRounds
     maxGames = 30 * $MaxRounds
@@ -268,14 +358,27 @@ if (-not $Apply) {
 }
 
 New-Item -ItemType Directory -Path $backup -Force | Out-Null
+Invoke-IcaclsChecked -Arguments @(
+    $backup, "/inheritance:r",
+    "/grant:r",
+    "${systemSid}:(OI)(CI)F",
+    "${administratorsSid}:(OI)(CI)F"
+)
 $taskSnapshots = @{}
 foreach ($name in @($TaskName) + $legacyTasks) {
     $taskSnapshots[$name] = Get-TaskSnapshot -Name $name
 }
-foreach ($path in @($secretEnv, $accountSeason, $controlPath, $authorityPath)) {
+foreach ($path in @($secretEnv, $accountSeason, $controlPath, $authorityPath, $manifest)) {
     if (Test-Path -LiteralPath $path -PathType Leaf) {
-        Copy-Item -LiteralPath $path -Destination (Join-Path $backup ([System.IO.Path]::GetFileName($path))) -Force
+        $backupName = [System.IO.Path]::GetFileName($path)
+        Copy-Item -LiteralPath $path -Destination (Join-Path $backup $backupName) -Force
+        Get-Acl -LiteralPath $path |
+            Export-Clixml -LiteralPath (Join-Path $backup "$backupName.acl.xml")
     }
+}
+$fileSnapshots = @{}
+foreach ($path in @($secretEnv, $accountSeason, $controlPath, $authorityPath, $manifest)) {
+    $fileSnapshots[$path] = Get-ManagedFileSnapshot -Path $path
 }
 
 $cutoverStarted = $false
@@ -295,8 +398,27 @@ try {
         Protect-RuntimeDirectory -Path $path
     }
     New-Item -ItemType Directory -Path $secretRoot, $AuthorityRoot -Force | Out-Null
-    Copy-Item -LiteralPath $SourceSecretEnv -Destination $secretEnv -Force
-    Copy-Item -LiteralPath $SourceAccountSeason -Destination $accountSeason -Force
+    if (Test-Path -LiteralPath $secretEnv -PathType Leaf) {
+        if ((Get-FileHash -LiteralPath $secretEnv -Algorithm SHA256).Hash -ne
+            (Get-FileHash -LiteralPath $SourceSecretEnv -Algorithm SHA256).Hash) {
+            throw "existing non-HERMES secret copy differs from the configured source"
+        }
+    }
+    else {
+        Copy-Item -LiteralPath $SourceSecretEnv -Destination $secretEnv
+    }
+    # The predecessor account-season file proves the protected account identity,
+    # but its old seasonId must never leak into this generation. Build the one
+    # canonical account-season boundary from the requested finite season.
+    $canonicalAccountSeason = [ordered]@{
+        schemaVersion = "fouler-play-account-season/v1"
+        account = $Account
+        seasonId = $SeasonId
+    }
+    Clear-ManagedFileProtection -Path $accountSeason
+    Write-Utf8NoBomAtomic -Path $accountSeason -Text (
+        ($canonicalAccountSeason | ConvertTo-Json -Compress) + [Environment]::NewLine
+    )
 
     $existingEpoch = -1
     if (Test-Path -LiteralPath $controlPath -PathType Leaf) {
@@ -317,6 +439,7 @@ try {
         updatedAt = [DateTimeOffset]::UtcNow.ToString("o")
         reason = "owner-approved finite season $SeasonId"
     }
+    Clear-ManagedFileProtection -Path $controlPath
     Write-Utf8NoBomAtomic -Path $controlPath -Text (($control | ConvertTo-Json -Depth 8) + [Environment]::NewLine)
 
     $startsAt = [DateTimeOffset]::UtcNow.AddMinutes(-1)
@@ -447,6 +570,7 @@ try {
         sourceCommit = $SourceCommit
         release = $release
         manifestSha256 = (Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash.ToLowerInvariant()
+        expectedManifestSha256 = $ExpectedManifestSha256
         seasonId = $SeasonId
         authorityPath = $authorityPath
         authoritySha256 = $authoritySha256
@@ -469,6 +593,9 @@ try {
 catch {
     try {
         Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+        foreach ($path in @($authorityPath, $controlPath, $accountSeason, $secretEnv, $manifest)) {
+            Restore-ManagedFileSnapshot -Snapshot $fileSnapshots[$path]
+        }
         foreach ($name in @($TaskName) + $legacyTasks) {
             Restore-TaskSnapshot -Snapshot $taskSnapshots[$name]
         }
@@ -483,6 +610,7 @@ catch {
         schemaVersion = "fouler-season-supervisor-install-result/v1"
         ok = $false
         sourceCommit = $SourceCommit
+        expectedManifestSha256 = $ExpectedManifestSha256
         seasonId = $SeasonId
         backup = $backup
         error = $_.Exception.Message

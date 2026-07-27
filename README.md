@@ -22,9 +22,12 @@ Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).
 Live laddering is never started directly. Production uses an immutable clean
 release, release manifest, external `E:` runtime state, a finite-season
 authority, and `DEVSTREAM-JIG-FoulerSeasonSupervisor`, installed by
-`scripts/install_season_supervisor_task.ps1`. The old HERMES supervisor,
-`start_one_touch.bat`, direct launchers, and legacy watchdogs are predecessors or
-fail-closed tombstones; none is an alternate runtime owner.
+`scripts/install_season_supervisor_task.ps1`. The loopback OBS surface is bound
+to that same authority and exact release by
+`DEVSTREAM-JIG-FoulerObsServer`, installed by
+`scripts/install_season_obs_server_task.ps1`. The old HERMES supervisor and OBS
+service, `start_one_touch.bat`, direct launchers, and legacy watchdogs are
+predecessors or fail-closed tombstones; none is an alternate runtime owner.
 
 ## Architecture
 

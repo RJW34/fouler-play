@@ -8,6 +8,10 @@ STAGER = ROOT / "infrastructure" / "windows" / "stage_fouler_release.ps1"
 def test_release_stager_is_exact_commit_immutable_and_no_start():
     source = STAGER.read_text(encoding="utf-8")
 
+    assert '"E:\\Devstream\\Releases\\fouler-play"' in source
+    assert '"E:\\Devstream\\Releases\\fouler-play-staging"' in source
+    assert '"C:\\ProgramData\\Devstream\\staging\\fouler\\manifests"' in source
+    assert "C:\\ProgramData\\HERMES" not in source
     assert "ValidatePattern('^[0-9a-fA-F]{40}$')" in source
     assert '"fetch", "--no-tags", "--depth=1", "origin", $SourceCommit' in source
     assert '$fetched -ne $SourceCommit' in source
@@ -55,6 +59,7 @@ def test_release_stager_uses_truthful_fatal_and_strict_lint_surfaces():
         "scripts/run_bounded_battle_session.py",
         "scripts/fouler_runtime_authority.py",
         "streaming/run_obs_server_service.py",
+        "streaming/run_season_obs_server.py",
     ):
         assert f'"{required}"' in source
 
@@ -76,7 +81,9 @@ def test_release_manifest_covers_runtime_and_verifier_files():
         "infrastructure/runtime_authorization.py",
         "infrastructure/windows/fouler_lease_broker.py",
         "scripts/install_obs_server_service.ps1",
+        "scripts/install_season_obs_server_task.ps1",
         "streaming/run_obs_server_service.py",
+        "streaming/run_season_obs_server.py",
         "streaming/serve_obs_page.py",
     ):
         assert required in source

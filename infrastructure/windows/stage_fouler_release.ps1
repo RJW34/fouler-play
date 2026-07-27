@@ -4,9 +4,9 @@ param(
     [ValidatePattern('^[0-9a-fA-F]{40}$')]
     [string]$SourceCommit,
     [string]$RemoteUrl = "https://github.com/RJW34/fouler-play.git",
-    [string]$ReleaseRoot = "D:\Releases\fouler-play",
-    [string]$StagingRoot = "D:\Releases\fouler-play-staging",
-    [string]$ManifestRoot = "C:\ProgramData\HERMES\staging\fouler\manifests",
+    [string]$ReleaseRoot = "E:\Devstream\Releases\fouler-play",
+    [string]$StagingRoot = "E:\Devstream\Releases\fouler-play-staging",
+    [string]$ManifestRoot = "C:\ProgramData\Devstream\staging\fouler\manifests",
     [Parameter(Mandatory = $true)]
     [string]$BootstrapPython,
     [string]$GitExecutable = "",
@@ -238,7 +238,8 @@ try {
         "scripts/fouler_deployment_state.py",
         "scripts/fouler_runtime_authority.py",
         "scripts/season_ladder_supervisor.py",
-        "streaming/run_obs_server_service.py"
+        "streaming/run_obs_server_service.py",
+        "streaming/run_season_obs_server.py"
     )
     Invoke-Checked -FilePath $venvPython -Arguments (@("-I", "-m", "ruff", "check") + $strictRuffPaths) -WorkingDirectory $staging -Label "strict runtime lint gate" -TimeoutSeconds 900 | Out-Null
     New-Item -ItemType Directory -Path $testTemp -ErrorAction Stop | Out-Null
@@ -258,6 +259,7 @@ try {
         "scripts/run_bounded_battle_session.py",
         "scripts/season_ladder_supervisor.py",
         "scripts/install_season_supervisor_task.ps1",
+        "scripts/install_season_obs_server_task.ps1",
         "run.py",
         "infrastructure/season_runtime_authority.py",
         "infrastructure/deployment_lineage.py",
@@ -267,6 +269,7 @@ try {
         "infrastructure/windows/fouler_lease_broker.py",
         "scripts/install_obs_server_service.ps1",
         "streaming/run_obs_server_service.py",
+        "streaming/run_season_obs_server.py",
         "streaming/serve_obs_page.py"
     )) {
         if (-not $files.Contains($required)) { throw "release inventory omits required file: $required" }

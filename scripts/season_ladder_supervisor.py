@@ -351,13 +351,17 @@ def _child_environment(
     environment = dict(os.environ)
     environment.update(_secret_environment(Path(runtime["secretEnvFile"])))
     for name in list(environment):
-        if name.startswith("FOULER_RUNTIME_LEASE_"):
+        if (
+            name.startswith("FOULER_RUNTIME_LEASE_")
+            or name.startswith("FOULER_IMPROVE_")
+        ):
             environment.pop(name, None)
     for name in (
         "FOULER_RUNTIME_LEASE_PATH",
         "FOULER_RUNTIME_LEASE_ID",
         "FOULER_RUNTIME_AUTHORIZATION_SHA256",
         "DISCORD_BATTLES_WEBHOOK_URL",
+        "FOULER_AUTO_IMPROVE_MAX_CYCLES",
     ):
         environment.pop(name, None)
     environment.update(
@@ -371,6 +375,9 @@ def _child_environment(
             "FOULER_ACCOUNT_SEASON_PATH": str(runtime["accountSeasonPath"]),
             "DEKU_EVENT_QUEUE_ROOT": str(runtime["eventQueueRoot"]),
             "FOULER_BATTLE_RESULT_QUEUE": "1",
+            "FOULER_PLAY_ENABLE_AUTO_IMPROVE": "0",
+            "FOULER_PLAY_ENABLE_AUTO_PUSH": "0",
+            "AUTO_START_OBS_SERVER": "0",
             "FOULER_SOURCE_COMMIT": str(payload["sourceCommit"]),
             "FOULER_SESSION_ID": session_id,
             "FOULER_PLAY_CYCLE_ID": session_id,

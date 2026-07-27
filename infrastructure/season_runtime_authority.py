@@ -17,7 +17,7 @@ import socket
 import stat
 import subprocess
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -380,6 +380,10 @@ def validate_season_authority(
         if _normalized_identity(machine) != _normalized_identity(current_host):
             blockers.append("season authority machine does not match this host")
         account = str(payload.get("account") or "").strip()
+        if _normalized_identity(account) != _normalized_identity("DekuFoulerFresh"):
+            blockers.append(
+                "season authority account must equal the owner-locked DekuFoulerFresh identity"
+            )
         if requested_account is not None and (
             _normalized_identity(account) != _normalized_identity(requested_account)
         ):
@@ -394,6 +398,8 @@ def validate_season_authority(
             expires_at = _parse_utc(proof_window.get("expiresAt"))
             if starts_at is None or expires_at is None or starts_at >= expires_at:
                 blockers.append("season authority proofWindow is invalid")
+            elif expires_at - starts_at > timedelta(hours=72):
+                blockers.append("season authority proofWindow exceeds the 72-hour cap")
         current_time = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
         if starts_at is not None and current_time < starts_at:
             blockers.append("season authority proof window has not started")
@@ -410,8 +416,8 @@ def validate_season_authority(
             max_games = _positive_int(limits.get("maxGames"))
             if round_size is None or max_rounds is None or max_games is None:
                 blockers.append("season authority limits must be positive")
-            elif round_size * max_rounds > max_games:
-                blockers.append("season round budget exceeds maxGames")
+            elif round_size * max_rounds != max_games:
+                blockers.append("season maxGames must equal roundSize multiplied by maxRounds")
             if round_size != 30:
                 blockers.append("season roundSize must equal the owner-locked value 30")
             if max_rounds is not None and max_rounds > 4:
@@ -438,6 +444,21 @@ def validate_season_authority(
                 approved = _enum_text(approved)
             if requested and approved != requested:
                 blockers.append(f"season authority battleScope.{field} does not match the runner")
+        locked_battle_scope = {
+            "botMode": "search_ladder",
+            "websocketUri": "wss://sim3.psim.us/showdown/websocket",
+            "pokemonFormat": "gen9ou",
+            "teamName": "gen9/ou/fat-team-2-balance",
+            "replayBehavior": "always",
+        }
+        for field, expected in locked_battle_scope.items():
+            actual = str(battle.get(field) or "").strip()
+            if field in {"botMode", "replayBehavior"}:
+                actual = _enum_text(actual)
+            if actual != expected:
+                blockers.append(
+                    f"season authority battleScope.{field} must equal the owner-locked value"
+                )
         approved_concurrency = _positive_int(battle.get("maxConcurrentBattles"))
         approved_parallelism = _positive_int(battle.get("searchParallelism"))
         if approved_concurrency != 3:
@@ -455,12 +476,84 @@ def validate_season_authority(
         ):
             blockers.append("battle runner search parallelism does not match the season authority")
 
+        stop_loss = payload.get("stopLoss")
+        if not isinstance(stop_loss, dict):
+            blockers.append("season authority stopLoss must be an object")
+        else:
+            try:
+                rating_window = int(stop_loss.get("ratingWindow"))
+                max_drawdown = float(stop_loss.get("maxRatingDrawdown"))
+            except (TypeError, ValueError):
+                rating_window = -1
+                max_drawdown = -1.0
+            if rating_window != 60:
+                blockers.append("season stopLoss.ratingWindow must equal 60")
+            if max_drawdown != 75.0:
+                blockers.append("season stopLoss.maxRatingDrawdown must equal 75")
+
+        grants = payload.get("grants")
+        locked_grants = {
+            "automaticRoundContinuation": True,
+            "sourceChanges": False,
+            "teamChanges": False,
+            "automaticImprovement": False,
+            "publicOutput": False,
+        }
+        if not isinstance(grants, dict):
+            blockers.append("season authority grants must be an object")
+        else:
+            for field, expected in locked_grants.items():
+                if grants.get(field) is not expected:
+                    blockers.append(
+                        f"season authority grants.{field} violates the owner-locked policy"
+                    )
+
         runtime_paths = _validate_paths(
             payload,
             release_root=root,
             require_existing=require_existing_paths,
             blockers=blockers,
         )
+        account_season_path = runtime_paths.get("accountSeasonPath")
+        if account_season_path:
+            account_season_blockers: list[str] = []
+            account_season = _regular_json(
+                Path(account_season_path),
+                account_season_blockers,
+            )
+            blockers.extend(
+                f"account-season authority: {item}"
+                for item in account_season_blockers
+            )
+            if account_season is not None:
+                if account_season.get("schemaVersion") != (
+                    "fouler-play-account-season/v1"
+                ):
+                    blockers.append("account-season authority schemaVersion is unsupported")
+                if _normalized_identity(account_season.get("account")) != (
+                    _normalized_identity(account)
+                ):
+                    blockers.append("account-season authority account does not match the season")
+                if str(account_season.get("seasonId") or "").strip().lower() != season_id:
+                    blockers.append("account-season authority seasonId does not match the season")
+
+        control_path = runtime_paths.get("controlPath")
+        if control_path:
+            control_blockers: list[str] = []
+            control = _regular_json(Path(control_path), control_blockers)
+            blockers.extend(
+                f"runtime control: {item}" for item in control_blockers
+            )
+            if control is not None:
+                if control.get("schemaVersion") != "devstream-runtime-control/v1":
+                    blockers.append("runtime control schemaVersion is unsupported")
+                try:
+                    control_epoch = int(control.get("pauseEpoch"))
+                except (TypeError, ValueError):
+                    control_epoch = -1
+                if control_epoch != pause_epoch:
+                    blockers.append("runtime control pauseEpoch does not match the season")
+
         binding: dict[str, object] = {}
         if require_child_binding:
             binding = _validate_child_binding(
