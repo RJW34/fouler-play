@@ -8,8 +8,9 @@ runtime.
 ## Canonical contract
 
 - Canonical source branch: `codex/fouler-canonical-season-20260727`
-- Promotion target: `origin/master`, but only after the full suite, immutable
-  release admission, and live rollback gates pass.
+- Promotion target: `origin/master`. Source promotion follows the full suite and
+  lint gate; live promotion separately requires immutable-release admission and
+  live rollback gates.
 - Deployable source: a clean, pushed commit from the canonical branch. A mutable
   checkout is never a release.
 - Live source: the exact commit and tree recorded by the installed release
@@ -48,7 +49,7 @@ identity is always the later canonical head recorded in the release manifest.
 | Ref or line | Disposition | Reason |
 |---|---|---|
 | `claude/fouler-protect-learnloop-deploy-20260722` | Base, incorporated | Most complete safety, reporting, overlay, replay, candidate-gate, and learning line. |
-| `origin/master` / `feat/learn-and-climb-20260613` | Selectively incorporated, ancestry bridge pending | Search/eval, flatness, regret, whole-function tooling, done criteria, and termination analysis were ported. Old live launchers and shared-checkout improve windows conflict with the finite-season and isolated-candidate contracts. |
+| `origin/master` / `feat/learn-and-climb-20260613` | Selectively incorporated; ancestry bridged by `8ae19ffe05bb` | Search/eval, flatness, regret, whole-function tooling, done criteria, and termination analysis were ported before the ancestry-only merge. Old live launchers and shared-checkout improve windows conflict with the finite-season and isolated-candidate contracts and did not enter the selected tree. |
 | `codex/jiggly-runtime-audit-fix` | Subsumed by the selected base plus finite-season authority | Its singleton, replay, reporting, and runtime-lease fixes are present in later implementations. Its old clean-supervisor and improve-window launchers are not runtime authorities. |
 | `codex/devstream-fouler-sync-20260524` and `claude/improve-agent-cli-auth` | Subsumed | Exact-rating proof, deployment-spacing logic, and Claude CLI authentication are present in the selected implementation. Generated battle/proof dumps remain historical evidence, not source. |
 | `codex/fouler-runtime-truth-20260712` | Superseded | Bounded drawdown intent is enforced by the finite-season authority without the old keepalive ownership path. |
@@ -104,4 +105,3 @@ release until all of the following are true:
    and snapshot revision while output remains off.
 7. Drawdown, pause, stale-release, duplicate-controller, occupied-port, and
    rollback injections all fail closed.
-
