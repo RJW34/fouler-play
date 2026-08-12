@@ -7,7 +7,8 @@ The human goal is:
 - play bounded, real ladder batches on the account named by the active runtime lease and live process truth
 - collect replay IDs, rating movement, decision traces, team choice, and failure classes
 - turn battle evidence into concrete patches or tests
-- repeat until the bot can credibly approach 1800+ ELO and play competitive games at that level
+- repeat until the bot can reach and sustain 1700+ ELO and play competitive games at that level
+- climb in explicit rating stages rather than treating every ladder batch as a 1700 push: prove 1500 safely, then 1600, then 1700 without a major pre-target skid, then the 30-game 1700 sustain window
 - make the learning loop visible on stream without spamming Showdown or pretending random games are progress
 
 The main way this project can drift off-base is by treating "the bot is playing" as success. Playing only matters if every batch leaves behind evidence: what happened, why the bot lost or won, what code/team assumption should change, and whether the next batch improved.

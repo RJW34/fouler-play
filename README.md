@@ -1,6 +1,6 @@
 # Fouler Play
 
-An overnight team-testing service for competitive Pokemon (gen9ou). Load your fat/stall teams, let the bot play them on ladder while you sleep, and get a morning report: which matchups were hard, which Pokemon underperformed, which replays to study.
+A finite-lease competitive Pokemon (gen9ou) battle agent for the DEKU/HERMES devstream. Live ladder work runs in bounded proof windows, while recursive improvement work runs through a local Pokemon Showdown offline-eval harness before any change is trusted.
 
 Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).
 
@@ -46,6 +46,19 @@ python pipeline.py analyze -n 30
 Outputs:
 - `replay_analysis/autoresearch_latest.json`
 - `replay_analysis/reports/autoresearch_latest.md`
+
+## DEKU Static Eval Loop
+
+The offline eval harness is the preferred static process for HERMES/DEKU improvement work:
+
+```bash
+python infrastructure/offline_eval_readiness.py --require-ready
+python infrastructure/offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label frozen --no-setsample --search-time-ms 100 --manage-showdown-server
+python infrastructure/offline_eval.py --battles 200 --team gen9/ou/fat-team-1-stall --baseline simple --label candidate --search-time-ms 100 --manage-showdown-server
+python infrastructure/offline_eval.py --compare frozen candidate
+```
+
+`IMPROVE_AGENT_EVAL_SEARCH_TIME_MS` controls the generated readiness commands. `IMPROVE_AGENT_EVAL_MANAGE_SHOWDOWN` defaults on so each bounded eval starts and stops its own local no-security Showdown sidecar instead of relying on a resident server.
 
 Discord wiring:
 - routine summary -> `1466691161363054840`

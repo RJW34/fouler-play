@@ -37,6 +37,7 @@ AUTO_IMPROVE_MAX_CYCLES_ENV = "FOULER_AUTO_IMPROVE_MAX_CYCLES"
 DEFAULT_AUTO_IMPROVE_MAX_CYCLES = 1
 CHILD_LOG_MAX_BYTES_ENV = "FOULER_DEVSTREAM_CHILD_LOG_MAX_BYTES"
 DEFAULT_CHILD_LOG_MAX_BYTES = 64 * 1024 * 1024
+MISSION_START_GATE_TIMEOUT_SECONDS = 120
 PID_DIR = ROOT / ".pids"
 OBS_PID_FILE = PID_DIR / "devstream_obs_http.pid"
 BATTLE_PID_FILE = PID_DIR / "devstream_battle_session.pid"
@@ -199,6 +200,75 @@ def run_json(command: list[str]) -> tuple[dict[str, Any] | None, str | None]:
         return json.loads(result.stdout), None
     except json.JSONDecodeError as exc:
         return None, f"invalid JSON from {command}: {exc}"
+
+
+def mission_monitor_start_gate(
+    *,
+    run_count: int,
+    max_concurrent_battles: int,
+    max_cycles: int | None = None,
+) -> dict[str, Any]:
+    command = [
+        runtime_python(),
+        "scripts/fouler_mission_monitor.py",
+        "--start-gate-only",
+        "--run-count",
+        str(run_count),
+        "--max-concurrent-battles",
+        str(max_concurrent_battles),
+    ]
+    if max_cycles is not None:
+        command.extend(["--max-cycles", str(max(1, int(max_cycles)))])
+
+    started = time.time()
+    try:
+        result = subprocess.run(
+            command,
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=MISSION_START_GATE_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except Exception as exc:
+        return {
+            "policy": "fouler-runtime-start-gate/v1",
+            "ready": False,
+            "command": command,
+            "error": str(exc),
+            "durationSeconds": round(time.time() - started, 3),
+        }
+
+    payload: dict[str, Any] | None
+    try:
+        parsed = json.loads(result.stdout)
+        payload = parsed if isinstance(parsed, dict) else None
+    except json.JSONDecodeError as exc:
+        payload = None
+        parse_error = str(exc)
+    else:
+        parse_error = ""
+
+    start_gate = payload.get("startGate") if isinstance(payload, dict) else {}
+    if not isinstance(start_gate, dict):
+        start_gate = {}
+    ready = (
+        result.returncode == 0
+        and bool(start_gate.get("ready"))
+        and bool(start_gate.get("repairActionsOk", True))
+    )
+    return {
+        "policy": "fouler-runtime-start-gate/v1",
+        "ready": ready,
+        "command": command,
+        "returnCode": result.returncode,
+        "durationSeconds": round(time.time() - started, 3),
+        "startGate": start_gate,
+        "issues": (payload or {}).get("issues") if isinstance(payload, dict) else None,
+        "stdoutTail": tail_text(result.stdout),
+        "stderrTail": tail_text(result.stderr),
+        **({"parseError": parse_error} if parse_error else {}),
+    }
 
 
 def python_module_available(python: str, module_name: str) -> dict[str, Any]:
@@ -1671,6 +1741,22 @@ def run_supervisor_cycle(
             timeout=getattr(args, "proof_timeout_seconds", 300),
         )
     )
+    cycle_gate = mission_monitor_start_gate(
+        run_count=effective_count,
+        max_concurrent_battles=args.max_concurrent_battles,
+        max_cycles=1,
+    )
+    payload["missionStartGate"] = cycle_gate
+    if not cycle_gate.get("ready"):
+        start_gate = cycle_gate.get("startGate") if isinstance(cycle_gate.get("startGate"), dict) else {}
+        blocking_ids = [str(item) for item in start_gate.get("blockingIssueIds") or []]
+        summary = "Fouler supervisor cycle start gate blocked next ladder batch"
+        if blocking_ids:
+            summary += ": " + ", ".join(blocking_ids)
+        payload["state"] = "blocked-mission-start-gate"
+        payload["error"] = summary
+        payload["nextAction"] = "stop supervisor; repair mission gate blockers before another ladder batch"
+        return payload
 
     # --- Self-improvement loop (explicit opt-in only) ------------------------
     # Recursive improvement is disabled by default while the architecture is
@@ -1788,6 +1874,23 @@ def cmd_supervise(args: argparse.Namespace) -> int:
         write_supervisor_status(payload)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 2
+    mission_gate = mission_monitor_start_gate(
+        run_count=effective_count,
+        max_concurrent_battles=args.max_concurrent_battles,
+        max_cycles=effective_max_cycles,
+    )
+    payload["missionStartGate"] = mission_gate
+    if not mission_gate.get("ready"):
+        start_gate = mission_gate.get("startGate") if isinstance(mission_gate.get("startGate"), dict) else {}
+        blocking_ids = [str(item) for item in start_gate.get("blockingIssueIds") or []]
+        summary = "Fouler supervisor start gate blocked ladder supervisor"
+        if blocking_ids:
+            summary += ": " + ", ".join(blocking_ids)
+        payload["state"] = "blocked-mission-start-gate"
+        payload["error"] = summary
+        write_supervisor_status(payload)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
     if SUPERVISOR_STOP_FILE.exists():
         SUPERVISOR_STOP_FILE.unlink()
     write_pid_value(
@@ -1852,6 +1955,11 @@ def cmd_supervise(args: argparse.Namespace) -> int:
             payload["cycles"] = (payload.get("cycles") or [])[-9:] + [cycle]
             payload["completedLearningCycles"] = completed_learning_cycles
             write_supervisor_status(payload)
+            if cycle.get("state") == "blocked-mission-start-gate":
+                payload["state"] = "blocked-mission-start-gate"
+                payload["stoppedAt"] = iso_now()
+                write_supervisor_status(payload)
+                return 2
             if effective_max_cycles and completed_learning_cycles >= effective_max_cycles:
                 payload["state"] = "completed-max-cycles"
                 payload["completedAt"] = iso_now()
@@ -2073,6 +2181,26 @@ def cmd_start(args: argparse.Namespace) -> int:
     if not args.execute:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
+    mission_gate = mission_monitor_start_gate(
+        run_count=effective_count,
+        max_concurrent_battles=args.max_concurrent_battles,
+        max_cycles=positive_int(getattr(args, "max_cycles", 0), 0) if continuous else 1,
+    )
+    payload["missionStartGate"] = mission_gate
+    if not mission_gate.get("ready"):
+        start_gate = mission_gate.get("startGate") if isinstance(mission_gate.get("startGate"), dict) else {}
+        blocking_ids = [str(item) for item in start_gate.get("blockingIssueIds") or []]
+        summary = "Fouler mission monitor start gate blocked ladder start"
+        if blocking_ids:
+            summary += ": " + ", ".join(blocking_ids)
+        payload["status"] = "blocked-mission-start-gate"
+        payload["error"] = summary
+        payload["blockedTruth"] = state_store.write_runtime_blocked_status(
+            code="fouler_mission_start_gate_blocked",
+            summary=summary,
+        )
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 2
     if not env_value(env, "PS_USERNAME", "SHOWDOWN_USER_ID"):
         payload["error"] = "PS_USERNAME or SHOWDOWN_USER_ID is required"
         print(json.dumps(payload, indent=2, sort_keys=True))

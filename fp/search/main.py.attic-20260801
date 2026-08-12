@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+import re
 import threading
 import time
 from copy import deepcopy
@@ -234,6 +235,7 @@ from data import all_move_json
 from fp.movepool_tracker import get_threat_category, ThreatCategory
 from fp.search.move_validators import filter_blocked_moves
 from fp.opponent_model import OPPONENT_MODEL
+from fp import matchup_memory
 from sweep_fix import smart_sweep_prevention
 
 logger = logging.getLogger(__name__)
@@ -331,6 +333,53 @@ MCTS_BLEND_MIN_PER_SAMPLE_MS = max(
 PENALTY_PIPELINE_ENABLED = str(
     os.getenv("FOULER_PENALTY_PIPELINE", "0")
 ).lower() in {"1", "true", "yes", "on"}
+
+# --- P1: decision loop-breaker gate (2026-07-04) --------------------------------
+# break_repeated_decision demotes any move picked >= repeat_threshold times in the
+# recent action window by up to ~3000:1. Trace evidence from the 2026-07-04 loss
+# corpus: on stall teams correct play IS repetition -- the breaker accounted for
+# 249/265 (94%) of played-vs-policy inversions, demoting saltcure/recover/protect/
+# roost win conditions the search was confident in (e.g. gen9ou-2643766855 t20:
+# protect 0.751 -> 0.039, played earthquake). Upstream foul-play has no such layer.
+#
+# FOULER_LOOP_BREAK gates the whole layer:
+#   1 (default) = breaker active, but guarded: it never overrides a decisive
+#                 search and requires provable position stagnation (see
+#                 break_repeated_decision).
+#   0           = break_repeated_decision is a no-op; the search policy is trusted.
+# Flipping to 0 is config-only (.env) and must be justified by the offline eval
+# acceptance gate (infrastructure/offline_eval.py --no-loop-break arm).
+LOOP_BREAK_DECISIVE_BEST_FRACTION = 0.45
+LOOP_BREAK_DECISIVE_RUNNERUP_RATIO = 3.0
+LOOP_BREAK_STAGNATION_SPAN = 3
+LOOP_BREAK_FP_HISTORY_LIMIT = 16
+
+_loop_break_mode_logged = False
+
+
+def _loop_break_enabled() -> bool:
+    """Read the FOULER_LOOP_BREAK kill-switch (checked per decision so tests and
+    config flips do not require module reloads; run.py loads .env at start)."""
+    return str(os.getenv("FOULER_LOOP_BREAK", "1")).lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def _log_loop_break_mode_once(enabled: bool) -> None:
+    global _loop_break_mode_logged
+    if _loop_break_mode_logged:
+        return
+    _loop_break_mode_logged = True
+    logger.info(
+        "Decision loop-breaker: %s (FOULER_LOOP_BREAK=%s)",
+        "ENABLED with decisive-search + stagnation guards"
+        if enabled
+        else "DISABLED (no-op; search policy trusted)",
+        os.getenv("FOULER_LOOP_BREAK", "1"),
+    )
 
 # Number of MCTS samples to actually search per turn. Raised to track the sampled
 # opponent-set count (max_mcts_battles) so every plausible team is searched, rather
@@ -541,9 +590,18 @@ def _run_mcts_policy_pass(
     per_sample_ms: int,
     max_samples: int,
     legal_moves: set[str] | None = None,
+    deadline: float | None = None,
 ) -> tuple[dict[str, float], dict]:
     """
     Run bounded MCTS on up to max_samples sampled states and aggregate visit policy.
+
+    deadline: optional time.monotonic() wall-clock deadline. The samples run
+    SEQUENTIALLY, and the poke-engine MCTS can overshoot its requested per-sample
+    millisecond budget on complex states (observed single-decision latencies up to
+    ~165s in production). To guarantee we NEVER bleed the Showdown cumulative game
+    clock to a forfeit, we stop launching new samples once the deadline passes and
+    return whatever policy we have aggregated so far (a shallower in-time decision
+    strictly beats a perfect decision that loses on the clock).
     """
     selected_samples = sorted(
         list(sampled_battles or []), key=lambda x: float(x[1]), reverse=True
@@ -553,8 +611,10 @@ def _run_mcts_policy_pass(
         "samples_attempted": len(selected_samples),
         "samples_succeeded": 0,
         "samples_failed": 0,
+        "samples_skipped_deadline": 0,
         "total_visits": 0,
         "per_sample_ms": int(per_sample_ms),
+        "deadline_hit": False,
     }
     legal_norm_to_move: dict[str, str] = {}
     if legal_moves:
@@ -562,13 +622,41 @@ def _run_mcts_policy_pass(
             legal_norm_to_move[normalize_name(lm)] = lm
 
     for idx, (sample_battle, sample_weight) in enumerate(selected_samples):
+        # Hard wall-clock guard: never start another (potentially overshooting)
+        # MCTS sample once we are out of time. We keep at least one completed
+        # sample so we always return a usable policy.
+        if (
+            deadline is not None
+            and idx > 0
+            and meta["samples_succeeded"] > 0
+            and time.monotonic() >= deadline
+        ):
+            meta["deadline_hit"] = True
+            meta["samples_skipped_deadline"] = len(selected_samples) - idx
+            logger.warning(
+                "MCTS deadline reached after %d/%d samples; returning partial "
+                "policy to protect the game clock.",
+                idx,
+                len(selected_samples),
+            )
+            break
         try:
             state = battle_to_poke_engine_state(sample_battle)
             # poke-engine already receives a per-sample millisecond budget.
             # Running inline avoids creating a short-lived Python thread for
             # every sample, which exhausts Windows runtime threads under live
             # ladder batches before reporting/state cleanup can run.
-            result = monte_carlo_tree_search(state, int(per_sample_ms))
+            #
+            # Clamp THIS sample's budget to the wall-clock time we have left so a
+            # single overshooting sample cannot blow the whole game-clock budget.
+            sample_ms = int(per_sample_ms)
+            if deadline is not None:
+                ms_left = int((deadline - time.monotonic()) * 1000)
+                if ms_left < sample_ms:
+                    # Keep a small floor so the engine still does useful work,
+                    # but never request more time than we actually have.
+                    sample_ms = max(50, min(sample_ms, ms_left))
+            result = monte_carlo_tree_search(state, sample_ms)
             total_visits = int(getattr(result, "total_visits", 0) or 0)
             if total_visits <= 0:
                 meta["samples_failed"] += 1
@@ -1338,6 +1426,58 @@ def detect_odd_move(
                 return oddities
             oddities.append("waste_turn:repeat_status_move")
 
+    # Self-nerfing damaging move chosen while a cleaner super-effective attack of the
+    # same category exists vs the REVEALED opponent typing (e.g. Make It Rain over
+    # Shadow Ball vs Slowking-Galar). Known-ability immunities excluded.
+    try:
+        _cat = move_data.get(constants.CATEGORY)
+        _user_active = getattr(getattr(battle, "user", None), "active", None)
+        _sd_opp_active = getattr(getattr(battle, "opponent", None), "active", None)
+        if (
+            _cat in {constants.PHYSICAL, constants.SPECIAL}
+            and not move_choice.startswith("switch")
+            and _user_active is not None
+            and _sd_opp_active is not None
+        ):
+            _own_stat = "attack" if _cat == constants.PHYSICAL else "special-attack"
+            if ((move_data.get("self") or {}).get("boosts") or {}).get(_own_stat, 0) < 0:
+                _opp_types = [t for t in (getattr(_sd_opp_active, "types", None) or []) if t]
+                _opp_ability = normalize_name(str(getattr(_sd_opp_active, "ability", None) or ""))
+                _ability_immune = {
+                    "levitate": "ground", "flashfire": "fire", "waterabsorb": "water",
+                    "stormdrain": "water", "dryskin": "water", "voltabsorb": "electric",
+                    "lightningrod": "electric", "motordrive": "electric", "sapsipper": "grass",
+                    "eartheater": "ground", "wellbakedbody": "fire",
+                }
+                if _opp_types:
+                    _chosen_eff = type_effectiveness_modifier(move_data.get(constants.TYPE), _opp_types)
+                    _chosen_bp = move_data.get(constants.BASE_POWER) or 0
+                    for _alt in getattr(_user_active, "moves", None) or []:
+                        _alt_name = normalize_name(getattr(_alt, "name", None) or str(_alt))
+                        if _alt_name == move_norm or getattr(_alt, "disabled", False):
+                            continue
+                        if getattr(_alt, "current_pp", 1) <= 0:
+                            continue
+                        _alt_data = all_move_json.get(_alt_name, {})
+                        if _alt_data.get(constants.CATEGORY) != _cat:
+                            continue
+                        if ((_alt_data.get("self") or {}).get("boosts") or {}).get(_own_stat, 0) < 0:
+                            continue
+                        _alt_type = _alt_data.get(constants.TYPE)
+                        if _ability_immune.get(_opp_ability) == _alt_type:
+                            continue
+                        _alt_eff = type_effectiveness_modifier(_alt_type, _opp_types)
+                        _alt_bp = _alt_data.get(constants.BASE_POWER) or 0
+                        if (
+                            _alt_eff >= 2.0
+                            and _alt_eff > _chosen_eff
+                            and _alt_bp * _alt_eff >= _chosen_bp * _chosen_eff
+                        ):
+                            oddities.append("waste_turn:self_drop_over_se")
+                            break
+    except Exception:
+        pass
+
     # ── Destiny Bond awareness ──
     # If the opponent has revealed Destiny Bond and is likely to use it
     # (low HP), penalize KO-ing with a valuable Pokemon.
@@ -1861,6 +2001,8 @@ def apply_oddity_penalties(
         for odd in oddities:
             if odd == "waste_turn:repeat_status_move":
                 penalty = min(penalty, 0.30)
+            elif odd == "waste_turn:self_drop_over_se":
+                penalty = min(penalty, 0.05)
             elif odd in {
                 "waste_turn:remove_hazards_no_hazards",
                 "waste_turn:repeat_hazard_removal",
@@ -4547,6 +4689,244 @@ def _find_switch_target(battle: Battle | None, move: str):
     return None
 
 
+def _side_condition_layer_count(side_conditions, condition) -> int:
+    if not isinstance(side_conditions, dict):
+        return 0
+    value = side_conditions.get(condition, 0)
+    if value in (None, 0):
+        condition_norm = normalize_name(str(condition))
+        for key, candidate in side_conditions.items():
+            if normalize_name(str(key)) == condition_norm:
+                value = candidate
+                break
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _pokemon_hp_ratio(pokemon) -> float:
+    try:
+        return float(getattr(pokemon, "hp", 0) or 0) / max(
+            float(getattr(pokemon, "max_hp", 1) or 1),
+            1.0,
+        )
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _entry_hazard_damage_ratio(
+    pokemon,
+    *,
+    battle: Battle | None = None,
+    ability_state: OpponentAbilityState | None = None,
+) -> float:
+    if pokemon is None or not _hp_positive(pokemon):
+        return 0.0
+
+    item_norm = normalize_name(str(getattr(pokemon, "item", "") or ""))
+    if item_norm == "heavydutyboots":
+        return 0.0
+
+    side_conditions = getattr(getattr(battle, "user", None), "side_conditions", {})
+    sr_layers = _side_condition_layer_count(side_conditions, constants.STEALTH_ROCK)
+    spikes_layers = _side_condition_layer_count(side_conditions, constants.SPIKES)
+    if ability_state is not None:
+        sr_layers = max(sr_layers, 1 if getattr(ability_state, "our_sr_up", False) else 0)
+        try:
+            spikes_layers = max(spikes_layers, int(getattr(ability_state, "our_spikes_layers", 0) or 0))
+        except (TypeError, ValueError):
+            pass
+
+    if sr_layers <= 0 and spikes_layers <= 0:
+        return 0.0
+
+    target_types = [
+        normalize_name(str(pkmn_type))
+        for pkmn_type in (getattr(pokemon, "types", []) or [])
+    ]
+    damage = 0.0
+    if sr_layers > 0:
+        damage += 0.125 * type_effectiveness_modifier("rock", target_types)
+
+    if spikes_layers > 0:
+        ability_norm = normalize_name(str(getattr(pokemon, "ability", "") or ""))
+        grounded = (
+            "flying" not in target_types
+            and ability_norm not in {normalize_name(str(a)) for a in UNGROUNDED_ABILITIES}
+            and item_norm not in {normalize_name(str(i)) for i in UNGROUNDED_ITEMS}
+        )
+        if grounded:
+            damage += [0.0, 0.125, 0.167, 0.25][min(spikes_layers, 3)]
+
+    return max(0.0, float(damage))
+
+
+def _hazards_would_faint_on_entry(
+    pokemon,
+    *,
+    battle: Battle | None = None,
+    ability_state: OpponentAbilityState | None = None,
+) -> tuple[bool, float, float]:
+    hp_ratio = _pokemon_hp_ratio(pokemon)
+    damage_ratio = _entry_hazard_damage_ratio(
+        pokemon,
+        battle=battle,
+        ability_state=ability_state,
+    )
+    return damage_ratio >= max(0.001, hp_ratio - 0.001), damage_ratio, hp_ratio
+
+
+def _apply_hazard_self_ko_guard(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list | None,
+) -> dict[str, float]:
+    """Keep MCTS-only from selecting switch lines that faint on entry hazards."""
+    if not policy or battle is None:
+        return policy
+
+    switch_lines = [
+        (move, float(weight))
+        for move, weight in policy.items()
+        if weight > 0 and move.startswith("switch ")
+    ]
+
+    force_switch = bool(getattr(battle, "force_switch", False))
+    non_switch_lines = [
+        (move, float(weight))
+        for move, weight in policy.items()
+        if weight > 0 and not move.startswith("switch ")
+    ]
+    direct_stay_lines = [
+        (move, weight)
+        for move, weight in non_switch_lines
+        if _choice_move_norm(move) not in PIVOT_MOVES_NORM
+    ]
+    best_direct = max(direct_stay_lines, key=lambda item: item[1], default=None)
+    best_stay = best_direct or max(non_switch_lines, key=lambda item: item[1], default=None)
+
+    switch_safety: dict[str, tuple[bool, float, float]] = {}
+    safe_switch_weights: list[float] = []
+    for move, weight in switch_lines:
+        target = _find_switch_target(battle, move)
+        would_faint, damage_ratio, hp_ratio = _hazards_would_faint_on_entry(
+            target,
+            battle=battle,
+            ability_state=ability_state,
+        )
+        switch_safety[move] = (would_faint, damage_ratio, hp_ratio)
+        if not would_faint:
+            safe_switch_weights.append(weight)
+
+    adjusted = dict(policy)
+    if force_switch:
+        if not switch_lines:
+            return adjusted
+        if not safe_switch_weights:
+            return adjusted
+        best_safe_weight = max(safe_switch_weights)
+        for move, weight in switch_lines:
+            would_faint, damage_ratio, hp_ratio = switch_safety[move]
+            if not would_faint:
+                continue
+            new_weight = min(float(weight), best_safe_weight * 0.45)
+            if abs(new_weight - float(weight)) <= 1e-9:
+                continue
+            adjusted[move] = new_weight
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "penalty",
+                        "source": "mcts_hard_safety",
+                        "move": move,
+                        "reason": (
+                            "hazard_self_ko_forced_switch_guard_"
+                            f"hp_{hp_ratio:.2f}_hazards_{damage_ratio:.2f}"
+                        ),
+                        "before": weight,
+                        "after": new_weight,
+                    }
+                )
+        return adjusted
+
+    if best_stay is not None:
+        best_stay_move, best_stay_weight = best_stay
+        for move, weight in switch_lines:
+            would_faint, damage_ratio, hp_ratio = switch_safety[move]
+            if not would_faint:
+                continue
+            new_weight = min(float(weight), best_stay_weight * 0.45)
+            if abs(new_weight - float(weight)) <= 1e-9:
+                continue
+            adjusted[move] = new_weight
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "penalty",
+                        "source": "mcts_hard_safety",
+                        "move": move,
+                        "reason": (
+                            "hazard_self_ko_switch_guard_"
+                            f"hp_{hp_ratio:.2f}_hazards_{damage_ratio:.2f}_stay_{best_stay_move}"
+                        ),
+                        "before": weight,
+                        "after": new_weight,
+                    }
+                )
+
+    if best_direct is None:
+        return adjusted
+
+    reserve = [
+        pkmn
+        for pkmn in (getattr(getattr(battle, "user", None), "reserve", []) or [])
+        if _hp_positive(pkmn)
+    ]
+    if not reserve:
+        return adjusted
+    all_pivot_targets_faint = all(
+        _hazards_would_faint_on_entry(
+            pkmn,
+            battle=battle,
+            ability_state=ability_state,
+        )[0]
+        for pkmn in reserve
+    )
+    if not all_pivot_targets_faint:
+        return adjusted
+
+    best_direct_move, best_direct_weight = best_direct
+    for move, weight in list(adjusted.items()):
+        if weight <= 0 or move.startswith("switch "):
+            continue
+        move_norm = _choice_move_norm(move)
+        if move_norm not in PIVOT_MOVES_NORM:
+            continue
+        new_weight = min(float(weight), best_direct_weight * 0.55)
+        if abs(new_weight - float(weight)) <= 1e-9:
+            continue
+        adjusted[move] = new_weight
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "penalty",
+                    "source": "mcts_hard_safety",
+                    "move": move,
+                    "reason": (
+                        "hazard_self_ko_pivot_guard_"
+                        f"all_targets_faint_stay_{best_direct_move}"
+                    ),
+                    "before": weight,
+                    "after": new_weight,
+                }
+            )
+
+    return adjusted
+
+
 def _assess_immediate_survival_risk(battle: Battle | None) -> dict[str, float | bool]:
     """
     Estimate whether staying in is likely to get KOed before we can act.
@@ -6116,6 +6496,98 @@ def _recent_action_history(battle: Battle | None) -> list[str]:
     return history
 
 
+def _detect_action_cycle(recent: list[str], next_action: str) -> bool:
+    """Return True if recent history forms a repeating 2- or 3-action cycle
+    whose next predicted element matches next_action.
+
+    Examples caught:
+      [A,B,A,B] + next=A  → True  (2-cycle)
+      [A,B,C,A,B,C] + next=A → True  (3-cycle)
+    Used by break_repeated_decision to catch oscillation loops that never
+    hit the single-action repeat_threshold (each action only appears 2x).
+    """
+    n = len(recent)
+    if n >= 4 and recent[-4:-2] == recent[-2:] and recent[-2] == next_action:
+        return True
+    if n >= 6 and recent[-6:-3] == recent[-3:] and recent[-3] == next_action:
+        return True
+    return False
+
+
+def _position_fingerprint(battle: Battle | None) -> tuple | None:
+    """Cheap board-state fingerprint: species on the field + per-side HP totals.
+
+    Used by the loop-breaker's stagnation guard: repeating an action is only a
+    pathological loop when the position is provably NOT changing. Any HP delta
+    (chip damage, recovery, sacks) or a switch changes the fingerprint. Returns
+    None when the battle state cannot be read; callers must treat None as
+    "unknown", never as stagnation.
+    """
+    if battle is None:
+        return None
+    try:
+        sides = []
+        for side in (getattr(battle, "user", None), getattr(battle, "opponent", None)):
+            if side is None:
+                return None
+            active = getattr(side, "active", None)
+            species = str(getattr(active, "name", "") or "") if active is not None else ""
+            hp_total = 0.0
+            members = [active] + list(getattr(side, "reserve", []) or [])
+            for pkmn in members:
+                if pkmn is None:
+                    continue
+                hp_total += float(getattr(pkmn, "hp", 0) or 0)
+            sides.append((species, round(hp_total, 2)))
+        return (sides[0][0], sides[0][1], sides[1][0], sides[1][1])
+    except (TypeError, ValueError):
+        return None
+
+
+def _update_loop_break_fp_history(battle: Battle | None) -> list[tuple]:
+    """Record the current position fingerprint on the battle object (one entry
+    per turn, newest last) and return the history list.
+
+    Stored as ``battle._loop_break_fp_history`` entries of ``(turn, fingerprint)``.
+    Re-decisions within the same turn (e.g. a forced switch) refresh the entry
+    instead of appending so multi-decision turns cannot fake stagnation.
+    """
+    if battle is None:
+        return []
+    history = getattr(battle, "_loop_break_fp_history", None)
+    if not isinstance(history, list):
+        history = []
+        try:
+            setattr(battle, "_loop_break_fp_history", history)
+        except (AttributeError, TypeError):
+            return history
+    turn = getattr(battle, "turn", None)
+    if not isinstance(turn, int):
+        turn = None
+    entry = (turn, _position_fingerprint(battle))
+    if history and turn is not None and history[-1][0] == turn:
+        history[-1] = entry
+    else:
+        history.append(entry)
+    del history[:-LOOP_BREAK_FP_HISTORY_LIMIT]
+    return history
+
+
+def _position_stagnant(
+    history: list[tuple], span: int = LOOP_BREAK_STAGNATION_SPAN
+) -> bool:
+    """True only when the last ``span`` recorded fingerprints are present,
+    readable and identical -- i.e. the board provably did not change while the
+    repeated action accrued. Unknown state (None fingerprints, short history)
+    is NOT stagnation: the breaker must fail toward trusting the search."""
+    if span <= 0 or len(history) < span:
+        return False
+    tail = [fp for _turn, fp in history[-span:]]
+    if any(fp is None for fp in tail):
+        return False
+    return all(fp == tail[0] for fp in tail)
+
+
 def _has_living_switch_target(battle: Battle | None) -> bool:
     user = getattr(battle, "user", None) if battle is not None else None
     for pkmn in getattr(user, "reserve", []) or []:
@@ -6205,9 +6677,26 @@ def break_repeated_decision(
     Grounded only: uses the live action_history / legal policy moves; never any
     model knowledge of Pokemon. The repeated action is demoted, never removed, so
     it stays a legal last resort when it is the only option.
+
+    Gated + guarded (2026-07-04, loss-corpus trace audit: this layer caused 94%
+    of played-vs-policy inversions by demoting correct repeated stall play):
+      - FOULER_LOOP_BREAK=0 makes this a no-op (search policy trusted).
+      - When enabled, it never fires against a DECISIVE search (best line holding
+        >= LOOP_BREAK_DECISIVE_BEST_FRACTION of positive policy mass, or
+        >= LOOP_BREAK_DECISIVE_RUNNERUP_RATIO x the runner-up).
+      - When enabled, it requires provable position STAGNATION over the
+        repetition window (identical board fingerprints); a repeated action that
+        is changing the board (chip, recovery, hazard turns) is a plan, not a loop.
     """
     if not sorted_policy or battle is None:
         return sorted_policy
+
+    enabled = _loop_break_enabled()
+    _log_loop_break_mode_once(enabled)
+    if not enabled:
+        return sorted_policy
+
+    fp_history = _update_loop_break_fp_history(battle)
 
     recent = _recent_action_history(battle)[-window:]
     if len(recent) < repeat_threshold:
@@ -6217,11 +6706,69 @@ def break_repeated_decision(
     best_norm = best_move.lower().strip()
 
     # Count how many times the about-to-win action appears in the recent window.
+    # Also detect oscillation cycles (e.g. A→B→C→A→B→C) where each individual
+    # action only appears 2x and would slip under repeat_threshold=3.
     repeats = sum(1 for a in recent if a == best_norm)
-    if repeats < repeat_threshold:
+    is_cycling = _detect_action_cycle(recent, best_norm)
+    if not is_cycling:
+        for cycle_len in range(2, min(4, len(recent) // 2 + 1)):
+            if recent[-cycle_len:] == recent[-2 * cycle_len : -cycle_len]:
+                is_cycling = True
+                break
+    if repeats < repeat_threshold and not is_cycling:
         return sorted_policy
 
-    if _last_mon_damage_loop_should_hold(sorted_policy, battle, best_move):
+    # Guard (2026-07-04): never override a DECISIVE search. The loss-corpus trace
+    # audit showed the breaker demoting wincon lines the search was sure about
+    # (gen9ou-2643766855 t20: protect 0.751 -> 0.039, 9.6x the runner-up). If the
+    # best line holds >= LOOP_BREAK_DECISIVE_BEST_FRACTION of the positive policy
+    # mass or dominates the runner-up by LOOP_BREAK_DECISIVE_RUNNERUP_RATIO,
+    # repetition is the search's answer, not instability -- keep it.
+    best_weight = sorted_policy[0][1]
+    runner_up_weight = sorted_policy[1][1] if len(sorted_policy) > 1 else 0.0
+    positive_mass = sum(w for _m, w in sorted_policy if w > 0)
+    best_fraction = (best_weight / positive_mass) if positive_mass > 0 else 0.0
+    if (
+        best_fraction >= LOOP_BREAK_DECISIVE_BEST_FRACTION
+        # Relative epsilon so an exact ratio boundary (e.g. 0.30 vs 3 x 0.10)
+        # counts as decisive despite float rounding.
+        or best_weight
+        >= LOOP_BREAK_DECISIVE_RUNNERUP_RATIO * max(runner_up_weight, 0.0) * (1.0 - 1e-9)
+    ):
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "skip",
+                    "source": "decision_loop_break",
+                    "move": best_move,
+                    "reason": f"{best_move}_repeated_{repeats}_search_decisive",
+                    "before": best_weight,
+                    "after": best_weight,
+                }
+            )
+        return sorted_policy
+
+    # Guard (2026-07-04): repetition is only pathological when the position is
+    # provably NOT progressing. Chip damage (salt cure / toxic), recovery, sacks
+    # and switches all change the board fingerprint; a stall plan that IS working
+    # keeps repeating while the fingerprint moves -- never break that.
+    if not _position_stagnant(fp_history):
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "skip",
+                    "source": "decision_loop_break",
+                    "move": best_move,
+                    "reason": f"{best_move}_repeated_{repeats}_position_not_stagnant",
+                    "before": best_weight,
+                    "after": best_weight,
+                }
+            )
+        return sorted_policy
+
+    # Multi-move cycles (is_cycling) mean no real progress regardless of whether
+    # one of the cycled moves is damaging — skip the damage-progress exemption.
+    if not is_cycling and _last_mon_damage_loop_should_hold(sorted_policy, battle, best_move):
         if trace_events is not None:
             trace_events.append(
                 {
@@ -6236,10 +6783,66 @@ def break_repeated_decision(
         return sorted_policy
 
     # Find the best DISTINCT legal alternative with positive weight.
-    alternative = next(
-        ((m, w) for m, w in sorted_policy if m.lower().strip() != best_norm and w > 0),
-        None,
-    )
+    # When a multi-move cycle is detected, exclude ALL recently-seen actions so we
+    # don't swap to another cycle member (e.g. A→B→C→A loop picks B as "alternative"
+    # and the cycle persists — grounded in evidence from decision_instability traces).
+    if is_cycling:
+        recent_set = set(recent)
+        if best_norm not in recent_set:
+            # MCTS already picked a move outside the cycle — trust it; demoting it
+            # would promote a cycle member instead (the actual bug causing persistence).
+            return sorted_policy
+        alternative = next(
+            ((m, w) for m, w in sorted_policy if m.lower().strip() not in recent_set and w > 0),
+            None,
+        )
+        if alternative is None:
+            # All legal options are cycle members. Picking 2nd-best (old behaviour)
+            # just rotates through the same cycle indefinitely. Instead, pick the
+            # least-recently-used non-best candidate to maximally disrupt the pattern.
+            candidates = [
+                (m, w) for m, w in sorted_policy if m.lower().strip() != best_norm and w > 0
+            ]
+            if candidates:
+                alternative = min(
+                    candidates,
+                    key=lambda x: next(
+                        (i for i in range(len(recent) - 1, -1, -1)
+                         if recent[i] == x[0].lower().strip()),
+                        -1,
+                    ),
+                )
+                # LRU is still a cycle member — rotating LRU alone just shifts
+                # the cycle indefinitely (A→B→C→A becomes B→C→A→B, still cycling).
+                # Penalize ALL cycle members heavily so any non-cycle move with
+                # even modest MCTS weight can surface and break the loop.
+                rebuilt = [
+                    (m, w * 0.12 if m.lower().strip() in recent_set else w)
+                    for m, w in sorted_policy
+                ]
+                rebuilt.sort(key=lambda x: x[1], reverse=True)
+                if trace_events is not None:
+                    trace_events.append({
+                        "type": "override",
+                        "source": "decision_loop_break",
+                        "move": rebuilt[0][0],
+                        "reason": f"full_cycle_penalty_{len(recent_set)}_cycle_members",
+                        "before": sorted_policy[0][1],
+                        "after": rebuilt[0][1],
+                    })
+                logger.info(
+                    "FULL CYCLE BREAK: all %d candidates are cycle members; "
+                    "penalizing cycle moves 0.12x to surface non-cycle options",
+                    len(recent_set),
+                )
+                return rebuilt
+            else:
+                alternative = None
+    else:
+        alternative = next(
+            ((m, w) for m, w in sorted_policy if m.lower().strip() != best_norm and w > 0),
+            None,
+        )
     if alternative is None:
         # No distinct legal alternative: the repeated action is forced; keep it.
         return sorted_policy
@@ -6247,12 +6850,20 @@ def break_repeated_decision(
     alt_move, alt_weight = alternative
     best_weight = sorted_policy[0][1]
 
-    # Demote the repeated action to just below the best distinct alternative.
+    # Demote the repeated action(s) just below the best distinct alternative.
+    # For multi-move cycles, demote ALL cycle members so the bot cannot
+    # immediately re-enter the cycle by picking a different member next turn.
     demoted_weight = alt_weight * 0.5
-    rebuilt = [
-        (m, demoted_weight if m == best_move else w)
-        for m, w in sorted_policy
-    ]
+    if is_cycling:
+        rebuilt = [
+            (m, demoted_weight if m.lower().strip() in recent_set else w)
+            for m, w in sorted_policy
+        ]
+    else:
+        rebuilt = [
+            (m, demoted_weight if m == best_move else w)
+            for m, w in sorted_policy
+        ]
     rebuilt.sort(key=lambda x: x[1], reverse=True)
 
     if trace_events is not None:
@@ -6277,6 +6888,351 @@ def break_repeated_decision(
         demoted_weight,
     )
     return rebuilt
+
+
+def _hp_positive(pokemon) -> bool:
+    if pokemon is None:
+        return False
+    try:
+        return float(getattr(pokemon, "hp", 0) or 0) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _alive_members(side) -> list:
+    active = getattr(side, "active", None) if side is not None else None
+    try:
+        reserve = list(getattr(side, "reserve", []) or []) if side is not None else []
+    except TypeError:
+        reserve = []
+    return [p for p in [active] + reserve if _hp_positive(p)]
+
+
+def _choice_move_norm(choice: str) -> str:
+    move_name = choice.split(":")[-1] if ":" in choice else choice
+    if move_name.endswith("-tera"):
+        move_name = move_name[:-5]
+    return normalize_name(move_name)
+
+
+def _choice_likely_kos(choice: str, battle: Battle | None) -> bool:
+    if battle is None or choice.startswith("switch "):
+        return False
+    active = getattr(getattr(battle, "user", None), "active", None)
+    opponent = getattr(getattr(battle, "opponent", None), "active", None)
+    if active is None or opponent is None or getattr(opponent, "hp", 0) <= 0:
+        return False
+    move_norm = _choice_move_norm(choice)
+    try:
+        from fp.search.endgame import estimate_damage
+
+        damage_ratio = float(estimate_damage(active, opponent, move_norm) or 0.0)
+        opponent_hp_ratio = float(getattr(opponent, "hp", 0) or 0) / max(
+            float(getattr(opponent, "max_hp", 1) or 1),
+            1.0,
+        )
+        return damage_ratio >= max(0.01, opponent_hp_ratio * 0.95)
+    except Exception:
+        return False
+
+
+def _is_late_kingambit_snowball(
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+) -> bool:
+    if battle is None:
+        return False
+    opponent = getattr(getattr(battle, "opponent", None), "active", None)
+    if opponent is None or not _hp_positive(opponent):
+        return False
+
+    opp_name = normalize_name(getattr(opponent, "name", "") or "")
+    opp_base = normalize_name(getattr(opponent, "base_name", "") or "")
+    opp_ability = normalize_name(getattr(opponent, "ability", "") or "")
+    has_supreme_overlord = bool(
+        getattr(ability_state, "has_supreme_overlord", False)
+    )
+    if not (
+        has_supreme_overlord
+        or opp_name == "kingambit"
+        or opp_base == "kingambit"
+        or opp_ability == "supremeoverlord"
+    ):
+        return False
+
+    volatile_statuses = {
+        normalize_name(str(status))
+        for status in (getattr(opponent, "volatile_statuses", []) or [])
+    }
+    fallen_boost_known = any(status.startswith("fallen") for status in volatile_statuses)
+    turn_number = int(getattr(battle, "turn", 0) or 0)
+    our_alive = len(_alive_members(getattr(battle, "user", None)))
+    opp_alive = len(_alive_members(getattr(battle, "opponent", None)))
+    return fallen_boost_known or turn_number >= 20 or our_alive <= 3 or opp_alive <= 3
+
+
+def _apply_kingambit_sack_guard(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list | None,
+) -> dict[str, float]:
+    """Prevent MCTS-only from spending low-HP bodies into late Kingambit."""
+    if (
+        not policy
+        or battle is None
+        or getattr(battle, "force_switch", False)
+        or not _is_late_kingambit_snowball(battle, ability_state)
+    ):
+        return policy
+
+    our_alive = len(_alive_members(getattr(battle, "user", None)))
+    if our_alive <= 1:
+        return policy
+
+    stay_lines = [
+        (move, float(weight))
+        for move, weight in policy.items()
+        if weight > 0 and not move.startswith("switch ")
+    ]
+    if not stay_lines:
+        return policy
+    best_stay_move, best_stay_weight = max(stay_lines, key=lambda item: item[1])
+    if best_stay_weight <= 0:
+        return policy
+
+    opponent = getattr(getattr(battle, "opponent", None), "active", None)
+    opponent_types = [normalize_name(t) for t in (getattr(opponent, "types", []) or [])]
+    dark_pressure = "dark" in opponent_types or normalize_name(
+        getattr(opponent, "name", "") or ""
+    ) == "kingambit"
+
+    adjusted = dict(policy)
+    for move, weight in list(policy.items()):
+        if weight <= 0 or not move.startswith("switch "):
+            continue
+        target = _find_switch_target(battle, move)
+        if target is None or not _hp_positive(target):
+            continue
+        try:
+            target_hp_ratio = float(getattr(target, "hp", 0) or 0) / max(
+                float(getattr(target, "max_hp", 1) or 1),
+                1.0,
+            )
+        except Exception:
+            target_hp_ratio = 1.0
+        if target_hp_ratio > 0.35:
+            continue
+
+        target_types = [normalize_name(t) for t in (getattr(target, "types", []) or [])]
+        if not target_types:
+            continue
+        dark_effectiveness = (
+            type_effectiveness_modifier("dark", target_types) if dark_pressure else 1.0
+        )
+        weak_to_known_stab = False
+        for opp_type in opponent_types:
+            if type_effectiveness_modifier(opp_type, target_types) >= 2.0:
+                weak_to_known_stab = True
+                break
+        if dark_effectiveness <= 0.5 and not weak_to_known_stab:
+            continue
+
+        cap = best_stay_weight * 0.72
+        if target_hp_ratio <= 0.25:
+            cap = best_stay_weight * 0.66
+        new_weight = min(float(weight), cap)
+        if abs(new_weight - float(weight)) <= 1e-9:
+            continue
+        adjusted[move] = new_weight
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "penalty",
+                    "source": "mcts_hard_safety",
+                    "move": move,
+                    "reason": (
+                        "late_kingambit_sack_guard_"
+                        f"hp_{target_hp_ratio:.2f}_stay_{best_stay_move}"
+                    ),
+                    "before": weight,
+                    "after": new_weight,
+                }
+            )
+    return adjusted
+
+
+def _apply_endgame_preservation_bias(
+    policy: dict[str, float],
+    *,
+    battle: Battle | None,
+    ability_state: OpponentAbilityState | None,
+    trace_events: list | None,
+) -> dict[str, float]:
+    """Preserve won late games without overriding immediate KO lines.
+
+    Live proof windows showed the bot fixing tactical search-regret but still
+    losing long games. This bias is deliberately bounded: it only activates in
+    late/low-material positions where the board score says we are ahead.
+    """
+    if not policy or battle is None or getattr(battle, "force_switch", False):
+        return policy
+
+    try:
+        turn_number = int(getattr(battle, "turn", 0) or 0)
+    except Exception:
+        turn_number = 0
+    our_alive = len(_alive_members(getattr(battle, "user", None)))
+    opp_alive = len(_alive_members(getattr(battle, "opponent", None)))
+    low_material = our_alive <= 3 and opp_alive <= 3
+    if turn_number < 25 and not low_material:
+        return policy
+
+    try:
+        _advantage_score, ahead = _estimate_board_advantage(battle, ability_state)
+    except Exception:
+        ahead = False
+    if not ahead:
+        return policy
+
+    active = getattr(getattr(battle, "user", None), "active", None)
+    if active is None or getattr(active, "hp", 0) <= 0:
+        return policy
+    try:
+        hp_ratio = float(getattr(active, "hp", 0) or 0) / max(float(getattr(active, "max_hp", 1) or 1), 1.0)
+    except Exception:
+        hp_ratio = 1.0
+
+    active_is_wincon = bool(getattr(ability_state, "our_active_is_wincon", False))
+    if not active_is_wincon:
+        try:
+            active_is_wincon = is_likely_wincon(active, battle)
+        except Exception:
+            active_is_wincon = False
+
+    recovery_like = set(RECOVERY_MOVES_NORM) | {"protect", "rest"}
+    recovery_moves = [
+        move
+        for move, weight in policy.items()
+        if weight > 0 and not move.startswith("switch ") and _choice_move_norm(move) in recovery_like
+    ]
+    ko_moves = {
+        move
+        for move, weight in policy.items()
+        if weight > 0 and not move.startswith("switch ") and _choice_likely_kos(move, battle)
+    }
+    direct_progress_moves = []
+    for move, weight in policy.items():
+        if weight <= 0 or move.startswith("switch "):
+            continue
+        if move in ko_moves or _is_meaningful_progress_move(
+            move,
+            battle,
+            ability_state,
+            include_status_pivots=False,
+        ):
+            direct_progress_moves.append((move, float(weight)))
+    best_direct_progress = max(direct_progress_moves, key=lambda item: item[1], default=None)
+
+    def _recent_pivot_or_switch() -> bool:
+        for action in _recent_action_history(battle)[-4:]:
+            if action.startswith("switch "):
+                return True
+            if _choice_move_norm(action) in PIVOT_MOVES_NORM:
+                return True
+        return False
+
+    preserve_anchor = active_is_wincon or bool(recovery_moves)
+    last_mon_conversion_lock = (
+        opp_alive <= 1
+        and our_alive >= 2
+        and best_direct_progress is not None
+        and (turn_number >= 25 or low_material)
+    )
+    if not preserve_anchor and not last_mon_conversion_lock:
+        return policy
+
+    direct_progress_move = best_direct_progress[0] if best_direct_progress else None
+    direct_progress_weight = best_direct_progress[1] if best_direct_progress else 0.0
+    recent_pivot_or_switch = _recent_pivot_or_switch() if last_mon_conversion_lock else False
+    adjusted = dict(policy)
+    for move, weight in list(policy.items()):
+        if weight <= 0:
+            continue
+        move_norm = _choice_move_norm(move)
+        new_weight = float(weight)
+        reason = None
+
+        if move in ko_moves:
+            continue
+
+        if not ko_moves and move_norm in recovery_like and hp_ratio <= 0.72:
+            try:
+                oddities = detect_odd_move(battle, move, ability_state)
+            except Exception:
+                oddities = []
+            repeated = any("repeat_status_move" in str(item) for item in oddities)
+            if not repeated:
+                boost = 1.25
+                if hp_ratio <= 0.55:
+                    boost = 1.45
+                if hp_ratio <= 0.40:
+                    boost = 1.65
+                if active_is_wincon:
+                    boost += 0.10
+                new_weight *= boost
+                reason = f"late_ahead_preserve_anchor_recovery_hp_{hp_ratio:.2f}"
+        elif (
+            last_mon_conversion_lock
+            and move_norm in PIVOT_MOVES_NORM
+            and move_norm in all_move_json
+            and all_move_json[move_norm].get(constants.CATEGORY) == constants.STATUS
+        ):
+            cap_ratio = 0.72 if recent_pivot_or_switch else 0.80
+            new_weight = min(new_weight, direct_progress_weight * cap_ratio)
+            reason = (
+                f"late_ahead_avoid_status_pivot_loop_vs_last_mon_"
+                f"progress_{direct_progress_move}"
+            )
+        elif last_mon_conversion_lock and move.startswith("switch "):
+            cap_ratio = 0.70 if recent_pivot_or_switch else 0.82
+            if hp_ratio <= 0.45:
+                cap_ratio = min(cap_ratio, 0.76)
+            new_weight = min(new_weight, direct_progress_weight * cap_ratio)
+            reason = (
+                f"late_ahead_avoid_switch_loop_vs_last_mon_"
+                f"progress_{direct_progress_move}"
+            )
+        elif move.startswith("switch ") and preserve_anchor and hp_ratio >= 0.35:
+            penalty = 0.72 if hp_ratio <= 0.65 else 0.84
+            new_weight *= penalty
+            reason = f"late_ahead_avoid_unforced_anchor_switch_hp_{hp_ratio:.2f}"
+        elif (
+            not ko_moves
+            and recovery_moves
+            and hp_ratio <= 0.58
+            and move_norm in all_move_json
+            and all_move_json[move_norm].get(constants.CATEGORY) in {constants.PHYSICAL, constants.SPECIAL}
+        ):
+            new_weight *= 0.84
+            reason = f"late_ahead_avoid_non_ko_trade_hp_{hp_ratio:.2f}"
+
+        if reason and abs(new_weight - float(weight)) > 1e-9:
+            adjusted[move] = new_weight
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "boost" if new_weight > float(weight) else "penalty",
+                        "source": "endgame_preservation",
+                        "move": move,
+                        "reason": reason,
+                        "before": weight,
+                        "after": new_weight,
+                    }
+                )
+
+    return adjusted
 
 
 def _apply_hard_legality_and_safety(
@@ -6314,12 +7270,21 @@ def _apply_hard_legality_and_safety(
     # MCTS-only path repeat a Magic Bounce hazard into our own side.
     if ability_state is not None and getattr(ability_state, "has_magic_bounce", False):
         reflected = {normalize_name(m) for m in MAGIC_BOUNCE_REFLECTED_MOVES}
+        non_reflected_positive = [
+            float(weight)
+            for move, weight in working.items()
+            if weight > 0
+            and normalize_name(move.split(":")[-1] if ":" in move else move) not in reflected
+        ]
+        best_non_reflected_floor = max(non_reflected_positive) * 0.50 if non_reflected_positive else None
         for move, weight in list(working.items()):
             move_name = move.split(":")[-1] if ":" in move else move
             move_norm = normalize_name(move_name)
             if move_norm not in reflected or weight <= 0:
                 continue
             new_weight = float(weight) * ABILITY_PENALTY_SEVERE
+            if best_non_reflected_floor is not None:
+                new_weight = min(new_weight, best_non_reflected_floor)
             working[move] = new_weight
             if trace_events is not None:
                 trace_events.append(
@@ -6376,6 +7341,27 @@ def _apply_hard_legality_and_safety(
                         }
                     )
 
+    working = _apply_hazard_self_ko_guard(
+        working,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+
+    working = _apply_kingambit_sack_guard(
+        working,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+
+    working = _apply_endgame_preservation_bias(
+        working,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+
     sorted_policy = sorted(working.items(), key=lambda x: x[1], reverse=True)
 
     # Hard loop-breaker: demote a move repeated too many times recently.
@@ -6387,6 +7373,165 @@ def _apply_hard_legality_and_safety(
     return sorted_policy
 
 
+def _forced_line_mcts_override(
+    sorted_policy: list[tuple[str, float]],
+    forced_line_bias: dict | None,
+    *,
+    battle: Battle | None = None,
+    ability_state: OpponentAbilityState | None = None,
+    trace_events: list | None = None,
+) -> str | None:
+    """Honor high-confidence forced survival switches after legality filtering.
+
+    MCTS may still be noisy on tactical survival turns. If the forced-line
+    detector already proved that the opponent KOs us and named a legal resist,
+    treating that line as a mild multiplier can still lose to a superficially
+    high-visit stall move such as repeated Protect. This override is deliberately
+    narrow: only forced_switch lines at confidence >= 0.85, only switch moves, and
+    only after the move survived the normal legality/safety filters.
+    """
+    if not sorted_policy or not forced_line_bias:
+        return None
+
+    move = str(forced_line_bias.get("move") or "")
+    if not move.startswith("switch "):
+        return None
+
+    if str(forced_line_bias.get("line_type") or "") != "forced_switch":
+        return None
+
+    try:
+        confidence = float(forced_line_bias.get("confidence", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence < 0.85:
+        return None
+
+    legal_weight = None
+    best_switch: tuple[str, float] | None = None
+    for candidate, weight in sorted_policy:
+        try:
+            numeric_weight = float(weight)
+        except (TypeError, ValueError):
+            numeric_weight = 0.0
+        if candidate.startswith("switch ") and numeric_weight > 0:
+            if best_switch is None or numeric_weight > best_switch[1]:
+                best_switch = (candidate, numeric_weight)
+        if candidate == move:
+            legal_weight = numeric_weight
+    if legal_weight is None or legal_weight <= 0 or best_switch is None:
+        return None
+
+    top_move, top_weight = sorted_policy[0]
+    try:
+        top_weight = float(top_weight)
+    except (TypeError, ValueError):
+        top_weight = 0.0
+    if top_move == move or top_move.startswith("switch "):
+        return None
+
+    candidate_move, candidate_weight = best_switch
+    if top_weight <= 0:
+        return None
+
+    top_move_name = top_move.split(":")[-1] if ":" in top_move else top_move
+    top_norm = normalize_name(top_move_name)
+    stall_survival_moves = set(RECOVERY_MOVES_NORM) | {"protect", "rest"}
+    top_is_stall_survival = top_norm in stall_survival_moves
+    try:
+        top_oddities = detect_odd_move(battle, top_move, ability_state) if battle is not None else []
+    except Exception:
+        top_oddities = []
+    repeated_stall = any("repeat_status_move" in str(item) for item in top_oddities)
+    damage_ratio = _forced_switch_damage_ratio(forced_line_bias.get("reason", ""))
+    strong_damage = damage_ratio is None or damage_ratio >= 1.20
+    switch_ratio = candidate_weight / top_weight
+
+    if top_is_stall_survival and not repeated_stall:
+        if not strong_damage or switch_ratio < 0.62:
+            if trace_events is not None:
+                trace_events.append(
+                    {
+                        "type": "skip",
+                        "source": "forced_line",
+                        "move": candidate_move,
+                        "reason": "top_stall_survival_line_preserved",
+                        "detail": forced_line_bias.get("reason", ""),
+                        "line_type": forced_line_bias.get("line_type", ""),
+                        "confidence": confidence,
+                        "top_move": top_move,
+                        "top_weight": top_weight,
+                        "switch_weight": candidate_weight,
+                        "switch_ratio": round(switch_ratio, 6),
+                        "damage_ratio": damage_ratio,
+                    }
+                )
+            return None
+
+    if switch_ratio < 0.40:
+        if trace_events is not None:
+            trace_events.append(
+                {
+                    "type": "skip",
+                    "source": "forced_line",
+                    "move": candidate_move,
+                    "reason": "forced_switch_too_low_in_mcts_policy",
+                    "detail": forced_line_bias.get("reason", ""),
+                    "line_type": forced_line_bias.get("line_type", ""),
+                    "confidence": confidence,
+                    "top_move": top_move,
+                    "top_weight": top_weight,
+                    "switch_weight": candidate_weight,
+                    "switch_ratio": round(switch_ratio, 6),
+                    "damage_ratio": damage_ratio,
+                }
+            )
+        return None
+
+    if trace_events is not None:
+        trace_events.append(
+            {
+                "type": "override",
+                "source": "forced_line",
+                "move": candidate_move,
+                "reason": "high_confidence_forced_switch",
+                "detail": forced_line_bias.get("reason", ""),
+                "line_type": forced_line_bias.get("line_type", ""),
+                "confidence": confidence,
+                "before": top_weight,
+                "after": candidate_weight,
+                "replaced": top_move,
+                "detector_move": move,
+                "switch_ratio": round(switch_ratio, 6),
+                "damage_ratio": damage_ratio,
+            }
+        )
+    logger.info(
+        "Forced line override: choosing %s over %s "
+        "(line_type=forced_switch confidence=%.2f)",
+        candidate_move,
+        top_move,
+        confidence,
+    )
+    return candidate_move
+
+
+def _forced_switch_damage_ratio(reason: object) -> float | None:
+    if not isinstance(reason, str):
+        return None
+    match = re.search(r"\((\d+(?:\.\d+)?)%\s+vs\s+(\d+(?:\.\d+)?)%\)", reason)
+    if not match:
+        return None
+    try:
+        incoming = float(match.group(1))
+        hp = float(match.group(2))
+    except (TypeError, ValueError):
+        return None
+    if hp <= 0:
+        return None
+    return incoming / hp
+
+
 def _choose_mcts_only(
     mcts_policy: dict[str, float],
     *,
@@ -6394,6 +7539,7 @@ def _choose_mcts_only(
     ability_state: OpponentAbilityState | None,
     decision_profile: DecisionProfile,
     trace: dict | None,
+    forced_line_bias: dict | None = None,
 ) -> str:
     """
     MCTS-respecting move selection (penalty pipeline gated OFF).
@@ -6416,6 +7562,26 @@ def _choose_mcts_only(
         # Nothing legal survived; fall back to raw argmax of the input.
         ranked = sorted((mcts_policy or {}).items(), key=lambda x: x[1], reverse=True)
         return ranked[0][0] if ranked else ""
+
+    forced_override = _forced_line_mcts_override(
+        sorted_policy,
+        forced_line_bias,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+    if forced_override is not None:
+        if trace is not None:
+            trace["mcts_only"] = {
+                "top_moves": [
+                    {"move": m, "weight": round(float(w), 6)}
+                    for m, w in sorted_policy[:5]
+                ],
+                "events": trace_events,
+                "selection": "forced_line_override",
+            }
+            trace["decision_mode_detail"] = "mcts_only:forced_line_override"
+        return forced_override
 
     # Immediate survival override (safety, not heuristic bias): if we are likely to
     # be KOed before acting and the top line is not itself a survival line, prefer a
@@ -6447,6 +7613,33 @@ def _choose_mcts_only(
                         trace["decision_mode_detail"] = "mcts_only:survival_switch"
                     return best_switch[0]
 
+    # Waste-turn dethroning veto (owner 2026-07-31): the oddity multiplier alone cannot
+    # dethrone a peaked policy (0.86 * 0.30 still beats 0.04 rivals), so a top pick that
+    # is hard-flagged as a wasted turn yields to the best non-wasteful line with real mass.
+    try:
+        _top_move, _top_weight = sorted_policy[0]
+        _top_odd = detect_odd_move(battle, _top_move, ability_state) if battle is not None else []
+        if any(str(_o).startswith("waste_turn:") for _o in _top_odd):
+            _alt = None
+            for _m, _w in sorted_policy[1:]:
+                if _w < 0.10:
+                    break
+                _o2 = detect_odd_move(battle, _m, ability_state)
+                if not any(str(_x).startswith("waste_turn:") for _x in _o2):
+                    _alt = (_m, _w)
+                    break
+            if _alt is not None:
+                trace_events.append({"type": "waste_veto", "from": _top_move,
+                                     "oddities": [str(_o) for _o in _top_odd], "to": _alt[0]})
+                if trace is not None:
+                    trace["decision_mode_detail"] = "mcts_only:waste_veto"
+                    trace["waste_veto"] = {"vetoed": _top_move, "chosen": _alt[0],
+                                           "alt_weight": round(float(_alt[1]), 4),
+                                           "oddities": [str(_o) for _o in _top_odd]}
+                sorted_policy = [_alt] + [_p for _p in sorted_policy if _p[0] != _alt[0]]
+    except Exception:
+        pass
+
     choice = sorted_policy[0][0]
     if trace is not None:
         trace["mcts_only"] = {
@@ -6470,6 +7663,7 @@ def select_move_from_eval_scores(
     decision_profile: DecisionProfile = DecisionProfile.DEFAULT,
     trace: dict | None = None,
     policy_source: str = "eval",
+    forced_line_bias: dict | None = None,
 ) -> str:
     """Select a move from a policy (MCTS or eval), applying penalty layers.
 
@@ -6485,6 +7679,7 @@ def select_move_from_eval_scores(
             ability_state=ability_state,
             decision_profile=decision_profile,
             trace=trace,
+            forced_line_bias=forced_line_bias,
         )
 
     trace_events = []
@@ -6593,6 +7788,13 @@ def select_move_from_eval_scores(
         trace_events=trace_events,
     )
 
+    blended_policy = _apply_endgame_preservation_bias(
+        blended_policy,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+
     # Repetition detection: penalize moves that have been spammed recently
     blended_policy = apply_repetition_penalty(
         blended_policy,
@@ -6656,6 +7858,32 @@ def select_move_from_eval_scores(
         battle,
         trace_events=trace_events,
     )
+
+    forced_override = _forced_line_mcts_override(
+        sorted_policy,
+        forced_line_bias,
+        battle=battle,
+        ability_state=ability_state,
+        trace_events=trace_events,
+    )
+    if forced_override is not None:
+        if trace is not None:
+            trace["eval"] = {
+                "top_moves": [
+                    {
+                        "move": m,
+                        "eval_weight": w,
+                        "pre_penalty_score": pre_penalty_scores.get(m, 0.0),
+                    }
+                    for m, w in sorted_policy[:5]
+                ],
+                "policy_pre_penalty": pre_penalty_scores,
+                "policy_post_penalty": blended_policy,
+                "events": trace_events,
+                "selection": "forced_line_override",
+            }
+            trace["decision_mode_detail"] = "eval:forced_line_override"
+        return forced_override
 
     if trace is not None:
         top_moves = []
@@ -6983,11 +8211,140 @@ def search_time_num_battles_standard_battle(battle):
 
 
 # Maximum total time budget for a single decision (seconds)
-# Pokemon Showdown gives ~150s total per game, or ~45s per turn with timer on
-# We need to leave margin for network latency, state processing, etc.
-MAX_DECISION_TIME_SECONDS = 20  # Reduced from 30 to avoid timeout losses
-# When in time pressure (<60s remaining), use a much tighter budget
-MAX_DECISION_TIME_PRESSURE_SECONDS = 6  # Reduced from 8 for more safety margin
+# Pokemon Showdown gen9ou gives 120s PER SIDE of CUMULATIVE game clock (+ a short
+# grace). That clock bleeds across EVERY move in the game, so a ~30-turn game must
+# fit ALL its decisions inside ~120s -> ~4s/move average is the hard ceiling, and
+# anything above that forfeits the game to inactivity even from a winning position.
+# The previous 20s cap let a single move eat 1/6 of the entire game clock; with the
+# observed p90=17.8s / max=165s per-move latency this drained the clock in 6-15
+# moves and lost won games (confirmed via live replay + init.log decision-time
+# distribution, 2026-06-24). A shallower IN-TIME move strictly beats a perfect move
+# that forfeits to the clock, so we cap aggressively and ALWAYS submit a move with
+# comfortable timer margin. Env-overridable for A/B without a code change.
+def _env_int_default(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+# Hard wall-clock cap for one decision when NOT in explicit time pressure.
+# 6s keeps a 30-turn game well under 120s even before the game-aware per-turn
+# divisor kicks in, while still allowing real MCTS depth on normal turns.
+MAX_DECISION_TIME_SECONDS = _env_int_default("MAX_DECISION_TIME_SECONDS", 6)
+# When in time pressure (<60s remaining), use a much tighter budget.
+MAX_DECISION_TIME_PRESSURE_SECONDS = _env_int_default(
+    "MAX_DECISION_TIME_PRESSURE_SECONDS", 3
+)
+# Absolute floor on a decision's wall clock: never let the cap collapse so low
+# that we cannot even sample one shallow MCTS pass + pick a move.
+MIN_DECISION_TIME_SECONDS = 1.0
+
+# When the side clock is critically low, skip MCTS entirely and play an instant
+# heuristic move. Even a budget-clamped danger-zone MCTS pass can be CPU-starved
+# (cc=3 concurrent battles on a 4-physical-core i7) and a single un-interruptible
+# sample can overrun the wall-clock deadline -- landing the move AFTER the side
+# bank hits 0 -> "lost due to inactivity". A pure-heuristic move cannot be starved
+# into an overrun, so it is the safe choice in the truly-critical zone. 7s is
+# conservative: only the imminent-forfeit band uses the instant move; all normal
+# and mild-pressure turns are unaffected.
+CRITICAL_CLOCK_FAST_PATH_SECONDS = _env_int_default(
+    "CRITICAL_CLOCK_FAST_PATH_SECONDS", 7
+)
+
+# ---------------------------------------------------------------------------
+# CLOCK-AWARE PER-DECISION BUDGET (the binding fix)
+# ---------------------------------------------------------------------------
+# Showdown gen9ou gives each side a CUMULATIVE clock (~120-150s + grace) that
+# bleeds across EVERY move in the game. The static MAX_DECISION_TIME_SECONDS cap
+# above did NOT actually bind in production: live ladder decisions were observed
+# at p90=24.8s, p99=99s, max=455s even with a 6s cap, because the cap only ever
+# bounded the inner MCTS pass while the surrounding stages (state sampling, the
+# endgame solver, the 1-ply eval-fallback loop, deepcopies) ran UNbounded. A few
+# such overshoots in a row drained the side clock to a forfeit ("lost due to
+# inactivity") even from winning positions and even in SHORT (turn-3) games.
+#
+# The fix: derive ONE wall-clock budget per decision from the remaining side
+# clock divided by the expected remaining turns, with a safety reserve for the
+# network round-trip + move selection, and enforce it as a single monotonic
+# deadline across ALL stages of find_best_move (not just MCTS).
+
+DECISION_EXPECTED_TURNS_LEFT = _env_int_default("DECISION_EXPECTED_TURNS_LEFT", 18)
+DECISION_CLOCK_RESERVE_SECONDS = float(
+    os.getenv("DECISION_CLOCK_RESERVE_SECONDS", "8")
+)
+DECISION_UNKNOWN_CLOCK_ASSUMED_SECONDS = float(
+    os.getenv("DECISION_UNKNOWN_CLOCK_ASSUMED_SECONDS", "45")
+)
+
+# ---------------------------------------------------------------------------
+# MCTS HARD FLOOR (search-starvation guard)
+# ---------------------------------------------------------------------------
+# Opponent-set SAMPLING (Bayesian draw + deepcopy of the whole opponent team) is
+# the dominant pre-MCTS cost and is uninterruptible *within* a single sample, so
+# on heavy states it can overshoot the per-turn decision budget by seconds. Live
+# decision traces (2026-06-25, cc=3/sp=2) showed ~13% of moves SAMPLED a real
+# opponent state but then had <0.2s of per-turn budget left -- and the old code
+# DISCARDED that sampled state and dropped to a 1-ply eval (zero MCTS rollouts),
+# capping true skill at ~coin-flip. On those moves the *side clock* still held a
+# median of ~125s, i.e. there was ample real time; only the self-imposed per-turn
+# budget was spent. The fix: never discard a real sampled state -- grant it a
+# minimum MCTS pass whose deadline is drawn from the SIDE CLOCK (not the per-turn
+# budget). The floor only engages when the side clock is healthy and never spends
+# within MCTS_FLOOR_SIDE_CLOCK_SAFETY_S of the clock, so it stays well inside the
+# outer inactivity guard (async_pick_move binds its timeout to side_clock-6) and
+# therefore CANNOT reintroduce an inactivity forfeit. Env-overridable for A/B.
+MCTS_FLOOR_MS = _env_int_default("MCTS_FLOOR_MS", 600)
+MCTS_FLOOR_MIN_PER_SAMPLE_MS = _env_int_default("MCTS_FLOOR_MIN_PER_SAMPLE_MS", 120)
+MCTS_FLOOR_MIN_SIDE_CLOCK_S = float(
+    os.getenv("MCTS_FLOOR_MIN_SIDE_CLOCK_S", "25")
+)
+MCTS_FLOOR_SIDE_CLOCK_SAFETY_S = float(
+    os.getenv("MCTS_FLOOR_SIDE_CLOCK_SAFETY_S", "12")
+)
+
+
+def _compute_decision_budget_seconds(battle: Battle) -> tuple[float, dict]:
+    """Wall-clock seconds this ONE decision may spend, bound to the side clock.
+
+    budget = clamp( (remaining_side_clock - reserve) / expected_remaining_turns,
+                    MIN_DECISION_TIME_SECONDS, MAX_DECISION_TIME_SECONDS )
+    """
+    clock = battle.time_remaining
+    clock_known = clock is not None
+    if not clock_known:
+        clock = DECISION_UNKNOWN_CLOCK_ASSUMED_SECONDS
+
+    clock = float(clock)
+    turn_num = battle.turn if isinstance(battle.turn, int) and battle.turn > 0 else 0
+    est_turns_left = max(2, DECISION_EXPECTED_TURNS_LEFT - turn_num // 2)
+
+    usable = clock - DECISION_CLOCK_RESERVE_SECONDS
+    if usable <= 0:
+        budget = MIN_DECISION_TIME_SECONDS
+    else:
+        budget = usable / est_turns_left
+
+    budget = max(MIN_DECISION_TIME_SECONDS, min(float(MAX_DECISION_TIME_SECONDS), budget))
+
+    if clock_known:
+        if clock <= 20:
+            budget = min(budget, MIN_DECISION_TIME_SECONDS)
+        elif clock <= 35:
+            budget = min(budget, 1.5)
+        elif clock <= 60:
+            budget = min(budget, float(MAX_DECISION_TIME_PRESSURE_SECONDS))
+
+    meta = {
+        "clock_known": clock_known,
+        "remaining_clock_s": round(clock, 1),
+        "est_turns_left": est_turns_left,
+        "budget_s": round(budget, 2),
+    }
+    return budget, meta
 
 
 def _get_fallback_move(battle: Battle) -> str:
@@ -7059,19 +8416,66 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         battle.user.active = battle.user.reserve.pop(0)
         battle.opponent.active = battle.opponent.reserve.pop(0)
 
-    # Determine time budget
-    in_time_pressure = battle.time_remaining is not None and battle.time_remaining <= 60
-    time_budget = (
-        MAX_DECISION_TIME_PRESSURE_SECONDS
-        if in_time_pressure
-        else MAX_DECISION_TIME_SECONDS
+    # Determine time budget -- bound to the remaining SIDE CLOCK, not a static
+    # cap. This is the single number that every stage below must finish within.
+    time_budget, budget_meta = _compute_decision_budget_seconds(battle)
+    # Single monotonic wall-clock deadline enforced across ALL stages (sampling,
+    # endgame solver, MCTS, eval fallback). Reserve a sliver for selection + the
+    # network round-trip so the move actually LANDS inside the budget.
+    hard_deadline = time.monotonic() + max(
+        MIN_DECISION_TIME_SECONDS, time_budget - 0.4
+    )
+    trace["time_budget"] = budget_meta
+    _stage_t0 = time.monotonic()
+    trace["stage_timing"] = {}
+    in_time_pressure = (
+        battle.time_remaining is not None and battle.time_remaining <= 60
     )
 
-    if in_time_pressure:
+    if in_time_pressure or not budget_meta["clock_known"] or time_budget <= MAX_DECISION_TIME_PRESSURE_SECONDS:
         logger.warning(
-            f"TIME PRESSURE: {battle.time_remaining}s remaining, "
-            f"budget={time_budget}s"
+            "TIME BUDGET: clock=%s%s, est_turns_left=%d, budget=%.2fs",
+            battle.time_remaining if budget_meta["clock_known"] else "unknown",
+            "" if budget_meta["clock_known"] else " (assumed)",
+            budget_meta["est_turns_left"],
+            time_budget,
         )
+
+    def _time_left() -> float:
+        return hard_deadline - time.monotonic()
+
+    def _out_of_time(reserve: float = 0.0) -> bool:
+        return _time_left() <= reserve
+
+    # =========================================================================
+    # CRITICAL-CLOCK FAST PATH (inactivity-forfeit safety net)
+    # =========================================================================
+    # When the side clock is critically low, skip ALL sampling/MCTS and play an
+    # instant heuristic move. With cc=3 concurrent battles on a 4-physical-core
+    # i7, even a budget-clamped danger-zone MCTS pass gets CPU-starved and a
+    # single un-interruptible sample can overrun the wall-clock deadline, so the
+    # move lands AFTER the side bank hits 0 -> "lost due to inactivity". A pure
+    # heuristic move (no MCTS) cannot be starved into an overrun. Only fires when
+    # the clock is KNOWN and truly critical; normal/mild-pressure turns fall
+    # through to full search. _get_fallback_move handles force_switch safely.
+    if (
+        battle.time_remaining is not None
+        and battle.time_remaining <= CRITICAL_CLOCK_FAST_PATH_SECONDS
+    ):
+        fast_move = _get_fallback_move(battle)
+        logger.warning(
+            "CRITICAL CLOCK FAST PATH: clock=%.1fs <= %ds -- skipping MCTS, "
+            "playing instant heuristic move %s",
+            float(battle.time_remaining),
+            CRITICAL_CLOCK_FAST_PATH_SECONDS,
+            fast_move,
+        )
+        trace["decision_mode"] = "critical_clock_fast_path"
+        trace["critical_clock_fast_path"] = True
+        trace["fallback_reason"] = "critical_clock"
+        trace["choice"] = fast_move
+        trace["decision_time_s"] = round(time.time() - start_time, 3)
+        return fast_move, trace
 
     # Detect opponent's abilities before we start sampling
     # (sampling may change the ability, so check the original battle state)
@@ -7301,11 +8705,15 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
     # =========================================================================
     # PHASE 4.1: ENDGAME SOLVER
     # =========================================================================
-    # Try to solve simple endgames deterministically before MCTS
+    # Try to solve simple endgames deterministically before MCTS.
+    # The endgame solver can search combinatorially and is OPTIONAL -- skip it
+    # entirely when the clock budget is tight so it can never blow the deadline.
     try:
         from fp.search.endgame import is_endgame, solve_endgame
 
-        if is_endgame(battle, ENDGAME_MAX_POKEMON):
+        if _out_of_time(reserve=2.0):
+            logger.info("Skipping endgame solver (%.1fs budget left)", _time_left())
+        elif is_endgame(battle, ENDGAME_MAX_POKEMON):
             solution = solve_endgame(battle)
             if solution and solution.is_deterministic and solution.best_move:
                 logger.info(
@@ -7388,52 +8796,142 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         # Instead of burning 3000ms/sample and panicking at <60s, proactively
         # scale per-sample time so we never run the clock down.
         turn_num = battle.turn if isinstance(battle.turn, int) and battle.turn > 0 else 0
-        if battle.time_remaining is not None:
-            game_remaining_s = battle.time_remaining
-        else:
-            # Estimate conservatively: assume ~5s spent per turn so far
-            game_remaining_s = max(210.0 - turn_num * 5.0, 30.0)
-        est_turns_left = max(5, 50 - turn_num)
-        # Budget per turn: divide remaining time, leave 2s for overhead
-        turn_budget_s = (game_remaining_s / est_turns_left) - 2.0
-        if turn_budget_s > 0:
-            game_aware_ms = int((turn_budget_s * 1000) / max(num_battles, 1))
-            game_aware_ms = max(game_aware_ms, 500)  # Floor: never below 500ms
-            if game_aware_ms < search_time_per_battle:
-                logger.info(
-                    "Game-aware budget: %dms/sample (game_remaining=%.0fs, "
-                    "turn=%d, est_left=%d, was %dms)",
-                    game_aware_ms, game_remaining_s, turn_num,
-                    est_turns_left, search_time_per_battle,
-                )
-                search_time_per_battle = game_aware_ms
+        # Per-sample ms is bound to the SINGLE wall-clock budget for this whole
+        # decision: divide the time we still have across the samples we intend to
+        # run. This replaces the old game-clock estimate with the authoritative
+        # hard_deadline computed at the top from battle.time_remaining.
+        budget_left = max(0.0, _time_left())
+        # Opponent-set SAMPLING (deepcopy + Bayesian set draw per mon) is the
+        # dominant pre-MCTS cost and -- unlike the inner MCTS pass -- it was NOT
+        # bound to the decision budget. Live stage-timing showed prepare_fn for
+        # 6 samples consuming the ENTIRE budget (p90 sampling 4.4s, max 5.6s on a
+        # 6s budget) even at a full 150s clock, leaving negative time for MCTS and
+        # dropping ~49% of moves to 1-ply eval_fallback. We now (1) reserve only a
+        # FRACTION of the budget for sampling so MCTS always gets the rest, (2)
+        # pre-cap the sample count by a conservative measured per-sample cost, and
+        # (3) hand prepare_fn a hard sampling deadline so it stops early (always
+        # keeping >=1 sample). MCTS then runs on whatever real states we sampled.
+        SAMPLING_BUDGET_FRACTION = float(
+            os.getenv("DECISION_SAMPLING_BUDGET_FRACTION", "0.5")
+        )
+        PER_SAMPLE_COST_EST_S = float(
+            os.getenv("DECISION_PER_SAMPLE_COST_EST_S", "0.7")
+        )
+        sampling_budget_s = max(0.0, budget_left * SAMPLING_BUDGET_FRACTION)
+        cost_capped = max(1, int(sampling_budget_s / max(PER_SAMPLE_COST_EST_S, 0.05)))
+        num_battles = max(1, min(num_battles, cost_capped))
+        # Hard wall-clock stop for the sampling loop itself.
+        sampling_deadline = min(
+            hard_deadline,
+            time.monotonic() + max(PER_SAMPLE_COST_EST_S, sampling_budget_s),
+        )
+        per_sample_budget_s = budget_left / max(num_battles, 1)
+        game_aware_ms = max(50, int(per_sample_budget_s * 1000))
+        if game_aware_ms < search_time_per_battle:
+            logger.info(
+                "Clock-aware budget: %dms/sample (budget_left=%.1fs, turn=%d, "
+                "samples=%d, was %dms)",
+                game_aware_ms, budget_left, turn_num, num_battles,
+                search_time_per_battle,
+            )
+            search_time_per_battle = game_aware_ms
 
-        # Invest more in high-stakes turns (but respect game-aware cap)
+        # Invest more in high-stakes turns, but NEVER above the per-sample budget.
         high_stakes = ability_state.opponent_active_is_threat or ability_state.ko_line_available
         if high_stakes and not in_time_pressure:
             boosted = int(search_time_per_battle * 1.5)
             boosted = min(boosted, FoulPlayConfig.search_time_ms * 2)
-            # Don't let high-stakes boost exceed game-aware budget
-            if turn_budget_s > 0:
-                max_high_stakes_ms = int((turn_budget_s * 1000) / max(num_battles, 1))
-                boosted = min(boosted, max_high_stakes_ms)
+            boosted = min(boosted, max(50, int(per_sample_budget_s * 1000)))
             search_time_per_battle = boosted
 
+        # Out of time before we even sample? Skip straight to the fast fallback.
         try:
-            sampled_battles = prepare_fn(battle, num_battles)
-        except Exception as e:
-            logger.warning(f"Battle sampling failed, using original: {e}")
-            sampled_battles = [(battle, 1.0)]
+            trace["stage_timing"]["pre_sampling_s"] = round(time.monotonic() - _stage_t0, 3)
+        except Exception:
+            pass
+        _sampling_t0 = time.monotonic()
+        # --- MCTS HARD FLOOR (search-starvation guard) ---------------------------
+        # The per-turn budget (hard_deadline) is a self-imposed game-clock-
+        # conservation cap, NOT the inactivity-forfeit guard (that is the outer
+        # async_pick_move timeout bound to side_clock-6). When opponent-set sampling
+        # overshoots the per-turn budget but the SIDE CLOCK is still healthy, we
+        # therefore have real time to spend: rather than throwing a sampled state
+        # away for a 1-ply eval, we grant a minimum MCTS pass bounded by the side
+        # clock. The floor never spends within MCTS_FLOOR_SIDE_CLOCK_SAFETY_S of the
+        # clock, so it stays inside the outer guard and cannot cause a timeout. Under
+        # genuine time pressure (low side clock) the floor is disabled and the old
+        # protective eval-fallback behavior is preserved unchanged.
+        side_clock = battle.time_remaining
+        clock_healthy = side_clock is None or float(side_clock) > MCTS_FLOOR_MIN_SIDE_CLOCK_S
 
-        # Check time budget
-        elapsed = time.time() - start_time
-        remaining_budget = time_budget - elapsed - 2.0
-        if remaining_budget <= 0:
-            logger.warning("No time left for MCTS, using eval fallback")
-            sampled_battles = []  # Signal to skip MCTS
+        def _floor_deadline() -> float:
+            """Latest monotonic time MCTS may run to, guaranteeing a minimum real
+            search when the side clock can clearly afford it (else hard_deadline)."""
+            if not clock_healthy:
+                return hard_deadline
+            target = time.monotonic() + (MCTS_FLOOR_MS / 1000.0)
+            if side_clock is not None:
+                safe_cap = time.monotonic() + max(
+                    0.05, float(side_clock) - MCTS_FLOOR_SIDE_CLOCK_SAFETY_S
+                )
+                target = min(target, safe_cap)
+            return max(hard_deadline, target)
 
-        # Cap search time to fit within budget
-        if sampled_battles and remaining_budget > 0:
+        if _out_of_time(reserve=0.2) and not clock_healthy:
+            # Out of per-turn budget AND the side clock is tight -> protect the clock.
+            logger.warning(
+                "No time left for MCTS (%.2fs budget left, clock=%s), using eval fallback",
+                _time_left(), side_clock,
+            )
+            sampled_battles = []
+        else:
+            # Even if the per-turn budget is already spent, a healthy side clock can
+            # afford one bounded sample; widen the sampling deadline to the side-clock
+            # floor so prepare_fn still yields >=1 real state for the MCTS floor.
+            sample_deadline = sampling_deadline
+            if _out_of_time(reserve=0.2):
+                sample_deadline = max(sampling_deadline, _floor_deadline())
+            try:
+                sampled_battles = prepare_fn(battle, num_battles, deadline=sample_deadline)
+            except Exception as e:
+                logger.warning(f"Battle sampling failed, using original: {e}")
+                sampled_battles = [(battle, 1.0)]
+
+        # Re-check after sampling (prepare_fn itself can be slow).
+        try:
+            trace["stage_timing"]["sampling_s"] = round(time.monotonic() - _sampling_t0, 3)
+            trace["stage_timing"]["num_sampled"] = len(sampled_battles)
+        except Exception:
+            pass
+
+        # HARD FLOOR: never discard a real sampled state for a 1-ply eval. If the
+        # per-turn budget is spent but we sampled >=1 state and the side clock is
+        # healthy, run a minimum MCTS pass on it (deadline drawn from the side clock)
+        # instead. Only drop to eval when the side clock itself is too tight.
+        mcts_deadline = hard_deadline
+        floor_extended = False
+        if sampled_battles and _out_of_time(reserve=0.2):
+            if clock_healthy:
+                mcts_deadline = _floor_deadline()
+                floor_extended = mcts_deadline > hard_deadline
+                logger.warning(
+                    "Per-turn budget spent after sampling (%.2fs left) but clock=%s "
+                    "healthy -- granting MCTS floor (+%.0fms) instead of 1-ply eval.",
+                    _time_left(), side_clock,
+                    max(0.0, (mcts_deadline - hard_deadline) * 1000.0),
+                )
+            else:
+                logger.warning(
+                    "No time left after sampling (%.2fs budget left, clock=%s), using eval fallback",
+                    _time_left(), side_clock,
+                )
+                sampled_battles = []
+
+        # Cap per-sample search time to the time left until the (possibly floor-
+        # extended) MCTS deadline. When the floor granted us room, do not collapse
+        # below the per-sample floor so the move earns a real (if shallow) search.
+        if sampled_battles:
+            remaining_budget = max(0.0, mcts_deadline - time.monotonic())
             max_per_battle_ms = int(
                 (remaining_budget * 1000) / max(len(sampled_battles), 1)
             )
@@ -7442,12 +8940,16 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                     f"Reducing search time from {search_time_per_battle}ms to "
                     f"{max_per_battle_ms}ms to fit time budget"
                 )
-                search_time_per_battle = max(max_per_battle_ms, 10)
+                floor_ms = MCTS_FLOOR_MIN_PER_SAMPLE_MS if floor_extended else 10
+                search_time_per_battle = max(max_per_battle_ms, floor_ms)
 
         trace["search"] = {
             "num_battles": len(sampled_battles),
             "search_time_ms": search_time_per_battle,
-            "time_budget_s": time_budget,
+            "time_budget_s": round(time_budget, 2),
+            "budget_left_s": round(_time_left(), 2),
+            "floor_extended": floor_extended,
+            "mcts_deadline_left_s": round(mcts_deadline - time.monotonic(), 2),
         }
         logger.info(
             "Sampling {} simulated battles (MCTS) at {}ms each".format(
@@ -7458,10 +8960,16 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         mcts_policy = {}
         mcts_meta = {}
         if sampled_battles:
+            # MCTS shares a single monotonic deadline. Normally this is the per-turn
+            # hard_deadline (the game-clock-conservation guard); when a real state
+            # was sampled but the per-turn budget overshot, it is the side-clock-
+            # bounded floor so the move still earns real rollouts. Both stay inside
+            # the outer inactivity guard, so the 0-timeout guarantee holds either way.
             mcts_policy, mcts_meta = _run_mcts_policy_pass(
                 sampled_battles,
                 per_sample_ms=search_time_per_battle,
                 max_samples=num_battles,
+                deadline=mcts_deadline,
             )
             trace["mcts_meta"] = mcts_meta
 
@@ -7478,10 +8986,19 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 trace["forced_line_bias"] = {
                     "move": forced.move,
                     "confidence": forced.confidence,
+                    "reason": forced.reason,
+                    "line_type": forced.line_type,
                     "applied": forced.move in mcts_policy,
                 }
 
             trace["mcts_policy_raw"] = dict(mcts_policy)
+
+            # Loss-derived matchup-memory bias (safe weights path): nudge the
+            # engine's own candidates toward pivoting away from opponent species
+            # that historically beat us. Bounded multiplicative reweight only.
+            mcts_policy = matchup_memory.bias_policy(
+                mcts_policy, battle, trace=trace
+            )
 
             choice = select_move_from_eval_scores(
                 mcts_policy,
@@ -7491,6 +9008,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                 decision_profile=decision_profile,
                 trace=trace,
                 policy_source="mcts",
+                forced_line_bias=trace.get("forced_line_bias"),
             )
 
             elapsed_total = time.time() - start_time
@@ -7508,7 +9026,17 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
         eval_scores = {}
         total_weight = 0.0
         eval_samples = sampled_battles if sampled_battles else [(battle, 1.0)]
-        for sampled_battle, weight in eval_samples:
+        for sample_idx, (sampled_battle, weight) in enumerate(eval_samples):
+            # The 1-ply eval fallback loops one evaluate_position() per sample and
+            # was previously UNbounded -- a fat batch of samples here is what drove
+            # the worst 40-118s decisions. Stop once the budget is spent, but
+            # always complete at least one sample so we return a real policy.
+            if sample_idx > 0 and total_weight > 0 and _out_of_time(reserve=0.2):
+                logger.warning(
+                    "Eval fallback stopped after %d/%d samples (%.2fs budget left)",
+                    sample_idx, len(eval_samples), _time_left(),
+                )
+                break
             try:
                 scores = evaluate_position(sampled_battle)
                 for move, score in scores.items():
@@ -7542,8 +9070,18 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
                     f"Forced line bias (eval fallback): {forced.move} boosted "
                     f"{boost:.2f}x (confidence {forced.confidence})"
                 )
+            trace["forced_line_bias"] = {
+                "move": forced.move,
+                "confidence": forced.confidence,
+                "reason": forced.reason,
+                "line_type": forced.line_type,
+                "applied": forced.move in eval_scores,
+            }
 
         trace["eval_scores_raw"] = dict(eval_scores)
+
+        # Loss-derived matchup-memory bias (safe weights path), eval fallback.
+        eval_scores = matchup_memory.bias_policy(eval_scores, battle, trace=trace)
 
         choice = select_move_from_eval_scores(
             eval_scores,
@@ -7552,6 +9090,7 @@ def find_best_move(battle: Battle) -> tuple[str, dict]:
             playstyle=playstyle,
             decision_profile=decision_profile,
             trace=trace,
+            forced_line_bias=trace.get("forced_line_bias"),
         )
 
         elapsed_total = time.time() - start_time

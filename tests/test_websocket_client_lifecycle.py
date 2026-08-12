@@ -7,15 +7,19 @@ class FakeSendQueue:
     def __init__(self):
         self.stopped = False
 
+    async def enqueue(self, websocket, message, priority=None):
+        await websocket.send(message)
+
     async def stop(self):
         self.stopped = True
 
 
 class FakeWebSocket:
-    def __init__(self, *, closed=False):
+    def __init__(self, *, closed=False, recv_messages=None):
         self.closed = closed
         self.close_count = 0
         self.sent = []
+        self.recv_messages = list(recv_messages or [])
 
     async def close(self):
         self.close_count += 1
@@ -23,6 +27,11 @@ class FakeWebSocket:
 
     async def send(self, message):
         self.sent.append(message)
+
+    async def recv(self):
+        if not self.recv_messages:
+            await asyncio.sleep(30)
+        return self.recv_messages.pop(0)
 
 
 def _new_client_for_lifecycle_tests():
@@ -133,5 +142,42 @@ def test_close_awaits_background_tasks_and_clears_receive_state():
         assert client.active_searches == set()
         assert client._search_owner is None
         assert client._search_owner_since is None
+
+    asyncio.run(scenario())
+
+
+def test_no_security_login_uses_local_trn_and_waits_for_confirmation(monkeypatch):
+    async def scenario():
+        client = _new_client_for_lifecycle_tests()
+        client.username = "foulerEvalBot"
+        client.websocket = FakeWebSocket(
+            recv_messages=[
+                "|challstr|1|abc",
+                "|updateuser|FoulerEvalBot|1|0",
+            ]
+        )
+        monkeypatch.setenv("FOULER_NO_SECURITY_LOGIN", "1")
+
+        user_id = await client.login()
+
+        assert user_id == "foulerevalbot"
+        assert client.websocket.sent == ["|/trn foulerEvalBot"]
+
+    asyncio.run(scenario())
+
+
+def test_accept_challenge_matches_showdown_user_ids_case_insensitively():
+    async def scenario():
+        client = _new_client_for_lifecycle_tests()
+        client.username = "foulerEvalBot"
+        client.websocket = FakeWebSocket()
+        await client.global_queue.put(
+            "|pm| evalBaseline| FoulerEvalBot|/challenge|gen9ou|fat-team|0|"
+        )
+        client._dispatcher_running = True
+
+        await client.accept_challenge("gen9ou", room_name=None, timeout=1)
+
+        assert client.websocket.sent == ["|/accept evalBaseline"]
 
     asyncio.run(scenario())

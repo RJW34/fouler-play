@@ -1,15 +1,31 @@
 {
   "schemaVersion": "fouler-play-elo-proof/v1",
   "format": "gen9ou",
+  "sourceCommit": "configured-at-generation-time",
+  "source": {
+    "sourceCommit": "configured-at-generation-time",
+    "generatedBy": "scripts/devstream_cycle_report.py"
+  },
   "account": {
     "showdownUserId": "configured-at-runtime",
     "ratingSource": "pokemonshowdown-user-api"
   },
   "target": {
-    "ratingFloor": 1800,
+    "ratingFloor": 1700,
     "minimumCompletedGames": 30,
+    "sustainMinimumGames": 30,
+    "sustainMinimumGamesPerTeam": 10,
+    "maximumSustainDrawdown": 75,
+    "maximumPreTargetDrawdown": 75,
+    "minimumSustainWinRate": 0.5,
+    "requiredTeams": [
+      "fat-team-1-stall",
+      "fat-team-2-pivot",
+      "fat-team-3-dondozo"
+    ],
     "opponentBand": "prefer 1700+ when opponent rating is known",
-    "noCherryPicking": true
+    "noCherryPicking": true,
+    "uninterruptedPostTargetFloorRequired": true
   },
   "session": {
     "startedAt": null,
@@ -18,12 +34,63 @@
     "maxConcurrentBattles": 2
   },
   "games": [],
+  "analysis": {
+    "generatedAtUtc": null,
+    "autoresearchJsonPath": "replay_analysis/autoresearch_latest.json",
+    "autoresearchReportPath": "replay_analysis/reports/autoresearch_latest.md",
+    "decisionTraceReviewPath": "devstream/truth/proof-status.json",
+    "topIssue": null,
+    "reviewedBattleCount": 0,
+    "lossesAnalyzed": 0
+  },
   "summary": {
     "completedGames": 0,
     "wins": 0,
     "losses": 0,
     "peakRating": null,
     "finalRating": null,
-    "passesTarget": false
+    "passesTarget": false,
+    "sustainedTarget": false,
+    "sustainWindowGames": 0,
+    "gamesAtOrAboveFloor": 0,
+    "belowFloorAfterFirstTarget": 0,
+    "maxSustainDrawdown": null,
+    "preTargetRatedGames": 0,
+    "maxPreTargetDrawdown": null,
+    "preTargetDrawdownPeakRating": null,
+    "preTargetDrawdownPeakBattleId": null,
+    "preTargetDrawdownTroughRating": null,
+    "preTargetDrawdownTroughBattleId": null,
+    "preTargetDrawdownWithinLimit": true,
+    "sustainReplayProofCount": 0,
+    "missingSustainReplayCount": 0,
+    "missingSustainReplayBattleIds": [],
+    "mismatchedSustainReplayCount": 0,
+    "mismatchedSustainReplayBattleIds": [],
+    "missingSustainBattleIdCount": 0,
+    "duplicateSustainBattleIdCount": 0,
+    "duplicateSustainBattleIds": [],
+    "duplicateSustainReplayIdCount": 0,
+    "duplicateSustainReplayIds": [],
+    "unknownSustainTeamCount": 0,
+    "unknownSustainTeamBattleIds": [],
+    "decisionTraceProofCount": 0,
+    "missingDecisionTraceCount": 0,
+    "missingDecisionTraceBattleIds": [],
+    "duplicateDecisionTraceProofCount": 0,
+    "duplicateDecisionTraceProofs": [],
+    "missingBattleTimestampCount": 0,
+    "missingBattleTimestampBattleIds": [],
+    "outOfOrderBattleTimestampCount": 0,
+    "outOfOrderBattleTimestampBattleIds": [],
+    "chronologicalBattleOrderComplete": true,
+    "analysisEvidenceComplete": false,
+    "sustainEvidenceShapeComplete": false,
+    "sustainProofComplete": false,
+    "teamCoverage": {
+      "fat-team-1-stall": 0,
+      "fat-team-2-pivot": 0,
+      "fat-team-3-dondozo": 0
+    }
   }
 }

@@ -21,6 +21,21 @@ PID_FILE = os.path.join(LOCK_DIR, ".bot.pid")
 PID_CREATE_TIME_TOLERANCE_SECONDS = 2.0
 
 
+def _truthy_env(name: str) -> bool:
+    return str(os.environ.get(name) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _offline_eval_mode() -> bool:
+    return _truthy_env("FOULER_OFFLINE_EVAL")
+
+
+def _pid_file_path() -> str:
+    raw = str(os.environ.get("FOULER_PROCESS_LOCK_FILE") or "").strip()
+    if raw:
+        return os.path.abspath(raw)
+    return PID_FILE
+
+
 def _normalize_cmdline(cmdline) -> list[str]:
     return [str(part) for part in (cmdline or [])]
 
@@ -76,6 +91,8 @@ def _arg_positive_int(cmdline, name: str) -> int | None:
 def _current_runtime_lease_guard() -> dict[str, object] | None:
     if not _is_battle_runner_command(sys.argv):
         return None
+    if _offline_eval_mode():
+        return None
     if validate_runtime_lease is None:
         return {
             "ok": False,
@@ -119,6 +136,7 @@ def _pid_payload() -> dict[str, object]:
         "pid": os.getpid(),
         "startedAt": datetime.now(timezone.utc).isoformat(),
         "command": _normalize_cmdline(sys.argv),
+        "lockFile": _pid_file_path(),
     }
     try:
         payload["createTime"] = psutil.Process(os.getpid()).create_time()
@@ -128,7 +146,7 @@ def _pid_payload() -> dict[str, object]:
 
 
 def _read_pid_payload() -> dict[str, object] | int | None:
-    with open(PID_FILE, encoding="utf-8") as f:
+    with open(_pid_file_path(), encoding="utf-8") as f:
         raw = f.read().strip()
     if not raw:
         return None
@@ -195,6 +213,8 @@ def is_bot_process(pid: int) -> bool:
 
 def kill_stale_processes():
     """Find and kill any stale bot processes from THIS directory only."""
+    if _offline_eval_mode():
+        return 0
     our_dir = os.path.abspath(LOCK_DIR)
     protected_pids = _protected_process_ids()
     killed = 0
@@ -215,7 +235,9 @@ def kill_stale_processes():
 
 def _claim_pid_file_atomically():
     """Create the PID file only if no other process already owns it."""
-    fd = os.open(PID_FILE, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    path = _pid_file_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
     try:
         content = json.dumps(_pid_payload(), sort_keys=True) + "\n"
         os.write(fd, content.encode("utf-8"))
@@ -260,7 +282,7 @@ def _remove_stale_pid_file() -> bool:
         print(f"[LOCK] Stale PID file (PID {old_pid} not a bot). Cleaning up.", file=sys.stderr)
 
     try:
-        os.remove(PID_FILE)
+        os.remove(_pid_file_path())
     except FileNotFoundError:
         return True
     except OSError as exc:
@@ -312,10 +334,11 @@ def acquire_lock(username: str = "unknown") -> bool:
 def release_lock():
     """Release the process lock."""
     try:
-        if os.path.exists(PID_FILE):
+        path = _pid_file_path()
+        if os.path.exists(path):
             pid = _pid_from_payload(_read_pid_payload())
             if pid == os.getpid():
-                os.remove(PID_FILE)
+                os.remove(path)
                 print(f"[LOCK] Released lock (PID {os.getpid()})", file=sys.stderr)
     except (ValueError, json.JSONDecodeError, OSError):
         pass

@@ -13,7 +13,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 try:
     import psutil  # type: ignore
@@ -112,6 +112,98 @@ EXPECTED_DEVSTREAM_BATTLE_SURFACES = positive_int_env(
     "FP_EXPECTED_DEVSTREAM_BATTLE_SURFACES",
     DEFAULT_DEVSTREAM_BATTLE_SURFACES,
 )
+ACCOUNT_AUTHORITY_ENV_NAMES = (
+    "FOULER_RUNTIME_LEASE_ACCOUNT",
+    "FOULER_ACTIVE_ACCOUNT",
+    "PS_USERNAME",
+    "SHOWDOWN_USER_ID",
+)
+
+
+def normalize_account_name(value: object) -> str:
+    return str(value or "").strip().strip("\"'`").lower()
+
+
+def env_account(env: Mapping[str, str] | None = None) -> str:
+    source = env if env is not None else os.environ
+    for name in ACCOUNT_AUTHORITY_ENV_NAMES:
+        value = str(source.get(name) or "").strip()
+        if value:
+            return value
+    return ""
+
+
+def mapping_value(data: Mapping[str, Any], path: tuple[str, ...]) -> object:
+    current: object = data
+    for key in path:
+        if not isinstance(current, Mapping):
+            return None
+        current = current.get(key)
+    return current
+
+
+def first_mapping_text(data: Mapping[str, Any], paths: tuple[tuple[str, ...], ...]) -> str:
+    for path in paths:
+        value = mapping_value(data, path)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
+def runtime_lease_account(env: Mapping[str, str] | None = None) -> tuple[str, str]:
+    source = env if env is not None else os.environ
+    configured = str(source.get("FOULER_RUNTIME_LEASE_PATH") or "").strip()
+    path = Path(configured) if configured else ROOT / "devstream" / "truth" / "runtime-lease.json"
+    lease = read_json_file(path)
+    if not isinstance(lease, dict):
+        return "", str(path)
+    account = first_mapping_text(
+        lease,
+        (
+            ("account",),
+            ("psUsername",),
+            ("showdownAccount",),
+            ("battleScope", "account"),
+            ("battleScope", "psUsername"),
+        ),
+    )
+    return account, str(path)
+
+
+def account_authority_snapshot(env: Mapping[str, str] | None = None) -> dict[str, Any]:
+    runtime_env_account = env_account(env)
+    lease_account, lease_path = runtime_lease_account(env)
+    claims: list[dict[str, str]] = []
+    if runtime_env_account:
+        claims.append({"source": "runtime-env", "account": runtime_env_account})
+    if lease_account:
+        claims.append({"source": "runtime-lease", "account": lease_account})
+    distinct: dict[str, str] = {}
+    for claim in claims:
+        normalized = normalize_account_name(claim.get("account"))
+        if normalized:
+            distinct.setdefault(normalized, claim["account"])
+    blockers: list[str] = []
+    if len(distinct) > 1:
+        blockers.append(
+            "Showdown account authorities disagree: "
+            + ", ".join(sorted(distinct.values(), key=str.lower))
+        )
+    expected = lease_account or runtime_env_account or None
+    return {
+        "policy": "fouler-health-account-authority/v1",
+        "ready": not blockers,
+        "observable": bool(claims),
+        "expectedAccount": expected,
+        "runtimeAccount": runtime_env_account or None,
+        "envAccount": runtime_env_account or None,
+        "runtimeLeaseAccount": lease_account or None,
+        "runtimeLeasePath": lease_path,
+        "claims": claims,
+        "distinctAccounts": sorted(distinct.values(), key=str.lower),
+        "blockers": blockers,
+        "warnings": [] if claims else ["no runtime env or runtime lease account was visible to the health probe"],
+    }
 
 SERVICES = [
     "fouler-play.service",
@@ -1050,6 +1142,9 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         }
     )
     offline_eval_result_proof_ready = bool(offline_eval_result_proof.get("ready"))
+    account_authority = account_authority_snapshot()
+    if not account_authority["ready"]:
+        blockers.extend(str(item) for item in account_authority["blockers"])
     discord_reporting_ready = bool(discord_queue.get("ready", True) or local_discord_proof)
     proof_blockers = [] if local_discord_proof else [str(item) for item in discord_queue.get("blockers") or []]
     if battle_count:
@@ -1172,6 +1267,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
         and not duplicate_battle_runner_blocked
         and not runtime_blocked
         and not credential_failure.get("found")
+        and account_authority["ready"]
         and not missing_required
         and battle_surfaces["ready"]
         and slots["ready"]
@@ -1254,6 +1350,7 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
             "usefulWorkProofReady": useful_work_proof_ready,
         },
         "usefulWorkProof": useful_work_proof,
+        "accountAuthority": account_authority,
         "offlineEvalReadiness": offline_eval_readiness,
         "battleSurfaceReadiness": battle_surfaces,
         "slotReadiness": slots,
@@ -1281,6 +1378,8 @@ def build_payload(*, check_http: bool = True) -> dict[str, Any]:
             "processInspectionReady": process_inspection_ready,
             "battleRunnerCount": len(battle_runners),
             "duplicateBattleRunners": duplicate_battle_runner_blocked,
+            "accountAuthority": account_authority,
+            "showdownAccount": account_authority.get("expectedAccount"),
             "requiredHermesAction": (
                 "drain/adopt exactly one live battle runner; do not kill processes from this health probe"
                 if duplicate_battle_runner_blocked

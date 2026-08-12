@@ -2,6 +2,28 @@
 
 > Codex-and-friends orientation. **Full agent manual is `CLAUDE.md`** in this directory — read that first; this file is the quick "where do I start" pointer.
 
+## Current Devstream Runtime Truth - 2026-06-20
+
+- Live runtime is on JIGGLYPUFF at `Ryanj@192.168.1.182`,
+  `D:\Projects\fouler-play`.
+- JIGGLY runs `HERMES-FoulerMissionMonitor` every 5 minutes through
+  `scripts\fouler_mission_monitor_task.ps1`.
+- Canonical HERMES health proof is
+  `devstream\truth\mission-monitor.json`, with tickets under
+  `devstream\tickets\fouler-play\`.
+- The mission monitor treats timeouts, disconnects, inactivity, and forfeits
+  as losses for safety-valve math; do not report them as ties.
+- It raises tickets for stale health, duplicate ladder runners, idle runtime,
+  completed finite supervisor cycles, Discord reporting defects, loss streaks,
+  low recent win rate, recent rating drawdown from a rated-window peak, and
+  session stop-loss governance. It also blocks readiness claims until
+  `latest-elo-proof.json` proves the 1700 sustain contract across the three
+  fixed teams.
+- It may repair only through its rails: renew a finite runtime lease and start
+  the bounded battle supervisor when there are no duplicate runners, no stop
+  file, and no active session stop-loss breach. Do not start additional ladder
+  clients manually.
+
 ## What this repo is
 
 An overnight team-testing service for competitive Pokemon (gen9ou): load fat/stall teams, the bot ladders them while you sleep, you get a morning report on hard matchups and underperforming Pokemon. Forked from [pmariglia/foul-play](https://github.com/pmariglia/foul-play).

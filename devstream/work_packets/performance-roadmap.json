@@ -4,9 +4,9 @@
   "packets": [
     {
       "id": "fouler-perf-001",
-      "title": "Generate live 1800 ELO proof files",
+      "title": "Generate live 1700 sustain proof files",
       "status": "planned",
-      "objective": "Write a batch-end proof file for rating movement, opponent bands, batch W/L, replay ids, and representative failure classes using the committed ELO proof schema.",
+      "objective": "Write a batch-end proof file for rating movement, opponent bands, batch W/L, replay ids, representative failure classes, and the 30-game post-1700 sustain window using the committed ELO proof schema.",
       "allowedPaths": ["devstream/", "replay_analysis/", "scripts/", "tests/"],
       "validation": ["python3 -m py_compile scripts/devstream_health.py", "python3 -m pytest tests/test_autoresearch.py tests/test_state_endpoint_status.py"],
       "doneProof": ["devstream/truth/latest-elo-proof.json"]

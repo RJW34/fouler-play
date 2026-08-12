@@ -181,6 +181,40 @@ def test_readiness_payload_ready_with_eval_proof(tmp_path):
     assert payload["paths"]["frozenBaseline"] == "eval_results\\offline\\frozen.json"
     assert "infrastructure\\offline_eval.py" in payload["commands"]["candidateEval"]
     assert "--battles 200" in payload["commands"]["candidateEval"]
+    assert "--search-time-ms 100" in payload["commands"]["candidateEval"]
+    assert "--search-time-ms 100" in payload["commands"]["frozenBaseline"]
+    assert "--manage-showdown-server" in payload["commands"]["candidateEval"]
+
+
+def test_readiness_payload_honors_configured_eval_search_time(tmp_path):
+    _write_ready_eval_files(tmp_path)
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={"IMPROVE_AGENT_EVAL_SEARCH_TIME_MS": "50"},
+        run_import_check=False,
+        run_server_check=False,
+        run_prereq_check=False,
+    )
+
+    assert payload["configuration"]["searchTimeMs"] == 50
+    assert "--search-time-ms 50" in payload["commands"]["candidateEval"]
+    assert "--search-time-ms 50" in payload["commands"]["frozenBaseline"]
+
+
+def test_readiness_payload_can_disable_managed_showdown_command(tmp_path):
+    _write_ready_eval_files(tmp_path)
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={"IMPROVE_AGENT_EVAL_MANAGE_SHOWDOWN": "0"},
+        run_import_check=False,
+        run_server_check=False,
+        run_prereq_check=False,
+    )
+
+    assert payload["configuration"]["manageShowdownServer"] is False
+    assert "--manage-showdown-server" not in payload["commands"]["candidateEval"]
 
 
 def test_offline_eval_result_proof_reports_accepted_artifacts(tmp_path):
@@ -473,7 +507,7 @@ def test_readiness_payload_reports_closed_showdown_eval_port(tmp_path):
 
     payload = offline_eval_readiness.build_readiness_payload(
         root=tmp_path,
-        env={"EVAL_SHOWDOWN_PORT": str(port)},
+        env={"EVAL_SHOWDOWN_PORT": str(port), "IMPROVE_AGENT_EVAL_MANAGE_SHOWDOWN": "0"},
         run_import_check=False,
         run_prereq_check=False,
     )
@@ -482,8 +516,27 @@ def test_readiness_payload_reports_closed_showdown_eval_port(tmp_path):
     server_check = next(check for check in payload["checks"] if check["name"] == "local showdown eval server")
     assert server_check["ok"] is False
     assert server_check["detail"]["port"] == port
-    assert "node pokemon-showdown start --no-security" in server_check["remediation"]
-    assert any("local showdown eval server" in blocker for blocker in payload["blockers"])
+    assert f"node pokemon-showdown --no-security start {port}" in server_check["remediation"]
+
+
+def test_readiness_payload_accepts_managed_showdown_when_port_closed(tmp_path):
+    _write_ready_eval_files(tmp_path)
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+
+    payload = offline_eval_readiness.build_readiness_payload(
+        root=tmp_path,
+        env={"EVAL_SHOWDOWN_PORT": str(port)},
+        run_import_check=False,
+        run_prereq_check=False,
+    )
+
+    server_check = next(check for check in payload["checks"] if check["name"] == "local showdown eval server")
+    assert payload["recursiveImprovementReady"] is True
+    assert server_check["ok"] is True
+    assert server_check["detail"]["status"] == "managed-start-on-demand"
 
 
 def test_readiness_payload_reports_showdown_dependency_gap(tmp_path, monkeypatch):
@@ -589,3 +642,23 @@ def test_readiness_payload_reports_fouler_runtime_gap(tmp_path, monkeypatch):
     runtime_check = next(check for check in payload["checks"] if check["name"] == "fouler runtime imports")
     assert runtime_check["ok"] is False
     assert any("fouler runtime imports" in blocker for blocker in payload["blockers"])
+
+
+def test_windows_executable_probe_does_not_invoke_version_by_default(monkeypatch):
+    calls = []
+
+    monkeypatch.setattr(offline_eval_readiness.os, "name", "nt")
+    monkeypatch.delenv("FOULER_OFFLINE_READINESS_VERSION_PROBE", raising=False)
+    monkeypatch.setattr(offline_eval_readiness.shutil, "which", lambda command: f"C:\\tools\\{command}.exe")
+    monkeypatch.setattr(
+        offline_eval_readiness.subprocess,
+        "run",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    ok, detail = offline_eval_readiness._check_executable("node")
+
+    assert ok is True
+    assert detail["found"] is True
+    assert detail["versionProbeSkipped"] is True
+    assert calls == []

@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -14,11 +16,13 @@ def test_with_local_replays():
     """Test analysis using local replay JSON files."""
     
     replay_dir = PROJECT_ROOT / "replay_analysis"
-    replay_files = sorted(replay_dir.glob("gen9ou-*.json"))[:5]
+    replay_files = [
+        path for path in sorted(replay_dir.glob("gen9ou-*.json"))
+        if not path.stem.endswith("_gameplan")
+    ][:5]
     
     if not replay_files:
-        print("No local replay files found!")
-        return False
+        pytest.skip("No local replay files found")
     
     print(f"Found {len(replay_files)} local replay files for testing")
     
@@ -32,7 +36,8 @@ def test_with_local_replays():
         
         print(f"Processing {replay_id}...")
         
-        replay_data = json.load(open(replay_file))
+        with replay_file.open(encoding="utf-8") as handle:
+            replay_data = json.load(handle)
         turns = analyzer.reviewer.extract_full_turns(replay_data, replay_url)
         
         if turns:
@@ -66,26 +71,15 @@ def test_with_local_replays():
     # Build prompt
     prompt = analyzer.build_analysis_prompt(reviews, stats)
     print(f"Prompt length: {len(prompt)} chars")
-    
-    # Test Ollama
-    print("\n" + "="*60)
-    print("Testing Ollama connection on MAGNETON...")
-    print("="*60)
-    
-    analysis = analyzer.query_ollama(prompt)
-    
-    if analysis:
-        print(f"\n✅ Ollama analysis received ({len(analysis)} chars)")
-        print("\n" + "="*60)
-        print("ANALYSIS PREVIEW:")
-        print("="*60)
-        print(analysis[:500] + "..." if len(analysis) > 500 else analysis)
-        print("="*60)
-        return True
-    else:
-        print("\n❌ Ollama analysis failed")
-        return False
+
+    assert reviews, "Expected at least one local replay review"
+    assert "BATTLE REVIEWS:" in prompt
+    assert "DO NOT hallucinate Pokemon knowledge" in prompt
+    assert "Format response as structured improvement report" in prompt
 
 if __name__ == "__main__":
-    success = test_with_local_replays()
-    sys.exit(0 if success else 1)
+    try:
+        test_with_local_replays()
+    except pytest.skip.Exception as exc:
+        print(f"Skipped: {exc}")
+    sys.exit(0)

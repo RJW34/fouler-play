@@ -4,6 +4,8 @@ Simple HTTP server to serve OBS battle display on Windows.
 
 Provides:
 - /obs (battle layout)
+- /landscape (three-battle 1920x1080 layout)
+- /vertical (three-battle 1080x1920 layout)
 - /overlay (stats overlay)
 - /ws (real-time state updates)
 - /event (bot event hook-ins)
@@ -15,16 +17,26 @@ with WebSocket broadcasting to OBS.
 
 from __future__ import annotations
 
+import sys
+
+# This HTTP surface has no WMI dependency. Python 3.12's platform module otherwise
+# imports _wmi, which can block startup when the host WMI provider is saturated.
+if sys.platform == "win32":
+    sys.modules.setdefault("_wmi", None)
+
 import asyncio
 import contextlib
+import html
 import json
 import os
 import subprocess
-import sys
+import threading
 import time
+import traceback
 import re
 import atexit
 from datetime import datetime
+from collections import deque
 from aiohttp import web
 import aiohttp
 from pathlib import Path
@@ -44,6 +56,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 from streaming import state_store
 from streaming.hybrid_dashboard import register_dashboard_routes
 from devstream_runtime_checks import recent_showdown_credential_failure
+from fp.decision_trace import build_public_battle_view
 
 HERMES_OBS_ENV_KEYS = {
     "OBS_WS_PASSWORD",
@@ -130,7 +143,6 @@ OBS_WS_DISABLED = os.getenv("FOULER_OBS_WS_DISABLED", "").strip().lower() in (
     "yes",
     "on",
 )
-OBS_STALE_BATTLE_SEC = int(os.getenv("OBS_STALE_BATTLE_SEC", "600"))  # 10min: force idle if same battle
 HEALTH_PROBE_TIMEOUT_SEC = float(os.getenv("FOULER_HEALTH_PROBE_TIMEOUT_SEC", "20") or "20")
 DEEP_HEALTH_DEFAULT = os.getenv("FOULER_OBS_DEEP_HEALTH_DEFAULT", "").strip().lower() in (
     "1",
@@ -147,6 +159,12 @@ SHOWDOWN_ACCOUNTS = [
 ]
 SHOWDOWN_FORMAT = os.getenv("PS_FORMAT", "gen9ou").strip().lower()
 RUNTIME_LEASE_PATH = Path(os.getenv("FOULER_RUNTIME_LEASE_PATH", ROOT_DIR / "devstream" / "truth" / "runtime-lease.json"))
+ACCOUNT_SEASON_PATH = Path(
+    os.getenv(
+        "FOULER_ACCOUNT_SEASON_PATH",
+        ROOT_DIR / "devstream" / "truth" / "account-season.json",
+    )
+)
 ELO_REFRESH_COOLDOWN_SEC = int(os.getenv("SHOWDOWN_ELO_COOLDOWN_SEC", "5"))
 ELO_EVENT_RETRY_SEC = int(os.getenv("SHOWDOWN_ELO_EVENT_RETRY_SEC", "8"))
 ELO_POLL_INTERVAL_SEC = int(os.getenv("SHOWDOWN_ELO_POLL_SEC", "60"))
@@ -157,6 +175,8 @@ REPLAY_CHECK_MIN_AGE_SEC = int(os.getenv("REPLAY_CHECK_MIN_AGE_SEC", "60"))
 REPLAY_CHECK_TIMEOUT_SEC = int(os.getenv("REPLAY_CHECK_TIMEOUT_SEC", "4"))
 REPLAY_CACHE_MAX_ENTRIES = max(100, int(os.getenv("REPLAY_CACHE_MAX_ENTRIES", "4000")))
 REPLAY_CACHE_RETENTION_SEC = max(REPLAY_CHECK_TTL_SEC * 5, 300)
+LOOP_LAG_WARN_SEC = float(os.getenv("OBS_LOOP_LAG_WARN_SEC", "2.0") or "2.0")
+LIFECYCLE_OWNER = os.getenv("FOULER_OBS_LIFECYCLE_OWNER", "").strip().lower()
 
 ws_clients: set[web.WebSocketResponse] = set()
 _obs_client = None
@@ -166,6 +186,11 @@ _last_obs_urls: dict[int, str | None] = {}
 _last_obs_updates: dict[int, float] = {}
 _last_obs_status: dict[int, str] = {}
 _obs_sources: list[str] = []
+
+
+def _use_process_signal_handlers() -> bool:
+    """NSSM owns stop/restart signals for the Windows service process tree."""
+    return LIFECYCLE_OWNER != "windows-service"
 _ladder_cache = {"accounts": {}, "updated": 0.0}
 _ladder_lock = asyncio.Lock()
 _last_stats = {"wins": None, "losses": None}
@@ -177,6 +202,15 @@ _replay_cache: dict[str, dict[str, float | bool]] = {}
 _emerald_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Emerald ROM", "status_text": "INITIALIZING"}
 _firered_brain_state: dict = {"status": "initializing", "objective": None, "last_action": None, "location": None, "title": "INITIALIZING", "subtitle": "Awaiting connection to Fire Red ROM", "status_text": "INITIALIZING"}
 BATTLE_STATS_PATH = ROOT_DIR / "battle_stats.json"
+BATTLE_LOG_DIR = ROOT_DIR / "logs"
+PUBLIC_BATTLE_VIEW_PATH = Path(
+    os.getenv(
+        "FOULER_PUBLIC_BATTLE_VIEW_PATH",
+        str(BATTLE_LOG_DIR / "decision_traces" / "latest-public-battle.json"),
+    )
+)
+POKEDEX_PATH = ROOT_DIR / "data" / "pokedex.json"
+_public_pokedex: dict[str, dict] | None = None
 
 PID_FILE = ROOT_DIR / ".pids" / "obs_server.pid"
 PROCESS_SCAN_TIMEOUT_SEC = float(os.getenv("FOULER_OBS_PROCESS_SCAN_TIMEOUT_SEC", "4") or "4")
@@ -207,9 +241,14 @@ def _write_pid_file() -> None:
         pass
 
 
-def _cleanup_pid_file() -> None:
+def _cleanup_pid_file(*, force: bool = False) -> None:
     try:
         if PID_FILE.exists():
+            if not force:
+                pid_data = _read_pid_file()
+                owner_pid = _safe_int(pid_data.get("pid"))
+                if owner_pid and owner_pid != os.getpid():
+                    return
             PID_FILE.unlink()
     except Exception:
         pass
@@ -265,7 +304,6 @@ def _same_repo_obs_command(command_line: object) -> bool:
 def _is_obs_server_launcher_wrapper(normalized_command: str) -> bool:
     return (
         "cmd.exe" in normalized_command
-        and "/d /c" in normalized_command
         and OBS_SERVER_SCRIPT_NAME in normalized_command
         and (">>" in normalized_command or "1>>" in normalized_command or "2>>" in normalized_command)
     )
@@ -275,36 +313,22 @@ def _collect_process_rows() -> list[dict]:
     """Return a small process table used to guard against duplicate OBS servers."""
     try:
         if sys.platform == "win32":
-            result = subprocess.run(
-                [
-                    "powershell",
-                    "-NoProfile",
-                    "-Command",
-                    (
-                        "Get-CimInstance Win32_Process | "
-                        "Select-Object ProcessId,ParentProcessId,CommandLine | "
-                        "ConvertTo-Json -Compress"
-                    ),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=PROCESS_SCAN_TIMEOUT_SEC,
-                check=False,
-            )
-            if result.returncode != 0 or not result.stdout.strip():
-                return []
-            parsed = json.loads(result.stdout)
-            if isinstance(parsed, dict):
-                parsed = [parsed]
-            return [
-                {
-                    "pid": _safe_int(row.get("ProcessId")),
-                    "ppid": _safe_int(row.get("ParentProcessId")),
-                    "command": row.get("CommandLine") or "",
-                }
-                for row in parsed
-                if isinstance(row, dict)
-            ]
+            import psutil
+
+            rows: list[dict] = []
+            for process in psutil.process_iter(["pid", "ppid", "cmdline"]):
+                try:
+                    info = process.info
+                    rows.append(
+                        {
+                            "pid": _safe_int(info.get("pid")),
+                            "ppid": _safe_int(info.get("ppid")),
+                            "command": subprocess.list2cmdline(info.get("cmdline") or []),
+                        }
+                    )
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    continue
+            return rows
 
         result = subprocess.run(
             ["ps", "-eo", "pid=,ppid=,args="],
@@ -378,6 +402,19 @@ def _command_for_pid(rows: list[dict], pid: int) -> str:
     return ""
 
 
+def _command_for_live_pid(pid: int) -> str:
+    if pid <= 0:
+        return ""
+    try:
+        if sys.platform == "win32":
+            import psutil
+
+            return subprocess.list2cmdline(psutil.Process(pid).cmdline())
+        return _command_for_pid(_collect_process_rows(), pid)
+    except Exception:
+        return ""
+
+
 def _build_singleton_status(rows: list[dict] | None = None) -> dict:
     pid_data = _read_pid_file()
     pid = _safe_int(pid_data.get("pid"))
@@ -400,16 +437,15 @@ def _acquire_singleton_or_exit() -> None:
 
     pid_data = _read_pid_file()
     existing_pid = _safe_int(pid_data.get("pid"))
-    rows = _collect_process_rows()
     if existing_pid and existing_pid != os.getpid():
         if _pid_exists(existing_pid):
-            command = _command_for_pid(rows, existing_pid)
-            if not _same_repo_obs_command(command):
+            command = _command_for_live_pid(existing_pid)
+            if command and not _same_repo_obs_command(command):
                 print(
                     f"[SERVER] Removing stale Fouler OBS pid file; pid {existing_pid} is alive but is not this repo's OBS server.",
                     file=sys.stderr,
                 )
-                _cleanup_pid_file()
+                _cleanup_pid_file(force=True)
             else:
                 print(
                     f"[SERVER] Existing Fouler OBS server pid {existing_pid} is alive; refusing duplicate start.",
@@ -417,16 +453,7 @@ def _acquire_singleton_or_exit() -> None:
                 )
                 sys.exit(78)
         else:
-            _cleanup_pid_file()
-
-    duplicates = _find_duplicate_obs_servers(rows)
-    if duplicates:
-        print(
-            "[SERVER] Existing Fouler OBS server process found; refusing duplicate start: "
-            + json.dumps({"duplicates": duplicates[:5]}, sort_keys=True),
-            file=sys.stderr,
-        )
-        sys.exit(78)
+            _cleanup_pid_file(force=True)
 
     _write_pid_file()
 
@@ -456,6 +483,7 @@ def build_state_payload() -> dict:
     status["today_wins"] = daily.get("wins", 0)
     status["today_losses"] = daily.get("losses", 0)
     credential_failure = recent_showdown_credential_failure(ROOT_DIR)
+    account_season = _account_season_authority()
     
     # Update status field based on active battles
     if credential_failure.get("found"):
@@ -472,12 +500,17 @@ def build_state_payload() -> dict:
         opponent = battles[0].get("opponent", "Opponent") if battles else "Opponent"
         status["battle_info"] = f"vs {opponent}"
     else:
-        status["status"] = "Searching"
-        status["battle_info"] = "Searching..."
+        status = state_store.status_without_active_battles(
+            status,
+            staged_baseline=account_season.get("stagedBaseline") is True,
+        )
     
     # Add accounts_elo to status (so overlay.html receives it via payload.status)
     accounts_elo, _accounts_source, _accounts_updated = _visible_ladder_accounts(current_accounts)
     status["accounts_elo"] = accounts_elo
+    status["account"] = account_season.get("account")
+    status["account_season_id"] = account_season.get("seasonId")
+    status["staged_baseline"] = account_season.get("stagedBaseline") is True
     
     return {
         "status": status,
@@ -486,6 +519,10 @@ def build_state_payload() -> dict:
         "max_slots": battles_data.get("max_slots"),
         "updated": battles_data.get("updated"),
         "accounts_elo": accounts_elo,  # Also keep at top-level for /state endpoint compat
+        "account": account_season.get("account"),
+        "account_season_id": account_season.get("seasonId"),
+        "staged_baseline": account_season.get("stagedBaseline") is True,
+        "runtime_status": account_season.get("runtimeStatus"),
         "runtime_blocked": bool(status.get("runtime_blocked")),
     }
 
@@ -518,9 +555,10 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
     await ws.prepare(request)
 
     ws_clients.add(ws)
+    init_payload = await asyncio.to_thread(build_state_payload)
     await ws.send_str(json.dumps({
         "type": "INIT",
-        "payload": build_state_payload(),
+        "payload": init_payload,
         "timestamp": time.time(),
     }))
 
@@ -583,7 +621,7 @@ async def _process_event_update(event_type: str, payload: dict) -> None:
             print(f"[EVENT] Payload: {payload}")
         
         await maybe_refresh_elo_from_event(event_type, payload)
-        state = build_state_payload()
+        state = await asyncio.to_thread(build_state_payload)
         await broadcast("STATE_UPDATE", state)
         
         # Update OBS sources immediately when battle events come in (event-based, not polling)
@@ -609,11 +647,370 @@ def _build_direct_battle_url(bid: str) -> str:
     return f"https://play.pokemonshowdown.com/{bid}"
 
 
-def _build_public_slot_source_url(slot: int, battle_id: str | None = None) -> str:
-    url = f"http://localhost:{PORT}/slot/{slot}?slot_idle=public"
-    if battle_id:
-        url += f"&battle_id={battle_id}"
-    return url
+def _format_battle_label(value: object) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "Unknown"
+    return re.sub(r"\s+", " ", text)
+
+
+def _format_seconds(seconds: float | int | None) -> str:
+    try:
+        total = max(0, int(seconds or 0))
+    except (TypeError, ValueError):
+        return "0m"
+    minutes, sec = divmod(total, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h {minutes:02d}m"
+    if minutes:
+        return f"{minutes}m {sec:02d}s"
+    return f"{sec}s"
+
+
+def _battle_age_seconds(battle: dict | None) -> int | None:
+    if not battle:
+        return None
+    started = _parse_started_iso(str(battle.get("started") or ""))
+    if not started:
+        return None
+    now = datetime.now(started.tzinfo) if started.tzinfo else datetime.now()
+    return max(0, int((now - started).total_seconds()))
+
+
+def _pokedex_entry(species_id: object) -> dict:
+    global _public_pokedex
+    if _public_pokedex is None:
+        try:
+            raw = json.loads(POKEDEX_PATH.read_text(encoding="utf-8"))
+            _public_pokedex = raw if isinstance(raw, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            _public_pokedex = {}
+    return _public_pokedex.get(str(species_id or "").strip().lower(), {})
+
+
+def _decorate_public_pokemon(raw: object, *, back: bool) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    pokemon = dict(raw)
+    entry = _pokedex_entry(pokemon.get("name"))
+    display_name = str(entry.get("name") or pokemon.get("name") or "").strip()
+    slug = re.sub(r"[^a-z0-9-]", "", display_name.lower())
+    if not re.fullmatch(r"[a-z0-9-]{1,80}", slug):
+        slug = ""
+    pokemon["display_name"] = display_name.replace("-", " ").title() or "Unknown"
+    pokemon["sprite_urls"] = (
+        [
+            f"https://play.pokemonshowdown.com/sprites/{'ani-back' if back else 'ani'}/{slug}.gif",
+            f"https://play.pokemonshowdown.com/sprites/{'gen5-back' if back else 'gen5'}/{slug}.png",
+        ]
+        if slug
+        else []
+    )
+    pokemon["sprite_url"] = pokemon["sprite_urls"][0] if pokemon["sprite_urls"] else None
+    return pokemon
+
+
+def _decorate_public_side(raw: object, *, back: bool) -> dict | None:
+    if not isinstance(raw, dict):
+        return None
+    side = dict(raw)
+    side["active"] = _decorate_public_pokemon(side.get("active"), back=back)
+    side["reserve"] = [
+        pokemon
+        for pokemon in (
+            _decorate_public_pokemon(value, back=back)
+            for value in (side.get("reserve") or [])[:5]
+        )
+        if pokemon is not None
+    ]
+    return side
+
+
+def _latest_trace_public_view(battle_id: str) -> tuple[dict | None, float | None]:
+    if not re.fullmatch(r"battle-[a-z0-9-]{1,160}", battle_id, re.IGNORECASE):
+        return None, None
+    trace_dir = PUBLIC_BATTLE_VIEW_PATH.parent
+    if not trace_dir.is_dir():
+        return None, None
+    candidates = []
+    for path in trace_dir.glob(f"{battle_id}_turn*.json"):
+        try:
+            candidates.append((path.stat().st_mtime, path))
+        except OSError:
+            continue
+    for modified, path in sorted(candidates, reverse=True)[:3]:
+        try:
+            trace = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        payload = build_public_battle_view(trace)
+        if payload and payload.get("battle_id") == battle_id:
+            return payload, modified
+    return None, None
+
+
+def _load_public_battle_view(battle_id: str) -> tuple[dict | None, float | None]:
+    try:
+        payload = json.loads(PUBLIC_BATTLE_VIEW_PATH.read_text(encoding="utf-8"))
+        modified = PUBLIC_BATTLE_VIEW_PATH.stat().st_mtime
+    except (OSError, json.JSONDecodeError):
+        payload = None
+        modified = None
+    if isinstance(payload, dict) and payload.get("battle_id") == battle_id:
+        return payload, modified
+
+    # The long-running battle worker may predate public-view publication. Read
+    # only its newest matching trace so an active match never needs interruption.
+    return _latest_trace_public_view(battle_id)
+
+
+def _public_battle_view(battle: dict | None) -> dict | None:
+    if not battle:
+        return None
+    battle_id = str(battle.get("id") or "").strip()
+    payload, modified = _load_public_battle_view(battle_id)
+    if not isinstance(payload, dict) or modified is None:
+        return None
+    age_seconds = max(0.0, time.time() - modified)
+    public = {key: value for key, value in payload.items() if key != "battle_id"}
+    public["match_ref"] = "Ranked ladder battle"
+    public["age_seconds"] = round(age_seconds, 1)
+    public["stale"] = age_seconds > 120
+    public["user"] = _decorate_public_side(public.get("user"), back=True)
+    public["opponent"] = _decorate_public_side(public.get("opponent"), back=False)
+    return public
+
+
+def _latest_battle_log_path(battle: dict | None) -> Path | None:
+    if not battle:
+        return None
+    battle_id = str(battle.get("id") or "").strip()
+    if not battle_id or not BATTLE_LOG_DIR.exists():
+        return None
+    matches = sorted(
+        BATTLE_LOG_DIR.glob(f"{battle_id}*.log"),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
+        reverse=True,
+    )
+    return matches[0] if matches else None
+
+
+def _tail_text(path: Path, max_bytes: int = 98304) -> str:
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as fh:
+            if size > max_bytes:
+                fh.seek(size - max_bytes)
+            return fh.read().decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _parse_protocol_event(line: str) -> str | None:
+    parts = line.split("|")
+    if len(parts) < 2:
+        return None
+    event = parts[1]
+    if event == "turn" and len(parts) >= 3:
+        return f"Turn {parts[2]}"
+    if event == "move" and len(parts) >= 5:
+        actor = parts[2].split(":", 1)[-1].strip()
+        move = parts[3].strip()
+        target = parts[4].split(":", 1)[-1].strip()
+        return f"{actor} used {move} into {target}"
+    if event == "switch" and len(parts) >= 4:
+        actor = parts[2].split(":", 1)[-1].strip()
+        details = parts[3].split(",", 1)[0].strip()
+        return f"{actor} switched in ({details})"
+    if event == "faint" and len(parts) >= 3:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} fainted"
+    if event == "win" and len(parts) >= 3:
+        return f"{parts[2].strip()} won"
+    if event == "-damage" and len(parts) >= 4:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} took damage ({parts[3].strip()})"
+    if event == "-heal" and len(parts) >= 4:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} healed ({parts[3].strip()})"
+    if event == "-status" and len(parts) >= 4:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} status: {parts[3].strip()}"
+    if event == "-boost" and len(parts) >= 5:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} boosted {parts[3].strip()} by {parts[4].strip()}"
+    if event == "-unboost" and len(parts) >= 5:
+        actor = parts[2].split(":", 1)[-1].strip()
+        return f"{actor} lowered {parts[3].strip()} by {parts[4].strip()}"
+    return None
+
+
+def _clean_battle_log_line(raw: str) -> str | None:
+    line = raw.strip()
+    if not line:
+        return None
+    line = re.sub(r"^(INFO|DEBUG|WARNING|ERROR)\s+", "", line).strip()
+    if not line:
+        return None
+    if line.startswith(("Calling calculate damage", "Received battle JSON", "No Z-move data")):
+        return None
+    turn_match = re.search(r"\bTurn:\s*(\d+)", line)
+    if turn_match:
+        return f"Turn {turn_match.group(1)}"
+    if line.startswith("|"):
+        return _parse_protocol_event(line)
+    return None
+
+
+def _recent_battle_events(battle: dict | None, limit: int = 10) -> tuple[list[str], int | None, str | None]:
+    path = _latest_battle_log_path(battle)
+    if not path:
+        return [], None, None
+    seen: deque[str] = deque(maxlen=limit)
+    latest_turn: int | None = None
+    for raw in _tail_text(path).splitlines():
+        event = _clean_battle_log_line(raw)
+        if not event:
+            continue
+        turn_match = re.search(r"\bTurn\s+(\d+)", event)
+        if turn_match:
+            try:
+                latest_turn = int(turn_match.group(1))
+            except ValueError:
+                pass
+        if not seen or seen[-1] != event:
+            seen.append(event)
+    return list(seen), latest_turn, str(path.name)
+
+
+def _battle_stats_entries() -> list[dict]:
+    try:
+        raw = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    entries = raw.get("battles") if isinstance(raw, dict) else raw
+    if not isinstance(entries, list):
+        return []
+    return [entry for entry in entries if isinstance(entry, dict)]
+
+
+def _current_season_battle_rows(entries: list[dict] | None = None) -> list[dict]:
+    rows = list(entries if entries is not None else _battle_stats_entries())
+    season = _account_season_authority()
+    if season.get("ready") is not True:
+        return rows
+    season_id = str(season.get("seasonId") or "").strip().lower()
+    account = _normalize_showdown_id(str(season.get("account") or ""))
+    scoped = []
+    for entry in rows:
+        row_season = str(entry.get("season_id") or entry.get("seasonId") or "").strip().lower()
+        row_account = _normalize_showdown_id(str(entry.get("account") or entry.get("player") or ""))
+        if season_id and row_season:
+            if row_season == season_id:
+                scoped.append(entry)
+            continue
+        if account and row_account:
+            if row_account == account:
+                scoped.append(entry)
+            continue
+        # Legacy rows without an account or season cannot prove membership in the current season.
+    return scoped
+
+
+def _current_season_record() -> tuple[int, int] | None:
+    season = _account_season_authority()
+    if season.get("ready") is not True:
+        return None
+    rows = _current_season_battle_rows()
+    wins = sum(1 for entry in rows if str(entry.get("result") or "").strip().lower() == "win")
+    losses = sum(1 for entry in rows if str(entry.get("result") or "").strip().lower() == "loss")
+    return wins, losses
+
+
+def _recent_battle_results(limit: int = 5) -> list[dict]:
+    entries = _current_season_battle_rows()
+    season = _account_season_authority()
+    try:
+        previous_rating = float(season.get("baselineRating"))
+    except (TypeError, ValueError):
+        previous_rating = None
+    enriched = []
+    for entry in entries:
+        rating = entry.get("rating") or entry.get("elo_after")
+        try:
+            rating_number = float(rating)
+        except (TypeError, ValueError):
+            rating_number = None
+        explicit_delta = entry.get("rating_delta")
+        try:
+            delta = float(explicit_delta)
+        except (TypeError, ValueError):
+            delta = (
+                round(rating_number - previous_rating, 1)
+                if rating_number is not None and previous_rating is not None
+                else None
+            )
+        enriched.append((entry, rating_number, delta))
+        if rating_number is not None:
+            previous_rating = rating_number
+    recent = []
+    for entry, rating, delta in reversed(enriched[-limit:]):
+        recent.append({
+            "result": entry.get("result") or "?",
+            "opponent": entry.get("opponent") or entry.get("opponent_name") or None,
+            "rating": rating,
+            "delta": delta,
+            "team": entry.get("team_file") or "",
+            "replay": entry.get("replay_status") or "",
+        })
+    return recent
+
+
+def _build_battle_lab_payload(slot_num: int, battle: dict | None, state: dict | None = None) -> dict:
+    if state is None:
+        state = build_state_payload()
+    status = state.get("status") if isinstance(state.get("status"), dict) else {}
+    events, turn, _ = _recent_battle_events(battle)
+    battle_view = _public_battle_view(battle)
+    if battle_view and battle_view.get("turn") is not None:
+        turn = battle_view.get("turn")
+    age_seconds = _battle_age_seconds(battle)
+    accounts_elo = status.get("accounts_elo") or state.get("accounts_elo") or {}
+    elo_value = None
+    if isinstance(accounts_elo, dict) and accounts_elo:
+        elo_value = next(iter(accounts_elo.values()))
+    elif status.get("elo"):
+        elo_value = status.get("elo")
+    season_record = _current_season_record()
+    wins, losses = season_record or (
+        status.get("today_wins", 0),
+        status.get("today_losses", 0),
+    )
+    return {
+        "slot": slot_num,
+        "active": bool(battle),
+        "opponent": _format_battle_label(battle.get("opponent")) if battle else None,
+        "age_label": _format_seconds(age_seconds),
+        "turn": turn,
+        "status": status.get("status") or ("Active" if battle else "Searching"),
+        "wins": wins,
+        "losses": losses,
+        "record_scope": "account-season" if season_record is not None else "daily-fallback",
+        "elo": elo_value,
+        "events": events,
+        "battle_view": battle_view,
+        "recent_results": _recent_battle_results(),
+    }
+
+
+def _build_public_slot_source_url(slot: int) -> str:
+    return f"http://localhost:{PORT}/slot/{slot}?slot_idle=public"
+
+
+def _build_obs_slot_source_url(slot: int, battle_id: str | None = None) -> str:
+    """Keep OBS on the reactive local surface for active and idle states."""
+    return _build_public_slot_source_url(slot)
 
 
 def _build_slot_map(battles: list[dict]) -> dict[int, dict]:
@@ -707,6 +1104,51 @@ def _runtime_lease_account() -> str:
     return ""
 
 
+def _account_season_authority() -> dict:
+    try:
+        season = json.loads(ACCOUNT_SEASON_PATH.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return {"ready": False, "stagedBaseline": False}
+    if not isinstance(season, dict):
+        return {"ready": False, "stagedBaseline": False}
+    account = str(season.get("account") or "").strip()
+    fmt = str(season.get("format") or "").strip().lower()
+    try:
+        baseline = int(round(float(season.get("baselineRating"))))
+    except (TypeError, ValueError):
+        baseline = None
+    ready = bool(
+        season.get("schemaVersion") == "fouler-play-account-season/v1"
+        and account
+        and fmt == "gen9ou"
+        and baseline is not None
+        and baseline > 0
+        and season.get("createdAtUtc")
+    )
+    stats_empty = False
+    try:
+        stats = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
+        rows = stats.get("battles") if isinstance(stats, dict) else None
+        stats_empty = isinstance(rows, list) and not rows
+    except Exception:
+        pass
+    return {
+        "ready": ready,
+        "account": account or None,
+        "seasonId": season.get("seasonId"),
+        "createdAtUtc": season.get("createdAtUtc"),
+        "baselineRating": baseline,
+        "runtimeStatus": season.get("runtimeStatus"),
+        "firstBattleStarted": season.get("firstBattleStarted") is True,
+        "stagedBaseline": bool(
+            ready
+            and season.get("firstBattleStarted") is False
+            and stats_empty
+            and season.get("runtimeStatus") == "staged-at-baseline"
+        ),
+    }
+
+
 def _latest_battle_stats_account() -> str:
     try:
         raw = json.loads(BATTLE_STATS_PATH.read_text(encoding="utf-8"))
@@ -727,6 +1169,9 @@ def _latest_battle_stats_account() -> str:
 
 
 def _configured_showdown_accounts() -> list[str]:
+    season = _account_season_authority()
+    if season.get("ready") and season.get("account"):
+        return _dedupe_showdown_accounts([str(season["account"])])
     lease_account = _runtime_lease_account()
     if lease_account:
         return _dedupe_showdown_accounts([lease_account])
@@ -790,6 +1235,17 @@ def _visible_ladder_accounts(accounts: list[str] | None = None) -> tuple[dict, s
         rating, timestamp = _latest_battle_stats_rating()
         if rating is not None:
             return {requested[0]: rating}, "battle_stats", timestamp
+        season = _account_season_authority()
+        if (
+            season.get("stagedBaseline") is True
+            and _normalize_showdown_id(requested[0])
+            == _normalize_showdown_id(str(season.get("account") or ""))
+        ):
+            return (
+                {str(season["account"]): int(season["baselineRating"])},
+                "account_season_baseline",
+                season.get("createdAtUtc"),
+            )
     return {}, None, None
 
 
@@ -1009,7 +1465,7 @@ async def _run_elo_refresh_task(*, force: bool, delay: int = 0) -> None:
             await asyncio.sleep(max(0, delay))
         refreshed = await _refresh_elo(force=force)
         if refreshed:
-            await broadcast("STATE_UPDATE", build_state_payload())
+            await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
     except asyncio.CancelledError:
         pass
     except Exception:
@@ -1240,23 +1696,9 @@ async def maybe_update_obs_sources(payload: dict) -> None:
             battle = slot_map.get(idx)
             desired_id = battle.get("id") if battle else None
             previous_id = _last_obs_ids.get(idx)
-            url = _build_public_slot_source_url(idx, desired_id)
+            url = _build_obs_slot_source_url(idx, desired_id)
             
             print(f"[OBS-UPDATE] Slot {idx} ({source_name}): previous={previous_id}, desired={desired_id}")
-
-            # Force stale battles to idle — if the same battle has been
-            # displayed for too long, the Showdown page is likely showing
-            # an empty post-game lobby.  Reset to the "SCANNING..." idle page.
-            if previous_id and previous_id == desired_id and OBS_STALE_BATTLE_SEC > 0:
-                last_update = _last_obs_updates.get(idx, 0)
-                age = time.time() - last_update if last_update else 0
-                if age > OBS_STALE_BATTLE_SEC:
-                    print(f"[OBS-UPDATE] Slot {idx}: Battle stale ({age:.0f}s > {OBS_STALE_BATTLE_SEC}s), forcing idle")
-                    await _obs_client.set_browser_source_url(source_name, url)
-                    _last_obs_ids[idx] = None
-                    _last_obs_urls[idx] = url
-                    _last_obs_updates[idx] = time.time()
-                    continue
 
             if previous_id == desired_id and _last_obs_urls.get(idx) == url:
                 print(f"[OBS-UPDATE] Slot {idx}: No change, skipping")
@@ -1272,7 +1714,7 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 await asyncio.sleep(0.5)
 
             if desired_id:
-                print(f"[OBS-UPDATE] Slot {idx}: Loading public slot battle surface for battle {desired_id}")
+                print(f"[OBS-UPDATE] Slot {idx}: Loading live Showdown battle surface for battle {desired_id}")
             else:
                 print(f"[OBS-UPDATE] Slot {idx}: Keeping public slot ready surface")
 
@@ -1290,20 +1732,42 @@ async def maybe_update_obs_sources(payload: dict) -> None:
                 _last_obs_ids.pop(idx, None)
 
 
-async def handle_obs(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(str(STREAMING_DIR / "obs_battles.html"))
+async def _html_file_response(filename: str) -> web.Response:
+    """Serve small OBS HTML pages without Windows Proactor sendfile stalls."""
+    text = await asyncio.to_thread((STREAMING_DIR / filename).read_text, encoding="utf-8")
+    return web.Response(text=text, content_type="text/html")
 
 
-async def handle_overlay(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(str(STREAMING_DIR / "overlay.html"))
+async def handle_obs(request: web.Request) -> web.Response:
+    return await _html_file_response("obs_battles.html")
 
 
-async def handle_idle(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(str(STREAMING_DIR / "obs_idle.html"))
+async def handle_vertical(request: web.Request) -> web.Response:
+    response = await _html_file_response("fouler_vertical.html")
+    response.headers.update(
+        {
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
+    return response
 
 
-async def handle_debug(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(str(STREAMING_DIR / "obs_debug.html"))
+async def handle_landscape(request: web.Request) -> web.Response:
+    return await handle_vertical(request)
+
+
+async def handle_overlay(request: web.Request) -> web.Response:
+    return await _html_file_response("overlay.html")
+
+
+async def handle_idle(request: web.Request) -> web.Response:
+    return await _html_file_response("obs_idle.html")
+
+
+async def handle_debug(request: web.Request) -> web.Response:
+    return await _html_file_response("obs_debug.html")
 
 
 async def handle_battles(request: web.Request) -> web.Response:
@@ -1371,12 +1835,6 @@ def _public_surface_health_payload(singleton_status: dict, probe_failure: dict |
     return payload, 503 if blockers else 200
 
 
-def _build_devstream_health_payload() -> dict:
-    from devstream_health import build_payload
-
-    return build_payload(check_http=False)
-
-
 def _probe_failure_payload(*, method: str, error: str = "", return_code: int | None = None) -> dict:
     payload = {
         "ok": False,
@@ -1389,42 +1847,37 @@ def _probe_failure_payload(*, method: str, error: str = "", return_code: int | N
 
 
 async def _load_devstream_health_payload(singleton_status: dict) -> tuple[dict, int]:
-    try:
-        payload = await asyncio.to_thread(_build_devstream_health_payload)
-        payload["obsServerSingleton"] = singleton_status
-        payload["devstreamHealthProbe"] = {"ok": True, "method": "in-process"}
-        return payload, 200
-    except Exception as exc:
-        direct_failure = _probe_failure_payload(method="in-process", error=f"{type(exc).__name__}: {exc}")
-
     script = ROOT_DIR / "scripts" / "devstream_health.py"
-    if script.exists():
-        try:
-            result = await asyncio.to_thread(
-                subprocess.run,
-                [sys.executable, str(script), "--skip-http"],
-                cwd=str(ROOT_DIR),
-                capture_output=True,
-                text=True,
-                timeout=HEALTH_PROBE_TIMEOUT_SEC,
-                check=False,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                payload = json.loads(result.stdout)
-                payload["obsServerSingleton"] = singleton_status
-                payload["devstreamHealthProbe"] = {"ok": True, "method": "subprocess"}
-                return payload, 200
-            failure = _probe_failure_payload(
-                method="subprocess",
-                return_code=result.returncode,
-                error=result.stderr or direct_failure["error"],
-            )
-            return _public_surface_health_payload(singleton_status, failure)
-        except Exception as exc:
-            failure = _probe_failure_payload(method="subprocess", error=f"{type(exc).__name__}: {exc}")
-            return _public_surface_health_payload(singleton_status, failure)
+    if not script.exists():
+        failure = _probe_failure_payload(method="subprocess", error=f"health probe script not found: {script}")
+        return _public_surface_health_payload(singleton_status, failure)
 
-    return _public_surface_health_payload(singleton_status, direct_failure)
+    try:
+        # The full proof probe performs expensive process and filesystem inspection.
+        # Isolate it so a slow probe cannot starve this aiohttp liveness surface.
+        result = await asyncio.to_thread(
+            subprocess.run,
+            [sys.executable, str(script), "--skip-http", "--http-handler-witness"],
+            cwd=str(ROOT_DIR),
+            capture_output=True,
+            text=True,
+            timeout=HEALTH_PROBE_TIMEOUT_SEC,
+            check=False,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            payload = json.loads(result.stdout)
+            payload["obsServerSingleton"] = singleton_status
+            payload["devstreamHealthProbe"] = {"ok": True, "method": "subprocess"}
+            return payload, 200
+        failure = _probe_failure_payload(
+            method="subprocess",
+            return_code=result.returncode,
+            error=result.stderr or "devstream health probe returned no JSON payload",
+        )
+        return _public_surface_health_payload(singleton_status, failure)
+    except Exception as exc:
+        failure = _probe_failure_payload(method="subprocess", error=f"{type(exc).__name__}: {exc}")
+        return _public_surface_health_payload(singleton_status, failure)
 
 
 async def handle_health(request: web.Request) -> web.Response:
@@ -1434,26 +1887,42 @@ async def handle_health(request: web.Request) -> web.Response:
         "yes",
         "on",
     )
-    if deep_requested:
-        singleton_status = _build_singleton_status()
-    else:
-        singleton_status = {
-            "duplicateCount": 0,
-            "duplicates": [],
-            "skipped": True,
-            "reason": "default health is lightweight HTTP liveness; use /health?deep=1 for process proof",
-        }
-    if deep_requested:
-        payload, status_code = await _load_devstream_health_payload(singleton_status)
-    else:
-        payload, status_code = _public_surface_health_payload(
-            singleton_status,
+    if not deep_requested:
+        return web.json_response(
             {
-                "ok": None,
-                "method": "skipped",
-                "reason": "deep devstream proof health is available at /health?deep=1",
+                "schemaVersion": "fouler-obs-health/v1",
+                "projectId": "fouler-play",
+                "status": "running",
+                "healthy": True,
+                "running": True,
+                "readyForLiveFocus": False,
+                "readiness": {
+                    "httpReady": True,
+                    "streamReady": None,
+                    "runtimeReady": None,
+                    "proofHandoffReady": False,
+                },
+                "blockers": [],
+                "warnings": ["readiness was not evaluated; use /health?deep=1"],
+                "devstreamHealthProbe": {
+                    "ok": None,
+                    "method": "skipped",
+                    "reason": "deep devstream proof health is available at /health?deep=1",
+                },
+                "obsServerSingleton": {
+                    "duplicateCount": 0,
+                    "duplicates": [],
+                    "skipped": True,
+                    "reason": "plain health is constant-time HTTP liveness",
+                },
             },
+            status=200,
         )
+
+    if deep_requested:
+        # Native process-table enumeration still belongs off the event loop.
+        singleton_status = await asyncio.to_thread(_build_singleton_status)
+    payload, status_code = await _load_devstream_health_payload(singleton_status)
     if singleton_status.get("duplicateCount"):
         payload["status"] = "degraded"
         payload["healthy"] = False
@@ -1466,7 +1935,7 @@ async def handle_health(request: web.Request) -> web.Response:
     return web.json_response(payload, status=status_code)
 
 
-async def handle_status(request: web.Request) -> web.Response:
+def _build_status_payload() -> dict:
     battles_data = state_store.read_active_battles()
     battles = battles_data.get("battles", [])
     current_accounts = _current_showdown_accounts(battles)
@@ -1482,17 +1951,25 @@ async def handle_status(request: web.Request) -> web.Response:
         status["status"] = "Active"
         status["battle_info"] = ", ".join(f"vs {b.get('opponent', 'Unknown')}" for b in battles)
     else:
-        status["status"] = "Searching"
-        status["battle_info"] = "Searching..."
+        account_season = _account_season_authority()
+        status = state_store.status_without_active_battles(
+            status,
+            staged_baseline=account_season.get("stagedBaseline") is True,
+        )
     # Add daily totals
     daily = state_store.read_daily_stats()
     status["today_wins"] = daily.get("wins", 0)
     status["today_losses"] = daily.get("losses", 0)
-    return web.json_response(status)
+    return status
+
+
+async def handle_status(request: web.Request) -> web.Response:
+    # File reads + battle_stats fallbacks run off-loop so slow disk never wedges the server.
+    return web.json_response(await asyncio.to_thread(_build_status_payload))
 
 
 async def handle_state(request: web.Request) -> web.Response:
-    return web.json_response(build_state_payload())
+    return web.json_response(await asyncio.to_thread(build_state_payload))
 
 
 DEKU_STATE_URL = os.getenv("DEKU_STATE_URL", "http://127.0.0.1:8777/state")
@@ -1568,7 +2045,7 @@ async def handle_battles_file(request: web.Request) -> web.Response:
 
 
 async def handle_debug_state(request: web.Request) -> web.Response:
-    return web.json_response(build_debug_payload())
+    return web.json_response(await asyncio.to_thread(build_debug_payload))
 
 
 async def poll_files(app: web.Application) -> None:
@@ -1600,12 +2077,12 @@ async def poll_files(app: web.Application) -> None:
         if status_mtime and status_mtime != last_status_mtime:
             print(f"[POLL] Status file changed (mtime: {status_mtime})")
             last_status_mtime = status_mtime
-            await broadcast("STATE_UPDATE", build_state_payload())
+            await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
 
         if battles_mtime and battles_mtime != last_battles_mtime:
             print(f"[POLL] Battles file changed (mtime: {battles_mtime})")
             last_battles_mtime = battles_mtime
-            await broadcast("STATE_UPDATE", build_state_payload())
+            await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
 
         # Periodic OBS sync so a failed update doesn't leave a slot stale.
         # Also poll DEKU's state for cross-machine battle display in slot 2.
@@ -1614,7 +2091,7 @@ async def poll_files(app: web.Application) -> None:
             if (now - last_obs_sync) >= OBS_SYNC_INTERVAL_SEC:
                 print(f"[POLL] Running periodic OBS sync (interval: {OBS_SYNC_INTERVAL_SEC}s)")
                 last_obs_sync = now
-                local_payload = build_state_payload()
+                local_payload = await asyncio.to_thread(build_state_payload)
                 local_payload = await _merge_deku_battles(local_payload)
                 await maybe_update_obs_sources(local_payload)
 
@@ -1626,7 +2103,7 @@ async def poll_files(app: web.Application) -> None:
                 try:
                     refreshed = await _refresh_elo(force=True)
                     if refreshed:
-                        await broadcast("STATE_UPDATE", build_state_payload())
+                        await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
                 except Exception:
                     pass
 
@@ -1642,15 +2119,108 @@ async def poll_files(app: web.Application) -> None:
                     print(f"[GHOST-CLEANUP] Error: {e}")
 
 
+_loop_beat = {"ts": 0.0, "thread_id": 0}
+
+
+async def monitor_loop_lag(app: web.Application) -> None:
+    """Log when the event loop stalls (sync work wedging the loop = port stops accepting)."""
+    interval = 0.25
+    _loop_beat["thread_id"] = threading.get_ident()
+    _loop_beat["ts"] = time.monotonic()
+    while True:
+        started = time.monotonic()
+        await asyncio.sleep(interval)
+        _loop_beat["ts"] = time.monotonic()
+        lag = _loop_beat["ts"] - started - interval
+        if lag >= LOOP_LAG_WARN_SEC:
+            print(f"[LOOP-LAG] Event loop was blocked ~{lag:.1f}s (warn threshold {LOOP_LAG_WARN_SEC:.1f}s)")
+
+
+def _loop_stall_watcher() -> None:
+    """OS-thread watchdog: dump the loop thread's stack DURING a stall.
+
+    The async LOOP-LAG monitor can only report a stall after surviving it;
+    keepalives kill a wedged server mid-stall, so the report never lands.
+    This plain thread keeps running while the loop is frozen and writes the
+    loop thread's live stack to stderr, naming the blocking call.
+    """
+    while True:
+        time.sleep(0.5)
+        beat_ts = _loop_beat["ts"]
+        thread_id = _loop_beat["thread_id"]
+        if not beat_ts or not thread_id:
+            continue
+        stall = time.monotonic() - beat_ts
+        if stall < LOOP_LAG_WARN_SEC:
+            continue
+        frame = sys._current_frames().get(thread_id)
+        stack = "".join(traceback.format_stack(frame)) if frame else "<no frame>"
+        print(
+            f"[LOOP-STALL] Event loop unresponsive for {stall:.1f}s; loop thread stack:\n{stack}",
+            file=sys.stderr,
+            flush=True,
+        )
+        time.sleep(5)  # rate-limit dumps during one long stall
+
+
+
+def _listener_self_check() -> None:
+    """OS-thread watchdog: exit cleanly if the TCP listener dies while the process lives.
+
+    Proven failure mode (2026-07-04): the 8777 listen socket can disappear while the
+    event loop stays healthy ([POLL] heartbeats continue, loop-stall watcher silent).
+    A deaf-but-alive server wedges the OBS page and tricks keepalives into taskkilling
+    a "healthy" process. Instead: issue a valid lightweight HTTP request; after 4 consecutive failures
+    (~80s) print loudly and exit(90) so the keepalive relaunch path sees a genuinely
+    dead process and restarts one working instance.
+    """
+    import socket as _socket
+
+    failures = 0
+    while True:
+        time.sleep(20)
+        try:
+            with _socket.create_connection(("127.0.0.1", PORT), timeout=5) as probe:
+                probe.sendall(
+                    b"GET /health HTTP/1.1\r\n"
+                    b"Host: 127.0.0.1\r\n"
+                    b"Connection: close\r\n\r\n"
+                )
+                first_line = probe.recv(128).split(b"\r\n", 1)[0]
+                if b" 200 " not in first_line:
+                    raise OSError(f"unexpected health response: {first_line!r}")
+            failures = 0
+        except OSError as exc:
+            failures += 1
+            print(
+                f"[LISTENER-CHECK] HTTP self-probe on 127.0.0.1:{PORT} failed ({failures}/4): {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
+            if failures >= 4:
+                print(
+                    f"[LISTENER-CHECK] listener on port {PORT} is dead while the process is alive; "
+                    "exiting 90 for a clean keepalive relaunch.",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                os._exit(90)
+
+
 async def start_background_tasks(app: web.Application) -> None:
     app["poller"] = asyncio.create_task(poll_files(app))
+    app["loop_lag_monitor"] = asyncio.create_task(monitor_loop_lag(app))
+    threading.Thread(target=_loop_stall_watcher, name="loop-stall-watcher", daemon=True).start()
+    threading.Thread(target=_listener_self_check, name="listener-self-check", daemon=True).start()
     # Initialize ELO cache and broadcast once ready
     async def init_and_broadcast_elo():
         await _init_elo_cache()
-        await broadcast("STATE_UPDATE", build_state_payload())
+        await broadcast("STATE_UPDATE", await asyncio.to_thread(build_state_payload))
     app["elo_init"] = asyncio.create_task(init_and_broadcast_elo())
     if _obs_client:
-        app["obs_init"] = asyncio.create_task(maybe_update_obs_sources(build_state_payload()))
+        async def init_obs_sources():
+            await maybe_update_obs_sources(await asyncio.to_thread(build_state_payload))
+        app["obs_init"] = asyncio.create_task(init_obs_sources())
 
 
 async def cleanup_background_tasks(app: web.Application) -> None:
@@ -1659,6 +2229,11 @@ async def cleanup_background_tasks(app: web.Application) -> None:
         poller.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await poller
+    lag_monitor = app.get("loop_lag_monitor")
+    if lag_monitor:
+        lag_monitor.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await lag_monitor
     obs_init = app.get("obs_init")
     if obs_init:
         obs_init.cancel()
@@ -1685,14 +2260,14 @@ async def cleanup_background_tasks(app: web.Application) -> None:
 
 # ── Grid Panel Handlers ──
 
-async def handle_fouler_stats(request: web.Request) -> web.FileResponse:
+async def handle_fouler_stats(request: web.Request) -> web.Response:
     """Serve the Fouler Stats panel HTML."""
-    return web.FileResponse(str(STREAMING_DIR / "fouler_stats.html"))
+    return await _html_file_response("fouler_stats.html")
 
 
-async def handle_emerald_brain(request: web.Request) -> web.FileResponse:
+async def handle_emerald_brain(request: web.Request) -> web.Response:
     """Serve the Emerald AI Brain panel HTML."""
-    return web.FileResponse(str(STREAMING_DIR / "emerald_brain.html"))
+    return await _html_file_response("emerald_brain.html")
 
 
 async def handle_emerald_brain_state(request: web.Request) -> web.Response:
@@ -1715,9 +2290,9 @@ async def handle_emerald_update(request: web.Request) -> web.Response:
         return web.json_response({"ok": False, "error": str(e)}, status=400)
 
 
-async def handle_firered_brain(request: web.Request) -> web.FileResponse:
+async def handle_firered_brain(request: web.Request) -> web.Response:
     """Serve the Fire Red AI Brain panel HTML."""
-    return web.FileResponse(str(STREAMING_DIR / "firered_brain.html"))
+    return await _html_file_response("firered_brain.html")
 
 
 async def handle_firered_brain_state(request: web.Request) -> web.Response:
@@ -1752,100 +2327,19 @@ async def handle_magneton_state(request: web.Request) -> web.Response:
 
 
 
-BATTLE_SLOT_HTML = """<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><title>Showdown Battle Feed {slot}</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
-<style>
-*{{margin:0;padding:0;box-sizing:border-box}}
-body{{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
-font-family:'Outfit',system-ui,sans-serif;color:#eaeaea}}
-#scanning{{position:absolute;top:0;left:0;width:100%;height:100%;
-display:flex;flex-direction:column;align-items:center;justify-content:center;
-z-index:2;transition:opacity 0.3s}}
-#battle-frame{{position:absolute;top:0;left:0;width:100%;height:100%;
-border:none;z-index:1}}
-.hidden{{opacity:0;pointer-events:none}}
-.sonar{{width:120px;height:120px;position:relative;margin-bottom:24px}}
-.sonar-circle{{position:absolute;top:50%;left:50%;
-transform:translate(-50%,-50%);border:1.5px solid #08d9d6;
-border-radius:50%;opacity:0;animation:sonar-ping 4s infinite linear}}
-.sonar-circle:nth-child(2){{animation-delay:1s}}
-.sonar-circle:nth-child(3){{animation-delay:2s}}
-.sonar-circle:nth-child(4){{animation-delay:3s}}
-@keyframes sonar-ping{{0%{{width:0;height:0;opacity:1}}100%{{width:100%;height:100%;opacity:0}}}}
-.sonar-scanner{{position:absolute;top:0;left:0;width:100%;height:100%;
-background:conic-gradient(from 0deg,transparent 0deg,#08d9d6 360deg);
-opacity:0.1;border-radius:50%;animation:spin 4s linear infinite}}
-@keyframes spin{{to{{transform:rotate(360deg)}}}}
-.scanning-text{{font-size:13px;font-weight:800;letter-spacing:3px;text-transform:uppercase;
-color:#08d9d6;text-shadow:0 0 12px rgba(8,217,214,0.4);animation:pulse 2s ease-in-out infinite}}
-.scanning-sub{{margin-top:8px;font-size:10px;letter-spacing:2px;text-transform:uppercase;
-color:rgba(8,217,214,0.4)}}
-@keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.5}}}}
-</style></head><body>
-<div id="scanning">
-  <div class="sonar">
-    <div class="sonar-scanner"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
-    <div class="sonar-circle"></div>
-  </div>
-  <div class="scanning-text">MATCHMAKING</div>
-  <div class="scanning-sub">RANKED BATTLE FEED {slot}</div>
-</div>
-<iframe id="battle-frame" class="hidden"></iframe>
-<script>
-(function(){{
-  var SLOT={slot};
-  var STATE_URL='/slot/'+SLOT+'/state';
-  var POLL_MS=3000;
-  var activeBid=null;
-  var scanning=document.getElementById('scanning');
-  var frame=document.getElementById('battle-frame');
+class _SlotTemplate(str):
+    def format(self, *args, **kwargs) -> str:
+        slot = kwargs.get("slot")
+        if slot is None and args:
+            slot = args[0]
+        if slot is None:
+            slot = "__SLOT__"
+        return str(self).replace("__SLOT__", str(slot))
 
-  function slotOf(b,i){{return b.slot!=null?parseInt(b.slot):(i+1);}}
 
-  function showBattle(bid, battleUrl){{
-    var url=(battleUrl||('https://play.pokemonshowdown.com/'+bid))+'?r='+Date.now();
-    // Pokemon Showdown intentionally refuses battle display inside an iframe.
-    // OBS browser sources should leave this local polling page and load the
-    // battle URL as the top-level page.
-    window.location.replace(url);
-  }}
-
-  function showScanning(){{
-    frame.classList.add('hidden');
-    frame.src='about:blank';
-    scanning.classList.remove('hidden');
-  }}
-
-  function poll(){{
-    fetch(STATE_URL+'?t='+Date.now())
-      .then(function(r){{return r.json();}})
-      .then(function(d){{
-        var battleId=d.battle_id||null;
-        var battleUrl=d.url||null;
-        if(battleId){{
-          if(battleId!==activeBid){{
-            activeBid=battleId;
-            showBattle(battleId,battleUrl);
-          }}
-        }} else {{
-          if(activeBid!==null){{
-            activeBid=null;
-            showScanning();
-          }}
-        }}
-      }})
-      .catch(function(){{}});
-  }}
-  poll();
-  setInterval(poll,POLL_MS);
-}})();
-</script>
-</body></html>"""
+BATTLE_SLOT_HTML = _SlotTemplate(
+    (STREAMING_DIR / "battle_slot.html").read_text(encoding="utf-8")
+)
 
 
 BATTLE_REDIRECT_HTML = BATTLE_SLOT_HTML  # deprecated alias
@@ -1853,12 +2347,7 @@ BATTLE_REDIRECT_HTML = BATTLE_SLOT_HTML  # deprecated alias
 
 
 async def handle_slot_state(request: web.Request) -> web.Response:
-    """Return JSON state for a specific battle slot.
-
-    Used by the client-side redirect page to poll for battle changes/endings.
-    Returns: {"slot": N, "battle_id": "...", "url": "..."} or
-             {"slot": N, "battle_id": null, "url": null}
-    """
+    """Return the audience-safe JSON state for a specific battle slot."""
     slot_str = request.match_info.get("slot", "1")
     try:
         slot_num = int(slot_str)
@@ -1868,30 +2357,37 @@ async def handle_slot_state(request: web.Request) -> web.Response:
     if slot_num < 1 or slot_num > 9:
         return web.json_response({"error": "invalid slot"}, status=400)
 
-    battle = _battle_for_slot(slot_num)
+    # State + battle-log tail reads are sync disk work; keep them off the event loop.
+    return web.json_response(await asyncio.to_thread(_slot_state_payload, slot_num))
+
+
+def _slot_state_payload(slot_num: int) -> dict:
+    # Build the state payload once and share it with the battle-lab section.
+    state = build_state_payload()
+    battles = state.get("battles") or []
+    battle = _build_slot_map(battles).get(slot_num) if isinstance(battles, list) else None
 
     if battle:
-        battle_id = battle.get("id")
-        url = _build_direct_battle_url(battle_id) if battle_id else None
-        return web.json_response({
+        return {
             "slot": slot_num,
-            "battle_id": battle_id,
-            "url": url,
-        })
+            "url": _build_public_slot_source_url(slot_num),
+            "battle_lab": _build_battle_lab_payload(slot_num, battle, state=state),
+        }
 
-    return web.json_response({
+    return {
         "slot": slot_num,
-        "battle_id": None,
         "url": None,
-    })
+        "battle_lab": _build_battle_lab_payload(slot_num, None, state=state),
+    }
 
 
 async def handle_battle_slot(request: web.Request) -> web.Response:
     """Battle slot OBS browser source.
 
-    Always serves the self-managing BATTLE_SLOT_HTML page: shows SCANNING
-    animation by default, polls /slot/N/state, and redirects to PS
-    via window.location.replace() when a battle is active for this slot.
+    Always serves the self-managing BATTLE_SLOT_HTML page. The OBS-safe
+    page stays local, polls /slot/N/state, and renders live battle facts
+    from active_battles.json plus the battle log tail instead of navigating
+    OBS CEF into Pokemon Showdown.
 
     obs-battle-sync pins all slots to /slot/N every 5 min so OBS returns to
     SCANNING automatically after battles end (no permanent-stick bug).
@@ -1906,9 +2402,291 @@ async def handle_battle_slot(request: web.Request) -> web.Response:
         return web.Response(text="Invalid slot", status=400)
 
     return web.Response(
-        text=BATTLE_SLOT_HTML.format(slot=slot_num),
+        text=BATTLE_SLOT_HTML.replace("__SLOT__", str(slot_num)),
         content_type="text/html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
     )
+
+
+# --- Gameplay-first flank panels (owner spec 2026-07-31) -------------------------------
+# ELO + batch/stream records + last engine update. Every value is read from RUNTIME
+# artifacts (battle_stats.json, logs/ladder_supervisor.log, stream marker file);
+# nothing is generated or editorialized -- the no-flavor-text rule is structural here.
+_PANEL_SUPERVISOR_LOG = ROOT_DIR / "logs" / "ladder_supervisor.log"
+_PANEL_STREAM_MARKER = ROOT_DIR / "devstream" / "truth" / "stream_session_start.txt"
+
+
+def _panel_stats_rows() -> list[dict]:
+    try:
+        data = json.loads((ROOT_DIR / "battle_stats.json").read_text(encoding="utf-8-sig"))
+    except Exception:
+        return []
+    rows = data if isinstance(data, list) else (data.get("battles") or data.get("rows") or [])
+    return [r for r in rows if isinstance(r, dict)]
+
+
+def _panel_row_epoch(row: dict):
+    ts = row.get("timestamp") or row.get("ts") or ""
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+
+
+def _panel_record_since(rows: list[dict], since_epoch):
+    w = l = 0
+    for r in rows:
+        t = _panel_row_epoch(r)
+        if t is None or (since_epoch is not None and t < since_epoch):
+            continue
+        res = str(r.get("result", "")).lower()
+        if res == "win":
+            w += 1
+        elif res in ("loss", "lose", "lost"):
+            l += 1
+    return w, l
+
+
+def _panel_supervisor_tail():
+    """(last 'BATCH #N start' line, last 'IMPROVE ok:' line) from the supervisor log."""
+    try:
+        lines = _PANEL_SUPERVISOR_LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-400:]
+    except Exception:
+        return None, None
+    batch_line = improve_line = None
+    for line in lines:
+        if "BATCH #" in line and " start " in line:
+            batch_line = line
+        elif "IMPROVE ok:" in line:
+            improve_line = line
+    return batch_line, improve_line
+
+
+def _panel_line_epoch(line: str):
+    try:
+        return datetime.fromisoformat(line.split("  ", 1)[0]).timestamp()
+    except Exception:
+        return None
+
+
+_PANEL_MON_SPECIAL = {
+    "deoxysspeed": "Deoxys-Speed", "deoxysdefense": "Deoxys-Defense",
+    "rotomwash": "Rotom-Wash", "rotomheat": "Rotom-Heat", "rotommow": "Rotom-Mow",
+    "landorustherian": "Landorus-Therian", "tornadustherian": "Tornadus-Therian",
+    "thundurustherian": "Thundurus-Therian", "urshifurapidstrike": "Urshifu-Rapid-Strike",
+    "taurospaldeaaqua": "Tauros-Paldea-Aqua", "taurospaldeablaze": "Tauros-Paldea-Blaze",
+    "ogerponwellspring": "Ogerpon-Wellspring", "ogerponcornerstone": "Ogerpon-Cornerstone",
+    "ogerponhearthflame": "Ogerpon-Hearthflame", "ninetalesalola": "Ninetales-Alola",
+    "weezinggalar": "Weezing-Galar", "zamazentacrowned": "Zamazenta-Crowned",
+}
+_PANEL_MON_PREFIX = (
+    ("great", "Great "), ("scream", "Scream "), ("brute", "Brute "), ("flutter", "Flutter "),
+    ("iron", "Iron "), ("roaring", "Roaring "), ("walking", "Walking "), ("sandy", "Sandy "),
+    ("gouging", "Gouging "), ("raging", "Raging "), ("slither", "Slither "),
+)
+
+
+def _panel_pretty_mon(name: str) -> str:
+    n = str(name).lower()
+    if n in _PANEL_MON_SPECIAL:
+        return _PANEL_MON_SPECIAL[n]
+    for pre, disp in _PANEL_MON_PREFIX:
+        if n.startswith(pre) and len(n) > len(pre):
+            return disp + n[len(pre):].capitalize()
+    return n.capitalize()
+
+
+def _panel_focus():
+    """The current biggest loss driver from the freshly rebuilt weights, preferring the
+    matchup that WORSENED most vs the pre-rebuild snapshot. Pure runtime data."""
+    try:
+        cur = json.loads((ROOT_DIR / "fp" / "matchup_weights.json").read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    prob = cur.get("problem_pokemon") or {}
+    if not prob:
+        return None
+    prev = {}
+    try:
+        baks = sorted((ROOT_DIR / ".codex_backups").glob("matchup_weights.json.improve-*"))
+        if baks:
+            prev = (json.loads(baks[-1].read_text(encoding="utf-8-sig")) or {}).get("problem_pokemon") or {}
+    except Exception:
+        pass
+
+    def sc(e):
+        return 2 * int(e.get("losses_present", 0) or 0) + int(e.get("kos_on_us", 0) or 0)
+
+    best = None; key = (-10**9, -10**9)
+    for mon, e in prob.items():
+        s = sc(e)
+        r = s - sc(prev.get(mon) or {})
+        if (r, s) > key:
+            key = (r, s); best = mon
+    if best is None:
+        return None
+    e = prob[best]
+    return {"mon": _panel_pretty_mon(best),
+            "losses": int(e.get("losses_present", 0) or 0),
+            "kos": int(e.get("kos_on_us", 0) or 0)}
+
+
+async def handle_panel_data(request: web.Request) -> web.Response:
+    rows = _panel_stats_rows()
+    elo = None
+    for r in reversed(rows):
+        v = r.get("elo_after") if isinstance(r.get("elo_after"), (int, float)) else r.get("rating")
+        if isinstance(v, (int, float)):
+            elo = round(v)
+            break
+    batch_line, improve_line = _panel_supervisor_tail()
+    batch_no = None
+    bw = bl = 0
+    if batch_line:
+        m = re.search(r"BATCH #(\d+) start", batch_line)
+        batch_no = int(m.group(1)) if m else None
+        bw, bl = _panel_record_since(rows, _panel_line_epoch(batch_line))
+    stream = None
+    try:
+        stream_epoch = float(_PANEL_STREAM_MARKER.read_text().strip())
+        sw, sl = _panel_record_since(rows, stream_epoch)
+        stream = {"w": sw, "l": sl}
+    except Exception:
+        pass
+    improve = None
+    if improve_line:
+        m = re.search(r"IMPROVE ok: window=(\d+) artifacts=(\d+) losses=(\d+)", improve_line)
+        ie = _panel_line_epoch(improve_line)
+        if m:
+            focus = _panel_focus()
+            if focus:
+                summary = (f"Counter {focus['mon']}: on the field in {focus['losses']} "
+                           f"recent losses, {focus['kos']} KOs against us")
+            else:
+                summary = f"Rebuilt matchup weights from {m.group(2)} replays ({m.group(3)} losses)"
+            improve = {
+                "summary": summary,
+                "detail": f"matchup weights rebuilt from {m.group(2)} replays ({m.group(3)} losses)",
+                "at_utc": time.strftime("%H:%M UTC", time.gmtime(ie)) if ie else None,
+            }
+    return web.json_response({
+        "elo": elo,
+        "batch": {"n": batch_no, "w": bw, "l": bl},
+        "stream": stream,
+        "improve": improve,
+        "updated": time.strftime("%H:%M:%S UTC", time.gmtime()),
+    })
+
+
+_PANEL_BASE_CSS = """
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
+ font-family:'Segoe UI',system-ui,sans-serif;color:#eaeaea;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:4%}
+.lbl{font-size:2.1vh;letter-spacing:.25em;color:#888;text-transform:uppercase;margin-bottom:1vh}
+.gap{margin-top:5vh}
+"""
+
+_PANEL_LEFT_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+""" + _PANEL_BASE_CSS + """
+.elo{font-size:12vh;font-weight:800;color:#08d9d6;line-height:1}
+.elo small{font-size:3.4vh;color:#888;font-weight:400;margin-left:.5vh}
+.rec{font-size:4.8vh;font-weight:600;margin-top:.6vh}
+.rec span{color:#888;font-size:2.6vh;font-weight:400;margin-right:1.2vh}
+</style></head><body>
+<div class="lbl">Current rating</div><div class="elo" id="elo">&mdash;</div>
+<div class="gap lbl">Record</div>
+<div class="rec"><span id="bl">BATCH</span><span id="batch">&mdash;</span></div>
+<div class="rec"><span>STREAM</span><span id="stream">&mdash;</span></div>
+<script>
+async function t(){try{const d=await (await fetch('/panel_data')).json();
+document.getElementById('elo').innerHTML=(d.elo??'&mdash;')+' <small>ELO</small>';
+document.getElementById('bl').textContent='BATCH'+(d.batch&&d.batch.n?' #'+d.batch.n:'');
+document.getElementById('batch').textContent=d.batch?`${d.batch.w}–${d.batch.l}`:'—';
+document.getElementById('stream').textContent=d.stream?`${d.stream.w}–${d.stream.l}`:'—';
+}catch(e){}}t();setInterval(t,15000);
+</script></body></html>"""
+
+_PANEL_RIGHT_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+""" + _PANEL_BASE_CSS + """
+.blurb{font-size:3.9vh;font-weight:600;line-height:1.4}
+.when{font-size:2.3vh;color:#888;margin-top:2.5vh;line-height:1.4}
+</style></head><body>
+<div class="lbl">Next pointed improvement</div>
+<div class="blurb" id="blurb">&mdash;</div>
+<div class="when" id="when"></div>
+<script>
+async function t(){try{const d=await (await fetch('/panel_data')).json();
+if(d.improve){document.getElementById('blurb').textContent=d.improve.summary;
+document.getElementById('when').textContent=(d.improve.detail||'')+(d.improve.at_utc?' · '+d.improve.at_utc:'');}
+}catch(e){}}t();setInterval(t,15000);
+</script></body></html>"""
+
+_PANEL_BAND_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
+ font-family:'Segoe UI',system-ui,sans-serif;color:#eaeaea;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.l1{font-size:40px;font-weight:700;letter-spacing:.02em}
+.l1 .elo{color:#08d9d6;font-weight:800}
+.l1 .dim{color:#888;font-weight:400}
+.l2{font-size:25px;color:#aaa;margin-top:8px}
+</style></head><body>
+<div class="l1" id="l1">&mdash;</div>
+<div class="l2" id="l2"></div>
+<script>
+async function t(){try{const d=await (await fetch('/panel_data')).json();
+const b=d.batch?`BATCH${d.batch.n?' #'+d.batch.n:''} ${d.batch.w}–${d.batch.l}`:'BATCH —';
+const s=d.stream?`STREAM ${d.stream.w}–${d.stream.l}`:'STREAM —';
+document.getElementById('l1').innerHTML=`<span class="elo">${d.elo??'—'}</span> ELO&ensp;<span class="dim">·</span>&ensp;${b}&ensp;<span class="dim">·</span>&ensp;${s}`;
+document.getElementById('l2').textContent=d.improve?d.improve.summary:'';
+}catch(e){}}t();setInterval(t,15000);
+</script></body></html>"""
+
+
+async def handle_panel_band(request: web.Request) -> web.Response:
+    return web.Response(text=_PANEL_BAND_HTML, content_type="text/html")
+
+
+async def handle_peak_logo(request: web.Request) -> web.FileResponse:
+    return web.FileResponse(STREAMING_DIR / "peak_logo.png")
+
+
+_LOGO_OVERLAY_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0}body{width:100vw;height:100vh;overflow:hidden;background:transparent}
+.logo{position:absolute;border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,.55);opacity:0;transition:opacity .8s}
+</style></head><body><script>
+const ORIENT=(new URLSearchParams(location.search)).get('orient')||'h';
+const SLOTS=ORIENT==='v'?[[0,141,1080,593],[0,734,1080,593],[0,1327,1080,593]]:[[0,0,960,540],[960,0,960,540],[480,540,960,540]];
+const imgs=SLOTS.map(()=>{const i=document.createElement('img');i.src='/peak_logo.png';i.className='logo';document.body.appendChild(i);return i;});
+async function t(){try{const d=await(await fetch('/battles')).json();const bySlot={};
+for(const b of (d.battles||[])) if(b.status==='active'&&b.slot) bySlot[b.slot]=b;
+SLOTS.forEach((r,ix)=>{const b=bySlot[ix+1];const img=imgs[ix];
+if(!b){img.style.opacity=0;return;}
+// POV enforcer keeps thepeakmons on the near/left side -> logo is a constant badge under our team.
+const x=r[0],y=r[1],w=r[2],h=r[3];const size=Math.round(w*0.11);
+img.style.width=size+'px';img.style.height=size+'px';
+img.style.top=Math.round(y+h*0.63)+'px';
+img.style.left=Math.round(x+w*0.045)+'px';
+img.style.opacity=1;});
+}catch(e){}}t();setInterval(t,8000);
+</script></body></html>"""
+
+
+async def handle_logo_overlay(request: web.Request) -> web.Response:
+    return web.Response(text=_LOGO_OVERLAY_HTML, content_type="text/html")
+
+
+async def handle_panel_left(request: web.Request) -> web.Response:
+    return web.Response(text=_PANEL_LEFT_HTML, content_type="text/html")
+
+
+async def handle_panel_right(request: web.Request) -> web.Response:
+    return web.Response(text=_PANEL_RIGHT_HTML, content_type="text/html")
 
 
 def create_app() -> web.Application:
@@ -1917,6 +2695,8 @@ def create_app() -> web.Application:
     app.router.add_get("/health", handle_health)
     app.router.add_post("/event", handle_event)
     app.router.add_get("/obs", handle_obs)
+    app.router.add_get("/vertical", handle_vertical)
+    app.router.add_get("/landscape", handle_landscape)
     app.router.add_get("/overlay", handle_overlay)
     app.router.add_get("/idle", handle_idle)
     app.router.add_get("/debug", handle_debug)
@@ -1929,6 +2709,12 @@ def create_app() -> web.Application:
     app.router.add_get("/active_battles.json", handle_battles_file)
     register_dashboard_routes(app)
     app.router.add_get("/fouler-stats", handle_fouler_stats)
+    app.router.add_get("/panel_data", handle_panel_data)
+    app.router.add_get("/panel_left", handle_panel_left)
+    app.router.add_get("/panel_right", handle_panel_right)
+    app.router.add_get("/panel_band", handle_panel_band)
+    app.router.add_get("/peak_logo.png", handle_peak_logo)
+    app.router.add_get("/logo_overlay", handle_logo_overlay)
     app.router.add_get("/emerald-brain", handle_emerald_brain)
     app.router.add_get("/emerald-brain-state", handle_emerald_brain_state)
     app.router.add_post("/emerald-update", handle_emerald_update)
@@ -1951,6 +2737,8 @@ if __name__ == "__main__":
     print()
     print("  OBS Browser Source URLs:")
     print(f"    Battle Display (legacy iframes): http://localhost:{PORT}/obs")
+    print(f"    Vertical Triple Battle: http://localhost:{PORT}/vertical")
+    print(f"    Landscape Triple Battle: http://localhost:{PORT}/landscape")
     print(f"    Stats Overlay:  http://localhost:{PORT}/overlay")
     if OBS_BATTLE_SOURCES:
         print()
@@ -1970,4 +2758,9 @@ if __name__ == "__main__":
     print()
     print("[SERVER] Waiting for requests...")
 
-    web.run_app(create_app(), host="0.0.0.0", port=PORT)
+    web.run_app(
+        create_app(),
+        host="0.0.0.0",
+        port=PORT,
+        handle_signals=_use_process_signal_handlers(),
+    )

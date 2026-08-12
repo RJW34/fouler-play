@@ -10,6 +10,8 @@ import logging
 from pathlib import Path
 from typing import List, Dict
 
+import pytest
+
 from fp.archetype_analyzer import analyze_team_archetype, ArchetypeEnum
 from fp.gameplan_generator import generate_gameplan_from_archetype
 from fp.battle_decision import initialize_battle_strategy
@@ -67,7 +69,7 @@ def parse_showdown_team(team_text: str) -> List[Dict]:
     return team_data
 
 
-def test_team_analysis(team_name: str, team_path: Path, expected_archetype: ArchetypeEnum = None):
+def run_team_analysis(team_name: str, team_path: Path, expected_archetype: ArchetypeEnum = None):
     """Test archetype analysis and gameplan generation for a team."""
     logger.info(f"\n{'='*80}")
     logger.info(f"Testing team: {team_name}")
@@ -130,7 +132,7 @@ def main():
     # Test Team 1: Stall
     team1_path = Path("teams/gen9/ou/fat-team-1-stall")
     if team1_path.exists():
-        result = test_team_analysis(
+        result = run_team_analysis(
             "Fat Team 1 (Stall)",
             team1_path,
             expected_archetype=ArchetypeEnum.HAZARD_STACK  # Has Stealth Rock + Spikes
@@ -140,7 +142,7 @@ def main():
     # Test Team 2: Pivot
     team2_path = Path("teams/gen9/ou/fat-team-2-pivot")
     if team2_path.exists():
-        result = test_team_analysis(
+        result = run_team_analysis(
             "Fat Team 2 (Pivot)",
             team2_path,
             expected_archetype=ArchetypeEnum.PIVOT
@@ -150,7 +152,7 @@ def main():
     # Test Team 3: Dondozo
     team3_path = Path("teams/gen9/ou/fat-team-3-dondozo")
     if team3_path.exists():
-        result = test_team_analysis(
+        result = run_team_analysis(
             "Fat Team 3 (Dondozo)",
             team3_path,
             expected_archetype=ArchetypeEnum.STALL_CORE
@@ -174,6 +176,24 @@ def main():
     
     logger.info(f"\nResults saved to: {output_path}")
     logger.info("\n✅ Integration test complete!")
+
+
+def test_strategic_overhaul_smoke():
+    """Pytest-safe smoke test for archetype analysis on the first available fat team."""
+    candidates = [
+        ("Fat Team 1 (Stall)", Path("teams/gen9/ou/fat-team-1-stall"), ArchetypeEnum.HAZARD_STACK),
+        ("Fat Team 2 (Pivot)", Path("teams/gen9/ou/fat-team-2-pivot"), ArchetypeEnum.PIVOT),
+        ("Fat Team 3 (Dondozo)", Path("teams/gen9/ou/fat-team-3-dondozo"), ArchetypeEnum.STALL_CORE),
+    ]
+    for team_name, team_path, expected in candidates:
+        if team_path.exists():
+            result = run_team_analysis(team_name, team_path, expected_archetype=expected)
+            assert result["team_name"] == team_name
+            assert result["gameplan_early"]
+            assert result["gameplan_mid"]
+            assert result["gameplan_late"]
+            return
+    pytest.skip("No fat-team files found for strategic overhaul smoke test")
 
 
 if __name__ == "__main__":

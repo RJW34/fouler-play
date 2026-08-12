@@ -4,6 +4,17 @@ fouler-play is a bounded-cycle competitive Pokemon Showdown improvement lab. The
 
 Live battles are not just content. They are the training and evaluation loop: collect decision traces, replay evidence, matchup failures, ladder rating movement, and DEKU-authored improvement notes, then feed those findings back into the bot.
 
+The ladder loop is staged. Fouler must prove the current rating band before it
+is allowed to take larger proof windows: small proof windows below 1500, tighter
+windows through 1600 and 1700, and then a 30-game 1700 sustain proof assembled
+from repeated small runtime chunks that are re-gated between starts.
+`scripts/fouler_mission_monitor.py` enforces this as
+`fouler-ladder-stage-gate/v1` plus `fouler-ladder-floor-proof/v1`: one rating
+spike above 1500 or 1600 is not enough to promote the next stage; the latest
+rated games must show five-game consecutive floor proof with a non-losing
+floor-window record. Oversized repair/start batches are mission issues and
+block automatic ladder starts.
+
 ## Runtime Boundaries
 
 - `ubunztu` is the control-plane and development home for status, dry-run, analysis, and HERMES proof work.
@@ -48,14 +59,20 @@ cd /home/ryan/projects/fouler-play
 .venv/bin/python scripts/devstream_session.py doctor
 .venv/bin/python scripts/showdown_login_check.py
 .venv/bin/python scripts/showdown_login_check.py --execute
-.venv/bin/python scripts/devstream_session.py start --run-count 25 --max-concurrent-battles 2
-.venv/bin/python scripts/devstream_session.py start --run-count 25 --max-concurrent-battles 2 --execute
+.venv/bin/python scripts/fouler_mission_monitor.py --run-count 5 --max-cycles 1 --max-concurrent-battles 1 --start-gate-only
+.venv/bin/python scripts/fouler_mission_monitor.py --write --repair-runtime --renew-lease --run-count 5 --max-cycles 1 --max-concurrent-battles 1 --start-gate-only
 .venv/bin/python scripts/devstream_session.py stop
 .venv/bin/python scripts/devstream_session.py stop --execute
 .venv/bin/python scripts/devstream_packetize.py
 ```
 
-`scripts/devstream_session.py start --execute` is the reviewed devstream runner. It loads `.env`/`.env.deku`, tightens those files to mode `600` on Linux, starts the OBS HTTP surface, then starts a bounded `run.py` batch with the required Showdown arguments.
+`scripts/fouler_mission_monitor.py --start-gate-only` is the HERMES-facing start gate. It allows only the next finite proof window when health is fresh, duplicate runners are absent, account authority agrees with the active runtime lease, no supervisor stop file is present, stop-loss governance is clear, the requested `run_count * max_cycles` fits the ladder stage and floor-proof state, and a runtime lease can authorize the exact machine/account/concurrency/replay scope. The 1700 sustain proof still requires 30 qualifying games, but the monitor caps each live runtime chunk to a small re-gated window so a single 1700 spike cannot authorize a long uninspected skid. If loss streak, low win-rate, runtime rating drawdown, regression below a previously proven 1500/1600/1700 ladder floor, ELO-proof pre-target/sustain drawdown, account-authority mismatch, supervisor stop-file presence, or oversized batch stop-loss trips, the gate also requires the blocking issue to be cleared; stop-loss recovery additionally requires accepted offline-eval resume proof from `eval_results/offline/candidate.json` and `eval_results/offline/compare-frozen-vs-candidate.json`, then fresh active-improvement proof from `devstream/truth/post-packet-eval.json`, before another ladder proof window may open. The post-packet proof must show an implemented packet, a bounded battle after the packet, autoresearch coverage of that battle, `evidenceIntegrity.ok=true`, no runtime/network mutation from the evaluator, and `status=post-packet-eval-improving`. Missing final 1700 sustain proof remains a mission issue, but it does not by itself authorize a larger batch or block a small proof window needed to gather evidence.
+
+The same monitor payload exposes `repairQueue` (`fouler-play-repair-queue/v1`) for DEKU/HERMES. When stop-loss is active, `repairQueue.nextPacketId` is `fouler-stop-loss-recovery` and the packet enumerates the required sequence: freeze ladder starts, analyze the failing rated window, select one constrained work packet, implement one allowed code fix with tests, produce accepted offline-eval proof, produce fresh post-packet improvement proof, then re-run the start gate for one bounded proof window. When stop-loss is clear but final 1700 sustain proof is missing, `repairQueue.nextPacketId` is `fouler-1700-sustain-proof`. Repair packets are operator/work instructions only; they set `runtimeMutationAllowed=false`, `networkSendAllowed=false`, `discordPostAllowed=false`, `teamEditsAllowed=false`, and `streamKeyRequired=false`.
+
+`--repair-runtime` starts proof-only bounded sessions by default. `--auto-improve` is an explicit opt-in and must not be added to HERMES repair/start commands unless a separate offline-eval acceptance and lease policy deliberately allows recursive live improvement.
+
+`scripts/devstream_session.py start --execute` is a lower-level runner behind the gate. It must not be called directly by HERMES start/recovery paths unless the mission monitor has first accepted the requested proof window. `scripts/devstream_session.py supervise` also checks the mission start gate for its full `run-count * max-cycles` proof window before writing a supervisor PID, so a multi-cycle supervisor cannot bypass the staged ladder cap one child batch at a time. Each idle supervisor cycle may refresh proof, but it must recheck the mission gate before auto-improve or the next ladder batch; if stop-loss, drawdown, floor regression, stale truth, or missing offline-eval resume proof closes the gate, the supervisor exits blocked instead of polling or grinding.
 
 `scripts/showdown_login_check.py --execute` is the credential proof gate. It logs into Pokemon Showdown, does not queue a battle, does not chat, and never prints the password. A bounded ladder cycle should not start until this probe passes.
 
@@ -99,16 +116,22 @@ This is a no-write probe. It reports JIGGLYPUFF status without creating a contro
 start times. If `psutil` is missing, stale `.bot.pid` or `.pids/*.pid` artifacts are treated as
 untrusted blockers, not live runtime proof.
 
-The doctor also fails closed when account authorities disagree. `.env` / `SHOWDOWN_USER_ID`, mission
-docs, and any runtime lease must name the same Showdown account before an execute path is considered
-ready. A dry-run lease authorizes only its dry-run purpose, and an expired proof window never authorizes
-execute.
+The doctor and mission monitor also fail closed when account authorities disagree. `.env` /
+`SHOWDOWN_USER_ID`, mission docs, health accountAuthority telemetry, and any runtime lease must name
+the same Showdown account before an execute path is considered ready. A dry-run lease authorizes only
+its dry-run purpose, and an expired proof window never authorizes execute.
 
 ## Next Work Packets
 
-1. Generate live ELO proof files that conform to `devstream/truth/elo-proof.schema.json`.
+1. Keep live ELO proof files fresh through `scripts/devstream_cycle_report.py --write`, conforming to `devstream/truth/elo-proof.schema.json`, including the bounded pre-1700 approach drawdown, the 1700 sustain window, and per-team coverage fields. `summary.sustainProofComplete` is a mission-ready 1700 sustain claim, not just an evidence-shape flag; use `summary.sustainEvidenceShapeComplete` only to diagnose malformed or missing proof fields.
+   The sustain proof must also carry a `sourceCommit` from the checkout that produced the behavior, and the mission monitor rejects source drift when the current checkout is known. The sustain window must contain concrete, unique battle ids and unique Pokemon Showdown replay ids; each replay URL must match its battle id. `unknown`, duplicated, or merely prefix-shaped replay URLs are not proof. Every sustain-window game must also link unique per-game decision-trace evidence; duplicated decision-trace paths or URLs are not proof. Every completed proof game must carry a parseable battle timestamp, and the game list must be chronological before first-target, drawdown, and uninterrupted-floor derivation. The proof target must declare `uninterruptedPostTargetFloorRequired=true`, and any dip below 1700 after the first target hit is a stop-loss breach, not merely an incomplete completion claim. The proof must link the post-window autoresearch JSON, human-readable autoresearch report, and decision-trace review artifact. Replay-analysis timestamps are diagnostic only; they cannot refresh an old sustain proof without a fresh proof/session/latest-battle timestamp. The declared target contract and every summary counter/rating must match values derived from the game list; a stale, hand-edited, reordered, or internally contradictory summary is not readiness evidence. A 1700 rating window without source provenance, replay-analysis, decision-trace evidence, and chronological battle proof is not a closed learn-from-loss loop.
 2. Generate a richer completion summary after each bounded session, including battle ids, replay ids, and rating deltas.
 3. Wire `scripts/devstream_packetize.py --write` into a human-reviewed DEKU packet flow.
 4. Write `devstream/truth/completion.json` at bounded cycle end with battle counts, replay ids, report paths, rating deltas, and validation status.
 5. Retire or clearly label legacy 6-slot text-source docs so the browser-source architecture is obvious.
 6. Promote `showdown_login_check.py --execute` into the standard DEKU certification step before any ladder batch.
+7. Keep the mission monitor's staged ladder gate in front of every repair/start path, so a sub-1500 bot or one-game 1500/1600 spike cannot launch a full 30-game batch and skid before HERMES can inspect the failing window.
+8. Treat `fouler-offline-eval-resume-proof-missing` as a start blocker after any stop-loss breach; do not clear it with prose or stale reports.
+9. Treat `fouler-active-improvement-proof-missing` as the second stop-loss recovery blocker after offline eval acceptance; do not reopen laddering until `scripts/devstream_post_packet_eval.py --write` produces fresh improving proof for the implemented packet.
+10. Consume `repairQueue.nextPacketId` from the monitor payload for DEKU work dispatch. Do not retry ladder starts from a generic blocked status; use the packet's ordered `nextActions` and acceptance gates.
+11. Treat `.pids/supervisor.stop` as `fouler-supervisor-stop-file-present`, a hard start blocker and mission issue. Do not remove it from automation just to make health green; resume only through a fresh mission start gate.

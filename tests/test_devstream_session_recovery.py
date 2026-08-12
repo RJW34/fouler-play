@@ -42,6 +42,15 @@ def write_runtime_lease(
     return path
 
 
+def green_mission_start_gate(**kwargs):
+    return {
+        "policy": "fouler-runtime-start-gate/v1",
+        "ready": True,
+        "startGate": {"ready": True, "blockingIssueIds": []},
+        "requested": kwargs,
+    }
+
+
 def test_recover_stale_battle_runtime_replaces_idle_singleton(tmp_path, monkeypatch):
     pid_dir = tmp_path / ".pids"
     bot_pid = tmp_path / ".bot.pid"
@@ -830,6 +839,7 @@ def test_cmd_start_refreshes_stale_empty_active_truth_before_spawning(tmp_path, 
     monkeypatch.setattr(devstream_session, "recent_showdown_credential_failure", lambda root: {"found": False})
     monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
     monkeypatch.setattr(
         devstream_session,
         "recover_stale_battle_runtime",
@@ -1046,6 +1056,68 @@ def test_cmd_start_dry_run_only_lease_does_not_authorize_execute(tmp_path, monke
     assert started == []
 
 
+def test_cmd_start_execute_fails_closed_when_mission_start_gate_blocks(tmp_path, monkeypatch, capsys):
+    started = []
+
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(
+        devstream_session,
+        "prepare_runtime_env",
+        lambda env: {"PS_USERNAME": "bot", "PS_PASSWORD": "secret"},
+    )
+    monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
+    monkeypatch.setattr(
+        devstream_session,
+        "start_process",
+        lambda *args, **kwargs: started.append(args) or {"pid": 1},
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "mission_monitor_start_gate",
+        lambda **kwargs: {
+            "policy": "fouler-runtime-start-gate/v1",
+            "ready": False,
+            "startGate": {
+                "ready": False,
+                "blockingIssueIds": ["fouler-rating-drawdown", "fouler-session-stop-loss-breached"],
+            },
+        },
+    )
+    monkeypatch.setattr(
+        devstream_session.state_store,
+        "write_runtime_blocked_status",
+        lambda code, summary: {"code": code, "summary": summary},
+    )
+    runtime_lease = write_runtime_lease(tmp_path / "runtime-lease.json")
+
+    args = argparse.Namespace(
+        run_count=5,
+        max_concurrent_battles=1,
+        max_runtime_minutes=180,
+        queue_timeout_seconds=180,
+        turn_timeout_seconds=90,
+        supervisor_sleep_seconds=15,
+        replace_stale_runner=True,
+        continuous=False,
+        execute=True,
+        enable_auto_improve=False,
+        max_cycles=0,
+        runtime_lease=str(runtime_lease),
+    )
+
+    assert devstream_session.cmd_start(args) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "blocked-mission-start-gate"
+    assert payload["missionStartGate"]["ready"] is False
+    assert payload["missionStartGate"]["startGate"]["blockingIssueIds"] == [
+        "fouler-rating-drawdown",
+        "fouler-session-stop-loss-breached",
+    ]
+    assert "started" not in payload
+    assert started == []
+
+
 def test_forced_clear_active_battles_overrides_live_runner_truth(tmp_path, monkeypatch):
     active = tmp_path / "active_battles.json"
     active.write_text(json.dumps({"battles": [{"id": "battle-gen9ou-1"}], "count": 1}), encoding="utf-8")
@@ -1186,6 +1258,7 @@ def test_continuous_start_spawns_supervisor_not_direct_battle_runner(monkeypatch
     monkeypatch.setattr(devstream_session, "recent_showdown_credential_failure", lambda root: {"found": False})
     monkeypatch.setattr(devstream_session, "secure_env_files", lambda execute=False: [{"ok": True}])
     monkeypatch.setattr(devstream_session, "run_json", lambda command: ({"healthy": True}, None))
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
     monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
 
     def fake_start(command, pid_file, env):
@@ -1229,6 +1302,7 @@ def test_supervisor_cycle_refreshes_proof_then_starts_when_idle(monkeypatch):
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
 
     def fake_run(command, *, timeout):
         commands.append(command)
@@ -1263,6 +1337,7 @@ def test_supervisor_cycle_caps_legacy_unbounded_run_count(monkeypatch):
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
 
     def fake_run(command, *, timeout):
         commands.append(command)
@@ -1296,6 +1371,7 @@ def test_supervisor_cycle_skips_improve_without_explicit_opt_in(monkeypatch):
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
     monkeypatch.setattr(devstream_session, "load_env_files", lambda: {})
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
 
     def fake_run(command, *, timeout):
         commands.append(command)
@@ -1332,6 +1408,7 @@ def test_supervisor_cycle_runs_improve_only_with_explicit_opt_in(monkeypatch):
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
 
     def fake_run(command, *, timeout):
         commands.append(command)
@@ -1380,6 +1457,7 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
         "load_env_files",
         lambda: {devstream_session.AUTO_IMPROVE_SENTINEL: "1"},
     )
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
 
     def fake_run(command, *, timeout):
         commands.append(command)
@@ -1411,6 +1489,60 @@ def test_supervisor_cycle_runs_improve_with_env_sentinel_and_explicit_child_flag
         "1",
     ]
     assert commands[3] == ["python", "infrastructure/elo_watchdog.py"]
+
+
+def test_supervisor_cycle_blocks_before_improve_or_start_when_cycle_gate_closes(monkeypatch):
+    commands = []
+
+    monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
+    monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
+    monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(
+        devstream_session,
+        "mission_monitor_start_gate",
+        lambda **kwargs: {
+            "policy": "fouler-runtime-start-gate/v1",
+            "ready": False,
+            "startGate": {
+                "ready": False,
+                "blockingIssueIds": [
+                    "fouler-rating-drawdown",
+                    "fouler-session-stop-loss-breached",
+                ],
+            },
+        },
+    )
+
+    def fake_run(command, *, timeout):
+        commands.append(command)
+        return {"command": command, "returnCode": 0}
+
+    monkeypatch.setattr(devstream_session, "run_supervisor_command", fake_run)
+
+    args = argparse.Namespace(
+        run_count=25,
+        max_concurrent_battles=3,
+        queue_timeout_seconds=180,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=False,
+        enable_auto_improve=True,
+    )
+
+    payload = devstream_session.run_supervisor_cycle(args, 1)
+
+    assert payload["state"] == "blocked-mission-start-gate"
+    assert payload["missionStartGate"]["startGate"]["blockingIssueIds"] == [
+        "fouler-rating-drawdown",
+        "fouler-session-stop-loss-breached",
+    ]
+    assert "blocked next ladder batch" in payload["error"]
+    assert commands == [
+        ["python", "pipeline.py", "autoresearch", "-n", "30", "--no-discord"],
+        ["python", "scripts/devstream_cycle_report.py", "--write"],
+    ]
 
 
 def test_supervisor_auto_improve_accepts_env_sentinel():
@@ -1528,6 +1660,63 @@ def test_cmd_supervise_validates_against_runtime_lease_account_not_stale_env(tmp
     assert captured["env"]["SHOWDOWN_USER_ID"] == "LEBOTJAMESXD00N"
 
 
+def test_cmd_supervise_checks_full_supervisor_window_before_pid_write(tmp_path, monkeypatch, capsys):
+    captured = {}
+
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(devstream_session, "runtime_lease_guard", lambda **kwargs: {"ok": True})
+    monkeypatch.setattr(
+        devstream_session,
+        "write_pid_value",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("blocked supervisor must not write pid")),
+    )
+    monkeypatch.setattr(
+        devstream_session,
+        "run_supervisor_cycle",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("blocked supervisor must not run cycles")),
+    )
+
+    def fake_gate(**kwargs):
+        captured.update(kwargs)
+        return {
+            "policy": "fouler-runtime-start-gate/v1",
+            "ready": False,
+            "startGate": {
+                "ready": False,
+                "blockingIssueIds": ["fouler-ladder-batch-too-large-for-stage"],
+            },
+        }
+
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", fake_gate)
+
+    args = argparse.Namespace(
+        run_count=5,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=3,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(tmp_path / "runtime-lease.json"),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 2
+
+    payload = json.loads(capsys.readouterr().out)
+    assert captured == {"run_count": 5, "max_concurrent_battles": 1, "max_cycles": 3}
+    assert payload["state"] == "blocked-mission-start-gate"
+    assert payload["missionStartGate"]["startGate"]["blockingIssueIds"] == [
+        "fouler-ladder-batch-too-large-for-stage"
+    ]
+    assert "blocked ladder supervisor" in payload["error"]
+
+
 def test_supervisor_commands_propagate_auto_improve_to_task_installer():
     args = argparse.Namespace(
         run_count=25,
@@ -1565,6 +1754,7 @@ def test_supervisor_cycle_clears_stale_active_truth_when_runner_is_dead(monkeypa
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: counts.pop(0) if counts else 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
 
     def fake_clear(**kwargs):
         return {
@@ -1619,6 +1809,7 @@ def test_supervisor_cycle_can_refresh_proof_without_starting_next_batch(monkeypa
     monkeypatch.setattr(devstream_session, "read_active_battles", lambda: 0)
     monkeypatch.setattr(devstream_session, "any_battle_runner_alive", lambda: False)
     monkeypatch.setattr(devstream_session, "supervisor_child_python", lambda: "python")
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
 
     def fake_run(command, *, timeout):
         commands.append(command)
@@ -1666,6 +1857,7 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
     monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
     monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
     monkeypatch.setattr(devstream_session, "runtime_lease_guard", lambda **kwargs: {"ok": True})
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
     monkeypatch.setattr(devstream_session, "write_pid_value", lambda *args, **kwargs: None)
     monkeypatch.setattr(devstream_session.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(devstream_session, "supervisor_runtime_state", lambda: next(runtime_states))
@@ -1723,6 +1915,67 @@ def test_cmd_supervise_counts_completed_learning_cycles_not_poll_heartbeats(tmp_
     assert final["bounds"]["maxCyclesSemantics"] == "completed bounded learning cycles, not supervisor polling heartbeats"
     assert final["lastCycle"]["learningCycleCompleted"] is True
     assert final["lastCycle"]["completedLearningCycles"] == 1
+
+
+def test_cmd_supervise_stops_when_cycle_mission_gate_closes(tmp_path, monkeypatch):
+    statuses = []
+
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STOP_FILE", tmp_path / "supervisor.stop")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_PID_FILE", tmp_path / "supervisor.pid")
+    monkeypatch.setattr(devstream_session, "SUPERVISOR_STATUS_FILE", tmp_path / "supervisor-status.json")
+    monkeypatch.setattr(devstream_session, "load_env_files", lambda: {"PS_USERNAME": "bot"})
+    monkeypatch.setattr(devstream_session, "prepare_runtime_env", lambda env: env)
+    monkeypatch.setattr(devstream_session, "runtime_lease_guard", lambda **kwargs: {"ok": True})
+    monkeypatch.setattr(devstream_session, "mission_monitor_start_gate", green_mission_start_gate)
+    monkeypatch.setattr(devstream_session, "write_pid_value", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        devstream_session,
+        "supervisor_runtime_state",
+        lambda: {"activeBattleCount": 0, "battleRunnerAlive": False, "inFlight": False},
+    )
+    monkeypatch.setattr(
+        devstream_session.time,
+        "sleep",
+        lambda seconds: (_ for _ in ()).throw(AssertionError("blocked supervisor must not poll again")),
+    )
+
+    def fake_write_status(payload):
+        statuses.append(json.loads(json.dumps(payload)))
+
+    monkeypatch.setattr(devstream_session, "write_supervisor_status", fake_write_status)
+    monkeypatch.setattr(
+        devstream_session,
+        "run_supervisor_cycle",
+        lambda *args, **kwargs: {
+            "state": "blocked-mission-start-gate",
+            "proofRefreshed": True,
+            "error": "Fouler supervisor cycle start gate blocked next ladder batch",
+            "battleRunnerAliveAfter": False,
+            "activeBattleCountAfter": 0,
+        },
+    )
+
+    args = argparse.Namespace(
+        run_count=30,
+        max_concurrent_battles=1,
+        queue_timeout_seconds=180,
+        sleep_seconds=15,
+        max_cycles=1,
+        autoresearch_count=30,
+        proof_timeout_seconds=300,
+        start_timeout_seconds=60,
+        improve_timeout_seconds=240,
+        skip_improve=True,
+        enable_auto_improve=False,
+        runtime_lease=str(tmp_path / "runtime-lease.json"),
+    )
+
+    assert devstream_session.cmd_supervise(args) == 2
+
+    final = statuses[-1]
+    assert final["state"] == "blocked-mission-start-gate"
+    assert final["lastCycle"]["state"] == "blocked-mission-start-gate"
+    assert final["stoppedAt"]
 
 
 def test_supervisor_process_identity_requires_supervise_subcommand():

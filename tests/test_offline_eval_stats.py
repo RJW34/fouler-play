@@ -85,12 +85,23 @@ def test_build_eval_env_disables_discord_battle_result_queue(monkeypatch):
 
     assert env["FOULER_OFFLINE_EVAL"] == "1"
     assert env["FOULER_OFFLINE_EVAL_LABEL"] == "frozen"
+    assert env["FOULER_PROCESS_LOCK_FILE"].replace("/", "\\").endswith(
+        "eval_results\\offline\\frozen.bot.pid"
+    )
     assert env["FOULER_BATTLE_RESULT_QUEUE"] == "0"
     assert env["FOULER_OFFLINE_EVAL_QUEUE_EVENTS"] == "0"
     assert env["DISCORD_BATTLES_WEBHOOK_URL"] == ""
     assert env["EVENT_QUEUE_FILE"].endswith("frozen-events_queue.json")
+    assert env["FOULER_STREAM_EVENTS"] == "0"
+    assert env["STREAM_EVENT_URL"] == ""
     assert env["FOULER_OFFLINE_BATTLE_STATS_FILE"].replace("/", "\\").endswith(
         "eval_results\\offline\\frozen-battle_stats.json"
+    )
+    assert env["FOULER_OFFLINE_ACTIVE_BATTLES_FILE"].replace("/", "\\").endswith(
+        "eval_results\\offline\\frozen-active_battles.json"
+    )
+    assert env["FOULER_OFFLINE_STREAM_STATUS_FILE"].replace("/", "\\").endswith(
+        "eval_results\\offline\\frozen-stream_status.json"
     )
 
 
@@ -140,6 +151,30 @@ def test_offline_eval_runner_redirects_stats_file_away_from_live_battle_stats(tm
     assert run_argv == ["run.py", "--bot-mode", "accept_challenge"]
 
 
+def test_offline_eval_runner_redirects_state_store_files(tmp_path):
+    state_store = SimpleNamespace(
+        ACTIVE_BATTLES_PATH=None,
+        STREAM_STATUS_PATH=None,
+        DAILY_STATS_PATH=None,
+        STABILITY_REPORT_PATH=None,
+        STATE_STORE_WRITE_FAILURE_PATH=None,
+    )
+
+    paths = offline_eval_runner.configure_state_store_module(
+        state_store,
+        root=tmp_path,
+        env={"FOULER_OFFLINE_EVAL_LABEL": "candidate"},
+    )
+
+    offline_dir = tmp_path / "eval_results" / "offline"
+    assert state_store.ACTIVE_BATTLES_PATH == offline_dir / "candidate-active_battles.json"
+    assert state_store.STREAM_STATUS_PATH == offline_dir / "candidate-stream_status.json"
+    assert state_store.DAILY_STATS_PATH == offline_dir / "candidate-daily_stats.json"
+    assert state_store.STABILITY_REPORT_PATH == offline_dir / "candidate-stability_report.json"
+    assert state_store.STATE_STORE_WRITE_FAILURE_PATH == offline_dir / "candidate-state-store-write-failure.json"
+    assert paths["activeBattles"].parent.exists()
+
+
 def test_process_owner_payload_records_git_and_child_processes(monkeypatch):
     monkeypatch.setattr(
         offline_eval,
@@ -165,3 +200,30 @@ def test_process_owner_payload_records_git_and_child_processes(monkeypatch):
     assert payload["processes"]["offlineEval"]["command"].endswith("--label frozen")
     assert payload["processes"]["fouler"]["pid"] == 1234
     assert payload["processes"]["fouler"]["running"] is True
+
+
+def test_require_showdown_server_fails_closed_when_unreachable(monkeypatch):
+    monkeypatch.setattr(offline_eval, "showdown_server_reachable", lambda port: False)
+
+    with pytest.raises(RuntimeError, match="not reachable"):
+        offline_eval.require_showdown_server(8765)
+
+
+def test_require_completed_battle_count_rejects_underfilled_eval():
+    with pytest.raises(RuntimeError, match="2/3 battles"):
+        offline_eval.require_completed_battle_count(requested=3, actual=2, label="smoke")
+
+
+def test_managed_showdown_refuses_to_adopt_unknown_existing_listener(monkeypatch):
+    monkeypatch.delenv("EVAL_SHOWDOWN_ADOPT_EXISTING", raising=False)
+    monkeypatch.setattr(offline_eval, "showdown_server_reachable", lambda port: True)
+
+    with pytest.raises(RuntimeError, match="refused to adopt existing listener"):
+        offline_eval.start_managed_showdown_server(8765)
+
+
+def test_managed_showdown_can_explicitly_adopt_existing_listener(monkeypatch):
+    monkeypatch.setenv("EVAL_SHOWDOWN_ADOPT_EXISTING", "1")
+    monkeypatch.setattr(offline_eval, "showdown_server_reachable", lambda port: True)
+
+    assert offline_eval.start_managed_showdown_server(8765) is None

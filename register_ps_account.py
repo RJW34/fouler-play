@@ -25,8 +25,8 @@ async def register_account(username, password):
         # Try registration with empty captcha first
         reg_url = "https://play.pokemonshowdown.com/~~showdown/action.php"
         
-        # Try different anti-spam answers
-        captcha_attempts = ["", "4", "2+2", "four"]
+        # Pokemon Showdown's login server currently requires this fixed answer.
+        captcha_attempts = ["pikachu"]
         
         for captcha in captcha_attempts:
             data = {
@@ -42,10 +42,10 @@ async def register_account(username, password):
             print(f"Captcha attempt '{captcha}': {resp.text[:200]}")
             
             if "actionsuccess" in resp.text or "curuser" in resp.text:
-                print(f"✅ Registration successful with captcha: {captcha}")
+                print(f"Registration successful with captcha: {captcha}")
                 return True
                 
-        print("❌ Registration failed - manual intervention needed")
+        print("Registration failed - manual intervention needed")
         return False
 
 if __name__ == "__main__":

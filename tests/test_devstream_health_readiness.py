@@ -27,6 +27,30 @@ def _runner(age: int = 30) -> list[dict]:
     }]
 
 
+def test_account_authority_snapshot_flags_env_lease_mismatch(tmp_path, monkeypatch):
+    monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
+    for name in devstream_health.ACCOUNT_AUTHORITY_ENV_NAMES:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("FOULER_RUNTIME_LEASE_PATH", raising=False)
+    monkeypatch.setenv("PS_USERNAME", "npctypebeat")
+    _write_json(
+        tmp_path / "devstream" / "truth" / "runtime-lease.json",
+        {
+            "schemaVersion": "fouler-play-runtime-lease/v1",
+            "account": "LEBOTJAMESXD00N",
+            "battleScope": {"account": "LEBOTJAMESXD00N"},
+        },
+    )
+
+    snapshot = devstream_health.account_authority_snapshot()
+
+    assert snapshot["ready"] is False
+    assert snapshot["runtimeAccount"] == "npctypebeat"
+    assert snapshot["runtimeLeaseAccount"] == "LEBOTJAMESXD00N"
+    assert snapshot["distinctAccounts"] == ["LEBOTJAMESXD00N", "npctypebeat"]
+    assert "Showdown account authorities disagree" in snapshot["blockers"][0]
+
+
 def test_runtime_processes_does_not_mark_reused_pid_alive(tmp_path, monkeypatch):
     monkeypatch.setattr(devstream_health, "ROOT", tmp_path)
     pid_file = tmp_path / ".bot.pid"
@@ -49,6 +73,9 @@ def test_runtime_processes_does_not_mark_reused_pid_alive(tmp_path, monkeypatch)
         def create_time(self):
             return time.time()
 
+        def ppid(self):
+            return 0
+
         def status(self):
             return "running"
 
@@ -63,7 +90,11 @@ def test_runtime_processes_does_not_mark_reused_pid_alive(tmp_path, monkeypatch)
     )
     monkeypatch.setattr(devstream_health, "psutil", fake_psutil)
 
-    process = devstream_health.runtime_processes()[0]
+    process = next(
+        proc
+        for proc in devstream_health.runtime_processes()
+        if proc["pidFile"] == ".bot.pid"
+    )
 
     assert process["processRunning"] is True
     assert process["alive"] is False

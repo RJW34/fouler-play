@@ -5,6 +5,7 @@ Test matchup analyzer fallback system (bypasses Ollama for speed).
 
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -13,6 +14,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 import fp.matchup_analyzer as ma
 original_call_ollama = ma._call_ollama
 ma._call_ollama = lambda prompt: None  # Force fallback
+_test_cache = tempfile.TemporaryDirectory()
+ma.CACHE_DIR = Path(_test_cache.name)
 
 from fp.matchup_analyzer import analyze_matchup
 
@@ -73,6 +76,8 @@ print(f"Pivot Triggers: {gp2.key_pivot_triggers}\n")
 # Test case 3: Cache test
 print("Test 3: Cache functionality")
 print("-" * 70)
+gp1_seeded = analyze_matchup(our_team, opp_team, use_cache=True)
+assert gp1_seeded.win_condition == gp1.win_condition, "Cache seed mismatch!"
 gp1_cached = analyze_matchup(our_team, opp_team, use_cache=True)
 assert gp1_cached.win_condition == gp1.win_condition, "Cache mismatch!"
 print("✅ Cache hit confirmed - same gameplan retrieved")

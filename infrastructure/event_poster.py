@@ -17,6 +17,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import argparse
 import copy
@@ -34,6 +35,7 @@ from infrastructure.event_queue_lib import (
     mark_failed,
     expire_old_events,
     quarantine_stale_battle_results,
+    archive_stale_failed_events,
     cleanup_queue,
     queue_stats,
     queue_health_summary,
@@ -41,6 +43,8 @@ from infrastructure.event_queue_lib import (
 from infrastructure.gen9_validation import Gen9Validator
 from infrastructure.discord_reporting import (
     canonical_replay_url,
+    format_payload_or_message,
+    is_generic_why_text,
     public_replay_id_candidate,
     redacted_report_summary,
     structured_report_fields,
@@ -60,6 +64,7 @@ TRUTH_DIR = PROJECT_ROOT / "devstream" / "truth"
 DISCORD_REPORTING_PROOF = TRUTH_DIR / "discord-reporting.json"
 DISCORD_DELIVERY_PROOF = TRUTH_DIR / "discord-delivery.json"
 DISCORD_DOCTOR_PROOF = TRUTH_DIR / "discord-reporting-doctor.json"
+DEKU_EVENT_QUEUE_ROOT = Path(os.getenv("DEKU_EVENT_QUEUE_ROOT", r"D:\DekuEvents"))
 BATTLE_ID_RE = re.compile(r"\b(?:battle-)?gen9ou-[A-Za-z0-9-]+\b|battle `([^`]+)`")
 PENDING_REPLAY_ID_RE = re.compile(
     r"replay\s+pending\s+public\s+upload\s+`?((?:battle-)?gen9ou-[A-Za-z0-9-]+)`?",
@@ -105,6 +110,18 @@ GEN9_VALIDATED_CONTENT_MARKERS = (
     "tera",
     "hazard",
 )
+REPORT_QUALITY_BANNED_PHRASES = (
+    "battle updates should",
+    "operator-facing battle posts should",
+    "was converted once the bot secured the favorable endgame",
+    "closed the endgame before the bot stabilized the board",
+    "keep watching whether this line keeps converting",
+    "review the replay before the next queue and tag whether this was policy, matchup, or ops",
+)
+RECENT_RECORD_RE = re.compile(
+    r"\blast\s+(?P<count>\d+)\s*:\s*(?P<wins>\d+)\s*-\s*(?P<losses>\d+)\s*\(\s*(?P<wr>\d+)%\s*WR\s*\)",
+    re.IGNORECASE,
+)
 
 # Logging
 LOG_FILE = Path(os.getenv(
@@ -121,6 +138,25 @@ WEBHOOK_ENV_BY_CHANNEL = {
     "feedback": ("DISCORD_FEEDBACK_WEBHOOK_URL", "DISCORD_WEBHOOK_URL"),
     "project": ("DISCORD_WEBHOOK_URL", "DISCORD_BATTLES_WEBHOOK_URL"),
     "workspace": ("DISCORD_WEBHOOK_URL", "DISCORD_BATTLES_WEBHOOK_URL"),
+}
+DEKU_DISCORD_REMOTE_HOST = os.getenv("DEKU_DISCORD_REMOTE_HOST", "ubunztu")
+DEKU_DISCORD_REMOTE_BIN = os.getenv(
+    "DEKU_DISCORD_REMOTE_BIN",
+    "/home/ryan/bin/deku-discord-post",
+)
+DEKU_DISCORD_REMOTE_CONNECT_TIMEOUT_S = max(
+    1,
+    int(os.getenv("DEKU_DISCORD_REMOTE_CONNECT_TIMEOUT_S", "8")),
+)
+DEKU_DISCORD_REMOTE_COMMAND_TIMEOUT_S = max(
+    DEKU_DISCORD_REMOTE_CONNECT_TIMEOUT_S + 2,
+    int(os.getenv("DEKU_DISCORD_REMOTE_COMMAND_TIMEOUT_S", "30")),
+)
+DEKU_CATEGORY_BY_CHANNEL = {
+    "battles": "fouler-play",
+    "feedback": "fouler-play",
+    "project": "fouler-play",
+    "workspace": "devstream",
 }
 LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
@@ -253,6 +289,48 @@ def _queue_summary(events: list[dict[str, Any]] | None = None) -> dict[str, Any]
     }
 
 
+def _latest_battle_result_summary(
+    *,
+    current_event: dict[str, Any] | None = None,
+    events: list[dict[str, Any]] | None = None,
+) -> dict[str, Any] | None:
+    candidates: list[dict[str, Any]] = []
+    if isinstance(current_event, dict) and current_event.get("event_type") == "battle_result":
+        candidates.append(current_event)
+    for event in events if events is not None else _read_queue_events():
+        if isinstance(event, dict) and event.get("event_type") == "battle_result":
+            candidates.append(event)
+    if not candidates:
+        return None
+
+    def event_ts(event: dict[str, Any]) -> float:
+        try:
+            return float(event.get("timestamp") or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    latest = max(candidates, key=event_ts)
+    content = str(latest.get("content") or "")
+    structured = structured_report_fields(content, event_type="battle_result") if content else _event_structured_fields(latest)
+    return {
+        "eventId": latest.get("id"),
+        "eventStatus": latest.get("status"),
+        "eventTimestamp": latest.get("timestamp"),
+        "channel": latest.get("channel"),
+        "battle_id": latest.get("battle_id") or structured.get("battle_id"),
+        "result": latest.get("result") or (structured.get("analysis") or {}).get("result"),
+        "winner": latest.get("winner") or structured.get("winner"),
+        "loser": latest.get("loser") or structured.get("loser"),
+        "turns": latest.get("turns") if latest.get("turns") is not None else structured.get("turns"),
+        "proof": structured.get("proof"),
+        "analysis": structured.get("analysis"),
+        "reportSummary": (
+            redacted_report_summary(str(latest.get("content") or ""))
+            if latest.get("content") else {}
+        ),
+    }
+
+
 def _proof_report_paths() -> dict[str, str]:
     return {
         "discordReporting": _relative(DISCORD_REPORTING_PROOF),
@@ -264,14 +342,272 @@ def _proof_report_paths() -> dict[str, str]:
     }
 
 
-def _transport_summary(destination_alias: str) -> dict[str, Any]:
-    load_env_chain()
-    webhook_url, webhook_source = resolve_webhook_url(destination_alias)
+def _truthy_env(name: str) -> bool:
+    return str(os.getenv(name, "")).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _deku_category(destination_alias: str) -> str:
+    return DEKU_CATEGORY_BY_CHANNEL.get(str(destination_alias or "").strip(), "fouler-play")
+
+
+def _deku_remote_configured() -> bool:
+    return bool(
+        shutil.which("ssh")
+        and str(DEKU_DISCORD_REMOTE_HOST or "").strip()
+        and str(DEKU_DISCORD_REMOTE_BIN or "").strip()
+    )
+
+
+def _deku_remote_command(destination_alias: str, *, status: bool = False) -> list[str]:
+    command = [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=%d" % DEKU_DISCORD_REMOTE_CONNECT_TIMEOUT_S,
+        DEKU_DISCORD_REMOTE_HOST,
+        DEKU_DISCORD_REMOTE_BIN,
+        "--category",
+        _deku_category(destination_alias),
+    ]
+    command.append("--status" if status else "--stdin")
+    return command
+
+
+def _decode_deku_result(stdout: str) -> dict[str, Any]:
+    text = str(stdout or "").strip()
+    if not text:
+        return {}
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _run_deku_remote(command: list[str], stdin_text: str | None = None) -> tuple[int, str, str]:
+    """Run Windows OpenSSH with file-backed stdio; PIPE-backed output hangs on this host."""
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stdout_file:
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stderr_file:
+            if stdin_text is None:
+                result = subprocess.run(
+                    command,
+                    stdin=subprocess.DEVNULL,
+                    stdout=stdout_file,
+                    stderr=stderr_file,
+                    text=True,
+                    timeout=DEKU_DISCORD_REMOTE_COMMAND_TIMEOUT_S,
+                )
+            else:
+                with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as stdin_file:
+                    stdin_file.write(stdin_text)
+                    stdin_file.seek(0)
+                    result = subprocess.run(
+                        command,
+                        stdin=stdin_file,
+                        stdout=stdout_file,
+                        stderr=stderr_file,
+                        text=True,
+                        timeout=DEKU_DISCORD_REMOTE_COMMAND_TIMEOUT_S,
+                    )
+            stdout_file.seek(0)
+            stderr_file.seek(0)
+            return result.returncode, stdout_file.read(), stderr_file.read()
+
+
+def _deku_remote_status(destination_alias: str) -> dict[str, Any]:
+    if not _deku_remote_configured():
+        return {
+            "ready": False,
+            "transport": "deku_bot_remote",
+            "category": _deku_category(destination_alias),
+            "error": "SSH DEKU transport is not configured",
+            "credentialMaterialIncluded": False,
+        }
+    try:
+        return_code, stdout, stderr = _run_deku_remote(
+            _deku_remote_command(destination_alias, status=True)
+        )
+    except Exception as exc:
+        return {
+            "ready": False,
+            "transport": "deku_bot_remote",
+            "category": _deku_category(destination_alias),
+            "error": "%s: %s" % (type(exc).__name__, exc),
+            "credentialMaterialIncluded": False,
+        }
+    payload = _decode_deku_result(stdout)
     return {
-        "type": "webhook" if webhook_url else "openclaw" if shutil.which("openclaw") else "unconfigured",
-        "configured": bool(webhook_url or shutil.which("openclaw")),
-        "source": webhook_source if webhook_url else None,
-        "redactedUrl": _redact_url(webhook_url) if webhook_url else "",
+        "ready": bool(return_code == 0 and payload.get("ready")),
+        "transport": "deku_bot_remote",
+        "category": _deku_category(destination_alias),
+        "remoteTransport": payload.get("transport"),
+        "channelId": payload.get("channelId"),
+        "channelSource": payload.get("channelSource"),
+        "returnCode": return_code,
+        "error": None if return_code == 0 else (stderr or payload.get("error") or "remote status failed")[:300],
+        "credentialMaterialIncluded": False,
+    }
+
+
+def _transport_summary(destination_alias: str) -> dict[str, Any]:
+    pending = DEKU_EVENT_QUEUE_ROOT / "pending"
+    return {
+        "type": "deku_event_queue",
+        "configured": pending.is_dir(),
+        "source": str(pending),
+        "category": _deku_category(destination_alias),
+        "legacyWebhookFallbackEnabled": False,
+        "redactedUrl": "",
+        "credentialMaterialIncluded": False,
+    }
+
+
+def _read_deku_relay_status() -> dict[str, Any]:
+    path = DEKU_EVENT_QUEUE_ROOT / "status.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _deku_event_queue_status(destination_alias: str) -> dict[str, Any]:
+    pending = DEKU_EVENT_QUEUE_ROOT / "pending"
+    relay = _read_deku_relay_status()
+    return {
+        "ready": bool(pending.is_dir() and relay.get("ok")),
+        "transport": "deku_event_queue",
+        "category": _deku_category(destination_alias),
+        "queueRoot": str(DEKU_EVENT_QUEUE_ROOT),
+        "pendingDirectoryExists": pending.is_dir(),
+        "relayCheckedAtUtc": relay.get("checkedAtUtc"),
+        "relayOk": relay.get("ok"),
+        "relayPendingAfterRun": relay.get("pendingAfterRun"),
+        "credentialMaterialIncluded": False,
+    }
+
+
+def _deku_event_proof(event: dict[str, Any]) -> list[str]:
+    proof = [str(Path(event_queue_lib.QUEUE_FILE))]
+    replay_url = str(event.get("replay_url") or "").strip()
+    if replay_url.startswith(("https://", "http://")):
+        proof.append(replay_url)
+    return proof
+
+
+def _deku_project_event(event: dict[str, Any], content: str) -> dict[str, Any]:
+    event_type = str(event.get("event_type") or "status_update").strip() or "status_update"
+    destination_alias = str(event.get("channel") or "battles")
+    local_event_id = str(event.get("id") or "").strip()
+    status = "warn" if any(marker in event_type.lower() for marker in ("error", "failed", "alert", "stop")) else "done"
+    return {
+        "schemaVersion": "deku-project-event/v1",
+        "id": "fouler-%s" % local_event_id,
+        "source": "fouler-play.event-poster",
+        "eventType": event_type,
+        "status": status,
+        "severity": "warning" if status == "warn" else "info",
+        "title": "Fouler Play: %s" % event_type.replace("_", " "),
+        "summary": content[:3000],
+        "proof": _deku_event_proof(event),
+        "category": _deku_category(destination_alias),
+        "payload": {
+            "localEventId": local_event_id,
+            "destinationAlias": destination_alias,
+            "reportSummary": redacted_report_summary(content),
+            "actionRequired": status == "warn",
+        },
+    }
+
+
+def _queue_deku_project_event(event: dict[str, Any], content: str) -> dict[str, Any]:
+    payload = _deku_project_event(event, content)
+    pending = DEKU_EVENT_QUEUE_ROOT / "pending"
+    pending.mkdir(parents=True, exist_ok=True)
+    safe_id = re.sub(r"[^A-Za-z0-9._-]+", "-", payload["id"]).strip("-.")[:140] or "fouler-event"
+    destination = pending / (safe_id + ".json")
+    if destination.exists():
+        try:
+            existing = json.loads(destination.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError) as exc:
+            return {
+                "ok": False,
+                "status": "failed",
+                "transport": "deku_event_queue",
+                "destinationAlias": event.get("channel"),
+                "blockers": ["existing DEKU queue event is unreadable: %s" % type(exc).__name__],
+                "errorCode": "deku_event_queue_collision",
+            }
+        if existing.get("id") != payload["id"]:
+            return {
+                "ok": False,
+                "status": "failed",
+                "transport": "deku_event_queue",
+                "destinationAlias": event.get("channel"),
+                "blockers": ["existing DEKU queue event has a different id"],
+                "errorCode": "deku_event_queue_collision",
+            }
+        return {
+            "ok": True,
+            "status": "queued",
+            "transport": "deku_event_queue",
+            "destinationAlias": event.get("channel"),
+            "category": payload["category"],
+            "eventId": payload["id"],
+            "alreadyQueued": True,
+            "blockers": [],
+        }
+    temporary = pending / (".%s.%s.tmp" % (safe_id, os.getpid()))
+    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(temporary, destination)
+    return {
+        "ok": True,
+        "status": "queued",
+        "transport": "deku_event_queue",
+        "destinationAlias": event.get("channel"),
+        "category": payload["category"],
+        "eventId": payload["id"],
+        "alreadyQueued": False,
+        "blockers": [],
+    }
+
+
+def _clean_status_text(value: object) -> str:
+    return str(value or "").lstrip("\ufeff").strip()
+
+
+def _generic_event_report_summary(event: dict[str, Any]) -> dict[str, Any]:
+    content = _clean_status_text(event.get("content"))
+    headline = content.splitlines()[0].strip() if content.splitlines() else str(event.get("event_type") or "status")
+    return {
+        "eventType": str(event.get("event_type") or "unknown"),
+        "headline": headline[:180],
+        "viewerSummary": headline[:180],
+        "currentState": content[:500],
+        "whyItMatters": "Non-battle status event; battle and replay fields are intentionally not inferred.",
+        "nextHermesAction": str(event.get("next_hermes_action") or "Use the linked source report or repair queue for the next action."),
+        "secretLikeContentRedacted": False,
+    }
+
+
+def _generic_event_analysis(event: dict[str, Any]) -> dict[str, Any]:
+    summary = _generic_event_report_summary(event)
+    return {
+        "eventClass": "status_update",
+        "headline": summary.get("headline"),
+        "viewerSummary": summary.get("viewerSummary"),
+        "currentState": summary.get("currentState"),
+        "whyItMatters": summary.get("whyItMatters"),
+        "nextHermesAction": summary.get("nextHermesAction"),
+        "proofReadiness": {
+            "status": "proof-ready",
+            "classification": "status-update-proof",
+            "readyForHermes": True,
+            "missingFields": [],
+            "qualityGaps": [],
+            "blockers": [],
+        },
     }
 
 
@@ -285,11 +621,19 @@ def write_delivery_proof(
     http_status: int | None = None,
     retry_after: str | None = None,
     error_code: str | None = None,
+    transport: str | None = None,
 ) -> dict[str, Any]:
     event = event if isinstance(event, dict) else {}
     destination_alias = destination_alias or str(event.get("channel") or "unknown")
-    battle_ids = _extract_battle_ids_from_text(str(event.get("content") or ""))
-    report_summary = redacted_report_summary(str(event.get("content") or "")) if event else {}
+    event_type = str(event.get("event_type") or "")
+    is_battle_result = event_type == "battle_result"
+    battle_ids = _extract_battle_ids_from_text(str(event.get("content") or "")) if is_battle_result else []
+    queue_events = _read_queue_events()
+    report_summary = (
+        redacted_report_summary(str(event.get("content") or ""))
+        if event and is_battle_result
+        else _generic_event_report_summary(event) if event else {}
+    )
     structured_fields = _event_structured_fields(event)
     payload = {
         "schemaVersion": "fouler-play-discord-delivery/v1",
@@ -300,6 +644,7 @@ def write_delivery_proof(
         "eventId": event.get("id"),
         "eventType": event.get("event_type"),
         "destinationAlias": destination_alias,
+        "transport": transport,
         "battleIds": battle_ids,
         "battle_id": structured_fields.get("battle_id"),
         "winner": structured_fields.get("winner"),
@@ -312,6 +657,10 @@ def write_delivery_proof(
         "errorCode": error_code,
         "blockers": blockers or [],
         "queue": _queue_summary(),
+        "latestBattleResult": _latest_battle_result_summary(
+            current_event=event,
+            events=queue_events,
+        ),
         "reportSummary": report_summary,
         "reportPaths": _proof_report_paths(),
         "secretValuesPrinted": False,
@@ -330,8 +679,14 @@ def write_reporting_proof(
     blockers: list[str] | None = None,
 ) -> dict[str, Any]:
     event = event if isinstance(event, dict) else {}
+    event_type = str(event.get("event_type") or "")
+    is_battle_result = event_type == "battle_result"
     destination_alias = str(event.get("channel") or (delivery_payload or {}).get("destinationAlias") or "unknown")
     structured_fields = _event_structured_fields(event)
+    latest_battle_result = (
+        (delivery_payload or {}).get("latestBattleResult")
+        or _latest_battle_result_summary(current_event=event)
+    )
     payload = {
         "schemaVersion": "fouler-play-discord-reporting/v1",
         "generatedAtUtc": _iso_now(),
@@ -340,15 +695,20 @@ def write_reporting_proof(
         "destinationAlias": destination_alias,
         "transport": _transport_summary(destination_alias),
         "queue": _queue_summary(),
-        "battleIds": (delivery_payload or {}).get("battleIds") or _extract_battle_ids_from_text(str(event.get("content") or "")),
-        "battle_id": (delivery_payload or {}).get("battle_id") or structured_fields.get("battle_id"),
-        "winner": (delivery_payload or {}).get("winner") or structured_fields.get("winner"),
-        "loser": (delivery_payload or {}).get("loser") or structured_fields.get("loser"),
-        "turns": (delivery_payload or {}).get("turns") or structured_fields.get("turns"),
+        "battleIds": ((delivery_payload or {}).get("battleIds") or _extract_battle_ids_from_text(str(event.get("content") or ""))) if is_battle_result else [],
+        "battle_id": ((delivery_payload or {}).get("battle_id") or structured_fields.get("battle_id")) if is_battle_result else None,
+        "winner": ((delivery_payload or {}).get("winner") or structured_fields.get("winner")) if is_battle_result else None,
+        "loser": ((delivery_payload or {}).get("loser") or structured_fields.get("loser")) if is_battle_result else None,
+        "turns": ((delivery_payload or {}).get("turns") or structured_fields.get("turns")) if is_battle_result else None,
         "proof": (delivery_payload or {}).get("proof") or structured_fields.get("proof"),
         "analysis": (delivery_payload or {}).get("analysis") or structured_fields.get("analysis"),
+        "latestBattleResult": latest_battle_result,
         "reportSummary": (delivery_payload or {}).get("reportSummary")
-        or (redacted_report_summary(str(event.get("content") or "")) if event else {}),
+        or (
+            redacted_report_summary(str(event.get("content") or ""))
+            if event and is_battle_result
+            else _generic_event_report_summary(event) if event else {}
+        ),
         "blockers": blockers or [],
         "reportPaths": _proof_report_paths(),
         "secretValuesPrinted": False,
@@ -359,8 +719,18 @@ def write_reporting_proof(
 
 
 def _event_structured_fields(event: dict[str, Any]) -> dict[str, Any]:
+    event_type = str(event.get("event_type") or "")
+    if event_type != "battle_result":
+        return {
+            "battle_id": None,
+            "winner": None,
+            "loser": None,
+            "turns": None,
+            "proof": None,
+            "analysis": _generic_event_analysis(event),
+        }
     content = str(event.get("content") or "")
-    extracted = structured_report_fields(content, event_type=str(event.get("event_type") or "")) if content else {}
+    extracted = structured_report_fields(content, event_type=event_type) if content else {}
     return {
         "battle_id": event.get("battle_id") or extracted.get("battle_id"),
         "winner": event.get("winner") or extracted.get("winner"),
@@ -644,9 +1014,18 @@ def discord_config_status() -> dict[str, Any]:
         aliases[alias] = {"configured": bool(url), "source": key if url else None, "redactedUrl": _redact_url(url)}
     return {
         "loadedEnvFiles": loaded,
+        "primaryTransport": {
+            "type": "deku_event_queue",
+            "configured": (DEKU_EVENT_QUEUE_ROOT / "pending").is_dir(),
+            "source": str(DEKU_EVENT_QUEUE_ROOT / "pending"),
+            "category": _deku_category("battles"),
+            "credentialMaterialIncluded": False,
+        },
         "aliases": aliases,
         "anyWebhookConfigured": any(item["configured"] for item in aliases.values()),
         "openclawAvailable": shutil.which("openclaw") is not None,
+        "legacyWebhookFallbackEnabled": False,
+        "legacyWebhooksDetected": any(item["configured"] for item in aliases.values()),
     }
 
 
@@ -771,15 +1150,64 @@ def validate_event_content(event: dict) -> Tuple[bool, str]:
     if warnings:
         for warning in warnings:
             logger.warning("Validation warning for %s: %s", event.get("id", "unknown"), warning)
-    
+
+    quality_findings = report_quality_findings(event)
+    if quality_findings:
+        return False, "report quality failed: " + "; ".join(quality_findings[:5])
+
     return True, ""
 
 
+def report_quality_findings(event: dict[str, Any]) -> list[str]:
+    """Return transport-blocking report quality findings for Discord-bound events."""
+
+    event_type = str(event.get("event_type") or "")
+    content = str(event.get("content") or "")
+    if event_type not in {"battle_result", "performance_alert"} and "[PROOF]" not in content:
+        return []
+
+    lowered = content.lower()
+    findings: list[str] = []
+    for phrase in REPORT_QUALITY_BANNED_PHRASES:
+        if phrase in lowered:
+            findings.append(f"banned_phrase:{phrase}")
+
+    summary = redacted_report_summary(content)
+    why = str(summary.get("whyItMatters") or "")
+    if is_generic_why_text(why):
+        findings.append("generic_why")
+
+    structured = structured_report_fields(content, event_type=event_type)
+    readiness = structured.get("proof_readiness")
+    if isinstance(readiness, dict) and readiness.get("status") != "proof-ready":
+        missing = ",".join(str(item) for item in readiness.get("missingFields") or [])
+        findings.append(f"proof_not_ready:{missing or readiness.get('status')}")
+
+    result = str(structured.get("result") or "").lower()
+    if result == "tie" and any(token in lowered for token in ("timeout", "timed out", "inactive", "disconnect")):
+        findings.append("timeout_reported_as_tie")
+
+    for match in RECENT_RECORD_RE.finditer(content):
+        count = int(match.group("count"))
+        wins = int(match.group("wins"))
+        losses = int(match.group("losses"))
+        wr = int(match.group("wr"))
+        if wins + losses != count:
+            findings.append(f"recent_record_count_mismatch:last{count}!={wins + losses}")
+            continue
+        expected_wr = int(round((wins / count) * 100)) if count else 0
+        if wr != expected_wr:
+            findings.append(f"recent_record_winrate_mismatch:{wr}!={expected_wr}")
+
+    return findings
+
+
 def post_to_discord(event: dict) -> dict[str, Any]:
-    """Post event to Discord via webhook (or OpenClaw CLI fallback)."""
+    """Validate and durably queue an event for the sole DEKU Discord transport."""
+    event = dict(event)
     channel = event["channel"]
-    content = event["content"]
-    suppress = event.get("suppress_embeds", False)
+    content = format_payload_or_message(str(event.get("content") or ""))
+    event["content"] = content
 
     # Validate before posting
     is_valid, error_reason = validate_event_content(event)
@@ -793,14 +1221,7 @@ def post_to_discord(event: dict) -> dict[str, Any]:
             "errorCode": "validation_failed",
         }
 
-    load_env_chain()
-    webhook_url, webhook_source = resolve_webhook_url(channel)
-
-    if webhook_url:
-        logger.debug("Resolved Discord channel %s via %s", channel, webhook_source)
-        return _post_via_webhook(event, webhook_url, content, suppress)
-    else:
-        return _post_via_cli(event, channel, content)
+    return _queue_deku_project_event(event, content)
 
 
 def _is_dns_exception(exc: BaseException) -> bool:
@@ -818,6 +1239,69 @@ def _is_dns_exception(exc: BaseException) -> bool:
             "nodename nor servname",
         )
     )
+
+
+def _post_via_deku_remote(event, destination_alias, content):
+    """Send message content on stdin to the credential-owning DEKU hub."""
+    if not _deku_remote_configured():
+        return {
+            "ok": False,
+            "status": "failed",
+            "transport": "deku_bot_remote",
+            "destinationAlias": destination_alias,
+            "blockers": ["central DEKU bot transport is not configured"],
+            "errorCode": "deku_bot_remote_unconfigured",
+        }
+    try:
+        command = _deku_remote_command(destination_alias)
+        logger.info(
+            "Posting %s id=%s through central DEKU bot category=%s",
+            event.get("event_type"),
+            event.get("id"),
+            _deku_category(destination_alias),
+        )
+        return_code, stdout, stderr = _run_deku_remote(command, stdin_text=content)
+        payload = _decode_deku_result(stdout)
+        if return_code == 0 and payload.get("ok"):
+            return {
+                "ok": True,
+                "status": "posted",
+                "transport": "deku_bot_remote",
+                "destinationAlias": destination_alias,
+                "category": _deku_category(destination_alias),
+                "httpStatus": payload.get("httpStatus"),
+                "messageId": payload.get("messageId"),
+                "blockers": [],
+            }
+        detail = str(payload.get("error") or stderr or "central DEKU post failed").strip()[:300]
+        return {
+            "ok": False,
+            "status": "failed",
+            "transport": "deku_bot_remote",
+            "destinationAlias": destination_alias,
+            "category": _deku_category(destination_alias),
+            "httpStatus": payload.get("httpStatus"),
+            "blockers": [detail],
+            "errorCode": "deku_bot_remote_failed",
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "status": "failed",
+            "transport": "deku_bot_remote",
+            "destinationAlias": destination_alias,
+            "blockers": ["central DEKU bot transport timed out"],
+            "errorCode": "deku_bot_remote_timeout",
+        }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "status": "failed",
+            "transport": "deku_bot_remote",
+            "destinationAlias": destination_alias,
+            "blockers": ["central DEKU bot transport error: %s" % type(exc).__name__],
+            "errorCode": "deku_bot_remote_error",
+        }
 
 
 def _post_via_webhook(event, webhook_url, content, suppress=False):
@@ -997,6 +1481,24 @@ def process_one_event(dry_run: bool = False) -> bool:
                 error_code="stale_battle_result_quarantined",
             )
             return False
+        archived_failed = archive_stale_failed_events(EXPIRY_SEC)
+        if archived_failed:
+            logger.warning(
+                "Archived %s stale terminal Discord failure event(s); live transport withheld",
+                archived_failed,
+            )
+            write_delivery_proof(
+                status="blocked",
+                event=None,
+                destination_alias="unknown",
+                dry_run=False,
+                blockers=[
+                    f"archived {archived_failed} stale terminal Discord failure event(s)",
+                    "live Discord transport is withheld until the next fresh queue pass",
+                ],
+                error_code="stale_failed_events_archived",
+            )
+            return False
         expired = expire_old_events(EXPIRY_SEC)
         if expired:
             logger.warning("Archived and expired %s stale Discord event(s); live transport withheld", expired)
@@ -1059,6 +1561,11 @@ def process_one_event(dry_run: bool = False) -> bool:
     # Post to Discord
     event = prepare_battle_result_replay_for_post(event)
     result = post_to_discord(event)
+    if result.get("ok"):
+        mark_posted(event_id)
+    else:
+        mark_failed(event_id, str(result.get("errorCode") or result.get("status") or "post_failed"))
+
     write_delivery_proof(
         status=str(result.get("status") or "failed"),
         event=event,
@@ -1067,12 +1574,8 @@ def process_one_event(dry_run: bool = False) -> bool:
         http_status=result.get("httpStatus"),
         retry_after=result.get("retryAfter"),
         error_code=result.get("errorCode"),
+        transport=result.get("transport"),
     )
-
-    if result.get("ok"):
-        mark_posted(event_id)
-    else:
-        mark_failed(event_id, str(result.get("errorCode") or result.get("status") or "post_failed"))
 
     return True
 
@@ -1123,20 +1626,22 @@ def main_loop():
 def build_doctor_payload() -> dict[str, Any]:
     config = discord_config_status()
     stats = _queue_summary()
-    transport_ready = bool(config["anyWebhookConfigured"] or config["openclawAvailable"])
+    primary_status = _deku_event_queue_status("battles")
+    transport_ready = bool(primary_status.get("ready"))
     return {
         "schemaVersion": "fouler-play-discord-poster-doctor/v1",
         "checkedAt": _iso_now(),
         "cycleId": _cycle_id(),
         "ready": transport_ready and bool(stats.get("ready")),
         "transportReady": transport_ready,
+        "primaryTransportStatus": primary_status,
         "config": config,
         "queue": stats,
         "reportPaths": _proof_report_paths(),
         "queueFile": _relative(Path(os.getenv("EVENT_QUEUE_FILE", str(PROJECT_ROOT / "events_queue.json")))),
         "logFile": _relative(LOG_FILE),
         "secretValuesPrinted": False,
-        "note": "Read-only doctor; it does not post to Discord.",
+        "note": "Read-only doctor; it checks the local durable DEKU queue and relay status without posting to Discord.",
     }
 
 
@@ -1145,6 +1650,11 @@ def main() -> int:
     parser.add_argument("--doctor", action="store_true", help="print read-only Discord queue/poster readiness")
     parser.add_argument("--once", action="store_true", help="process at most one event and exit")
     parser.add_argument("--dry-run", action="store_true", help="write redacted Discord proof for the oldest pending event without posting")
+    parser.add_argument(
+        "--archive-terminal-failures",
+        action="store_true",
+        help="archive stale failed queue events as local proof without posting to Discord",
+    )
     parser.add_argument("--require-ready", action="store_true", help="with --doctor, exit non-zero if no transport is configured")
     args = parser.parse_args()
     if args.doctor:
@@ -1153,7 +1663,7 @@ def main() -> int:
         DISCORD_DOCTOR_PROOF.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         doctor_blockers: list[str] = []
         if not payload.get("transportReady"):
-            doctor_blockers.append("no Discord webhook or OpenClaw transport configured")
+            doctor_blockers.append("durable DEKU event queue or relay is unavailable")
         if not (payload.get("queue") or {}).get("ready", True):
             doctor_blockers.extend(str(item) for item in ((payload.get("queue") or {}).get("health") or {}).get("blockers") or [])
         write_reporting_proof(
@@ -1163,6 +1673,35 @@ def main() -> int:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 1 if args.require_ready and not payload["ready"] else 0
     load_env_chain()
+    if args.archive_terminal_failures:
+        archived_failed = archive_stale_failed_events(EXPIRY_SEC)
+        status = "archived" if archived_failed else "idle"
+        blockers = (
+            [
+                f"archived {archived_failed} stale terminal Discord failure event(s)",
+                "no Discord transport was attempted",
+            ]
+            if archived_failed
+            else ["no stale terminal Discord failure events"]
+        )
+        write_delivery_proof(
+            status=status,
+            event=None,
+            destination_alias="unknown",
+            dry_run=False,
+            blockers=blockers,
+            error_code="stale_failed_events_archived" if archived_failed else "no_stale_failed_events",
+        )
+        payload = {
+            "schemaVersion": "fouler-play-discord-terminal-failure-archive/v1",
+            "checkedAt": _iso_now(),
+            "archivedFailedEvents": archived_failed,
+            "queue": _queue_summary(),
+            "reportPaths": _proof_report_paths(),
+            "secretValuesPrinted": False,
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
     if args.dry_run:
         return 0 if process_one_event(dry_run=True) else 1
     if args.once:
