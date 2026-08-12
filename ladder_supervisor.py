@@ -49,6 +49,27 @@ ROOT = Path(r"D:\Projects\fouler-play")
 PY = ROOT / ".venv" / "Scripts" / "python.exe"
 CHILD = ROOT / "ladder_run.py"
 IMPROVE = ROOT / "cycle_improve.py"
+
+def _improve_status_prefix() -> str:
+    # Honesty marker (gap-map Stage 0): if the weights' only decision-path
+    # consumer is disabled, say so instead of implying the learn loop acted.
+    try:
+        env_text = (ROOT / ".env").read_text(encoding="utf-8", errors="replace")
+        mode = ""
+        legacy_off = False
+        for line in env_text.splitlines():
+            s = line.strip()
+            if s.startswith("MATCHUP_MEMORY_MODE="):
+                mode = s.split("=", 1)[1].strip().lower()
+            elif s.startswith("MATCHUP_MEMORY_ENABLED="):
+                legacy_off = s.split("=", 1)[1].strip() in ("0", "false", "")
+        if mode == "off" or (mode == "" and legacy_off):
+            return ("IMPROVE ok [INERT: matchup-memory consumer disabled -- "
+                    "weights are rebuilt but not consumed by any decision]")
+    except Exception:
+        pass
+    return "IMPROVE ok"
+
 LOGDIR = ROOT / "logs"
 SUP_LOG = LOGDIR / "ladder_supervisor.log"
 CHILD_LOG = LOGDIR / "ladder_child.log"
@@ -57,7 +78,7 @@ BATTLE_STATS = ROOT / "battle_stats.json"  # ledger of COMPLETED games (real-pro
 LOCK = ROOT / ".pids" / "ladder_supervisor.lock"
 
 # --- Cycle / hardening tunables (env-overridable) --------------------------
-BATCH_RUN_COUNT = int(os.getenv("FOULER_BATCH_RUN_COUNT", "30"))   # battles per batch
+BATCH_RUN_COUNT = int(os.getenv("FOULER_BATCH_RUN_COUNT", "1000000"))  # continuous ladder (owner 2026-08-01): no batch cycles; watchdogs still guard
 IMPROVE_WINDOW = int(os.getenv("FOULER_IMPROVE_WINDOW", "500"))    # replay window for the rebuild
 STALL_LIMIT_SEC = int(os.getenv("FOULER_STALL_LIMIT_SEC", "600"))  # LIVENESS: kill child if init.log frozen this long
 # REAL-PROGRESS: kill child if NO new COMPLETED game is recorded this long. 1800s (30 min)
@@ -73,7 +94,7 @@ ELO_POLL_ON_TARGET_SEC = int(os.getenv("FOULER_ELO_IDLE_POLL_SEC", "600"))
 
 # INTERNAL stop target. NEVER emit this value to any log/state/audience surface.
 _TARGET_ELO = int(os.getenv("FOULER_ELO_TARGET", "1700"))
-LADDER_ACCOUNT = "DekuFoulerLab"  # public account name (not a secret)
+LADDER_ACCOUNT = "thepeakmons"  # public account name (not a secret)
 
 ARGS = [
     str(PY), "-u", str(CHILD),
@@ -82,11 +103,19 @@ ARGS = [
     "--bot-mode", "search_ladder",
     "--pokemon-format", "gen9ou",
     "--run-count", str(BATCH_RUN_COUNT),  # ONE BATCH: child exits cleanly after the per-worker quota
-    "--max-concurrent-battles", "2",
+    "--max-concurrent-battles", "3",
     "--decision-policy", "eval",          # pure MCTS engine, no LLM / API key
     "--save-replay", "always",            # every game -> public replay + local replay JSON (improve input)
-    "--team-name", "gen9/ou/fat-team-2-balance",
+    "--team-names", "gen9/ou/fat-team-1-stall,gen9/ou/fat-team-2-balance,gen9/ou/fat-team-3-dondozo",  # per-WORKER fixed: slot1=TEAM 1, slot2=TEAM 2, slot3=TEAM 3 (owner: on-screen slot-team mapping)
     "--log-to-file",
+]
+
+# 3-team round-robin (owner 2026-07-31): rotate the provided fat/stall teams per batch so
+# opponents cannot book one list, and the improve window sees all three archetypes.
+TEAMS = [
+    "gen9/ou/fat-team-2-balance",
+    "gen9/ou/fat-team-1-stall",
+    "gen9/ou/fat-team-3-dondozo",
 ]
 
 
@@ -185,7 +214,13 @@ def build_env() -> dict:
                                              # clears active_battles.json so OBS never shows a dead battle.
     env["DISCORD_BATTLES_WEBHOOK_URL"] = ""  # no audience posting
     env["FOULER_BATTLE_RESULT_QUEUE"] = "0"  # do NOT emit battle events to the DEKU/Discord relay
-    env["MAX_MCTS_BATTLES"] = "1"            # 1 MCTS sample/move: keeps the time bank from draining.
+    env["MAX_MCTS_BATTLES"] = "3"            # 3 samples/move (owner 2026-07-31): game-aware budget splits the ~6s; watch forfeits.
+    env["FOULER_WORKER_LOG_LEVEL"] = "INFO"
+    # gap-map item 11: telemetry retention (traces were ~100min, battle logs ~60 files)
+    env.setdefault("LOG_KEEP_TRACE_FILES", "20000")
+    env.setdefault("LOG_KEEP_BATTLE_FILES", "300")
+    # Upstream-port canary (owner directive 2026-08-01). Roll back: set "legacy".
+    env["FOULER_SEARCH_PATH"] = "clean"  # per-battle logs: DEBUG spam cost disk I/O mid-decision (owner 2026-07-31)
     # PS_PASSWORD deliberately NOT set here; the child loads it from .env.
     return env
 
@@ -327,7 +362,7 @@ def run_improve(env: dict) -> None:
         summary = None
     if summary and summary.get("ok"):
         log(
-            "IMPROVE ok: window=%s artifacts=%s losses=%s | weights %s -> %s | "
+            _improve_status_prefix() + ": window=%s artifacts=%s losses=%s | weights %s -> %s | "
             "problem %s->%s bad %s->%s | live-flagged problem %s->%s bad %s->%s"
             % (
                 summary.get("window_used"), summary.get("artifacts_built"), summary.get("losses_in_window"),
@@ -351,11 +386,24 @@ def _fetch_current_elo() -> int | None:
         import requests
         uid = LADDER_ACCOUNT.lower().replace(" ", "")
         r = requests.get(f"https://pokemonshowdown.com/users/{uid}.json", timeout=10)
-        if r.status_code != 200:
-            return None
-        rating = (r.json().get("ratings") or {}).get("gen9ou") or {}
-        elo = rating.get("elo")
-        return int(round(float(elo))) if elo is not None else None
+        # The users API can answer 404 while still shipping valid ratings JSON in the
+        # body (observed for thepeakmons 2026-07-31) -- parse the body regardless.
+        try:
+            rating = (r.json().get("ratings") or {}).get("gen9ou") or {}
+            elo = rating.get("elo")
+            if elo is not None:
+                return int(round(float(elo)))
+        except Exception:
+            pass
+        # Fallback: last recorded elo_after in our own ledger.
+        import json as _json
+        _rows = _json.loads(open(os.path.join(ROOT, "battle_stats.json"), encoding="utf-8-sig").read())
+        _rows = _rows if isinstance(_rows, list) else (_rows.get("battles") or [])
+        for _row in reversed(_rows):
+            _v = _row.get("elo_after")
+            if isinstance(_v, (int, float)):
+                return int(round(_v))
+        return None
     except Exception:
         return None
 
@@ -371,6 +419,11 @@ def main() -> int:
     env = build_env()
     backoff = 5
     batch_no = 0
+    try:  # persist numbering across supervisor restarts (owner 2026-07-31)
+        with open(os.path.join(ROOT, 'logs', 'batch_counter.txt')) as _fh:
+            batch_no = int(_fh.read().strip())
+    except Exception:
+        pass
     log(f"CYCLE SUPERVISOR START pid={os.getpid()} -> play {BATCH_RUN_COUNT} -> improve -> repeat "
         f"(stall_limit={STALL_LIMIT_SEC}s, improve_window={IMPROVE_WINDOW})")
 
@@ -388,13 +441,18 @@ def main() -> int:
 
         # 2) Play one batch under the progress watchdog.
         batch_no += 1
+        try:
+            with open(os.path.join(ROOT, 'logs', 'batch_counter.txt'), 'w') as _fh:
+                _fh.write(str(batch_no))
+        except Exception:
+            pass
         log(f"BATCH #{batch_no} start (current_elo={elo})")
         rc, dur, why = run_batch(env)
         log(f"BATCH #{batch_no} end rc={rc} after {dur:.0f}s ({why})")
 
         # 3) IMPROVE from the refreshed replay window (skip on crash-loops to avoid spin).
         if dur >= MIN_PRODUCTIVE_SEC:
-            run_improve(env)
+            log("improve step retired (owner 2026-08-01): continuous ladder, no self-learning pause")
         else:
             log(f"skipping IMPROVE (batch only {dur:.0f}s < {MIN_PRODUCTIVE_SEC}s; likely a fast crash)")
 

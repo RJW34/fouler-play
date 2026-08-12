@@ -215,6 +215,19 @@ def opponent_is_flagged(species_id: str, weights: dict[str, Any]) -> dict[str, A
     return None
 
 
+
+def _memory_mode() -> str:
+    """off | ab | on. MATCHUP_MEMORY_MODE overrides; else legacy flags.
+    Fixes the gap-map A/B deadlock: with legacy ENABLED=0 the arm-assignment
+    block was unreachable, making the mandated re-enter-via-A/B path
+    unsatisfiable. Today's config still resolves to off (no behavior change)."""
+    mode = os.getenv("MATCHUP_MEMORY_MODE", "").strip().lower()
+    if mode in ("off", "ab", "on"):
+        return mode
+    if not ENABLED:
+        return "off"
+    return "ab" if AB_ENABLED else "on"
+
 def bias_policy(
     policy: dict[str, float],
     battle,
@@ -233,7 +246,8 @@ def bias_policy(
     Returns a NEW dict; never mutates the input. Returns the input unchanged on
     any error or when disabled.
     """
-    if not ENABLED or not policy:
+    _mode = _memory_mode()
+    if _mode == "off" or not policy:
         return policy
     try:
         w = weights if weights is not None else load_weights()
@@ -243,7 +257,7 @@ def bias_policy(
         # A/B harness: when enabled, ~half of battles run with the bias OFF so we
         # can measure its real WR effect. Log the arm once per battle (even when
         # not flagged this turn, so the arm assignment is captured early).
-        if AB_ENABLED:
+        if _mode == "ab":
             arm = ab_arm_for_battle(battle)
             _log_ab_arm(_battle_id(battle), arm, species_id, flagged)
             if arm == "off":

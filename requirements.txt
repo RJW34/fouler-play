@@ -4,4 +4,4 @@ websockets==14.1
 python-dotenv==1.0.1
 python-dateutil==2.8.0
 psutil==6.1.1
-poke-engine==0.0.46 --config-settings="build-args=--features poke-engine/terastallization --no-default-features"
+poke-engine==0.0.48 --config-settings="build-args=--features poke-engine/terastallization --no-default-features"  # MUST source-build: prebuilt wheels silently drop the tera feature (gap-map; use pip --no-binary poke-engine)

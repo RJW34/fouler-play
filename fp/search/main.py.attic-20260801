@@ -1426,6 +1426,58 @@ def detect_odd_move(
                 return oddities
             oddities.append("waste_turn:repeat_status_move")
 
+    # Self-nerfing damaging move chosen while a cleaner super-effective attack of the
+    # same category exists vs the REVEALED opponent typing (e.g. Make It Rain over
+    # Shadow Ball vs Slowking-Galar). Known-ability immunities excluded.
+    try:
+        _cat = move_data.get(constants.CATEGORY)
+        _user_active = getattr(getattr(battle, "user", None), "active", None)
+        _sd_opp_active = getattr(getattr(battle, "opponent", None), "active", None)
+        if (
+            _cat in {constants.PHYSICAL, constants.SPECIAL}
+            and not move_choice.startswith("switch")
+            and _user_active is not None
+            and _sd_opp_active is not None
+        ):
+            _own_stat = "attack" if _cat == constants.PHYSICAL else "special-attack"
+            if ((move_data.get("self") or {}).get("boosts") or {}).get(_own_stat, 0) < 0:
+                _opp_types = [t for t in (getattr(_sd_opp_active, "types", None) or []) if t]
+                _opp_ability = normalize_name(str(getattr(_sd_opp_active, "ability", None) or ""))
+                _ability_immune = {
+                    "levitate": "ground", "flashfire": "fire", "waterabsorb": "water",
+                    "stormdrain": "water", "dryskin": "water", "voltabsorb": "electric",
+                    "lightningrod": "electric", "motordrive": "electric", "sapsipper": "grass",
+                    "eartheater": "ground", "wellbakedbody": "fire",
+                }
+                if _opp_types:
+                    _chosen_eff = type_effectiveness_modifier(move_data.get(constants.TYPE), _opp_types)
+                    _chosen_bp = move_data.get(constants.BASE_POWER) or 0
+                    for _alt in getattr(_user_active, "moves", None) or []:
+                        _alt_name = normalize_name(getattr(_alt, "name", None) or str(_alt))
+                        if _alt_name == move_norm or getattr(_alt, "disabled", False):
+                            continue
+                        if getattr(_alt, "current_pp", 1) <= 0:
+                            continue
+                        _alt_data = all_move_json.get(_alt_name, {})
+                        if _alt_data.get(constants.CATEGORY) != _cat:
+                            continue
+                        if ((_alt_data.get("self") or {}).get("boosts") or {}).get(_own_stat, 0) < 0:
+                            continue
+                        _alt_type = _alt_data.get(constants.TYPE)
+                        if _ability_immune.get(_opp_ability) == _alt_type:
+                            continue
+                        _alt_eff = type_effectiveness_modifier(_alt_type, _opp_types)
+                        _alt_bp = _alt_data.get(constants.BASE_POWER) or 0
+                        if (
+                            _alt_eff >= 2.0
+                            and _alt_eff > _chosen_eff
+                            and _alt_bp * _alt_eff >= _chosen_bp * _chosen_eff
+                        ):
+                            oddities.append("waste_turn:self_drop_over_se")
+                            break
+    except Exception:
+        pass
+
     # ── Destiny Bond awareness ──
     # If the opponent has revealed Destiny Bond and is likely to use it
     # (low HP), penalize KO-ing with a valuable Pokemon.
@@ -1949,6 +2001,8 @@ def apply_oddity_penalties(
         for odd in oddities:
             if odd == "waste_turn:repeat_status_move":
                 penalty = min(penalty, 0.30)
+            elif odd == "waste_turn:self_drop_over_se":
+                penalty = min(penalty, 0.05)
             elif odd in {
                 "waste_turn:remove_hazards_no_hazards",
                 "waste_turn:repeat_hazard_removal",
@@ -7558,6 +7612,33 @@ def _choose_mcts_only(
                     if trace is not None:
                         trace["decision_mode_detail"] = "mcts_only:survival_switch"
                     return best_switch[0]
+
+    # Waste-turn dethroning veto (owner 2026-07-31): the oddity multiplier alone cannot
+    # dethrone a peaked policy (0.86 * 0.30 still beats 0.04 rivals), so a top pick that
+    # is hard-flagged as a wasted turn yields to the best non-wasteful line with real mass.
+    try:
+        _top_move, _top_weight = sorted_policy[0]
+        _top_odd = detect_odd_move(battle, _top_move, ability_state) if battle is not None else []
+        if any(str(_o).startswith("waste_turn:") for _o in _top_odd):
+            _alt = None
+            for _m, _w in sorted_policy[1:]:
+                if _w < 0.10:
+                    break
+                _o2 = detect_odd_move(battle, _m, ability_state)
+                if not any(str(_x).startswith("waste_turn:") for _x in _o2):
+                    _alt = (_m, _w)
+                    break
+            if _alt is not None:
+                trace_events.append({"type": "waste_veto", "from": _top_move,
+                                     "oddities": [str(_o) for _o in _top_odd], "to": _alt[0]})
+                if trace is not None:
+                    trace["decision_mode_detail"] = "mcts_only:waste_veto"
+                    trace["waste_veto"] = {"vetoed": _top_move, "chosen": _alt[0],
+                                           "alt_weight": round(float(_alt[1]), 4),
+                                           "oddities": [str(_o) for _o in _top_odd]}
+                sorted_policy = [_alt] + [_p for _p in sorted_policy if _p[0] != _alt[0]]
+    except Exception:
+        pass
 
     choice = sorted_policy[0][0]
     if trace is not None:

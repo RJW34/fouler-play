@@ -2412,6 +2412,292 @@ async def handle_battle_slot(request: web.Request) -> web.Response:
     )
 
 
+# --- Gameplay-first flank panels (owner spec 2026-07-31) -------------------------------
+# ELO + batch/stream records + last engine update. Every value is read from RUNTIME
+# artifacts (battle_stats.json, logs/ladder_supervisor.log, stream marker file);
+# nothing is generated or editorialized -- the no-flavor-text rule is structural here.
+_PANEL_SUPERVISOR_LOG = ROOT_DIR / "logs" / "ladder_supervisor.log"
+_PANEL_STREAM_MARKER = ROOT_DIR / "devstream" / "truth" / "stream_session_start.txt"
+
+
+def _panel_stats_rows() -> list[dict]:
+    try:
+        data = json.loads((ROOT_DIR / "battle_stats.json").read_text(encoding="utf-8-sig"))
+    except Exception:
+        return []
+    rows = data if isinstance(data, list) else (data.get("battles") or data.get("rows") or [])
+    return [r for r in rows if isinstance(r, dict)]
+
+
+def _panel_row_epoch(row: dict):
+    ts = row.get("timestamp") or row.get("ts") or ""
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
+    except Exception:
+        return None
+
+
+def _panel_record_since(rows: list[dict], since_epoch):
+    w = l = 0
+    for r in rows:
+        t = _panel_row_epoch(r)
+        if t is None or (since_epoch is not None and t < since_epoch):
+            continue
+        res = str(r.get("result", "")).lower()
+        if res == "win":
+            w += 1
+        elif res in ("loss", "lose", "lost"):
+            l += 1
+    return w, l
+
+
+def _panel_supervisor_tail():
+    """(last 'BATCH #N start' line, last 'IMPROVE ok:' line) from the supervisor log."""
+    try:
+        lines = _PANEL_SUPERVISOR_LOG.read_text(encoding="utf-8", errors="replace").splitlines()[-400:]
+    except Exception:
+        return None, None
+    batch_line = improve_line = None
+    for line in lines:
+        if "BATCH #" in line and " start " in line:
+            batch_line = line
+        elif "IMPROVE ok:" in line:
+            improve_line = line
+    return batch_line, improve_line
+
+
+def _panel_line_epoch(line: str):
+    try:
+        return datetime.fromisoformat(line.split("  ", 1)[0]).timestamp()
+    except Exception:
+        return None
+
+
+_PANEL_MON_SPECIAL = {
+    "deoxysspeed": "Deoxys-Speed", "deoxysdefense": "Deoxys-Defense",
+    "rotomwash": "Rotom-Wash", "rotomheat": "Rotom-Heat", "rotommow": "Rotom-Mow",
+    "landorustherian": "Landorus-Therian", "tornadustherian": "Tornadus-Therian",
+    "thundurustherian": "Thundurus-Therian", "urshifurapidstrike": "Urshifu-Rapid-Strike",
+    "taurospaldeaaqua": "Tauros-Paldea-Aqua", "taurospaldeablaze": "Tauros-Paldea-Blaze",
+    "ogerponwellspring": "Ogerpon-Wellspring", "ogerponcornerstone": "Ogerpon-Cornerstone",
+    "ogerponhearthflame": "Ogerpon-Hearthflame", "ninetalesalola": "Ninetales-Alola",
+    "weezinggalar": "Weezing-Galar", "zamazentacrowned": "Zamazenta-Crowned",
+}
+_PANEL_MON_PREFIX = (
+    ("great", "Great "), ("scream", "Scream "), ("brute", "Brute "), ("flutter", "Flutter "),
+    ("iron", "Iron "), ("roaring", "Roaring "), ("walking", "Walking "), ("sandy", "Sandy "),
+    ("gouging", "Gouging "), ("raging", "Raging "), ("slither", "Slither "),
+)
+
+
+def _panel_pretty_mon(name: str) -> str:
+    n = str(name).lower()
+    if n in _PANEL_MON_SPECIAL:
+        return _PANEL_MON_SPECIAL[n]
+    for pre, disp in _PANEL_MON_PREFIX:
+        if n.startswith(pre) and len(n) > len(pre):
+            return disp + n[len(pre):].capitalize()
+    return n.capitalize()
+
+
+def _panel_focus():
+    """The current biggest loss driver from the freshly rebuilt weights, preferring the
+    matchup that WORSENED most vs the pre-rebuild snapshot. Pure runtime data."""
+    try:
+        cur = json.loads((ROOT_DIR / "fp" / "matchup_weights.json").read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    prob = cur.get("problem_pokemon") or {}
+    if not prob:
+        return None
+    prev = {}
+    try:
+        baks = sorted((ROOT_DIR / ".codex_backups").glob("matchup_weights.json.improve-*"))
+        if baks:
+            prev = (json.loads(baks[-1].read_text(encoding="utf-8-sig")) or {}).get("problem_pokemon") or {}
+    except Exception:
+        pass
+
+    def sc(e):
+        return 2 * int(e.get("losses_present", 0) or 0) + int(e.get("kos_on_us", 0) or 0)
+
+    best = None; key = (-10**9, -10**9)
+    for mon, e in prob.items():
+        s = sc(e)
+        r = s - sc(prev.get(mon) or {})
+        if (r, s) > key:
+            key = (r, s); best = mon
+    if best is None:
+        return None
+    e = prob[best]
+    return {"mon": _panel_pretty_mon(best),
+            "losses": int(e.get("losses_present", 0) or 0),
+            "kos": int(e.get("kos_on_us", 0) or 0)}
+
+
+async def handle_panel_data(request: web.Request) -> web.Response:
+    rows = _panel_stats_rows()
+    elo = None
+    for r in reversed(rows):
+        v = r.get("elo_after") if isinstance(r.get("elo_after"), (int, float)) else r.get("rating")
+        if isinstance(v, (int, float)):
+            elo = round(v)
+            break
+    batch_line, improve_line = _panel_supervisor_tail()
+    batch_no = None
+    bw = bl = 0
+    if batch_line:
+        m = re.search(r"BATCH #(\d+) start", batch_line)
+        batch_no = int(m.group(1)) if m else None
+        bw, bl = _panel_record_since(rows, _panel_line_epoch(batch_line))
+    stream = None
+    try:
+        stream_epoch = float(_PANEL_STREAM_MARKER.read_text().strip())
+        sw, sl = _panel_record_since(rows, stream_epoch)
+        stream = {"w": sw, "l": sl}
+    except Exception:
+        pass
+    # Per-team session records (owner 2026-08-01: improvement blurb retired with the
+    # self-improve loop; the teams ARE the mission, show their records instead).
+    teams = None
+    try:
+        since = None
+        try:
+            since = float(_PANEL_STREAM_MARKER.read_text().strip())
+        except Exception:
+            pass
+        tw = {}
+        for r0 in rows:
+            ep = _panel_row_epoch(r0)
+            if since is not None and (ep is None or ep < since):
+                continue
+            tf = str(r0.get("team_file") or "")
+            key = ("TEAM 1" if "team-1" in tf else "TEAM 2" if "team-2" in tf
+                   else "TEAM 3" if "team-3" in tf else None)
+            if not key:
+                continue
+            w0, l0 = tw.get(key, (0, 0))
+            res = str(r0.get("result") or "")
+            tw[key] = (w0 + (res == "win"), l0 + (res == "loss"))
+        teams = [{"name": k, "w": tw.get(k, (0, 0))[0], "l": tw.get(k, (0, 0))[1]}
+                 for k in ("TEAM 1", "TEAM 2", "TEAM 3")]
+    except Exception:
+        teams = None
+    return web.json_response({
+        "elo": elo,
+        "batch": {"n": batch_no, "w": bw, "l": bl},
+        "stream": stream,
+        "teams": teams,
+        "updated": time.strftime("%H:%M:%S UTC", time.gmtime()),
+    })
+
+
+_PANEL_BASE_CSS = """
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
+ font-family:'Segoe UI',system-ui,sans-serif;color:#eaeaea;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:4%}
+.lbl{font-size:2.1vh;letter-spacing:.25em;color:#888;text-transform:uppercase;margin-bottom:1vh}
+.gap{margin-top:5vh}
+"""
+
+_PANEL_LEFT_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+""" + _PANEL_BASE_CSS + """
+.elo{font-size:12vh;font-weight:800;color:#08d9d6;line-height:1}
+.elo small{font-size:3.4vh;color:#888;font-weight:400;margin-left:.5vh}
+.rec{font-size:4.8vh;font-weight:600;margin-top:.6vh}
+.rec span{color:#888;font-size:2.6vh;font-weight:400;margin-right:1.2vh}
+</style></head><body>
+<div class="lbl">Current rating</div><div class="elo" id="elo">&mdash;</div>
+<div class="gap lbl">Record</div>
+<div class="rec"><span id="bl">BATCH</span><span id="batch">&mdash;</span></div>
+<div class="rec"><span>STREAM</span><span id="stream">&mdash;</span></div>
+<script>
+async function t(){try{const d=await (await fetch('/panel_data')).json();
+document.getElementById('elo').innerHTML=(d.elo??'&mdash;')+' <small>ELO</small>';
+document.getElementById('bl').textContent='SESSION';
+document.getElementById('batch').textContent=d.batch?`${d.batch.w}–${d.batch.l}`:'—';
+document.getElementById('stream').textContent=d.stream?`${d.stream.w}–${d.stream.l}`:'—';
+}catch(e){}}t();setInterval(t,15000);
+</script></body></html>"""
+
+_PANEL_RIGHT_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+""" + _PANEL_BASE_CSS + """
+.trow{font-size:4.6vh;font-weight:700;line-height:1.9}
+.trow .nm{color:#888;font-size:2.4vh;font-weight:400;letter-spacing:.2em;margin-right:1.4vh}
+</style></head><body>
+<div class="lbl">Team records &mdash; this stream</div>
+<div id="rows"><div class="trow">&mdash;</div></div>
+<script>
+async function t(){try{const d=await (await fetch('/panel_data')).json();
+if(d.teams){document.getElementById('rows').innerHTML=d.teams.map(x=>
+`<div class="trow"><span class="nm">${x.name}</span>${x.w}&ndash;${x.l}</div>`).join('');}
+}catch(e){}}t();setInterval(t,15000);
+</script></body></html>"""
+
+_PANEL_BAND_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:100vw;height:100vh;overflow:hidden;background:#0f0f1b;
+ font-family:'Segoe UI',system-ui,sans-serif;color:#eaeaea;
+ display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.l1{font-size:40px;font-weight:700;letter-spacing:.02em}
+.l1 .elo{color:#08d9d6;font-weight:800}
+.l1 .dim{color:#888;font-weight:400}
+.l2{font-size:25px;color:#aaa;margin-top:8px}
+</style></head><body>
+<div class="l1" id="l1">&mdash;</div>
+<div class="l2" id="l2"></div>
+<script>
+async function t(){try{const d=await (await fetch('/panel_data')).json();
+const b=d.batch?`SESSION ${d.batch.w}–${d.batch.l}`:'SESSION —';
+const s=d.stream?`STREAM ${d.stream.w}–${d.stream.l}`:'STREAM —';
+document.getElementById('l1').innerHTML=`<span class="elo">${d.elo??'—'}</span> ELO&ensp;<span class="dim">·</span>&ensp;${b}&ensp;<span class="dim">·</span>&ensp;${s}`;
+document.getElementById('l2').textContent=d.teams?d.teams.map(x=>`${x.name} ${x.w}\u2013${x.l}`).join('   \u00b7   '):'';
+}catch(e){}}t();setInterval(t,15000);
+</script></body></html>"""
+
+
+async def handle_panel_band(request: web.Request) -> web.Response:
+    return web.Response(text=_PANEL_BAND_HTML, content_type="text/html")
+
+
+async def handle_peak_logo(request: web.Request) -> web.FileResponse:
+    return web.FileResponse(STREAMING_DIR / "peak_logo.png")
+
+
+_LOGO_OVERLAY_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0}body{width:100vw;height:100vh;overflow:hidden;background:transparent}
+.logo{position:absolute;border-radius:50%;box-shadow:0 2px 10px rgba(0,0,0,.55);opacity:0;transition:opacity .8s}
+</style></head><body><script>
+const ORIENT=(new URLSearchParams(location.search)).get('orient')||'h';
+const SLOTS=ORIENT==='v'?[[0,141,1080,593],[0,734,1080,593],[0,1327,1080,593]]:[[0,0,960,540],[960,0,960,540],[480,540,960,540]];
+const imgs=SLOTS.map(()=>{const i=document.createElement('img');i.src='/peak_logo.png';i.className='logo';document.body.appendChild(i);return i;});
+async function t(){try{const d=await(await fetch('/battles')).json();const bySlot={};
+for(const b of (d.battles||[])) if(b.status==='active'&&b.slot) bySlot[b.slot]=b;
+SLOTS.forEach((r,ix)=>{const b=bySlot[ix+1];const img=imgs[ix];
+if(!b){img.style.opacity=0;return;}
+// POV enforcer keeps thepeakmons on the near/left side -> logo is a constant badge under our team.
+const x=r[0],y=r[1],w=r[2],h=r[3];const size=Math.round(w*0.11);
+img.style.width=size+'px';img.style.height=size+'px';
+img.style.top=Math.round(y+h*0.63)+'px';
+img.style.left=Math.round(x+w*0.045)+'px';
+img.style.opacity=1;});
+}catch(e){}}t();setInterval(t,8000);
+</script></body></html>"""
+
+
+async def handle_logo_overlay(request: web.Request) -> web.Response:
+    return web.Response(text=_LOGO_OVERLAY_HTML, content_type="text/html")
+
+
+async def handle_panel_left(request: web.Request) -> web.Response:
+    return web.Response(text=_PANEL_LEFT_HTML, content_type="text/html")
+
+
+async def handle_panel_right(request: web.Request) -> web.Response:
+    return web.Response(text=_PANEL_RIGHT_HTML, content_type="text/html")
+
+
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/ws", handle_ws)
@@ -2432,6 +2718,12 @@ def create_app() -> web.Application:
     app.router.add_get("/active_battles.json", handle_battles_file)
     register_dashboard_routes(app)
     app.router.add_get("/fouler-stats", handle_fouler_stats)
+    app.router.add_get("/panel_data", handle_panel_data)
+    app.router.add_get("/panel_left", handle_panel_left)
+    app.router.add_get("/panel_right", handle_panel_right)
+    app.router.add_get("/panel_band", handle_panel_band)
+    app.router.add_get("/peak_logo.png", handle_peak_logo)
+    app.router.add_get("/logo_overlay", handle_logo_overlay)
     app.router.add_get("/emerald-brain", handle_emerald_brain)
     app.router.add_get("/emerald-brain-state", handle_emerald_brain_state)
     app.router.add_post("/emerald-update", handle_emerald_update)

@@ -91,7 +91,7 @@ def init_logging(level, log_to_file):
 
     if log_to_file:
         file_handler = CustomRotatingFileHandler("init.log")
-        file_handler.setLevel(logging.DEBUG)  # file logs are always debug
+        file_handler.setLevel(logging.DEBUG if os.getenv("FOULER_FILE_LOG_DEBUG") == "1" else logging.INFO)  # INFO by default (owner 2026-07-31): DEBUG spam cost seconds/turn in disk I/O
         file_handler.setFormatter(CustomFormatter())
         logger.addHandler(file_handler)
         FoulPlayConfig.file_log_handler = file_handler

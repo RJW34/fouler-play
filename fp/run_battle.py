@@ -1,4 +1,4 @@
-﻿import json
+import json
 import os
 import asyncio
 import contextvars
@@ -41,7 +41,7 @@ def cleanup_old_logs(log_dir: str = "logs", trace_dir: str | None = None):
     trace_dir = trace_dir or os.path.join(log_dir, "decision_traces")
     removed = 0
 
-    # --- 1. Phantom _None.log files (always delete all â€” they're from dead rooms) ---
+    # --- 1. Phantom _None.log files (always delete all — they're from dead rooms) ---
     for fname in os.listdir(log_dir):
         if "_None.log" in fname:
             try:
@@ -130,7 +130,7 @@ from config import FoulPlayConfig, SaveReplay
 from fp.battle import LastUsedMove, Pokemon, Battle
 from fp.battle_modifier import async_update_battle, process_battle_updates
 from fp.helpers import normalize_name
-from fp.search.main import find_best_move
+from fp.search.dispatch import find_best_move
 from fp.decision_trace import write_decision_trace, build_trace_base
 from fp.movepool_tracker import get_threat_category, ThreatCategory
 from fp.opponent_model import OPPONENT_MODEL
@@ -337,7 +337,7 @@ def _rollover_worker_handler(worker_id: int, battle_tag: str, opponent_name: str
     handler = _get_or_create_worker_handler(worker_id)
     handler.baseFilename = _worker_battle_log_path(worker_id, battle_tag, opponent_name)
     # doRollover() renames the current file to .1 and opens a fresh file
-    # with the new baseFilename â€” exactly like the original do_rollover().
+    # with the new baseFilename — exactly like the original do_rollover().
     handler.doRollover()
 
 # Battle chat defaults
@@ -859,9 +859,9 @@ async def _post_battle_to_discord(
     """Post battle result to Discord webhook using the Lucario reporting format.
 
     Format:
-        âš”ï¸ WIN vs Opponent (1050 â†’ 1065 ELO)
-        ðŸ† Team: fat-team-a | Turns: 42
-        ðŸ”— <https://replay.pokemonshowdown.com/gen9ou-XXXXX>
+        ⚔️ WIN vs Opponent (1050 → 1065 ELO)
+        🏆 Team: fat-team-a | Turns: 42
+        🔗 <https://replay.pokemonshowdown.com/gen9ou-XXXXX>
 
     Args:
         battle_tag: Battle ID
@@ -980,13 +980,13 @@ async def _post_battle_to_discord(
 
     if result_key == "tie":
         result_word = "TIE"
-        emoji = "ðŸ¤"
+        emoji = "🤝"
     elif result_key == "win":
         result_word = "WIN"
-        emoji = "âš”ï¸"
+        emoji = "⚔️"
     else:
         result_word = "LOSS"
-        emoji = "ðŸ’€"
+        emoji = "💀"
 
     # ELO delta
     if elo_after is not None and elo_before is not None:
@@ -1013,16 +1013,16 @@ async def _post_battle_to_discord(
         team_display = f"Team: {short_name}"
     turn_display = f"Turns: {turn_count}" if turn_count else ""
     line2_parts = [p for p in [team_display, turn_display] if p]
-    line2 = ("ðŸ† " + " | ".join(line2_parts)) if line2_parts else ""
+    line2 = ("🏆 " + " | ".join(line2_parts)) if line2_parts else ""
 
     # --- Line 3: Replay link ---
     replay_line = ""
     replay_ref = replay_url or battle_tag
     replay_id = public_replay_id_candidate(replay_ref)
     if replay_id and await _replay_exists(replay_id):
-        replay_line = f"ðŸ”— <https://replay.pokemonshowdown.com/{replay_id}>"
+        replay_line = f"🔗 <https://replay.pokemonshowdown.com/{replay_id}>"
     elif replay_url:
-        replay_line = "ðŸ”— Replay pending public upload"
+        replay_line = "🔗 Replay pending public upload"
 
     # Assemble message
     lines = [line1]
@@ -1580,6 +1580,7 @@ async def update_active_battles_file():
                 "_sort_key": started or datetime.min,  # For sorting
                 "status": status,
                 "players": [FoulPlayConfig.username, info.get("opponent", "Unknown")],
+                "our_side": info.get("our_side"),
             })
 
         # Sort by start time (oldest first) for consistent fallback ordering
@@ -2402,7 +2403,7 @@ async def handle_team_preview(battle, ps_websocket_client):
 
     # Check 2: queue-drain (yield first so WS messages can arrive)
     if not team_preview_expired:
-        await asyncio.sleep(0)  # yield to event loop â€” let pending WS messages queue up
+        await asyncio.sleep(0)  # yield to event loop — let pending WS messages queue up
         queue = ps_websocket_client.battle_queues.get(battle_tag)
         drained_msgs = []
         if queue:
@@ -3131,6 +3132,16 @@ async def pokemon_battle(
     battle_tag = battle.battle_tag
     opponent_name = battle.opponent.account_name if battle.opponent else "Unknown"
 
+    # Side plumb (owner 2026-07-31): expose which side we play so the overlay can place
+    # the channel logo under our team (p1 = left/near, p2 = right/far in spectator view).
+    try:
+        _side_info = _active_battles.get(battle_tag)
+        if _side_info is not None:
+            _side_info["our_side"] = getattr(battle.user, "name", None)
+            await update_active_battles_file()
+    except Exception:
+        pass
+
     # Signal battle start instantly
     await send_stream_event("BATTLE_START", {
         "id": battle_tag,
@@ -3146,11 +3157,11 @@ async def pokemon_battle(
     if gameplan:
         # Store gameplan in battle object for access by decision layer
         battle.gameplan = gameplan
-        logger.info(f"ðŸŽ® GAMEPLAN GENERATED: {gameplan.our_strategy}")
-        logger.info(f"ðŸ“Œ OUR WIN CONDITION: {gameplan.win_condition}")
-        logger.info(f"âš”ï¸ OPPONENT WIN CONDITION: {gameplan.opponent_win_condition}")
-        logger.info(f"ðŸ”„ KEY PIVOTS: {', '.join(gameplan.key_pivot_triggers)}")
-        logger.info(f"ðŸ’¡ BACKUP PLAN: {gameplan.backup_plan or 'None'}")
+        logger.info(f"🎮 GAMEPLAN GENERATED: {gameplan.our_strategy}")
+        logger.info(f"📌 OUR WIN CONDITION: {gameplan.win_condition}")
+        logger.info(f"⚔️ OPPONENT WIN CONDITION: {gameplan.opponent_win_condition}")
+        logger.info(f"🔄 KEY PIVOTS: {', '.join(gameplan.key_pivot_triggers)}")
+        logger.info(f"💡 BACKUP PLAN: {gameplan.backup_plan or 'None'}")
     else:
         battle.gameplan = None
         logger.warning(f"Failed to generate gameplan for {battle_tag}")

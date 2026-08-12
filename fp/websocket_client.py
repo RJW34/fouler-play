@@ -607,6 +607,8 @@ class PSWebsocketClient:
         message = room + "|" + "|".join(message_list)
         priority = _classify(message)
         logger.debug("Sending message to websocket (priority=%d): %s", priority, message)
+        if message.endswith("|gg") or "ttv/" in message:
+            logger.info("SIGNOFF wire: %s", message)
         last_error = None
         for attempt in range(2):
             try:
@@ -829,6 +831,17 @@ class PSWebsocketClient:
         self.active_searches.clear()
 
     async def leave_battle(self, battle_tag):
+        # Owner directive 2026-07-31: sign off every battle with gg + the channel plug.
+        try:
+            if battle_tag and str(battle_tag).startswith("battle-"):
+                # Showdown's per-connection throttle silently drops rapid-fire chats
+                # (verified live: /leave landed, both chats vanished). Space them out.
+                await self.send_message(battle_tag, ["gg"])
+                await asyncio.sleep(0.5)
+                await self.send_message(battle_tag, ["ttv/thepeakmos"])
+                await asyncio.sleep(0.7)
+        except Exception:
+            pass
         message = ["/leave {}".format(battle_tag)]
         await self.send_message("", message)
 
